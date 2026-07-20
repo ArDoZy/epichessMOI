@@ -2,12 +2,11 @@
 // GAME-RENDER.JS — Rendu du plateau de jeu, interactions (clic/drag&drop),
 // navigation d'historique, menu contextuel en partie
 // ================================================================
-// Contient : renderGame() (rendu complet du plateau avec brouillard de Nyx,
-// pièces cachées de l'Ombre, déguisements du Clown...), le système de
+// Contient : renderGame() (rendu complet du plateau), le système de
 // drag&drop (startDrag/moveDrag/endDrag), le handler de clic
-// (handleGameClick) avec tous les cas spéciaux (sacrifice Dictateur, 2e temps
-// du Singe, repositionnement Amazone...), la navigation d'historique
-// (boutons ⏮◀▶⏭), et le menu contextuel en partie (pouvoirs activables).
+// (handleGameClick) avec les cas spéciaux (repositionnement Amazone...),
+// la navigation d'historique (boutons ⏮◀▶⏭), et le menu contextuel en
+// partie (pouvoirs activables).
 //
 // Dépendances : rules-engine.js (GS, getLegalMoves, executeGameMove, inB,
 // opp, generateMovesRaw), data-pieces.js (PIECES), main.js
@@ -17,7 +16,7 @@
 // ================================================================
 
 // ----------------------------------------------------------------
-// MENU CONTEXTUEL EN PARTIE (pouvoirs activables : Garde de Pierre, Imitateur)
+// MENU CONTEXTUEL EN PARTIE (pouvoirs activables : Garde de Pierre)
 // ----------------------------------------------------------------
 let ctxActivePower=null;
 function closeCtx(){document.getElementById('ctx-menu').classList.remove('show');}
@@ -25,26 +24,12 @@ document.addEventListener('click',e=>{if(!e.target.closest('#ctx-menu'))closeCtx
 function showCtxMenu(e,r,c,gs){
   e.preventDefault();
   const cell=gs.board[r][c];
-  const decoy=(gs.illusionDecoys||[]).find(d=>d.r===r&&d.c===c&&d.isDecoy);
-  if(!cell&&!decoy)return;
-  const pid=cell?cell.pieceId:'illusion-decoy';let pd=cell?PIECES.find(p=>p.id===pid)||null:null;
-  if(decoy&&!cell){
-    // Cas spécial : ombre miroir de l'Illusion — pas une vraie pièce du catalogue
-    const menu=document.getElementById('ctx-menu');
-    document.getElementById('ctx-title').innerHTML='🪞 Ombre miroir';
-    document.getElementById('ctx-class-lbl').textContent='Mirage';document.getElementById('ctx-class-lbl').style.color='var(--mirage)';
-    document.getElementById('ctx-val').textContent='—';document.getElementById('ctx-mvt').textContent='Inamovible';
-    const abRow=document.getElementById('ctx-ability-row');abRow.style.display='';
-    document.getElementById('ctx-ability').textContent='Image résiduelle de l\'Illusion. Peut être capturée par l\'adversaire.';
-    document.getElementById('ctx-power-btn').style.display='none';
-    const mx=Math.min(e.clientX,window.innerWidth-330),my=Math.min(e.clientY,window.innerHeight-260);
-    menu.style.left=mx+'px';menu.style.top=my+'px';menu.classList.add('show');
-    return;
-  }
+  if(!cell)return;
+  const pid=cell.pieceId;const pd=PIECES.find(p=>p.id===pid)||null;
   const canUsePower=pd?.hasPower&&cell.color===gs.turn&&!gs.gameOver;
   let opts=null;
   if(canUsePower){
-    const used=pd.id==='garde-pierre'?gs.gardePierreUsed[cell.color]:gs.imitateurUsed[cell.color];
+    const used=gs.gardePierreUsed[cell.color];
     opts={powerActive:true,powerLabel:pd.powerLabel||'Activer pouvoir',powerDisabled:!!used,powerCtx:{r,c,pieceId:pd.id,color:cell.color}};
   }
   showPieceCtxMenu(e,pd||{emoji:getPieceEmoji(cell),name:pid},opts);
@@ -57,11 +42,6 @@ window.activatePower=()=>{
     GS.anchored=GS.anchored||new Set();GS.anchored.add(`${r},${c}`);GS.gardePierreUsed[color]=true;
     recordMove(GS.board[r][c],{r,c},false,GS);GS.turn=opp(GS.turn);GS.turnCount++;
     showNotif('Garde de Pierre ancré !','ok');postMoveUpdate(GS);
-  }else if(pieceId==='imitateur'){
-    if(GS.imitateurUsed[color]){showNotif('Déjà utilisé !');return;}
-    const capList=color==='w'?GS.capturedB:GS.capturedW;
-    if(!capList.length){showNotif('Aucune pièce ennemie capturée.');return;}
-    GS.imitateurUsed[color]=true;showNotif('Imitateur : pouvoir copié !','ok');renderGame(GS);
   }
   closeCtx();
 };
@@ -69,12 +49,6 @@ window.activatePower=()=>{
 // ----------------------------------------------------------------
 // RENDU DU PLATEAU DE JEU
 // ----------------------------------------------------------------
-function getNyxFogSquares(board,gs){
-  const fog=new Set();const nyxCl=gs.nyxColor;if(!nyxCl)return fog;
-  for(let r=0;r<8;r++)for(let c=0;c<8;c++){const p=board[r][c];if(p&&p.pieceId==='nyx'&&p.color===nyxCl){for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++){if(!dr&&!dc)continue;const nr=r+dr,nc=c+dc;if(inB(nr,nc))fog.add(`${nr},${nc}`);}}}
-  return fog;
-}
-
 function renderGame(gs){
   if(gs.historyView!==null){updateHistoryNav();return;}
   const boardEl=document.getElementById('game-board');if(!boardEl)return;
@@ -82,9 +56,6 @@ function renderGame(gs){
   const playerCol=gs.playerColor||'w';
   const aiCol=gs.aiColor||'b';
   const flipped=playerCol==='b'; // échiquier retourné si le joueur joue les noirs
-  const nyxFog=getNyxFogSquares(b,gs);
-  const nyxIsEnemy=gs.nyxColor===aiCol;const playerSeesNyx=gs.nyxColor===playerCol;
-  const decoyMap={};(gs.illusionDecoys||[]).forEach(d=>{decoyMap[`${d.r},${d.c}`]=d;});
   let html='';
   for(let vi=0;vi<8;vi++)for(let c=0;c<8;c++){
     // vi = index visuel de rangée (0=haut), r = index réel dans board[]
@@ -93,35 +64,19 @@ function renderGame(gs){
     const isLight=(r+c)%2===0;const cell=b[r][c];
     let cls='gc '+(isLight?'l':'d');
     const key=`${r},${c}`;
-    const inFog=nyxFog.has(key);
-    const cellIsEnemyInFog=nyxIsEnemy&&inFog&&cell&&cell.color===aiCol;
-    const squareIsEmptyFog=nyxIsEnemy&&inFog&&!cell;
-    if(squareIsEmptyFog||cellIsEnemyInFog)cls+=' nyx-fog';
-    if(playerSeesNyx&&inFog)cls+=' nyx-aura';
     if(gs.selected&&gs.selected.r===r&&gs.selected.c===c)cls+=' sel';
     const isAvail=gs.legalMoves.some(m=>m.r===r&&m.c===c&&!m.stayPut);
-    const isKill=gs.legalMoves.some(m=>m.r===r&&m.c===c&&m.stayPut&&m.boucherKill);
-    const hasEnemy=cell&&!cellIsEnemyInFog&&gs.legalMoves.some(m=>m.r===r&&m.c===c&&!m.stayPut)&&cell.color!==gs.turn;
-    if(isKill)cls+=' boucher-kill';
-    else if(isAvail&&hasEnemy)cls+=' avail-cap';
+    const hasEnemy=cell&&gs.legalMoves.some(m=>m.r===r&&m.c===c&&!m.stayPut)&&cell.color!==gs.turn;
+    if(isAvail&&hasEnemy)cls+=' avail-cap';
     else if(isAvail)cls+=' avail';
-    if(gs.singeAwaitingStep2&&gs._singeStep2Moves&&gs._singeStep2Moves.some(m=>m.r===r&&m.c===c))cls+=' singe-step1';
     if(gs.amazonePostCapture&&gs.amazonePostCapture.color===playerCol){const apc=gs.amazonePostCapture;if(Math.abs(r-apc.r)<=1&&Math.abs(c-apc.c)<=1&&!cell&&(r!==apc.r||c!==apc.c))cls+=' amazone-repos';}
     if(gs.lastMove&&((gs.lastMove.from.r===r&&gs.lastMove.from.c===c)||(gs.lastMove.to.r===r&&gs.lastMove.to.c===c)))cls+=' last-move';
-    if(gs.dictatorSacrifice&&gs.dictatorSacrifice.pieces.some(pp=>pp.r===r&&pp.c===c))cls+=' sac-highlight';
     const isAnchored=gs.anchored?.has(key);
     let showCell=cell;
-    if(cell&&cell.pieceId==='ombre'&&cell.color===aiCol){const visUntil=gs.ombreVisibleUntil?.[cell.id]||0;if(gs.turnCount>=visUntil)showCell=null;}
     let inner='';
-    const decoy=decoyMap[key];
-    if(decoy)inner='<div class="gc-piece" style="opacity:.45;filter:blur(1.5px);cursor:default">'+decoy.emoji+'</div>';
-    if(showCell&&!cellIsEnemyInFog){
+    if(showCell){
       const em=getPieceEmoji(showCell);const paraStyle=gs.medusaParalyzed?.has(key)?'filter:sepia(1) brightness(.55);':'';
       let displayEm=em;let badge='';
-      if(showCell.pieceId==='clown'&&clownDisguise[showCell.color]){
-        if(showCell.color===playerCol){displayEm=clownDisguise[showCell.color].emoji;badge='<span class="clown-badge">🤡</span>';}
-        else displayEm=clownDisguise[showCell.color].emoji;
-      }
       inner='<div class="gc-piece'+(isAnchored?' gc-anchored':'')+'" style="'+paraStyle+'" data-r="'+r+'" data-c="'+c+'">'+displayEm+badge+(isAnchored?'<span style="position:absolute;bottom:0;right:0;font-size:7px">⚓</span>':'')+'</div>';
     }
     html+='<div class="'+cls+'" data-r="'+r+'" data-c="'+c+'">'+inner+'</div>';
@@ -264,32 +219,6 @@ document.addEventListener('touchcancel',()=>{
 function handleGameClick(r,c,gs){
   const b=gs.board;const cell=b[r][c];const playerCol=gs.playerColor||'w';
 
-  if(gs.dictatorSacrifice){
-    const sacInfo=gs.dictatorSacrifice.pieces.find(pp=>pp.r===r&&pp.c===c);
-    if(sacInfo){
-      showSacrificeConfirm(gs,sacInfo,()=>{
-        gs.board[sacInfo.r][sacInfo.c]=null;
-        if(sacInfo.p.color==='w')gs.capturedW.push(sacInfo.p.emoji);else gs.capturedB.push(sacInfo.p.emoji);
-        const dr=gs.dictatorSacrifice.dictateurR,dc2=gs.dictatorSacrifice.dictateurC;
-        for(let pr=0;pr<8;pr++)for(let pc=0;pc<8;pc++){
-          const ep=gs.board[pr][pc];
-          if(ep&&ep.color!==gs.dictatorSacrifice.color){const ms=generateMovesRaw(gs.board,pr,pc,gs);if(ms.some(m=>m.r===dr&&m.c===dc2&&!m.stayPut)){if(ep.color==='w')gs.capturedW.push(ep.emoji);else gs.capturedB.push(ep.emoji);gs.board[pr][pc]=null;}}
-        }
-        gs.dictatorSacrifice=null;
-        updateMedusaParalysis(gs.board,gs);updatePretreProtection(gs.board,gs);updateGrandMaitre(gs.board,gs);updateNyx(gs.board,gs);
-        updateStatus(gs);renderGame(gs);
-      });
-      return;
-    }
-    return;
-  }
-
-  if(gs.singeAwaitingStep2){
-    const step2=gs._singeStep2Moves||[];const mv=step2.find(m=>m.r===r&&m.c===c);
-    if(mv){gs.lastMove={from:{r:gs.singeAwaitingStep2.fromR,c:gs.singeAwaitingStep2.fromC},to:mv};const from={r:gs.singeAwaitingStep2.fromR,c:gs.singeAwaitingStep2.fromC};gs.singeAwaitingStep2=null;gs._singeStep2Moves=null;gs.selected=null;gs.legalMoves=[];executeGameMove(from,mv,gs);return;}
-    else{gs.singeAwaitingStep2=null;gs._singeStep2Moves=null;gs.selected=null;gs.legalMoves=[];renderGame(gs);return;}
-  }
-
   if(gs.amazonePostCapture&&gs.amazonePostCapture.color===playerCol){
     const apc=gs.amazonePostCapture;
     if(Math.abs(r-apc.r)<=1&&Math.abs(c-apc.c)<=1&&!b[r][c]&&(r!==apc.r||c!==apc.c)){
@@ -304,22 +233,9 @@ function handleGameClick(r,c,gs){
   if(gs.selected){
     if(gs.selected.r===r&&gs.selected.c===c){gs.selected=null;gs.legalMoves=[];renderGame(gs);return;}
     const normalMove=gs.legalMoves.find(m=>m.r===r&&m.c===c&&!m.stayPut);
-    const killMove=gs.legalMoves.find(m=>m.r===r&&m.c===c&&m.stayPut&&m.boucherKill);
     const selCell=b[gs.selected.r][gs.selected.c];
-    if(normalMove&&killMove&&selCell?.pieceId==='boucher'){showBoucherChoiceModal(gs,normalMove,killMove);return;}
     const move=normalMove||gs.legalMoves.find(m=>m.r===r&&m.c===c);
     if(move){
-      if(selCell&&selCell.pieceId==='singe'&&!move.singeVia&&!move.singeCapStep1){
-        const diags=[[1,1],[1,-1],[-1,1],[-1,-1]];
-        const isIntermediate=diags.some(([dr,dc])=>gs.selected.r+dr===r&&gs.selected.c+dc===c);
-        if(isIntermediate&&!b[r][c]){
-          const step2=[];
-          for(const[dr2,dc2] of diags){const fr2=r+dr2,fc2=c+dc2;if(!inB(fr2,fc2))continue;if(fr2===gs.selected.r&&fc2===gs.selected.c)continue;if(b[fr2][fc2]&&b[fr2][fc2].color===selCell.color)continue;step2.push({r:fr2,c:fc2,singeVia:{r,c}});}
-          gs.singeAwaitingStep2={fromR:gs.selected.r,fromC:gs.selected.c,viaR:r,viaC:c};
-          gs._singeStep2Moves=step2.filter(m=>!moveLeavesKingInCheck(b,gs.selected.r,gs.selected.c,m,selCell.color));
-          renderGame(gs);return;
-        }
-      }
       gs.lastMove={from:gs.selected,to:move};const from={...gs.selected};gs.selected=null;gs.legalMoves=[];executeGameMove(from,move,gs);return;
     }
     if(cell&&cell.color===playerCol){gs.selected={r,c};gs.legalMoves=getLegalMoves(b,r,c,gs);renderGame(gs);return;}
@@ -373,19 +289,6 @@ document.addEventListener('keydown',e=>{
   else if(e.key==='Home')document.getElementById('hist-first').click();
   else if(e.key==='End')document.getElementById('hist-last').click();
 });
-
-// ----------------------------------------------------------------
-// MODAL DE CHOIX BOUCHER (se déplacer vs tuer sans bouger)
-// ----------------------------------------------------------------
-function showBoucherChoiceModal(gs,moveMove,killMove){
-  const modal=document.getElementById('boucher-modal');modal.classList.add('active');
-  const onMove=()=>{modal.classList.remove('active');gs.lastMove={from:gs.selected,to:moveMove};const from={...gs.selected};gs.selected=null;gs.legalMoves=[];executeGameMove(from,moveMove,gs);};
-  const onKill=()=>{modal.classList.remove('active');gs.lastMove={from:gs.selected,to:killMove};const from={...gs.selected};gs.selected=null;gs.legalMoves=[];executeGameMove(from,killMove,gs);};
-  const mb=document.getElementById('boucher-move');const kb=document.getElementById('boucher-kill-btn');
-  mb.replaceWith(mb.cloneNode(true));kb.replaceWith(kb.cloneNode(true));
-  document.getElementById('boucher-move').addEventListener('click',onMove,{once:true});
-  document.getElementById('boucher-kill-btn').addEventListener('click',onKill,{once:true});
-}
 
 // ----------------------------------------------------------------
 // STATUT DE PARTIE (échec/mat/pat/nulle) — appelée par postMoveUpdate()

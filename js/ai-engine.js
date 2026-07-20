@@ -24,13 +24,13 @@
 // ================================================================
 
 const CVAL={
-  'roi':10000,'matriarche':10000,'empereur':10000,'dictateur':10000,
-  'dame':950,'amazone':800,'chevaucheur-rhinoceros':870,'grand-maitre':1200,'nyx':840,'joker':860,
+  'roi':10000,'empereur':10000,
+  'dame':950,'amazone':800,'chevaucheur-rhinoceros':870,'grand-maitre':1200,
   'cavalier-primordial':360,'fou-primordial':360,'tour-primordiale':530,
-  'dresseur-elephant':310,'meduse':240,'typhon':520,'ombre':330,'illusion':210,
-  'clown':310,'imitateur':400,'boucher':320,'infecte':280,'alpha':230,
-  'maitre-temps':300,'non-sens':220,'fourmi':190,'banshee':430,'preux-chevalier':210,
-  'garde-pierre':290,'singe':310,'pretre':420,'std-pawn':100,'lune':740,'sorciere':500,
+  'dresseur-elephant':310,'meduse':240,'typhon':520,
+  'alpha':230,
+  'fourmi':190,'banshee':430,'preux-chevalier':210,
+  'garde-pierre':290,'pretre':420,'std-pawn':100,
 };
 const PVAL={k:10000,q:950,r:530,b:360,n:360,p:100};
 
@@ -78,7 +78,7 @@ function getPST(p, r, c){
 // ================================================================
 function evalBoard(board,gs){
   let s=0;
-  const fgs={medusaParalyzed:new Set(),pretreProtected:new Set(),anchored:new Set(gs?.anchored||[]),enPassant:null,grandMaitreAlive:{w:false,b:false},illusionDecoys:[],ombreVisibleUntil:{},nonSensReversed:{},board};
+  const fgs={medusaParalyzed:new Set(),pretreProtected:new Set(),anchored:new Set(gs?.anchored||[]),enPassant:null,grandMaitreAlive:{w:false,b:false},board};
   updateMedusaParalysis(board,fgs);updateGrandMaitre(board,fgs);
 
   for(let r=0;r<8;r++)for(let c=0;c<8;c++){
@@ -91,7 +91,7 @@ function evalBoard(board,gs){
     const mobBonus=mob*0.15;
 
     let passedBonus=0;
-    if((p.type==='p'||p.pieceId==='std-pawn')&&p.pieceId!=='infecte'){
+    if(p.type==='p'||p.pieceId==='std-pawn'){
       const dir=p.color==='b'?1:-1;
       let passed=true;
       for(let nr=r+dir;nr>=0&&nr<8;nr+=dir){
@@ -120,7 +120,7 @@ function evalBoard(board,gs){
     }
 
     let rookBonus=0;
-    if(p.type==='r'||p.pieceId==='tour-primordiale'||p.pieceId==='lune'){
+    if(p.type==='r'||p.pieceId==='tour-primordiale'){
       let open=true;
       for(let nr=0;nr<8;nr++){
         const t=board[nr][c];
@@ -130,7 +130,7 @@ function evalBoard(board,gs){
     }
 
     let devBonus=0;
-    const isKingPiece=p.isKing||p.type==='k'||['roi','matriarche','empereur','dictateur'].includes(p.pieceId);
+    const isKingPiece=p.isKing||p.type==='k'||['roi','empereur'].includes(p.pieceId);
     const isPawn=p.type==='p'||p.pieceId==='std-pawn'||p.pieceId==='fourmi'||p.pieceId==='preux-chevalier';
     if(!isKingPiece&&!isPawn){
       const homeRow=p.color==='b'?0:7;
@@ -181,12 +181,7 @@ function applyMoveQuick(board,from,to,p){
   if(to.stayPut){if(b[to.r][to.c])b[to.r][to.c]=null;return b;}
   if(to.ep){const pr=to.r+(p.color==='w'?1:-1);b[pr][to.c]=null;}
   if(to.castle){if(to.castle==='K'){b[from.r][5]=b[from.r][7];b[from.r][7]=null;}if(to.castle==='Q'){b[from.r][3]=b[from.r][0];b[from.r][0]=null;}}
-  if(p.pieceId==='singe'&&to.singeVia){
-    const via=to.singeVia;
-    if(b[via.r][via.c]&&b[via.r][via.c].color!==p.color)b[via.r][via.c]=null;
-  }
   b[to.r][to.c]={...p,hasMoved:true};b[from.r][from.c]=null;
-  if(p.pieceId==='infecte')b[to.r][to.c]=null;
   if(b[to.r]?.[to.c]?.pieceId==='std-pawn'&&(to.r===0||to.r===7)&&b[to.r][to.c])b[to.r][to.c]={...b[to.r][to.c],type:'q',emoji:'♛',pieceId:'dame'};
   return b;
 }
@@ -197,11 +192,11 @@ function applyMoveQuick(board,from,to,p){
 const ZK=(()=>{
   let seed=0xDEADBEEF;
   const rnd=()=>{seed=Math.imul(1664525,seed)+1013904223|0;return(seed>>>0);};
-  const pieceIds=['roi','matriarche','empereur','dictateur','amazone','chevaucheur-rhinoceros',
-    'nyx','dame','grand-maitre','joker','cavalier-primordial','fou-primordial','tour-primordiale',
-    'alpha','fourmi','preux-chevalier','dresseur-elephant','boucher','garde-pierre','singe','lune',
-    'meduse','non-sens','infecte','maitre-temps','typhon','banshee','pretre','sorciere',
-    'illusion','ombre','clown','imitateur','std-pawn','std-r','std-n','std-b'];
+  const pieceIds=['roi','empereur','amazone','chevaucheur-rhinoceros',
+    'dame','grand-maitre','cavalier-primordial','fou-primordial','tour-primordiale',
+    'alpha','fourmi','preux-chevalier','dresseur-elephant','garde-pierre',
+    'meduse','typhon','banshee','pretre',
+    'std-pawn','std-r','std-n','std-b'];
   const pidx={};pieceIds.forEach((id,i)=>{pidx[id]=i;});
   const T=[];
   for(let s=0;s<64;s++){T[s]=[];for(let p=0;p<pieceIds.length;p++)T[s][p]=[rnd(),rnd()];}
@@ -318,7 +313,7 @@ function minimax(board,depth,alpha,beta,maxing,fgs,nullOk,plyFromRoot){
   if(depth<=0)return quiesce(board,alpha,beta,maxing,fgs,5);
 
   const color=maxing?'b':'w';
-  const fgs2={...fgs,board,medusaParalyzed:new Set(),pretreProtected:new Set(),anchored:new Set(fgs?.anchored||[]),enPassant:null,grandMaitreAlive:{w:false,b:false},illusionDecoys:[],ombreVisibleUntil:{}};
+  const fgs2={...fgs,board,medusaParalyzed:new Set(),pretreProtected:new Set(),anchored:new Set(fgs?.anchored||[]),enPassant:null,grandMaitreAlive:{w:false,b:false}};
   updateMedusaParalysis(board,fgs2);updateGrandMaitre(board,fgs2);
 
   const inCheck=isInCheckSimple(color,board);
@@ -436,9 +431,6 @@ function fixGs(gs){
   gs.medusaParalyzed=new Set(gs._medusaArr||[]);
   gs.pretreProtected=new Set(gs._pretreArr||[]);
   gs.anchored=new Set(gs._anchoredArr||[]);
-  gs.illusionDecoys=gs.illusionDecoys||[];
-  gs.ombreVisibleUntil=gs.ombreVisibleUntil||{};
-  gs.nonSensReversed=gs.nonSensReversed||{};
   gs.grandMaitreAlive=gs.grandMaitreAlive||{w:false,b:false};
   gs.lastMoveHistory=gs.lastMoveHistory||[];
   return gs;
@@ -503,8 +495,7 @@ self.onmessage=function(e){
     if(depth>=4&&prevScore!==null){aAlpha=prevScore-50;aBeta=prevScore+50;}
     let iterBest=null,iterScore=-Infinity;
     const fgsRoot={...gs,board:gs.board,medusaParalyzed:new Set(),pretreProtected:new Set(),
-      anchored:new Set(gs.anchored||[]),enPassant:null,grandMaitreAlive:{w:false,b:false},
-      illusionDecoys:[],ombreVisibleUntil:{}};
+      anchored:new Set(gs.anchored||[]),enPassant:null,grandMaitreAlive:{w:false,b:false}};
     updateMedusaParalysis(gs.board,fgsRoot);updateGrandMaitre(gs.board,fgsRoot);
     for(const{from,to} of searchMoves){
       if(Date.now()>_aiDeadline)break;
@@ -544,9 +535,6 @@ function serializeGs(gs){
     board:gs.board.map(r=>r.map(p=>p?{...p}:null)),
     turn:gs.turn,enPassant:gs.enPassant,halfmoveClock:gs.halfmoveClock,
     grandMaitreAlive:gs.grandMaitreAlive||{w:false,b:false},
-    nonSensReversed:gs.nonSensReversed||{},
-    ombreVisibleUntil:gs.ombreVisibleUntil||{},
-    illusionDecoys:gs.illusionDecoys||[],
     _medusaArr:[...(gs.medusaParalyzed||[])],
     _pretreArr:[...(gs.pretreProtected||[])],
     _anchoredArr:[...(gs.anchored||[])],
@@ -639,7 +627,7 @@ function doAIMoveMainThread(gs){
     let aAlpha=-Infinity,aBeta=Infinity;
     if(depth>=4&&prevScore!==null){aAlpha=prevScore-50;aBeta=prevScore+50;}
     let iterBest=null,iterScore=-Infinity;
-    const fgsRoot={...gs,board:gs.board,medusaParalyzed:new Set(),pretreProtected:new Set(),anchored:new Set(gs.anchored||[]),enPassant:null,grandMaitreAlive:{w:false,b:false},illusionDecoys:[],ombreVisibleUntil:{}};
+    const fgsRoot={...gs,board:gs.board,medusaParalyzed:new Set(),pretreProtected:new Set(),anchored:new Set(gs.anchored||[]),enPassant:null,grandMaitreAlive:{w:false,b:false}};
     updateMedusaParalysis(gs.board,fgsRoot);updateGrandMaitre(gs.board,fgsRoot);
     for(const{from,to} of searchMoves){
       if(Date.now()>_aiDeadline)break;

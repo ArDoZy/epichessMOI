@@ -86,8 +86,6 @@
         <button class="clf-btn on" data-class="Primordiale">Primordiale</button>
         <button class="clf-btn on" data-class="Brute">Brute</button>
         <button class="clf-btn on" data-class="Sorcier">Sorcier</button>
-        <button class="clf-btn on" data-class="Mirage">Mirage</button>
-        <button class="clf-btn on" data-class="Maudit">Maudit</button>
       </div>
     </div>
   </div>
@@ -142,7 +140,7 @@
 <div id="page-ai-armies" class="page">
 <div class="armies-inner">
   <div class="armies-hdr">
-    <div class="armies-title cinzel" style="background:linear-gradient(135deg,var(--mirage),var(--sorcier));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">Armées de l'IA</div>
+    <div class="armies-title cinzel" style="background:linear-gradient(135deg,var(--accent2),var(--sorcier));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">Armées de l'IA</div>
     <button class="btn btn-ghost" id="ai-ar-back">← Retour</button>
     <button class="btn btn-primary" id="ai-ar-new">+ Nouvelle armée IA</button>
   </div>
@@ -304,7 +302,7 @@
       <div class="game-board-container">
         <div class="status-bar" id="game-status">En attente...</div>
         <div class="game-player-bar" id="ai-player-bar">
-          <div class="game-player-avatar" id="ai-player-avatar" style="background:linear-gradient(135deg,var(--mirage),var(--accent))">🤖</div>
+          <div class="game-player-avatar" id="ai-player-avatar" style="background:linear-gradient(135deg,var(--accent2),var(--accent))">🤖</div>
           <div class="game-player-name" id="ai-player-name">Instructeur</div>
           <div class="game-player-elo" id="ai-player-elo"></div>
         </div>
@@ -336,9 +334,6 @@
 
 <!-- MODALS -->
 <div class="promo-modal" id="promo-modal"><div class="promo-box"><div class="promo-title">Choisir la promotion</div><div class="promo-pieces-row" id="promo-box"></div></div></div>
-<div class="sacrifice-modal" id="sacrifice-modal"><div class="sacrifice-box"><h3>Cruauté — Sacrifier une pièce</h3><p style="font-size:12px;color:var(--muted);margin-bottom:10px">Le Dictateur est en échec. Sacrifiez une pièce alliée — la pièce attaquante sera détruite.</p><div class="sacrifice-pieces" id="sacrifice-pieces"></div></div></div>
-<div class="clown-modal" id="clown-modal"><div class="clown-box"><h3>🤡 Déguisement des Clowns</h3><p>Choisissez l'apparence que vos Clowns afficheront à l'adversaire.</p><div class="clown-options" id="clown-options"></div></div></div>
-<div class="boucher-modal" id="boucher-modal"><div class="boucher-box"><h3>🔪 Action du Boucher</h3><p>Une pièce ennemie est à portée de couteau. Choisissez votre action :</p><div class="boucher-choices"><button class="btn btn-ghost" id="boucher-move">Se déplacer</button><button class="btn btn-danger" id="boucher-kill-btn">Tuer sans bouger</button></div></div></div>
 <div class="primordiale-modal" id="primordiale-modal" style="display:none"><div class="primordiale-box"><h2>♟ Choisissez votre Primordiale</h2><p>Bienvenue dans Metachess ! Choisissez votre pièce primordiale de départ. Les deux autres pourront être obtenues plus tard via des coffres.</p><div class="primordiale-choices" id="primordiale-choices"></div></div></div>
 <button class="admin-badge" id="admin-badge" title="Mode Administrateur">⚙ Admin</button>
 <div class="result-modal" id="result-modal"><div class="result-box" id="result-box"><button id="result-close-btn" style="position:absolute;top:12px;right:14px;background:transparent;border:none;cursor:pointer;color:var(--muted);font-size:22px;line-height:1;font-family:inherit;transition:color .15s;z-index:1" title="Fermer et analyser la partie">✕</button><span class="result-icon" id="result-icon"></span><div class="result-title" id="result-title"></div><div class="result-elo-row"><span class="result-elo-before" id="result-elo-before"></span><span class="result-elo-arrow">→</span><span class="result-elo-after" id="result-elo-after"></span><span class="result-elo-delta" id="result-elo-delta"></span></div><div class="result-rank-row"><span class="result-rank-icon" id="result-rank-icon"></span><span class="result-rank-name" id="result-rank-name"></span></div><div class="unlock-section" id="unlock-section" style="display:none"><div class="unlock-title">🎉 Nouvelle pièce débloquée !</div><span class="unlock-piece-emoji" id="unlock-piece-emoji"></span><div class="unlock-piece-name" id="unlock-piece-name"></div><div class="unlock-piece-class" id="unlock-piece-class"></div><div class="unlock-piece-ability" id="unlock-piece-ability"></div></div><div style="display:flex;flex-direction:column;gap:8px;margin-top:20px"><button class="btn btn-gold" style="width:100%" id="result-continue">Continuer</button><div style="display:flex;gap:8px"><button class="btn btn-primary" style="flex:1" id="result-rejouer">↺ Rejouer</button><button class="btn btn-ghost" style="flex:1;border-color:var(--accent2);color:var(--accent2)" id="result-revanche">⚔ Revanche</button></div></div></div></div>
