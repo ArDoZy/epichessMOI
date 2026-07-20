@@ -106,7 +106,7 @@ function generateMovesRaw(board,r,c,gs){
 
   switch(id){
     case 'dame':moves=slidingMoves(board,r,c,p,[[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]],gs);break;
-    case 'amazone':moves=[...knightMoves(board,r,c,p),...slidingMoves(board,r,c,p,[[1,0],[-1,0],[0,1],[0,-1]],gs)];break;
+    case 'amazone':moves=[...knightMoves(board,r,c,p),...slidingMoves(board,r,c,p,[[1,1],[1,-1],[-1,1],[-1,-1]],gs)];break;
     case 'chevaucheur-rhinoceros':moves=[...slidingMoves(board,r,c,p,[[1,0],[-1,0],[0,1],[0,-1]],gs),...knightMoves(board,r,c,p)];break;
     case 'grand-maitre':moves=[...slidingMoves(board,r,c,p,[[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]],gs),...knightMoves(board,r,c,p)];break;
     case 'cavalier-primordial':moves=knightMoves(board,r,c,p);break;

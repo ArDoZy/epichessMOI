@@ -94,18 +94,15 @@ function generateAIArmy(){
     if(mon.value+gen.value>22)continue;
     const budget=24-mon.value-gen.value;
     const pool=[...allOth].sort(()=>Math.random()-0.5);
-    let chosen=[];let val=0;let primCount=0;let pairCount=0;
+    let chosen=[];let val=0;let primCount=0;
     const usedIds=new Set(); // pas de doublon de pièce
     for(const p of pool){
       if(chosen.length>=3)break;
       if(usedIds.has(p.id))continue; // même pièce déjà choisie
       if(p.class==='Primordiale'&&primCount>=1)continue; // max 1 paire de Primordiale
-      // Une pièce qty>=2 crée une paire : l'IA ne peut avoir qu'une seule paire de ce type
-      if(p.qty>=2&&pairCount>=1)continue; // pas plus d'une paire parmi les extras
       if(val+p.value>budget)continue;
       chosen.push(p);val+=p.value;usedIds.add(p.id);
       if(p.class==='Primordiale')primCount++;
-      if(p.qty>=2)pairCount++;
     }
     if(chosen.length===3){
       const placements={};const availCols=[0,1,2,5,6,7];
@@ -114,13 +111,11 @@ function generateAIArmy(){
       return{mon,gen,extras:chosen.map(p=>p.id),placements,totalValue:mon.value+gen.value+val,_random:true};
     }
   }
-  // Fallback: 3 pièces distinctes sans paires doublées
-  const mon=allMon[0],gen=allGen[0];
-  const ext=allOth.filter((p,i,a)=>a.findIndex(x=>x.id===p.id)===i&&!(p.qty>=2)).slice(0,3);
-  if(ext.length<3){
-    // accepter 1 pièce qty>=2 si nécessaire
-    const ext2=allOth.filter((p,i,a)=>a.findIndex(x=>x.id===p.id)===i).slice(0,3);
-    return{mon,gen,extras:ext2.map(p=>p.id),placements:{[ext2[0]?.id]:0,[ext2[1]?.id]:1,[ext2[2]?.id]:2},totalValue:mon.value+gen.value+ext2.reduce((s,p)=>s+p.value,0),_random:true};
-  }
-  return{mon,gen,extras:ext.map(p=>p.id),placements:{[ext[0].id]:0,[ext[1].id]:1,[ext[2].id]:2},totalValue:mon.value+gen.value+ext.reduce((s,p)=>s+p.value,0),_random:true};
+  // Fallback (budget très serré) : pièces distinctes les moins chères, tirées au hasard
+  const mon=rnd(allMon),gen=rnd(allGen);
+  const shuffledOth=[...allOth].sort(()=>Math.random()-0.5);
+  const ext=shuffledOth.filter((p,i,a)=>a.findIndex(x=>x.id===p.id)===i).slice(0,3);
+  const placements={};const availCols=[0,1,2,5,6,7].sort(()=>Math.random()-0.5);
+  ext.forEach((p,i)=>{placements[p.id]=availCols[i];});
+  return{mon,gen,extras:ext.map(p=>p.id),placements,totalValue:mon.value+gen.value+ext.reduce((s,p)=>s+p.value,0),_random:true};
 }
