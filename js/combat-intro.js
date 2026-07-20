@@ -40,7 +40,7 @@ const renderCombatPage=(ad,aiIsCustom)=>{
 
 const launchParticles=()=>{
   const cont=document.getElementById('cparts');cont.innerHTML='';
-  const cols=['#7c3aed','#c9a84c','#3b82f6','#ec4899','#10b981','#f97316','#a855f7','#fbbf24'];
+  const cols=['#e8c766','#c9a227','#b6394a','#7a1f2b','#f0b04a','#e8c766','#8a5f38','#c9a227'];
   for(let i=0;i<38;i++){const p=document.createElement('div');p.className='rise-particle';const sz=Math.random()*8+3;const dur=3+Math.random()*6;p.style.cssText='width:'+sz+'px;height:'+sz+'px;left:'+Math.random()*100+'%;bottom:0;background:'+cols[i%cols.length]+';animation:rise '+dur+'s '+Math.random()*4+'s linear infinite;opacity:0';cont.appendChild(p);}
 };
 

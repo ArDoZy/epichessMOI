@@ -102,10 +102,11 @@ const updBoardInfo=()=>{
 };
 const buildBoardLabels=()=>{
   const rl=document.getElementById('row-labels-col');const cl=document.getElementById('col-labels-row');
-  if(!rl||!cl)return;rl.innerHTML='';cl.innerHTML='';
+  if(!rl||!cl)return;
   requestAnimationFrame(()=>{
     const board=document.getElementById('chessboard');if(!board)return;
     const cellH=board.offsetWidth/8;
+    rl.innerHTML='';cl.innerHTML='';
     for(let i=0;i<8;i++){const d=document.createElement('div');d.className='row-lbl';d.style.height=cellH+'px';d.textContent=8-i;rl.appendChild(d);}
     ['A','B','C','D','E','F','G','H'].forEach(f=>{const d=document.createElement('div');d.className='col-lbl';d.textContent=f;cl.appendChild(d);});
   });

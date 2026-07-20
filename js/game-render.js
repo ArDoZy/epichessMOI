@@ -71,6 +71,7 @@ function renderGame(gs){
     else if(isAvail)cls+=' avail';
     if(gs.amazonePostCapture&&gs.amazonePostCapture.color===playerCol){const apc=gs.amazonePostCapture;if(Math.abs(r-apc.r)<=1&&Math.abs(c-apc.c)<=1&&!cell&&(r!==apc.r||c!==apc.c))cls+=' amazone-repos';}
     if(gs.lastMove&&((gs.lastMove.from.r===r&&gs.lastMove.from.c===c)||(gs.lastMove.to.r===r&&gs.lastMove.to.c===c)))cls+=' last-move';
+    if(gs.lastMove&&gs.lastMove.capture&&gs.lastMove.to.r===r&&gs.lastMove.to.c===c)cls+=' cap-flash';
     const isAnchored=gs.anchored?.has(key);
     let showCell=cell;
     let inner='';
@@ -120,12 +121,12 @@ function buildGameLabels(gs){
   if(!rowLabels||!colLabels)return;
   const board=document.getElementById('game-board');if(!board)return;
   const flipped=(gs&&gs.playerColor==='b');
-  rowLabels.innerHTML='';colLabels.innerHTML='';
   requestAnimationFrame(()=>{
     const cellH=board.offsetHeight/8;
     const rowNums=flipped?[1,2,3,4,5,6,7,8]:[8,7,6,5,4,3,2,1];
     const colFiles=flipped?[...FILES].reverse():FILES;
-    if(cellH===0){requestAnimationFrame(()=>{const cH=board.offsetHeight/8;for(let i=0;i<8;i++){const d=document.createElement('div');d.className='game-row-lbl';d.style.height=cH+'px';d.textContent=rowNums[i];rowLabels.appendChild(d);}colFiles.forEach(f=>{const d=document.createElement('div');d.className='game-col-lbl';d.textContent=f;colLabels.appendChild(d);});});return;}
+    if(cellH===0){requestAnimationFrame(()=>{const cH=board.offsetHeight/8;rowLabels.innerHTML='';colLabels.innerHTML='';for(let i=0;i<8;i++){const d=document.createElement('div');d.className='game-row-lbl';d.style.height=cH+'px';d.textContent=rowNums[i];rowLabels.appendChild(d);}colFiles.forEach(f=>{const d=document.createElement('div');d.className='game-col-lbl';d.textContent=f;colLabels.appendChild(d);});});return;}
+    rowLabels.innerHTML='';colLabels.innerHTML='';
     for(let i=0;i<8;i++){const d=document.createElement('div');d.className='game-row-lbl';d.style.height=cellH+'px';d.textContent=rowNums[i];rowLabels.appendChild(d);}
     colFiles.forEach(f=>{const d=document.createElement('div');d.className='game-col-lbl';d.textContent=f;colLabels.appendChild(d);});
   });
@@ -187,7 +188,7 @@ function endDrag(clientX,clientY){
     if(!cell){gs.selected=null;gs.legalMoves=[];renderGame(gs);return;}
     const move=gs.legalMoves.find(m=>m.r===cell.r&&m.c===cell.c);
     if(move){
-      gs.lastMove={from:prevSelected,to:move};
+      gs.lastMove={from:prevSelected,to:move,capture:!!gs.board[move.r][move.c]};
       const from={...prevSelected};gs.selected=null;gs.legalMoves=[];
       executeGameMove(from,move,gs);
     }else{gs.selected=null;gs.legalMoves=[];renderGame(gs);}
@@ -236,7 +237,7 @@ function handleGameClick(r,c,gs){
     const selCell=b[gs.selected.r][gs.selected.c];
     const move=normalMove||gs.legalMoves.find(m=>m.r===r&&m.c===c);
     if(move){
-      gs.lastMove={from:gs.selected,to:move};const from={...gs.selected};gs.selected=null;gs.legalMoves=[];executeGameMove(from,move,gs);return;
+      gs.lastMove={from:gs.selected,to:move,capture:!!b[move.r][move.c]};const from={...gs.selected};gs.selected=null;gs.legalMoves=[];executeGameMove(from,move,gs);return;
     }
     if(cell&&cell.color===playerCol){gs.selected={r,c};gs.legalMoves=getLegalMoves(b,r,c,gs);renderGame(gs);return;}
     gs.selected=null;gs.legalMoves=[];renderGame(gs);return;
