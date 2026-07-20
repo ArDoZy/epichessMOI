@@ -560,7 +560,7 @@ function doAIMove(gs){
         if(aiCol==='w'){
           move={from:{r:7-bestMove.from.r,c:bestMove.from.c},to:{r:7-bestMove.to.r,c:bestMove.to.c}};
         }
-        gs.lastMove={from:move.from,to:move.to};
+        gs.lastMove={from:move.from,to:move.to,capture:!!gs.board[move.to.r][move.to.c]};
         executeGameMove(move.from,move.to,gs);
       }
     };
@@ -602,7 +602,7 @@ function doAIMoveMainThread(gs){
 
   if(Math.random()<instructor.noise){
     const m=moves[Math.floor(Math.random()*moves.length)];
-    gs.lastMove={from:m.from,to:m.to};executeGameMove(m.from,m.to,gs);return;
+    gs.lastMove={from:m.from,to:m.to,capture:!!gs.board[m.to.r][m.to.c]};executeGameMove(m.from,m.to,gs);return;
   }
   if(instructor.timeMs===0){
     let bestMove=null,bestScore=-Infinity;
@@ -613,7 +613,7 @@ function doAIMoveMainThread(gs){
       const sc=evalBoard(nb,gs)+(Math.random()-0.5)*50+backPenalty;
       if(sc>bestScore){bestScore=sc;bestMove={from,to};}
     }
-    if(bestMove){gs.lastMove={from:bestMove.from,to:bestMove.to};executeGameMove(bestMove.from,bestMove.to,gs);}
+    if(bestMove){gs.lastMove={from:bestMove.from,to:bestMove.to,capture:!!gs.board[bestMove.to.r][bestMove.to.c]};executeGameMove(bestMove.from,bestMove.to,gs);}
     return;
   }
   _ttGeneration=(_ttGeneration+1)%256;
@@ -646,5 +646,5 @@ function doAIMoveMainThread(gs){
       if(idx>0){const [m]=searchMoves.splice(idx,1);searchMoves.unshift(m);}
     }
   }
-  if(bestMove){gs.lastMove={from:bestMove.from,to:bestMove.to};executeGameMove(bestMove.from,bestMove.to,gs);}
+  if(bestMove){gs.lastMove={from:bestMove.from,to:bestMove.to,capture:!!gs.board[bestMove.to.r][bestMove.to.c]};executeGameMove(bestMove.from,bestMove.to,gs);}
 }
