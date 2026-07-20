@@ -3,13 +3,12 @@
 // ================================================================
 // Contient : le rendu de l'écran "VS" avant une partie (aperçu des deux
 // armées, sélection de l'armée IA aléatoire/personnalisée/miroir),
-// l'animation de particules décoratives, et le modal de déguisement du Clown
-// (choix de l'apparence affichée à l'adversaire).
+// et l'animation de particules décoratives.
 //
 // Dépendances : data-pieces.js (PIECES), ai-level-modal.js (showAILevelModal,
 // selectedAILevel, AI_INSTRUCTORS), armies.js (generateAIArmy,
 // renderArmiesPage, renderAiArmiesPage), game-flow.js (startGame),
-// main.js (currentArmyData, aiArmyData, clownDisguise, showPage, showNotif).
+// main.js (currentArmyData, aiArmyData, showPage, showNotif).
 // ================================================================
 
 // ----------------------------------------------------------------
@@ -63,29 +62,12 @@ document.getElementById('cb-mirror-ai').addEventListener('click',()=>{
   showNotif('🪞 L\'IA utilise la même armée que vous !','ok');
 });
 // cb-play : ouvre le sélecteur d'instructeur puis lance la partie.
-// FIX : la couleur du joueur est désormais tirée ICI (avant le choix de déguisement
-// du Clown), et transmise à startGame(true) pour qu'elle ne soit pas re-tirée au
-// hasard une seconde fois — ce qui pouvait auparavant faire perdre ou mal assigner
-// le déguisement choisi par le joueur.
+// La couleur du joueur est tirée ICI et transmise à startGame(true) pour
+// qu'elle ne soit pas re-tirée au hasard une seconde fois.
 document.getElementById('cb-play').addEventListener('click',()=>{
   showAILevelModal(()=>{
     renderCombatPage(currentArmyData,aiArmyData&&!aiArmyData._random);
     _playerColor=Math.random()<0.5?'w':'b';
-    const hasClown=(currentArmyData?.extras||[]).some(id=>id==='clown');
-    if(hasClown)showClownModal(_playerColor,()=>startGame(true));
-    else{clownDisguise[_playerColor]=null;startGame(true);}
+    startGame(true);
   });
 });
-
-// ----------------------------------------------------------------
-// MODAL DE DÉGUISEMENT DU CLOWN
-// ----------------------------------------------------------------
-function showClownModal(color,callback){
-  const modal=document.getElementById('clown-modal');const opts=document.getElementById('clown-options');
-  modal.classList.add('active');
-  const choices=PIECES.filter(p=>p.id!=='clown'&&p.class!=='Monarque'&&p.class!=='Général');
-  opts.innerHTML=choices.map(p=>'<div class="clown-opt" data-id="'+p.id+'"><div>'+p.emoji+'</div><span>'+p.name+'</span></div>').join('');
-  opts.querySelectorAll('.clown-opt').forEach(el=>{
-    el.addEventListener('click',()=>{const chosen=PIECES.find(p=>p.id===el.dataset.id);clownDisguise[color]=chosen;modal.classList.remove('active');showNotif('Clowns déguisés en '+chosen.emoji+' '+chosen.name+' !','ok');if(callback)callback();});
-  });
-}

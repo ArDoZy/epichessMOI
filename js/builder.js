@@ -104,7 +104,7 @@ const renderCards=()=>{
   const ps=getSorted();const byClass={};
   ps.forEach(p=>{if(!byClass[p.class])byClass[p.class]=[];byClass[p.class].push(p);});
   let html='';
-  ['Monarque','Général','Primordiale','Brute','Sorcier','Mirage','Maudit'].forEach(cls=>{
+  ['Monarque','Général','Primordiale','Brute','Sorcier'].forEach(cls=>{
     if(!byClass[cls]?.length)return;
     html+='<div class="class-sec"><div class="class-hdr '+cls+'"><span class="class-hdr-name '+cls+'">'+cls+'</span><span class="class-hdr-ct">'+byClass[cls].length+' pièce'+(byClass[cls].length>1?'s':'')+'</span></div><div class="cards-grid">';
     byClass[cls].forEach(p=>{

@@ -36,7 +36,7 @@ metachess/
     ├── builder.js            # Page de composition d'armée
     ├── board-placement.js    # Page de placement des pièces (pré-partie)
     ├── armies.js             # Pages "Mes armées" / "Armées IA" + génération IA
-    ├── combat-intro.js       # Page d'intro combat (VS), déguisement Clown
+    ├── combat-intro.js       # Page d'intro combat (VS)
     ├── rules-engine.js       # Moteur de règles pur (coups, échecs, exécution)
     ├── game-render.js        # Rendu plateau, drag&drop, clics, historique
     ├── ai-engine.js          # Évaluation, minimax, Web Worker IA

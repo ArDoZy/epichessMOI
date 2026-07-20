@@ -83,8 +83,7 @@ function updateGamePlayerBars(){
 // pour l'équivalent en mode tournoi)
 // ----------------------------------------------------------------
 // startGame accepte un paramètre colorAlreadyChosen. Quand cb-play a déjà
-// tiré _playerColor et géré le déguisement du Clown pour le joueur (voir
-// combat-intro.js), on n'écrase pas ce choix ici.
+// tiré _playerColor (voir combat-intro.js), on n'écrase pas ce choix ici.
 function startGame(colorAlreadyChosen){
   _endGameTriggered=false;
   if(!currentArmyData||!aiArmyData){showNotif('Aucune armée sélectionnée.');return;}
@@ -93,17 +92,9 @@ function startGame(colorAlreadyChosen){
   const playerIsWhite=_playerColor==='w';
   const whiteSideArmy=playerIsWhite?currentArmyData:aiArmyData;
   const blackSideArmy=playerIsWhite?aiArmyData:currentArmyData;
-  GS={board:[],turn:'w',selected:null,legalMoves:[],history:[],enPassant:null,halfmoveClock:0,gameOver:false,playerArmy:currentArmyData,aiArmy:aiArmyData,playerColor:_playerColor,aiColor:_aiColor,movePairs:[],capturedW:[],capturedB:[],pendingPromo:null,medusaParalyzed:new Set(),lastMove:null,anchored:new Set(),pretreProtected:new Set(),illusionDecoys:[],amazonePostCapture:null,grandMaitreAlive:{w:false,b:false},dictatorSacrifice:null,imitateurUsed:{w:false,b:false},gardePierreUsed:{w:false,b:false},ombreVisibleUntil:{},turnCount:0,nonSensReversed:{},singeAwaitingStep2:null,_singeStep2Moves:null,nyxColor:null,historyView:null,lastMoveHistory:[]};
+  GS={board:[],turn:'w',selected:null,legalMoves:[],history:[],enPassant:null,halfmoveClock:0,gameOver:false,playerArmy:currentArmyData,aiArmy:aiArmyData,playerColor:_playerColor,aiColor:_aiColor,movePairs:[],capturedW:[],capturedB:[],pendingPromo:null,medusaParalyzed:new Set(),lastMove:null,anchored:new Set(),pretreProtected:new Set(),amazonePostCapture:null,grandMaitreAlive:{w:false,b:false},gardePierreUsed:{w:false,b:false},turnCount:0,historyView:null,lastMoveHistory:[]};
   GS.board=buildGameBoard(whiteSideArmy,blackSideArmy);
-  const playerHasClown=(currentArmyData.extras||[]).some(id=>id==='clown');
-  const aiHasClown=(aiArmyData.extras||[]).some(id=>id==='clown');
-  if(!colorAlreadyChosen){
-    if(playerHasClown){const choices=PIECES.filter(p=>p.id!=='clown'&&p.class!=='Monarque'&&p.class!=='Général');clownDisguise[_playerColor]=choices[Math.floor(Math.random()*choices.length)];}
-    else clownDisguise[_playerColor]=null;
-  }
-  if(aiHasClown){const choices=PIECES.filter(p=>p.id!=='clown'&&p.class!=='Monarque'&&p.class!=='Général');clownDisguise[_aiColor]=choices[Math.floor(Math.random()*choices.length)];}
-  else clownDisguise[_aiColor]=null;
-  updateMedusaParalysis(GS.board,GS);updatePretreProtection(GS.board,GS);updateGrandMaitre(GS.board,GS);updateNyx(GS.board,GS);
+  updateMedusaParalysis(GS.board,GS);updatePretreProtection(GS.board,GS);updateGrandMaitre(GS.board,GS);
   showPage('page-game');
   updateGamePlayerBars();
   renderGame(GS);updateStatus(GS);updateHistoryNav();
@@ -242,16 +233,12 @@ document.getElementById('game-undo').addEventListener('click',()=>{
     GS.capturedW=[...h.capturedW];GS.capturedB=[...h.capturedB];
     if(h.movePairs)GS.movePairs=JSON.parse(JSON.stringify(h.movePairs));
     if(h.anchored)GS.anchored=new Set(h.anchored);
-    if(h.illusionDecoys)GS.illusionDecoys=JSON.parse(JSON.stringify(h.illusionDecoys));
     if(h.grandMaitreAlive)GS.grandMaitreAlive={...h.grandMaitreAlive};
-    if(h.nonSensReversed)GS.nonSensReversed=JSON.parse(JSON.stringify(h.nonSensReversed));
     if(h.turnCount!==undefined)GS.turnCount=h.turnCount;
-    if(h.ombreVisibleUntil)GS.ombreVisibleUntil=JSON.parse(JSON.stringify(h.ombreVisibleUntil));
   }
-  GS.selected=null;GS.legalMoves=[];GS.gameOver=false;GS.lastMove=null;GS.dictatorSacrifice=null;GS.amazonePostCapture=null;GS.singeAwaitingStep2=null;GS._singeStep2Moves=null;
+  GS.selected=null;GS.legalMoves=[];GS.gameOver=false;GS.lastMove=null;GS.amazonePostCapture=null;
   _endGameTriggered=false;
-  document.getElementById('sacrifice-modal').classList.remove('active');
-  updateMedusaParalysis(GS.board,GS);updatePretreProtection(GS.board,GS);updateGrandMaitre(GS.board,GS);updateNyx(GS.board,GS);
+  updateMedusaParalysis(GS.board,GS);updatePretreProtection(GS.board,GS);updateGrandMaitre(GS.board,GS);
   renderMoveLog(GS);renderGame(GS);updateStatus(GS);updateHistoryNav();
 });
 
@@ -262,7 +249,6 @@ document.getElementById('game-undo').addEventListener('click',()=>{
 document.getElementById('game-quit').addEventListener('click',()=>{
   if(GS&&GS.gameOver){
     if(_aiWorker&&_aiWorkerBusy){_aiWorker.terminate();_aiWorker=null;_aiWorkerBusy=false;}
-    document.getElementById('sacrifice-modal').classList.remove('active');
     document.getElementById('promo-modal').classList.remove('active');
     army={mon:null,gen:null,pcs:[null,null,null],prims:[]};
     editingArmyId=null;currentArmyData=null;aiArmyData=null;
@@ -271,7 +257,6 @@ document.getElementById('game-quit').addEventListener('click',()=>{
   }
   if(GS)GS.gameOver=true;
   if(_aiWorker&&_aiWorkerBusy){_aiWorker.terminate();_aiWorker=null;_aiWorkerBusy=false;}
-  document.getElementById('sacrifice-modal').classList.remove('active');
   document.getElementById('promo-modal').classList.remove('active');
   if(tournamentState.active){
     triggerTournoiEndOfGame('loss');

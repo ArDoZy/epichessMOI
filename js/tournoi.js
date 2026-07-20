@@ -162,18 +162,12 @@ function launchTournoiRound(roundIdx){
   const blackSideArmy2=_playerColor==='w'?aiArmyData:currentArmyData;
   GS={board:[],turn:'w',selected:null,legalMoves:[],history:[],enPassant:null,halfmoveClock:0,gameOver:false,
     playerArmy:currentArmyData,aiArmy:aiArmyData,playerColor:_playerColor,aiColor:_aiColor2,movePairs:[],capturedW:[],capturedB:[],pendingPromo:null,
-    medusaParalyzed:new Set(),lastMove:null,anchored:new Set(),pretreProtected:new Set(),illusionDecoys:[],
-    amazonePostCapture:null,grandMaitreAlive:{w:false,b:false},dictatorSacrifice:null,
-    imitateurUsed:{w:false,b:false},gardePierreUsed:{w:false,b:false},ombreVisibleUntil:{},
-    turnCount:0,nonSensReversed:{},singeAwaitingStep2:null,_singeStep2Moves:null,nyxColor:null,historyView:null,lastMoveHistory:[]};
+    medusaParalyzed:new Set(),lastMove:null,anchored:new Set(),pretreProtected:new Set(),
+    amazonePostCapture:null,grandMaitreAlive:{w:false,b:false},
+    gardePierreUsed:{w:false,b:false},
+    turnCount:0,historyView:null,lastMoveHistory:[]};
   GS.board=buildGameBoard(whiteSideArmy2,blackSideArmy2);
-  const playerHasClown2=(currentArmyData.extras||[]).some(id=>id==='clown');
-  const aiHasClown=(aiArmyData.extras||[]).some(id=>id==='clown');
-  if(playerHasClown2){const choices=PIECES.filter(p=>p.id!=='clown'&&p.class!=='Monarque'&&p.class!=='Général');clownDisguise[_playerColor]=choices[Math.floor(Math.random()*choices.length)];}
-  else clownDisguise[_playerColor]=null;
-  if(aiHasClown){const choices=PIECES.filter(p=>p.id!=='clown'&&p.class!=='Monarque'&&p.class!=='Général');clownDisguise[_aiColor2]=choices[Math.floor(Math.random()*choices.length)];}
-  else clownDisguise[_aiColor2]=null;
-  updateMedusaParalysis(GS.board,GS);updatePretreProtection(GS.board,GS);updateGrandMaitre(GS.board,GS);updateNyx(GS.board,GS);
+  updateMedusaParalysis(GS.board,GS);updatePretreProtection(GS.board,GS);updateGrandMaitre(GS.board,GS);
   showPage('page-game');
   updateGamePlayerBars();
   renderGame(GS);updateStatus(GS);updateHistoryNav();

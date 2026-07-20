@@ -8,9 +8,9 @@
 //   - Détection d'échec (isInCheckSimple, isSquareAttackedSimple)
 //   - Filtrage des coups légaux (getLegalMoves, moveLeavesKingInCheck)
 //   - Mise à jour des états spéciaux (Méduse paralysie, Prêtre protection,
-//     Grand Maître domination, Nyx brouillard)
+//     Grand Maître domination)
 //   - Exécution complète d'un coup (executeGameMove) avec tous les effets
-//     spéciaux (Typhon, Banshee, Dresseur, Singe, Illusion, Ombre, etc.)
+//     spéciaux (Typhon, Banshee, Dresseur, etc.)
 //   - Le système audio (Web Audio API, sans fichiers externes)
 //   - L'état de partie GS (game state) et sa structure
 //
@@ -32,7 +32,7 @@ const FILES=['A','B','C','D','E','F','G','H'];
 
 // État de partie global — reconstruit par startGame()/launchTournoiRound()
 // dans game-flow.js / tournoi.js. Voir la structure complète dans ces fichiers.
-let GS={board:[],turn:'w',selected:null,legalMoves:[],history:[],enPassant:null,halfmoveClock:0,gameOver:false,playerArmy:null,aiArmy:null,movePairs:[],capturedW:[],capturedB:[],pendingPromo:null,medusaParalyzed:new Set(),lastMove:null,anchored:new Set(),pretreProtected:new Set(),illusionDecoys:[],amazonePostCapture:null,grandMaitreAlive:{w:false,b:false},dictatorSacrifice:null,imitateurUsed:{w:false,b:false},gardePierreUsed:{w:false,b:false},ombreVisibleUntil:{},turnCount:0,nonSensReversed:{},singeAwaitingStep2:null,nyxColor:null,historyView:null,lastMoveHistory:[]};
+let GS={board:[],turn:'w',selected:null,legalMoves:[],history:[],enPassant:null,halfmoveClock:0,gameOver:false,playerArmy:null,aiArmy:null,movePairs:[],capturedW:[],capturedB:[],pendingPromo:null,medusaParalyzed:new Set(),lastMove:null,anchored:new Set(),pretreProtected:new Set(),amazonePostCapture:null,grandMaitreAlive:{w:false,b:false},gardePierreUsed:{w:false,b:false},turnCount:0,historyView:null,lastMoveHistory:[]};
 
 function inB(r,c){return r>=0&&r<8&&c>=0&&c<8;}
 function opp(color){return color==='w'?'b':'w';}
@@ -48,8 +48,6 @@ function slidingMoves(board,r,c,p,dirs,gs){
     let nr=r+dr,nc=c+dc;
     while(inB(nr,nc)){
       const t=board[nr][nc];
-      const decoyHere=gs&&(gs.illusionDecoys||[]).find(d=>d.r===nr&&d.c===nc&&d.isDecoy);
-      if(decoyHere&&decoyHere.color!==p.color){moves.push({r:nr,c:nc,capturesDecoy:true,decoyPieceUid:decoyHere.pieceUid});break;}
       if(t){if(t.color!==p.color)moves.push({r:nr,c:nc});break;}
       else moves.push({r:nr,c:nc});
       nr+=dr;nc+=dc;
@@ -100,10 +98,8 @@ function generateMovesRaw(board,r,c,gs){
   if(gs.anchored&&gs.anchored.has(`${r},${c}`))return[];
   let moves=[];const id=p.pieceId||'';
 
-  if(p.isKing||p.type==='k'||['roi','matriarche','empereur','dictateur'].includes(id)){
-    if(id==='dictateur'){for(const[dr,dc] of[[1,0],[-1,0],[0,1],[0,-1]]){const nr=r+dr,nc=c+dc;if(inB(nr,nc)&&(!board[nr][nc]||board[nr][nc].color!==p.color))moves.push({r:nr,c:nc});}}
-    else if(id==='matriarche'){for(const[dr,dc] of[[1,1],[1,-1],[-1,1],[-1,-1]]){const nr=r+dr,nc=c+dc;if(inB(nr,nc)&&(!board[nr][nc]||board[nr][nc].color!==p.color))moves.push({r:nr,c:nc});}}
-    else if(id==='empereur'){for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++){if(!dr&&!dc)continue;const nr=r+dr,nc=c+dc;if(inB(nr,nc)&&(!board[nr][nc]||board[nr][nc].color!==p.color))moves.push({r:nr,c:nc});}moves=moves.concat(knightMoves(board,r,c,p));}
+  if(p.isKing||p.type==='k'||['roi','empereur'].includes(id)){
+    if(id==='empereur'){for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++){if(!dr&&!dc)continue;const nr=r+dr,nc=c+dc;if(inB(nr,nc)&&(!board[nr][nc]||board[nr][nc].color!==p.color))moves.push({r:nr,c:nc});}moves=moves.concat(knightMoves(board,r,c,p));}
     else moves=kingMoves(board,r,c,p,gs);
     return moves;
   }
@@ -113,25 +109,6 @@ function generateMovesRaw(board,r,c,gs){
     case 'amazone':moves=[...knightMoves(board,r,c,p),...slidingMoves(board,r,c,p,[[1,0],[-1,0],[0,1],[0,-1]],gs)];break;
     case 'chevaucheur-rhinoceros':moves=[...slidingMoves(board,r,c,p,[[1,0],[-1,0],[0,1],[0,-1]],gs),...knightMoves(board,r,c,p)];break;
     case 'grand-maitre':moves=[...slidingMoves(board,r,c,p,[[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]],gs),...knightMoves(board,r,c,p)];break;
-    // Joker — saute par-dessus, max 4 cases ortho
-    case 'joker':{
-      for(const[dr,dc] of[[1,0],[-1,0],[0,1],[0,-1]]){
-        for(let dist=1;dist<=4;dist++){
-          const nr=r+dr*dist,nc=c+dc*dist;if(!inB(nr,nc))break;
-          const t=board[nr][nc];
-          if(t){if(t.color!==p.color)moves.push({r:nr,c:nc});break;}// s'arrête sur la première pièce ennemie (capture) ou alliée (bloqué)
-          moves.push({r:nr,c:nc});
-        }
-      }
-      break;}
-    // Lune — Tour + Roi
-    case 'lune':{
-      moves=[...slidingMoves(board,r,c,p,[[1,0],[-1,0],[0,1],[0,-1]],gs)];
-      for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++){if(!dr&&!dc)continue;const nr=r+dr,nc=c+dc;if(inB(nr,nc)&&(!board[nr][nc]||board[nr][nc].color!==p.color))moves.push({r:nr,c:nc});}
-      break;}
-    case 'nyx':
-      for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++){if(!dr&&!dc)continue;const nr=r+dr,nc=c+dc;if(inB(nr,nc)&&(!board[nr][nc]||board[nr][nc].color!==p.color))moves.push({r:nr,c:nc});}
-      moves=moves.concat(knightMoves(board,r,c,p));break;
     case 'cavalier-primordial':moves=knightMoves(board,r,c,p);break;
     case 'fou-primordial':moves=slidingMoves(board,r,c,p,[[1,1],[1,-1],[-1,1],[-1,-1]],gs);break;
     case 'tour-primordiale':moves=slidingMoves(board,r,c,p,[[1,0],[-1,0],[0,1],[0,-1]],gs);break;
@@ -160,37 +137,10 @@ function generateMovesRaw(board,r,c,gs){
       for(const[dr,dc] of[[1,0],[-1,0],[0,1],[0,-1]]){const nr=r+dr,nc=c+dc;if(inB(nr,nc)&&(!board[nr][nc]||board[nr][nc].color!==p.color))moves.push({r:nr,c:nc});}
       for(const[dr,dc] of[[2,0],[-2,0],[0,2],[0,-2]]){const nr=r+dr,nc=c+dc;if(!inB(nr,nc))continue;const mr=r+dr/2,mc2=c+dc/2;if(board[mr][mc2]&&board[mr][mc2].color===p.color)continue;if(board[nr][nc]&&board[nr][nc].color===p.color)continue;moves.push({r:nr,c:nc,destroysPath:true,fromR:r,fromC:c});}
       break;
-    case 'boucher':
-      for(const[dr,dc] of[[1,0],[-1,0],[0,1],[0,-1]]){
-        const nr=r+dr,nc=c+dc;
-        if(inB(nr,nc)&&(!board[nr][nc]||board[nr][nc].color!==p.color))moves.push({r:nr,c:nc});
-        if(inB(nr,nc)&&!board[nr][nc]){const nr2=r+2*dr,nc2=c+2*dc;if(inB(nr2,nc2)&&(!board[nr2][nc2]||board[nr2][nc2].color!==p.color))moves.push({r:nr2,c:nc2});}
-      }
-      for(const[dr,dc] of[[1,0],[-1,0],[0,1],[0,-1]]){const nr=r+dr,nc=c+dc;if(inB(nr,nc)&&board[nr][nc]&&board[nr][nc].color!==p.color)moves.push({r:nr,c:nc,stayPut:true,boucherKill:true});}
-      break;
     case 'garde-pierre':
       for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++){if(!dr&&!dc)continue;const nr=r+dr,nc=c+dc;if(inB(nr,nc)&&(!board[nr][nc]||board[nr][nc].color!==p.color))moves.push({r:nr,c:nc});}break;
-    case 'singe':{
-      const diags=[[1,1],[1,-1],[-1,1],[-1,-1]];
-      for(const[dr1,dc1] of diags){
-        const ir=r+dr1,ic=c+dc1;if(!inB(ir,ic))continue;
-        if(board[ir][ic]&&board[ir][ic].color===p.color)continue;
-        if(board[ir][ic]&&board[ir][ic].color!==p.color){moves.push({r:ir,c:ic,singeCapStep1:true});continue;}
-        for(const[dr2,dc2] of diags){const fr2=ir+dr2,fc2=ic+dc2;if(!inB(fr2,fc2))continue;if(fr2===r&&fc2===c)continue;if(board[fr2][fc2]&&board[fr2][fc2].color===p.color)continue;moves.push({r:fr2,c:fc2,singeVia:{r:ir,c:ic}});}
-      }
-      break;}
     case 'meduse':
       for(const[dr,dc] of[[1,0],[-1,0],[0,1],[0,-1]]){const nr=r+dr,nc=c+dc;if(inB(nr,nc)&&(!board[nr][nc]||board[nr][nc].color!==p.color))moves.push({r:nr,c:nc});}break;
-    case 'non-sens':{
-      const rev=gs.nonSensReversed&&gs.nonSensReversed[p.id];
-      const fwd=p.color==='w'?(rev?1:-1):(rev?-1:1);
-      for(let dist=1;dist<=3;dist++){const nr=r+fwd*dist,nc=c;if(!inB(nr,nc))break;if(board[nr][nc]){if(board[nr][nc].color!==p.color)moves.push({r:nr,c:nc,nonSensMove:true});break;}moves.push({r:nr,c:nc,nonSensMove:true});}
-      for(const dc of[-1,1]){const nr=r,nc=c+dc;if(inB(nr,nc)&&(!board[nr][nc]||board[nr][nc].color!==p.color))moves.push({r:nr,c:nc,nonSensMove:true});}
-      break;}
-    case 'infecte':
-      for(const[dr,dc] of[[2,0],[-2,0],[0,2],[0,-2],[2,2],[2,-2],[-2,2],[-2,-2]]){const nr=r+dr,nc=c+dc;if(!inB(nr,nc))continue;const mr=r+dr/2,mc3=c+dc/2;if(board[mr]?.[mc3])continue;if(!board[nr][nc]||board[nr][nc].color!==p.color)moves.push({r:nr,c:nc,infecteMove:true});}break;
-    case 'maitre-temps':
-      for(const[dr,dc] of[[1,1],[1,-1],[-1,1],[-1,-1]]){for(let dist=1;dist<=2;dist++){const nr=r+dr*dist,nc=c+dc*dist;if(!inB(nr,nc))break;if(board[nr][nc]){if(board[nr][nc].color!==p.color)moves.push({r:nr,c:nc});break;}moves.push({r:nr,c:nc});}}break;
     case 'typhon':
       for(const[dr,dc] of[[1,1],[1,-1],[-1,1],[-1,-1]]){const nr=r+dr,nc=c+dc;if(inB(nr,nc)&&(!board[nr][nc]||board[nr][nc].color!==p.color))moves.push({r:nr,c:nc,typhon:true});}break;
     case 'banshee':
@@ -198,34 +148,6 @@ function generateMovesRaw(board,r,c,gs){
     case 'pretre':
       moves=slidingMoves(board,r,c,p,[[1,0],[-1,0],[0,1],[0,-1]],gs);
       moves=moves.filter(m=>Math.abs(m.r-r)+Math.abs(m.c-c)<=2);break;
-    // Sorcière — téléportation même couleur de case
-    case 'sorciere':{
-      // Téléportation vers cases VIDES de même couleur uniquement (sans capture)
-      const sqCol=(r+c)%2;
-      for(let nr=0;nr<8;nr++)for(let nc=0;nc<8;nc++){
-        if(nr===r&&nc===c)continue;
-        if((nr+nc)%2!==sqCol)continue;
-        if(board[nr][nc])continue; // vide uniquement
-        moves.push({r:nr,c:nc,sorciereMove:true});
-      }
-      // Capture orthogonale à 1 case uniquement
-      for(const[dr,dc] of[[1,0],[-1,0],[0,1],[0,-1]]){
-        const nr=r+dr,nc=c+dc;
-        if(inB(nr,nc)&&board[nr][nc]&&board[nr][nc].color!==p.color)
-          moves.push({r:nr,c:nc,sorciereCapture:true});
-      }
-      break;}
-    case 'illusion':
-      for(const[dr,dc] of[[1,1],[1,-1],[-1,1],[-1,-1]]){const nr=r+dr,nc=c+dc;if(inB(nr,nc)&&(!board[nr][nc]||board[nr][nc].color!==p.color))moves.push({r:nr,c:nc,illusionMove:true,fromR:r,fromC:c});}break;
-    case 'ombre':
-      moves=slidingMoves(board,r,c,p,[[1,0],[-1,0],[0,1],[0,-1]],gs);
-      moves=moves.filter(m=>Math.abs(m.r-r)+Math.abs(m.c-c)<=2);
-      moves=moves.map(m=>({...m,ombreMove:true}));break;
-    case 'clown':
-      for(const[dr,dc] of[[2,2],[2,-2],[-2,2],[-2,-2],[2,0],[-2,0],[0,2],[0,-2]]){const nr=r+dr,nc=c+dc;if(!inB(nr,nc))continue;if(dc===0||dr===0){const mr2=r+dr/2,mc5=c+dc/2;if(board[mr2]?.[mc5])continue;}if(Math.abs(dr)===2&&Math.abs(dc)===2){const mr2=r+dr/2,mc5=c+dc/2;if(board[mr2]?.[mc5])continue;}if(!board[nr][nc]||board[nr][nc].color!==p.color)moves.push({r:nr,c:nc});}
-      moves=moves.concat(knightMoves(board,r,c,p));break;
-    case 'imitateur':
-      for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++){if(!dr&&!dc)continue;const nr=r+dr,nc=c+dc;if(inB(nr,nc)&&(!board[nr][nc]||board[nr][nc].color!==p.color))moves.push({r:nr,c:nc});}break;
     default:
       switch(p.type){
         case 'p':moves=pawnMoves(board,r,c,p,gs);break;
@@ -252,10 +174,10 @@ function isInCheckSimple(color,board){
   if(kr===-1)return false;return isSquareAttackedSimple(kr,kc,color,board);
 }
 
-const KNIGHT_PIECE_IDS=new Set(['cavalier-primordial','chevaucheur-rhinoceros','grand-maitre','nyx','clown','empereur','amazone']);
-const ROOK_PIECE_IDS=new Set(['tour-primordiale','chevaucheur-rhinoceros','dame','grand-maitre','pretre','ombre','boucher','meduse','dresseur-elephant','non-sens','lune']);
+const KNIGHT_PIECE_IDS=new Set(['cavalier-primordial','chevaucheur-rhinoceros','grand-maitre','empereur','amazone']);
+const ROOK_PIECE_IDS=new Set(['tour-primordiale','chevaucheur-rhinoceros','dame','grand-maitre','pretre','meduse','dresseur-elephant']);
 const BISHOP_PIECE_IDS=new Set(['fou-primordial','amazone','dame','grand-maitre']);
-const KING_PIECE_IDS=new Set(['roi','dictateur','matriarche','nyx','garde-pierre','imitateur','meduse','lune']);
+const KING_PIECE_IDS=new Set(['roi','garde-pierre','meduse']);
 
 function isSquareAttackedSimple(tr,tc,defColor,board){
   const atk=opp(defColor);
@@ -303,50 +225,15 @@ function isSquareAttackedSimple(tr,tc,defColor,board){
   {const r=tr+atkFwdDir,c=tc;if(inB(r,c)){const p=board[r][c];if(p&&p.color===atk&&p.pieceId==='fourmi')return true;}}
   // Fourmi attaque en diagonale avant
   for(const dc of[-1,1]){const r=tr+atkFwdDir,c=tc+dc;if(inB(r,c)){const p=board[r][c];if(p&&p.color===atk&&p.pieceId==='fourmi')return true;}}}
-  // Infecte (2 cases sans sauter, 8 directions)
-  for(const[dr,dc] of[[2,0],[-2,0],[0,2],[0,-2],[2,2],[2,-2],[-2,2],[-2,-2]]){
-    const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;const midR=tr+dr/2,midC=tc+dc/2;if(!inB(midR,midC))continue;if(board[midR][midC])continue;const p=board[r][c];if(p&&p.color===atk&&p.pieceId==='infecte')return true;
-  }
   // Typhon (1 diag)
   for(const[dr,dc] of[[1,1],[1,-1],[-1,1],[-1,-1]]){const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;const p=board[r][c];if(p&&p.color===atk&&p.pieceId==='typhon')return true;}
-  // Maitre-temps (max 2 diag)
-  for(const[dr,dc] of[[1,1],[1,-1],[-1,1],[-1,-1]]){for(let dist=1;dist<=2;dist++){const r=tr+dr*dist,c=tc+dc*dist;if(!inB(r,c))break;const p=board[r][c];if(p){if(p.color===atk&&p.pieceId==='maitre-temps')return true;break;}}}
-  // Illusion (1 diag)
-  for(const[dr,dc] of[[1,1],[1,-1],[-1,1],[-1,-1]]){const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;const p=board[r][c];if(p&&p.color===atk&&p.pieceId==='illusion')return true;}
   // Alpha (saut 2 diag)
   for(const[dr,dc] of[[2,2],[2,-2],[-2,2],[-2,-2]]){const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;const p=board[r][c];if(p&&p.color===atk&&p.pieceId==='alpha')return true;}
   // Banshee (2 diag sans saut)
   for(const[dr,dc] of[[2,2],[2,-2],[-2,2],[-2,-2]]){const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;const midR=tr+dr/2,midC=tc+dc/2;if(!inB(midR,midC))continue;if(board[midR][midC])continue;const p=board[r][c];if(p&&p.color===atk&&p.pieceId==='banshee')return true;}
-  // Clown
-  for(const[dr,dc] of[[2,2],[2,-2],[-2,2],[-2,-2],[2,0],[-2,0],[0,2],[0,-2]]){const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;const midR=tr+dr/2,midC=tc+dc/2;if(inB(midR,midC)&&board[midR][midC])continue;const p=board[r][c];if(p&&p.color===atk&&p.pieceId==='clown')return true;}
-  // Joker (max 4 ortho, saute les pièces, s'arrête sur ennemi)
-  for(const[dr,dc] of[[1,0],[-1,0],[0,1],[0,-1]]){
-    for(let dist=1;dist<=4;dist++){
-      const r=tr+dr*dist,c=tc+dc*dist;if(!inB(r,c))break;
-      const p=board[r][c];
-      if(p){if(p.color===atk&&p.pieceId==='joker')return true;break;}
-    }
-  }
-  // Sorcière — capture uniquement à 1 case orthogonale
-  for(const[dr,dc] of[[1,0],[-1,0],[0,1],[0,-1]]){
-    const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;
-    const p=board[r][c];if(p&&p.color===atk&&p.pieceId==='sorciere')return true;
-  }
   // Preux-chevalier: 2 ortho (pas bloqué) OU 1 diag
   for(const[dr,dc] of[[2,0],[-2,0],[0,2],[0,-2]]){const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;const mr=tr+dr/2,mc_=tc+dc/2;if(board[mr][mc_])continue;const p=board[r][c];if(p&&p.color===atk&&p.pieceId==='preux-chevalier')return true;}
   for(const[dr,dc] of[[1,1],[1,-1],[-1,1],[-1,-1]]){const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;const p=board[r][c];if(p&&p.color===atk&&p.pieceId==='preux-chevalier')return true;}
-  // Non-sens (1-3 fwd + 1 latéral)
-  for(let r2=0;r2<8;r2++)for(let c2=0;c2<8;c2++){
-    const p=board[r2][c2];if(!p||p.color!==atk||p.pieceId!=='non-sens')continue;
-    if(r2===tr&&Math.abs(c2-tc)===1)return true;
-    if(c2===tc&&r2!==tr){const dist=Math.abs(r2-tr);if(dist>3)continue;const step=r2<tr?1:-1;let bl=false;for(let rr=r2+step;rr!==tr;rr+=step){if(board[rr][tc]){bl=true;break;}}if(!bl)return true;}
-  }
-  // Singe (1 ou 2 étapes diagonales)
-  for(const[dr,dc] of[[1,1],[1,-1],[-1,1],[-1,-1]]){
-    const r1=tr+dr,c1=tc+dc;if(!inB(r1,c1))continue;
-    const p1=board[r1][c1];if(p1&&p1.color===atk&&p1.pieceId==='singe')return true;
-    if(inB(r1,c1)&&!board[r1][c1]){for(const[dr2,dc2] of[[1,1],[1,-1],[-1,1],[-1,-1]]){const r2b=r1+dr2,c2b=c1+dc2;if(!inB(r2b,c2b))continue;if(r2b===tr&&c2b===tc)continue;const p2b=board[r2b][c2b];if(p2b&&p2b.color===atk&&p2b.pieceId==='singe')return true;}}
-  }
   // Dresseur éléphant
   for(const[dr,dc] of[[2,0],[-2,0],[0,2],[0,-2]]){const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;const p=board[r][c];if(!p||p.color!==atk||p.pieceId!=='dresseur-elephant')continue;const midR=tr+dr/2,midC=tc+dc/2;if(board[midR][midC]&&board[midR][midC].color===atk)continue;return true;}
 
@@ -355,11 +242,9 @@ function isSquareAttackedSimple(tr,tc,defColor,board){
 
 function getLegalMovesKingFiltered(board,r,c,gs,moves){
   const p=board[r][c];if(!p)return moves;
-  const isKingPiece=p.type==='k'||p.isKing||['roi','matriarche','empereur','dictateur'].includes(p.pieceId);
+  const isKingPiece=p.type==='k'||p.isKing||['roi','empereur'].includes(p.pieceId);
   if(!isKingPiece)return moves;
   return moves.filter(m=>{
-    const dest=board[m.r][m.c];
-    if(dest&&dest.pieceId==='infecte')return false;
     for(const[dr,dc] of[[1,1],[1,-1],[-1,1],[-1,-1]]){const tr=m.r+dr,tc=m.c+dc;if(!inB(tr,tc))continue;const t=board[tr][tc];if(t&&t.color!==p.color&&t.pieceId==='typhon')return false;}
     for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++){if(!dr&&!dc)continue;const nr=m.r+dr,nc=m.c+dc;if(!inB(nr,nc))continue;const t=board[nr][nc];if(t&&t.color!==p.color&&(t.type==='k'||t.isKing))return false;}
     return true;
@@ -402,11 +287,6 @@ function updateGrandMaitre(board,gs){
   gs.grandMaitreAlive={w:false,b:false};
   for(let r=0;r<8;r++)for(let c=0;c<8;c++){const p=board[r][c];if(p&&p.pieceId==='grand-maitre')gs.grandMaitreAlive[p.color]=true;}
 }
-function updateNyx(board,gs){
-  gs.nyxColor=null;
-  for(let r=0;r<8;r++)for(let c=0;c<8;c++){const p=board[r][c];if(p&&p.pieceId==='nyx'){gs.nyxColor=p.color;return;}}
-}
-
 function applyTyphonEffect(toR,toC,board,p,gs){
   if(p.pieceId!=='typhon')return;
   for(const[dr,dc] of[[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]]){
@@ -423,20 +303,13 @@ function applyDresseurEffect(move,board,p,gs){
   if(!move.destroysPath)return;
   const dr=Math.sign(move.r-move.fromR),dc=Math.sign(move.c-move.fromC);
   let nr=move.fromR+dr,nc=move.fromC+dc;
-  let dresseurDies=false;
   while(nr!==move.r||nc!==move.c){
     const t=board[nr][nc];
     if(t&&t.color!==p.color&&!gs.anchored?.has(`${nr},${nc}`)&&!(t.isKing||t.type==='k')){
       if(t.color==='w')gs.capturedW.push(t.emoji);else gs.capturedB.push(t.emoji);
-      if(t.pieceId==='infecte')dresseurDies=true;
       board[nr][nc]=null;
     }
     nr+=dr;nc+=dc;
-  }
-  if(dresseurDies){
-    // Le dresseur meurt aussi après avoir traversé un infecté
-    if(p.color==='w')gs.capturedW.push(p.emoji);else gs.capturedB.push(p.emoji);
-    board[move.r][move.c]=null;
   }
 }
 
@@ -445,55 +318,26 @@ function applyDresseurEffect(move,board,p,gs){
 // ================================================================
 function executeGameMove(from,to,gs){
   const b=gs.board;const p=b[from.r][from.c];if(!p)return;
-  const snapshot={board:cloneBoard(b),turn:gs.turn,enPassant:gs.enPassant,halfmoveClock:gs.halfmoveClock,movePairs:JSON.parse(JSON.stringify(gs.movePairs)),capturedW:[...gs.capturedW],capturedB:[...gs.capturedB],anchored:new Set(gs.anchored||[]),illusionDecoys:JSON.parse(JSON.stringify(gs.illusionDecoys||[])),grandMaitreAlive:{...gs.grandMaitreAlive},nonSensReversed:JSON.parse(JSON.stringify(gs.nonSensReversed||{})),turnCount:gs.turnCount,ombreVisibleUntil:JSON.parse(JSON.stringify(gs.ombreVisibleUntil||{}))};
+  const snapshot={board:cloneBoard(b),turn:gs.turn,enPassant:gs.enPassant,halfmoveClock:gs.halfmoveClock,movePairs:JSON.parse(JSON.stringify(gs.movePairs)),capturedW:[...gs.capturedW],capturedB:[...gs.capturedB],anchored:new Set(gs.anchored||[]),grandMaitreAlive:{...gs.grandMaitreAlive},turnCount:gs.turnCount};
   gs.history.push(snapshot);gs.historyView=null;
-
-  if(to.stayPut&&to.boucherKill){
-    const target=b[to.r][to.c];
-    if(target){if(target.pieceId==='infecte'){if(p.color==='w')gs.capturedW.push(p.emoji);else gs.capturedB.push(p.emoji);b[from.r][from.c]=null;}if(target.color==='w')gs.capturedW.push(target.emoji);else gs.capturedB.push(target.emoji);b[to.r][to.c]=null;}
-    p.hasMoved=true;playSound('capture');recordMove(p,to,true,gs);gs.turn=opp(gs.turn);gs.turnCount++;postMoveUpdate(gs);return;
-  }
 
   let captured=null;
   if(to.ep){const pr=to.r+(p.color==='w'?1:-1);captured=b[pr][to.c];if(captured){if(captured.color==='w')gs.capturedW.push(captured.emoji);else gs.capturedB.push(captured.emoji);}b[pr][to.c]=null;}
   else{
-    // Singe : capture éventuelle sur la case intermédiaire (step1) lors du 2ème mouvement
-    if(p.pieceId==='singe'&&to.singeVia){
-      const via=to.singeVia;
-      const viaCapture=b[via.r][via.c];
-      if(viaCapture&&viaCapture.color!==p.color){
-        if(viaCapture.color==='w')gs.capturedW.push(viaCapture.emoji);else gs.capturedB.push(viaCapture.emoji);
-        b[via.r][via.c]=null;
-        if(!captured)captured=viaCapture; // compte comme une capture (pour le halfmoveClock)
-      }
-    }
     captured=b[to.r][to.c];
     if(captured){
       if(captured.color==='w')gs.capturedW.push(captured.emoji);else gs.capturedB.push(captured.emoji);
-      if(captured.pieceId==='infecte'){if(p.color==='w')gs.capturedW.push(p.emoji);else gs.capturedB.push(p.emoji);}
-      if(captured.pieceId==='illusion')gs.illusionDecoys=(gs.illusionDecoys||[]).filter(d=>d.pieceUid!==captured.id);
-      checkMatriarcheRevive(captured,b,gs);
       if(p.pieceId==='amazone')gs.amazonePostCapture={r:to.r,c:to.c,color:p.color};
     }
   }
 
   if(to.castle){if(to.castle==='K'){b[from.r][5]=b[from.r][7];b[from.r][7]=null;if(b[from.r][5])b[from.r][5].hasMoved=true;}if(to.castle==='Q'){b[from.r][3]=b[from.r][0];b[from.r][0]=null;if(b[from.r][3])b[from.r][3].hasMoved=true;}}
 
-  if(p.pieceId==='illusion'){gs.illusionDecoys=gs.illusionDecoys||[];gs.illusionDecoys=gs.illusionDecoys.filter(d=>d.pieceUid!==p.id);gs.illusionDecoys.push({r:from.r,c:from.c,color:p.color,emoji:'🪞',pieceId:'illusion-decoy',pieceUid:p.id,isDecoy:true});}
-  if(p.pieceId==='ombre'){gs.ombreVisibleUntil=gs.ombreVisibleUntil||{};gs.ombreVisibleUntil[p.id]=gs.turnCount+2;}
-  if(p.pieceId==='non-sens'){gs.nonSensReversed=gs.nonSensReversed||{};const farRow=p.color==='w'?0:7;if(to.r===farRow)gs.nonSensReversed[p.id]=!(gs.nonSensReversed[p.id]||false);}
-
   b[to.r][to.c]=p;b[from.r][from.c]=null;p.hasMoved=true;
-
-  if(captured&&p.pieceId==='infecte')b[to.r][to.c]=null;
-  if(captured?.pieceId==='infecte')b[to.r][to.c]=null;
 
   if(to.destroysPath)applyDresseurEffect(to,b,p,gs);
   applyTyphonEffect(to.r,to.c,b,p,gs);
   applyBansheeEffect(to.r,to.c,b,p);
-
-  gs.illusionDecoys=(gs.illusionDecoys||[]).filter(d=>{if(d.r===to.r&&d.c===to.c&&d.color!==p.color)return false;return true;});
-  if(to.capturesDecoy){gs.illusionDecoys=(gs.illusionDecoys||[]).filter(d=>d.pieceUid!==to.decoyPieceUid);b[to.r][to.c]=p;b[from.r][from.c]=null;}
 
   gs.enPassant=null;
   if(p.pieceId==='std-pawn'&&Math.abs(to.r-from.r)===2)gs.enPassant={r:(to.r+from.r)/2,c:from.c};
@@ -614,77 +458,13 @@ initAudioOnInteraction();
 // ================================================================
 // POST-COUP — enchaîne mise à jour d'états spéciaux + rendu + tour IA
 // (renderGame/updateStatus sont définis dans game-render.js ;
-//  doAIMove est défini dans ai-engine.js ; checkDictateurSacrifice et
-//  checkMatriarcheRevive sont définis plus bas dans ce même fichier)
+//  doAIMove est défini dans ai-engine.js)
 // ================================================================
 function postMoveUpdate(gs){
-  updateMedusaParalysis(gs.board,gs);updatePretreProtection(gs.board,gs);updateGrandMaitre(gs.board,gs);updateNyx(gs.board,gs);
-  if(!gs.dictatorSacrifice)checkDictateurSacrifice(gs);
+  updateMedusaParalysis(gs.board,gs);updatePretreProtection(gs.board,gs);updateGrandMaitre(gs.board,gs);
   updateStatus(gs);renderGame(gs);
   const aiCol=gs.aiColor||'b';
-  if(gs.turn===aiCol&&!gs.gameOver&&!gs.pendingPromo&&!gs.dictatorSacrifice)setTimeout(()=>doAIMove(gs),500);
-}
-
-// ================================================================
-// MATRIARCHE — réanimation à la mort du Général
-// ================================================================
-function checkMatriarcheRevive(captured,board,gs){
-  // Déclenche si la pièce capturée est un Général (class Général ou type 'q') ou une autre pièce non-pion de valeur élevée
-  if(!captured)return;
-  const capturedPieceDef=PIECES.find(p=>p.id===captured.pieceId);
-  const isGeneral=capturedPieceDef?.class==='Général'||captured.type==='q';
-  if(!isGeneral)return;
-  for(let r=0;r<8;r++)for(let c=0;c<8;c++){
-    const mp=board[r][c];
-    if(mp&&mp.pieceId==='matriarche'&&mp.color===captured.color){
-      let spawnR=-1,spawnC=-1;
-      for(const[dr,dc] of[[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]]){const nr=r+dr,nc=c+dc;if(inB(nr,nc)&&!board[nr][nc]){spawnR=nr;spawnC=nc;break;}}
-      if(spawnR===-1)return;
-      const capList=captured.color==='w'?gs.capturedW:gs.capturedB;
-      const eligibleIds=new Set();
-      capList.forEach(emoji=>{const pd=PIECES.find(p=>p.emoji===emoji&&p.value<=3&&p.class!=='Monarque'&&p.class!=='Général'&&p.id!=='std-pawn');if(pd)eligibleIds.add(pd.id);});
-      if(eligibleIds.size===0){showNotif('Matriarche : aucune pièce morte ≤ 3 à réanimer.');return;}
-      // La couleur comparée est celle réellement contrôlée par le joueur
-      // (et non 'w' en dur), pour que la Matriarche fonctionne aussi côté Noirs.
-      const humanColor=gs.playerColor||'w';
-      if(captured.color===humanColor)showReviveModal(board,spawnR,spawnC,captured.color,gs,[...eligibleIds]);
-      else{const pick=PIECES.find(p=>p.id===[...eligibleIds][0]);if(pick)board[spawnR][spawnC]={type:pick.pieceType||'p',color:captured.color,pieceId:pick.id,emoji:pick.emoji,hasMoved:true,id:'rev_'+Date.now()};}
-      showNotif('Matriarche : réanimation !','ok');return;
-    }
-  }
-}
-function showReviveModal(board,nr,nc,color,gs,eligibleIds){
-  const eligible=eligibleIds.map(id=>PIECES.find(p=>p.id===id)).filter(Boolean);
-  if(!eligible.length)return;
-  const modal=document.getElementById('promo-modal');const box=document.getElementById('promo-box');
-  modal.querySelector('.promo-title').textContent='Matriarche — Réanimer (≤3 pts)';modal.classList.add('active');
-  box.innerHTML=eligible.map((pp,i)=>'<div class="promo-piece" data-idx="'+i+'" title="'+pp.name+'">'+pp.emoji+'<div style="font-size:10px">'+pp.name+'</div></div>').join('');
-  box.querySelectorAll('.promo-piece').forEach((el,i)=>{el.addEventListener('click',()=>{const opt=eligible[i];board[nr][nc]={type:opt.pieceType||'p',color,pieceId:opt.id,emoji:opt.emoji,hasMoved:true,id:'rev_'+Date.now()};modal.querySelector('.promo-title').textContent='Choisir la promotion';modal.classList.remove('active');renderGame(gs);});});
-}
-
-// ================================================================
-// DICTATEUR — sacrifice obligatoire en cas d'échec
-// ================================================================
-function checkDictateurSacrifice(gs){
-  const b=gs.board;const playerCol=gs.playerColor||'w';
-  for(let r=0;r<8;r++)for(let c=0;c<8;c++){
-    const p=b[r][c];
-    if(p&&p.pieceId==='dictateur'&&p.color===playerCol&&gs.turn===playerCol&&isInCheckSimple(playerCol,b)){
-      const pieces=[];
-      for(let pr=0;pr<8;pr++)for(let pc=0;pc<8;pc++){const pp=b[pr][pc];if(pp&&pp.color===playerCol&&!(pp.isKing||pp.pieceId==='dictateur')&&pp.type!=='p'&&pp.pieceId!=='std-pawn')pieces.push({r:pr,c:pc,p:pp});}
-      if(pieces.length>0){gs.dictatorSacrifice={color:playerCol,pieces,dictateurR:r,dictateurC:c};showNotif('⚔ Dictateur en échec ! Cliquez une pièce alliée (rouge) à sacrifier.','err');}
-      return;
-    }
-  }
-}
-function showSacrificeConfirm(gs,sacInfo,callback){
-  const box=document.getElementById('sacrifice-modal');const cont=document.getElementById('sacrifice-pieces');
-  box.querySelector('h3').textContent='Confirmer le sacrifice';
-  box.querySelector('p').textContent='Sacrifier '+getPieceEmoji(sacInfo.p)+' '+(PIECES.find(x=>x.id===sacInfo.p.pieceId)?.name||'?')+' ?';
-  cont.innerHTML='<div style="display:flex;gap:10px;justify-content:center;margin-top:8px"><button class="btn btn-danger" id="sac-yes">Sacrifier</button><button class="btn btn-ghost" id="sac-no">Annuler</button></div>';
-  box.classList.add('active');
-  document.getElementById('sac-yes').addEventListener('click',()=>{box.classList.remove('active');callback();},{once:true});
-  document.getElementById('sac-no').addEventListener('click',()=>{box.classList.remove('active');},{once:true});
+  if(gs.turn===aiCol&&!gs.gameOver&&!gs.pendingPromo)setTimeout(()=>doAIMove(gs),500);
 }
 
 // ================================================================

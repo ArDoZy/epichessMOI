@@ -10,7 +10,7 @@
 // Chargé après data-pieces.js et accounts.js, avant tous les modules de page.
 // La plupart des autres modules lisent/écrivent les variables globales
 // définies ici (army, savedArmies, savedAiArmies, editingArmyId, builderMode,
-// currentArmyData, aiArmyData, VV_UNLOCKED, darkMode, clownDisguise, etc.)
+// currentArmyData, aiArmyData, VV_UNLOCKED, darkMode, etc.)
 // ================================================================
 
 // ----------------------------------------------------------------
@@ -18,7 +18,7 @@
 // board-placement.js, game-flow.js, voie.js, tournoi.js, settings-admin.js)
 // ----------------------------------------------------------------
 let army={mon:null,gen:null,pcs:[null,null,null],prims:[]};
-let filters={order:'asc',classes:new Set(['Monarque','Général','Primordiale','Brute','Sorcier','Mirage','Maudit'])};
+let filters={order:'asc',classes:new Set(['Monarque','Général','Primordiale','Brute','Sorcier'])};
 let savedArmies=[];
 let savedAiArmies=[];
 let editingArmyId=null;
@@ -30,7 +30,6 @@ let placedMap={};
 let currentArmyData=null;
 let aiArmyData=null;
 let darkMode=true;
-let clownDisguise={w:null,b:null};
 let VV_UNLOCKED=new Set();
 // ADMIN — sauvegarde l'état pré-admin pour une restauration correcte
 let ADMIN_MODE=false;
