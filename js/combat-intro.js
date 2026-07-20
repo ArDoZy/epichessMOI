@@ -33,9 +33,6 @@ const renderCombatPage=(ad,aiIsCustom)=>{
     '<div class="cside"><div class="cside-lbl">Votre armée</div><div class="cside-pieces">'+all.map(p=>'<span>'+p.emoji+'</span>').join('')+'</div><div class="cside-name">'+ad.totalValue+' pts</div></div>'+
     '<div class="vs-div">VS</div>'+
     '<div class="cside"><div class="cside-lbl">'+inst.emoji+' '+inst.name+'</div><div class="cside-pieces">'+aiAll.map(p=>'<span>'+p.emoji+'</span>').join('')+'</div><div class="cside-name">'+aiArmyData.totalValue+' pts</div></div>';
-  document.getElementById('ai-army-preview').innerHTML=aiAll.map(p=>p.emoji).join('');
-  document.getElementById('ai-army-names').textContent=aiAll.map(p=>p.name).join(' · ');
-  document.getElementById('ai-army-label').textContent=aiIsCustom&&!aiArmyData._random?'Armée IA personnalisée':'Armée IA aléatoire';
 };
 
 const launchParticles=()=>{
@@ -45,7 +42,6 @@ const launchParticles=()=>{
 };
 
 document.getElementById('cb-back').addEventListener('click',()=>{renderArmiesPage();showPage('page-armies');});
-document.getElementById('cb-armies').addEventListener('click',()=>{renderArmiesPage();showPage('page-armies');});
 document.getElementById('cb-choose-ai').addEventListener('click',()=>{
   if(!savedAiArmies.length){builderMode='ai';updateBuilderBanner();army={mon:null,gen:null,pcs:[null,null,null],prims:[]};editingArmyId=null;updAll();showPage('page-builder');}
   else{renderAiArmiesPage();showPage('page-ai-armies');}

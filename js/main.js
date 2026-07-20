@@ -51,13 +51,9 @@ function toggleTheme(){
   if(t)t.classList.toggle('on',darkMode);
 }
 
-function showNotif(msg,type='err'){
-  document.querySelector('.notif')?.remove();
-  const n=document.createElement('div');n.className='notif '+type;
-  n.innerHTML='<div class="notif-row"><div class="notif-icon">'+(type==='err'?'⚠️':'✅')+'</div><div class="notif-msg">'+msg+'</div></div>';
-  document.body.appendChild(n);
-  setTimeout(()=>{n.classList.add('hide');setTimeout(()=>n.remove(),300)},3800);
-}
+// Notifications en haut d'écran désactivées à la demande — la fonction est
+// conservée (no-op) car de nombreux modules l'appellent encore.
+function showNotif(msg,type='err'){}
 
 function showPage(id){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
