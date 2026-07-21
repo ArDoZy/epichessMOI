@@ -32,12 +32,46 @@ const FILES=['A','B','C','D','E','F','G','H'];
 
 // État de partie global — reconstruit par startGame()/launchTournoiRound()
 // dans game-flow.js / tournoi.js. Voir la structure complète dans ces fichiers.
-let GS={board:[],turn:'w',selected:null,legalMoves:[],history:[],enPassant:null,halfmoveClock:0,gameOver:false,playerArmy:null,aiArmy:null,movePairs:[],capturedW:[],capturedB:[],pendingPromo:null,medusaParalyzed:new Set(),lastMove:null,anchored:new Set(),pretreProtected:new Set(),amazonePostCapture:null,grandMaitreAlive:{w:false,b:false},gardePierreUsed:{w:false,b:false},turnCount:0,historyView:null,lastMoveHistory:[]};
+let GS={board:[],turn:'w',selected:null,legalMoves:[],history:[],enPassant:null,halfmoveClock:0,gameOver:false,playerArmy:null,aiArmy:null,movePairs:[],capturedW:[],capturedB:[],pendingPromo:null,medusaParalyzed:new Set(),lastMove:null,anchored:new Set(),pretreProtected:new Set(),amazonePostCapture:null,grandMaitreAlive:{w:false,b:false},gardePierreUsed:{w:false,b:false},turnCount:0,historyView:null,lastMoveHistory:[],clockMs:0,timeWhite:0,timeBlack:0};
 
 function inB(r,c){return r>=0&&r<8&&c>=0&&c<8;}
 function opp(color){return color==='w'?'b':'w';}
 function cloneBoard(b){return b.map(r=>r.map(p=>p?{...p}:null));}
 function getPieceEmoji(cell){if(!cell)return '';return cell.emoji||'?';}
+
+// ================================================================
+// HORLOGE DE PARTIE — décompte simple par joueur (pas d'incrément).
+// gs.clockMs = temps de départ par joueur en ms (0 = illimité, pas d'horloge).
+// Démarrée par showArmyIntro() à la fermeture de l'overlay (game-flow.js),
+// arrêtée dans triggerEndOfGame()/triggerTournoiEndOfGame(). Le rendu des
+// badges (#human-player-clock/#ai-player-clock) est fait par renderClocks()
+// dans game-render.js, appelée à chaque tick et à chaque renderGame().
+// ================================================================
+function startClockTick(gs){
+  stopClockTick(gs);
+  if(!gs.clockMs)return;
+  gs._clockLastTs=Date.now();
+  gs._clockTimerId=setInterval(()=>tickClock(gs),200);
+}
+function stopClockTick(gs){
+  if(gs&&gs._clockTimerId){clearInterval(gs._clockTimerId);gs._clockTimerId=null;}
+}
+function tickClock(gs){
+  if(!gs.clockMs||gs.gameOver||gs.historyView!==null){gs._clockLastTs=Date.now();return;}
+  const now=Date.now();const elapsed=now-gs._clockLastTs;gs._clockLastTs=now;
+  const key=gs.turn==='w'?'timeWhite':'timeBlack';
+  gs[key]=Math.max(0,gs[key]-elapsed);
+  if(typeof renderClocks==='function')renderClocks(gs);
+  if(gs[key]<=0){
+    stopClockTick(gs);gs.gameOver=true;
+    const playerCol=gs.playerColor||'w';
+    const result=gs.turn===playerCol?'loss':'win';
+    const bar=document.getElementById('game-status');
+    if(bar){bar.textContent='⏱ Temps écoulé ! '+(result==='win'?'Vous gagnez !':'L\'IA gagne !');bar.className='status-bar mate';}
+    if(typeof playSound==='function')playSound(result==='win'?'win':'loss');
+    if(!_endGameTriggered)triggerEndOfGame(result);
+  }
+}
 
 // ================================================================
 // GÉNÉRATION DE COUPS — helpers génériques
@@ -318,7 +352,7 @@ function applyDresseurEffect(move,board,p,gs){
 // ================================================================
 function executeGameMove(from,to,gs){
   const b=gs.board;const p=b[from.r][from.c];if(!p)return;
-  const snapshot={board:cloneBoard(b),turn:gs.turn,enPassant:gs.enPassant,halfmoveClock:gs.halfmoveClock,movePairs:JSON.parse(JSON.stringify(gs.movePairs)),capturedW:[...gs.capturedW],capturedB:[...gs.capturedB],anchored:new Set(gs.anchored||[]),grandMaitreAlive:{...gs.grandMaitreAlive},turnCount:gs.turnCount};
+  const snapshot={board:cloneBoard(b),turn:gs.turn,enPassant:gs.enPassant,halfmoveClock:gs.halfmoveClock,movePairs:JSON.parse(JSON.stringify(gs.movePairs)),capturedW:[...gs.capturedW],capturedB:[...gs.capturedB],anchored:new Set(gs.anchored||[]),grandMaitreAlive:{...gs.grandMaitreAlive},turnCount:gs.turnCount,timeWhite:gs.timeWhite,timeBlack:gs.timeBlack};
   gs.history.push(snapshot);gs.historyView=null;
 
   let captured=null;

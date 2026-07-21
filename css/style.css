@@ -115,6 +115,10 @@ body.has-acc .game-wrap{height:calc(100vh - 50px);margin-top:50px}
 .ai-lvl-modal.show{visibility:visible}
 .ai-lvl-box{background:var(--surface2);border:1px solid var(--border2);border-radius:18px;padding:28px;max-width:640px;width:93%;position:relative;overflow:hidden;max-height:90vh;overflow-y:auto}
 .ai-lvl-box::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--accent),var(--gold),var(--gold2),var(--accent2),var(--accent));background-size:200% 100%;animation:shimmerBar 7s linear infinite;box-shadow:0 0 10px rgba(201,162,39,.4)}
+.tc-row{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-bottom:6px}
+.tc-btn{padding:6px 13px;border:1px solid var(--border2);border-radius:7px;background:var(--bg);color:var(--muted);cursor:pointer;font-size:11px;font-weight:700;font-family:'Cinzel',serif;transition:all .15s}
+.tc-btn:hover{color:var(--text);border-color:var(--gold)}
+.tc-btn.tc-sel{color:var(--gold);border-color:var(--gold);background:rgba(201,162,39,.12);box-shadow:0 0 8px rgba(201,162,39,.25)}
 .ai-lvl-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin:14px 0}
 .ai-lvl-card{background:var(--bg);border:2px solid var(--border);border-radius:12px;padding:14px 10px;text-align:center;cursor:pointer;transition:all .2s}
 .ai-lvl-card:hover:not(.lvl-locked){transform:translateY(-3px);border-color:var(--accent2)}
@@ -302,6 +306,10 @@ body.has-acc .game-wrap{height:calc(100vh - 50px);margin-top:50px}
 .game-player-avatar{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff;flex-shrink:0}
 .game-player-name{font-size:13px;font-weight:700;flex:1;color:var(--text)}
 .game-player-elo{font-size:11px;color:var(--gold);font-weight:700}
+.game-player-clock{font-family:'Cinzel',serif;font-size:15px;font-weight:800;padding:4px 12px;border-radius:7px;background:var(--bg);border:1px solid var(--border2);color:var(--text);min-width:56px;text-align:center;letter-spacing:.5px}
+.game-player-clock.clock-active{border-color:var(--gold);box-shadow:0 0 10px rgba(201,162,39,.35);color:var(--gold)}
+.game-player-clock.clock-low{color:#fff;background:rgba(182,57,74,.75);border-color:var(--danger);animation:clockLowPulse 1s ease-in-out infinite}
+@keyframes clockLowPulse{0%,100%{opacity:1}50%{opacity:.55}}
 .game-board-outer{display:flex;align-items:stretch;width:100%}
 .game-row-labels{display:flex;flex-direction:column;width:22px;flex-shrink:0}
 .game-row-lbl{font-size:10px;color:var(--muted);font-weight:700;display:flex;align-items:center;justify-content:flex-end;padding-right:4px;font-family:'Cinzel',serif}
