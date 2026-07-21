@@ -19,8 +19,13 @@
 // ----------------------------------------------------------------
 const loadArmyForEdit=ad=>{
   const fp=id=>PIECES.find(p=>p.id===id);
-  army.mon=fp(ad.mon.id)||null;army.gen=fp(ad.gen.id)||null;army.pcs=[null,null,null];army.prims=[];
-  ad.extras.forEach(id=>{const p=fp(id);if(!p)return;if(p.class==='Primordiale')army.prims.push(p);else{const i=army.pcs.findIndex(x=>!x);if(i!==-1)army.pcs[i]=p;}});
+  army.mon=fp(ad.mon.id)||null;army.gen=fp(ad.gen.id)||null;
+  // Reconstruit l'ordre (= disposition) : la pièce la plus proche du centre
+  // (colonnes 3/4) vient en premier. Robuste aux anciennes sauvegardes.
+  const dist=c=>Math.abs((c==null?0:c)-3.5);
+  let ids=(ad.extras||[]).slice();
+  if(ad.placements)ids.sort((a,b)=>dist(ad.placements[a])-dist(ad.placements[b]));
+  army.extras=ids.map(fp).filter(Boolean).slice(0,3);
   editingArmyId=ad.id;
 };
 
@@ -44,7 +49,7 @@ window.launchTournoiFromArmy=id=>{
   setTimeout(()=>{if(confirm('Lancer un tournoi avec cette armée ?'))startTournoi();},150);
 };
 document.getElementById('ar-back').addEventListener('click',()=>showPage('page-builder'));
-document.getElementById('ar-new').addEventListener('click',()=>{builderMode='player';updateBuilderBanner();army={mon:null,gen:null,pcs:[null,null,null],prims:[]};editingArmyId=null;updAll();showPage('page-builder');});
+document.getElementById('ar-new').addEventListener('click',()=>{builderMode='player';updateBuilderBanner();army={mon:null,gen:null,extras:[]};editingArmyId=null;updAll();showPage('page-builder');});
 
 // ----------------------------------------------------------------
 // PAGE ARMÉES IA
@@ -69,7 +74,7 @@ window.selectAiArmy=id=>{
   else{showNotif('Sélectionnez d\'abord votre armée.');renderArmiesPage();showPage('page-armies');}
 };
 document.getElementById('ai-ar-back').addEventListener('click',()=>{if(currentArmyData){renderCombatPage(currentArmyData,aiArmyData&&!aiArmyData._random);showPage('page-combat');launchParticles();}else showPage('page-builder');});
-document.getElementById('ai-ar-new').addEventListener('click',()=>{builderMode='ai';updateBuilderBanner();army={mon:null,gen:null,pcs:[null,null,null],prims:[]};editingArmyId=null;updAll();showPage('page-builder');});
+document.getElementById('ai-ar-new').addEventListener('click',()=>{builderMode='ai';updateBuilderBanner();army={mon:null,gen:null,extras:[]};editingArmyId=null;updAll();showPage('page-builder');});
 
 // ----------------------------------------------------------------
 // GÉNÉRATEUR D'ARMÉE IA ALÉATOIRE
@@ -105,9 +110,10 @@ function generateAIArmy(){
       if(p.class==='Primordiale')primCount++;
     }
     if(chosen.length===3){
-      const placements={};const availCols=[0,1,2,5,6,7];
-      const shuffled=[...availCols].sort(()=>Math.random()-0.5);
-      chosen.forEach((p,i)=>{placements[p.id]=shuffled[i];});
+      // Colonnes gauches canoniques {0,1,2} — buildGameBoard miroite en 7-col,
+      // donc placement symétrique sans collision. Ordre aléatoire entre les 3.
+      const cols=[0,1,2].sort(()=>Math.random()-0.5);const placements={};
+      chosen.forEach((p,i)=>{placements[p.id]=cols[i];});
       return{mon,gen,extras:chosen.map(p=>p.id),placements,totalValue:mon.value+gen.value+val,_random:true};
     }
   }
@@ -115,7 +121,7 @@ function generateAIArmy(){
   const mon=rnd(allMon),gen=rnd(allGen);
   const shuffledOth=[...allOth].sort(()=>Math.random()-0.5);
   const ext=shuffledOth.filter((p,i,a)=>a.findIndex(x=>x.id===p.id)===i).slice(0,3);
-  const placements={};const availCols=[0,1,2,5,6,7].sort(()=>Math.random()-0.5);
-  ext.forEach((p,i)=>{placements[p.id]=availCols[i];});
+  const cols=[0,1,2].sort(()=>Math.random()-0.5);const placements={};
+  ext.forEach((p,i)=>{placements[p.id]=cols[i];});
   return{mon,gen,extras:ext.map(p=>p.id),placements,totalValue:mon.value+gen.value+ext.reduce((s,p)=>s+p.value,0),_random:true};
 }

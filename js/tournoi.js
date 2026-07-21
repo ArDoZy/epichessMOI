@@ -288,7 +288,7 @@ document.getElementById('b-tournoi').addEventListener('click',()=>{
 document.getElementById('tournoi-back').addEventListener('click',()=>showPage('page-builder'));
 document.getElementById('tournoi-back2').addEventListener('click',()=>{
   tournamentState.active=false;
-  army={mon:null,gen:null,pcs:[null,null,null],prims:[]};
+  army={mon:null,gen:null,extras:[]};
   editingArmyId=null;updAll();
   showPage('page-builder');
 });

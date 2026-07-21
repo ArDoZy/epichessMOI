@@ -1,5 +1,5 @@
 /* ================================================================
-   METACHESS — STYLE PRINCIPAL
+   EPIC CHESS — STYLE PRINCIPAL
    ================================================================
    Structure de ce fichier (recherchez les tags [SECTION] pour naviguer) :
      [THEME]        variables CSS clair/sombre + reset
@@ -8,7 +8,6 @@
      [AI-LEVEL]     modal de choix d'instructeur IA
      [BUILDER]      page de composition d'armée (filtres, cartes de pièces, slots)
      [SETTINGS]     bouton + panneau réglages (thème, volume)
-     [BOARD-PLACE]  page de placement des pièces sur l'échiquier (pré-partie)
      [ARMIES]       pages "Mes armées" / "Armées IA"
      [COMBAT-INTRO] page d'intro combat (VS, présentation armées)
      [GAME]         page de jeu : plateau, sidebars, historique, drag&drop
@@ -41,7 +40,7 @@ body.light{
   --primordiale-bg:rgba(63,125,74,.10);--sorcier-bg:rgba(157,63,125,.10);--brute-bg:rgba(162,58,58,.10);
 }
 *{box-sizing:border-box;margin:0;padding:0;transition:background-color .45s ease,border-color .45s ease,color .45s ease,box-shadow .45s ease,fill .45s ease;}
-html{scroll-behavior:auto}
+html{scroll-behavior:auto;scrollbar-gutter:stable}
 html,body{min-height:100%;color:var(--text);overflow-x:hidden;font-family:'Crimson Pro',Georgia,serif;transition:background .5s ease,color .5s ease}
 body{
   background-color:var(--bg);
@@ -56,9 +55,10 @@ body{
 ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:6px;border:2px solid var(--bg)}
 ::-webkit-scrollbar-thumb:hover{background:var(--gold)}
 .page{display:none}
-.page.active{display:block;animation:pageFadeIn .5s cubic-bezier(.22,.61,.36,1) both}
-#page-combat.active,#page-game.active{animation:pageFadeIn .6s cubic-bezier(.22,.61,.36,1) both}
-@keyframes pageFadeIn{from{opacity:0;transform:translateY(10px) scale(.995);filter:blur(2px)}to{opacity:1;transform:translateY(0) scale(1);filter:blur(0)}}
+.page.active{display:block;animation:pageFadeIn .32s ease both}
+#page-combat.active,#page-game.active{animation:pageFadeIn .4s ease both}
+/* Fade + léger glissement, sans scale/blur (qui déformaient la page). */
+@keyframes pageFadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 @keyframes shimmerBar{0%{background-position:0% 0}100%{background-position:200% 0}}
 @keyframes torchFlicker{0%,100%{filter:brightness(1)}45%{filter:brightness(1.06)}52%{filter:brightness(.97)}78%{filter:brightness(1.03)}}
 .cinzel{font-family:'Cinzel',serif}
@@ -98,15 +98,17 @@ body{
 .pw-modal{position:fixed;inset:0;background:rgba(0,0,0,.78);display:flex;align-items:center;justify-content:center;z-index:9000;visibility:hidden}
 .pw-modal.show{visibility:visible}
 .pw-box{background:var(--surface2);border:1px solid var(--border2);border-radius:14px;padding:28px;min-width:300px;max-width:380px;text-align:center}
-.cab{position:fixed;top:0;left:0;right:0;height:34px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 14px;gap:10px;z-index:500;font-family:'Cinzel',serif;font-size:11px}
-.cab-av{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:#fff;flex-shrink:0}
-.cab-sw{padding:3px 9px;font-size:9px;border:1px solid var(--border2);border-radius:5px;background:transparent;color:var(--muted);cursor:pointer;font-family:'Cinzel',serif;transition:all .15s}
-.cab-sw:hover{border-color:var(--danger);color:var(--danger);background:rgba(239,68,68,0.1)}
-body.has-acc #page-builder{padding-top:calc(34px + 32px)}
-body.has-acc #page-board{padding-top:calc(34px + 26px)}
-body.has-acc #page-armies,body.has-acc #page-ai-armies,body.has-acc #page-voie{padding-top:calc(34px + 32px)}
-body.has-acc #page-combat{padding-top:34px}
-body.has-acc .game-wrap{height:calc(100vh - 34px);margin-top:34px}
+.cab{position:fixed;top:0;left:0;right:0;height:50px;background:linear-gradient(180deg,var(--surface2),var(--surface));border-bottom:2px solid var(--gold);box-shadow:0 2px 12px rgba(0,0,0,.4);display:flex;align-items:center;padding:0 58px 0 18px;gap:14px;z-index:500;font-family:'Cinzel',serif;font-size:13px}
+.cab-av{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;color:#fff;flex-shrink:0;box-shadow:0 0 0 2px var(--gold),0 2px 6px rgba(0,0,0,.5)}
+#cab-name{font-size:15px;font-weight:800;letter-spacing:.5px}
+#cab-elo{font-size:13px!important;font-weight:800;padding:5px 14px;border-radius:8px;background:rgba(201,162,39,.14);border:1px solid var(--gold);color:var(--gold)!important;letter-spacing:.5px;box-shadow:0 0 12px rgba(201,162,39,.2)}
+#cab-elo.admin-elo{background:linear-gradient(135deg,rgba(201,162,39,.3),rgba(122,31,43,.3));border-color:var(--gold2);animation:torchFlicker 3s ease-in-out infinite}
+.cab-sw{padding:8px 18px;font-size:12px;font-weight:700;border:1px solid rgba(230,90,100,.65)!important;border-radius:8px;background:rgba(230,90,100,.2);color:#f2b8bd!important;cursor:pointer;font-family:'Cinzel',serif;transition:all .15s;text-transform:uppercase;letter-spacing:.6px;white-space:nowrap}
+.cab-sw:hover{border-color:#f2b8bd!important;background:rgba(230,90,100,.35);color:#fff!important;transform:translateY(-1px)}
+body.has-acc #page-builder{padding-top:calc(50px + 32px)}
+body.has-acc #page-armies,body.has-acc #page-ai-armies,body.has-acc #page-voie{padding-top:calc(50px + 32px)}
+body.has-acc #page-combat{padding-top:50px}
+body.has-acc .game-wrap{height:calc(100vh - 50px);margin-top:50px}
 
 /* [AI-LEVEL] ======================================================= */
 .ai-lvl-modal{position:fixed;inset:0;background:rgba(0,0,0,.88);display:flex;align-items:center;justify-content:center;z-index:4500;visibility:hidden}
@@ -154,10 +156,16 @@ body.has-acc .game-wrap{height:calc(100vh - 34px);margin-top:34px}
 .stat-pill .sp-val{font-size:18px;font-weight:700;font-family:'Cinzel',serif;color:var(--text)}
 .army-box{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:28px 32px;margin-bottom:22px;position:relative;overflow:hidden;transition:background .3s}
 .army-box::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--accent),var(--gold),var(--gold2),var(--accent2),var(--accent));background-size:200% 100%;animation:shimmerBar 7s linear infinite;box-shadow:0 0 10px rgba(201,162,39,.4)}
-.army-box-title{font-family:'Cinzel',serif;font-size:15px;font-weight:700;color:var(--gold);margin-bottom:20px;letter-spacing:1px}
+.army-box-title{font-family:'Cinzel',serif;font-size:15px;font-weight:700;color:var(--gold);margin-bottom:8px;letter-spacing:1px}
+.army-box-hint{font-size:12px;color:var(--muted);font-style:italic;line-height:1.5;margin-bottom:18px}
 .comp-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:14px}
 .comp-slot{background:var(--bg);border:2px dashed var(--border);border-radius:12px;padding:18px 14px;min-height:130px;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;transition:all .2s}
 .comp-slot.filled{border-style:solid}
+.comp-slot.draggable-slot{cursor:grab}
+.comp-slot.draggable-slot::before{content:'⠿';position:absolute;top:6px;left:8px;font-size:12px;color:var(--muted);opacity:.5;letter-spacing:-2px}
+.comp-slot.draggable-slot:active{cursor:grabbing}
+.comp-slot.slot-dragging{opacity:.4}
+.comp-slot.slot-over{outline:2px dashed var(--gold);outline-offset:2px;box-shadow:0 0 14px rgba(201,162,39,.4)}
 .comp-slot .cs-label{font-size:10px;color:var(--muted);text-transform:uppercase;font-family:'Cinzel',serif;letter-spacing:.8px;margin-bottom:8px}
 .comp-slot .cs-emoji{font-size:28px;margin-bottom:6px;display:block;line-height:1}
 .comp-slot .cs-name{font-size:14px;font-weight:700;margin-bottom:5px;text-align:center;line-height:1.3}
@@ -216,11 +224,11 @@ body.has-acc .game-wrap{height:calc(100vh - 34px);margin-top:34px}
 
 .pc-mvt{font-size:11px;margin-bottom:8px;display:flex;align-items:center;gap:5px;color:var(--muted);background:rgba(255,255,255,.04);padding:6px 10px;border-radius:6px;font-family:'Cinzel',serif}
 .pc-ability{font-size:12px;color:var(--text);line-height:1.6;padding:10px;background:var(--bg);border-radius:8px;border-left:2px solid var(--accent);margin-top:6px}
-.piece-card.locked{cursor:not-allowed;position:relative}
-.piece-card.locked .pc-emoji,.piece-card.locked .pc-name,.piece-card.locked .pc-ability,.piece-card.locked .pc-mvt{filter:blur(3px);pointer-events:none;user-select:none}
-.locked-overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;z-index:3;border-radius:16px;background:rgba(0,0,0,.18)}
-.locked-overlay .lock-icon{font-size:28px;filter:drop-shadow(0 0 8px rgba(0,0,0,.7))}
-.locked-overlay .lock-rank{font-family:'Cinzel',serif;font-size:10px;font-weight:700;color:var(--gold);background:rgba(0,0,0,.55);border-radius:6px;padding:3px 8px;letter-spacing:.5px}
+.piece-card.locked{cursor:not-allowed;position:relative;opacity:.5;filter:grayscale(.85) brightness(.5);background:rgba(0,0,0,.35);border-color:rgba(0,0,0,.4)}
+.piece-card.locked .pc-emoji,.piece-card.locked .pc-name,.piece-card.locked .pc-ability,.piece-card.locked .pc-mvt,.piece-card.locked .pc-val,.piece-card.locked .pc-class{filter:blur(7px);pointer-events:none;user-select:none}
+.locked-overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;z-index:3;border-radius:16px;background:rgba(0,0,0,.55)}
+.locked-overlay .lock-icon{font-size:30px;filter:drop-shadow(0 0 10px rgba(0,0,0,.9));opacity:.9}
+.locked-overlay .lock-rank{font-family:'Cinzel',serif;font-size:10px;font-weight:700;color:var(--gold);background:rgba(0,0,0,.75);border-radius:6px;padding:3px 8px;letter-spacing:.5px}
 .builder-mode-banner{background:rgba(139,92,246,.15);border:1px solid rgba(139,92,246,.4);border-radius:9px;padding:10px 16px;margin-bottom:14px;font-family:'Cinzel',serif;font-size:12px;color:var(--accent2);display:none}
 .builder-mode-banner.show{display:block}
 @media(max-width:760px){.comp-grid{grid-template-columns:repeat(3,1fr)}}
@@ -240,38 +248,6 @@ body.has-acc .game-wrap{height:calc(100vh - 34px);margin-top:34px}
 .sp-slider{-webkit-appearance:none;appearance:none;width:100px;height:4px;border-radius:2px;background:var(--border2);outline:none;cursor:pointer}
 .sp-slider::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--accent2);cursor:pointer}
 .sp-divider{border:none;border-top:1px solid var(--border);margin:10px 0}
-
-/* [BOARD-PLACE] ======================================================= */
-#page-board{padding:26px 18px}
-.board-app{max-width:900px;margin:0 auto}
-.board-hdr{display:flex;align-items:center;gap:11px;margin-bottom:20px;flex-wrap:wrap}
-.board-title{font-family:'Cinzel',serif;font-size:20px;font-weight:700;flex:1;background:linear-gradient(135deg,var(--gold),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
-.board-layout{display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap}
-.tray{background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:16px;width:200px;flex-shrink:0;transition:background .3s}
-.tray h3{font-family:'Cinzel',serif;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:12px}
-.tray-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:9px;cursor:pointer;border:1px solid transparent;transition:all .15s;margin-bottom:6px;background:var(--bg)}
-.tray-item:hover{border-color:var(--accent2);background:rgba(122,31,43,.1)}
-.tray-item.active-pick{border-color:var(--success);background:rgba(16,185,129,.1);box-shadow:0 0 7px rgba(16,185,129,.2)}
-.tray-item.placed{opacity:.32;cursor:not-allowed;pointer-events:none}
-.tray-emoji{font-size:20px;line-height:1}.tray-name{font-size:11px;font-weight:600;flex:1;line-height:1.3;font-family:'Cinzel',serif}.tray-check{font-size:14px;color:var(--success);font-weight:900}
-.board-section{flex:1;min-width:280px}
-.board-info{font-size:11px;color:var(--muted);margin-bottom:10px;background:var(--surface);border-radius:7px;padding:8px 12px;border-left:2px solid var(--accent);min-height:34px;line-height:1.5;font-family:'Cinzel',serif;transition:background .3s}
-.board-wrap{display:flex;flex-direction:column}
-.board-outer{display:flex;align-items:stretch}
-.row-labels-col{display:flex;flex-direction:column;width:22px;flex-shrink:0}
-.row-lbl{font-size:10px;color:var(--muted);font-weight:700;display:flex;align-items:center;justify-content:flex-end;padding-right:4px;font-family:'Cinzel',serif}
-.board-and-cols{display:flex;flex-direction:column;flex:1}
-.chessboard{display:grid;grid-template-columns:repeat(8,1fr);border:2px solid #333;border-radius:3px;overflow:hidden}
-.col-labels-row{display:flex;margin-top:3px}.col-lbl{flex:1;text-align:center;font-size:10px;color:var(--muted);font-weight:700;font-family:'Cinzel',serif}
-.cell{aspect-ratio:1;display:flex;align-items:center;justify-content:center;position:relative;font-size:clamp(14px,3vw,27px);user-select:none;transition:background .08s}
-.zr1l{background:#c8a96a}.zr1d{background:#8a5f38}.zr2l{background:#bca05e}.zr2d{background:#7f5530}
-.zmidl{background:#3a3850}.zmidd{background:#2e2c42}.zenyl{background:#252336}.zenyd{background:#1e1c2e}
-body.light .zmidl{background:#a0a0b0}body.light .zenyl{background:#d0d0e0}body.light .zenyd{background:#b8b8d0}
-.cell.can-place{cursor:pointer}
-.cell.can-place:hover,.cell.mhigh{background:rgba(16,185,129,.52)!important;box-shadow:inset 0 0 0 2px var(--success)}
-.cell.no-click{cursor:default}
-.pc-cell{width:100%;height:100%;display:flex;align-items:center;justify-content:center;line-height:1;position:relative}
-.pc-cell.rmv{cursor:pointer;transition:background .12s}.pc-cell.rmv:hover{background:rgba(239,68,68,.18)}
 
 /* [ARMIES] ======================================================= */
 #page-armies{padding:32px 20px;min-height:100vh;background:var(--bg)}

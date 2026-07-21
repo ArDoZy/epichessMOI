@@ -1,7 +1,7 @@
 {
-  "name": "metachess",
+  "name": "epic-chess",
   "version": "1.0.0",
-  "description": "Metachess - jeu d'echecs variant, HTML/CSS/JS pur, sans framework ni build step.",
+  "description": "Epic Chess - jeu d'echecs variant, HTML/CSS/JS pur, sans framework ni build step.",
   "private": true,
   "scripts": {
     "dev": "npx --yes serve -l 8080 .",

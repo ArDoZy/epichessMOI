@@ -95,7 +95,7 @@ function enterAccount(username){
   updateCab();
   document.body.classList.add('has-acc');
   document.getElementById('cab').style.display='flex';
-  army={mon:null,gen:null,pcs:[null,null,null],prims:[]};
+  army={mon:null,gen:null,extras:[]};
   editingArmyId=null;builderMode='player';
   updateBuilderBanner();updAll();
   showPage('page-builder');
@@ -129,12 +129,13 @@ function updateCab(){
   document.getElementById('cab-av').style.background='linear-gradient(135deg,'+(cols[ri]||'#7c3aed')+',#333)';
   document.getElementById('cab-name').textContent=CUR_ACC;
   // ELO masqué en mode admin
+  const eloEl=document.getElementById('cab-elo');
   if(ADMIN_MODE){
-    document.getElementById('cab-elo').textContent='⚙ MODE ADMIN';
-    document.getElementById('cab-elo').style.color='var(--gold)';
+    eloEl.textContent='⚙ MODE ADMIN';
+    eloEl.classList.add('admin-elo');
   }else{
-    document.getElementById('cab-elo').textContent=rank.emoji+' '+elo+' ELO';
-    document.getElementById('cab-elo').style.color='';
+    eloEl.textContent=rank.emoji+' '+elo+' ELO';
+    eloEl.classList.remove('admin-elo');
   }
 }
 
@@ -142,7 +143,7 @@ function switchAccount(){
   CUR_ACC=null;
   document.body.classList.remove('has-acc');
   document.getElementById('cab').style.display='none';
-  army={mon:null,gen:null,pcs:[null,null,null],prims:[]};
+  army={mon:null,gen:null,extras:[]};
   savedArmies=[];savedAiArmies=[];VV_UNLOCKED=new Set();
   renderLoginPage();showPage('page-login');
 }
