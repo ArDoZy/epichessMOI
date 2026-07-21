@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Metachess</title>
+<title>Epic Chess</title>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Cinzel+Decorative:wght@400;700;900&family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,300;1,400&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/style.css">
 </head>
@@ -13,15 +13,15 @@
 <!-- ACCOUNT BAR -->
 <div class="cab" id="cab" style="display:none">
   <div class="cab-av" id="cab-av"></div>
-  <span style="font-weight:700;color:var(--text);flex:1" id="cab-name"></span>
-  <span style="color:var(--gold);font-size:10px" id="cab-elo"></span>
-  <button class="cab-sw" onclick="switchAccount()" style="color:var(--danger);border-color:rgba(239,68,68,0.35)">⏻ Déconnexion</button>
+  <span style="flex:1" id="cab-name"></span>
+  <span id="cab-elo"></span>
+  <button class="cab-sw" onclick="switchAccount()">⏻ Déconnexion</button>
 </div>
 
 <!-- PAGE LOGIN -->
 <div id="page-login" class="page active">
   <div class="login-wrap">
-    <div class="login-logo"><h1>METACHESS</h1><p>L'échecs réinventé — Connectez-vous pour jouer</p></div>
+    <div class="login-logo"><h1>EPIC CHESS</h1><p>L'échecs réinventé — Connectez-vous pour jouer</p></div>
     <div class="login-card">
       <div class="lbl" id="accs-lbl">Comptes existants</div>
       <div id="acc-list"></div>
@@ -67,7 +67,7 @@
 <!-- PAGE 1: BUILDER -->
 <div id="page-builder" class="page">
 <div class="builder-inner">
-  <div class="builder-logo"><img src="a.png" onerror="this.outerHTML='<h1 class=\'cinzel glow-text\' style=\'font-size:clamp(22px,5vw,42px);text-align:center\'>METACHESS</h1>'"></div>
+  <div class="builder-logo"><img src="a.png" onerror="this.outerHTML='<h1 class=\'cinzel glow-text\' style=\'font-size:clamp(22px,5vw,42px);text-align:center\'>EPIC CHESS</h1>'"></div>
   <div class="builder-topbar"></div>
   <div class="builder-mode-banner" id="builder-mode-banner"></div>
   <div class="filters">
@@ -102,29 +102,8 @@
       <div class="stat-pill"><div class="sp-label">Valeur</div><div class="sp-val" id="s-val">0/24</div></div>
     </div>
   </div>
-  <div class="army-box"><div class="army-box-title">⚔ Votre armée</div><div class="comp-grid" id="comp-grid"></div></div>
+  <div class="army-box"><div class="army-box-title">⚔ Votre armée</div><div class="army-box-hint">L'ordre des pièces définit leur position en partie : la Pièce 1 flanque le Monarque et le Général, la Pièce 3 va dans les coins. Glissez-déposez les pièces pour changer leur ordre.</div><div class="comp-grid" id="comp-grid"></div></div>
   <div id="cards-container"></div>
-</div>
-</div>
-
-<!-- PAGE 2: PLACEMENT -->
-<div id="page-board" class="page">
-<div class="board-app">
-  <div class="board-hdr">
-    <div class="board-title" id="board-page-title">Placement des pièces</div>
-    <button class="btn btn-ghost" id="bd-back">← Retour</button>
-    <button class="btn btn-gold" id="bd-save" disabled>Enregistrer</button>
-  </div>
-  <div class="board-layout">
-    <div class="tray"><h3>À placer</h3><div id="tray-items"></div></div>
-    <div class="board-section">
-      <div class="board-info" id="bd-info">Sélectionnez une pièce, puis cliquez sur la rangée 1.</div>
-      <div class="board-wrap"><div class="board-outer">
-        <div class="row-labels-col" id="row-labels-col"></div>
-        <div class="board-and-cols"><div class="chessboard" id="chessboard"></div><div class="col-labels-row" id="col-labels-row"></div></div>
-      </div></div>
-    </div>
-  </div>
 </div>
 </div>
 
@@ -323,7 +302,7 @@
 
 <!-- MODALS -->
 <div class="promo-modal" id="promo-modal"><div class="promo-box"><div class="promo-title">Choisir la promotion</div><div class="promo-pieces-row" id="promo-box"></div></div></div>
-<div class="primordiale-modal" id="primordiale-modal" style="display:none"><div class="primordiale-box"><h2>♟ Choisissez votre Primordiale</h2><p>Bienvenue dans Metachess ! Choisissez votre pièce primordiale de départ. Les deux autres pourront être obtenues plus tard via des coffres.</p><div class="primordiale-choices" id="primordiale-choices"></div></div></div>
+<div class="primordiale-modal" id="primordiale-modal" style="display:none"><div class="primordiale-box"><h2>♟ Choisissez votre Primordiale</h2><p>Bienvenue dans Epic Chess ! Choisissez votre pièce primordiale de départ. Les deux autres pourront être obtenues plus tard via des coffres.</p><div class="primordiale-choices" id="primordiale-choices"></div></div></div>
 <button class="admin-badge" id="admin-badge" title="Mode Administrateur">⚙ Admin</button>
 <div class="result-modal" id="result-modal"><div class="result-box" id="result-box"><button id="result-close-btn" style="position:absolute;top:12px;right:14px;background:transparent;border:none;cursor:pointer;color:var(--muted);font-size:22px;line-height:1;font-family:inherit;transition:color .15s;z-index:1" title="Fermer et analyser la partie">✕</button><span class="result-icon" id="result-icon"></span><div class="result-title" id="result-title"></div><div class="result-elo-row"><span class="result-elo-before" id="result-elo-before"></span><span class="result-elo-arrow">→</span><span class="result-elo-after" id="result-elo-after"></span><span class="result-elo-delta" id="result-elo-delta"></span></div><div class="result-rank-row"><span class="result-rank-icon" id="result-rank-icon"></span><span class="result-rank-name" id="result-rank-name"></span></div><div class="unlock-section" id="unlock-section" style="display:none"><div class="unlock-title">🎉 Nouvelle pièce débloquée !</div><span class="unlock-piece-emoji" id="unlock-piece-emoji"></span><div class="unlock-piece-name" id="unlock-piece-name"></div><div class="unlock-piece-class" id="unlock-piece-class"></div><div class="unlock-piece-ability" id="unlock-piece-ability"></div></div><div style="display:flex;flex-direction:column;gap:8px;margin-top:20px"><button class="btn btn-gold" style="width:100%" id="result-continue">Continuer</button><div style="display:flex;gap:8px"><button class="btn btn-primary" style="flex:1" id="result-rejouer">↺ Rejouer</button><button class="btn btn-ghost" style="flex:1;border-color:var(--accent2);color:var(--accent2)" id="result-revanche">⚔ Revanche</button></div></div></div></div>
 <div class="ctx-menu" id="ctx-menu"><span class="ctx-close" onclick="closeCtx()">✕</span><div class="ctx-title" id="ctx-title"></div><div class="ctx-class" id="ctx-class-lbl"></div><div class="ctx-row"><span class="ctx-label">Valeur : </span><span id="ctx-val"></span></div><div class="ctx-row"><span class="ctx-label">Déplacement : </span><span id="ctx-mvt"></span></div><div class="ctx-row" id="ctx-ability-row" style="display:none"><span class="ctx-label">Pouvoir : </span><span id="ctx-ability"></span></div><button class="btn btn-gold ctx-power-btn" id="ctx-power-btn" style="display:none" onclick="activatePower()"></button></div>
@@ -355,29 +334,27 @@
        3. accounts.js       (comptes/localStorage, dépend de main+data)
        4. ai-level-modal.js (dépend de data-pieces+accounts)
        5. builder.js        (dépend de main+data+accounts)
-       6. board-placement.js(dépend de builder+main)
-       7. armies.js         (dépend de data+main+accounts)
-       8. combat-intro.js   (dépend de armies+ai-level-modal+main)
-       9. rules-engine.js   (moteur pur ; dépend de data-pieces seulement,
+       6. armies.js         (dépend de data+main+accounts)
+       7. combat-intro.js   (dépend de armies+ai-level-modal+main)
+       8. rules-engine.js   (moteur pur ; dépend de data-pieces seulement,
                               mais appelle des fonctions de game-render/
                               game-flow définies plus bas — OK car appelées
                               seulement lors de l'exécution d'un coup, jamais
                               au chargement du script)
-      10. game-render.js    (dépend de rules-engine+data+main)
-      11. ai-engine.js      (dépend de rules-engine+data)
-      12. game-flow.js      (dépend de tout ce qui précède)
-      13. voie.js           (dépend de data+accounts+main)
-      14. tournoi.js        (dépend de tout ce qui précède, notamment
+       9. game-render.js    (dépend de rules-engine+data+main)
+      10. ai-engine.js      (dépend de rules-engine+data)
+      11. game-flow.js      (dépend de tout ce qui précède)
+      12. voie.js           (dépend de data+accounts+main)
+      13. tournoi.js        (dépend de tout ce qui précède, notamment
                               game-flow pour buildGameBoard/updateGamePlayerBars)
-      15. settings-admin.js (dépend de main+accounts+data)
-      16. app-init.js       (dernier : lance renderLoginPage())
+      14. settings-admin.js (dépend de main+accounts+data)
+      15. app-init.js       (dernier : lance renderLoginPage())
    ================================================================ -->
 <script src="js/data-pieces.js"></script>
 <script src="js/main.js"></script>
 <script src="js/accounts.js"></script>
 <script src="js/ai-level-modal.js"></script>
 <script src="js/builder.js"></script>
-<script src="js/board-placement.js"></script>
 <script src="js/armies.js"></script>
 <script src="js/combat-intro.js"></script>
 <script src="js/rules-engine.js"></script>

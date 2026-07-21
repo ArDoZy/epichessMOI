@@ -1,6 +1,6 @@
-# Metachess — Architecture du projet
+# Epic Chess — Architecture du projet
 
-Ce projet est un jeu d'échecs variant ("Metachess") en HTML/CSS/JS pur,
+Ce projet est un jeu d'échecs variant ("Epic Chess") en HTML/CSS/JS pur,
 **sans build step, sans modules ES, sans dépendance externe** (hors polices
 Google Fonts). Il s'ouvre en double-cliquant sur `index.html`, aucun serveur
 n'est nécessaire.
@@ -22,7 +22,7 @@ se parler directement.
 ## Arborescence
 
 ```
-metachess/
+epic-chess/
 ├── index.html              # Coquille HTML légère : tout le markup des pages
 │                            # + chargement ordonné des <script src="...">
 ├── README.md                # Ce fichier
@@ -34,7 +34,6 @@ metachess/
     ├── accounts.js           # Comptes locaux (localStorage), connexion
     ├── ai-level-modal.js     # Modal de choix de l'instructeur IA
     ├── builder.js            # Page de composition d'armée
-    ├── board-placement.js    # Page de placement des pièces (pré-partie)
     ├── armies.js             # Pages "Mes armées" / "Armées IA" + génération IA
     ├── combat-intro.js       # Page d'intro combat (VS)
     ├── rules-engine.js       # Moteur de règles pur (coups, échecs, exécution)
@@ -53,7 +52,7 @@ chaque fichier suppose que les globals des fichiers précédents existent déjà
 
 ```
 data-pieces.js → main.js → accounts.js → ai-level-modal.js → builder.js
-→ board-placement.js → armies.js → combat-intro.js → rules-engine.js
+→ armies.js → combat-intro.js → rules-engine.js
 → game-render.js → ai-engine.js → game-flow.js → voie.js → tournoi.js
 → settings-admin.js → (script inline) initApp()
 ```

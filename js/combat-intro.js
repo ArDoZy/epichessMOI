@@ -43,7 +43,7 @@ const launchParticles=()=>{
 
 document.getElementById('cb-back').addEventListener('click',()=>{renderArmiesPage();showPage('page-armies');});
 document.getElementById('cb-choose-ai').addEventListener('click',()=>{
-  if(!savedAiArmies.length){builderMode='ai';updateBuilderBanner();army={mon:null,gen:null,pcs:[null,null,null],prims:[]};editingArmyId=null;updAll();showPage('page-builder');}
+  if(!savedAiArmies.length){builderMode='ai';updateBuilderBanner();army={mon:null,gen:null,extras:[]};editingArmyId=null;updAll();showPage('page-builder');}
   else{renderAiArmiesPage();showPage('page-ai-armies');}
 });
 // Armée miroir — l'IA copie exactement l'armée du joueur (mêmes pièces, mêmes positions)

@@ -9,7 +9,7 @@
 // Dépendances : data-pieces.js (PIECES, CLASS_ORDER, filters via main.js),
 // main.js (army, filters, editingArmyId, builderMode, showPieceCtxMenu,
 // showNotif, updateBuilderBanner), accounts.js (VV_UNLOCKED),
-// board-placement.js (openBoardPage), armies.js (renderArmiesPage/renderAiArmiesPage).
+// armies.js (renderArmiesPage/renderAiArmiesPage), accounts.js (saveArmies).
 //
 // Si vous ajoutez un filtre ou changez les règles de composition d'armée
 // (budget, nombre de pièces), c'est ici. Le rendu visuel des cartes suit
@@ -20,25 +20,23 @@
 // ----------------------------------------------------------------
 // HELPERS ARMÉE
 // ----------------------------------------------------------------
+// army.extras : liste ORDONNÉE des pièces choisies (max 3, max 1 Primordiale).
+// L'ordre définit la disposition en partie (voir derivePlacements) : la 1re
+// pièce est placée le plus près du Monarque/Général, la dernière dans les coins.
 const isSel=p=>{
   if(p.class==='Monarque')return army.mon?.id===p.id;
   if(p.class==='Général')return army.gen?.id===p.id;
-  if(p.class==='Primordiale')return army.prims.some(x=>x?.id===p.id);
-  return army.pcs.some(x=>x?.id===p.id);
+  return army.extras.some(x=>x?.id===p.id);
 };
-const getVal=()=>(army.mon?.value||0)+(army.gen?.value||0)+army.prims.reduce((s,p)=>s+(p?.value||0),0)+army.pcs.reduce((s,p)=>s+(p?.value||0),0);
-const totalCt=()=>(army.mon?1:0)+(army.gen?1:0)+army.pcs.filter(Boolean).length+army.prims.filter(Boolean).length;
-const armyValid=()=>army.mon&&army.gen&&(army.pcs.filter(Boolean).length+army.prims.filter(Boolean).length)===3;
-const extraPieces=()=>[...army.pcs.filter(Boolean),...army.prims.filter(Boolean)];
+const getVal=()=>(army.mon?.value||0)+(army.gen?.value||0)+army.extras.reduce((s,p)=>s+(p?.value||0),0);
+const totalCt=()=>(army.mon?1:0)+(army.gen?1:0)+army.extras.length;
+const armyValid=()=>army.mon&&army.gen&&army.extras.length===3;
+const extraPieces=()=>army.extras.slice();
 
 window.removePiece=(type,idx)=>{
   if(type==='mon')army.mon=null;
   else if(type==='gen')army.gen=null;
-  else{
-    const all=extraPieces();const p=all[idx];if(!p)return;
-    if(p.class==='Primordiale'){const i=army.prims.findIndex(x=>x?.id===p.id);if(i!==-1)army.prims.splice(i,1);}
-    else{const i=army.pcs.findIndex(x=>x?.id===p.id);if(i!==-1){army.pcs.splice(i,1);while(army.pcs.length<3)army.pcs.push(null);}}
-  }
+  else{if(idx>=0&&idx<army.extras.length)army.extras.splice(idx,1);}
   updAll();
 };
 
@@ -47,12 +45,13 @@ window.removePiece=(type,idx)=>{
 // ----------------------------------------------------------------
 const updSlots=()=>{
   const g=document.getElementById('comp-grid');const all=extraPieces();
-  const mk=(cls,lbl,p,rm)=>p
-    ?'<div class="comp-slot filled '+cls+'" data-pid="'+p.id+'"><div class="cs-label">'+lbl+'</div><span class="cs-emoji">'+p.emoji+'</span><div class="cs-name">'+p.name+'</div><div class="cs-val">'+p.value+' pts</div><div class="cs-rm" onclick="'+rm+'">'+svgX+'</div></div>'
+  // eidx = index dans army.extras (uniquement pour les 3 pièces déplaçables)
+  const mk=(cls,lbl,p,rm,eidx)=>p
+    ?'<div class="comp-slot filled '+cls+(eidx!=null?' draggable-slot':'')+'" data-pid="'+p.id+'"'+(eidx!=null?' draggable="true" data-eidx="'+eidx+'"':'')+'><div class="cs-label">'+lbl+'</div><span class="cs-emoji">'+p.emoji+'</span><div class="cs-name">'+p.name+'</div><div class="cs-val">'+p.value+' pts</div><div class="cs-rm" onclick="'+rm+'">'+svgX+'</div></div>'
     :'<div class="comp-slot"><div class="cs-label">'+lbl+'</div><div style="font-size:28px;opacity:.15;margin-top:8px">?</div></div>';
   const ic=['Pièce 1','Pièce 2','Pièce 3'];
   let h=mk('Monarque','Monarque',army.mon,"removePiece('mon')")+mk('Général','Général',army.gen,"removePiece('gen')");
-  for(let i=0;i<3;i++)h+=mk(all[i]?.class||'',ic[i],all[i],"removePiece('pc',"+i+")");
+  for(let i=0;i<3;i++)h+=mk(all[i]?.class||'',ic[i],all[i],"removePiece('pc',"+i+")",all[i]?i:null);
   g.innerHTML=h;
   g.querySelectorAll('.comp-slot.filled[data-pid]').forEach(el=>{
     el.addEventListener('contextmenu',e=>{
@@ -60,7 +59,27 @@ const updSlots=()=>{
       showPieceCtxMenu(e,p);
     });
   });
+  wireSlotDragSwap(g);
 };
+
+// Glisser-déposer entre les 3 slots de pièces pour réordonner (= changer la
+// disposition en partie). Le Monarque et le Général ne sont pas déplaçables.
+function wireSlotDragSwap(g){
+  g.querySelectorAll('.comp-slot.draggable-slot').forEach(el=>{
+    el.addEventListener('dragstart',e=>{e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',el.dataset.eidx);el.classList.add('slot-dragging');});
+    el.addEventListener('dragend',()=>{el.classList.remove('slot-dragging');g.querySelectorAll('.slot-over').forEach(x=>x.classList.remove('slot-over'));});
+    el.addEventListener('dragover',e=>{e.preventDefault();e.dataTransfer.dropEffect='move';el.classList.add('slot-over');});
+    el.addEventListener('dragleave',()=>el.classList.remove('slot-over'));
+    el.addEventListener('drop',e=>{
+      e.preventDefault();el.classList.remove('slot-over');
+      const from=parseInt(e.dataTransfer.getData('text/plain'),10);
+      const to=parseInt(el.dataset.eidx,10);
+      if(isNaN(from)||isNaN(to)||from===to)return;
+      const tmp=army.extras[from];army.extras[from]=army.extras[to];army.extras[to]=tmp;
+      updAll();
+    });
+  });
+}
 const updStats=()=>{
   document.getElementById('s-count').textContent=totalCt()+'/5';
   document.getElementById('s-val').textContent=getVal()+'/24';
@@ -86,11 +105,11 @@ const toggle=p=>{
     if(sel)army.gen=null;
     else{if(army.gen){showNotif('Vous avez déjà un général.');return;}if(getVal()+p.value>24){showNotif('Dépasse 24 points.');return;}army.gen=p;}
   }else if(p.class==='Primordiale'){
-    if(sel){const i=army.prims.findIndex(x=>x?.id===p.id);if(i!==-1)army.prims.splice(i,1);}
-    else{if(army.prims.filter(Boolean).length>=1){showNotif('1 primordiale maximum.');return;}if(getVal()+p.value>24){showNotif('Dépasse 24 points.');return;}if(extraPieces().length>=3){showNotif('3 pièces max.');return;}army.prims.push(p);}
+    if(sel){const i=army.extras.findIndex(x=>x?.id===p.id);if(i!==-1)army.extras.splice(i,1);}
+    else{if(army.extras.some(x=>x.class==='Primordiale')){showNotif('1 primordiale maximum.');return;}if(getVal()+p.value>24){showNotif('Dépasse 24 points.');return;}if(army.extras.length>=3){showNotif('3 pièces max.');return;}army.extras.push(p);}
   }else{
-    if(sel){const i=army.pcs.findIndex(x=>x?.id===p.id);if(i!==-1){army.pcs.splice(i,1);while(army.pcs.length<3)army.pcs.push(null);}}
-    else{if(extraPieces().length>=3){showNotif('3 pièces max.');return;}if(getVal()+p.value>24){showNotif('Dépasse 24 points.');return;}const idx=army.pcs.findIndex(x=>!x);if(idx!==-1)army.pcs[idx]=p;}
+    if(sel){const i=army.extras.findIndex(x=>x?.id===p.id);if(i!==-1)army.extras.splice(i,1);}
+    else{if(army.extras.length>=3){showNotif('3 pièces max.');return;}if(getVal()+p.value>24){showNotif('Dépasse 24 points.');return;}army.extras.push(p);}
   }
   updAll();
 };
@@ -135,8 +154,41 @@ const renderCards=()=>{
 function updateBuilderBanner(){
   const banner=document.getElementById('builder-mode-banner');
   const armyTitle=document.querySelector('.army-box-title');
-  if(builderMode==='ai'){banner.textContent='⚙ Mode IA — Vous composez une armée pour l\'IA adversaire';banner.classList.add('show');if(armyTitle)armyTitle.textContent='⚙ Armée de l\'IA';}
+  if(builderMode==='ai'){banner.textContent='⚙ Mode Instructeur — Vous composez une armée pour l\'Instructeur adverse';banner.classList.add('show');if(armyTitle)armyTitle.textContent='⚙ Armée de l\'Instructeur';}
   else{banner.classList.remove('show');if(armyTitle)armyTitle.textContent='⚔ Votre armée';}
+}
+
+// ----------------------------------------------------------------
+// PLACEMENT DÉRIVÉ DE L'ORDRE + ENREGISTREMENT DE L'ARMÉE
+// ----------------------------------------------------------------
+// La disposition en partie découle de l'ORDRE des 3 pièces choisies :
+// la Pièce 1 flanque directement le Monarque/Général (colonnes 2 & 5),
+// la Pièce 2 suit (colonnes 1 & 6), la Pièce 3 occupe les coins (0 & 7).
+// buildGameBoard() place à `col` puis miroir en 7-col, d'où une seule colonne
+// « gauche » suffit par pièce.
+const ORDER_COLS=[2,1,0];
+function derivePlacements(orderedPieces){
+  const placements={};
+  orderedPieces.forEach((p,i)=>{placements[p.id]=ORDER_COLS[i]!==undefined?ORDER_COLS[i]:i;});
+  return placements;
+}
+function saveArmyFromBuilder(){
+  if(!armyValid())return;
+  const ordered=extraPieces();
+  const placements=derivePlacements(ordered);
+  const isAi=builderMode==='ai';
+  const targetList=isAi?savedAiArmies:savedArmies;
+  const ad={
+    id:editingArmyId||Date.now().toString(),
+    createdAt:editingArmyId?(targetList.find(a=>a.id===editingArmyId)?.createdAt||Date.now()):Date.now(),
+    updatedAt:Date.now(),mon:{id:army.mon.id},gen:{id:army.gen.id},
+    extras:ordered.map(p=>p.id),placements,totalValue:getVal()
+  };
+  if(editingArmyId){const idx=targetList.findIndex(a=>a.id===editingArmyId);if(idx!==-1)targetList[idx]=ad;else targetList.push(ad);}
+  else targetList.push(ad);
+  if(isAi){savedAiArmies=targetList;saveAiArmies();}else{savedArmies=targetList;saveArmies();}
+  editingArmyId=null;
+  if(isAi){renderAiArmiesPage();showPage('page-ai-armies');}else{renderArmiesPage();showPage('page-armies');}
 }
 
 // ----------------------------------------------------------------
@@ -144,6 +196,6 @@ function updateBuilderBanner(){
 // ----------------------------------------------------------------
 document.querySelectorAll('.sort-btn').forEach(btn=>btn.addEventListener('click',()=>{document.querySelectorAll('.sort-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');filters.order=btn.dataset.order;renderCards();}));
 document.querySelectorAll('.clf-btn').forEach(btn=>btn.addEventListener('click',()=>{const c=btn.dataset.class;if(filters.classes.has(c)){filters.classes.delete(c);btn.classList.remove('on');}else{filters.classes.add(c);btn.classList.add('on');}renderCards();}));
-document.getElementById('b-reset').addEventListener('click',()=>{army={mon:null,gen:null,pcs:[null,null,null],prims:[]};editingArmyId=null;updAll();});
-document.getElementById('b-validate').addEventListener('click',()=>{if(armyValid())openBoardPage();});
+document.getElementById('b-reset').addEventListener('click',()=>{army={mon:null,gen:null,extras:[]};editingArmyId=null;updAll();});
+document.getElementById('b-validate').addEventListener('click',()=>{if(armyValid())saveArmyFromBuilder();});
 document.getElementById('b-armies').addEventListener('click',()=>{if(builderMode==='ai'){renderAiArmiesPage();showPage('page-ai-armies');}else{renderArmiesPage();showPage('page-armies');}});

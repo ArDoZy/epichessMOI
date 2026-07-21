@@ -172,7 +172,7 @@ document.getElementById('result-close-btn').addEventListener('click',()=>{
 
 document.getElementById('result-continue').addEventListener('click',()=>{
   document.getElementById('result-modal').classList.remove('active');
-  army={mon:null,gen:null,pcs:[null,null,null],prims:[]};
+  army={mon:null,gen:null,extras:[]};
   editingArmyId=null;currentArmyData=null;aiArmyData=null;
   updAll();
   renderArmiesPage();showPage('page-armies');
@@ -250,7 +250,7 @@ document.getElementById('game-quit').addEventListener('click',()=>{
   if(GS&&GS.gameOver){
     if(_aiWorker&&_aiWorkerBusy){_aiWorker.terminate();_aiWorker=null;_aiWorkerBusy=false;}
     document.getElementById('promo-modal').classList.remove('active');
-    army={mon:null,gen:null,pcs:[null,null,null],prims:[]};
+    army={mon:null,gen:null,extras:[]};
     editingArmyId=null;currentArmyData=null;aiArmyData=null;
     updAll();renderArmiesPage();showPage('page-armies');
     return;

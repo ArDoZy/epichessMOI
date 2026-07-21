@@ -15,18 +15,16 @@
 
 // ----------------------------------------------------------------
 // ÉTAT GLOBAL PARTAGÉ (lu/écrit par builder.js, armies.js, combat-intro.js,
-// board-placement.js, game-flow.js, voie.js, tournoi.js, settings-admin.js)
+// game-flow.js, voie.js, tournoi.js, settings-admin.js)
 // ----------------------------------------------------------------
-let army={mon:null,gen:null,pcs:[null,null,null],prims:[]};
+// army.extras : liste ORDONNÉE des 3 pièces choisies (l'ordre définit la
+// disposition en partie — voir builder.js::derivePlacements).
+let army={mon:null,gen:null,extras:[]};
 let filters={order:'asc',classes:new Set(['Monarque','Général','Primordiale','Brute','Sorcier'])};
 let savedArmies=[];
 let savedAiArmies=[];
 let editingArmyId=null;
 let builderMode='player';
-let boardSaveTarget='player';
-let boardGrid=[];
-let selectedTray=null;
-let placedMap={};
 let currentArmyData=null;
 let aiArmyData=null;
 let darkMode=true;
@@ -34,8 +32,6 @@ let VV_UNLOCKED=new Set();
 // ADMIN — sauvegarde l'état pré-admin pour une restauration correcte
 let ADMIN_MODE=false;
 let _preAdminUnlocked=null;
-const MC=4,GC=3,PR=7,PAWR=6;
-const mirrorCol=c=>7-c;
 
 // ----------------------------------------------------------------
 // UTILITAIRES PARTAGÉS
@@ -63,7 +59,7 @@ function showPage(id){
 
 // ----------------------------------------------------------------
 // MENU CONTEXTUEL — fonction factorisée, utilisée par builder.js,
-// board-placement.js et game-render.js (clic droit sur une pièce).
+// et game-render.js (clic droit sur une pièce).
 // ctxActivePower est déclaré dans game-render.js (section pouvoirs en partie) ;
 // cette fonction n'est appelée qu'au clic droit, donc après le chargement
 // complet des scripts.

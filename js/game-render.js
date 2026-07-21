@@ -357,3 +357,6 @@ function updateStatus(gs){
     bar.className='status-bar '+(t===aiCol?'thinking':'ok');
   }
 }
+
+// Rebuild des repères du plateau au redimensionnement de la fenêtre.
+window.addEventListener("resize",()=>{if(document.getElementById("page-game").classList.contains("active")&&typeof GS!=="undefined")buildGameLabels(GS);});
