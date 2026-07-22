@@ -2,19 +2,19 @@
 // BUILDER.JS — Page de composition d'armée (#page-builder)
 // ================================================================
 // Contient : la logique de sélection des pièces (Monarque/Général/3 pièces
-// libres, budget 24 points), les filtres (tri, classes), le rendu des cartes
-// de pièces et des slots de composition, et les boutons de la topbar
-// (réinitialiser / valider / mes armées / voie / tournoi).
+// libres, budget 24 points), le rendu des cartes de pièces (triées par
+// classe puis valeur croissante, sans tri/filtre manuel) et des slots de
+// composition, l'armée aléatoire, et les boutons de la topbar
+// (réinitialiser / aléatoire / valider / mes armées / voie / tournoi).
 //
-// Dépendances : data-pieces.js (PIECES, CLASS_ORDER, filters via main.js),
-// main.js (army, filters, editingArmyId, builderMode, showPieceCtxMenu,
+// Dépendances : data-pieces.js (PIECES, CLASS_ORDER),
+// main.js (army, editingArmyId, builderMode, showPieceCtxMenu,
 // showNotif, updateBuilderBanner), accounts.js (VV_UNLOCKED),
 // armies.js (renderArmiesPage/renderAiArmiesPage), accounts.js (saveArmies).
 //
-// Si vous ajoutez un filtre ou changez les règles de composition d'armée
-// (budget, nombre de pièces), c'est ici. Le rendu visuel des cartes suit
-// les classes CSS .piece-card / .comp-slot définies dans css/style.css
-// section [BUILDER].
+// Si vous changez les règles de composition d'armée (budget, nombre de
+// pièces), c'est ici. Le rendu visuel des cartes suit les classes CSS
+// .piece-card / .comp-slot définies dans css/style.css section [BUILDER].
 // ================================================================
 
 // ----------------------------------------------------------------
@@ -115,9 +115,11 @@ const toggle=p=>{
 };
 
 // ----------------------------------------------------------------
-// TRI / FILTRAGE / RENDU DES CARTES
+// RENDU DES CARTES — toujours triées par classe puis par valeur croissante
+// (plus de tri/filtre manuel : voir le bandeau de raccourcis par catégorie,
+// géré plus bas par wireClassJumpRail()).
 // ----------------------------------------------------------------
-const getSorted=()=>[...PIECES].filter(p=>filters.classes.has(p.class)).sort((a,b)=>{const d=CLASS_ORDER[a.class]-CLASS_ORDER[b.class];return d||(filters.order==='asc'?a.value-b.value:b.value-a.value);});
+const getSorted=()=>[...PIECES].sort((a,b)=>{const d=CLASS_ORDER[a.class]-CLASS_ORDER[b.class];return d||a.value-b.value;});
 
 const renderCards=()=>{
   const ps=getSorted();const byClass={};
@@ -125,16 +127,16 @@ const renderCards=()=>{
   let html='';
   ['Monarque','Général','Primordiale','Brute','Sorcier'].forEach(cls=>{
     if(!byClass[cls]?.length)return;
-    html+='<div class="class-sec"><div class="class-hdr '+cls+'"><span class="class-hdr-name '+cls+'">'+cls+'</span><span class="class-hdr-ct">'+byClass[cls].length+' pièce'+(byClass[cls].length>1?'s':'')+'</span></div><div class="cards-grid">';
+    html+='<div class="class-sec" id="cls-sec-'+cls+'"><div class="class-hdr '+cls+'"><span class="class-hdr-name '+cls+'">'+cls+'</span></div><div class="cards-grid">';
     byClass[cls].forEach(p=>{
       const unlocked=VV_UNLOCKED.has(p.id);
       if(!unlocked){
         const m=UNLOCK_MILESTONES.find(u=>u.pieceId===p.id);
         const isCoffre=m?.coffre;
         const rankLabel=isCoffre?'🗝 Coffre':(m&&m.eloRequired<999999?vvGetRank(m.eloRequired).name+' ('+m.eloRequired+' ELO)':'');
-        html+='<div class="piece-card '+p.class+' locked" data-id="'+p.id+'"><span class="pc-emoji">'+p.emoji+'</span><div class="pc-head"><div class="pc-name">'+p.name+'</div><div class="pc-val '+p.class+'">'+p.value+'</div></div><div class="pc-class '+p.class+'">'+p.class+'</div>'+(p.movement?'<div class="pc-mvt">🚶 '+p.movement+'</div>':'')+'<div class="locked-overlay"><span class="lock-icon">🔒</span><span class="lock-rank">'+rankLabel+'</span></div></div>';
+        html+='<div class="piece-card '+p.class+' locked" data-id="'+p.id+'"><span class="pc-emoji">'+p.emoji+'</span><div class="pc-head"><div class="pc-name">'+p.name+'</div><div class="pc-val '+p.class+'">'+p.value+'</div></div>'+(p.movement?'<div class="pc-mvt">🚶 '+p.movement+'</div>':'')+'<div class="locked-overlay"><span class="lock-icon">🔒</span><span class="lock-rank">'+rankLabel+'</span></div></div>';
       }else{
-        html+='<div class="piece-card '+p.class+(isSel(p)?' sel':'')+'" data-id="'+p.id+'"><span class="pc-emoji">'+p.emoji+'</span><div class="pc-head"><div class="pc-name">'+p.name+'</div><div class="pc-val '+p.class+'">'+p.value+'</div></div><div class="pc-class '+p.class+'">'+p.class+'</div>'+(p.movement?'<div class="pc-mvt">🚶 '+p.movement+'</div>':'')+(p.ability?'<div class="pc-ability">✨ '+p.ability+'</div>':'')+'</div>';
+        html+='<div class="piece-card '+p.class+(isSel(p)?' sel':'')+'" data-id="'+p.id+'"><span class="pc-emoji">'+p.emoji+'</span><div class="pc-head"><div class="pc-name">'+p.name+'</div><div class="pc-val '+p.class+'">'+p.value+'</div></div>'+(p.movement?'<div class="pc-mvt">🚶 '+p.movement+'</div>':'')+(p.ability?'<div class="pc-ability">✨ '+p.ability+'</div>':'')+'</div>';
       }
     });
     html+='</div></div>';
@@ -149,7 +151,19 @@ const renderCards=()=>{
     const p=PIECES.find(x=>x.id===el.dataset.id);
     if(p)el.addEventListener('contextmenu',e=>showPieceCtxMenu(e,p));
   });
+  equalizeCardHeights();
 };
+
+// Uniformise la hauteur de toutes les cartes de pièces sur celle de la plus
+// grande (le contenu — mouvement/pouvoir — varie beaucoup en longueur).
+function equalizeCardHeights(){
+  const cards=document.querySelectorAll('.piece-card');
+  if(!cards.length)return;
+  cards.forEach(el=>{el.style.height='auto';});
+  let max=0;
+  cards.forEach(el=>{if(el.offsetHeight>max)max=el.offsetHeight;});
+  cards.forEach(el=>{el.style.height=max+'px';});
+}
 
 function updateBuilderBanner(){
   const banner=document.getElementById('builder-mode-banner');
@@ -192,10 +206,50 @@ function saveArmyFromBuilder(){
 }
 
 // ----------------------------------------------------------------
+// ARMÉE ALÉATOIRE — 1 monarque, 1 général, 3 pièces, tirés parmi les
+// pièces débloquées par le joueur (budget 24 pts, 1 primordiale max).
+// ----------------------------------------------------------------
+function randomizeArmy(){
+  const unlocked=VV_UNLOCKED;
+  const monarques=PIECES.filter(p=>p.class==='Monarque'&&unlocked.has(p.id));
+  const generaux=PIECES.filter(p=>p.class==='Général'&&unlocked.has(p.id));
+  const others=PIECES.filter(p=>p.class!=='Monarque'&&p.class!=='Général'&&unlocked.has(p.id));
+  if(!monarques.length||!generaux.length||others.length<3){showNotif('Débloquez plus de pièces pour une armée aléatoire complète.','err');return;}
+  const rnd=arr=>arr[Math.floor(Math.random()*arr.length)];
+  let tries=0;
+  while(tries++<2000){
+    const mon=rnd(monarques);const gen=rnd(generaux);
+    if(mon.value+gen.value>22)continue;
+    const budget=24-mon.value-gen.value;
+    const pool=[...others].sort(()=>Math.random()-0.5);
+    let chosen=[];let val=0;let primCount=0;const usedIds=new Set();
+    for(const p of pool){
+      if(chosen.length>=3)break;
+      if(usedIds.has(p.id))continue;
+      if(p.class==='Primordiale'&&primCount>=1)continue;
+      if(val+p.value>budget)continue;
+      chosen.push(p);val+=p.value;usedIds.add(p.id);
+      if(p.class==='Primordiale')primCount++;
+    }
+    if(chosen.length===3){
+      army.mon=mon;army.gen=gen;army.extras=chosen;editingArmyId=null;updAll();return;
+    }
+  }
+  showNotif('Impossible de générer une armée aléatoire avec vos pièces actuelles.','err');
+}
+
+// ----------------------------------------------------------------
 // LISTENERS UI
 // ----------------------------------------------------------------
-document.querySelectorAll('.sort-btn').forEach(btn=>btn.addEventListener('click',()=>{document.querySelectorAll('.sort-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');filters.order=btn.dataset.order;renderCards();}));
-document.querySelectorAll('.clf-btn').forEach(btn=>btn.addEventListener('click',()=>{const c=btn.dataset.class;if(filters.classes.has(c)){filters.classes.delete(c);btn.classList.remove('on');}else{filters.classes.add(c);btn.classList.add('on');}renderCards();}));
 document.getElementById('b-reset').addEventListener('click',()=>{army={mon:null,gen:null,extras:[]};editingArmyId=null;updAll();});
+document.getElementById('b-random').addEventListener('click',randomizeArmy);
 document.getElementById('b-validate').addEventListener('click',()=>{if(armyValid())saveArmyFromBuilder();});
 document.getElementById('b-armies').addEventListener('click',()=>{if(builderMode==='ai'){renderAiArmiesPage();showPage('page-ai-armies');}else{renderArmiesPage();showPage('page-armies');}});
+// Bandeau de raccourcis à droite : clic sur une catégorie → défilement vers
+// sa section (les sections n'existent que si la classe a au moins 1 pièce,
+// donc un clic sans effet est simplement ignoré).
+document.querySelectorAll('.cj-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.getElementById('cls-sec-'+btn.dataset.class)?.scrollIntoView({behavior:'smooth',block:'start'});
+  });
+});

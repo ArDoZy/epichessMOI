@@ -117,8 +117,7 @@ body.has-acc .game-wrap{height:calc(100vh - 50px);margin-top:50px}
 .ai-lvl-box::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--accent),var(--gold),var(--gold2),var(--accent2),var(--accent));background-size:200% 100%;animation:shimmerBar 7s linear infinite;box-shadow:0 0 10px rgba(201,162,39,.4)}
 .ai-lvl-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin:14px 0}
 .ai-lvl-card{background:var(--bg);border:2px solid var(--border);border-radius:12px;padding:14px 10px;text-align:center;cursor:pointer;transition:all .2s}
-.ai-lvl-card:hover:not(.lvl-locked){transform:translateY(-3px);border-color:var(--accent2)}
-.ai-lvl-card.lvl-sel{border-color:var(--gold);background:rgba(201,168,76,.07)}
+.ai-lvl-card:hover:not(.lvl-locked){transform:translateY(-3px);border-color:var(--gold);box-shadow:0 0 14px rgba(201,162,39,.25)}
 .ai-lvl-card.lvl-locked{opacity:.35;cursor:not-allowed;filter:grayscale(.6)}
 .lvl-emoji{font-size:30px;margin-bottom:6px;display:block}
 .lvl-name{font-family:'Cinzel',serif;font-size:11px;font-weight:700;margin-bottom:3px}
@@ -127,27 +126,25 @@ body.has-acc .game-wrap{height:calc(100vh - 50px);margin-top:50px}
 .lvl-lock{font-size:9px;color:var(--danger);font-family:'Cinzel',serif}
 
 /* [BUILDER] ======================================================= */
-#page-builder{padding:32px 20px}
+/* padding-bottom généreux : sans lui, la dernière section (Sorcier) ne peut
+   pas atteindre le haut du viewport au clic sur le bandeau de raccourcis,
+   faute de contenu en dessous pour permettre le défilement. */
+#page-builder{padding:32px 20px 90vh}
 .builder-inner{max-width:1400px;margin:0 auto}
 .builder-logo{text-align:center;margin-bottom:32px}
 .builder-logo img{max-width:340px;width:100%}
 .builder-topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:10px;flex-wrap:wrap}
 .theme-btn{padding:7px 14px;border:1px solid var(--border2);border-radius:8px;background:var(--surface);color:var(--text);cursor:pointer;font-size:12px;font-family:'Cinzel',serif;transition:all .2s;display:flex;align-items:center;gap:6px}
 .theme-btn:hover{border-color:var(--gold);color:var(--gold)}
-.filters{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin-bottom:18px;display:flex;gap:18px;flex-wrap:wrap;transition:background .3s}
-.filter-group{display:flex;flex-direction:column;gap:7px;flex:1;min-width:160px}
-.filter-label{font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;font-family:'Cinzel',serif}
-.sort-toggle{display:flex;gap:5px;background:var(--bg);border-radius:7px;padding:3px;border:1px solid var(--border)}
-.sort-btn{flex:1;padding:7px 14px;border:none;border-radius:5px;background:transparent;color:var(--muted);cursor:pointer;font-size:11px;font-weight:600;font-family:'Cinzel',serif;transition:all .2s}
-.sort-btn.active{background:var(--accent);color:#fff}
-.class-filters{display:flex;gap:6px;flex-wrap:wrap}
-.clf-btn{padding:5px 11px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);font-size:11px;font-weight:600;cursor:pointer;transition:all .2s;color:var(--muted);font-family:'Cinzel',serif}
-.clf-btn:hover{color:var(--text);border-color:var(--border2)}
-.clf-btn.on{color:var(--text);border-color:var(--accent2);background:rgba(122,31,43,.1)}
-.clf-btn[data-class="Général"].on{border-color:var(--general);background:var(--general-bg);color:var(--general)}
-.clf-btn[data-class="Primordiale"].on{border-color:var(--primordiale);background:var(--primordiale-bg);color:var(--primordiale)}
-.clf-btn[data-class="Brute"].on{border-color:var(--brute);background:var(--brute-bg);color:var(--brute)}
-.clf-btn[data-class="Sorcier"].on{border-color:var(--sorcier);background:var(--sorcier-bg);color:var(--sorcier)}
+/* Bandeau de raccourcis par catégorie — fixe sur le bord droit, clic =
+   défilement vers la section de la classe correspondante. */
+.class-jump-rail{position:fixed;top:50%;right:0;transform:translateY(-50%);z-index:600;display:flex;flex-direction:column;gap:4px}
+.cj-btn{writing-mode:vertical-rl;text-orientation:mixed;padding:12px 6px;border:1px solid var(--border2);border-right:none;border-radius:8px 0 0 8px;background:var(--surface2);color:var(--muted);cursor:pointer;font-size:10px;font-weight:700;font-family:'Cinzel',serif;letter-spacing:1px;transition:all .2s}
+.cj-btn:hover{color:var(--gold);border-color:var(--gold);background:var(--surface);padding-right:10px}
+.cj-btn[data-class="Général"]:hover{color:var(--general);border-color:var(--general)}
+.cj-btn[data-class="Primordiale"]:hover{color:var(--primordiale);border-color:var(--primordiale)}
+.cj-btn[data-class="Brute"]:hover{color:var(--brute);border-color:var(--brute)}
+.cj-btn[data-class="Sorcier"]:hover{color:var(--sorcier);border-color:var(--sorcier)}
 .topbar{display:flex;align-items:center;gap:12px;margin-bottom:18px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 18px;flex-wrap:wrap;transition:background .3s}
 .topbar-btns{display:flex;gap:8px;flex-wrap:wrap}
 .topbar-stats{display:flex;gap:10px;margin-left:auto}
@@ -189,7 +186,6 @@ body.has-acc .game-wrap{height:calc(100vh - 50px);margin-top:50px}
 .class-hdr.Sorcier{background:var(--sorcier-bg);border-left:3px solid var(--sorcier)}
 .class-hdr-name{font-family:'Cinzel',serif;font-size:16px;font-weight:700}
 .class-hdr-name.Monarque{color:var(--monarque)}.class-hdr-name.Général{color:var(--general)}.class-hdr-name.Primordiale{color:var(--primordiale)}.class-hdr-name.Brute{color:var(--brute)}.class-hdr-name.Sorcier{color:var(--sorcier)}
-.class-hdr-ct{font-size:11px;color:var(--muted)}
 .cards-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(var(--card-min),1fr));gap:16px}
 .piece-card{border:1px solid var(--border);border-radius:16px;padding:22px;cursor:pointer;transition:all .22s;position:relative;overflow:hidden;background:var(--surface)}
 .piece-card::after{content:'';position:absolute;top:0;left:0;right:0;height:3px;transform:scaleX(0);transition:transform .3s cubic-bezier(.34,1.56,.64,1);transform-origin:left}
@@ -214,18 +210,19 @@ body.has-acc .game-wrap{height:calc(100vh - 50px);margin-top:50px}
 .pc-val.Brute{background:var(--brute-bg);color:var(--brute);border-color:rgba(239,68,68,.3)}
 
 .pc-emoji{font-size:36px;margin-bottom:10px;display:block;line-height:1}
+/* .pc-class : utilisé par voie.js (jalons) et game-flow.js (déblocage) —
+   pas seulement par les cartes de pièces du builder (qui n'affichent plus
+   ce badge, jugé redondant avec l'en-tête de section). */
 .pc-class{font-size:9px;text-transform:uppercase;font-family:'Cinzel',serif;letter-spacing:.8px;margin-bottom:10px;padding:3px 8px;border-radius:5px;display:inline-block;font-weight:700}
 .pc-class.Monarque{background:var(--monarque-bg);color:var(--monarque);border:1px solid rgba(59,130,246,.25)}
 .pc-class.Général{background:var(--general-bg);color:var(--general);border:1px solid rgba(249,115,22,.25)}
 .pc-class.Primordiale{background:var(--primordiale-bg);color:var(--primordiale);border:1px solid rgba(16,185,129,.25)}
-
 .pc-class.Sorcier{background:var(--sorcier-bg);color:var(--sorcier);border:1px solid rgba(236,72,153,.25)}
 .pc-class.Brute{background:var(--brute-bg);color:var(--brute);border:1px solid rgba(239,68,68,.25)}
-
 .pc-mvt{font-size:11px;margin-bottom:8px;display:flex;align-items:center;gap:5px;color:var(--muted);background:rgba(255,255,255,.04);padding:6px 10px;border-radius:6px;font-family:'Cinzel',serif}
 .pc-ability{font-size:12px;color:var(--text);line-height:1.6;padding:10px;background:var(--bg);border-radius:8px;border-left:2px solid var(--accent);margin-top:6px}
 .piece-card.locked{cursor:not-allowed;position:relative;opacity:.5;filter:grayscale(.85) brightness(.5);background:rgba(0,0,0,.35);border-color:rgba(0,0,0,.4)}
-.piece-card.locked .pc-emoji,.piece-card.locked .pc-name,.piece-card.locked .pc-ability,.piece-card.locked .pc-mvt,.piece-card.locked .pc-val,.piece-card.locked .pc-class{filter:blur(7px);pointer-events:none;user-select:none}
+.piece-card.locked .pc-emoji,.piece-card.locked .pc-name,.piece-card.locked .pc-ability,.piece-card.locked .pc-mvt,.piece-card.locked .pc-val{filter:blur(7px);pointer-events:none;user-select:none}
 .locked-overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;z-index:3;border-radius:16px;background:rgba(0,0,0,.55)}
 .locked-overlay .lock-icon{font-size:30px;filter:drop-shadow(0 0 10px rgba(0,0,0,.9));opacity:.9}
 .locked-overlay .lock-rank{font-family:'Cinzel',serif;font-size:10px;font-weight:700;color:var(--gold);background:rgba(0,0,0,.75);border-radius:6px;padding:3px 8px;letter-spacing:.5px}
@@ -236,8 +233,11 @@ body.has-acc .game-wrap{height:calc(100vh - 50px);margin-top:50px}
 /* [SETTINGS] ======================================================= */
 #settings-btn{position:fixed;top:8px;right:12px;z-index:8000;width:34px;height:34px;border-radius:8px;background:var(--surface);border:1px solid var(--border2);color:var(--text);cursor:pointer;font-size:17px;display:flex;align-items:center;justify-content:center;transition:all .2s}
 #settings-btn:hover{border-color:var(--gold);color:var(--gold)}
-#settings-panel{position:fixed;top:50px;right:12px;z-index:7999;background:var(--surface);border:1px solid var(--border2);border-radius:12px;padding:14px 16px;min-width:220px;box-shadow:0 8px 32px rgba(0,0,0,.5);display:none;animation:nIn .2s ease}
+#settings-panel{position:fixed;top:50px;right:12px;z-index:7999;background:var(--surface);border:1px solid var(--border2);border-radius:12px;padding:14px 16px;min-width:220px;box-shadow:0 8px 32px rgba(0,0,0,.5);display:none;animation:settingsPanelIn .18s ease}
 #settings-panel.open{display:block}
+/* Panneau ancré à droite : pas de translateX (nIn est fait pour un élément
+   centré horizontalement, il décalait ce panneau vers la gauche). */
+@keyframes settingsPanelIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
 .sp-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;font-family:'Cinzel',serif;font-size:11px;color:var(--text)}
 .sp-row:last-child{margin-bottom:0}
 .sp-label{font-size:11px;font-family:'Cinzel',serif;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;white-space:nowrap}
