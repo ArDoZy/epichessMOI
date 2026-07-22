@@ -54,7 +54,30 @@ function showPage(id){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.getElementById(id).classList.add('active');
   window.scrollTo(0,0);
+  const rail=document.getElementById('class-jump-rail');
+  if(rail)rail.classList.toggle('show',id==='page-builder');
 }
+
+// ----------------------------------------------------------------
+// CONFIRM MODAL — remplace window.confirm() par une boîte de dialogue
+// intégrée au thème. Un seul jeu de listeners (posés une fois) réutilisé à
+// chaque appel via une fermeture (onYes courante).
+// ----------------------------------------------------------------
+let _confirmOnYes=null;
+function showConfirmModal(msg,onYes){
+  _confirmOnYes=onYes;
+  document.getElementById('confirm-msg').textContent=msg;
+  document.getElementById('confirm-modal').classList.add('show');
+}
+document.getElementById('confirm-ok').addEventListener('click',()=>{
+  document.getElementById('confirm-modal').classList.remove('show');
+  const fn=_confirmOnYes;_confirmOnYes=null;
+  if(fn)fn();
+});
+document.getElementById('confirm-cancel').addEventListener('click',()=>{
+  document.getElementById('confirm-modal').classList.remove('show');
+  _confirmOnYes=null;
+});
 
 // ----------------------------------------------------------------
 // MENU CONTEXTUEL — fonction factorisée, utilisée par builder.js,

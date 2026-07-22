@@ -125,22 +125,37 @@ body.has-acc .game-wrap{height:calc(100vh - 50px);margin-top:50px}
 .lvl-ok{font-size:9px;color:var(--success);font-family:'Cinzel',serif}
 .lvl-lock{font-size:9px;color:var(--danger);font-family:'Cinzel',serif}
 
+/* [CONFIRM MODAL] — remplace window.confirm() ================== */
+.confirm-modal{position:fixed;inset:0;background:rgba(0,0,0,.88);display:flex;align-items:center;justify-content:center;z-index:8500;visibility:hidden;opacity:0;transition:opacity .15s ease}
+.confirm-modal.show{visibility:visible;opacity:1}
+.confirm-box{background:var(--surface2);border:1px solid var(--border2);border-radius:16px;padding:26px 28px;max-width:380px;width:90%;position:relative;overflow:hidden;text-align:center}
+.confirm-box::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--accent),var(--gold),var(--gold2),var(--accent2),var(--accent));background-size:200% 100%;animation:shimmerBar 7s linear infinite;box-shadow:0 0 10px rgba(201,162,39,.4)}
+.confirm-msg{font-family:'Cinzel',serif;font-size:15px;margin-bottom:20px;line-height:1.5}
+
 /* [BUILDER] ======================================================= */
-/* padding-bottom généreux : sans lui, la dernière section (Sorcier) ne peut
-   pas atteindre le haut du viewport au clic sur le bandeau de raccourcis,
-   faute de contenu en dessous pour permettre le défilement. */
-#page-builder{padding:32px 20px 90vh}
+/* Pas de padding-bottom permanent : la page s'arrête dès qu'il n'y a plus
+   d'éléments. Pour que la dernière section (Sorcier) puisse quand même
+   atteindre le haut du viewport au clic sur le bandeau de raccourcis, une
+   marge temporaire est ajoutée/retirée en JS le temps du défilement (voir
+   le listener des .cj-btn dans builder.js). */
+#page-builder{padding:32px 96px 32px 20px}
 .builder-inner{max-width:1400px;margin:0 auto}
 .builder-logo{text-align:center;margin-bottom:32px}
 .builder-logo img{max-width:340px;width:100%}
 .builder-topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:10px;flex-wrap:wrap}
 .theme-btn{padding:7px 14px;border:1px solid var(--border2);border-radius:8px;background:var(--surface);color:var(--text);cursor:pointer;font-size:12px;font-family:'Cinzel',serif;transition:all .2s;display:flex;align-items:center;gap:6px}
 .theme-btn:hover{border-color:var(--gold);color:var(--gold)}
-/* Bandeau de raccourcis par catégorie — fixe sur le bord droit, clic =
-   défilement vers la section de la classe correspondante. */
-.class-jump-rail{position:fixed;top:50%;right:0;transform:translateY(-50%);z-index:600;display:flex;flex-direction:column;gap:4px}
-.cj-btn{writing-mode:vertical-rl;text-orientation:mixed;padding:12px 6px;border:1px solid var(--border2);border-right:none;border-radius:8px 0 0 8px;background:var(--surface2);color:var(--muted);cursor:pointer;font-size:10px;font-weight:700;font-family:'Cinzel',serif;letter-spacing:1px;transition:all .2s}
-.cj-btn:hover{color:var(--gold);border-color:var(--gold);background:var(--surface);padding-right:10px}
+/* Bandeau de raccourcis par catégorie — fixe sur le bord droit (hors de
+   #page-builder dans le DOM pour ne jamais être piégé par un containing
+   block créé par une animation de transform sur .page.active). Affiché
+   uniquement quand la page builder est active (voir showPage() dans
+   main.js). align-items:flex-end évite l'effet "stretch" par défaut d'un
+   flex-column : sans lui, agrandir UN bouton au survol agrandissait tous
+   ses voisins (ils se calent tous sur la largeur du plus large enfant). */
+.class-jump-rail{position:fixed;top:50%;right:0;transform:translateY(-50%);z-index:600;display:none;flex-direction:column;align-items:flex-end;gap:8px}
+.class-jump-rail.show{display:flex}
+.cj-btn{writing-mode:vertical-rl;text-orientation:mixed;width:46px;padding:20px 10px;border:1px solid var(--border2);border-right:none;border-radius:10px 0 0 10px;background:var(--surface2);color:var(--muted);cursor:pointer;font-size:13px;font-weight:700;font-family:'Cinzel',serif;letter-spacing:1.5px;transition:all .2s}
+.cj-btn:hover{color:var(--gold);border-color:var(--gold);background:var(--surface);width:66px;box-shadow:-6px 0 16px rgba(0,0,0,.35)}
 .cj-btn[data-class="Général"]:hover{color:var(--general);border-color:var(--general)}
 .cj-btn[data-class="Primordiale"]:hover{color:var(--primordiale);border-color:var(--primordiale)}
 .cj-btn[data-class="Brute"]:hover{color:var(--brute);border-color:var(--brute)}
@@ -177,7 +192,9 @@ body.has-acc .game-wrap{height:calc(100vh - 50px);margin-top:50px}
 .comp-slot.Sorcier.filled{background:var(--sorcier-bg);border-color:var(--sorcier)}.comp-slot.Sorcier .cs-val{color:var(--sorcier)}
 .comp-slot.Brute.filled{background:var(--brute-bg);border-color:var(--brute)}.comp-slot.Brute .cs-val{color:var(--brute)}
 
-.class-sec{margin-bottom:28px}
+/* scroll-margin-top réserve la hauteur du bandeau compte (.cab, fixe, 50px)
+   pour que le saut de catégorie n'affiche pas l'en-tête de section sous lui. */
+.class-sec{margin-bottom:28px;scroll-margin-top:66px}
 .class-hdr{display:flex;align-items:center;gap:10px;margin-bottom:14px;padding:10px 16px;border-radius:9px}
 .class-hdr.Monarque{background:var(--monarque-bg);border-left:3px solid var(--monarque)}
 .class-hdr.Général{background:var(--general-bg);border-left:3px solid var(--general)}

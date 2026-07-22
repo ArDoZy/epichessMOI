@@ -97,8 +97,7 @@ function enterAccount(username){
   document.getElementById('cab').style.display='flex';
   army={mon:null,gen:null,extras:[]};
   editingArmyId=null;builderMode='player';
-  updateBuilderBanner();updAll();
-  showPage('page-builder');
+  updateBuilderBanner();showPage('page-builder');updAll();
   if(!accGet('primordiale_choisie',null))setTimeout(showPrimordialeChoiceModal,300);
 }
 

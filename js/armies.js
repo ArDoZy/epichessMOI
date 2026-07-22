@@ -68,8 +68,8 @@ const renderArmiesPage=()=>{
     return '<div class="army-card">'+buildNameBlock(a,false)+'<div class="ac-pieces">'+all.map(p=>'<span title="'+p.name+'">'+p.emoji+'</span>').join('')+'</div><div class="ac-names">'+( mon?.name||'?')+' (Monarque) · '+(gen?.name||'?')+' (Général)<br>'+extras.map(p=>p.name).join(' · ')+'</div><div class="ac-val">⚡ '+a.totalValue+' pts</div><div class="ac-btns"><button class="btn btn-ghost" style="font-size:11px;padding:6px 12px" onclick="editPlayerArmy(\''+a.id+'\')">Modifier</button><button class="btn btn-gold" style="font-size:11px;padding:6px 12px" onclick="launchCombat(\''+a.id+'\')">Combat</button><button class="btn btn-primary" style="font-size:11px;padding:6px 12px;border-color:var(--accent2)" onclick="launchTournoiFromArmy(\''+a.id+'\')">🏆 Tournoi</button><button class="btn btn-danger" style="font-size:11px;padding:6px 10px" onclick="deletePlayerArmy(\''+a.id+'\')">Suppr.</button></div></div>';
   }).join('');
 };
-window.editPlayerArmy=id=>{const a=savedArmies.find(x=>x.id===id);if(!a)return;builderMode='player';updateBuilderBanner();loadArmyForEdit(a);updAll();showPage('page-builder');};
-window.deletePlayerArmy=id=>{if(!confirm('Supprimer cette armée ?'))return;savedArmies=savedArmies.filter(a=>a.id!==id);saveArmies();renderArmiesPage();};
+window.editPlayerArmy=id=>{const a=savedArmies.find(x=>x.id===id);if(!a)return;builderMode='player';updateBuilderBanner();loadArmyForEdit(a);showPage('page-builder');updAll();};
+window.deletePlayerArmy=id=>{showConfirmModal('Supprimer cette armée ?',()=>{savedArmies=savedArmies.filter(a=>a.id!==id);saveArmies();renderArmiesPage();});};
 window.launchTournoiFromArmy=id=>{
   const a=savedArmies.find(x=>x.id===id);if(!a)return;
   loadArmyForEdit(a);currentArmyData=a;
@@ -78,7 +78,7 @@ window.launchTournoiFromArmy=id=>{
   setTimeout(()=>{if(confirm('Lancer un tournoi avec cette armée ?'))startTournoi();},150);
 };
 document.getElementById('ar-back').addEventListener('click',()=>showPage('page-builder'));
-document.getElementById('ar-new').addEventListener('click',()=>{builderMode='player';updateBuilderBanner();army={mon:null,gen:null,extras:[]};editingArmyId=null;updAll();showPage('page-builder');});
+document.getElementById('ar-new').addEventListener('click',()=>{builderMode='player';updateBuilderBanner();army={mon:null,gen:null,extras:[]};editingArmyId=null;showPage('page-builder');updAll();});
 
 // ----------------------------------------------------------------
 // PAGE ARMÉES IA
@@ -93,8 +93,8 @@ const renderAiArmiesPage=()=>{
     return '<div class="army-card" style="border-top-color:var(--accent2)">'+buildNameBlock(a,true)+'<div class="ac-pieces">'+all.map(p=>'<span>'+p.emoji+'</span>').join('')+'</div><div class="ac-names">'+(mon?.name||'?')+' · '+(gen?.name||'?')+'<br>'+extras.map(p=>p.name).join(' · ')+'</div><div class="ac-val">⚡ '+a.totalValue+' pts</div><div class="ac-btns"><button class="btn btn-ghost" style="font-size:11px;padding:6px 12px" onclick="editAiArmy(\''+a.id+'\')">Modifier</button><button class="btn btn-primary" style="font-size:11px;padding:6px 12px" onclick="selectAiArmy(\''+a.id+'\')">Choisir</button><button class="btn btn-danger" style="font-size:11px;padding:6px 10px" onclick="deleteAiArmy(\''+a.id+'\')">Suppr.</button></div></div>';
   }).join('');
 };
-window.editAiArmy=id=>{const a=savedAiArmies.find(x=>x.id===id);if(!a)return;builderMode='ai';updateBuilderBanner();loadArmyForEdit(a);updAll();showPage('page-builder');};
-window.deleteAiArmy=id=>{if(!confirm('Supprimer ?'))return;savedAiArmies=savedAiArmies.filter(a=>a.id!==id);saveAiArmies();renderAiArmiesPage();};
+window.editAiArmy=id=>{const a=savedAiArmies.find(x=>x.id===id);if(!a)return;builderMode='ai';updateBuilderBanner();loadArmyForEdit(a);showPage('page-builder');updAll();};
+window.deleteAiArmy=id=>{showConfirmModal('Supprimer cette armée ?',()=>{savedAiArmies=savedAiArmies.filter(a=>a.id!==id);saveAiArmies();renderAiArmiesPage();});};
 window.selectAiArmy=id=>{
   const a=savedAiArmies.find(x=>x.id===id);if(!a)return;
   const fp=id=>PIECES.find(p=>p.id===id);
@@ -103,7 +103,7 @@ window.selectAiArmy=id=>{
   else{showNotif('Sélectionnez d\'abord votre armée.');renderArmiesPage();showPage('page-armies');}
 };
 document.getElementById('ai-ar-back').addEventListener('click',()=>{if(currentArmyData){renderCombatPage(currentArmyData,aiArmyData&&!aiArmyData._random);showPage('page-combat');launchParticles();}else showPage('page-builder');});
-document.getElementById('ai-ar-new').addEventListener('click',()=>{builderMode='ai';updateBuilderBanner();army={mon:null,gen:null,extras:[]};editingArmyId=null;updAll();showPage('page-builder');});
+document.getElementById('ai-ar-new').addEventListener('click',()=>{builderMode='ai';updateBuilderBanner();army={mon:null,gen:null,extras:[]};editingArmyId=null;showPage('page-builder');updAll();});
 
 // ----------------------------------------------------------------
 // GÉNÉRATEUR D'ARMÉE IA ALÉATOIRE
