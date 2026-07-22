@@ -13,23 +13,13 @@
 
 let selectedAILevel=0;
 
-// Contrôle du temps de la partie : minutes par joueur, 0 = illimité (pas
-// d'horloge). Choisi dans ce même modal, lu par game-flow.js/tournoi.js
-// (clockMsFromControl) au démarrage de la partie.
-const TIME_CONTROLS=[{min:1,label:'1 min'},{min:3,label:'3 min'},{min:5,label:'5 min'},{min:10,label:'10 min'},{min:30,label:'30 min'},{min:0,label:'∞ Illimité'}];
-let selectedTimeControl=10;
+// Cadence de partie fixe : 10 minutes par joueur (pas de sélection possible).
+// Lu par game-flow.js/tournoi.js au démarrage de la partie.
+const selectedTimeControl=10;
 
 function getUnlockedLevels(elo){
   if(ADMIN_MODE)return AI_INSTRUCTORS.map(()=>true);
   const ri=vvGetRankIdx(elo);return AI_INSTRUCTORS.map((_,i)=>i<=ri);
-}
-
-function renderTimeControlRow(){
-  const row=document.getElementById('time-control-row');if(!row)return;
-  row.innerHTML=TIME_CONTROLS.map(tc=>'<button class="tc-btn'+(selectedTimeControl===tc.min?' tc-sel':'')+'" data-min="'+tc.min+'">'+tc.label+'</button>').join('');
-  row.querySelectorAll('.tc-btn').forEach(el=>{
-    el.addEventListener('click',()=>{selectedTimeControl=parseInt(el.dataset.min);renderTimeControlRow();});
-  });
 }
 
 function showAILevelModal(callback){
@@ -39,7 +29,6 @@ function showAILevelModal(callback){
   let def=0;for(let i=0;i<unlocked.length;i++)if(unlocked[i])def=i;
   // Toujours pré-sélectionner le niveau le plus élevé débloqué
   selectedAILevel=def;
-  renderTimeControlRow();
   const render=()=>{
     grid.innerHTML=AI_INSTRUCTORS.map((ai,i)=>{
       const ok=unlocked[i];const sel=selectedAILevel===i;
