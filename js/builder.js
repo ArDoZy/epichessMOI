@@ -159,6 +159,9 @@ const renderCards=()=>{
 function equalizeCardHeights(){
   const cards=document.querySelectorAll('.piece-card');
   if(!cards.length)return;
+  // Si la page est encore cachée (display:none), toute mesure vaut 0 —
+  // on abandonne plutôt que de figer les cartes à une hauteur nulle.
+  if(!document.getElementById('page-builder').offsetParent)return;
   cards.forEach(el=>{el.style.height='auto';});
   let max=0;
   cards.forEach(el=>{if(el.offsetHeight>max)max=el.offsetHeight;});
@@ -247,7 +250,15 @@ document.getElementById('b-validate').addEventListener('click',()=>{if(armyValid
 document.getElementById('b-armies').addEventListener('click',()=>{if(builderMode==='ai'){renderAiArmiesPage();showPage('page-ai-armies');}else{renderArmiesPage();showPage('page-armies');}});
 // Bandeau de raccourcis à droite : clic sur une catégorie → défilement vers
 // sa section (les sections n'existent que si la classe a au moins 1 pièce,
-// donc un clic sans effet est simplement ignoré).
+// donc un clic sans effet est simplement ignoré). scroll-margin-top (voir
+// .class-sec en CSS) réserve la hauteur du bandeau compte fixe pour que
+// l'en-tête de la section reste visible sous lui.
+// Note : pour la toute dernière section (Sorcier), le navigateur clampe
+// naturellement le défilement à la fin du document — elle ne peut donc pas
+// toujours atteindre pile le haut du viewport, sauf à laisser en permanence
+// un vide en bas de page (ce que la demande de suppression du grand espace
+// vide interdit). On accepte ce compromis : elle défile aussi loin que
+// possible, ce qui reste largement suffisant pour l'amener à l'écran.
 document.querySelectorAll('.cj-btn').forEach(btn=>{
   btn.addEventListener('click',()=>{
     document.getElementById('cls-sec-'+btn.dataset.class)?.scrollIntoView({behavior:'smooth',block:'start'});

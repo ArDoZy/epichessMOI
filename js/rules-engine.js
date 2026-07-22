@@ -146,7 +146,7 @@ function generateMovesRaw(board,r,c,gs){
     case 'cavalier-primordial':moves=knightMoves(board,r,c,p);break;
     case 'fou-primordial':moves=slidingMoves(board,r,c,p,[[1,1],[1,-1],[-1,1],[-1,-1]],gs);break;
     case 'tour-primordiale':moves=slidingMoves(board,r,c,p,[[1,0],[-1,0],[0,1],[0,-1]],gs);break;
-    case 'alpha':moves=jumpMoves(board,r,c,p,[[2,2],[2,-2],[-2,2],[-2,-2]]);break;
+    case 'alpha':moves=jumpMoves(board,r,c,p,[[1,1],[1,-1],[-1,1],[-1,-1],[2,2],[2,-2],[-2,2],[-2,-2]]);break;
     case 'fourmi':{
       // Comme un pion, la Fourmi ne peut ni se déplacer sur, ni capturer,
       // un Preux Chevalier (ability "Cuirasse").
@@ -263,8 +263,8 @@ function isSquareAttackedSimple(tr,tc,defColor,board){
   for(const dc of[-1,1]){const r=tr+atkFwdDir,c=tc+dc;if(inB(r,c)){const p=board[r][c];if(p&&p.color===atk&&p.pieceId==='fourmi')return true;}}}
   // Typhon (1 diag)
   for(const[dr,dc] of[[1,1],[1,-1],[-1,1],[-1,-1]]){const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;const p=board[r][c];if(p&&p.color===atk&&p.pieceId==='typhon')return true;}
-  // Alpha (saut 2 diag)
-  for(const[dr,dc] of[[2,2],[2,-2],[-2,2],[-2,-2]]){const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;const p=board[r][c];if(p&&p.color===atk&&p.pieceId==='alpha')return true;}
+  // Alpha (1 diag adjacent OU saut 2 diag)
+  for(const[dr,dc] of[[1,1],[1,-1],[-1,1],[-1,-1],[2,2],[2,-2],[-2,2],[-2,-2]]){const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;const p=board[r][c];if(p&&p.color===atk&&p.pieceId==='alpha')return true;}
   // Banshee (2 diag sans saut)
   for(const[dr,dc] of[[2,2],[2,-2],[-2,2],[-2,-2]]){const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;const midR=tr+dr/2,midC=tc+dc/2;if(!inB(midR,midC))continue;if(board[midR][midC])continue;const p=board[r][c];if(p&&p.color===atk&&p.pieceId==='banshee')return true;}
   // Preux-chevalier: 2 ortho (pas bloqué) OU 1 diag
