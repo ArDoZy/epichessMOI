@@ -69,7 +69,6 @@ function renderGame(gs){
     const hasEnemy=cell&&gs.legalMoves.some(m=>m.r===r&&m.c===c&&!m.stayPut)&&cell.color!==gs.turn;
     if(isAvail&&hasEnemy)cls+=' avail-cap';
     else if(isAvail)cls+=' avail';
-    if(gs.amazonePostCapture&&gs.amazonePostCapture.color===playerCol){const apc=gs.amazonePostCapture;if(Math.abs(r-apc.r)<=1&&Math.abs(c-apc.c)<=1&&!cell&&(r!==apc.r||c!==apc.c))cls+=' amazone-repos';}
     if(gs.lastMove&&((gs.lastMove.from.r===r&&gs.lastMove.from.c===c)||(gs.lastMove.to.r===r&&gs.lastMove.to.c===c)))cls+=' last-move';
     if(gs.lastMove&&gs.lastMove.capture&&gs.lastMove.to.r===r&&gs.lastMove.to.c===c)cls+=' cap-flash';
     const isAnchored=gs.anchored?.has(key);
@@ -236,17 +235,6 @@ document.addEventListener('touchcancel',()=>{
 // ----------------------------------------------------------------
 function handleGameClick(r,c,gs){
   const b=gs.board;const cell=b[r][c];const playerCol=gs.playerColor||'w';
-
-  if(gs.amazonePostCapture&&gs.amazonePostCapture.color===playerCol){
-    const apc=gs.amazonePostCapture;
-    if(Math.abs(r-apc.r)<=1&&Math.abs(c-apc.c)<=1&&!b[r][c]&&(r!==apc.r||c!==apc.c)){
-      const am=b[apc.r][apc.c];if(am){b[r][c]=am;b[apc.r][apc.c]=null;}
-      const aiCol=gs.aiColor||'b';
-      gs.amazonePostCapture=null;gs.selected=null;gs.legalMoves=[];updateStatus(gs);renderGame(gs);
-      if(gs.turn===aiCol&&!gs.gameOver)setTimeout(()=>doAIMove(gs),500);return;
-    }
-    gs.amazonePostCapture=null;
-  }
 
   if(gs.selected){
     if(gs.selected.r===r&&gs.selected.c===c){gs.selected=null;gs.legalMoves=[];renderGame(gs);return;}
