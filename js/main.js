@@ -20,7 +20,6 @@
 // army.extras : liste ORDONNÉE des 3 pièces choisies (l'ordre définit la
 // disposition en partie — voir builder.js::derivePlacements).
 let army={mon:null,gen:null,extras:[]};
-let filters={order:'asc',classes:new Set(['Monarque','Général','Primordiale','Brute','Sorcier'])};
 let savedArmies=[];
 let savedAiArmies=[];
 let editingArmyId=null;
