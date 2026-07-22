@@ -97,7 +97,11 @@ function enterAccount(username){
   document.getElementById('cab').style.display='flex';
   army={mon:null,gen:null,extras:[]};
   editingArmyId=null;builderMode='player';
-  updateBuilderBanner();showPage('page-builder');updAll();
+  // Après connexion : on prépare le builder (bannière + rendu) puis on
+  // affiche le MENU PRINCIPAL du cube (face JOUER), pas directement le
+  // builder — la face builder est atteinte en tournant le cube.
+  updateBuilderBanner();updAll();
+  if(typeof goToMainMenu==='function')goToMainMenu();else showPage('page-builder');
   if(!accGet('primordiale_choisie',null))setTimeout(showPrimordialeChoiceModal,300);
 }
 

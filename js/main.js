@@ -50,10 +50,18 @@ function toggleTheme(){
 // conservée (no-op) car de nombreux modules l'appellent encore.
 function showNotif(msg,type='err'){}
 
+// showPage reste le point de contrôle UNIQUE de la navigation (tous les
+// modules l'appellent). Il bascule les overlays .page/.active comme avant,
+// puis délègue au cube (cube-nav.js) qui gère les faces embarquées
+// (builder/partie) et le bandeau de catégories. Les ids non-.page (ex.
+// 'face-jouer', 'page-builder'/'page-game' devenus des faces) sont tolérés.
 function showPage(id){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-  document.getElementById(id).classList.add('active');
+  const el=document.getElementById(id);
+  if(el&&el.classList.contains('page'))el.classList.add('active');
   window.scrollTo(0,0);
+  if(typeof cubeOnShowPage==='function'){cubeOnShowPage(id);return;}
+  // Fallback (cube non chargé) : ancien comportement du bandeau catégories.
   const rail=document.getElementById('class-jump-rail');
   if(rail)rail.classList.toggle('show',id==='page-builder');
 }

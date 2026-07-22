@@ -88,6 +88,53 @@
   <button class="cj-btn" data-class="Sorcier">Sorcier</button>
 </div>
 
+<!-- ================================================================
+     CUBE DE NAVIGATION — menu principal. Coquille visuelle uniquement :
+     les vraies pages #page-builder / #page-game sont déplacées à
+     l'exécution dans les faces "builder" / "game" par js/cube-nav.js.
+     Le chrome global (barre compte, modals, réglages, bandeau catégories)
+     reste HORS du cube pour ne pas être piégé par les transforms 3D.
+     ================================================================ -->
+<div id="cube-stage">
+  <div id="cube">
+    <!-- Face 1 (avant) : menu principal -->
+    <div class="cube-face is-front" data-face="jouer">
+      <div class="face-viewport">
+        <div class="jouer-menu">
+          <div class="jouer-logo">EPIC CHESS</div>
+          <button class="jouer-btn" id="cube-jouer-btn"><span>JOUER</span></button>
+          <div class="jouer-hint">← Missions&nbsp;&nbsp;·&nbsp;&nbsp;Magasin&nbsp;·&nbsp;Composez votre armée →</div>
+        </div>
+      </div>
+    </div>
+    <!-- Face 2 (droite) : composition d'armée (builder déplacé ici) -->
+    <div class="cube-face" data-face="builder">
+      <div class="face-viewport" id="face-viewport-builder"></div>
+    </div>
+    <!-- Face 3 (arrière) : Magasin (placeholder) -->
+    <div class="cube-face" data-face="magasin">
+      <div class="face-viewport"><div class="face-placeholder"><div class="fp-icon">🛒</div><div class="fp-title">Magasin</div><div class="fp-sub">Bientôt disponible</div></div></div>
+    </div>
+    <!-- Face 4 (gauche) : Missions (placeholder) -->
+    <div class="cube-face" data-face="missions">
+      <div class="face-viewport"><div class="face-placeholder"><div class="fp-icon">🎯</div><div class="fp-title">Missions</div><div class="fp-sub">Bientôt disponible</div></div></div>
+    </div>
+    <!-- Face supérieure : la partie (page-game déplacée ici) -->
+    <div class="cube-face" data-face="game">
+      <div class="face-viewport" id="face-viewport-game"></div>
+    </div>
+    <!-- Face inférieure : Variantes (placeholder) -->
+    <div class="cube-face" data-face="variantes">
+      <div class="face-viewport"><div class="face-placeholder"><div class="fp-icon">🧩</div><div class="fp-title">Variantes</div><div class="fp-sub">Bientôt disponible</div></div></div>
+    </div>
+  </div>
+  <!-- Contrôles de navigation (hors du cube 3D) -->
+  <button class="cube-arrow cube-arrow-side" id="cube-arrow-left" title="Tourner à gauche" style="display:none">‹</button>
+  <button class="cube-arrow cube-arrow-side" id="cube-arrow-right" title="Tourner à droite" style="display:none">›</button>
+  <button class="cube-arrow cube-arrow-vert" id="cube-arrow-down" title="Variantes" style="display:none">⌄</button>
+  <button class="cube-arrow cube-arrow-vert" id="cube-arrow-up" title="Retour au menu" style="display:none">⌃</button>
+</div>
+
 <!-- PAGE 1: BUILDER -->
 <div id="page-builder" class="page">
 <div class="builder-inner">
@@ -368,6 +415,7 @@
    ================================================================ -->
 <script src="js/data-pieces.js"></script>
 <script src="js/main.js"></script>
+<script src="js/cube-nav.js"></script>
 <script src="js/accounts.js"></script>
 <script src="js/ai-level-modal.js"></script>
 <script src="js/builder.js"></script>

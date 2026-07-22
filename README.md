@@ -31,6 +31,8 @@ epic-chess/
 └── js/
     ├── data-pieces.js       # Données pures (pièces, rangs, IA, déblocages)
     ├── main.js               # État global partagé + helpers (showPage, showNotif...)
+    ├── cube-nav.js           # Navigation principale par cube 3D (CSS). Déplace
+    │                          # builder/partie dans les faces ; showPage y délègue.
     ├── accounts.js           # Comptes locaux (localStorage), connexion
     ├── ai-level-modal.js     # Modal de choix de l'instructeur IA
     ├── builder.js            # Page de composition d'armée
@@ -51,11 +53,18 @@ L'ordre des `<script>` est important car il n'y a pas de système de modules :
 chaque fichier suppose que les globals des fichiers précédents existent déjà.
 
 ```
-data-pieces.js → main.js → accounts.js → ai-level-modal.js → builder.js
-→ armies.js → combat-intro.js → rules-engine.js
+data-pieces.js → main.js → cube-nav.js → accounts.js → ai-level-modal.js
+→ builder.js → armies.js → combat-intro.js → rules-engine.js
 → game-render.js → ai-engine.js → game-flow.js → voie.js → tournoi.js
 → settings-admin.js → (script inline) initApp()
 ```
+
+`cube-nav.js` est chargé juste après `main.js` : il étend `showPage()` (la
+navigation devient un cube 3D en CSS) et déplace à l'exécution les pages
+`#page-builder` / `#page-game` dans les faces du cube. Il ne connaît QUE la
+face courante, les rotations et le verrouillage — aucune logique de jeu.
+Les pages secondaires (armées, voie, tournoi, combat, login) restent des
+overlays plein écran classiques affichés au-dessus du cube.
 
 Si tu ajoutes un nouveau fichier JS, insère-le dans cette chaîne à l'endroit
 qui correspond à ses dépendances (voir l'en-tête de chaque fichier, qui liste
