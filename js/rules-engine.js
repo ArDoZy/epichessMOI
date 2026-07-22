@@ -146,7 +146,9 @@ function generateMovesRaw(board,r,c,gs){
     case 'cavalier-primordial':moves=knightMoves(board,r,c,p);break;
     case 'fou-primordial':moves=slidingMoves(board,r,c,p,[[1,1],[1,-1],[-1,1],[-1,-1]],gs);break;
     case 'tour-primordiale':moves=slidingMoves(board,r,c,p,[[1,0],[-1,0],[0,1],[0,-1]],gs);break;
-    case 'alpha':moves=jumpMoves(board,r,c,p,[[1,1],[1,-1],[-1,1],[-1,-1],[2,2],[2,-2],[-2,2],[-2,-2]]);break;
+    // Alpha : EXACTEMENT 2 cases en diagonale, en sautant. Ne va JAMAIS sur
+    // une case diagonale adjacente (règle voulue par le jeu).
+    case 'alpha':moves=jumpMoves(board,r,c,p,[[2,2],[2,-2],[-2,2],[-2,-2]]);break;
     case 'fourmi':{
       // Comme un pion, la Fourmi ne peut ni se déplacer sur, ni capturer,
       // un Preux Chevalier (ability "Cuirasse").
@@ -177,7 +179,9 @@ function generateMovesRaw(board,r,c,gs){
       for(const[dr,dc] of[[1,0],[-1,0],[0,1],[0,-1]]){const nr=r+dr,nc=c+dc;if(inB(nr,nc)&&(!board[nr][nc]||board[nr][nc].color!==p.color))moves.push({r:nr,c:nc});}break;
     case 'typhon':
       for(const[dr,dc] of[[1,1],[1,-1],[-1,1],[-1,-1]]){const nr=r+dr,nc=c+dc;if(inB(nr,nc)&&(!board[nr][nc]||board[nr][nc].color!==p.color))moves.push({r:nr,c:nc,typhon:true});}break;
+    // Banshee : 1 OU 2 cases en diagonale (les 2 cases sans sauter).
     case 'banshee':
+      for(const[dr,dc] of[[1,1],[1,-1],[-1,1],[-1,-1]]){const nr=r+dr,nc=c+dc;if(!inB(nr,nc))continue;if(!board[nr][nc]||board[nr][nc].color!==p.color)moves.push({r:nr,c:nc,banshee:true});}
       for(const[dr,dc] of[[2,2],[2,-2],[-2,2],[-2,-2]]){const nr=r+dr,nc=c+dc;if(!inB(nr,nc))continue;const mr=r+dr/2,mc4=c+dc/2;if(board[mr]?.[mc4])continue;if(!board[nr][nc]||board[nr][nc].color!==p.color)moves.push({r:nr,c:nc,banshee:true});}break;
     case 'pretre':
       moves=slidingMoves(board,r,c,p,[[1,0],[-1,0],[0,1],[0,-1]],gs);
@@ -208,70 +212,83 @@ function isInCheckSimple(color,board){
   if(kr===-1)return false;return isSquareAttackedSimple(kr,kc,color,board);
 }
 
-const KNIGHT_PIECE_IDS=new Set(['cavalier-primordial','chevaucheur-rhinoceros','grand-maitre','empereur','amazone']);
-const ROOK_PIECE_IDS=new Set(['tour-primordiale','chevaucheur-rhinoceros','dame','grand-maitre','pretre','meduse','dresseur-elephant']);
-const BISHOP_PIECE_IDS=new Set(['fou-primordial','amazone','dame','grand-maitre']);
-const KING_PIECE_IDS=new Set(['roi','garde-pierre','meduse']);
+// ----------------------------------------------------------------
+// ENSEMBLES POUR LA DÉTECTION D'ÉCHEC
+// ----------------------------------------------------------------
+// CUSTOM_MOVE_IDS : pièces dont le déplacement/attaque N'EST PAS celui de
+// leur pieceType de base. Elles ont une détection d'échec DÉDIÉE plus bas,
+// donc le raccourci « attaque comme son pieceType » ne doit JAMAIS jouer
+// pour elles — sinon l'Alpha, la Banshee ou le Typhon (tous de pieceType
+// 'b' pour le rendu) donneraient échec comme un fou tout le long de la
+// diagonale, ce qui est faux.
+const CUSTOM_MOVE_IDS=new Set(['amazone','alpha','fourmi','preux-chevalier','dresseur-elephant','garde-pierre','meduse','typhon','banshee','pretre']);
+// Pièces qui donnent échec en GLISSANT (portée illimitée). Le raccourci par
+// pieceType (b/r/q) couvre en plus les pièces standard et promues.
+const DIAG_SLIDER_IDS=new Set(['fou-primordial','amazone','dame','grand-maitre']);
+const ORTHO_SLIDER_IDS=new Set(['tour-primordiale','chevaucheur-rhinoceros','dame','grand-maitre']);
+// Pièces qui donnent échec par un saut de cavalier.
+const KNIGHT_ATK_IDS=new Set(['cavalier-primordial','amazone','chevaucheur-rhinoceros','grand-maitre','empereur']);
+// Pièces qui donnent échec sur une case adjacente (8 directions, 1 case).
+const KING_ADJ_IDS=new Set(['roi','empereur','garde-pierre']);
 
 function isSquareAttackedSimple(tr,tc,defColor,board){
   const atk=opp(defColor);
-  // Knights
+  // --- Cavaliers (saut) ---
   for(const[dr,dc] of[[2,1],[1,2],[-1,2],[-2,1],[-2,-1],[-1,-2],[1,-2],[2,-1]]){
     const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;const p=board[r][c];
-    if(p&&p.color===atk&&(p.type==='n'||KNIGHT_PIECE_IDS.has(p.pieceId)))return true;
+    if(p&&p.color===atk&&(KNIGHT_ATK_IDS.has(p.pieceId)||(!CUSTOM_MOVE_IDS.has(p.pieceId)&&p.type==='n')))return true;
   }
-  // Rooks
+  // --- Glisseurs orthogonaux (tour / dame) ---
   for(const[dr,dc] of[[1,0],[-1,0],[0,1],[0,-1]]){
     let r=tr+dr,c=tc+dc;
     while(inB(r,c)){
       const p=board[r][c];
-      if(p){
-        if(p.color===atk){
-          if(p.type==='r'||p.type==='q'||ROOK_PIECE_IDS.has(p.pieceId))return true;
-          if(Math.abs(r-tr)<=1&&Math.abs(c-tc)<=1&&(p.type==='k'||p.isKing||KING_PIECE_IDS.has(p.pieceId)))return true;
-        }
-        break;
-      }
+      if(p){if(p.color===atk&&(ORTHO_SLIDER_IDS.has(p.pieceId)||(!CUSTOM_MOVE_IDS.has(p.pieceId)&&(p.type==='r'||p.type==='q'))))return true;break;}
       r+=dr;c+=dc;
     }
   }
-  // Bishops/Queens
+  // --- Glisseurs diagonaux (fou / dame) ---
   for(const[dr,dc] of[[1,1],[1,-1],[-1,1],[-1,-1]]){
     let r=tr+dr,c=tc+dc;
     while(inB(r,c)){
       const p=board[r][c];
-      if(p){
-        if(p.color===atk){
-          if(p.type==='b'||p.type==='q'||BISHOP_PIECE_IDS.has(p.pieceId))return true;
-          if(Math.abs(r-tr)<=1&&Math.abs(c-tc)<=1&&(p.type==='k'||p.isKing||KING_PIECE_IDS.has(p.pieceId)))return true;
-        }
-        break;
-      }
+      if(p){if(p.color===atk&&(DIAG_SLIDER_IDS.has(p.pieceId)||(!CUSTOM_MOVE_IDS.has(p.pieceId)&&(p.type==='b'||p.type==='q'))))return true;break;}
       r+=dr;c+=dc;
     }
   }
-  // Pawns
+  // --- Roi / pièces à portée 1 case dans les 8 directions (Garde de Pierre) ---
+  for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++){
+    if(!dr&&!dc)continue;const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;const p=board[r][c];
+    if(p&&p.color===atk&&(p.type==='k'||p.isKing||KING_ADJ_IDS.has(p.pieceId)))return true;
+  }
+  // --- Pions standard (capture diagonale vers l'avant) ---
   const pawnDir=defColor==='w'?-1:1;
-  for(const dc of[-1,1]){const r=tr+pawnDir,c=tc+dc;if(inB(r,c)){const p=board[r][c];if(p&&p.color===atk&&(p.type==='p'||p.pieceId==='std-pawn'))return true;}}
-  // Fourmi (avant ortho avec capture, avant diag avec capture)
-  // atkFwdDir = décalage entre la case cible et la case de la Fourmi
-  // attaquante (donc l'INVERSE de sa propre direction d'avance).
+  for(const dc of[-1,1]){const r=tr+pawnDir,c=tc+dc;if(inB(r,c)){const p=board[r][c];if(p&&p.color===atk&&!CUSTOM_MOVE_IDS.has(p.pieceId)&&(p.type==='p'||p.pieceId==='std-pawn'))return true;}}
+  // --- Fourmi : avance ortho + diagonale d'1 case (capture comprise) ---
+  // atkFwdDir = décalage entre la case cible et la Fourmi (inverse de son avance).
   {const atkFwdDir=atk==='w'?1:-1;
-  // Fourmi attaque en avant orthogonal
   {const r=tr+atkFwdDir,c=tc;if(inB(r,c)){const p=board[r][c];if(p&&p.color===atk&&p.pieceId==='fourmi')return true;}}
-  // Fourmi attaque en diagonale avant
   for(const dc of[-1,1]){const r=tr+atkFwdDir,c=tc+dc;if(inB(r,c)){const p=board[r][c];if(p&&p.color===atk&&p.pieceId==='fourmi')return true;}}}
-  // Typhon (1 diag)
+  // --- Typhon : 1 case en diagonale ---
   for(const[dr,dc] of[[1,1],[1,-1],[-1,1],[-1,-1]]){const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;const p=board[r][c];if(p&&p.color===atk&&p.pieceId==='typhon')return true;}
-  // Alpha (1 diag adjacent OU saut 2 diag)
-  for(const[dr,dc] of[[1,1],[1,-1],[-1,1],[-1,-1],[2,2],[2,-2],[-2,2],[-2,-2]]){const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;const p=board[r][c];if(p&&p.color===atk&&p.pieceId==='alpha')return true;}
-  // Banshee (2 diag sans saut)
-  for(const[dr,dc] of[[2,2],[2,-2],[-2,2],[-2,-2]]){const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;const midR=tr+dr/2,midC=tc+dc/2;if(!inB(midR,midC))continue;if(board[midR][midC])continue;const p=board[r][c];if(p&&p.color===atk&&p.pieceId==='banshee')return true;}
-  // Preux-chevalier: 2 ortho (pas bloqué) OU 1 diag
+  // --- Alpha : EXACTEMENT 2 cases en diagonale (saut). PAS les cases
+  //     adjacentes en diagonale — c'est volontaire (voir data-pieces). ---
+  for(const[dr,dc] of[[2,2],[2,-2],[-2,2],[-2,-2]]){const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;const p=board[r][c];if(p&&p.color===atk&&p.pieceId==='alpha')return true;}
+  // --- Banshee : 1 OU 2 cases en diagonale (les 2 cases sans sauter) ---
+  for(const[dr,dc] of[[1,1],[1,-1],[-1,1],[-1,-1]]){const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;const p=board[r][c];if(p&&p.color===atk&&p.pieceId==='banshee')return true;}
+  for(const[dr,dc] of[[2,2],[2,-2],[-2,2],[-2,-2]]){const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;const midR=tr+dr/2,midC=tc+dc/2;if(!inB(midR,midC)||board[midR][midC])continue;const p=board[r][c];if(p&&p.color===atk&&p.pieceId==='banshee')return true;}
+  // --- Preux Chevalier : 2 ortho (chemin libre) OU 1 diagonale ---
   for(const[dr,dc] of[[2,0],[-2,0],[0,2],[0,-2]]){const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;const mr=tr+dr/2,mc_=tc+dc/2;if(board[mr][mc_])continue;const p=board[r][c];if(p&&p.color===atk&&p.pieceId==='preux-chevalier')return true;}
   for(const[dr,dc] of[[1,1],[1,-1],[-1,1],[-1,-1]]){const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;const p=board[r][c];if(p&&p.color===atk&&p.pieceId==='preux-chevalier')return true;}
-  // Dresseur éléphant
-  for(const[dr,dc] of[[2,0],[-2,0],[0,2],[0,-2]]){const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;const p=board[r][c];if(!p||p.color!==atk||p.pieceId!=='dresseur-elephant')continue;const midR=tr+dr/2,midC=tc+dc/2;if(board[midR][midC]&&board[midR][midC].color===atk)continue;return true;}
+  // --- Dresseur d'Éléphant : 1 ou 2 cases ortho (2 = charge, bloquée
+  //     seulement par une pièce alliée à mi-chemin) ---
+  for(const[dr,dc] of[[1,0],[-1,0],[0,1],[0,-1]]){const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;const p=board[r][c];if(p&&p.color===atk&&p.pieceId==='dresseur-elephant')return true;}
+  for(const[dr,dc] of[[2,0],[-2,0],[0,2],[0,-2]]){const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;const p=board[r][c];if(!(p&&p.color===atk&&p.pieceId==='dresseur-elephant'))continue;const midR=tr+dr/2,midC=tc+dc/2;if(board[midR][midC]&&board[midR][midC].color===atk)continue;return true;}
+  // --- Prêtre : 1 ou 2 cases ortho (chemin libre pour 2) ---
+  for(const[dr,dc] of[[1,0],[-1,0],[0,1],[0,-1]]){const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;const p=board[r][c];if(p&&p.color===atk&&p.pieceId==='pretre')return true;}
+  for(const[dr,dc] of[[2,0],[-2,0],[0,2],[0,-2]]){const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;const mr=tr+dr/2,mc_=tc+dc/2;if(board[mr][mc_])continue;const p=board[r][c];if(p&&p.color===atk&&p.pieceId==='pretre')return true;}
+  // --- Méduse : 1 case orthogonale ---
+  for(const[dr,dc] of[[1,0],[-1,0],[0,1],[0,-1]]){const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;const p=board[r][c];if(p&&p.color===atk&&p.pieceId==='meduse')return true;}
 
   return false;
 }
@@ -363,7 +380,6 @@ function executeGameMove(from,to,gs){
     captured=b[to.r][to.c];
     if(captured){
       if(captured.color==='w')gs.capturedW.push(captured.emoji);else gs.capturedB.push(captured.emoji);
-      if(p.pieceId==='amazone')gs.amazonePostCapture={r:to.r,c:to.c,color:p.color};
     }
   }
 
