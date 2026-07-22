@@ -92,7 +92,8 @@ function startGame(colorAlreadyChosen){
   const playerIsWhite=_playerColor==='w';
   const whiteSideArmy=playerIsWhite?currentArmyData:aiArmyData;
   const blackSideArmy=playerIsWhite?aiArmyData:currentArmyData;
-  GS={board:[],turn:'w',selected:null,legalMoves:[],history:[],enPassant:null,halfmoveClock:0,gameOver:false,playerArmy:currentArmyData,aiArmy:aiArmyData,playerColor:_playerColor,aiColor:_aiColor,movePairs:[],capturedW:[],capturedB:[],pendingPromo:null,medusaParalyzed:new Set(),lastMove:null,anchored:new Set(),pretreProtected:new Set(),amazonePostCapture:null,grandMaitreAlive:{w:false,b:false},gardePierreUsed:{w:false,b:false},turnCount:0,historyView:null,lastMoveHistory:[]};
+  const clockMs=(typeof selectedTimeControl==='number'&&selectedTimeControl>0)?selectedTimeControl*60000:0;
+  GS={board:[],turn:'w',selected:null,legalMoves:[],history:[],enPassant:null,halfmoveClock:0,gameOver:false,playerArmy:currentArmyData,aiArmy:aiArmyData,playerColor:_playerColor,aiColor:_aiColor,movePairs:[],capturedW:[],capturedB:[],pendingPromo:null,medusaParalyzed:new Set(),lastMove:null,anchored:new Set(),pretreProtected:new Set(),amazonePostCapture:null,grandMaitreAlive:{w:false,b:false},gardePierreUsed:{w:false,b:false},turnCount:0,historyView:null,lastMoveHistory:[],clockMs,timeWhite:clockMs,timeBlack:clockMs};
   GS.board=buildGameBoard(whiteSideArmy,blackSideArmy);
   updateMedusaParalysis(GS.board,GS);updatePretreProtection(GS.board,GS);updateGrandMaitre(GS.board,GS);
   showPage('page-game');
@@ -134,7 +135,9 @@ function showArmyIntro(playerArmy,aiArmy){
   const overlay=document.createElement('div');overlay.className='army-intro-overlay';
   overlay.innerHTML='<div class="army-intro-box"><span class="aio-close" id="aio-close-btn">✕</span><div class="aio-title">⚔ Les Armées en Présence — '+inst.emoji+' '+inst.name+'</div><div class="aio-sides">'+buildSide(playerArmy,playerLabel,playerTitleCls)+buildSide(aiArmy,aiLabel,aiTitleCls)+'</div><div class="aio-timer"><span id="aio-countdown">'+INTRO_DURATION+'</span>s — Cliquez ✕ pour fermer<div class="aio-timer-bar"><div class="aio-timer-fill" id="aio-timer-fill" style="width:100%"></div></div></div></div>';
   document.body.appendChild(overlay);
-  const closeOverlay=()=>{overlay.classList.add('hiding');setTimeout(()=>overlay.remove(),650);};
+  // L'horloge ne démarre qu'à la fermeture de cet aperçu (pas pendant la
+  // présentation des armées), pour ne pas gruger le temps du 1er joueur.
+  const closeOverlay=()=>{overlay.classList.add('hiding');setTimeout(()=>overlay.remove(),650);startClockTick(GS);renderClocks(GS);};
   document.getElementById('aio-close-btn').addEventListener('click',closeOverlay);
   let remaining=INTRO_DURATION;
   const tick=setInterval(()=>{remaining--;const el=document.getElementById('aio-countdown');const bar=document.getElementById('aio-timer-fill');if(el)el.textContent=remaining;if(bar)bar.style.width=(remaining/INTRO_DURATION*100)+'%';if(remaining<=0){clearInterval(tick);closeOverlay();}},1000);
@@ -208,6 +211,7 @@ function triggerEndOfGame(result){
   // En mode tournoi, déléguer au gestionnaire tournoi
   if(tournamentState.active){triggerTournoiEndOfGame(result);return;}
   if(_endGameTriggered)return;_endGameTriggered=true;
+  stopClockTick(GS);
   const oldElo=vvLoadElo();const aiElo=vvEstimateAiElo();
   const{newElo,delta}=vvCalcNewElo(oldElo,aiElo,result);
   const newRankIdx=vvGetRankIdx(newElo);if(newRankIdx>vvLoadRankMax())vvSaveRankMax(newRankIdx);
@@ -235,11 +239,14 @@ document.getElementById('game-undo').addEventListener('click',()=>{
     if(h.anchored)GS.anchored=new Set(h.anchored);
     if(h.grandMaitreAlive)GS.grandMaitreAlive={...h.grandMaitreAlive};
     if(h.turnCount!==undefined)GS.turnCount=h.turnCount;
+    if(h.timeWhite!==undefined)GS.timeWhite=h.timeWhite;
+    if(h.timeBlack!==undefined)GS.timeBlack=h.timeBlack;
   }
   GS.selected=null;GS.legalMoves=[];GS.gameOver=false;GS.lastMove=null;GS.amazonePostCapture=null;
   _endGameTriggered=false;
   updateMedusaParalysis(GS.board,GS);updatePretreProtection(GS.board,GS);updateGrandMaitre(GS.board,GS);
   renderMoveLog(GS);renderGame(GS);updateStatus(GS);updateHistoryNav();
+  startClockTick(GS); // relance le décompte (l'annulation peut suivre une fin de partie)
 });
 
 // ----------------------------------------------------------------
@@ -248,6 +255,7 @@ document.getElementById('game-undo').addEventListener('click',()=>{
 // ----------------------------------------------------------------
 document.getElementById('game-quit').addEventListener('click',()=>{
   if(GS&&GS.gameOver){
+    stopClockTick(GS);
     if(_aiWorker&&_aiWorkerBusy){_aiWorker.terminate();_aiWorker=null;_aiWorkerBusy=false;}
     document.getElementById('promo-modal').classList.remove('active');
     army={mon:null,gen:null,extras:[]};
@@ -256,6 +264,7 @@ document.getElementById('game-quit').addEventListener('click',()=>{
     return;
   }
   if(GS)GS.gameOver=true;
+  stopClockTick(GS);
   if(_aiWorker&&_aiWorkerBusy){_aiWorker.terminate();_aiWorker=null;_aiWorkerBusy=false;}
   document.getElementById('promo-modal').classList.remove('active');
   if(tournamentState.active){

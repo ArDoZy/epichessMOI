@@ -56,6 +56,8 @@
   <div class="ai-lvl-box">
     <div style="font-family:'Cinzel',serif;font-size:18px;font-weight:900;text-align:center;margin-bottom:6px">⚔ Choisir l'Instructeur</div>
     <div style="font-size:12px;color:var(--muted);text-align:center;margin-bottom:4px;font-style:italic">Chaque rang débloque un instructeur plus puissant.</div>
+    <div style="font-family:'Cinzel',serif;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;text-align:center;margin:14px 0 6px">⏱ Temps de réflexion</div>
+    <div class="tc-row" id="time-control-row"></div>
     <div class="ai-lvl-grid" id="ai-lvl-grid"></div>
     <div style="display:flex;gap:10px;justify-content:center">
       <button class="btn btn-ghost" id="ai-lvl-cancel">Annuler</button>
@@ -273,6 +275,7 @@
           <div class="game-player-avatar" id="ai-player-avatar" style="background:linear-gradient(135deg,var(--accent2),var(--accent))">🤖</div>
           <div class="game-player-name" id="ai-player-name">Instructeur</div>
           <div class="game-player-elo" id="ai-player-elo"></div>
+          <div class="game-player-clock" id="ai-player-clock" style="display:none"></div>
         </div>
         <div class="game-board-outer">
           <div class="game-row-labels" id="game-row-labels"></div>
@@ -282,6 +285,7 @@
           <div class="game-player-avatar" id="human-player-avatar" style="background:linear-gradient(135deg,#7a5c1e,var(--gold))">?</div>
           <div class="game-player-name" id="human-player-name">Joueur</div>
           <div class="game-player-elo" id="human-player-elo"></div>
+          <div class="game-player-clock" id="human-player-clock" style="display:none"></div>
         </div>
       </div>
     </div>

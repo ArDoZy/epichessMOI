@@ -113,7 +113,24 @@ function renderGame(gs){
       startDrag(r,c,gs,t.clientX,t.clientY);
     },{passive:true});
   });
-  buildGameLabels(gs);updateCaptured(gs);updateHistoryNav();
+  buildGameLabels(gs);updateCaptured(gs);updateHistoryNav();renderClocks(gs);
+}
+
+// Affiche les deux badges d'horloge (masqués si gs.clockMs===0 = illimité).
+function renderClocks(gs){
+  const hEl=document.getElementById('human-player-clock');const aEl=document.getElementById('ai-player-clock');
+  if(!hEl||!aEl)return;
+  if(!gs.clockMs){hEl.style.display='none';aEl.style.display='none';return;}
+  const fmt=ms=>{const s=Math.max(0,Math.ceil(ms/1000));const m=Math.floor(s/60);const ss=s%60;return m+':'+(ss<10?'0':'')+ss;};
+  const playerCol=gs.playerColor||'w';const aiCol=gs.aiColor||'b';
+  const hTime=playerCol==='w'?gs.timeWhite:gs.timeBlack;
+  const aTime=aiCol==='w'?gs.timeWhite:gs.timeBlack;
+  hEl.style.display='';aEl.style.display='';
+  hEl.textContent=fmt(hTime);aEl.textContent=fmt(aTime);
+  hEl.classList.toggle('clock-active',gs.turn===playerCol&&!gs.gameOver);
+  aEl.classList.toggle('clock-active',gs.turn===aiCol&&!gs.gameOver);
+  hEl.classList.toggle('clock-low',hTime<30000);
+  aEl.classList.toggle('clock-low',aTime<30000);
 }
 
 function buildGameLabels(gs){
