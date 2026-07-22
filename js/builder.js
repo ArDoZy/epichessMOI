@@ -189,6 +189,16 @@ function derivePlacements(orderedPieces){
   orderedPieces.forEach((p,i)=>{placements[p.id]=ORDER_COLS[i]!==undefined?ORDER_COLS[i]:i;});
   return placements;
 }
+// Construit les données d'armée à partir de l'armée EN COURS dans le builder,
+// SANS la sauvegarder — utilisé par le bouton JOUER du cube (cube-nav.js) pour
+// lancer une partie avec l'armée actuellement composée.
+function buildArmyDataFromBuilder(){
+  if(!armyValid())return null;
+  const ordered=extraPieces();
+  return {id:'__live__',mon:{id:army.mon.id},gen:{id:army.gen.id},
+    extras:ordered.map(p=>p.id),placements:derivePlacements(ordered),totalValue:getVal()};
+}
+
 function saveArmyFromBuilder(){
   if(!armyValid())return;
   const ordered=extraPieces();

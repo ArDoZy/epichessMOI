@@ -606,3 +606,112 @@ body.light .gc.l{background:#eddab0}body.light .gc.d{background:#8a5f38}
 /* Cinématique — page combat : titre pulsant façon flamme de torche */
 .ctitle{text-shadow:0 0 18px rgba(201,162,39,.35)}
 .vs-div{filter:drop-shadow(0 0 10px rgba(122,31,43,.5))}
+
+/* [CUBE] ==========================================================
+   Navigation principale par cube (illusion 3D CSS). Voir js/cube-nav.js.
+   Le cube est une simple coquille visuelle : les vraies pages builder /
+   partie y sont déplacées à l'exécution. Chrome global (barre compte,
+   modals, réglages, bandeau catégories) reste HORS du cube.
+   ================================================================ */
+#cube-stage{position:fixed;inset:0;overflow:hidden;z-index:10;display:none;
+  perspective:2400px;perspective-origin:50% 50%}
+body.cube-active #cube-stage{display:block}
+
+#cube{position:absolute;inset:0;transform-style:preserve-3d;will-change:transform;
+  transition:transform .5s cubic-bezier(.45,.05,.2,1);
+  transform:translateZ(-50vmax) rotateX(0deg) rotateY(0deg)}
+
+/* Chaque face : un grand carré (100vmax) centré sur l'écran, poussé d'un
+   demi-cube le long de sa normale. Au repos, la face avant se retrouve
+   exactement sur le plan de projection → nette, clics/drag au pixel près. */
+.cube-face{position:absolute;width:100vmax;height:100vmax;left:50%;top:50%;
+  margin-left:-50vmax;margin-top:-50vmax;backface-visibility:hidden;
+  background:var(--bg);overflow:hidden;pointer-events:none;
+  box-shadow:inset 0 0 120px rgba(0,0,0,.55)}
+.cube-face.is-front{pointer-events:auto}
+.cube-face[data-face="jouer"]    {transform:rotateY(0deg)    translateZ(50vmax)}
+.cube-face[data-face="builder"]  {transform:rotateY(90deg)   translateZ(50vmax)}
+.cube-face[data-face="magasin"]  {transform:rotateY(180deg)  translateZ(50vmax)}
+.cube-face[data-face="missions"] {transform:rotateY(270deg)  translateZ(50vmax)}
+.cube-face[data-face="game"]     {transform:rotateX(90deg)   translateZ(50vmax)}
+.cube-face[data-face="variantes"]{transform:rotateX(-90deg)  translateZ(50vmax)}
+
+/* Zone utile réelle d'une face = un rectangle plein écran (100vw×100vh)
+   centré dans le grand carré (le reste du carré est masqué par #cube-stage). */
+.face-viewport{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  width:100vw;height:100vh;overflow:hidden}
+#face-viewport-builder{overflow-y:auto}
+
+/* Les pages réelles déplacées dans une face : toujours affichées (la
+   visibilité est gérée par la rotation du cube, plus par .page/.active). */
+.cube-embedded{display:block;min-height:100%}
+
+/* --- Face JOUER (menu principal) — sombre, premium, minimaliste --- */
+.cube-face[data-face="jouer"]{background:
+  radial-gradient(ellipse at 50% 32%,rgba(201,162,39,.14),transparent 60%),
+  radial-gradient(ellipse at 50% 120%,rgba(0,0,0,.6),transparent 55%),
+  linear-gradient(160deg,#1c150c,#0f0b06)}
+.jouer-menu{position:absolute;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:34px;text-align:center;padding:24px}
+.jouer-logo{font-family:'Cinzel Decorative','Cinzel',serif;font-weight:900;
+  font-size:clamp(34px,7vw,72px);letter-spacing:2px;
+  background:linear-gradient(180deg,var(--gold2),var(--gold) 55%,#8a6a1a);
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+  filter:drop-shadow(0 4px 24px rgba(201,162,39,.35))}
+.jouer-btn{position:relative;cursor:pointer;border:none;
+  font-family:'Cinzel',serif;font-weight:900;letter-spacing:6px;
+  font-size:clamp(22px,3.4vw,34px);color:#1a1206;
+  padding:22px 76px;border-radius:16px;
+  background:linear-gradient(180deg,var(--gold2),var(--gold));
+  box-shadow:0 10px 34px rgba(201,162,39,.4),0 2px 0 #8a6a1a,
+             inset 0 1px 0 rgba(255,255,255,.5);
+  transition:transform .18s ease,box-shadow .18s ease}
+.jouer-btn:hover{transform:translateY(-3px) scale(1.02);
+  box-shadow:0 16px 46px rgba(201,162,39,.55),0 2px 0 #8a6a1a,
+             inset 0 1px 0 rgba(255,255,255,.6)}
+.jouer-btn:active{transform:translateY(0) scale(.99)}
+.jouer-btn::after{content:'';position:absolute;inset:-2px;border-radius:18px;
+  border:1px solid rgba(232,199,102,.4);pointer-events:none}
+.jouer-hint{font-family:'Cinzel',serif;font-size:12px;letter-spacing:1px;
+  color:var(--muted);text-transform:uppercase;opacity:.8}
+
+/* --- Faces placeholder (Magasin / Missions / Variantes) --- */
+.cube-face[data-face="magasin"],
+.cube-face[data-face="missions"],
+.cube-face[data-face="variantes"]{background:
+  radial-gradient(ellipse at 50% 40%,rgba(107,77,44,.18),transparent 60%),
+  linear-gradient(160deg,#1a140b,#0f0b06)}
+.face-placeholder{position:absolute;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:14px;text-align:center;padding:24px}
+.fp-icon{font-size:clamp(48px,9vw,96px);filter:drop-shadow(0 6px 24px rgba(0,0,0,.5));opacity:.9}
+.fp-title{font-family:'Cinzel',serif;font-weight:900;letter-spacing:3px;
+  font-size:clamp(26px,5vw,46px);color:var(--gold2);text-transform:uppercase}
+.fp-sub{font-family:'Cinzel',serif;font-size:13px;letter-spacing:2px;
+  color:var(--muted);text-transform:uppercase;opacity:.7}
+
+/* --- Flèches de navigation (hors cube, chrome fixe) --- */
+.cube-arrow{position:fixed;z-index:400;cursor:pointer;border:1px solid var(--border2);
+  background:rgba(36,26,16,.72);backdrop-filter:blur(6px);color:var(--gold2);
+  font-family:'Cinzel',serif;line-height:1;display:flex;align-items:center;
+  justify-content:center;transition:all .2s ease;box-shadow:0 6px 20px rgba(0,0,0,.4)}
+.cube-arrow:hover{background:var(--surface2);border-color:var(--gold);color:#fff;
+  box-shadow:0 8px 28px rgba(201,162,39,.35)}
+/* Flèches horizontales dans les coins bas : jamais en collision avec la
+   barre de compte (haut) ni le bandeau de catégories (bord droit, builder). */
+.cube-arrow-side{bottom:22px;width:58px;height:58px;font-size:38px;border-radius:15px}
+#cube-arrow-left{left:22px}
+#cube-arrow-right{right:22px}
+.cube-arrow-vert{left:50%;transform:translateX(-50%);width:76px;height:42px;
+  font-size:28px;border-radius:12px}
+#cube-arrow-down{bottom:22px}
+#cube-arrow-up{top:60px}
+
+/* --- Pages secondaires : overlays plein écran AU-DESSUS du cube ---
+   (armées, voie, tournoi, combat, login). Restent pilotées par
+   .page/.active comme avant, mais deviennent des couches opaques qui
+   masquent le cube quand elles sont actives. */
+.page.active{position:fixed;inset:0;z-index:200;overflow-y:auto;background:var(--bg)}
+
+/* Sous un overlay (page secondaire active), on masque le chrome du cube. */
+body.nav-overlay .cube-arrow{display:none!important}
+body.nav-overlay .class-jump-rail{display:none!important}

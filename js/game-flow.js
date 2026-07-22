@@ -175,10 +175,11 @@ document.getElementById('result-close-btn').addEventListener('click',()=>{
 
 document.getElementById('result-continue').addEventListener('click',()=>{
   document.getElementById('result-modal').classList.remove('active');
-  army={mon:null,gen:null,extras:[]};
   editingArmyId=null;currentArmyData=null;aiArmyData=null;
   updAll();
-  renderArmiesPage();showPage('page-armies');
+  // Fin de partie → retour automatique au menu principal (face JOUER).
+  // On ne réinitialise PAS l'armée composée pour pouvoir relancer via JOUER.
+  if(typeof goToMainMenu==='function')goToMainMenu();else{renderArmiesPage();showPage('page-armies');}
 });
 
 document.getElementById('result-rejouer').addEventListener('click',()=>{
@@ -258,9 +259,10 @@ document.getElementById('game-quit').addEventListener('click',()=>{
     stopClockTick(GS);
     if(_aiWorker&&_aiWorkerBusy){_aiWorker.terminate();_aiWorker=null;_aiWorkerBusy=false;}
     document.getElementById('promo-modal').classList.remove('active');
-    army={mon:null,gen:null,extras:[]};
     editingArmyId=null;currentArmyData=null;aiArmyData=null;
-    updAll();renderArmiesPage();showPage('page-armies');
+    updAll();
+    // Quitter une partie terminée → retour au menu principal (face JOUER).
+    if(typeof goToMainMenu==='function')goToMainMenu();else{renderArmiesPage();showPage('page-armies');}
     return;
   }
   if(GS)GS.gameOver=true;
