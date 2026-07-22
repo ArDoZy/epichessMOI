@@ -301,19 +301,21 @@ body.has-acc .game-wrap{height:calc(100vh - 50px);margin-top:50px}
 .game-wrap{display:flex;height:100vh;overflow:hidden}
 .game-sidebar-left{width:200px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:10px;gap:8px;overflow-y:auto;transition:background .3s}
 .game-main{flex:1;display:flex;align-items:center;justify-content:center;padding:10px;min-width:0;overflow-y:auto;overflow-x:hidden}
-.game-sidebar-right{width:220px;flex-shrink:0;background:var(--surface);border-left:1px solid var(--border);display:flex;flex-direction:column;padding:10px;overflow:hidden;transition:background .3s}
+.game-sidebar-right{width:250px;flex-shrink:0;background:var(--surface);border-left:1px solid var(--border);display:flex;flex-direction:column;padding:10px;overflow:hidden;transition:background .3s}
 .gsb-title{font-family:'Cinzel',serif;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--gold);margin-bottom:10px;padding-bottom:7px;border-bottom:1px solid var(--border)}
 .captured-row{display:flex;flex-wrap:wrap;gap:3px;margin-bottom:8px;font-size:18px;min-height:26px}
-/* La réserve verticale (240px) doit couvrir : barre de compte (50px) +
-   barre de statut + les 2 barres joueur (avatar/nom/ELO/horloge) + labels
-   de colonnes + le padding de .game-main — sinon la barre du joueur (en bas)
-   peut sortir de l'écran sur une fenêtre courte. */
-.game-board-container{display:flex;flex-direction:column;align-items:center;width:100%;max-width:min(calc(100vh - 240px),calc(100vw - 480px),600px)}
-.game-player-bar{display:flex;align-items:center;gap:10px;width:100%;padding:6px 4px;font-family:'Cinzel',serif}
-.game-player-avatar{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff;flex-shrink:0}
-.game-player-name{font-size:13px;font-weight:700;flex:1;color:var(--text)}
+/* Réserve verticale pour : barre de statut + labels de colonnes + le
+   padding de .game-main. Les identifiants/horloges des joueurs sont
+   maintenant dans la sidebar de droite, pas au-dessus/en-dessous du
+   plateau — ils n'ont donc plus besoin d'espace ici. */
+.game-board-container{display:flex;flex-direction:column;align-items:center;width:100%;max-width:min(calc(100vh - 100px),calc(100vw - 500px),600px)}
+.game-player-bar{display:flex;flex-direction:column;gap:6px;width:100%;padding:10px;font-family:'Cinzel',serif;background:var(--bg);border:1px solid var(--border);border-radius:9px;margin-bottom:10px}
+.gpb-top{display:flex;align-items:center;gap:8px;min-width:0}
+.gpb-bottom{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.game-player-avatar{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#fff;flex-shrink:0}
+.game-player-name{font-size:12px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 .game-player-elo{font-size:11px;color:var(--gold);font-weight:700}
-.game-player-clock{font-family:'Cinzel',serif;font-size:15px;font-weight:800;padding:4px 12px;border-radius:7px;background:var(--bg);border:1px solid var(--border2);color:var(--text);min-width:56px;text-align:center;letter-spacing:.5px}
+.game-player-clock{font-family:'Cinzel',serif;font-size:14px;font-weight:800;padding:3px 10px;border-radius:7px;background:var(--surface2);border:1px solid var(--border2);color:var(--text);min-width:52px;text-align:center;letter-spacing:.5px}
 .game-player-clock.clock-active{border-color:var(--gold);box-shadow:0 0 10px rgba(201,162,39,.35);color:var(--gold)}
 .game-player-clock.clock-low{color:#fff;background:rgba(182,57,74,.75);border-color:var(--danger);animation:clockLowPulse 1s ease-in-out infinite}
 @keyframes clockLowPulse{0%,100%{opacity:1}50%{opacity:.55}}
@@ -356,7 +358,7 @@ body.light .gc.l{background:#eddab0}body.light .gc.d{background:#8a5f38}
 .ctx-power-btn{margin-top:10px;width:100%}
 .ctx-close{position:absolute;top:8px;right:10px;cursor:pointer;color:var(--muted);font-size:16px;line-height:1}.ctx-close:hover{color:var(--danger)}
 .gc.amazone-repos{box-shadow:inset 0 0 0 3px rgba(249,115,22,.8)!important;background:rgba(249,115,22,.18)!important}
-@media(max-width:760px){.game-wrap{flex-direction:column;height:auto}.game-sidebar-left,.game-sidebar-right{width:100%;max-height:140px}.game-main{padding:8px}.game-board-container{max-width:100%}}
+@media(max-width:760px){.game-wrap{flex-direction:column;height:auto}.game-sidebar-left{width:100%;max-height:140px}.game-sidebar-right{width:100%;max-height:none}.game-main{padding:8px}.game-board-container{max-width:100%}}
 
 /* [MODALS-GAME] ======================================================= */
 .promo-modal{position:fixed;inset:0;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;z-index:1000;visibility:hidden}

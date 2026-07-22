@@ -254,7 +254,9 @@ function isSquareAttackedSimple(tr,tc,defColor,board){
   const pawnDir=defColor==='w'?-1:1;
   for(const dc of[-1,1]){const r=tr+pawnDir,c=tc+dc;if(inB(r,c)){const p=board[r][c];if(p&&p.color===atk&&(p.type==='p'||p.pieceId==='std-pawn'))return true;}}
   // Fourmi (avant ortho avec capture, avant diag avec capture)
-  {const atkFwdDir=atk==='w'?-1:1;
+  // atkFwdDir = décalage entre la case cible et la case de la Fourmi
+  // attaquante (donc l'INVERSE de sa propre direction d'avance).
+  {const atkFwdDir=atk==='w'?1:-1;
   // Fourmi attaque en avant orthogonal
   {const r=tr+atkFwdDir,c=tc;if(inB(r,c)){const p=board[r][c];if(p&&p.color===atk&&p.pieceId==='fourmi')return true;}}
   // Fourmi attaque en diagonale avant

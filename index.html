@@ -270,31 +270,39 @@
     <div class="game-main">
       <div class="game-board-container">
         <div class="status-bar" id="game-status">En attente...</div>
-        <div class="game-player-bar" id="ai-player-bar">
-          <div class="game-player-avatar" id="ai-player-avatar" style="background:linear-gradient(135deg,var(--accent2),var(--accent))">🤖</div>
-          <div class="game-player-name" id="ai-player-name">Instructeur</div>
-          <div class="game-player-elo" id="ai-player-elo"></div>
-          <div class="game-player-clock" id="ai-player-clock" style="display:none"></div>
-        </div>
         <div class="game-board-outer">
           <div class="game-row-labels" id="game-row-labels"></div>
           <div class="game-board-col"><div class="game-board" id="game-board"></div><div class="game-col-labels" id="game-col-labels"></div></div>
-        </div>
-        <div class="game-player-bar" id="human-player-bar">
-          <div class="game-player-avatar" id="human-player-avatar" style="background:linear-gradient(135deg,#7a5c1e,var(--gold))">?</div>
-          <div class="game-player-name" id="human-player-name">Joueur</div>
-          <div class="game-player-elo" id="human-player-elo"></div>
-          <div class="game-player-clock" id="human-player-clock" style="display:none"></div>
         </div>
       </div>
     </div>
     <div class="game-sidebar-right">
       <div class="gsb-title">Partie</div>
+      <div class="game-player-bar" id="ai-player-bar">
+        <div class="gpb-top">
+          <div class="game-player-avatar" id="ai-player-avatar" style="background:linear-gradient(135deg,var(--accent2),var(--accent))">🤖</div>
+          <div class="game-player-name" id="ai-player-name">Instructeur</div>
+        </div>
+        <div class="gpb-bottom">
+          <div class="game-player-elo" id="ai-player-elo"></div>
+          <div class="game-player-clock" id="ai-player-clock" style="display:none"></div>
+        </div>
+      </div>
       <div class="history-badge" id="history-badge"></div>
       <div class="history-nav">
         <button id="hist-first">⏮</button><button id="hist-prev">◀</button><button id="hist-next">▶</button><button id="hist-last">⏭</button>
       </div>
       <div class="move-log" id="move-log"></div>
+      <div class="game-player-bar" id="human-player-bar">
+        <div class="gpb-top">
+          <div class="game-player-avatar" id="human-player-avatar" style="background:linear-gradient(135deg,#7a5c1e,var(--gold))">?</div>
+          <div class="game-player-name" id="human-player-name">Joueur</div>
+        </div>
+        <div class="gpb-bottom">
+          <div class="game-player-elo" id="human-player-elo"></div>
+          <div class="game-player-clock" id="human-player-clock" style="display:none"></div>
+        </div>
+      </div>
       <div class="game-btns">
         <button class="btn btn-ghost" id="game-undo" style="font-size:11px;padding:7px">Annuler coup</button>
         <button class="btn btn-danger" id="game-quit" style="font-size:11px;padding:7px">Abandonner</button>
