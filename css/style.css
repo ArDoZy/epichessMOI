@@ -115,10 +115,6 @@ body.has-acc .game-wrap{height:calc(100vh - 50px);margin-top:50px}
 .ai-lvl-modal.show{visibility:visible}
 .ai-lvl-box{background:var(--surface2);border:1px solid var(--border2);border-radius:18px;padding:28px;max-width:640px;width:93%;position:relative;overflow:hidden;max-height:90vh;overflow-y:auto}
 .ai-lvl-box::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--accent),var(--gold),var(--gold2),var(--accent2),var(--accent));background-size:200% 100%;animation:shimmerBar 7s linear infinite;box-shadow:0 0 10px rgba(201,162,39,.4)}
-.tc-row{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-bottom:6px}
-.tc-btn{padding:6px 13px;border:1px solid var(--border2);border-radius:7px;background:var(--bg);color:var(--muted);cursor:pointer;font-size:11px;font-weight:700;font-family:'Cinzel',serif;transition:all .15s}
-.tc-btn:hover{color:var(--text);border-color:var(--gold)}
-.tc-btn.tc-sel{color:var(--gold);border-color:var(--gold);background:rgba(201,162,39,.12);box-shadow:0 0 8px rgba(201,162,39,.25)}
 .ai-lvl-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin:14px 0}
 .ai-lvl-card{background:var(--bg);border:2px solid var(--border);border-radius:12px;padding:14px 10px;text-align:center;cursor:pointer;transition:all .2s}
 .ai-lvl-card:hover:not(.lvl-locked){transform:translateY(-3px);border-color:var(--accent2)}
@@ -262,7 +258,14 @@ body.has-acc .game-wrap{height:calc(100vh - 50px);margin-top:50px}
 .army-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px;transition:all .22s;position:relative;overflow:hidden}
 .army-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--accent),var(--gold))}
 .army-card:hover{border-color:var(--border2);box-shadow:0 6px 28px rgba(0,0,0,.5)}
-.ac-date{font-size:10px;color:var(--muted);font-family:'Cinzel',serif;letter-spacing:.3px;margin-bottom:9px}
+.ac-name-row{display:flex;align-items:center;gap:6px;margin-bottom:10px}
+.ac-name{font-family:'Cinzel',serif;font-size:14px;font-weight:700;color:var(--gold);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ac-name-edit-btn{width:22px;height:22px;flex-shrink:0;border:1px solid var(--border2);border-radius:6px;background:transparent;color:var(--muted);cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.ac-name-edit-btn:hover{color:var(--gold);border-color:var(--gold);background:rgba(201,162,39,.1)}
+.ac-name-btn{font-size:11px!important;padding:6px 12px!important;margin-bottom:10px;width:100%}
+.ac-name-edit-row{display:flex;gap:6px;margin-bottom:10px}
+.ac-name-input{flex:1;min-width:0;background:var(--bg);border:1px solid var(--border2);border-radius:7px;padding:6px 10px;color:var(--text);font-size:12px;font-family:'Crimson Pro',serif;outline:none}
+.ac-name-input:focus{border-color:var(--gold)}
 .ac-pieces{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px;font-size:24px}
 .ac-names{font-size:12px;color:var(--muted);line-height:1.6;margin-bottom:14px}
 .ac-val{display:inline-flex;align-items:center;gap:5px;font-family:'Cinzel',serif;font-size:10px;color:var(--gold);background:rgba(201,168,76,.07);border:1px solid rgba(201,168,76,.18);border-radius:5px;padding:3px 8px}
@@ -297,11 +300,15 @@ body.has-acc .game-wrap{height:calc(100vh - 50px);margin-top:50px}
 #page-game.active{display:block}
 .game-wrap{display:flex;height:100vh;overflow:hidden}
 .game-sidebar-left{width:200px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:10px;gap:8px;overflow-y:auto;transition:background .3s}
-.game-main{flex:1;display:flex;align-items:center;justify-content:center;padding:10px;min-width:0;overflow:hidden}
+.game-main{flex:1;display:flex;align-items:center;justify-content:center;padding:10px;min-width:0;overflow-y:auto;overflow-x:hidden}
 .game-sidebar-right{width:220px;flex-shrink:0;background:var(--surface);border-left:1px solid var(--border);display:flex;flex-direction:column;padding:10px;overflow:hidden;transition:background .3s}
 .gsb-title{font-family:'Cinzel',serif;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--gold);margin-bottom:10px;padding-bottom:7px;border-bottom:1px solid var(--border)}
 .captured-row{display:flex;flex-wrap:wrap;gap:3px;margin-bottom:8px;font-size:18px;min-height:26px}
-.game-board-container{display:flex;flex-direction:column;align-items:center;width:100%;max-width:min(calc(100vh - 80px),calc(100vw - 480px),600px)}
+/* La réserve verticale (240px) doit couvrir : barre de compte (50px) +
+   barre de statut + les 2 barres joueur (avatar/nom/ELO/horloge) + labels
+   de colonnes + le padding de .game-main — sinon la barre du joueur (en bas)
+   peut sortir de l'écran sur une fenêtre courte. */
+.game-board-container{display:flex;flex-direction:column;align-items:center;width:100%;max-width:min(calc(100vh - 240px),calc(100vw - 480px),600px)}
 .game-player-bar{display:flex;align-items:center;gap:10px;width:100%;padding:6px 4px;font-family:'Cinzel',serif}
 .game-player-avatar{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff;flex-shrink:0}
 .game-player-name{font-size:13px;font-weight:700;flex:1;color:var(--text)}

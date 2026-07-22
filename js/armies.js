@@ -29,14 +29,43 @@ const loadArmyForEdit=ad=>{
   editingArmyId=ad.id;
 };
 
+// ----------------------------------------------------------------
+// NOM DE L'ARMÉE — bouton "Nommer l'armée" (ou nom + petit stylo une fois
+// nommée) affiché au-dessus de la carte, à la place des dates.
+// ----------------------------------------------------------------
+let _renamingArmyId=null;
+const buildNameBlock=(a,isAi)=>{
+  if(_renamingArmyId===a.id){
+    return '<div class="ac-name-edit-row"><input type="text" class="ac-name-input" id="ac-name-input-'+a.id+'" value="'+escH(a.name||'')+'" maxlength="30" placeholder="Nom de l\'armée" onkeydown="if(event.key===\'Enter\')confirmRenameArmy(\''+a.id+'\','+(!!isAi)+')"><button class="btn btn-gold" style="font-size:11px;padding:6px 10px" onclick="confirmRenameArmy(\''+a.id+'\','+(!!isAi)+')">Valider</button></div>';
+  }
+  if(a.name){
+    return '<div class="ac-name-row"><span class="ac-name">'+escH(a.name)+'</span><button class="ac-name-edit-btn" title="Renommer" onclick="startRenameArmy(\''+a.id+'\','+(!!isAi)+')">✎</button></div>';
+  }
+  return '<button class="btn btn-ghost ac-name-btn" onclick="startRenameArmy(\''+a.id+'\','+(!!isAi)+')">✎ Nommer l\'armée</button>';
+};
+window.startRenameArmy=(id,isAi)=>{
+  _renamingArmyId=id;
+  if(isAi)renderAiArmiesPage();else renderArmiesPage();
+  setTimeout(()=>{const inp=document.getElementById('ac-name-input-'+id);if(inp){inp.focus();inp.select();}},0);
+};
+window.confirmRenameArmy=(id,isAi)=>{
+  const inp=document.getElementById('ac-name-input-'+id);if(!inp)return;
+  const val=inp.value.trim();
+  const list=isAi?savedAiArmies:savedArmies;
+  const a=list.find(x=>x.id===id);if(a)a.name=val||null;
+  if(isAi)saveAiArmies();else saveArmies();
+  _renamingArmyId=null;
+  if(isAi)renderAiArmiesPage();else renderArmiesPage();
+};
+
 const renderArmiesPage=()=>{
   const grid=document.getElementById('armies-grid');
   if(!savedArmies.length){grid.innerHTML='<div class="empty-armies"><span class="ea-icon">⚔️</span><p>Aucune armée enregistrée.<br>Composez votre première armée !</p></div>';return;}
   grid.innerHTML=savedArmies.map(a=>{
     const mon=PIECES.find(p=>p.id===a.mon.id);const gen=PIECES.find(p=>p.id===a.gen.id);
     const extras=a.extras.map(id=>PIECES.find(p=>p.id===id)).filter(Boolean);
-    const all=[mon,gen,...extras].filter(Boolean);const isEdited=a.updatedAt&&a.updatedAt!==a.createdAt;
-    return '<div class="army-card"><div class="ac-date">Créée le '+fmtDate(a.createdAt)+(isEdited?' · modifiée le '+fmtDate(a.updatedAt):'')+'</div><div class="ac-pieces">'+all.map(p=>'<span title="'+p.name+'">'+p.emoji+'</span>').join('')+'</div><div class="ac-names">'+( mon?.name||'?')+' (Monarque) · '+(gen?.name||'?')+' (Général)<br>'+extras.map(p=>p.name).join(' · ')+'</div><div class="ac-val">⚡ '+a.totalValue+' pts</div><div class="ac-btns"><button class="btn btn-ghost" style="font-size:11px;padding:6px 12px" onclick="editPlayerArmy(\''+a.id+'\')">Modifier</button><button class="btn btn-gold" style="font-size:11px;padding:6px 12px" onclick="launchCombat(\''+a.id+'\')">Combat</button><button class="btn btn-primary" style="font-size:11px;padding:6px 12px;border-color:var(--accent2)" onclick="launchTournoiFromArmy(\''+a.id+'\')">🏆 Tournoi</button><button class="btn btn-danger" style="font-size:11px;padding:6px 10px" onclick="deletePlayerArmy(\''+a.id+'\')">Suppr.</button></div></div>';
+    const all=[mon,gen,...extras].filter(Boolean);
+    return '<div class="army-card">'+buildNameBlock(a,false)+'<div class="ac-pieces">'+all.map(p=>'<span title="'+p.name+'">'+p.emoji+'</span>').join('')+'</div><div class="ac-names">'+( mon?.name||'?')+' (Monarque) · '+(gen?.name||'?')+' (Général)<br>'+extras.map(p=>p.name).join(' · ')+'</div><div class="ac-val">⚡ '+a.totalValue+' pts</div><div class="ac-btns"><button class="btn btn-ghost" style="font-size:11px;padding:6px 12px" onclick="editPlayerArmy(\''+a.id+'\')">Modifier</button><button class="btn btn-gold" style="font-size:11px;padding:6px 12px" onclick="launchCombat(\''+a.id+'\')">Combat</button><button class="btn btn-primary" style="font-size:11px;padding:6px 12px;border-color:var(--accent2)" onclick="launchTournoiFromArmy(\''+a.id+'\')">🏆 Tournoi</button><button class="btn btn-danger" style="font-size:11px;padding:6px 10px" onclick="deletePlayerArmy(\''+a.id+'\')">Suppr.</button></div></div>';
   }).join('');
 };
 window.editPlayerArmy=id=>{const a=savedArmies.find(x=>x.id===id);if(!a)return;builderMode='player';updateBuilderBanner();loadArmyForEdit(a);updAll();showPage('page-builder');};
@@ -61,7 +90,7 @@ const renderAiArmiesPage=()=>{
     const mon=PIECES.find(p=>p.id===a.mon.id);const gen=PIECES.find(p=>p.id===a.gen.id);
     const extras=a.extras.map(id=>PIECES.find(p=>p.id===id)).filter(Boolean);
     const all=[mon,gen,...extras].filter(Boolean);
-    return '<div class="army-card" style="border-top-color:var(--accent2)"><div class="ac-date">'+fmtDate(a.createdAt)+'</div><div class="ac-pieces">'+all.map(p=>'<span>'+p.emoji+'</span>').join('')+'</div><div class="ac-names">'+(mon?.name||'?')+' · '+(gen?.name||'?')+'<br>'+extras.map(p=>p.name).join(' · ')+'</div><div class="ac-val">⚡ '+a.totalValue+' pts</div><div class="ac-btns"><button class="btn btn-ghost" style="font-size:11px;padding:6px 12px" onclick="editAiArmy(\''+a.id+'\')">Modifier</button><button class="btn btn-primary" style="font-size:11px;padding:6px 12px" onclick="selectAiArmy(\''+a.id+'\')">Choisir</button><button class="btn btn-danger" style="font-size:11px;padding:6px 10px" onclick="deleteAiArmy(\''+a.id+'\')">Suppr.</button></div></div>';
+    return '<div class="army-card" style="border-top-color:var(--accent2)">'+buildNameBlock(a,true)+'<div class="ac-pieces">'+all.map(p=>'<span>'+p.emoji+'</span>').join('')+'</div><div class="ac-names">'+(mon?.name||'?')+' · '+(gen?.name||'?')+'<br>'+extras.map(p=>p.name).join(' · ')+'</div><div class="ac-val">⚡ '+a.totalValue+' pts</div><div class="ac-btns"><button class="btn btn-ghost" style="font-size:11px;padding:6px 12px" onclick="editAiArmy(\''+a.id+'\')">Modifier</button><button class="btn btn-primary" style="font-size:11px;padding:6px 12px" onclick="selectAiArmy(\''+a.id+'\')">Choisir</button><button class="btn btn-danger" style="font-size:11px;padding:6px 10px" onclick="deleteAiArmy(\''+a.id+'\')">Suppr.</button></div></div>';
   }).join('');
 };
 window.editAiArmy=id=>{const a=savedAiArmies.find(x=>x.id===id);if(!a)return;builderMode='ai';updateBuilderBanner();loadArmyForEdit(a);updAll();showPage('page-builder');};
