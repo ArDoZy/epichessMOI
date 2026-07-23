@@ -154,10 +154,15 @@ body.has-acc .game-wrap{height:calc(100vh - 50px);margin-top:50px}
    main.js). align-items:flex-end évite l'effet "stretch" par défaut d'un
    flex-column : sans lui, agrandir UN bouton au survol agrandissait tous
    ses voisins (ils se calent tous sur la largeur du plus large enfant). */
-.class-jump-rail{position:fixed;top:50%;right:0;transform:translateY(-50%);z-index:600;display:none;flex-direction:column;align-items:flex-end;gap:8px}
+.class-jump-rail{position:fixed;top:50%;right:0;transform:translateY(-50%);z-index:600;display:none;flex-direction:column;align-items:flex-end;gap:6px}
 .class-jump-rail.show{display:flex}
-.cj-btn{writing-mode:vertical-rl;text-orientation:mixed;width:46px;padding:20px 10px;border:1px solid var(--border2);border-right:none;border-radius:10px 0 0 10px;background:var(--surface2);color:var(--muted);cursor:pointer;font-size:13px;font-weight:700;font-family:'Cinzel',serif;letter-spacing:1.5px;transition:all .2s}
+/* padding vertical réduit (20px→13px) pour faire de la place au 6e onglet
+   "Armée" tout en gardant approximativement la même hauteur totale de
+   bandeau qu'avec les 5 onglets d'origine (rétrécissement proportionnel). */
+.cj-btn{writing-mode:vertical-rl;text-orientation:mixed;width:46px;padding:13px 10px;border:1px solid var(--border2);border-right:none;border-radius:10px 0 0 10px;background:var(--surface2);color:var(--muted);cursor:pointer;font-size:13px;font-weight:700;font-family:'Cinzel',serif;letter-spacing:1.5px;transition:all .2s}
 .cj-btn:hover{color:var(--gold);border-color:var(--gold);background:var(--surface);width:66px;box-shadow:-6px 0 16px rgba(0,0,0,.35)}
+.cj-btn-armee{border-color:var(--gold2);color:var(--gold2)}
+.cj-btn-armee:hover{color:var(--gold2);border-color:var(--gold2)}
 .cj-btn[data-class="Général"]:hover{color:var(--general);border-color:var(--general)}
 .cj-btn[data-class="Primordiale"]:hover{color:var(--primordiale);border-color:var(--primordiale)}
 .cj-btn[data-class="Brute"]:hover{color:var(--brute);border-color:var(--brute)}

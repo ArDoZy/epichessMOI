@@ -269,6 +269,16 @@ document.getElementById('b-armies').addEventListener('click',()=>{if(builderMode
 // possible, ce qui reste largement suffisant pour l'amener à l'écran.
 document.querySelectorAll('.cj-btn').forEach(btn=>{
   btn.addEventListener('click',()=>{
+    // L'onglet "Armée" (data-jump="top") ramène tout en haut de la page
+    // (topbar + section "Votre armée" inclus) — un simple scrollIntoView sur
+    // #army-box masquerait la topbar au-dessus. Les autres onglets sautent
+    // vers leur section de classe comme avant.
+    if(btn.dataset.jump==='top'){
+      const viewport=document.getElementById('face-viewport-builder');
+      if(viewport)viewport.scrollTo({top:0,behavior:'smooth'});
+      else window.scrollTo({top:0,behavior:'smooth'});
+      return;
+    }
     document.getElementById('cls-sec-'+btn.dataset.class)?.scrollIntoView({behavior:'smooth',block:'start'});
   });
 });
