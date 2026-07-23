@@ -103,7 +103,6 @@
         <div class="jouer-menu">
           <div class="jouer-logo">EPIC CHESS</div>
           <button class="jouer-btn" id="cube-jouer-btn"><span>JOUER</span></button>
-          <div class="jouer-hint">← Missions&nbsp;&nbsp;·&nbsp;&nbsp;Magasin&nbsp;·&nbsp;Composez votre armée →</div>
         </div>
       </div>
     </div>
@@ -128,17 +127,26 @@
       <div class="face-viewport"><div class="face-placeholder"><div class="fp-icon">🧩</div><div class="fp-title">Variantes</div><div class="fp-sub">Bientôt disponible</div></div></div>
     </div>
   </div>
-  <!-- Contrôles de navigation (hors du cube 3D) -->
-  <button class="cube-arrow cube-arrow-side" id="cube-arrow-left" title="Tourner à gauche" style="display:none">‹</button>
-  <button class="cube-arrow cube-arrow-side" id="cube-arrow-right" title="Tourner à droite" style="display:none">›</button>
-  <button class="cube-arrow cube-arrow-vert" id="cube-arrow-down" title="Variantes" style="display:none">⌄</button>
-  <button class="cube-arrow cube-arrow-vert" id="cube-arrow-up" title="Retour au menu" style="display:none">⌃</button>
+  <!-- Contrôles de navigation (hors du cube 3D). Icônes en SVG (et non en
+       glyphes unicode) : centrage garanti, indépendant des métriques de la
+       police (voir css [CUBE] .cube-arrow svg). -->
+  <button class="cube-arrow cube-arrow-side" id="cube-arrow-left" title="Tourner à gauche" style="display:none">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 5, 8 12, 15 19"/></svg>
+  </button>
+  <button class="cube-arrow cube-arrow-side" id="cube-arrow-right" title="Tourner à droite" style="display:none">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 5, 16 12, 9 19"/></svg>
+  </button>
+  <button class="cube-arrow cube-arrow-vert" id="cube-arrow-down" title="Variantes" style="display:none">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="5 9, 12 16, 19 9"/></svg>
+  </button>
+  <button class="cube-arrow cube-arrow-vert" id="cube-arrow-up" title="Retour au menu" style="display:none">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="5 15, 12 8, 19 15"/></svg>
+  </button>
 </div>
 
 <!-- PAGE 1: BUILDER -->
 <div id="page-builder" class="page">
 <div class="builder-inner">
-  <div class="builder-logo"><img src="a.png" onerror="this.outerHTML='<h1 class=\'cinzel glow-text\' style=\'font-size:clamp(22px,5vw,42px);text-align:center\'>EPIC CHESS</h1>'"></div>
   <div class="builder-topbar"></div>
   <div class="builder-mode-banner" id="builder-mode-banner"></div>
   <div class="topbar">
