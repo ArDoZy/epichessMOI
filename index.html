@@ -81,6 +81,7 @@
      transform, ce qui piégerait un position:fixed descendant). Visibilité
      pilotée par showPage() dans main.js. -->
 <div class="class-jump-rail" id="class-jump-rail">
+  <button class="cj-btn cj-btn-armee" data-jump="top">Armée</button>
   <button class="cj-btn" data-class="Monarque">Monarque</button>
   <button class="cj-btn" data-class="Général">Général</button>
   <button class="cj-btn" data-class="Primordiale">Primordiale</button>
@@ -162,7 +163,7 @@
       <div class="stat-pill"><div class="sp-label">Valeur</div><div class="sp-val" id="s-val">0/24</div></div>
     </div>
   </div>
-  <div class="army-box"><div class="army-box-title">⚔ Votre armée</div><div class="comp-grid" id="comp-grid"></div></div>
+  <div class="army-box" id="army-box"><div class="army-box-title">⚔ Votre armée</div><div class="comp-grid" id="comp-grid"></div></div>
   <div id="cards-container"></div>
 </div>
 </div>
