@@ -2,201 +2,223 @@
 // CUBE-NAV.JS — Navigation principale par cube (illusion 3D CSS)
 // ================================================================
 // Remplace UNIQUEMENT la navigation de haut niveau par un cube qui tourne
-// par incréments de 90°. Ce module ne connaît QUE :
-//   - la face courante (yaw/pitch)
-//   - les animations / rotations
-//   - le verrouillage pendant une partie
-// Il ignore totalement le fonctionnement du builder, du moteur d'échecs,
-// des comptes et de l'IA. Il se contente de :
-//   - déplacer (à l'exécution) le DOM existant #page-builder et #page-game
-//     dans les faces correspondantes (les IDs et listeners survivent au
-//     déplacement, donc AUCUNE logique n'est réécrite) ;
-//   - piloter la rotation du cube quand showPage() cible une face ;
-//   - laisser les pages secondaires (armées, voie, tournoi, combat, login)
-//     s'afficher en overlay plein écran au-dessus du cube, exactement comme
-//     avant.
+// par incréments de 90°. Ce module ne connaît QUE la face courante, les
+// rotations et le verrouillage pendant une partie. Il ignore totalement le
+// fonctionnement du builder, du moteur, des comptes et de l'IA.
 //
-// Dépendances : main.js (showPage délègue à cubeOnShowPage), et les globals
-// de jeu (army, currentArmyData, aiArmyData, _playerColor, startGame,
+// Il déplace à l'exécution le DOM existant #page-builder et #page-game dans
+// les faces correspondantes (IDs + listeners préservés → aucune logique
+// réécrite), pilote la rotation quand showPage() cible une face, et laisse
+// les pages secondaires (armées, voie, tournoi, combat, login) s'afficher en
+// overlay plein écran au-dessus du cube.
+//
+// -- POINT TECHNIQUE IMPORTANT --------------------------------------------
+// Le hit-testing des clics est FIABLE uniquement quand la face avant est à
+// l'angle 0 (aucune rotation nette). Une face amenée au front par une
+// rotation 3D persistante s'affiche au bon endroit mais ne reçoit pas les
+// clics. On applique donc la technique du « rebase » : le cube tourne pour
+// l'ANIMATION (0,5 s) puis, à la fin, on réinitialise discrètement le cube à
+// l'angle 0 et on réaffecte chaque face à son nouvel emplacement. Résultat :
+// au repos, la face avant est TOUJOURS à l'angle 0 → clics/drag fiables.
+//
+// Dépendances : main.js (showPage y délègue), et les globals de jeu
+// (army, currentArmyData, aiArmyData, _playerColor, startGame,
 // generateAIArmy, showAILevelModal, showNotif, buildArmyDataFromBuilder).
-// Chargé juste après main.js (voir index.html).
 // ================================================================
 
 (function(){
-  // Faces latérales dans l'ordre de rotation. « Tourner à gauche » avance
-  // d'un cran (jouer→builder→magasin→missions→jouer…), « à droite » recule.
-  const SIDE_FACES=['jouer','builder','magasin','missions']; // front, right, back, left
-  // Pages réelles embarquées dans une face (déplacées à l'init).
-  const EMBED={ 'page-builder':'builder', 'page-game':'game' };
-  // Toute page NON listée ici (armies, voie, tournoi, combat, login…) reste un
-  // overlay plein écran classique piloté par le système .page/.active.
+  // Emplacements 3D fixes autour de la caméra. Une seule face occupe le
+  // « front » (angle 0) à la fois — c'est la seule interactive.
+  const SLOT_TF={
+    front :'translateZ(50vmax)',
+    right :'rotateY(90deg) translateZ(50vmax)',
+    back  :'rotateY(180deg) translateZ(50vmax)',
+    left  :'rotateY(-90deg) translateZ(50vmax)',
+    top   :'rotateX(90deg) translateZ(50vmax)',
+    bottom:'rotateX(-90deg) translateZ(50vmax)'
+  };
+  const REST='translateZ(-50vmax)';
+  // Disposition canonique (au menu principal).
+  const CANON={front:'jouer',right:'builder',back:'magasin',left:'missions',top:'game',bottom:'variantes'};
+  const SIDE=new Set(['jouer','builder','magasin','missions']);
+  const EMBED={'page-builder':'builder','page-game':'game'};
 
-  let yaw=0;     // deg — accumulateur (négatif = rotations vers la gauche)
-  let pitch=0;   // deg — 0 : faces latérales ; -90 : face sup (partie) ; +90 : face inf (variantes)
-  let locked=false;
-  let cube=null;
+  // Permutations des emplacements selon la rotation demandée. « right »
+  // amène au front la face qui était à DROITE (le cube tourne visuellement
+  // vers la gauche), etc.
+  const PERM={
+    right:o=>({front:o.right, right:o.back, back:o.left, left:o.front, top:o.top, bottom:o.bottom}),
+    left :o=>({front:o.left, left:o.back, back:o.right, right:o.front, top:o.top, bottom:o.bottom}),
+    up   :o=>({front:o.top, top:o.back, back:o.bottom, bottom:o.front, left:o.left, right:o.right}),
+    down :o=>({front:o.bottom, bottom:o.back, back:o.top, top:o.front, left:o.left, right:o.right})
+  };
+  // Rotation appliquée au cube PENDANT l'animation (avant rebase).
+  const CUBE_ANIM={right:'rotateY(-90deg)', left:'rotateY(90deg)', up:'rotateX(-90deg)', down:'rotateX(90deg)'};
 
-  function sideIndex(){ return ((Math.round(-yaw/90)%4)+4)%4; }
-  function frontSideName(){ return SIDE_FACES[sideIndex()]; }
+  let slots=Object.assign({},CANON);
+  let animating=false, locked=false, cube=null;
 
-  function applyTransform(animate){
-    if(!cube)return;
-    cube.style.transition = animate===false ? 'none' : '';
-    cube.style.transform = 'translateZ(-50vmax) rotateX('+pitch+'deg) rotateY('+yaw+'deg)';
-  }
+  const faceEl=name=>cube.querySelector('.cube-face[data-face="'+name+'"]');
+  const slotOf=name=>{ for(const s in slots) if(slots[s]===name) return s; };
+
+  function assignTransforms(){ for(const s in slots){ const el=faceEl(slots[s]); if(el)el.style.transform=SLOT_TF[s]; } }
 
   function refresh(){
     if(!cube)return;
-    // Détermine la face réellement au front pour l'interactivité.
-    let name;
-    if(pitch<0)name='game';
-    else if(pitch>0)name='variantes';
-    else name=frontSideName();
-    cube.querySelectorAll('.cube-face').forEach(f=>{
-      f.classList.toggle('is-front', f.dataset.face===name);
-    });
-    // Bandeau catégories : uniquement sur la face builder au repos.
+    cube.querySelectorAll('.cube-face').forEach(f=>f.classList.toggle('is-front', f.dataset.face===slots.front));
     const rail=document.getElementById('class-jump-rail');
-    if(rail)rail.classList.toggle('show', pitch===0 && name==='builder');
-    updateArrows(name);
+    if(rail)rail.classList.toggle('show', slots.front==='builder' && !document.body.classList.contains('nav-overlay'));
+    updateArrows();
+  }
+  function updateArrows(){
+    const active=document.body.classList.contains('cube-active') && !document.body.classList.contains('nav-overlay');
+    const onSide=SIDE.has(slots.front);
+    const h=active && !locked && !animating && onSide;
+    const set=(id,show)=>{const e=document.getElementById(id);if(e)e.style.display=show?'':'none';};
+    set('cube-arrow-left', h);
+    set('cube-arrow-right', h);
+    set('cube-arrow-down', h && slots.front==='jouer');           // descendre vers Variantes
+    set('cube-arrow-up',   active && !locked && !animating && slots.front==='variantes'); // remonter
   }
 
-  function updateArrows(name){
-    const active=document.body.classList.contains('cube-active');
-    const lat = active && !locked && pitch===0;
-    const l=document.getElementById('cube-arrow-left');
-    const r=document.getElementById('cube-arrow-right');
-    const d=document.getElementById('cube-arrow-down');
-    const u=document.getElementById('cube-arrow-up');
-    if(l)l.style.display=lat?'':'none';
-    if(r)r.style.display=lat?'':'none';
-    // Descendre vers « Variantes » : seulement depuis la face JOUER.
-    if(d)d.style.display=(lat && name==='jouer')?'':'none';
-    // Remonter depuis « Variantes ».
-    if(u)u.style.display=(active && !locked && pitch>0)?'':'none';
+  // Réinitialise le cube à l'angle 0 avec les emplacements courants (sans
+  // animation) → face avant nette et cliquable.
+  function settle(){
+    assignTransforms();
+    cube.style.transition='none';
+    cube.style.transform=REST;
+    void cube.offsetWidth;      // reflow : fige l'état avant de réactiver la transition
+    cube.style.transition='';
   }
 
-  // ---- Rotations -------------------------------------------------
-  function rotateHorizontal(dir){ // dir<0 : gauche ; dir>0 : droite
-    if(locked||pitch!==0)return;
-    yaw += (dir<0 ? -90 : 90);
-    applyTransform(); refresh();
+  // Rotation ANIMÉE d'un cran puis rebase.
+  function animate(kind,after){
+    if(animating||!cube)return;
+    animating=true; updateArrows();
+    cube.style.transition='transform .5s cubic-bezier(.45,.05,.2,1)';
+    void cube.offsetWidth;
+    cube.style.transform=REST+' '+CUBE_ANIM[kind];
+    let done=false;
+    const finish=()=>{
+      if(done)return; done=true;
+      cube.removeEventListener('transitionend',finish);
+      slots=PERM[kind](slots);   // la face amenée au front devient « front »
+      animating=false;
+      settle();                  // cube revient à l'angle 0, faces réaffectées (aucun saut visuel)
+      refresh();
+      if(after)after();
+    };
+    cube.addEventListener('transitionend',finish);
+    setTimeout(finish,650);      // filet de sécurité si transitionend ne se déclenche pas
   }
-  function goToSide(name){
-    const target=SIDE_FACES.indexOf(name); if(target<0)return;
-    pitch=0;
-    let diff=(target - sideIndex() + 4)%4; // 0..3
-    if(diff===3)diff=-1;                    // chemin le plus court
-    yaw += -diff*90;
-    applyTransform(); refresh();
+
+  // Amène une face au front SANS animation (utilisé quand le cube est masqué
+  // par un overlay, ou pour un changement de page programmatique).
+  function setFrontInstant(name){
+    if(!cube)return;
+    let g=0;
+    while(slots.front!==name && g++<6){
+      const s=slotOf(name);
+      const kind = s==='right'?'right' : s==='left'?'left' : s==='top'?'up' : s==='bottom'?'down' : 'right';
+      slots=PERM[kind](slots);
+    }
+    settle(); refresh();
   }
-  function goVertical(dir){ // dir<0 : vers le haut (partie) ; dir>0 : vers le bas (variantes)
-    pitch = dir<0 ? -90 : 90;
-    applyTransform(); refresh();
-  }
+
+  // ---- Rotations déclenchées par l'utilisateur -------------------
+  function nav(kind){ if(!locked && !animating && SIDE.has(slots.front)) animate(kind); }
 
   function lock(){ locked=true; refresh(); }
   function unlock(){ locked=false; refresh(); }
 
-  // Retour au menu principal (face JOUER), déverrouillé. Utilisé après une
-  // partie et à la connexion.
   function goToMainMenu(){
     document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
     document.body.classList.remove('nav-overlay');
     document.body.classList.add('cube-active');
-    locked=false; pitch=0; goToSide('jouer');
+    locked=false;
+    slots=Object.assign({},CANON);   // disposition canonique (jouer devant, partie en haut)
+    settle(); refresh();
   }
   window.goToMainMenu=goToMainMenu;
 
   // ---- Intégration avec showPage() -------------------------------
-  // Appelée par showPage() (main.js) APRÈS le basculement .page/.active.
   function cubeOnShowPage(id){
-    if(!cube){ return; }
-    // Écran de connexion : on quitte entièrement le mode cube.
+    if(!cube)return;
     if(id==='page-login'){ document.body.classList.remove('cube-active','nav-overlay'); locked=false; return; }
     if(id==='face-jouer'){ goToMainMenu(); return; }
     const face=EMBED[id];
     if(face==='builder'){
       document.body.classList.remove('nav-overlay');
       document.body.classList.add('cube-active');
-      if(locked)unlock();
-      goToSide('builder');
+      locked=false; setFrontInstant('builder');
       return;
     }
     if(face==='game'){
       document.body.classList.remove('nav-overlay');
       document.body.classList.add('cube-active');
-      goVertical(-1);   // rotation verticale vers la face supérieure
-      lock();           // navigation verrouillée pendant la partie
+      // Rotation VERTICALE vers la face partie si elle est en haut (cas
+      // normal : lancement depuis JOUER / builder). Sinon bascule directe.
+      if(slotOf('game')==='top' && SIDE.has(slots.front)) animate('up', lock);
+      else { setFrontInstant('game'); lock(); }
       return;
     }
-    // Page secondaire (overlay) : elle se dessine au-dessus du cube. On
-    // marque body.nav-overlay (masque flèches + bandeau) et on remet
-    // discrètement le cube au repos derrière l'overlay pour un retour propre.
+    // Page secondaire (overlay) : elle couvre le cube. On masque le chrome du
+    // cube et on remet la face JOUER au repos derrière l'overlay.
     const el=document.getElementById(id);
-    if(el && el.classList.contains('page')){
-      document.body.classList.add('nav-overlay');
-    }
+    if(el && el.classList.contains('page')) document.body.classList.add('nav-overlay');
     if(document.body.classList.contains('cube-active')){
-      if(locked)unlock();
-      if(pitch!==0){ pitch=0; goToSide('jouer'); }
+      locked=false;
+      if(slots.front!=='jouer') setFrontInstant('jouer');
     }
-    updateArrows(frontSideName());
+    updateArrows();
   }
   window.cubeOnShowPage=cubeOnShowPage;
 
   // ---- Bouton JOUER ----------------------------------------------
   function onJouer(){
-    if(locked)return;
+    if(locked||animating)return;
     if(!(typeof army!=='undefined' && army && army.mon && army.gen && army.extras && army.extras.length===3)){
-      if(typeof showNotif==='function')showNotif('Composez d\'abord une armée complète (tournez vers la droite).');
-      goToSide('builder');
+      if(typeof showNotif==='function')showNotif('Composez d\'abord une armée complète (flèche droite → composition).');
+      setFrontInstant('builder');
       return;
     }
     currentArmyData = buildArmyDataFromBuilder();
     aiArmyData = generateAIArmy();
-    // Réutilise EXACTEMENT le système de lancement actuel : modal instructeur
-    // puis startGame() (qui appelle showPage('page-game') → rotation verticale).
+    // Réutilise EXACTEMENT le lancement actuel : modal instructeur puis
+    // startGame() (qui appelle showPage('page-game') → rotation verticale).
     showAILevelModal(function(){
       _playerColor = Math.random()<0.5 ? 'w' : 'b';
       startGame(true);
     });
   }
 
-  // ---- Init : déplace les pages réelles dans les faces, câble tout -----
+  // ---- Init ------------------------------------------------------
   function init(){
     cube=document.getElementById('cube');
     if(!cube)return;
-    // Déplace #page-builder et #page-game dans leurs faces respectives.
-    // (Le DOM bouge, mais IDs + listeners restent intacts.)
-    const moveInto=(pageId,faceId)=>{
-      const page=document.getElementById(pageId);
-      const host=document.getElementById(faceId);
-      if(page&&host){
-        page.classList.remove('page');   // ne plus être piloté par .page/.active
-        page.classList.add('cube-embedded');
-        host.appendChild(page);
-      }
+    // Déplace les vraies pages dans leurs faces (DOM déplacé, IDs/listeners intacts).
+    const moveInto=(pageId,hostId)=>{
+      const page=document.getElementById(pageId), host=document.getElementById(hostId);
+      if(page&&host){ page.classList.remove('page'); page.classList.add('cube-embedded'); host.appendChild(page); }
     };
     moveInto('page-builder','face-viewport-builder');
     moveInto('page-game','face-viewport-game');
 
-    document.getElementById('cube-arrow-left') ?.addEventListener('click',()=>rotateHorizontal(-1));
-    document.getElementById('cube-arrow-right')?.addEventListener('click',()=>rotateHorizontal(1));
-    document.getElementById('cube-arrow-down') ?.addEventListener('click',()=>{ if(!locked&&pitch===0&&frontSideName()==='jouer')goVertical(1); });
-    document.getElementById('cube-arrow-up')   ?.addEventListener('click',()=>{ if(!locked&&pitch>0){ pitch=0; goToSide('jouer'); } });
+    // Flèches : DROITE = voir la face de droite (cube tourne à gauche), etc.
+    document.getElementById('cube-arrow-right')?.addEventListener('click',()=>nav('right'));
+    document.getElementById('cube-arrow-left') ?.addEventListener('click',()=>nav('left'));
+    document.getElementById('cube-arrow-down') ?.addEventListener('click',()=>{ if(!locked&&!animating&&slots.front==='jouer')animate('down'); });
+    document.getElementById('cube-arrow-up')   ?.addEventListener('click',()=>{ if(!locked&&!animating&&slots.front==='variantes')animate('up'); });
     document.getElementById('cube-jouer-btn')  ?.addEventListener('click',onJouer);
 
-    // Clavier : flèches gauche/droite pour tourner (confort, optionnel).
     document.addEventListener('keydown',e=>{
-      if(locked||pitch!==0||!document.body.classList.contains('cube-active'))return;
+      if(locked||animating||!document.body.classList.contains('cube-active')||document.body.classList.contains('nav-overlay'))return;
       if(document.activeElement && /INPUT|TEXTAREA/.test(document.activeElement.tagName))return;
-      if(e.key==='ArrowLeft')rotateHorizontal(-1);
-      else if(e.key==='ArrowRight')rotateHorizontal(1);
+      if(e.key==='ArrowRight')nav('right');
+      else if(e.key==='ArrowLeft')nav('left');
     });
 
-    cube.addEventListener('transitionend',()=>refresh());
-    applyTransform(false);
+    settle();     // positionne les faces + cube à l'angle 0
     refresh();
   }
 

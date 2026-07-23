@@ -138,7 +138,9 @@ body.has-acc .game-wrap{height:calc(100vh - 50px);margin-top:50px}
    atteindre le haut du viewport au clic sur le bandeau de raccourcis, une
    marge temporaire est ajoutée/retirée en JS le temps du défilement (voir
    le listener des .cj-btn dans builder.js). */
-#page-builder{padding:32px 96px 32px 20px}
+/* Marge droite large : réserve une gouttière pour le bandeau de catégories
+   (fixe, bord droit) afin qu'il ne recouvre jamais les cartes ni le curseur. */
+#page-builder{padding:32px 136px 32px 20px}
 .builder-inner{max-width:1400px;margin:0 auto}
 .builder-logo{text-align:center;margin-bottom:32px}
 .builder-logo img{max-width:340px;width:100%}
