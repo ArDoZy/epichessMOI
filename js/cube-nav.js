@@ -38,6 +38,9 @@
     bottom:'rotateX(-90deg) translateZ(50vmax)'
   };
   const REST='translateZ(-50vmax)';
+  // Durée de rotation — doit correspondre à la transition CSS de #cube
+  // (voir [CUBE] dans style.css). Snap court et net, sans temps mort.
+  const ROTATE_MS=220;
   // Disposition canonique (au menu principal).
   const CANON={front:'jouer',right:'builder',back:'magasin',left:'missions',top:'game',bottom:'variantes'};
   const SIDE=new Set(['jouer','builder','magasin','missions']);
@@ -95,7 +98,7 @@
   function animate(kind,after){
     if(animating||!cube)return;
     animating=true; updateArrows();
-    cube.style.transition='transform .5s cubic-bezier(.45,.05,.2,1)';
+    cube.style.transition='transform '+ROTATE_MS+'ms cubic-bezier(.22,.61,.36,1)';
     void cube.offsetWidth;
     cube.style.transform=REST+' '+CUBE_ANIM[kind];
     let done=false;
@@ -109,7 +112,7 @@
       if(after)after();
     };
     cube.addEventListener('transitionend',finish);
-    setTimeout(finish,650);      // filet de sécurité si transitionend ne se déclenche pas
+    setTimeout(finish,ROTATE_MS+120); // filet de sécurité si transitionend ne se déclenche pas
   }
 
   // Amène une face au front SANS animation (utilisé quand le cube est masqué

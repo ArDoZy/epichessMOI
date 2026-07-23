@@ -105,7 +105,9 @@ body{
 #cab-elo.admin-elo{background:linear-gradient(135deg,rgba(201,162,39,.3),rgba(122,31,43,.3));border-color:var(--gold2);animation:torchFlicker 3s ease-in-out infinite}
 .cab-sw{padding:8px 18px;font-size:12px;font-weight:700;border:1px solid rgba(230,90,100,.65)!important;border-radius:8px;background:rgba(230,90,100,.2);color:#f2b8bd!important;cursor:pointer;font-family:'Cinzel',serif;transition:all .15s;text-transform:uppercase;letter-spacing:.6px;white-space:nowrap}
 .cab-sw:hover{border-color:#f2b8bd!important;background:rgba(230,90,100,.35);color:#fff!important;transform:translateY(-1px)}
-body.has-acc #page-builder{padding-top:calc(50px + 32px)}
+/* Pas de logo/titre sur la page builder (retiré) : juste la clearance de la
+   barre de compte + un petit espace de respiration, la page remonte. */
+body.has-acc #page-builder{padding-top:calc(50px + 14px)}
 body.has-acc #page-armies,body.has-acc #page-ai-armies,body.has-acc #page-voie{padding-top:calc(50px + 32px)}
 body.has-acc #page-combat{padding-top:50px}
 body.has-acc .game-wrap{height:calc(100vh - 50px);margin-top:50px}
@@ -142,8 +144,6 @@ body.has-acc .game-wrap{height:calc(100vh - 50px);margin-top:50px}
    (fixe, bord droit) afin qu'il ne recouvre jamais les cartes ni le curseur. */
 #page-builder{padding:32px 136px 32px 20px}
 .builder-inner{max-width:1400px;margin:0 auto}
-.builder-logo{text-align:center;margin-bottom:32px}
-.builder-logo img{max-width:340px;width:100%}
 .builder-topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:10px;flex-wrap:wrap}
 .theme-btn{padding:7px 14px;border:1px solid var(--border2);border-radius:8px;background:var(--surface);color:var(--text);cursor:pointer;font-size:12px;font-family:'Cinzel',serif;transition:all .2s;display:flex;align-items:center;gap:6px}
 .theme-btn:hover{border-color:var(--gold);color:var(--gold)}
@@ -618,9 +618,16 @@ body.light .gc.l{background:#eddab0}body.light .gc.d{background:#8a5f38}
 #cube-stage{position:fixed;inset:0;overflow:hidden;z-index:10;display:none;
   perspective:2400px;perspective-origin:50% 50%}
 body.cube-active #cube-stage{display:block}
+/* Sous un overlay (page secondaire active), le cube est masqué ENTIÈREMENT
+   (pas juste son chrome) — sinon la face de repos (JOUER) apparaît en
+   transparence pendant le fondu d'entrée de la page (.32s) qui se joue
+   par-dessus, le temps d'un flash. */
+body.nav-overlay #cube-stage{display:none}
 
+/* Durée de rotation courte et franche (snap net, sans temps mort perceptible)
+   — voir js/cube-nav.js (ROTATE_MS) qui pilote la même durée en JS. */
 #cube{position:absolute;inset:0;transform-style:preserve-3d;will-change:transform;
-  transition:transform .5s cubic-bezier(.45,.05,.2,1);
+  transition:transform .22s cubic-bezier(.22,.61,.36,1);
   transform:translateZ(-50vmax) rotateX(0deg) rotateY(0deg)}
 
 /* Chaque face : un grand carré (100vmax) centré sur l'écran, poussé d'un
@@ -674,8 +681,6 @@ body.cube-active #cube-stage{display:block}
 .jouer-btn:active{transform:translateY(0) scale(.99)}
 .jouer-btn::after{content:'';position:absolute;inset:-2px;border-radius:18px;
   border:1px solid rgba(232,199,102,.4);pointer-events:none}
-.jouer-hint{font-family:'Cinzel',serif;font-size:12px;letter-spacing:1px;
-  color:var(--muted);text-transform:uppercase;opacity:.8}
 
 /* --- Faces placeholder (Magasin / Missions / Variantes) --- */
 .cube-face[data-face="magasin"],
@@ -691,22 +696,26 @@ body.cube-active #cube-stage{display:block}
 .fp-sub{font-family:'Cinzel',serif;font-size:13px;letter-spacing:2px;
   color:var(--muted);text-transform:uppercase;opacity:.7}
 
-/* --- Flèches de navigation (hors cube, chrome fixe) --- */
+/* --- Flèches de navigation (dans #cube-stage mais hors de #cube : pas
+   soumises au transform 3D). Icônes en SVG (et non en glyphes unicode) pour
+   un centrage pixel-parfait garanti, indépendant des métriques de police. --- */
 .cube-arrow{position:fixed;z-index:400;cursor:pointer;border:1px solid var(--border2);
   background:rgba(36,26,16,.72);backdrop-filter:blur(6px);color:var(--gold2);
-  font-family:'Cinzel',serif;line-height:1;display:flex;align-items:center;
-  justify-content:center;transition:all .2s ease;box-shadow:0 6px 20px rgba(0,0,0,.4)}
+  display:flex;align-items:center;justify-content:center;padding:0;
+  transition:all .2s ease;box-shadow:0 6px 20px rgba(0,0,0,.4)}
 .cube-arrow:hover{background:var(--surface2);border-color:var(--gold);color:#fff;
   box-shadow:0 8px 28px rgba(201,162,39,.35)}
+.cube-arrow svg{display:block;width:55%;height:55%;pointer-events:none}
 /* Flèches horizontales dans les coins bas : jamais en collision avec la
-   barre de compte (haut) ni le bandeau de catégories (bord droit, builder). */
-.cube-arrow-side{bottom:22px;width:58px;height:58px;font-size:38px;border-radius:15px}
+   barre de compte (haut) ni le bandeau de catégories (bord droit, builder).
+   Le badge Admin (bottom-right) est remonté au-dessus d'elles (voir plus
+   bas) pour ne jamais se chevaucher. */
+.cube-arrow-side{bottom:22px;width:56px;height:56px;border-radius:15px}
 #cube-arrow-left{left:22px}
 #cube-arrow-right{right:22px}
-.cube-arrow-vert{left:50%;transform:translateX(-50%);width:76px;height:42px;
-  font-size:28px;border-radius:12px}
+.cube-arrow-vert{left:50%;transform:translateX(-50%);width:64px;height:40px;border-radius:12px}
 #cube-arrow-down{bottom:22px}
-#cube-arrow-up{top:60px}
+#cube-arrow-up{top:62px}
 
 /* --- Pages secondaires : overlays plein écran AU-DESSUS du cube ---
    (armées, voie, tournoi, combat, login). Restent pilotées par
@@ -714,6 +723,12 @@ body.cube-active #cube-stage{display:block}
    masquent le cube quand elles sont actives. */
 .page.active{position:fixed;inset:0;z-index:200;overflow-y:auto;background:var(--bg)}
 
-/* Sous un overlay (page secondaire active), on masque le chrome du cube. */
-body.nav-overlay .cube-arrow{display:none!important}
+/* Sous un overlay (page secondaire active), le bandeau de catégories (hors
+   de #cube-stage) doit aussi disparaître — le cube lui-même est déjà masqué
+   entièrement plus haut (body.nav-overlay #cube-stage). */
 body.nav-overlay .class-jump-rail{display:none!important}
+
+/* Le badge Admin (chrome préexistant, coin bas-droit) est remonté tant que
+   le cube est actif, pour ne jamais chevaucher la flèche de rotation droite
+   qui occupe le même coin. */
+body.cube-active .admin-badge{bottom:90px}
