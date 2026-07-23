@@ -29,7 +29,6 @@ const isSel=p=>{
   return army.extras.some(x=>x?.id===p.id);
 };
 const getVal=()=>(army.mon?.value||0)+(army.gen?.value||0)+army.extras.reduce((s,p)=>s+(p?.value||0),0);
-const totalCt=()=>(army.mon?1:0)+(army.gen?1:0)+army.extras.length;
 const armyValid=()=>army.mon&&army.gen&&army.extras.length===3;
 const extraPieces=()=>army.extras.slice();
 
@@ -81,7 +80,6 @@ function wireSlotDragSwap(g){
   });
 }
 const updStats=()=>{
-  document.getElementById('s-count').textContent=totalCt()+'/5';
   document.getElementById('s-val').textContent=getVal()+'/24';
   document.getElementById('b-validate').disabled=!armyValid();
 };
