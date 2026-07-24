@@ -47,8 +47,8 @@ function renderLoginPage(){
       const [c1,c2]=gradColors[ri]||gradColors[0];
       return `<div class="acc-item" data-n="${escH(n)}">
         <div class="acc-av" style="background:linear-gradient(135deg,${c1},${c2})">${n.charAt(0).toUpperCase()}</div>
-        <div class="acc-info"><div class="acc-name">${escH(n)}</div><div class="acc-meta">${rank.emoji} ${rank.name} · ${elo} ELO</div></div>
-        <button class="acc-del" onclick="deleteAcc('${escH(n)}',event)">🗑</button>
+        <div class="acc-info"><div class="acc-name">${escH(n)}</div><div class="acc-meta">${rank.name} · ${elo} ELO</div></div>
+        <button class="acc-del" onclick="deleteAcc('${escH(n)}',event)">Suppr.</button>
       </div>`;
     }).join('');
     list.querySelectorAll('.acc-item').forEach(el=>{
@@ -134,10 +134,10 @@ function updateCab(){
   // ELO masqué en mode admin
   const eloEl=document.getElementById('cab-elo');
   if(ADMIN_MODE){
-    eloEl.textContent='⚙ MODE ADMIN';
+    eloEl.textContent='MODE ADMIN';
     eloEl.classList.add('admin-elo');
   }else{
-    eloEl.textContent=rank.emoji+' '+elo+' ELO';
+    eloEl.textContent=elo+' ELO';
     eloEl.classList.remove('admin-elo');
   }
 }
@@ -178,7 +178,7 @@ document.getElementById('btn-reg').addEventListener('click',()=>{
   const accs=loadAccs();
   if(accs[u]){showNotif('Ce pseudo est déjà utilisé.');return;}
   accs[u]={h:_h(p+u),createdAt:Date.now()};saveAccs(accs);
-  showNotif('✅ Compte créé !','ok');
+  showNotif('Compte créé !','ok');
   setTimeout(()=>enterAccount(u),500);
 });
 ['reg-u','reg-p','reg-p2'].forEach(id=>{document.getElementById(id).addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('btn-reg').click();});});

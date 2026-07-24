@@ -31,11 +31,10 @@ function showAILevelModal(callback){
   grid.innerHTML=AI_INSTRUCTORS.map((ai,i)=>{
     const ok=unlocked[i];
     return '<div class="ai-lvl-card '+(ok?'':'lvl-locked')+'" data-i="'+i+'">'+
-      '<span class="lvl-emoji">'+ai.emoji+'</span>'+
       '<div class="lvl-name">'+ai.name+'</div>'+
       '<div class="lvl-info">'+(ai.timeMs===0?'Éval rapide':ai.timeMs<1000?ai.timeMs+'ms':Math.round(ai.timeMs/1000)+'s')+(ai.noise>0?' · Bruit '+Math.round(ai.noise*100)+'%':'')+'</div>'+
-      '<div style="font-size:10px;color:var(--gold);font-family:Cinzel,serif;margin-top:3px">⚡ '+ai.elo+' ELO</div>'+
-      '<div class="'+(ok?'lvl-ok':'lvl-lock')+'">'+( ok?'✓ Débloqué':'🔒 '+RANKS[i].name)+'</div>'+
+      '<div style="font-size:10px;color:var(--gold);font-family:Cinzel,serif;margin-top:3px">'+ai.elo+' ELO</div>'+
+      '<div class="'+(ok?'lvl-ok':'lvl-lock')+'">'+( ok?'Débloqué':RANKS[i].name)+'</div>'+
       '<div style="font-size:10px;color:var(--muted);margin-top:4px;line-height:1.4">'+ai.desc+'</div>'+
       '</div>';
   }).join('');

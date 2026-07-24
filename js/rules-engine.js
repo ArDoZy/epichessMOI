@@ -67,7 +67,7 @@ function tickClock(gs){
     const playerCol=gs.playerColor||'w';
     const result=gs.turn===playerCol?'loss':'win';
     const bar=document.getElementById('game-status');
-    if(bar){bar.textContent='⏱ Temps écoulé ! '+(result==='win'?'Vous gagnez !':'L\'IA gagne !');bar.className='status-bar mate';}
+    if(bar){bar.textContent='Temps écoulé ! '+(result==='win'?'Vous gagnez !':'L\'IA gagne !');bar.className='status-bar mate';}
     if(typeof playSound==='function')playSound(result==='win'?'win':'loss');
     if(!_endGameTriggered)triggerEndOfGame(result);
   }

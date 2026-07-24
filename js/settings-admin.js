@@ -45,8 +45,8 @@ document.getElementById('admin-badge').addEventListener('click',()=>{
     _preAdminUnlocked=new Set(VV_UNLOCKED);
     // Débloquer tout en mémoire seulement
     VV_UNLOCKED=new Set(PIECES.map(p=>p.id));
-    btn.classList.add('active-admin');btn.textContent='⚙ Admin ON';
-    showNotif('🔓 Mode Admin — ELO figé, tout débloqué (non sauvegardé)','ok');
+    btn.classList.add('active-admin');btn.textContent='Admin ON';
+    showNotif('Mode Admin — ELO figé, tout débloqué (non sauvegardé)','ok');
   }else{
     // RESTAURER snapshot exact — ne jamais sauvegarder les pièces admin
     if(_preAdminUnlocked){
@@ -62,8 +62,8 @@ document.getElementById('admin-badge').addEventListener('click',()=>{
     }
     // Sauvegarder uniquement les pièces légitimement débloquées
     vvSaveUnlocked(VV_UNLOCKED);
-    btn.classList.remove('active-admin');btn.textContent='⚙ Admin';
-    showNotif('🔒 Mode Admin désactivé — progression restaurée','ok');
+    btn.classList.remove('active-admin');btn.textContent='Admin';
+    showNotif('Mode Admin désactivé — progression restaurée','ok');
   }
   updateCab();
   updAll();

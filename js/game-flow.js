@@ -63,17 +63,18 @@ function updateGamePlayerBars(){
   const inst=AI_INSTRUCTORS[selectedAILevel];
   const playerElo=vvLoadElo();
   const playerName=CUR_ACC||'Joueur';
-  const rank=vvGetRank(playerElo);
   const hav=document.getElementById('human-player-avatar');
   const han=document.getElementById('human-player-name');
   const hae=document.getElementById('human-player-elo');
   if(hav)hav.textContent=playerName.charAt(0).toUpperCase();
   if(han)han.textContent=playerName;
-  if(hae)hae.textContent=rank.emoji+' '+playerElo+' ELO';
+  if(hae)hae.textContent=playerElo+' ELO';
   const aav=document.getElementById('ai-player-avatar');
   const aan=document.getElementById('ai-player-name');
   const aae=document.getElementById('ai-player-elo');
-  if(aav)aav.textContent=inst.emoji;
+  // Avatar IA : initiale de son rang (ex. "Instructeur Poussière" → "P"),
+  // même logique que l'avatar humain (initiale du pseudo).
+  if(aav)aav.textContent=inst.name.trim().split(' ').pop().charAt(0).toUpperCase();
   if(aan)aan.textContent=inst.name;
   if(aae)aae.textContent=vvEstimateAiElo()+' ELO';
 }
@@ -128,12 +129,12 @@ function showArmyIntro(playerArmy,aiArmy){
     const gen=fp(armyData.gen?.id||armyData.gen)||armyData.gen;
     const extras=(armyData.extras||[]).map(id=>fp(id)).filter(Boolean);
     const all=[mon,gen,...extras].filter(Boolean);
-    const rows=all.map(p=>'<div class="aio-piece-row"><div class="aio-emoji">'+p.emoji+'</div><div class="aio-piece-info"><div class="aio-piece-name">'+p.name+' <span style="font-size:9px;color:var(--muted);font-family:Cinzel,serif">'+p.class+'</span></div><div class="aio-piece-mvt">🚶 '+(p.movement||'')+'</div>'+(p.ability?'<div class="aio-piece-ability">✨ '+p.ability+'</div>':'')+'</div></div>').join('');
+    const rows=all.map(p=>'<div class="aio-piece-row"><div class="aio-emoji">'+p.emoji+'</div><div class="aio-piece-info"><div class="aio-piece-name">'+p.name+' <span style="font-size:9px;color:var(--muted);font-family:Cinzel,serif">'+p.class+'</span></div><div class="aio-piece-mvt">'+(p.movement||'')+'</div>'+(p.ability?'<div class="aio-piece-ability">'+p.ability+'</div>':'')+'</div></div>').join('');
     return '<div class="aio-side"><div class="aio-side-title '+titleCls+'">'+label+'</div>'+rows+'</div>';
   };
   const INTRO_DURATION=10;
   const overlay=document.createElement('div');overlay.className='army-intro-overlay';
-  overlay.innerHTML='<div class="army-intro-box"><span class="aio-close" id="aio-close-btn">✕</span><div class="aio-title">⚔ Les Armées en Présence — '+inst.emoji+' '+inst.name+'</div><div class="aio-sides">'+buildSide(playerArmy,playerLabel,playerTitleCls)+buildSide(aiArmy,aiLabel,aiTitleCls)+'</div><div class="aio-timer"><span id="aio-countdown">'+INTRO_DURATION+'</span>s — Cliquez ✕ pour fermer<div class="aio-timer-bar"><div class="aio-timer-fill" id="aio-timer-fill" style="width:100%"></div></div></div></div>';
+  overlay.innerHTML='<div class="army-intro-box"><span class="aio-close" id="aio-close-btn">✕</span><div class="aio-title">Les Armées en Présence — '+inst.name+'</div><div class="aio-sides">'+buildSide(playerArmy,playerLabel,playerTitleCls)+buildSide(aiArmy,aiLabel,aiTitleCls)+'</div><div class="aio-timer"><span id="aio-countdown">'+INTRO_DURATION+'</span>s — Cliquez ✕ pour fermer<div class="aio-timer-bar"><div class="aio-timer-fill" id="aio-timer-fill" style="width:100%"></div></div></div></div>';
   document.body.appendChild(overlay);
   // L'horloge ne démarre qu'à la fermeture de cet aperçu (pas pendant la
   // présentation des armées), pour ne pas gruger le temps du 1er joueur.
@@ -151,7 +152,7 @@ function showResultModal(result,oldElo,newElo,delta,newUnlockIds){
   const modal=document.getElementById('result-modal');const box=document.getElementById('result-box');
   const rank=vvGetRank(newElo);
   box.className='result-box '+(result==='win'?'win-result':result==='loss'?'loss-result':'draw-result');
-  const icons={win:'🏆',loss:'💀',draw:'🤝'};const titles={win:'Victoire !',loss:'Défaite',draw:'Nulle'};
+  const icons={win:'▲',loss:'▼',draw:'◆'};const titles={win:'Victoire !',loss:'Défaite',draw:'Nulle'};
   document.getElementById('result-icon').textContent=icons[result];
   const titleEl=document.getElementById('result-title');titleEl.textContent=titles[result];
   titleEl.className='result-title '+(result==='win'?'win-text':result==='loss'?'loss-text':'draw-text');
@@ -159,7 +160,6 @@ function showResultModal(result,oldElo,newElo,delta,newUnlockIds){
   document.getElementById('result-elo-after').textContent=newElo;
   const deltaEl=document.getElementById('result-elo-delta');deltaEl.textContent=(delta>0?'+':'')+delta;
   deltaEl.className='result-elo-delta '+(delta>0?'pos':delta<0?'neg':'zero');
-  document.getElementById('result-rank-icon').textContent=rank.emoji;
   document.getElementById('result-rank-name').textContent=rank.name+' — '+newElo+' ELO';
   const unlockSec=document.getElementById('unlock-section');
   if(newUnlockIds&&newUnlockIds.length>0){
