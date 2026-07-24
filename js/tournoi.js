@@ -79,8 +79,7 @@ function renderTournoiPage(){
     else if(isActive)cls+=' round-active';
     return '<div class="'+cls+'">'+
       '<div class="tr-num">Round '+(i+1)+'</div>'+
-      '<div class="tr-emoji">'+inst.emoji+'</div>'+
-      '<div class="tr-info"><div class="tr-name">'+inst.name+'</div><div class="tr-elo">⚡ '+inst.elo+' ELO</div></div>'+
+      '<div class="tr-info"><div class="tr-name">'+inst.name+'</div><div class="tr-elo">'+inst.elo+' ELO</div></div>'+
       '<div class="tr-status '+statusCls[rd.result]+'">'+statusLabel[rd.result]+'</div>'+
       '</div>';
   }).join('');
@@ -90,13 +89,13 @@ function renderTournoiPage(){
     resultBanner.classList.add('show');
     const wins=tournoi_wins();
     const isChampion=wins>=5;
-    document.getElementById('trb-icon').textContent=isChampion?'🏆':'🎖';
+    document.getElementById('trb-icon').textContent=isChampion?'▲':'◆';
     document.getElementById('trb-title').textContent=isChampion?'Champion du tournoi !':'Tournoi terminé';
     document.getElementById('trb-sub').textContent=wins+'/7 victoires'+(isChampion?' — Vous avez dominé le tournoi !':wins>=3?' — Bon score, continuez !':" — L'entraînement continue !");
     const bonusEl=document.getElementById('trb-bonus');
     const bonus=wins>=5?50:wins<3?-50:0;
-    if(bonus>0){bonusEl.style.display='';bonusEl.textContent='🎉 Bonus tournoi : +'+bonus+' ELO';}
-    else if(bonus<0){bonusEl.style.display='';bonusEl.textContent='📉 Pénalité tournoi : '+bonus+' ELO';}
+    if(bonus>0){bonusEl.style.display='';bonusEl.textContent='Bonus tournoi : +'+bonus+' ELO';}
+    else if(bonus<0){bonusEl.style.display='';bonusEl.textContent='Pénalité tournoi : '+bonus+' ELO';}
     else{bonusEl.style.display='none';}
   }else{
     resultBanner.classList.remove('show');
@@ -116,7 +115,7 @@ function renderTournoiHistory(){
     const bonus=wins>=5?50:wins<3?-50:0;
     const d=new Date(t.date);
     return '<div class="th-row">'+
-      '<span style="font-size:18px">'+(isChamp?'🏆':'🎖')+'</span>'+
+      '<span style="font-size:18px;color:var(--gold2)">'+(isChamp?'▲':'◆')+'</span>'+
       '<span class="th-wins '+(isChamp?'champion':'normal')+'">'+wins+'/7 victoires</span>'+
       (bonus>0?'<span class="th-bonus pos">+'+bonus+' ELO</span>':bonus<0?'<span class="th-bonus neg">'+bonus+' ELO</span>':'<span class="th-bonus zero">Aucun bonus</span>')+
       '<span class="th-date">'+d.toLocaleDateString('fr-FR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})+'</span>'+
@@ -206,7 +205,7 @@ function finishTournoi(){
 // ----------------------------------------------------------------
 function showRoundOverlay(roundIdx,result,eloBefore,eloAfter,eloDelta){
   const overlay=document.getElementById('round-overlay');
-  const icons={win:'🏆',loss:'💀',draw:'🤝'};
+  const icons={win:'▲',loss:'▼',draw:'◆'};
   const texts={win:'Victoire !',loss:'Défaite',draw:'Nulle'};
   const isLast=roundIdx===6;
 
@@ -225,13 +224,12 @@ function showRoundOverlay(roundIdx,result,eloBefore,eloAfter,eloDelta){
   if(!isLast){
     nextWrap.style.display='';
     const nextInst=AI_INSTRUCTORS[TOURNOI_ROUNDS[roundIdx+1]];
-    document.getElementById('rb-next-emoji').textContent=nextInst.emoji;
     document.getElementById('rb-next-name').textContent=nextInst.name;
-    document.getElementById('rb-next-elo').textContent='⚡ '+nextInst.elo+' ELO';
+    document.getElementById('rb-next-elo').textContent=nextInst.elo+' ELO';
     nextBtn.textContent='Round suivant →';
   }else{
     nextWrap.style.display='none';
-    nextBtn.textContent='Voir le résultat final 🏆';
+    nextBtn.textContent='Voir le résultat final';
   }
 
   overlay.classList.add('show');
@@ -316,7 +314,7 @@ function openTournoiAnalyse(){
 
 function renderTournoiAnalyseRounds(){
   const cont=document.getElementById('tournoi-analyse-rounds');
-  const statusIcon={win:'✅',loss:'❌',draw:'🤝',null:'⏳'};
+  const statusIcon={win:'▲',loss:'▼',draw:'◆',null:'○'};
   const statusCls={win:'var(--success)',loss:'var(--danger)',draw:'var(--gold)',null:'var(--muted)'};
   cont.innerHTML=tournamentState.rounds.map((rd,i)=>{
     const inst=AI_INSTRUCTORS[rd.instructorIdx];
@@ -324,7 +322,6 @@ function renderTournoiAnalyseRounds(){
     return '<div style="background:var(--bg);border:2px solid var(--border);border-radius:12px;padding:14px;text-align:center;cursor:'+(canReplay?'pointer':'default')+';transition:all .2s" '
       +(canReplay?'onclick="loadTournoiRoundReplay('+i+')" onmouseenter="this.style.borderColor=\'var(--gold)\'" onmouseleave="this.style.borderColor=\'var(--border)\'"':'')+'>'
       +'<div style="font-family:\'Cinzel\',serif;font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Round '+(i+1)+'</div>'
-      +'<div style="font-size:26px;margin-bottom:4px">'+inst.emoji+'</div>'
       +'<div style="font-family:\'Cinzel\',serif;font-size:11px;font-weight:700;margin-bottom:6px">'+inst.name+'</div>'
       +'<div style="font-size:18px;color:'+statusCls[rd.result]+'">'+statusIcon[rd.result||'null']+'</div>'
       +(canReplay?'<div style="font-size:9px;color:var(--muted);margin-top:5px;font-family:\'Cinzel\',serif">Cliquer pour analyser</div>':'')
@@ -339,7 +336,7 @@ window.loadTournoiRoundReplay=function(roundIdx){
   const inst=AI_INSTRUCTORS[rd.instructorIdx];
 
   document.getElementById('tournoi-analyse-replay-title').textContent=
-    'Round '+(roundIdx+1)+' — '+inst.emoji+' '+inst.name+' — '+(rd.result==='win'?'Victoire ✅':rd.result==='loss'?'Défaite ❌':'Nulle 🤝');
+    'Round '+(roundIdx+1)+' — '+inst.name+' — '+(rd.result==='win'?'Victoire':rd.result==='loss'?'Défaite':'Nulle');
 
   const pArmy=tournamentState.armyData;
   const aArmy=rd.aiArmy;

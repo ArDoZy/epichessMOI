@@ -77,7 +77,7 @@ function renderGame(gs){
     if(showCell){
       const em=getPieceEmoji(showCell);const paraStyle=gs.medusaParalyzed?.has(key)?'filter:sepia(1) brightness(.55);':'';
       let displayEm=em;let badge='';
-      inner='<div class="gc-piece'+(isAnchored?' gc-anchored':'')+'" style="'+paraStyle+'" data-r="'+r+'" data-c="'+c+'">'+displayEm+badge+(isAnchored?'<span style="position:absolute;bottom:0;right:0;font-size:7px">⚓</span>':'')+'</div>';
+      inner='<div class="gc-piece'+(isAnchored?' gc-anchored':'')+'" style="'+paraStyle+'" data-r="'+r+'" data-c="'+c+'">'+displayEm+badge+'</div>';
     }
     html+='<div class="'+cls+'" data-r="'+r+'" data-c="'+c+'">'+inner+'</div>';
   }
@@ -357,7 +357,7 @@ function updateStatus(gs){
     if(t===aiCol){
       const inst=AI_INSTRUCTORS[selectedAILevel];
       const timeStr=inst.timeMs===0?'':inst.timeMs<1000?' ('+inst.timeMs+'ms)':' (~'+Math.round(inst.timeMs/1000)+'s)';
-      bar.textContent=inst.emoji+' '+inst.name+' réfléchit…'+timeStr;
+      bar.textContent=inst.name+' réfléchit…'+timeStr;
     }else bar.textContent='Votre tour ('+(playerCol==='w'?'Blancs':'Noirs')+')';
     bar.className='status-bar '+(t===aiCol?'thinking':'ok');
   }

@@ -32,7 +32,7 @@ const renderCombatPage=(ad,aiIsCustom)=>{
   document.getElementById('cvs-display').innerHTML=
     '<div class="cside"><div class="cside-lbl">Votre armée</div><div class="cside-pieces">'+all.map(p=>'<span>'+p.emoji+'</span>').join('')+'</div><div class="cside-name">'+ad.totalValue+' pts</div></div>'+
     '<div class="vs-div">VS</div>'+
-    '<div class="cside"><div class="cside-lbl">'+inst.emoji+' '+inst.name+'</div><div class="cside-pieces">'+aiAll.map(p=>'<span>'+p.emoji+'</span>').join('')+'</div><div class="cside-name">'+aiArmyData.totalValue+' pts</div></div>';
+    '<div class="cside"><div class="cside-lbl">'+inst.name+'</div><div class="cside-pieces">'+aiAll.map(p=>'<span>'+p.emoji+'</span>').join('')+'</div><div class="cside-name">'+aiArmyData.totalValue+' pts</div></div>';
 };
 
 const launchParticles=()=>{
@@ -55,7 +55,7 @@ document.getElementById('cb-mirror-ai').addEventListener('click',()=>{
     _mirror:true,
   };
   renderCombatPage(currentArmyData,true);
-  showNotif('🪞 L\'IA utilise la même armée que vous !','ok');
+  showNotif('L\'IA utilise la même armée que vous !','ok');
 });
 // cb-play : ouvre le sélecteur d'instructeur puis lance la partie.
 // La couleur du joueur est tirée ICI et transmise à startGame(true) pour

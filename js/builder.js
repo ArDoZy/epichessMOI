@@ -91,8 +91,8 @@ const updAll=()=>{updSlots();renderCards();updStats();};
 const toggle=p=>{
   if(!VV_UNLOCKED.has(p.id)){
     const m=UNLOCK_MILESTONES.find(u=>u.pieceId===p.id);
-    if(m&&m.coffre)showNotif('🗝 Cette pièce s\'obtient dans un coffre !');
-    else showNotif('🔒 Pièce verrouillée — requis : '+(m&&m.eloRequired<999999?vvGetRank(m.eloRequired).name+' ('+m.eloRequired+' ELO)':'ELO insuffisant'));
+    if(m&&m.coffre)showNotif('Cette pièce s\'obtient dans un coffre !');
+    else showNotif('Pièce verrouillée — requis : '+(m&&m.eloRequired<999999?vvGetRank(m.eloRequired).name+' ('+m.eloRequired+' ELO)':'ELO insuffisant'));
     return;
   }
   const sel=isSel(p);
@@ -131,10 +131,10 @@ const renderCards=()=>{
       if(!unlocked){
         const m=UNLOCK_MILESTONES.find(u=>u.pieceId===p.id);
         const isCoffre=m?.coffre;
-        const rankLabel=isCoffre?'🗝 Coffre':(m&&m.eloRequired<999999?vvGetRank(m.eloRequired).name+' ('+m.eloRequired+' ELO)':'');
-        html+='<div class="piece-card '+p.class+' locked" data-id="'+p.id+'"><span class="pc-emoji">'+p.emoji+'</span><div class="pc-head"><div class="pc-name">'+p.name+'</div><div class="pc-val '+p.class+'">'+p.value+'</div></div>'+(p.movement?'<div class="pc-mvt">🚶 '+p.movement+'</div>':'')+'<div class="locked-overlay"><span class="lock-icon">🔒</span><span class="lock-rank">'+rankLabel+'</span></div></div>';
+        const rankLabel=isCoffre?'Coffre':(m&&m.eloRequired<999999?vvGetRank(m.eloRequired).name+' ('+m.eloRequired+' ELO)':'');
+        html+='<div class="piece-card '+p.class+' locked" data-id="'+p.id+'"><span class="pc-emoji">'+p.emoji+'</span><div class="pc-head"><div class="pc-name">'+p.name+'</div><div class="pc-val '+p.class+'">'+p.value+'</div></div>'+(p.movement?'<div class="pc-mvt">'+p.movement+'</div>':'')+'<div class="locked-overlay"><span class="lock-icon"></span><span class="lock-rank">'+rankLabel+'</span></div></div>';
       }else{
-        html+='<div class="piece-card '+p.class+(isSel(p)?' sel':'')+'" data-id="'+p.id+'"><span class="pc-emoji">'+p.emoji+'</span><div class="pc-head"><div class="pc-name">'+p.name+'</div><div class="pc-val '+p.class+'">'+p.value+'</div></div>'+(p.movement?'<div class="pc-mvt">🚶 '+p.movement+'</div>':'')+(p.ability?'<div class="pc-ability">✨ '+p.ability+'</div>':'')+'</div>';
+        html+='<div class="piece-card '+p.class+(isSel(p)?' sel':'')+'" data-id="'+p.id+'"><span class="pc-emoji">'+p.emoji+'</span><div class="pc-head"><div class="pc-name">'+p.name+'</div><div class="pc-val '+p.class+'">'+p.value+'</div></div>'+(p.movement?'<div class="pc-mvt">'+p.movement+'</div>':'')+(p.ability?'<div class="pc-ability">'+p.ability+'</div>':'')+'</div>';
       }
     });
     html+='</div></div>';
@@ -169,8 +169,8 @@ function equalizeCardHeights(){
 function updateBuilderBanner(){
   const banner=document.getElementById('builder-mode-banner');
   const armyTitle=document.querySelector('.army-box-title');
-  if(builderMode==='ai'){banner.textContent='⚙ Mode Instructeur — Vous composez une armée pour l\'Instructeur adverse';banner.classList.add('show');if(armyTitle)armyTitle.textContent='⚙ Armée de l\'Instructeur';}
-  else{banner.classList.remove('show');if(armyTitle)armyTitle.textContent='⚔ Votre armée';}
+  if(builderMode==='ai'){banner.textContent='Mode Instructeur — Vous composez une armée pour l\'Instructeur adverse';banner.classList.add('show');if(armyTitle)armyTitle.textContent='Armée de l\'Instructeur';}
+  else{banner.classList.remove('show');if(armyTitle)armyTitle.textContent='Votre armée';}
 }
 
 // ----------------------------------------------------------------

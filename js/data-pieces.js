@@ -19,13 +19,13 @@
 // RANGS ELO
 // ----------------------------------------------------------------
 const RANKS=[
-  {id:'poussiere',name:'Poussière',  emoji:'🪨',color:'#7a7590',min:0,   max:199},
-  {id:'pierre',   name:'Pierre',     emoji:'🗿',color:'#9a8c7a',min:200, max:499},
-  {id:'bronze',   name:'Bronze',     emoji:'🥉',color:'#cd7f32',min:500, max:849},
-  {id:'acier',    name:'Acier',      emoji:'⚙️',color:'#8fa8b8',min:850, max:1299},
-  {id:'obsidienne',name:'Obsidienne',emoji:'🌑',color:'#5a3f8a',min:1300,max:1799},
-  {id:'argent',   name:'Argent',     emoji:'🥈',color:'#c0c0c0',min:1800,max:2399},
-  {id:'or',       name:'Or Légendaire',emoji:'👑',color:'#c9a84c',min:2400,max:9999},
+  {id:'poussiere',name:'Poussière',  color:'#7a7590',min:0,   max:199},
+  {id:'pierre',   name:'Pierre',     color:'#9a8c7a',min:200, max:499},
+  {id:'bronze',   name:'Bronze',     color:'#cd7f32',min:500, max:849},
+  {id:'acier',    name:'Acier',      color:'#8fa8b8',min:850, max:1299},
+  {id:'obsidienne',name:'Obsidienne',color:'#5a3f8a',min:1300,max:1799},
+  {id:'argent',   name:'Argent',     color:'#c0c0c0',min:1800,max:2399},
+  {id:'or',       name:'Or Légendaire',color:'#c9a84c',min:2400,max:9999},
 ];
 function vvGetRank(elo){for(let i=RANKS.length-1;i>=0;i--)if(elo>=RANKS[i].min)return RANKS[i];return RANKS[0];}
 function vvGetRankFloor(elo){return vvGetRank(elo).min;}
@@ -35,13 +35,13 @@ function vvGetRankIdx(elo){for(let i=RANKS.length-1;i>=0;i--)if(elo>=RANKS[i].mi
 // 7 INSTRUCTEURS IA — basés sur budget temps (ms) + bruit
 // ----------------------------------------------------------------
 const AI_INSTRUCTORS=[
-  {id:'poussiere', name:'Instructeur Poussière',  emoji:'🪨',rankId:'poussiere', timeMs:0,    noise:0.95, desc:'Joue presque au hasard.',          elo:400},
-  {id:'pierre',    name:'Instructeur Pierre',     emoji:'🗿',rankId:'pierre',    timeMs:50,   noise:0.50, desc:'Réfléchit un tout petit peu.',      elo:600},
-  {id:'bronze',    name:'Instructeur Bronze',     emoji:'🥉',rankId:'bronze',    timeMs:200,  noise:0.15, desc:'~200ms de calcul, quelques coups.', elo:800},
-  {id:'acier',     name:'Instructeur Acier',      emoji:'⚙️',rankId:'acier',     timeMs:500,  noise:0.05, desc:'~500ms, captures et positionnement.',elo:1000},
-  {id:'obsidienne',name:'Instructeur Obsidienne', emoji:'🌑',rankId:'obsidienne',timeMs:1500, noise:0.01, desc:'~1.5s, tactique solide.',            elo:1200},
-  {id:'argent',    name:'Instructeur Argent',     emoji:'🥈',rankId:'argent',    timeMs:4000, noise:0,    desc:'~4s, stratégie avancée.',            elo:1600},
-  {id:'or',        name:'Instructeur Or',         emoji:'👑',rankId:'or',        timeMs:10000,noise:0,    desc:'~10s, profondeur maximale.',         elo:2000},
+  {id:'poussiere', name:'Instructeur Poussière',  rankId:'poussiere', timeMs:0,    noise:0.95, desc:'Joue presque au hasard.',          elo:400},
+  {id:'pierre',    name:'Instructeur Pierre',     rankId:'pierre',    timeMs:50,   noise:0.50, desc:'Réfléchit un tout petit peu.',      elo:600},
+  {id:'bronze',    name:'Instructeur Bronze',     rankId:'bronze',    timeMs:200,  noise:0.15, desc:'~200ms de calcul, quelques coups.', elo:800},
+  {id:'acier',     name:'Instructeur Acier',      rankId:'acier',     timeMs:500,  noise:0.05, desc:'~500ms, captures et positionnement.',elo:1000},
+  {id:'obsidienne',name:'Instructeur Obsidienne', rankId:'obsidienne',timeMs:1500, noise:0.01, desc:'~1.5s, tactique solide.',            elo:1200},
+  {id:'argent',    name:'Instructeur Argent',     rankId:'argent',    timeMs:4000, noise:0,    desc:'~4s, stratégie avancée.',            elo:1600},
+  {id:'or',        name:'Instructeur Or',         rankId:'or',        timeMs:10000,noise:0,    desc:'~10s, profondeur maximale.',         elo:2000},
 ];
 
 // ----------------------------------------------------------------
@@ -88,7 +88,7 @@ const UNLOCK_TABLE=[
   {pieceId:'pretre',eloRequired:800},{pieceId:'typhon',eloRequired:1000,bigReward:true},
   {pieceId:'banshee',eloRequired:1150},
   {pieceId:'grand-maitre',eloRequired:1700},
-  {pieceId:null,eloRequired:2400,bigReward:true,label:'🎉 Or Légendaire atteint !'},
+  {pieceId:null,eloRequired:2400,bigReward:true,label:'Or Légendaire atteint !'},
 ];
 
 const UNLOCK_MILESTONES=(()=>{
