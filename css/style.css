@@ -649,7 +649,7 @@ body.light .gc.l{background:#eddab0}body.light .gc.d{background:#8a5f38}
 
 /* [CUBE] ==========================================================
    Navigation principale par cube (illusion 3D CSS). Voir js/cube-nav.js.
-   Le cube est une simple coquille visuelle : les vraies pages builder /
+   Le cube est une simple coquille visuelle : les vraies pages Mes armées /
    partie y sont déplacées à l'exécution. Chrome global (barre compte,
    modals, réglages, bandeau catégories) reste HORS du cube.
    ================================================================ */
@@ -662,10 +662,10 @@ body.cube-active #cube-stage{display:block}
    par-dessus, le temps d'un flash. */
 body.nav-overlay #cube-stage{display:none}
 
-/* Durée de rotation courte et franche (snap net, sans temps mort perceptible)
-   — voir js/cube-nav.js (ROTATE_MS) qui pilote la même durée en JS. */
+/* Durée de rotation volontairement lente et posée — voir js/cube-nav.js
+   (ROTATE_MS) qui pilote la même durée en JS. */
 #cube{position:absolute;inset:0;transform-style:preserve-3d;will-change:transform;
-  transition:transform .22s cubic-bezier(.22,.61,.36,1);
+  transition:transform .9s cubic-bezier(.22,.61,.36,1);
   transform:translateZ(-50vmax) rotateX(0deg) rotateY(0deg)}
 
 /* Chaque face : un grand carré (100vmax) centré sur l'écran, poussé d'un
@@ -677,7 +677,7 @@ body.nav-overlay #cube-stage{display:none}
   box-shadow:inset 0 0 120px rgba(0,0,0,.55)}
 .cube-face.is-front{pointer-events:auto}
 .cube-face[data-face="jouer"]    {transform:rotateY(0deg)    translateZ(50vmax)}
-.cube-face[data-face="builder"]  {transform:rotateY(90deg)   translateZ(50vmax)}
+.cube-face[data-face="armees"]   {transform:rotateY(90deg)   translateZ(50vmax)}
 .cube-face[data-face="magasin"]  {transform:rotateY(180deg)  translateZ(50vmax)}
 .cube-face[data-face="missions"] {transform:rotateY(270deg)  translateZ(50vmax)}
 .cube-face[data-face="game"]     {transform:rotateX(90deg)   translateZ(50vmax)}
@@ -687,7 +687,7 @@ body.nav-overlay #cube-stage{display:none}
    centré dans le grand carré (le reste du carré est masqué par #cube-stage). */
 .face-viewport{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
   width:100vw;height:100vh;overflow:hidden}
-#face-viewport-builder{overflow-y:auto}
+#face-viewport-armees{overflow-y:auto}
 
 /* Les pages réelles déplacées dans une face : toujours affichées (la
    visibilité est gérée par la rotation du cube, plus par .page/.active). */
@@ -762,8 +762,12 @@ body.nav-overlay #cube-stage{display:none}
 
 /* Sous un overlay (page secondaire active), le bandeau de catégories (hors
    de #cube-stage) doit aussi disparaître — le cube lui-même est déjà masqué
-   entièrement plus haut (body.nav-overlay #cube-stage). */
+   entièrement plus haut (body.nav-overlay #cube-stage). Exception : le
+   builder (composition d'armée) est lui-même un overlay mais doit garder son
+   bandeau de catégories (classe .show posée par cube-nav.js uniquement pour
+   #page-builder). */
 body.nav-overlay .class-jump-rail{display:none!important}
+body.nav-overlay .class-jump-rail.show{display:flex!important}
 
 /* Le badge Admin (chrome préexistant, coin bas-droit) est remonté tant que
    le cube est actif, pour ne jamais chevaucher la flèche de rotation droite

@@ -6,20 +6,23 @@
 // rotations et le verrouillage pendant une partie. Il ignore totalement le
 // fonctionnement du builder, du moteur, des comptes et de l'IA.
 //
-// Il déplace à l'exécution le DOM existant #page-builder et #page-game dans
+// Il déplace à l'exécution le DOM existant #page-armies et #page-game dans
 // les faces correspondantes (IDs + listeners préservés → aucune logique
 // réécrite), pilote la rotation quand showPage() cible une face, et laisse
-// les pages secondaires (armées, voie, tournoi, combat, login) s'afficher en
-// overlay plein écran au-dessus du cube.
+// les pages secondaires (builder, voie, tournoi, combat, login) s'afficher en
+// overlay plein écran au-dessus du cube. Le builder (composition d'armée)
+// n'est PAS une face du cube : on y accède depuis "Mes armées" (bouton
+// "Nouvelle armée" / "Modifier"), comme n'importe quelle page secondaire.
 //
 // -- POINT TECHNIQUE IMPORTANT --------------------------------------------
 // Le hit-testing des clics est FIABLE uniquement quand la face avant est à
 // l'angle 0 (aucune rotation nette). Une face amenée au front par une
 // rotation 3D persistante s'affiche au bon endroit mais ne reçoit pas les
 // clics. On applique donc la technique du « rebase » : le cube tourne pour
-// l'ANIMATION (0,5 s) puis, à la fin, on réinitialise discrètement le cube à
-// l'angle 0 et on réaffecte chaque face à son nouvel emplacement. Résultat :
-// au repos, la face avant est TOUJOURS à l'angle 0 → clics/drag fiables.
+// l'ANIMATION (volontairement lente, voir ROTATE_MS) puis, à la fin, on
+// réinitialise discrètement le cube à l'angle 0 et on réaffecte chaque face
+// à son nouvel emplacement. Résultat : au repos, la face avant est TOUJOURS
+// à l'angle 0 → clics/drag fiables.
 //
 // Dépendances : main.js (showPage y délègue), et les globals de jeu
 // (army, currentArmyData, aiArmyData, _playerColor, startGame,
@@ -39,12 +42,14 @@
   };
   const REST='translateZ(-50vmax)';
   // Durée de rotation — doit correspondre à la transition CSS de #cube
-  // (voir [CUBE] dans style.css). Snap court et net, sans temps mort.
-  const ROTATE_MS=220;
-  // Disposition canonique (au menu principal).
-  const CANON={front:'jouer',right:'builder',back:'magasin',left:'missions',top:'game',bottom:'variantes'};
-  const SIDE=new Set(['jouer','builder','magasin','missions']);
-  const EMBED={'page-builder':'builder','page-game':'game'};
+  // (voir [CUBE] dans style.css). Volontairement lente et posée.
+  const ROTATE_MS=900;
+  // Disposition canonique (au menu principal). La face de droite est
+  // "armees" (Mes armées) — le builder (composition) n'est plus une face du
+  // cube, c'est un overlay ouvert depuis "Mes armées" (bouton "Nouvelle armée").
+  const CANON={front:'jouer',right:'armees',back:'magasin',left:'missions',top:'game',bottom:'variantes'};
+  const SIDE=new Set(['jouer','armees','magasin','missions']);
+  const EMBED={'page-armies':'armees','page-game':'game'};
 
   // Permutations des emplacements selon la rotation demandée. « right »
   // amène au front la face qui était à DROITE (le cube tourne visuellement
@@ -69,8 +74,6 @@
   function refresh(){
     if(!cube)return;
     cube.querySelectorAll('.cube-face').forEach(f=>f.classList.toggle('is-front', f.dataset.face===slots.front));
-    const rail=document.getElementById('class-jump-rail');
-    if(rail)rail.classList.toggle('show', slots.front==='builder' && !document.body.classList.contains('nav-overlay'));
     updateArrows();
   }
   function updateArrows(){
@@ -140,6 +143,8 @@
     document.body.classList.add('cube-active');
     locked=false;
     slots=Object.assign({},CANON);   // disposition canonique (jouer devant, partie en haut)
+    const rail=document.getElementById('class-jump-rail');
+    if(rail)rail.classList.remove('show');
     settle(); refresh();
   }
   window.goToMainMenu=goToMainMenu;
@@ -150,25 +155,32 @@
     if(id==='page-login'){ document.body.classList.remove('cube-active','nav-overlay'); locked=false; return; }
     if(id==='face-jouer'){ goToMainMenu(); return; }
     const face=EMBED[id];
-    if(face==='builder'){
+    if(face==='armees'){
       document.body.classList.remove('nav-overlay');
       document.body.classList.add('cube-active');
-      locked=false; setFrontInstant('builder');
+      locked=false; setFrontInstant('armees');
+      document.getElementById('class-jump-rail')?.classList.remove('show');
       return;
     }
     if(face==='game'){
       document.body.classList.remove('nav-overlay');
       document.body.classList.add('cube-active');
+      document.getElementById('class-jump-rail')?.classList.remove('show');
       // Rotation VERTICALE vers la face partie si elle est en haut (cas
-      // normal : lancement depuis JOUER / builder). Sinon bascule directe.
+      // normal : lancement depuis JOUER / armées). Sinon bascule directe.
       if(slotOf('game')==='top' && SIDE.has(slots.front)) animate('up', lock);
       else { setFrontInstant('game'); lock(); }
       return;
     }
     // Page secondaire (overlay) : elle couvre le cube. On masque le chrome du
-    // cube et on remet la face JOUER au repos derrière l'overlay.
+    // cube et on remet la face JOUER au repos derrière l'overlay. Le builder
+    // (composition d'armée) est désormais l'une de ces pages secondaires
+    // (ouvert depuis "Mes armées" → "Nouvelle armée"/"Modifier"), donc le
+    // bandeau de catégories doit rester visible pour lui uniquement.
     const el=document.getElementById(id);
     if(el && el.classList.contains('page')) document.body.classList.add('nav-overlay');
+    const rail=document.getElementById('class-jump-rail');
+    if(rail)rail.classList.toggle('show', id==='page-builder');
     if(document.body.classList.contains('cube-active')){
       locked=false;
       if(slots.front!=='jouer') setFrontInstant('jouer');
@@ -181,8 +193,8 @@
   function onJouer(){
     if(locked||animating)return;
     if(!(typeof army!=='undefined' && army && army.mon && army.gen && army.extras && army.extras.length===3)){
-      if(typeof showNotif==='function')showNotif('Composez d\'abord une armée complète (flèche droite → composition).');
-      setFrontInstant('builder');
+      if(typeof showNotif==='function')showNotif('Composez d\'abord une armée complète (flèche droite → Mes armées).');
+      setFrontInstant('armees');
       return;
     }
     currentArmyData = buildArmyDataFromBuilder();
@@ -204,7 +216,7 @@
       const page=document.getElementById(pageId), host=document.getElementById(hostId);
       if(page&&host){ page.classList.remove('page'); page.classList.add('cube-embedded'); host.appendChild(page); }
     };
-    moveInto('page-builder','face-viewport-builder');
+    moveInto('page-armies','face-viewport-armees');
     moveInto('page-game','face-viewport-game');
 
     // Flèches : DROITE = voir la face de droite (cube tourne à gauche), etc.

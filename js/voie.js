@@ -10,10 +10,11 @@
 // Dépendances : data-pieces.js (RANKS, UNLOCK_MILESTONES, PIECES,
 // CLASS_COLOR_VARS, vvGetRank, vvGetRankIdx, vvGetRankFloor),
 // accounts.js (vvLoadElo, vvSaveUnlocked, vvLoadHistory), main.js
-// (VV_UNLOCKED, ADMIN_MODE, showPage).
+// (VV_UNLOCKED, ADMIN_MODE, showPage), armies.js (renderArmiesPage,
+// pour le retour vers "Mes armées").
 // Utilisé par : game-flow.js (triggerEndOfGame appelle vvCalcNewElo/
-// vvCheckNewUnlocks), tournoi.js (idem pour chaque round), builder.js
-// (bouton "⚔ Voie").
+// vvCheckNewUnlocks), tournoi.js (idem pour chaque round), page "Mes
+// armées" (bouton "Voie").
 // ================================================================
 
 // ----------------------------------------------------------------
@@ -96,7 +97,7 @@ function renderVoiePage(){
 }
 
 document.getElementById('b-voie').addEventListener('click',()=>{renderVoiePage();showPage('page-voie');});
-document.getElementById('voie-back').addEventListener('click',()=>showPage('page-builder'));
+document.getElementById('voie-back').addEventListener('click',()=>{renderArmiesPage();showPage('page-armies');});
 document.getElementById('voie-scroll-top').addEventListener('click',()=>{
   document.documentElement.scrollTop=0;document.body.scrollTop=0;
   document.getElementById('page-voie').scrollTop=0;
