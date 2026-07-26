@@ -160,7 +160,9 @@ function equalizeCardHeights(){
   if(!cards.length)return;
   // Si la page est encore cachée (display:none), toute mesure vaut 0 —
   // on abandonne plutôt que de figer les cartes à une hauteur nulle.
-  if(!document.getElementById('page-builder').offsetParent)return;
+  // #page-builder est un overlay en position:fixed une fois actif : son
+  // offsetParent reste null même visible, donc on teste .active plutôt.
+  if(!document.getElementById('page-builder').classList.contains('active'))return;
   cards.forEach(el=>{el.style.height='auto';});
   let max=0;
   cards.forEach(el=>{if(el.offsetHeight>max)max=el.offsetHeight;});

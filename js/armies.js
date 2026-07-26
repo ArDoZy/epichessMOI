@@ -80,9 +80,6 @@ window.launchTournoiFromArmy=id=>{
   renderTournoiPage();showPage('page-tournoi');
   setTimeout(()=>{if(confirm('Lancer un tournoi avec cette armée ?'))startTournoi();},150);
 };
-// "Mes armées" est désormais une face du cube (pas un overlay) : le retour
-// ramène au menu principal plutôt qu'au builder.
-document.getElementById('ar-back').addEventListener('click',()=>{if(typeof goToMainMenu==='function')goToMainMenu();});
 document.getElementById('ar-new').addEventListener('click',()=>{builderMode='player';updateBuilderBanner();army={mon:null,gen:null,extras:[]};editingArmyId=null;showPage('page-builder');updAll();});
 
 // ----------------------------------------------------------------
