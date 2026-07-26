@@ -38,7 +38,6 @@
   --primordiale:#3f7d4a;--primordiale-bg:rgba(63,125,74,0.14);
   --sorcier:#9d3f7d;--sorcier-bg:rgba(157,63,125,0.14);
   --brute:#a23a3a;--brute-bg:rgba(162,58,58,0.14);
-  --card-min:280px;
   --parchment-noise:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/></svg>");
 }
 body.light{
@@ -237,8 +236,11 @@ body.has-acc .game-wrap{height:calc(100vh - 50px);margin-top:50px}
 .class-hdr.Sorcier{background:var(--sorcier-bg);border-left:3px solid var(--sorcier)}
 .class-hdr-name{font-family:'Cinzel',serif;font-size:16px;font-weight:700}
 .class-hdr-name.Monarque{color:var(--monarque)}.class-hdr-name.Général{color:var(--general)}.class-hdr-name.Primordiale{color:var(--primordiale)}.class-hdr-name.Brute{color:var(--brute)}.class-hdr-name.Sorcier{color:var(--sorcier)}
-.cards-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(var(--card-min),1fr));gap:16px}
-.piece-card{border:1px solid var(--border);border-radius:16px;padding:22px;cursor:pointer;transition:all .22s;position:relative;overflow:hidden;background:var(--surface)}
+/* 4 cartes par rangée, toujours (voir equalizeCardHeights() dans builder.js
+   pour la mise à niveau des hauteurs) : colonnes fixes plutôt qu'auto-fill,
+   pour garantir la disposition même si le contenu des cartes est court. */
+.cards-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.piece-card{border:1px solid var(--border);border-radius:16px;padding:16px;cursor:pointer;transition:all .22s;position:relative;overflow:hidden;background:var(--surface)}
 .piece-card::after{content:'';position:absolute;top:0;left:0;right:0;height:3px;transform:scaleX(0);transition:transform .3s cubic-bezier(.34,1.56,.64,1);transform-origin:left}
 .piece-card.Monarque{background:var(--monarque-bg);border-color:rgba(59,130,246,.2)}.piece-card.Monarque::after{background:var(--monarque)}
 .piece-card.Général{background:var(--general-bg);border-color:rgba(249,115,22,.2)}.piece-card.Général::after{background:var(--general)}
@@ -250,9 +252,9 @@ body.has-acc .game-wrap{height:calc(100vh - 50px);margin-top:50px}
 .piece-card:hover{transform:translateY(-4px);box-shadow:0 8px 22px rgba(0,0,0,.4)}
 .piece-card:hover::after{transform:scaleX(1)}
 .piece-card.sel{opacity:.4;transform:scale(.94);filter:grayscale(.4);cursor:default}
-.pc-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;gap:7px}
-.pc-name{font-size:16px;font-weight:700;font-family:'Cinzel',serif;flex:1;line-height:1.3}
-.pc-val{padding:5px 12px;border-radius:8px;font-size:14px;font-weight:800;font-family:'Cinzel',serif;border:1px solid transparent}
+.pc-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;gap:6px}
+.pc-name{font-size:13px;font-weight:700;font-family:'Cinzel',serif;flex:1;line-height:1.25}
+.pc-val{padding:4px 9px;border-radius:8px;font-size:12px;font-weight:800;font-family:'Cinzel',serif;border:1px solid transparent}
 .pc-val.Monarque{background:var(--monarque-bg);color:var(--monarque);border-color:rgba(59,130,246,.3)}
 .pc-val.Général{background:var(--general-bg);color:var(--general);border-color:rgba(249,115,22,.3)}
 .pc-val.Primordiale{background:var(--primordiale-bg);color:var(--primordiale);border-color:rgba(16,185,129,.3)}
@@ -260,7 +262,7 @@ body.has-acc .game-wrap{height:calc(100vh - 50px);margin-top:50px}
 .pc-val.Sorcier{background:var(--sorcier-bg);color:var(--sorcier);border-color:rgba(236,72,153,.3)}
 .pc-val.Brute{background:var(--brute-bg);color:var(--brute);border-color:rgba(239,68,68,.3)}
 
-.pc-emoji{font-size:36px;margin-bottom:10px;display:block;line-height:1}
+.pc-emoji{font-size:28px;margin-bottom:8px;display:block;line-height:1}
 /* .pc-class : utilisé par voie.js (jalons) et game-flow.js (déblocage) —
    pas seulement par les cartes de pièces du builder (qui n'affichent plus
    ce badge, jugé redondant avec l'en-tête de section). */
@@ -270,19 +272,19 @@ body.has-acc .game-wrap{height:calc(100vh - 50px);margin-top:50px}
 .pc-class.Primordiale{background:var(--primordiale-bg);color:var(--primordiale);border:1px solid rgba(16,185,129,.25)}
 .pc-class.Sorcier{background:var(--sorcier-bg);color:var(--sorcier);border:1px solid rgba(236,72,153,.25)}
 .pc-class.Brute{background:var(--brute-bg);color:var(--brute);border:1px solid rgba(239,68,68,.25)}
-.pc-mvt{font-size:11px;margin-bottom:8px;display:flex;align-items:center;gap:5px;color:var(--muted);background:rgba(255,255,255,.04);padding:6px 10px;border-radius:6px;font-family:'Cinzel',serif}
-.pc-ability{font-size:12px;color:var(--text);line-height:1.6;padding:10px;background:var(--bg);border-radius:8px;border-left:2px solid var(--accent);margin-top:6px}
+.pc-mvt{font-size:10px;margin-bottom:6px;display:flex;align-items:center;gap:5px;color:var(--muted);background:rgba(255,255,255,.04);padding:5px 8px;border-radius:6px;font-family:'Cinzel',serif;line-height:1.4}
+.pc-ability{font-size:10.5px;color:var(--text);line-height:1.5;padding:8px;background:var(--bg);border-radius:8px;border-left:2px solid var(--accent);margin-top:6px}
 .piece-card.locked{cursor:not-allowed;position:relative;opacity:.5;filter:grayscale(.85) brightness(.5);background:rgba(0,0,0,.35);border-color:rgba(0,0,0,.4)}
 .piece-card.locked .pc-emoji,.piece-card.locked .pc-name,.piece-card.locked .pc-ability,.piece-card.locked .pc-mvt,.piece-card.locked .pc-val{filter:blur(7px);pointer-events:none;user-select:none}
 .locked-overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;z-index:3;border-radius:16px;background:rgba(0,0,0,.55)}
 /* Cadenas dessiné en CSS pur (pas d'émoji) : anse + corps. */
 .locked-overlay .lock-icon{position:relative;width:20px;height:24px;filter:drop-shadow(0 0 6px rgba(0,0,0,.9));opacity:.9}
-.locked-overlay .lock-icon::before{content:'';position:absolute;top:0;left:3px;width:14px;height:11px;border:3px solid var(--gold2);border-bottom:none;border-radius:8px 8px 0 0}
+.locked-overlay .lock-icon::before{content:'';position:absolute;top:0;left:3px;width:14px;height:11px;box-sizing:border-box;border:3px solid var(--gold2);border-bottom:none;border-radius:8px 8px 0 0}
 .locked-overlay .lock-icon::after{content:'';position:absolute;top:8px;left:0;width:20px;height:16px;background:var(--gold2);border-radius:3px}
 .locked-overlay .lock-rank{font-family:'Cinzel',serif;font-size:10px;font-weight:700;color:var(--gold);background:rgba(0,0,0,.75);border-radius:6px;padding:3px 8px;letter-spacing:.5px}
 .builder-mode-banner{background:rgba(139,92,246,.15);border:1px solid rgba(139,92,246,.4);border-radius:9px;padding:10px 16px;margin-bottom:14px;font-family:'Cinzel',serif;font-size:12px;color:var(--accent2);display:none}
 .builder-mode-banner.show{display:block}
-@media(max-width:760px){.comp-grid{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:760px){.comp-grid{grid-template-columns:repeat(3,1fr)}.cards-grid{grid-template-columns:repeat(2,1fr)}}
 
 /* [SETTINGS] ======================================================= */
 #settings-btn{position:fixed;top:8px;right:12px;z-index:8000;width:34px;height:34px;border-radius:8px;background:var(--surface);border:1px solid var(--border2);color:var(--text);cursor:pointer;padding:0;display:flex;align-items:center;justify-content:center;transition:all .2s}
