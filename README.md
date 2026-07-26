@@ -61,10 +61,13 @@ data-pieces.js → main.js → cube-nav.js → accounts.js → ai-level-modal.js
 
 `cube-nav.js` est chargé juste après `main.js` : il étend `showPage()` (la
 navigation devient un cube 3D en CSS) et déplace à l'exécution les pages
-`#page-builder` / `#page-game` dans les faces du cube. Il ne connaît QUE la
-face courante, les rotations et le verrouillage — aucune logique de jeu.
-Les pages secondaires (armées, voie, tournoi, combat, login) restent des
-overlays plein écran classiques affichés au-dessus du cube.
+`#page-armies` / `#page-game` dans les faces du cube (face de droite = "Mes
+armées", face du haut = la partie). Il ne connaît QUE la face courante, les
+rotations et le verrouillage — aucune logique de jeu. Le builder (composition
+d'armée, `#page-builder`) n'est PAS une face du cube : c'est une page
+secondaire (overlay) ouverte depuis "Mes armées" via "Nouvelle armée" ou
+"Modifier". Les autres pages secondaires (voie, tournoi, combat, login)
+restent aussi des overlays plein écran classiques affichés au-dessus du cube.
 
 Si tu ajoutes un nouveau fichier JS, insère-le dans cette chaîne à l'endroit
 qui correspond à ses dépendances (voir l'en-tête de chaque fichier, qui liste

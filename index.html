@@ -91,8 +91,8 @@
 
 <!-- ================================================================
      CUBE DE NAVIGATION — menu principal. Coquille visuelle uniquement :
-     les vraies pages #page-builder / #page-game sont déplacées à
-     l'exécution dans les faces "builder" / "game" par js/cube-nav.js.
+     les vraies pages #page-armies / #page-game sont déplacées à
+     l'exécution dans les faces "armees" / "game" par js/cube-nav.js.
      Le chrome global (barre compte, modals, réglages, bandeau catégories)
      reste HORS du cube pour ne pas être piégé par les transforms 3D.
      ================================================================ -->
@@ -107,9 +107,11 @@
         </div>
       </div>
     </div>
-    <!-- Face 2 (droite) : composition d'armée (builder déplacé ici) -->
-    <div class="cube-face" data-face="builder">
-      <div class="face-viewport" id="face-viewport-builder"></div>
+    <!-- Face 2 (droite) : Mes armées (page-armies déplacée ici). Le builder
+         (composition d'armée) n'est plus une face du cube : on y accède
+         depuis cette page via "Nouvelle armée" / "Modifier" (overlay). -->
+    <div class="cube-face" data-face="armees">
+      <div class="face-viewport" id="face-viewport-armees"></div>
     </div>
     <!-- Face 3 (arrière) : Magasin (placeholder) -->
     <div class="cube-face" data-face="magasin">
@@ -152,11 +154,10 @@
   <div class="builder-mode-banner" id="builder-mode-banner"></div>
   <div class="topbar">
     <div class="topbar-btns">
-      <button class="btn btn-ghost" id="b-reset">Réinitialiser</button>
+      <button class="btn btn-ghost" id="b-reset">Tout effacer</button>
       <button class="btn btn-ghost" id="b-random">Armée aléatoire</button>
       <button class="btn btn-primary" id="b-validate" disabled>Valider l'armée →</button>
       <button class="btn btn-gold" id="b-armies">Mes armées</button>
-      <button class="btn btn-ghost" id="b-voie" style="border-color:var(--gold);color:var(--gold)">Voie</button>
       <button class="btn btn-ghost" id="b-tournoi" style="border-color:var(--accent2);color:var(--accent2)">Tournoi</button>
     </div>
     <div class="topbar-stats">
@@ -171,7 +172,7 @@
 <!-- PAGE 3: PLAYER ARMIES -->
 <div id="page-armies" class="page">
 <div class="armies-inner">
-  <div class="armies-hdr"><div class="armies-title cinzel glow-text">Mes Armées</div><button class="btn btn-ghost" id="ar-back">← Retour</button><button class="btn btn-primary" id="ar-new">+ Nouvelle armée</button></div>
+  <div class="armies-hdr"><div class="armies-title cinzel glow-text">Mes Armées</div><button class="btn btn-ghost" id="b-voie" style="border-color:var(--gold);color:var(--gold)">Voie</button><button class="btn btn-ghost" id="ar-back">← Retour</button><button class="btn btn-primary" id="ar-new">+ Nouvelle armée</button></div>
   <div class="armies-grid" id="armies-grid"></div>
 </div>
 </div>

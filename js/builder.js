@@ -5,7 +5,8 @@
 // libres, budget 24 points), le rendu des cartes de pièces (triées par
 // classe puis valeur croissante, sans tri/filtre manuel) et des slots de
 // composition, l'armée aléatoire, et les boutons de la topbar
-// (réinitialiser / aléatoire / valider / mes armées / voie / tournoi).
+// (tout effacer / aléatoire / valider / mes armées / tournoi). Le bouton
+// "Voie" est désormais dans #page-armies (voir voie.js), plus ici.
 //
 // Dépendances : data-pieces.js (PIECES, CLASS_ORDER),
 // main.js (army, editingArmyId, builderMode, showPieceCtxMenu,
@@ -274,7 +275,10 @@ document.querySelectorAll('.cj-btn').forEach(btn=>{
     // #army-box masquerait la topbar au-dessus. Les autres onglets sautent
     // vers leur section de classe comme avant.
     if(btn.dataset.jump==='top'){
-      const viewport=document.getElementById('face-viewport-builder');
+      // #page-builder est un overlay plein écran (position:fixed, overflow-y:
+      // auto sur lui-même — voir .page.active dans style.css) : c'est LUI le
+      // conteneur qui défile, pas la fenêtre.
+      const viewport=document.getElementById('page-builder');
       if(viewport)viewport.scrollTo({top:0,behavior:'smooth'});
       else window.scrollTo({top:0,behavior:'smooth'});
       return;

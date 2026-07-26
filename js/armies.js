@@ -33,13 +33,16 @@ const loadArmyForEdit=ad=>{
 // NOM DE L'ARMÉE — bouton "Nommer l'armée" (ou nom + petit stylo une fois
 // nommée) affiché au-dessus de la carte, à la place des dates.
 // ----------------------------------------------------------------
+// Icône stylo en SVG (et non en glyphe unicode/emoji) pour un rendu net et
+// cohérent avec les flèches du cube (voir index.html #cube-arrow-*).
+const PEN_ICON='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="12" height="12"><path d="M17 3a2.83 2.83 0 0 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="M15 5l4 4"/></svg>';
 let _renamingArmyId=null;
 const buildNameBlock=(a,isAi)=>{
   if(_renamingArmyId===a.id){
     return '<div class="ac-name-edit-row"><input type="text" class="ac-name-input" id="ac-name-input-'+a.id+'" value="'+escH(a.name||'')+'" maxlength="30" placeholder="Nom de l\'armée" onkeydown="if(event.key===\'Enter\')confirmRenameArmy(\''+a.id+'\','+(!!isAi)+')"><button class="btn btn-gold" style="font-size:11px;padding:6px 10px" onclick="confirmRenameArmy(\''+a.id+'\','+(!!isAi)+')">Valider</button></div>';
   }
   if(a.name){
-    return '<div class="ac-name-row"><span class="ac-name">'+escH(a.name)+'</span><button class="ac-name-edit-btn" title="Renommer" onclick="startRenameArmy(\''+a.id+'\','+(!!isAi)+')">Renommer</button></div>';
+    return '<div class="ac-name-row"><span class="ac-name">'+escH(a.name)+'</span><button class="ac-name-edit-btn" title="Renommer" onclick="startRenameArmy(\''+a.id+'\','+(!!isAi)+')">'+PEN_ICON+'</button></div>';
   }
   return '<button class="btn btn-ghost ac-name-btn" onclick="startRenameArmy(\''+a.id+'\','+(!!isAi)+')">Nommer l\'armée</button>';
 };
@@ -77,7 +80,9 @@ window.launchTournoiFromArmy=id=>{
   renderTournoiPage();showPage('page-tournoi');
   setTimeout(()=>{if(confirm('Lancer un tournoi avec cette armée ?'))startTournoi();},150);
 };
-document.getElementById('ar-back').addEventListener('click',()=>showPage('page-builder'));
+// "Mes armées" est désormais une face du cube (pas un overlay) : le retour
+// ramène au menu principal plutôt qu'au builder.
+document.getElementById('ar-back').addEventListener('click',()=>{if(typeof goToMainMenu==='function')goToMainMenu();});
 document.getElementById('ar-new').addEventListener('click',()=>{builderMode='player';updateBuilderBanner();army={mon:null,gen:null,extras:[]};editingArmyId=null;showPage('page-builder');updAll();});
 
 // ----------------------------------------------------------------
