@@ -42,8 +42,11 @@
   };
   const REST='translateZ(-50vmax)';
   // Durée de rotation — doit correspondre à la transition CSS de #cube
-  // (voir [CUBE] dans style.css). Volontairement lente et posée.
-  const ROTATE_MS=900;
+  // (voir [CUBE] dans style.css). Assez courte pour rester fluide et pour
+  // qu'on puisse enchaîner deux rotations sans temps mort perceptible
+  // (voir queuedKind plus bas : un second clic pendant l'animation en cours
+  // est mémorisé et rejoué instantanément à la fin de celle-ci).
+  const ROTATE_MS=280;
   // Disposition canonique (au menu principal). La face de droite est
   // "armees" (Mes armées) — le builder (composition) n'est plus une face du
   // cube, c'est un overlay ouvert depuis "Mes armées" (bouton "Nouvelle armée").
@@ -65,6 +68,10 @@
 
   let slots=Object.assign({},CANON);
   let animating=false, locked=false, cube=null;
+  // Rotation demandée pendant qu'une autre est déjà en cours : rejouée
+  // immédiatement à la fin de l'animation courante (permet d'enchaîner deux
+  // rotations sans avoir à attendre puis re-cliquer).
+  let queuedKind=null;
 
   const faceEl=name=>cube.querySelector('.cube-face[data-face="'+name+'"]');
   const slotOf=name=>{ for(const s in slots) if(slots[s]===name) return s; };
@@ -76,15 +83,19 @@
     cube.querySelectorAll('.cube-face').forEach(f=>f.classList.toggle('is-front', f.dataset.face===slots.front));
     updateArrows();
   }
+  // Les flèches restent visibles/cliquables PENDANT une rotation (elles ne
+  // dépendent plus de `animating`) : c'est ce qui permet d'enchaîner deux
+  // rotations sans temps mort — le clic pendant l'animation en cours est mis
+  // en file par animate() et rejoué instantanément à la fin de celle-ci.
   function updateArrows(){
     const active=document.body.classList.contains('cube-active') && !document.body.classList.contains('nav-overlay');
     const onSide=SIDE.has(slots.front);
-    const h=active && !locked && !animating && onSide;
+    const h=active && !locked && onSide;
     const set=(id,show)=>{const e=document.getElementById(id);if(e)e.style.display=show?'':'none';};
     set('cube-arrow-left', h);
     set('cube-arrow-right', h);
     set('cube-arrow-down', h && slots.front==='jouer');           // descendre vers Variantes
-    set('cube-arrow-up',   active && !locked && !animating && slots.front==='variantes'); // remonter
+    set('cube-arrow-up',   active && !locked && slots.front==='variantes'); // remonter
   }
 
   // Réinitialise le cube à l'angle 0 avec les emplacements courants (sans
@@ -97,9 +108,13 @@
     cube.style.transition='';
   }
 
-  // Rotation ANIMÉE d'un cran puis rebase.
+  // Rotation ANIMÉE d'un cran puis rebase. Si une rotation est déjà en
+  // cours, la nouvelle demande est simplement mémorisée (queuedKind) plutôt
+  // qu'ignorée : elle est rejouée dès que l'animation en cours se termine,
+  // sans que l'utilisateur ait besoin de recliquer.
   function animate(kind,after){
-    if(animating||!cube)return;
+    if(!cube)return;
+    if(animating){ queuedKind=kind; return; }
     animating=true; updateArrows();
     cube.style.transition='transform '+ROTATE_MS+'ms cubic-bezier(.22,.61,.36,1)';
     void cube.offsetWidth;
@@ -113,9 +128,12 @@
       settle();                  // cube revient à l'angle 0, faces réaffectées (aucun saut visuel)
       refresh();
       if(after)after();
+      if(queuedKind && !locked){
+        const k=queuedKind; queuedKind=null; animate(k);
+      }else queuedKind=null;
     };
     cube.addEventListener('transitionend',finish);
-    setTimeout(finish,ROTATE_MS+120); // filet de sécurité si transitionend ne se déclenche pas
+    setTimeout(finish,ROTATE_MS+40); // filet de sécurité si transitionend ne se déclenche pas
   }
 
   // Amène une face au front SANS animation (utilisé quand le cube est masqué
@@ -132,7 +150,10 @@
   }
 
   // ---- Rotations déclenchées par l'utilisateur -------------------
-  function nav(kind){ if(!locked && !animating && SIDE.has(slots.front)) animate(kind); }
+  // Pendant une animation en cours, on laisse passer la demande (elle sera
+  // mise en file par animate()) plutôt que de l'ignorer — c'est ce qui
+  // permet d'enchaîner deux rotations sans attendre.
+  function nav(kind){ if(!locked && (animating || SIDE.has(slots.front))) animate(kind); }
 
   function lock(){ locked=true; refresh(); }
   function unlock(){ locked=false; refresh(); }
@@ -222,12 +243,12 @@
     // Flèches : DROITE = voir la face de droite (cube tourne à gauche), etc.
     document.getElementById('cube-arrow-right')?.addEventListener('click',()=>nav('right'));
     document.getElementById('cube-arrow-left') ?.addEventListener('click',()=>nav('left'));
-    document.getElementById('cube-arrow-down') ?.addEventListener('click',()=>{ if(!locked&&!animating&&slots.front==='jouer')animate('down'); });
-    document.getElementById('cube-arrow-up')   ?.addEventListener('click',()=>{ if(!locked&&!animating&&slots.front==='variantes')animate('up'); });
+    document.getElementById('cube-arrow-down') ?.addEventListener('click',()=>{ if(!locked&&(animating||slots.front==='jouer'))animate('down'); });
+    document.getElementById('cube-arrow-up')   ?.addEventListener('click',()=>{ if(!locked&&(animating||slots.front==='variantes'))animate('up'); });
     document.getElementById('cube-jouer-btn')  ?.addEventListener('click',onJouer);
 
     document.addEventListener('keydown',e=>{
-      if(locked||animating||!document.body.classList.contains('cube-active')||document.body.classList.contains('nav-overlay'))return;
+      if(locked||!document.body.classList.contains('cube-active')||document.body.classList.contains('nav-overlay'))return;
       if(document.activeElement && /INPUT|TEXTAREA/.test(document.activeElement.tagName))return;
       if(e.key==='ArrowRight')nav('right');
       else if(e.key==='ArrowLeft')nav('left');

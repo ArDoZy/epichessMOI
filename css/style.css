@@ -103,15 +103,6 @@ body{
 .vial-variantes::after{background:linear-gradient(180deg,transparent 0 45%,var(--danger) 45%)}
 @keyframes vialBubble{0%{transform:translateY(0);opacity:.9}90%{opacity:.5}100%{transform:translateY(-30px);opacity:0}}
 
-/* --- CERCLE ARCANIQUE — anneau pointillé tournant, posé derrière une icône
-   (fiole, logo) pour habiller un espace autrement vide façon "diagramme
-   d'invocation de l'alchimiste". Pur CSS, aucune image. --- */
-.arcane-ring{position:absolute;left:50%;top:50%;border-radius:50%;
-  border:1px dashed rgba(201,162,39,.3);pointer-events:none;transform-origin:center}
-.arcane-ring-1{width:170px;height:170px;margin:-85px 0 0 -85px;animation:arcaneSpin 32s linear infinite}
-.arcane-ring-2{width:230px;height:230px;margin:-115px 0 0 -115px;border-color:rgba(157,63,125,.22);animation:arcaneSpin 46s linear infinite reverse}
-@keyframes arcaneSpin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
-
 /* --- BULLES AMBIANTES — quelques bulles de potion qui montent lentement en
    arrière-plan, pour ne pas laisser les faces/pages peu remplies totalement
    figées. Une seule couche de particules réutilisable. --- */
@@ -715,10 +706,11 @@ body.cube-active #cube-stage{display:block}
    par-dessus, le temps d'un flash. */
 body.nav-overlay #cube-stage{display:none}
 
-/* Durée de rotation volontairement lente et posée — voir js/cube-nav.js
-   (ROTATE_MS) qui pilote la même durée en JS. */
+/* Durée de rotation fluide, pensée pour pouvoir enchaîner deux rotations
+   sans temps mort — voir js/cube-nav.js (ROTATE_MS) qui pilote la même
+   durée en JS, et queuedKind pour l'enchaînement instantané. */
 #cube{position:absolute;inset:0;transform-style:preserve-3d;will-change:transform;
-  transition:transform .9s cubic-bezier(.22,.61,.36,1);
+  transition:transform .28s cubic-bezier(.22,.61,.36,1);
   transform:translateZ(-50vmax) rotateX(0deg) rotateY(0deg)}
 
 /* Chaque face : un grand carré (100vmax) centré sur l'écran, poussé d'un
@@ -746,11 +738,17 @@ body.nav-overlay #cube-stage{display:none}
    visibilité est gérée par la rotation du cube, plus par .page/.active). */
 .cube-embedded{display:block;min-height:100%}
 
-/* --- Face JOUER (menu principal) — sombre, premium, minimaliste --- */
+/* --- Face JOUER (menu principal) — premium, minimaliste. Dégradé propre à
+   chaque thème (pas de var() ici : le rendu voulu diffère trop entre les
+   deux pour un simple changement de teinte). --- */
 .cube-face[data-face="jouer"]{background:
   radial-gradient(ellipse at 50% 32%,rgba(201,162,39,.18),transparent 60%),
   radial-gradient(ellipse at 50% 120%,rgba(0,0,0,.45),transparent 55%),
   linear-gradient(160deg,#2a2013,#180f07)}
+body.light .cube-face[data-face="jouer"]{background:
+  radial-gradient(ellipse at 50% 32%,rgba(130,102,31,.16),transparent 60%),
+  radial-gradient(ellipse at 50% 120%,rgba(80,60,20,.12),transparent 55%),
+  linear-gradient(160deg,#f4edd4,#e5d8a8)}
 .jouer-menu{position:absolute;inset:0;display:flex;flex-direction:column;
   align-items:center;justify-content:center;gap:34px;text-align:center;padding:24px}
 .jouer-logo{font-family:'Cinzel Decorative','Cinzel',serif;font-weight:900;
@@ -774,6 +772,11 @@ body.nav-overlay #cube-stage{display:none}
 .cube-face[data-face="variantes"]{background:
   radial-gradient(ellipse at 50% 40%,rgba(107,77,44,.22),transparent 60%),
   linear-gradient(160deg,#28200f,#180f07)}
+body.light .cube-face[data-face="magasin"],
+body.light .cube-face[data-face="missions"],
+body.light .cube-face[data-face="variantes"]{background:
+  radial-gradient(ellipse at 50% 40%,rgba(130,102,31,.16),transparent 60%),
+  linear-gradient(160deg,#f1e9cc,#e2d4a2)}
 .face-placeholder{position:absolute;inset:0;display:flex;flex-direction:column;
   align-items:center;justify-content:center;gap:14px;text-align:center;padding:24px}
 .fp-title{font-family:'Cinzel',serif;font-weight:900;letter-spacing:3px;
