@@ -4,7 +4,9 @@
 // Contient : l'état global de l'armée en cours de composition (`army`),
 // l'état des filtres du builder, les listes d'armées sauvegardées, le mode
 // builder courant, showPage(), showNotif(), le menu contextuel factorisé
-// (showPieceCtxMenu) utilisé par plusieurs pages, et l'appel d'init final.
+// (showPieceCtxMenu) utilisé par plusieurs pages, le parchemin d'accueil
+// (showIntroModalIfFirstVisit, affiché une seule fois par appareil), et
+// l'appel d'init final.
 //
 // Dépendances : data-pieces.js (PIECES, CLASS_COLOR_VARS)
 // Chargé après data-pieces.js et accounts.js, avant tous les modules de page.
@@ -119,8 +121,28 @@ function showPieceCtxMenu(e,pieceDef,opts){
 }
 
 // ----------------------------------------------------------------
+// PARCHEMIN D'ACCUEIL — affiché une seule fois par appareil, dès la toute
+// première visite (avant même la création d'un compte). Volontairement en
+// dehors du système accGet/accSet (accounts.js) : cette préférence concerne
+// l'appareil, pas un compte précis — un localStorage direct est donc justifié
+// ici, à titre d'exception documentée à la convention du reste du projet.
+// ----------------------------------------------------------------
+const INTRO_SEEN_KEY='ec_intro_seen';
+function showIntroModalIfFirstVisit(){
+  if(localStorage.getItem(INTRO_SEEN_KEY))return;
+  const modal=document.getElementById('intro-modal');
+  if(modal)modal.style.display='flex';
+}
+document.getElementById('intro-close')?.addEventListener('click',()=>{
+  localStorage.setItem(INTRO_SEEN_KEY,'1');
+  const modal=document.getElementById('intro-modal');
+  if(modal)modal.style.display='none';
+});
+
+// ----------------------------------------------------------------
 // INIT — appelé en tout dernier (voir bas de index.html)
 // ----------------------------------------------------------------
 function initApp(){
   renderLoginPage();
+  showIntroModalIfFirstVisit();
 }

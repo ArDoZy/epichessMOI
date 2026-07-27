@@ -10,6 +10,28 @@
 <body>
 <div class="drag-ghost" id="drag-ghost"></div>
 
+<!-- PARCHEMIN D'ACCUEIL — affiché une seule fois (localStorage, voir
+     js/main.js) pour présenter brièvement le jeu aux nouveaux arrivants.
+     Volontairement indépendant du système de comptes (accGet/accSet) : cette
+     préférence concerne l'appareil, pas un compte précis. -->
+<div class="intro-modal" id="intro-modal" style="display:none">
+  <div class="intro-parchment">
+    <div class="intro-parchment-inner">
+      <span class="vial vial-lg intro-seal"><span class="vial-bubble"></span></span>
+      <h2 class="intro-title">Bienvenue, apprenti alchimiste</h2>
+      <p class="intro-p">Dans ce laboratoire abandonné, un savant fou a mélangé les pièces d'un jeu d'échecs ordinaire avec des créatures nées de l'alchimie. Le résultat : <strong>Epic Chess</strong>, une variante où chaque créature a son propre pouvoir et ses propres déplacements.</p>
+      <ul class="intro-list">
+        <li><strong>Composez votre armée</strong> — 1 Monarque, 1 Général et 3 créatures de votre choix, pour un budget de 24 points.</li>
+        <li><strong>Affrontez l'Instructeur</strong> — un adversaire IA dont vous choisissez le niveau, sur un plateau classique 8×8.</li>
+        <li><strong>Suivez la Voie des Victoires</strong> — chaque combat fait évoluer votre ELO et débloque de nouvelles créatures à mesure que vous progressez dans les rangs.</li>
+        <li><strong>Tentez le Mode Tournoi</strong> — enchaînez plusieurs combats d'affilée pour un bonus d'ELO plus généreux.</li>
+      </ul>
+      <p class="intro-p intro-p-sign">Bonne chance — et méfiez-vous des Typhons.</p>
+      <button class="btn btn-gold intro-close" id="intro-close">J'ai compris, laissez-moi expérimenter</button>
+    </div>
+  </div>
+</div>
+
 <!-- ACCOUNT BAR -->
 <div class="cab" id="cab" style="display:none">
   <div class="cab-av" id="cab-av"></div>
@@ -102,6 +124,8 @@
     <div class="cube-face is-front" data-face="jouer">
       <div class="face-viewport">
         <div class="jouer-menu">
+          <div class="ambient-bubbles"><span></span><span></span><span></span><span></span><span></span><span></span></div>
+          <span class="arcane-ring arcane-ring-1"></span><span class="arcane-ring arcane-ring-2"></span>
           <div class="jouer-logo">EPIC CHESS</div>
           <button class="jouer-btn" id="cube-jouer-btn"><span>JOUER</span></button>
         </div>
@@ -115,11 +139,11 @@
     </div>
     <!-- Face 3 (arrière) : Magasin (placeholder) -->
     <div class="cube-face" data-face="magasin">
-      <div class="face-viewport"><div class="face-placeholder"><span class="vial vial-lg vial-magasin"><span class="vial-bubble"></span></span><div class="fp-title">Magasin</div><div class="fp-sub">Bientôt disponible</div></div></div>
+      <div class="face-viewport"><div class="face-placeholder"><div class="ambient-bubbles"><span></span><span></span><span></span><span></span><span></span><span></span></div><span class="arcane-ring arcane-ring-1"></span><span class="arcane-ring arcane-ring-2"></span><span class="vial vial-lg vial-magasin"><span class="vial-bubble"></span></span><div class="fp-title">Magasin</div><div class="fp-sub">Bientôt disponible</div></div></div>
     </div>
     <!-- Face 4 (gauche) : Missions (placeholder) -->
     <div class="cube-face" data-face="missions">
-      <div class="face-viewport"><div class="face-placeholder"><span class="vial vial-lg vial-missions"><span class="vial-bubble"></span></span><div class="fp-title">Missions</div><div class="fp-sub">Bientôt disponible</div></div></div>
+      <div class="face-viewport"><div class="face-placeholder"><div class="ambient-bubbles"><span></span><span></span><span></span><span></span><span></span><span></span></div><span class="arcane-ring arcane-ring-1"></span><span class="arcane-ring arcane-ring-2"></span><span class="vial vial-lg vial-missions"><span class="vial-bubble"></span></span><div class="fp-title">Missions</div><div class="fp-sub">Bientôt disponible</div></div></div>
     </div>
     <!-- Face supérieure : la partie (page-game déplacée ici) -->
     <div class="cube-face" data-face="game">
@@ -127,7 +151,7 @@
     </div>
     <!-- Face inférieure : Variantes (placeholder) -->
     <div class="cube-face" data-face="variantes">
-      <div class="face-viewport"><div class="face-placeholder"><span class="vial vial-lg vial-variantes"><span class="vial-bubble"></span></span><div class="fp-title">Variantes</div><div class="fp-sub">Bientôt disponible</div></div></div>
+      <div class="face-viewport"><div class="face-placeholder"><div class="ambient-bubbles"><span></span><span></span><span></span><span></span><span></span><span></span></div><span class="arcane-ring arcane-ring-1"></span><span class="arcane-ring arcane-ring-2"></span><span class="vial vial-lg vial-variantes"><span class="vial-bubble"></span></span><div class="fp-title">Variantes</div><div class="fp-sub">Bientôt disponible</div></div></div>
     </div>
   </div>
   <!-- Contrôles de navigation (hors du cube 3D). Icônes en SVG (et non en
