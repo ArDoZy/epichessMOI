@@ -126,7 +126,7 @@ const renderCards=()=>{
   let html='';
   ['Monarque','Général','Primordiale','Brute','Sorcier'].forEach(cls=>{
     if(!byClass[cls]?.length)return;
-    html+='<div class="class-sec" id="cls-sec-'+cls+'"><div class="class-hdr '+cls+'"><span class="class-hdr-name '+cls+'">'+cls+'</span></div><div class="cards-grid">';
+    html+='<div class="class-sec '+cls+'" id="cls-sec-'+cls+'"><div class="class-hdr"><span class="class-hdr-name '+cls+'">'+cls+'</span></div><div class="cards-grid">';
     byClass[cls].forEach(p=>{
       const unlocked=VV_UNLOCKED.has(p.id);
       if(!unlocked){

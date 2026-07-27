@@ -20,13 +20,12 @@
       <h2 class="intro-title">Bienvenue, apprenti alchimiste</h2>
       <p class="intro-p">Dans ce laboratoire abandonné, un savant fou a mélangé les pièces d'un jeu d'échecs ordinaire avec des créatures nées de l'alchimie. Le résultat : <strong>Epic Chess</strong>, une variante où chaque créature a son propre pouvoir et ses propres déplacements.</p>
       <ul class="intro-list">
-        <li><strong>Composez votre armée</strong> — 1 Monarque, 1 Général et 3 créatures de votre choix, pour un budget de 24 points.</li>
-        <li><strong>Affrontez l'Instructeur</strong> — un adversaire IA dont vous choisissez le niveau, sur un plateau classique 8×8.</li>
-        <li><strong>Suivez la Voie des Victoires</strong> — chaque combat fait évoluer votre ELO et débloque de nouvelles créatures à mesure que vous progressez dans les rangs.</li>
-        <li><strong>Tentez le Mode Tournoi</strong> — enchaînez plusieurs combats d'affilée pour un bonus d'ELO plus généreux.</li>
+        <li><strong>Composez votre armée</strong> : 1 Monarque, 1 Général et 3 créatures de votre choix, pour un budget de 24 points.</li>
+        <li><strong>Affrontez l'Instructeur</strong> : un adversaire IA dont vous choisissez le niveau, sur un plateau classique 8×8.</li>
+        <li><strong>Suivez la Voie des Victoires</strong> : chaque combat fait évoluer votre ELO et débloque de nouvelles créatures à mesure que vous progressez dans les rangs.</li>
+        <li><strong>Tentez le Mode Tournoi</strong> : enchaînez plusieurs combats d'affilée contre des adversaires de plus en plus aguerris.</li>
       </ul>
-      <p class="intro-p intro-p-sign">Bonne chance — et méfiez-vous des Typhons.</p>
-      <button class="btn btn-gold intro-close" id="intro-close">J'ai compris, laissez-moi expérimenter</button>
+      <button class="btn btn-gold intro-close" id="intro-close">Continuer</button>
     </div>
   </div>
 </div>
@@ -174,19 +173,22 @@
 <div class="builder-inner">
   <div class="builder-topbar"></div>
   <div class="builder-mode-banner" id="builder-mode-banner"></div>
-  <div class="topbar">
-    <div class="topbar-btns">
-      <button class="btn btn-ghost" id="b-reset">Tout effacer</button>
-      <button class="btn btn-ghost" id="b-random">Armée aléatoire</button>
-      <button class="btn btn-primary" id="b-validate" disabled>Valider l'armée →</button>
-      <button class="btn btn-gold" id="b-armies">Mes armées</button>
-      <button class="btn btn-ghost" id="b-tournoi" style="border-color:var(--accent2);color:var(--accent2)">Tournoi</button>
+  <div class="army-box" id="army-box">
+    <div class="builder-panel-top">
+      <div class="topbar-btns">
+        <button class="btn btn-gold" id="b-armies">Mes armées</button>
+        <button class="btn btn-primary" id="b-validate" disabled>Valider l'armée →</button>
+        <button class="btn btn-ghost" id="b-tournoi" style="border-color:var(--accent2);color:var(--accent2)">Tournoi</button>
+        <button class="btn btn-ghost" id="b-random">Armée aléatoire</button>
+        <button class="btn btn-ghost" id="b-reset">Tout effacer</button>
+      </div>
+      <div class="topbar-stats">
+        <div class="stat-pill"><div class="sp-label">Valeur</div><div class="sp-val" id="s-val">0/24</div></div>
+      </div>
     </div>
-    <div class="topbar-stats">
-      <div class="stat-pill"><div class="sp-label">Valeur</div><div class="sp-val" id="s-val">0/24</div></div>
-    </div>
+    <div class="army-box-title">Votre armée</div>
+    <div class="comp-grid" id="comp-grid"></div>
   </div>
-  <div class="army-box" id="army-box"><div class="army-box-title">Votre armée</div><div class="comp-grid" id="comp-grid"></div></div>
   <div id="cards-container"></div>
 </div>
 </div>
