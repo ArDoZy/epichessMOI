@@ -5,8 +5,8 @@
 // l'état des filtres du builder, les listes d'armées sauvegardées, le mode
 // builder courant, showPage(), showNotif(), le menu contextuel factorisé
 // (showPieceCtxMenu) utilisé par plusieurs pages, le parchemin d'accueil
-// (showIntroModalIfFirstVisit, affiché une seule fois par appareil), et
-// l'appel d'init final.
+// (showIntroModal, appelé par accounts.js à la création d'un nouveau
+// compte), et l'appel d'init final.
 //
 // Dépendances : data-pieces.js (PIECES, CLASS_COLOR_VARS)
 // Chargé après data-pieces.js et accounts.js, avant tous les modules de page.
@@ -121,20 +121,16 @@ function showPieceCtxMenu(e,pieceDef,opts){
 }
 
 // ----------------------------------------------------------------
-// PARCHEMIN D'ACCUEIL — affiché une seule fois par appareil, dès la toute
-// première visite (avant même la création d'un compte). Volontairement en
-// dehors du système accGet/accSet (accounts.js) : cette préférence concerne
-// l'appareil, pas un compte précis — un localStorage direct est donc justifié
-// ici, à titre d'exception documentée à la convention du reste du projet.
+// PARCHEMIN D'ACCUEIL — affiché juste après la création d'un NOUVEAU compte
+// (voir enterAccount() dans accounts.js, appelé avec isNewAccount=true depuis
+// le listener de #btn-reg), pas à l'arrivée sur le site : avant la création
+// d'un compte, il n'y a encore ni armée ni ELO à expliquer.
 // ----------------------------------------------------------------
-const INTRO_SEEN_KEY='ec_intro_seen';
-function showIntroModalIfFirstVisit(){
-  if(localStorage.getItem(INTRO_SEEN_KEY))return;
+function showIntroModal(){
   const modal=document.getElementById('intro-modal');
   if(modal)modal.style.display='flex';
 }
 document.getElementById('intro-close')?.addEventListener('click',()=>{
-  localStorage.setItem(INTRO_SEEN_KEY,'1');
   const modal=document.getElementById('intro-modal');
   if(modal)modal.style.display='none';
 });
@@ -144,5 +140,4 @@ document.getElementById('intro-close')?.addEventListener('click',()=>{
 // ----------------------------------------------------------------
 function initApp(){
   renderLoginPage();
-  showIntroModalIfFirstVisit();
 }

@@ -89,7 +89,7 @@ window.deleteAcc=(username,ev)=>{
   renderLoginPage();
 };
 
-function enterAccount(username){
+function enterAccount(username,isNewAccount){
   CUR_ACC=username;
   loadAccountGlobals();
   updateCab();
@@ -102,6 +102,11 @@ function enterAccount(username){
   // builder — la face builder est atteinte en tournant le cube.
   updateBuilderBanner();updAll();
   if(typeof goToMainMenu==='function')goToMainMenu();else showPage('page-builder');
+  // Parchemin d'accueil : uniquement à la création d'un nouveau compte (pas
+  // à chaque connexion d'un compte existant) — voir showIntroModal() dans
+  // main.js. Au-dessus du modal Primordiale (z-index plus faible) : celui-ci
+  // reste visible dès la fermeture du parchemin, sans double délai perçu.
+  if(isNewAccount && typeof showIntroModal==='function')showIntroModal();
   if(!accGet('primordiale_choisie',null))setTimeout(showPrimordialeChoiceModal,300);
 }
 
@@ -179,6 +184,6 @@ document.getElementById('btn-reg').addEventListener('click',()=>{
   if(accs[u]){showNotif('Ce pseudo est déjà utilisé.');return;}
   accs[u]={h:_h(p+u),createdAt:Date.now()};saveAccs(accs);
   showNotif('Compte créé !','ok');
-  setTimeout(()=>enterAccount(u),500);
+  setTimeout(()=>enterAccount(u,true),500);
 });
 ['reg-u','reg-p','reg-p2'].forEach(id=>{document.getElementById(id).addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('btn-reg').click();});});
