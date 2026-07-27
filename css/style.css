@@ -4,6 +4,7 @@
    Structure de ce fichier (recherchez les tags [SECTION] pour naviguer) :
      [THEME]        variables CSS clair/sombre + reset
      [COMMON]       boutons, notifications, typographie partagée
+     [INTRO]        parchemin d'accueil (première visite)
      [ACCOUNTS]     page de connexion, liste comptes, modal mot de passe, cab (barre compte)
      [AI-LEVEL]     modal de choix d'instructeur IA
      [BUILDER]      page de composition d'armée (filtres, cartes de pièces, slots)
@@ -29,8 +30,11 @@
    de classe de pièce (--monarque/--general/etc.) restent inchangées : elles
    distinguent des catégories de jeu, pas l'ambiance générale. */
 :root{
-  --bg:#131209;--surface:#201c12;--surface2:#292417;--border:#463f28;--border2:#665c38;
-  --text:#ddd3b0;--muted:#8f8967;--accent:#4a2456;--accent2:#7a3f82;--gold:#a8823a;--gold2:#d1ab54;
+  /* Palette éclaircie (v2) : le labo reste sombre et ambré, mais les fonds
+     n'écrasent plus le texte — luminosité et contraste relevés partout pour
+     ne plus forcer les yeux en usage normal. */
+  --bg:#1d1a10;--surface:#2a2417;--surface2:#342d1c;--border:#584d31;--border2:#7a6c44;
+  --text:#ecdfbb;--muted:#a89f7c;--accent:#5c2f6b;--accent2:#8d4b96;--gold:#bd9548;--gold2:#e0bc63;
   --success:#5fae4a;--danger:#b6394a;
   --potion:#6fae44;--potion-glow:rgba(111,174,68,.28);--potion-dark:#2f5c28;
   --monarque:#3b6ea5;--monarque-bg:rgba(59,110,165,0.14);
@@ -41,8 +45,8 @@
   --parchment-noise:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/></svg>");
 }
 body.light{
-  --bg:#e2dcc4;--surface:#eee6ce;--surface2:#e8dfc0;--border:#bdae82;--border2:#9c8c5c99;
-  --text:#28230f;--muted:#6b6240;--accent:#4a2456;--accent2:#7a3f82;--gold:#7a5f26;--gold2:#93731f;
+  --bg:#ece6ce;--surface:#f7f0d8;--surface2:#f0e8ca;--border:#c7b98c;--border2:#a8996699;
+  --text:#221d0d;--muted:#655c39;--accent:#4a2456;--accent2:#7a3f82;--gold:#82661f;--gold2:#a17c1c;
   --success:#3f7a30;--potion:#4d8a35;--potion-glow:rgba(77,138,53,.18);
   --monarque-bg:rgba(59,110,165,.10);--general-bg:rgba(201,117,46,.10);
   --primordiale-bg:rgba(63,125,74,.10);--sorcier-bg:rgba(157,63,125,.10);--brute-bg:rgba(162,58,58,.10);
@@ -54,7 +58,7 @@ body{
   background-color:var(--bg);
   /* Lueur toxique en coin (fiole hors-champ) + voile de vignette + grain
      parchemin, en plus du dégradé doré d'origine — ambiance labo abandonné. */
-  background-image:var(--parchment-noise),radial-gradient(ellipse at 8% 108%,var(--potion-glow),transparent 45%),radial-gradient(ellipse at 50% -10%,rgba(168,130,58,.10),transparent 60%),radial-gradient(ellipse at 50% 110%,rgba(0,0,0,.4),transparent 55%);
+  background-image:var(--parchment-noise),radial-gradient(ellipse at 8% 108%,var(--potion-glow),transparent 45%),radial-gradient(ellipse at 50% -10%,rgba(168,130,58,.14),transparent 60%),radial-gradient(ellipse at 50% 110%,rgba(0,0,0,.24),transparent 55%);
   background-blend-mode:overlay,normal,normal,normal;
   background-attachment:fixed;
   background-size:180px 180px,100% 100%,100% 100%,100% 100%;
@@ -98,6 +102,61 @@ body{
 .vial-variantes::before,.vial-variantes::after{border-color:var(--danger)}
 .vial-variantes::after{background:linear-gradient(180deg,transparent 0 45%,var(--danger) 45%)}
 @keyframes vialBubble{0%{transform:translateY(0);opacity:.9}90%{opacity:.5}100%{transform:translateY(-30px);opacity:0}}
+
+/* --- CERCLE ARCANIQUE — anneau pointillé tournant, posé derrière une icône
+   (fiole, logo) pour habiller un espace autrement vide façon "diagramme
+   d'invocation de l'alchimiste". Pur CSS, aucune image. --- */
+.arcane-ring{position:absolute;left:50%;top:50%;border-radius:50%;
+  border:1px dashed rgba(201,162,39,.3);pointer-events:none;transform-origin:center}
+.arcane-ring-1{width:170px;height:170px;margin:-85px 0 0 -85px;animation:arcaneSpin 32s linear infinite}
+.arcane-ring-2{width:230px;height:230px;margin:-115px 0 0 -115px;border-color:rgba(157,63,125,.22);animation:arcaneSpin 46s linear infinite reverse}
+@keyframes arcaneSpin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+
+/* --- BULLES AMBIANTES — quelques bulles de potion qui montent lentement en
+   arrière-plan, pour ne pas laisser les faces/pages peu remplies totalement
+   figées. Une seule couche de particules réutilisable. --- */
+.ambient-bubbles{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:0}
+.ambient-bubbles span{position:absolute;bottom:-10%;border-radius:50%;background:var(--potion-glow);opacity:0;animation:ambientRise linear infinite}
+.ambient-bubbles span:nth-child(1){left:12%;width:6px;height:6px;animation-duration:11s;animation-delay:0s}
+.ambient-bubbles span:nth-child(2){left:28%;width:4px;height:4px;animation-duration:8s;animation-delay:1.5s}
+.ambient-bubbles span:nth-child(3){left:47%;width:8px;height:8px;animation-duration:14s;animation-delay:3s}
+.ambient-bubbles span:nth-child(4){left:66%;width:5px;height:5px;animation-duration:9.5s;animation-delay:.7s}
+.ambient-bubbles span:nth-child(5){left:82%;width:7px;height:7px;animation-duration:12.5s;animation-delay:2.2s}
+.ambient-bubbles span:nth-child(6){left:93%;width:4px;height:4px;animation-duration:10s;animation-delay:4s}
+@keyframes ambientRise{0%{transform:translateY(0);opacity:0}8%{opacity:.7}92%{opacity:.3}100%{transform:translateY(-115vh);opacity:0}}
+
+/* [INTRO] ========================================================= */
+/* Parchemin d'accueil, affiché une seule fois (voir showIntroModal() dans
+   js/main.js). Volontairement indépendant du thème clair/sombre : un
+   vieux parchemin reste un vieux parchemin, jour ou nuit. */
+.intro-modal{position:fixed;inset:0;background:rgba(8,6,2,.86);display:flex;
+  align-items:center;justify-content:center;z-index:9500;padding:20px;
+  animation:introFadeIn .3s ease both}
+@keyframes introFadeIn{from{opacity:0}to{opacity:1}}
+.intro-parchment{position:relative;max-width:620px;width:100%;max-height:88vh;overflow-y:auto;
+  border-radius:6px 16px 8px 20px/16px 6px 20px 8px;
+  background:
+    var(--parchment-noise),
+    radial-gradient(ellipse at 15% 8%,rgba(139,105,46,.25),transparent 55%),
+    radial-gradient(ellipse at 88% 95%,rgba(90,60,20,.3),transparent 55%),
+    linear-gradient(160deg,#e8d8ad,#d9c491);
+  background-blend-mode:overlay,normal,normal,normal;
+  box-shadow:0 0 0 1px #7a5f2e,0 0 0 7px #dccc9c,0 0 0 8px #7a5f2e,0 20px 60px rgba(0,0,0,.55);
+  animation:introPop .35s cubic-bezier(.22,.61,.36,1) both}
+@keyframes introPop{from{transform:scale(.92) translateY(14px);opacity:0}to{transform:scale(1) translateY(0);opacity:1}}
+.intro-parchment-inner{padding:34px 32px 30px;text-align:center;color:#3a2c14}
+.intro-seal{margin:0 auto 12px}
+.intro-seal::before,.intro-seal::after{border-color:#6b4f1e!important}
+.intro-title{font-family:'Cinzel Decorative','Cinzel',serif;font-weight:900;
+  font-size:clamp(20px,4.4vw,27px);color:#6b4f1e;margin-bottom:16px;letter-spacing:.5px}
+.intro-p{font-family:'Crimson Pro',Georgia,serif;font-size:15px;line-height:1.65;
+  text-align:left;margin-bottom:16px;color:#3a2c14}
+.intro-list{text-align:left;list-style:none;margin:0 0 18px;padding:0;display:flex;flex-direction:column;gap:11px}
+.intro-list li{font-family:'Crimson Pro',Georgia,serif;font-size:14px;line-height:1.55;
+  padding:10px 14px;border-left:3px solid #8a6a26;background:rgba(122,95,46,.09);border-radius:0 8px 8px 0}
+.intro-list li strong{font-family:'Cinzel',serif;color:#6b4f1e;font-weight:700}
+.intro-p-sign{font-style:italic;text-align:center;margin-bottom:22px;color:#5c4720}
+.intro-close{width:100%;font-size:13px;padding:14px 20px}
 
 /* [ACCOUNTS] ======================================================= */
 #page-login{min-height:100vh;align-items:center;justify-content:center;padding:20px;background:var(--bg)}
@@ -165,7 +224,7 @@ body.has-acc .game-wrap{height:calc(100vh - 50px);margin-top:50px}
    le listener des .cj-btn dans builder.js). */
 /* Marge droite large : réserve une gouttière pour le bandeau de catégories
    (fixe, bord droit) afin qu'il ne recouvre jamais les cartes ni le curseur. */
-#page-builder{padding:32px 136px 32px 20px}
+#page-builder{padding:clamp(16px,3vw,32px) clamp(90px,14vw,136px) clamp(16px,3vw,32px) clamp(12px,2vw,20px)}
 .builder-inner{max-width:1400px;margin:0 auto}
 .builder-topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:10px;flex-wrap:wrap}
 .theme-btn{padding:7px 14px;border:1px solid var(--border2);border-radius:8px;background:var(--surface);color:var(--text);cursor:pointer;font-size:12px;font-family:'Cinzel',serif;transition:all .2s;display:flex;align-items:center;gap:6px}
@@ -302,10 +361,10 @@ body.has-acc .game-wrap{height:calc(100vh - 50px);margin-top:50px}
 .sp-divider{border:none;border-top:1px solid var(--border);margin:10px 0}
 
 /* [ARMIES] ======================================================= */
-#page-armies{padding:32px 20px;min-height:100vh;background:var(--bg)}
+#page-armies{padding:clamp(16px,3vw,32px) clamp(12px,3vw,20px);min-height:100vh;background:var(--bg)}
 .armies-inner{max-width:980px;margin:0 auto}
 .armies-hdr{display:flex;align-items:center;gap:12px;margin-bottom:28px;flex-wrap:wrap}
-.armies-title{font-family:'Cinzel Decorative','Cinzel',serif;font-size:26px;font-weight:900;flex:1}
+.armies-title{font-family:'Cinzel Decorative','Cinzel',serif;font-size:clamp(20px,4.5vw,26px);font-weight:900;flex:1}
 .armies-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:16px}
 .army-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px;transition:all .22s;position:relative;overflow:hidden}
 .army-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--gold);opacity:.4}
@@ -324,7 +383,7 @@ body.has-acc .game-wrap{height:calc(100vh - 50px);margin-top:50px}
 .ac-btns{display:flex;gap:7px;margin-top:12px;flex-wrap:wrap}
 .empty-armies{grid-column:1/-1;text-align:center;padding:50px 20px;color:var(--muted);font-size:15px;font-style:italic}
 .empty-armies .vial{margin-bottom:14px;opacity:.4}
-#page-ai-armies{padding:32px 20px;min-height:100vh;background:var(--bg)}
+#page-ai-armies{padding:clamp(16px,3vw,32px) clamp(12px,3vw,20px);min-height:100vh;background:var(--bg)}
 
 /* [COMBAT-INTRO] ======================================================= */
 #page-combat{min-height:100vh;flex-direction:column;align-items:center;justify-content:center;position:relative;overflow:hidden}
@@ -476,10 +535,10 @@ body.light .gc.l{background:#eddab0}body.light .gc.d{background:#8a5f38}
 .aio-timer-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--gold));border-radius:2px;transition:width 1s linear}
 
 /* [VOIE] ======================================================= */
-#page-voie{padding:28px 20px;min-height:100vh;background:var(--bg)}
+#page-voie{padding:clamp(14px,3vw,28px) clamp(12px,3vw,20px);min-height:100vh;background:var(--bg)}
 .voie-inner{max-width:860px;margin:0 auto}
 .voie-hdr{display:flex;align-items:center;gap:12px;margin-bottom:24px;flex-wrap:wrap}
-.voie-title{font-family:'Cinzel Decorative','Cinzel',serif;font-size:26px;font-weight:900;flex:1;color:var(--gold)}
+.voie-title{font-family:'Cinzel Decorative','Cinzel',serif;font-size:clamp(20px,4.5vw,26px);font-weight:900;flex:1;color:var(--gold)}
 .voie-elo-banner{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px 24px;margin-bottom:28px;display:flex;align-items:center;gap:22px;flex-wrap:wrap;position:relative;overflow:hidden}
 .voie-elo-banner::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--gold);opacity:.5}
 .veb-info{flex:1}
@@ -527,7 +586,7 @@ body.light .gc.l{background:#eddab0}body.light .gc.d{background:#8a5f38}
 .vh-elo{color:var(--gold);font-family:'Cinzel',serif}.vh-date{color:var(--muted);margin-left:auto;font-size:10px}
 
 /* [TOURNOI] ======================================================= */
-#page-tournoi{padding:32px 20px;min-height:100vh}
+#page-tournoi{padding:clamp(16px,3vw,32px) clamp(12px,3vw,20px);min-height:100vh}
 .tournoi-inner{max-width:700px;margin:0 auto}
 .tournoi-hdr{display:flex;align-items:center;gap:12px;margin-bottom:28px;flex-wrap:wrap}
 .tournoi-title{font-family:'Cinzel Decorative','Cinzel',serif;font-size:clamp(20px,5vw,32px);font-weight:900;color:var(--gold);flex:1}
@@ -689,9 +748,9 @@ body.nav-overlay #cube-stage{display:none}
 
 /* --- Face JOUER (menu principal) — sombre, premium, minimaliste --- */
 .cube-face[data-face="jouer"]{background:
-  radial-gradient(ellipse at 50% 32%,rgba(201,162,39,.14),transparent 60%),
-  radial-gradient(ellipse at 50% 120%,rgba(0,0,0,.6),transparent 55%),
-  linear-gradient(160deg,#1c150c,#0f0b06)}
+  radial-gradient(ellipse at 50% 32%,rgba(201,162,39,.18),transparent 60%),
+  radial-gradient(ellipse at 50% 120%,rgba(0,0,0,.45),transparent 55%),
+  linear-gradient(160deg,#2a2013,#180f07)}
 .jouer-menu{position:absolute;inset:0;display:flex;flex-direction:column;
   align-items:center;justify-content:center;gap:34px;text-align:center;padding:24px}
 .jouer-logo{font-family:'Cinzel Decorative','Cinzel',serif;font-weight:900;
@@ -701,8 +760,8 @@ body.nav-overlay #cube-stage{display:none}
   filter:drop-shadow(0 4px 24px rgba(201,162,39,.35))}
 .jouer-btn{position:relative;cursor:pointer;border:none;
   font-family:'Cinzel',serif;font-weight:900;letter-spacing:6px;
-  font-size:clamp(22px,3.4vw,34px);color:#1a1206;
-  padding:22px 76px;border-radius:10px;
+  font-size:clamp(18px,3.4vw,34px);color:#1a1206;
+  padding:clamp(14px,3vw,22px) clamp(36px,10vw,76px);border-radius:10px;
   background:var(--gold);
   box-shadow:0 3px 0 #6b4f16;
   transition:transform .15s ease,box-shadow .15s ease}
@@ -713,8 +772,8 @@ body.nav-overlay #cube-stage{display:none}
 .cube-face[data-face="magasin"],
 .cube-face[data-face="missions"],
 .cube-face[data-face="variantes"]{background:
-  radial-gradient(ellipse at 50% 40%,rgba(107,77,44,.18),transparent 60%),
-  linear-gradient(160deg,#1a140b,#0f0b06)}
+  radial-gradient(ellipse at 50% 40%,rgba(107,77,44,.22),transparent 60%),
+  linear-gradient(160deg,#28200f,#180f07)}
 .face-placeholder{position:absolute;inset:0;display:flex;flex-direction:column;
   align-items:center;justify-content:center;gap:14px;text-align:center;padding:24px}
 .fp-title{font-family:'Cinzel',serif;font-weight:900;letter-spacing:3px;
@@ -762,3 +821,54 @@ body.nav-overlay .class-jump-rail.show{display:flex!important}
    le cube est actif, pour ne jamais chevaucher la flèche de rotation droite
    qui occupe le même coin. */
 body.cube-active .admin-badge{bottom:90px}
+
+/* [RESPONSIVE / MODE TÉLÉPHONE] ====================================
+   Le cube (vmax) et la plupart des titres (clamp()) s'adaptent déjà en
+   continu à la taille de l'écran. Ce bloc gère surtout les changements
+   STRUCTURELS nécessaires sur petit écran : bandeau de compte compact,
+   bandeau de catégories basculé en barre horizontale basse, grilles à
+   moins de colonnes, flèches de cube resserrées. */
+@media(max-width:640px){
+  .cab{padding:0 42px 0 10px;gap:8px;height:46px;font-size:11px}
+  .cab-av{width:28px;height:28px;font-size:13px}
+  #cab-name{font-size:12px}
+  #cab-elo{font-size:10px!important;padding:4px 8px}
+  .cab-sw{padding:6px 10px;font-size:10px}
+  #settings-btn{width:28px;height:28px;top:6px;right:8px}
+  body.has-acc #page-builder{padding-top:calc(46px + 10px)}
+  body.has-acc #page-armies,body.has-acc #page-ai-armies,body.has-acc #page-voie,body.has-acc #page-tournoi{padding-top:calc(46px + 14px)}
+  body.has-acc #page-combat{padding-top:46px}
+
+  /* Bandeau de catégories du builder : vertical sur le bord droit en
+     desktop, devient une barre horizontale collée en bas sur téléphone
+     (plus naturel au pouce, ne mange plus de largeur utile). */
+  #page-builder{padding:14px 14px 70px 14px}
+  .class-jump-rail{top:auto;bottom:0;right:0;left:0;transform:none;
+    flex-direction:row;justify-content:flex-start;gap:4px;padding:6px;
+    background:var(--surface2);border-top:1px solid var(--border2);
+    overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .cj-btn{writing-mode:horizontal-tb;width:auto;flex-shrink:0;padding:8px 10px;
+    font-size:10px;border-radius:8px;border:1px solid var(--border2);white-space:nowrap}
+  .cj-btn:hover{width:auto}
+
+  .cards-grid{grid-template-columns:repeat(2,1fr);gap:10px}
+  .comp-grid{grid-template-columns:repeat(2,1fr)}
+  .army-box{padding:16px}
+  .armies-hdr{flex-direction:column;align-items:stretch}
+  .armies-hdr .btn{width:100%}
+
+  .cube-arrow-side{width:44px;height:44px;bottom:12px;border-radius:12px}
+  #cube-arrow-left{left:12px}
+  #cube-arrow-right{right:12px}
+  .cube-arrow-vert{width:52px;height:34px}
+  #cube-arrow-down{bottom:12px}
+  #cube-arrow-up{top:54px}
+  body.cube-active .admin-badge{bottom:64px}
+}
+@media(max-width:420px){
+  .cards-grid{grid-template-columns:1fr}
+}
+@media(max-width:480px){
+  .intro-parchment-inner{padding:24px 18px 22px}
+  .intro-list li{font-size:13px;padding:8px 11px}
+}
