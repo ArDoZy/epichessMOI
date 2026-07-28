@@ -113,7 +113,7 @@
           <div class="ambient-bubbles"><span></span><span></span><span></span><span></span><span></span><span></span></div>
           <div class="jouer-logo">EPIC CHESS</div>
           <div class="jouer-actions">
-            <button class="jouer-btn" id="cube-jouer-btn"><span>JOUER</span></button>
+            <button class="jouer-btn" id="cube-jouer-btn"><span>COMBAT</span></button>
             <button class="btn btn-ghost jouer-tournoi-btn" id="b-tournoi" style="border-color:var(--accent2);color:var(--accent2)">Tournoi</button>
           </div>
         </div>
@@ -187,6 +187,9 @@
 <div id="page-armies" class="page">
 <div class="armies-inner">
   <div class="armies-hdr"><div class="armies-title cinzel glow-text">Mes Armées</div><button class="btn btn-ghost" id="b-voie" style="border-color:var(--gold);color:var(--gold)">Voie</button><button class="btn btn-primary" id="ar-new">+ Nouvelle armée</button></div>
+  <!-- Bandeau du mode sélection (combat/tournoi lancé depuis le menu
+       principal) : rempli et affiché par renderArmiesPage(). -->
+  <div class="armies-select-banner" id="armies-select-banner" style="display:none"></div>
   <div class="armies-grid" id="armies-grid"></div>
 </div>
 </div>

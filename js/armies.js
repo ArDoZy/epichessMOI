@@ -2,8 +2,9 @@
 // ARMIES.JS — Pages "Mes armées" / "Armées IA" + générateur d'armée IA
 // ================================================================
 // Contient : le rendu des listes d'armées sauvegardées (#page-armies et
-// #page-ai-armies), les actions modifier/supprimer/lancer combat/lancer
-// tournoi, le chargement d'une armée sauvegardée dans le builder pour
+// #page-ai-armies), les actions modifier/supprimer, le mode SÉLECTION
+// (déclenché par "COMBAT"/"Tournoi" du menu principal : un clic sur une
+// carte lance la partie), le chargement d'une armée sauvegardée dans le builder pour
 // édition, et generateAIArmy() qui compose une armée aléatoire légale pour
 // l'adversaire IA quand aucune armée IA personnalisée n'est choisie.
 //
@@ -61,14 +62,69 @@ window.confirmRenameArmy=(id,isAi)=>{
   if(isAi)renderAiArmiesPage();else renderArmiesPage();
 };
 
+// ----------------------------------------------------------------
+// MODE SÉLECTION D'ARMÉE
+// ----------------------------------------------------------------
+// Un combat / un tournoi ne se lance plus depuis la carte d'armée : on part
+// du menu principal (gros bouton "COMBAT" ou bouton "Tournoi" de la face
+// JOUER), ce qui amène ICI en mode sélection. La page se réduit alors à un
+// choix : toutes les autres actions (Voie, Nouvelle armée, Modifier,
+// Renommer, Supprimer) sont masquées et un clic sur une carte lance
+// directement le combat/le tournoi avec cette armée.
+let armySelectMode=null;   // null | 'combat' | 'tournoi'
+
+window.startArmySelection=mode=>{
+  // Sans armée sauvegardée il n'y a rien à sélectionner : on affiche la page
+  // normale (avec "+ Nouvelle armée") plutôt qu'un mode sélection vide.
+  if(!savedArmies.length){
+    armySelectMode=null;renderArmiesPage();showPage('page-armies');
+    showNotif('Composez d\'abord une armée pour pouvoir combattre.','err');
+    return;
+  }
+  armySelectMode=mode;
+  renderArmiesPage();showPage('page-armies');
+};
+window.clearArmySelection=()=>{
+  if(!armySelectMode)return;
+  armySelectMode=null;renderArmiesPage();
+};
+window.cancelArmySelection=()=>{
+  armySelectMode=null;renderArmiesPage();
+  if(typeof goToMainMenu==='function')goToMainMenu();
+};
+window.pickArmyForBattle=id=>{
+  const mode=armySelectMode;if(!mode)return;
+  armySelectMode=null;renderArmiesPage();
+  if(mode==='tournoi')launchTournoiFromArmy(id);
+  else launchCombat(id);
+};
+
 const renderArmiesPage=()=>{
   const grid=document.getElementById('armies-grid');
+  const sel=!!armySelectMode;
+  // Chrome de la page : masqué pendant la sélection.
+  ['b-voie','ar-new'].forEach(id=>{const e=document.getElementById(id);if(e)e.style.display=sel?'none':'';});
+  const banner=document.getElementById('armies-select-banner');
+  if(banner){
+    banner.style.display=sel?'':'none';
+    banner.innerHTML=sel?'<span class="asb-txt">'+(armySelectMode==='tournoi'?'Sélectionnez l\'armée avec laquelle vous voulez disputer le tournoi':'Sélectionnez l\'armée avec laquelle vous voulez combattre')+'</span><button class="btn btn-ghost" style="font-size:11px;padding:6px 12px" onclick="cancelArmySelection()">Annuler</button>':'';
+  }
   if(!savedArmies.length){grid.innerHTML='<div class="empty-armies"><span class="vial"><span class="vial-bubble"></span></span><p>Aucune armée enregistrée.<br>Composez votre première armée !</p></div>';return;}
   grid.innerHTML=savedArmies.map(a=>{
     const mon=PIECES.find(p=>p.id===a.mon.id);const gen=PIECES.find(p=>p.id===a.gen.id);
     const extras=a.extras.map(id=>PIECES.find(p=>p.id===id)).filter(Boolean);
     const all=[mon,gen,...extras].filter(Boolean);
-    return '<div class="army-card">'+buildNameBlock(a,false)+'<div class="ac-pieces">'+all.map(p=>'<span title="'+p.name+'">'+p.emoji+'</span>').join('')+'</div><div class="ac-names">'+( mon?.name||'?')+' (Monarque) · '+(gen?.name||'?')+' (Général)<br>'+extras.map(p=>p.name).join(' · ')+'</div><div class="ac-val">'+a.totalValue+' pts</div><div class="ac-btns"><button class="btn btn-ghost" style="font-size:11px;padding:6px 12px" onclick="editPlayerArmy(\''+a.id+'\')">Modifier</button><button class="btn btn-gold" style="font-size:11px;padding:6px 12px" onclick="launchCombat(\''+a.id+'\')">Combat</button><button class="btn btn-primary" style="font-size:11px;padding:6px 12px;border-color:var(--accent2)" onclick="launchTournoiFromArmy(\''+a.id+'\')">Tournoi</button><button class="btn btn-danger" style="font-size:11px;padding:6px 10px" onclick="deletePlayerArmy(\''+a.id+'\')">Suppr.</button></div></div>';
+    // En mode sélection : carte entièrement cliquable, nom en lecture seule,
+    // aucun bouton d'action.
+    const head=sel
+      ? '<div class="ac-name-row"><span class="ac-name'+(a.name?'':' ac-name-none')+'">'+escH(a.name||'Armée sans nom')+'</span></div>'
+      : buildNameBlock(a,false);
+    const btns=sel?''
+      : '<div class="ac-btns"><button class="btn btn-ghost" style="font-size:11px;padding:6px 12px" onclick="editPlayerArmy(\''+a.id+'\')">Modifier</button><button class="btn btn-danger" style="font-size:11px;padding:6px 10px" onclick="deletePlayerArmy(\''+a.id+'\')">Suppr.</button></div>';
+    const open=sel
+      ? '<div class="army-card army-card-selectable" onclick="pickArmyForBattle(\''+a.id+'\')">'
+      : '<div class="army-card">';
+    return open+head+'<div class="ac-pieces">'+all.map(p=>'<span title="'+p.name+'">'+p.emoji+'</span>').join('')+'</div><div class="ac-names">'+( mon?.name||'?')+' (Monarque) · '+(gen?.name||'?')+' (Général)<br>'+extras.map(p=>p.name).join(' · ')+'</div><div class="ac-val">'+a.totalValue+' pts</div>'+btns+'</div>';
   }).join('');
 };
 window.editPlayerArmy=id=>{const a=savedArmies.find(x=>x.id===id);if(!a)return;builderMode='player';updateBuilderBanner();loadArmyForEdit(a);showPage('page-builder');updAll();};
@@ -78,7 +134,9 @@ window.launchTournoiFromArmy=id=>{
   loadArmyForEdit(a);currentArmyData=a;
   tournamentState.active=false; // reset pour permettre nouveau tournoi
   renderTournoiPage();showPage('page-tournoi');
-  setTimeout(()=>{if(confirm('Lancer un tournoi avec cette armée ?'))startTournoi();},150);
+  // L'armée vient d'être choisie explicitement en mode sélection : plus de
+  // confirmation à demander, le tournoi démarre directement.
+  setTimeout(startTournoi,150);
 };
 document.getElementById('ar-new').addEventListener('click',()=>{builderMode='player';updateBuilderBanner();army={mon:null,gen:null,extras:[]};editingArmyId=null;showPage('page-builder');updAll();});
 
