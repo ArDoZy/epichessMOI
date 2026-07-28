@@ -28,11 +28,13 @@ const renderCombatPage=(ad,aiIsCustom)=>{
   const aiGen=aiArmyData.gen?.id?PIECES.find(p=>p.id===aiArmyData.gen.id)||aiArmyData.gen:aiArmyData.gen;
   const aiExtras=(aiArmyData.extras||[]).map(id=>PIECES.find(p=>p.id===id)).filter(Boolean);
   const aiAll=[aiMon,aiGen,...aiExtras].filter(Boolean);
-  const inst=AI_INSTRUCTORS[selectedAILevel];
+  // L'instructeur n'est choisi qu'à l'étape suivante : on affiche donc le
+  // libellé générique « Instructeur », et non le nom d'un instructeur
+  // particulier (selectedAILevel garde ici la valeur de la partie précédente).
   document.getElementById('cvs-display').innerHTML=
     '<div class="cside"><div class="cside-lbl">Votre armée</div><div class="cside-pieces">'+all.map(p=>'<span>'+p.emoji+'</span>').join('')+'</div><div class="cside-name">'+ad.totalValue+' pts</div></div>'+
     '<div class="vs-div">VS</div>'+
-    '<div class="cside"><div class="cside-lbl">'+inst.name+'</div><div class="cside-pieces">'+aiAll.map(p=>'<span>'+p.emoji+'</span>').join('')+'</div><div class="cside-name">'+aiArmyData.totalValue+' pts</div></div>';
+    '<div class="cside"><div class="cside-lbl">Instructeur</div><div class="cside-pieces">'+aiAll.map(p=>'<span>'+p.emoji+'</span>').join('')+'</div><div class="cside-name">'+aiArmyData.totalValue+' pts</div></div>';
 };
 
 const launchParticles=()=>{

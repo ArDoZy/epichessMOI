@@ -226,17 +226,17 @@ body.has-acc .game-wrap{height:calc(100vh - 50px);margin-top:50px}
 .army-box::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--gold);opacity:.5}
 .army-box-title{font-family:'Cinzel',serif;font-size:12px;font-weight:700;color:var(--gold);margin-bottom:10px;letter-spacing:1px}
 .comp-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}
-.comp-slot{background:var(--bg);border:2px dashed var(--border);border-radius:10px;padding:14px 10px;min-height:132px;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;transition:all .2s}
+.comp-slot{background:var(--bg);border:2px dashed var(--border);border-radius:12px;padding:20px 14px;min-height:186px;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;transition:all .2s}
 .comp-slot.filled{border-style:solid}
 .comp-slot.draggable-slot{cursor:grab}
 .comp-slot.draggable-slot::before{content:'⠿';position:absolute;top:6px;left:8px;font-size:12px;color:var(--muted);opacity:.5;letter-spacing:-2px}
 .comp-slot.draggable-slot:active{cursor:grabbing}
 .comp-slot.slot-dragging{opacity:.4}
 .comp-slot.slot-over{outline:2px dashed var(--gold);outline-offset:2px}
-.comp-slot .cs-label{font-size:10px;color:var(--muted);text-transform:uppercase;font-family:'Cinzel',serif;letter-spacing:.8px;margin-bottom:8px}
-.comp-slot .cs-emoji{font-size:30px;margin-bottom:7px;display:block;line-height:1}
-.comp-slot .cs-name{font-size:14px;font-weight:700;margin-bottom:5px;text-align:center;line-height:1.3}
-.comp-slot .cs-val{font-size:12px;padding:3px 9px;background:rgba(255,255,255,.06);border-radius:6px;font-family:'Cinzel',serif;font-weight:700}
+.comp-slot .cs-label{font-size:11px;color:var(--muted);text-transform:uppercase;font-family:'Cinzel',serif;letter-spacing:.8px;margin-bottom:10px}
+.comp-slot .cs-emoji{font-size:42px;margin-bottom:10px;display:block;line-height:1}
+.comp-slot .cs-name{font-size:15px;font-weight:700;margin-bottom:7px;text-align:center;line-height:1.3}
+.comp-slot .cs-val{font-size:13px;padding:4px 11px;background:rgba(255,255,255,.06);border-radius:6px;font-family:'Cinzel',serif;font-weight:700}
 .comp-slot .cs-rm{position:absolute;top:6px;right:6px;width:22px;height:22px;cursor:pointer;opacity:.35;transition:all .15s;display:flex;align-items:center;justify-content:center;border-radius:4px}
 .comp-slot .cs-rm:hover{opacity:1;background:rgba(239,68,68,.2)}
 .comp-slot .cs-rm svg{width:11px;height:11px;stroke:white;stroke-width:2.5;stroke-linecap:round}
@@ -248,24 +248,28 @@ body.has-acc .game-wrap{height:calc(100vh - 50px);margin-top:50px}
 .comp-slot.Brute.filled{background:var(--brute-bg);border-color:var(--brute)}.comp-slot.Brute .cs-val{color:var(--brute)}
 
 /* Le "slot" de catégorie englobe TOUTE la section (titre + toutes ses
-   cartes), pas seulement le bandeau de titre. Un simple accent de couleur à
-   gauche suffit à l'identifier — un fond entièrement teinté de la même
-   couleur sur tout le bloc rendait la page criarde. */
+   cartes), pas seulement le bandeau de titre. Accent de couleur à gauche ET
+   fond LÉGÈREMENT teinté de la couleur de la catégorie autour des cartes :
+   assez pour identifier la section d'un coup d'œil, assez discret pour ne
+   pas rendre la page criarde (les cartes gardent leur propre fond). */
 .class-sec{margin-bottom:20px;border-radius:4px 12px 12px 4px;
   padding:14px 16px 16px;border:1px solid var(--border);border-left-width:4px;background:var(--surface)}
-.class-sec.Monarque{border-left-color:var(--monarque)}
-.class-sec.Général{border-left-color:var(--general)}
-.class-sec.Primordiale{border-left-color:var(--primordiale)}
-.class-sec.Brute{border-left-color:var(--brute)}
-.class-sec.Sorcier{border-left-color:var(--sorcier)}
+/* Le lavis de couleur est posé PAR-DESSUS --surface (dégradé plat d'une
+   couleur translucide) : le panneau reste opaque, seules les cartes gardent
+   leur fond neutre et ressortent donc du fond teinté. */
+.class-sec.Monarque{border-left-color:var(--monarque);background:linear-gradient(var(--monarque-bg),var(--monarque-bg)),var(--surface)}
+.class-sec.Général{border-left-color:var(--general);background:linear-gradient(var(--general-bg),var(--general-bg)),var(--surface)}
+.class-sec.Primordiale{border-left-color:var(--primordiale);background:linear-gradient(var(--primordiale-bg),var(--primordiale-bg)),var(--surface)}
+.class-sec.Brute{border-left-color:var(--brute);background:linear-gradient(var(--brute-bg),var(--brute-bg)),var(--surface)}
+.class-sec.Sorcier{border-left-color:var(--sorcier);background:linear-gradient(var(--sorcier-bg),var(--sorcier-bg)),var(--surface)}
 .class-hdr{display:flex;align-items:center;gap:10px;margin-bottom:14px}
 .class-hdr-name{font-family:'Cinzel',serif;font-size:16px;font-weight:700}
 .class-hdr-name.Monarque{color:var(--monarque)}.class-hdr-name.Général{color:var(--general)}.class-hdr-name.Primordiale{color:var(--primordiale)}.class-hdr-name.Brute{color:var(--brute)}.class-hdr-name.Sorcier{color:var(--sorcier)}
-/* 4 cartes par rangée, toujours (voir equalizeCardHeights() dans builder.js
+/* 3 cartes par rangée, toujours (voir equalizeCardHeights() dans builder.js
    pour la mise à niveau des hauteurs) : colonnes fixes plutôt qu'auto-fill,
    pour garantir la disposition même si le contenu des cartes est court. */
-.cards-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
-.piece-card{border:1px solid var(--border);border-radius:12px;padding:16px;cursor:pointer;transition:all .22s;position:relative;overflow:hidden;background:var(--surface)}
+.cards-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.piece-card{border:1px solid var(--border);border-radius:14px;padding:20px;cursor:pointer;transition:all .22s;position:relative;overflow:hidden;background:var(--surface)}
 .piece-card::after{content:'';position:absolute;top:0;left:0;right:0;height:3px;transform:scaleX(0);transition:transform .3s cubic-bezier(.34,1.56,.64,1);transform-origin:left}
 .piece-card.Monarque{background:var(--surface);border-color:var(--border)}.piece-card.Monarque::after{background:var(--monarque)}
 .piece-card.Général{background:var(--surface);border-color:var(--border)}.piece-card.Général::after{background:var(--general)}
@@ -277,8 +281,8 @@ body.has-acc .game-wrap{height:calc(100vh - 50px);margin-top:50px}
 .piece-card:hover::after{transform:scaleX(1)}
 .piece-card.sel{opacity:.4;transform:scale(.94);filter:grayscale(.4);cursor:default}
 .pc-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;gap:6px}
-.pc-name{font-size:13px;font-weight:700;font-family:'Cinzel',serif;flex:1;line-height:1.25}
-.pc-val{padding:4px 9px;border-radius:8px;font-size:12px;font-weight:800;font-family:'Cinzel',serif;border:1px solid transparent}
+.pc-name{font-size:15px;font-weight:700;font-family:'Cinzel',serif;flex:1;line-height:1.25}
+.pc-val{padding:5px 11px;border-radius:8px;font-size:13px;font-weight:800;font-family:'Cinzel',serif;border:1px solid transparent}
 .pc-val.Monarque{background:var(--monarque-bg);color:var(--monarque);border-color:rgba(59,130,246,.3)}
 .pc-val.Général{background:var(--general-bg);color:var(--general);border-color:rgba(249,115,22,.3)}
 .pc-val.Primordiale{background:var(--primordiale-bg);color:var(--primordiale);border-color:rgba(16,185,129,.3)}
@@ -286,7 +290,7 @@ body.has-acc .game-wrap{height:calc(100vh - 50px);margin-top:50px}
 .pc-val.Sorcier{background:var(--sorcier-bg);color:var(--sorcier);border-color:rgba(236,72,153,.3)}
 .pc-val.Brute{background:var(--brute-bg);color:var(--brute);border-color:rgba(239,68,68,.3)}
 
-.pc-emoji{font-size:28px;margin-bottom:8px;display:block;line-height:1}
+.pc-emoji{font-size:36px;margin-bottom:10px;display:block;line-height:1}
 /* .pc-class : utilisé par voie.js (jalons) et game-flow.js (déblocage) —
    pas seulement par les cartes de pièces du builder (qui n'affichent plus
    ce badge, jugé redondant avec l'en-tête de section). */
@@ -296,8 +300,8 @@ body.has-acc .game-wrap{height:calc(100vh - 50px);margin-top:50px}
 .pc-class.Primordiale{background:var(--primordiale-bg);color:var(--primordiale);border:1px solid rgba(16,185,129,.25)}
 .pc-class.Sorcier{background:var(--sorcier-bg);color:var(--sorcier);border:1px solid rgba(236,72,153,.25)}
 .pc-class.Brute{background:var(--brute-bg);color:var(--brute);border:1px solid rgba(239,68,68,.25)}
-.pc-mvt{font-size:10px;margin-bottom:6px;display:flex;align-items:center;gap:5px;color:var(--muted);background:rgba(255,255,255,.04);padding:5px 8px;border-radius:6px;font-family:'Cinzel',serif;line-height:1.4}
-.pc-ability{font-size:10.5px;color:var(--text);line-height:1.5;padding:8px;background:var(--bg);border-radius:8px;border-left:2px solid var(--accent);margin-top:6px}
+.pc-mvt{font-size:11.5px;margin-bottom:6px;display:flex;align-items:center;gap:5px;color:var(--muted);background:rgba(255,255,255,.04);padding:5px 8px;border-radius:6px;font-family:'Cinzel',serif;line-height:1.4}
+.pc-ability{font-size:12px;color:var(--text);line-height:1.5;padding:8px;background:var(--bg);border-radius:8px;border-left:2px solid var(--accent);margin-top:6px}
 .piece-card.locked{cursor:not-allowed;position:relative;opacity:.5;filter:grayscale(.85) brightness(.5);background:rgba(0,0,0,.35);border-color:rgba(0,0,0,.4)}
 .piece-card.locked .pc-emoji,.piece-card.locked .pc-name,.piece-card.locked .pc-ability,.piece-card.locked .pc-mvt,.piece-card.locked .pc-val{filter:blur(7px);pointer-events:none;user-select:none}
 .locked-overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;z-index:3;border-radius:16px;background:rgba(0,0,0,.55)}
@@ -593,7 +597,6 @@ body.light .gc.l{background:#eddab0}body.light .gc.d{background:#8a5f38}
 .trb-icon{font-size:52px;margin-bottom:10px}
 .trb-title{font-family:'Cinzel',serif;font-size:22px;font-weight:900;color:var(--gold);margin-bottom:6px}
 .trb-sub{font-size:14px;color:var(--muted);margin-bottom:18px;line-height:1.6}
-.trb-bonus{display:inline-block;background:rgba(201,168,76,.15);border:1px solid var(--gold);border-radius:9px;padding:8px 18px;font-family:'Cinzel',serif;font-size:13px;color:var(--gold);margin-bottom:18px}
 .tournoi-history{margin-top:28px}
 .tournoi-history-title{font-family:'Cinzel',serif;font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px}
 .th-row{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 16px;margin-bottom:8px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
@@ -601,13 +604,14 @@ body.light .gc.l{background:#eddab0}body.light .gc.d{background:#8a5f38}
 .th-wins{font-family:'Cinzel',serif;font-size:12px;font-weight:700}
 .th-wins.champion{color:var(--gold)}
 .th-wins.normal{color:var(--muted)}
-.th-bonus{font-size:11px;padding:2px 8px;border-radius:5px;font-family:'Cinzel',serif}
-.th-bonus.pos{background:rgba(16,185,129,.15);color:var(--success)}
-.th-bonus.neg{background:rgba(239,68,68,.15);color:var(--danger)}
-.th-bonus.zero{background:rgba(120,120,120,.12);color:var(--muted)}
-.ta-cell{display:flex;align-items:center;justify-content:center;font-size:18px;cursor:default;aspect-ratio:1}
-.ta-cell.light{background:#f0d9b5}
-.ta-cell.dark{background:#b58863}
+/* Mêmes couleurs de cases et même ombre portée que le plateau de jeu : sur
+   les cases claires d'origine (#f0d9b5), les glyphes d'échecs blancs — qui
+   sont des contours vides — devenaient tout bonnement invisibles. */
+.ta-cell{display:flex;align-items:center;justify-content:center;font-size:18px;cursor:default;aspect-ratio:1;filter:drop-shadow(0 1px 1px rgba(0,0,0,.45))}
+.ta-cell.light{background:#c8a96a}
+.ta-cell.dark{background:#7a5330}
+body.light .ta-cell.light{background:#eddab0}
+body.light .ta-cell.dark{background:#8a5f38}
 .ta-cell.highlight{outline:3px solid var(--gold);outline-offset:-3px}
 .ta-move-item{cursor:pointer;padding:2px 5px;border-radius:4px;transition:background .15s}
 .ta-move-item:hover{background:rgba(122,31,43,.18)}
@@ -616,6 +620,10 @@ body.light .gc.l{background:#eddab0}body.light .gc.d{background:#8a5f38}
 .round-overlay.show{visibility:visible;opacity:1}
 .round-box{background:var(--surface2);border:1px solid var(--border2);border-radius:20px;padding:36px 32px;max-width:420px;width:92%;text-align:center;position:relative;overflow:hidden}
 .round-box::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--gold)}
+/* Rangée d'actions de fin de round : « Round suivant » + « Quitter le
+   tournoi » (ce dernier masqué au dernier round, voir showRoundOverlay). */
+.rb-actions{display:flex;gap:10px;align-items:stretch;flex-wrap:wrap}
+.rb-actions .btn{white-space:nowrap}
 .rb-round-label{font-family:'Cinzel',serif;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:14px}
 .rb-result-icon{font-size:54px;margin-bottom:10px;display:block}
 .rb-result-text{font-family:'Cinzel',serif;font-size:22px;font-weight:900;margin-bottom:6px}

@@ -239,7 +239,6 @@
     <div class="trb-icon" id="trb-icon"></div>
     <div class="trb-title" id="trb-title">Champion du tournoi !</div>
     <div class="trb-sub" id="trb-sub"></div>
-    <div class="trb-bonus" id="trb-bonus" style="display:none"></div>
     <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
       <button class="btn btn-primary" id="tournoi-analyze">Analyser le tournoi</button>
       <button class="btn btn-gold" id="tournoi-restart">Nouveau tournoi</button>
@@ -314,7 +313,10 @@
         </div>
       </div>
     </div>
-    <button class="btn btn-primary" id="rb-next-btn" style="width:100%;font-size:15px;padding:13px">Round suivant →</button>
+    <div class="rb-actions">
+      <button class="btn btn-primary" id="rb-next-btn" style="flex:1;font-size:15px;padding:13px">Round suivant →</button>
+      <button class="btn btn-ghost" id="rb-quit-btn" style="font-size:13px;padding:13px 16px;border-color:var(--danger);color:var(--danger)">Quitter le tournoi</button>
+    </div>
   </div>
 </div>
 
