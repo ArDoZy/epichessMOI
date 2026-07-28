@@ -259,32 +259,3 @@ document.getElementById('b-reset').addEventListener('click',()=>{army={mon:null,
 document.getElementById('b-random').addEventListener('click',randomizeArmy);
 document.getElementById('b-validate').addEventListener('click',()=>{if(armyValid())saveArmyFromBuilder();});
 document.getElementById('b-armies').addEventListener('click',()=>{if(builderMode==='ai'){renderAiArmiesPage();showPage('page-ai-armies');}else{renderArmiesPage();showPage('page-armies');}});
-// Bandeau de raccourcis à droite : clic sur une catégorie → défilement vers
-// sa section (les sections n'existent que si la classe a au moins 1 pièce,
-// donc un clic sans effet est simplement ignoré). scroll-margin-top (voir
-// .class-sec en CSS) réserve la hauteur du bandeau compte fixe pour que
-// l'en-tête de la section reste visible sous lui.
-// Note : pour la toute dernière section (Sorcier), le navigateur clampe
-// naturellement le défilement à la fin du document — elle ne peut donc pas
-// toujours atteindre pile le haut du viewport, sauf à laisser en permanence
-// un vide en bas de page (ce que la demande de suppression du grand espace
-// vide interdit). On accepte ce compromis : elle défile aussi loin que
-// possible, ce qui reste largement suffisant pour l'amener à l'écran.
-document.querySelectorAll('.cj-btn').forEach(btn=>{
-  btn.addEventListener('click',()=>{
-    // L'onglet "Armée" (data-jump="top") ramène tout en haut de la page
-    // (topbar + section "Votre armée" inclus) — un simple scrollIntoView sur
-    // #army-box masquerait la topbar au-dessus. Les autres onglets sautent
-    // vers leur section de classe comme avant.
-    if(btn.dataset.jump==='top'){
-      // #page-builder est un overlay plein écran (position:fixed, overflow-y:
-      // auto sur lui-même — voir .page.active dans style.css) : c'est LUI le
-      // conteneur qui défile, pas la fenêtre.
-      const viewport=document.getElementById('page-builder');
-      if(viewport)viewport.scrollTo({top:0,behavior:'smooth'});
-      else window.scrollTo({top:0,behavior:'smooth'});
-      return;
-    }
-    document.getElementById('cls-sec-'+btn.dataset.class)?.scrollIntoView({behavior:'smooth',block:'start'});
-  });
-});

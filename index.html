@@ -96,24 +96,12 @@
   </div>
 </div>
 
-<!-- Bandeau de raccourcis catégories du builder — hors de #page-builder pour
-     échapper à son containing-block (l'animation pageFadeIn applique un
-     transform, ce qui piégerait un position:fixed descendant). Visibilité
-     pilotée par showPage() dans main.js. -->
-<div class="class-jump-rail" id="class-jump-rail">
-  <button class="cj-btn cj-btn-armee" data-jump="top">Armée</button>
-  <button class="cj-btn" data-class="Monarque">Monarque</button>
-  <button class="cj-btn" data-class="Général">Général</button>
-  <button class="cj-btn" data-class="Primordiale">Primordiale</button>
-  <button class="cj-btn" data-class="Brute">Brute</button>
-  <button class="cj-btn" data-class="Sorcier">Sorcier</button>
-</div>
 
 <!-- ================================================================
      CUBE DE NAVIGATION — menu principal. Coquille visuelle uniquement :
      les vraies pages #page-armies / #page-game sont déplacées à
      l'exécution dans les faces "armees" / "game" par js/cube-nav.js.
-     Le chrome global (barre compte, modals, réglages, bandeau catégories)
+     Le chrome global (barre compte, modals, réglages)
      reste HORS du cube pour ne pas être piégé par les transforms 3D.
      ================================================================ -->
 <div id="cube-stage">
