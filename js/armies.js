@@ -120,7 +120,7 @@ const renderArmiesPage=()=>{
       ? '<div class="ac-name-row"><span class="ac-name'+(a.name?'':' ac-name-none')+'">'+escH(a.name||'Armée sans nom')+'</span></div>'
       : buildNameBlock(a,false);
     const btns=sel?''
-      : '<div class="ac-btns"><button class="btn btn-ghost" style="font-size:11px;padding:6px 12px" onclick="editPlayerArmy(\''+a.id+'\')">Modifier</button><button class="btn btn-danger" style="font-size:11px;padding:6px 10px" onclick="deletePlayerArmy(\''+a.id+'\')">Suppr.</button></div>';
+      : '<div class="ac-btns"><button class="btn btn-ghost" style="font-size:11px;padding:6px 12px" onclick="editPlayerArmy(\''+a.id+'\')">Modifier</button><button class="btn btn-danger" style="font-size:14px;padding:6px 10px" title="Supprimer cette armée" onclick="deletePlayerArmy(\''+a.id+'\')">🗑️</button></div>';
     const open=sel
       ? '<div class="army-card army-card-selectable" onclick="pickArmyForBattle(\''+a.id+'\')">'
       : '<div class="army-card">';
@@ -150,7 +150,7 @@ const renderAiArmiesPage=()=>{
     const mon=PIECES.find(p=>p.id===a.mon.id);const gen=PIECES.find(p=>p.id===a.gen.id);
     const extras=a.extras.map(id=>PIECES.find(p=>p.id===id)).filter(Boolean);
     const all=[mon,gen,...extras].filter(Boolean);
-    return '<div class="army-card" style="border-top-color:var(--accent2)">'+buildNameBlock(a,true)+'<div class="ac-pieces">'+all.map(p=>'<span>'+p.emoji+'</span>').join('')+'</div><div class="ac-names">'+(mon?.name||'?')+' · '+(gen?.name||'?')+'<br>'+extras.map(p=>p.name).join(' · ')+'</div><div class="ac-val">'+a.totalValue+' pts</div><div class="ac-btns"><button class="btn btn-ghost" style="font-size:11px;padding:6px 12px" onclick="editAiArmy(\''+a.id+'\')">Modifier</button><button class="btn btn-primary" style="font-size:11px;padding:6px 12px" onclick="selectAiArmy(\''+a.id+'\')">Choisir</button><button class="btn btn-danger" style="font-size:11px;padding:6px 10px" onclick="deleteAiArmy(\''+a.id+'\')">Suppr.</button></div></div>';
+    return '<div class="army-card" style="border-top-color:var(--accent2)">'+buildNameBlock(a,true)+'<div class="ac-pieces">'+all.map(p=>'<span>'+p.emoji+'</span>').join('')+'</div><div class="ac-names">'+(mon?.name||'?')+' · '+(gen?.name||'?')+'<br>'+extras.map(p=>p.name).join(' · ')+'</div><div class="ac-val">'+a.totalValue+' pts</div><div class="ac-btns"><button class="btn btn-ghost" style="font-size:11px;padding:6px 12px" onclick="editAiArmy(\''+a.id+'\')">Modifier</button><button class="btn btn-primary" style="font-size:11px;padding:6px 12px" onclick="selectAiArmy(\''+a.id+'\')">Choisir</button><button class="btn btn-danger" style="font-size:14px;padding:6px 10px" title="Supprimer cette armée" onclick="deleteAiArmy(\''+a.id+'\')">🗑️</button></div></div>';
   }).join('');
 };
 window.editAiArmy=id=>{const a=savedAiArmies.find(x=>x.id===id);if(!a)return;builderMode='ai';updateBuilderBanner();loadArmyForEdit(a);showPage('page-builder');updAll();};
