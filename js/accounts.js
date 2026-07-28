@@ -48,7 +48,7 @@ function renderLoginPage(){
       return `<div class="acc-item" data-n="${escH(n)}">
         <div class="acc-av" style="background:linear-gradient(135deg,${c1},${c2})">${n.charAt(0).toUpperCase()}</div>
         <div class="acc-info"><div class="acc-name">${escH(n)}</div><div class="acc-meta">${rank.name} · ${elo} ELO</div></div>
-        <button class="acc-del" onclick="deleteAcc('${escH(n)}',event)">Suppr.</button>
+        <button class="acc-del" title="Supprimer ce compte" onclick="deleteAcc('${escH(n)}',event)">🗑️</button>
       </div>`;
     }).join('');
     list.querySelectorAll('.acc-item').forEach(el=>{
