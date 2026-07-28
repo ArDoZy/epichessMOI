@@ -24,9 +24,9 @@
 // à son nouvel emplacement. Résultat : au repos, la face avant est TOUJOURS
 // à l'angle 0 → clics/drag fiables.
 //
-// Dépendances : main.js (showPage y délègue), et les globals de jeu
-// (army, currentArmyData, aiArmyData, _playerColor, startGame,
-// generateAIArmy, showAILevelModal, showNotif, buildArmyDataFromBuilder).
+// Dépendances : main.js (showPage y délègue) et armies.js
+// (startArmySelection / clearArmySelection : le bouton COMBAT ouvre "Mes
+// armées" en mode sélection au lieu de lancer la partie lui-même).
 // ================================================================
 
 (function(){
@@ -163,6 +163,7 @@
     document.body.classList.remove('nav-overlay');
     document.body.classList.add('cube-active');
     locked=false;
+    if(typeof clearArmySelection==='function')clearArmySelection();
     slots=Object.assign({},CANON);   // disposition canonique (jouer devant, partie en haut)
     settle(); refresh();
   }
@@ -203,22 +204,14 @@
   }
   window.cubeOnShowPage=cubeOnShowPage;
 
-  // ---- Bouton JOUER ----------------------------------------------
-  function onJouer(){
+  // ---- Bouton COMBAT ---------------------------------------------
+  // Ne lance plus la partie directement : amène sur "Mes armées" en mode
+  // sélection (voir armies.js). Le clic sur une carte enchaîne ensuite le
+  // flux habituel — page de prévisualisation, instructeur, armées en
+  // présence, puis la partie.
+  function onCombat(){
     if(locked||animating)return;
-    if(!(typeof army!=='undefined' && army && army.mon && army.gen && army.extras && army.extras.length===3)){
-      if(typeof showNotif==='function')showNotif('Composez d\'abord une armée complète (flèche droite → Mes armées).');
-      setFrontInstant('armees');
-      return;
-    }
-    currentArmyData = buildArmyDataFromBuilder();
-    aiArmyData = generateAIArmy();
-    // Réutilise EXACTEMENT le lancement actuel : modal instructeur puis
-    // startGame() (qui appelle showPage('page-game') → rotation verticale).
-    showAILevelModal(function(){
-      _playerColor = Math.random()<0.5 ? 'w' : 'b';
-      startGame(true);
-    });
+    if(typeof startArmySelection==='function')startArmySelection('combat');
   }
 
   // ---- Init ------------------------------------------------------
@@ -238,7 +231,7 @@
     document.getElementById('cube-arrow-left') ?.addEventListener('click',()=>nav('left'));
     document.getElementById('cube-arrow-down') ?.addEventListener('click',()=>{ if(!locked&&(animating||slots.front==='jouer'))animate('down'); });
     document.getElementById('cube-arrow-up')   ?.addEventListener('click',()=>{ if(!locked&&(animating||slots.front==='variantes'))animate('up'); });
-    document.getElementById('cube-jouer-btn')  ?.addEventListener('click',onJouer);
+    document.getElementById('cube-jouer-btn')  ?.addEventListener('click',onCombat);
 
     document.addEventListener('keydown',e=>{
       if(locked||!document.body.classList.contains('cube-active')||document.body.classList.contains('nav-overlay'))return;

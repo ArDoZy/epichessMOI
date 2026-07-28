@@ -282,8 +282,12 @@ function triggerTournoiEndOfGame(result){
 // ----------------------------------------------------------------
 // LISTENERS UI PAGE TOURNOI
 // ----------------------------------------------------------------
+// Bouton "Tournoi" du menu principal : comme le bouton COMBAT, il passe
+// d'abord par "Mes armées" en mode sélection — le tournoi démarre une fois
+// l'armée choisie (voir armies.js : startArmySelection/launchTournoiFromArmy).
 document.getElementById('b-tournoi').addEventListener('click',()=>{
-  renderTournoiPage();showPage('page-tournoi');
+  if(typeof startArmySelection==='function')startArmySelection('tournoi');
+  else{renderTournoiPage();showPage('page-tournoi');}
 });
 // Le bouton "Tournoi" n'est plus dans le builder (il vit désormais sous
 // JOUER sur la face principale du cube) : les retours ramènent donc au
