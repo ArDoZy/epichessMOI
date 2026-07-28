@@ -124,7 +124,10 @@
         <div class="jouer-menu">
           <div class="ambient-bubbles"><span></span><span></span><span></span><span></span><span></span><span></span></div>
           <div class="jouer-logo">EPIC CHESS</div>
-          <button class="jouer-btn" id="cube-jouer-btn"><span>JOUER</span></button>
+          <div class="jouer-actions">
+            <button class="jouer-btn" id="cube-jouer-btn"><span>JOUER</span></button>
+            <button class="btn btn-ghost jouer-tournoi-btn" id="b-tournoi" style="border-color:var(--accent2);color:var(--accent2)">Tournoi</button>
+          </div>
         </div>
       </div>
     </div>
@@ -178,7 +181,6 @@
       <div class="topbar-btns">
         <button class="btn btn-gold" id="b-armies">Mes armées</button>
         <button class="btn btn-primary" id="b-validate" disabled>Valider l'armée →</button>
-        <button class="btn btn-ghost" id="b-tournoi" style="border-color:var(--accent2);color:var(--accent2)">Tournoi</button>
         <button class="btn btn-ghost" id="b-random">Armée aléatoire</button>
         <button class="btn btn-ghost" id="b-reset">Tout effacer</button>
       </div>
@@ -250,7 +252,7 @@
     <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
       <button class="btn btn-primary" id="tournoi-analyze">Analyser le tournoi</button>
       <button class="btn btn-gold" id="tournoi-restart">Nouveau tournoi</button>
-      <button class="btn btn-ghost" id="tournoi-back2">← Retour au builder</button>
+      <button class="btn btn-ghost" id="tournoi-back2">← Retour au menu</button>
     </div>
   </div>
   <div class="tournoi-history" id="tournoi-history-section">

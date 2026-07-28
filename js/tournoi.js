@@ -285,12 +285,15 @@ function triggerTournoiEndOfGame(result){
 document.getElementById('b-tournoi').addEventListener('click',()=>{
   renderTournoiPage();showPage('page-tournoi');
 });
-document.getElementById('tournoi-back').addEventListener('click',()=>showPage('page-builder'));
+// Le bouton "Tournoi" n'est plus dans le builder (il vit désormais sous
+// JOUER sur la face principale du cube) : les retours ramènent donc au
+// menu principal plutôt qu'au builder.
+document.getElementById('tournoi-back').addEventListener('click',()=>{if(typeof goToMainMenu==='function')goToMainMenu();else showPage('page-builder');});
 document.getElementById('tournoi-back2').addEventListener('click',()=>{
   tournamentState.active=false;
   army={mon:null,gen:null,extras:[]};
   editingArmyId=null;updAll();
-  showPage('page-builder');
+  if(typeof goToMainMenu==='function')goToMainMenu();else showPage('page-builder');
 });
 document.getElementById('tournoi-restart').addEventListener('click',()=>{
   tournamentState.active=false;
