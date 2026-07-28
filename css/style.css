@@ -16,6 +16,7 @@
      [VOIE]         page "Voie des Victoires" (ELO, rangs, jalons)
      [TOURNOI]      page tournoi + modal d'analyse replay
      [ADMIN]        badge mode administrateur
+     [SEO]          bloc de contenu indexable sous la carte de connexion
    Si vous ne modifiez qu'une page, cherchez son tag pour cibler la zone
    à éditer sans tout relire. Les variables de thème (:root / body.light)
    sont utilisées PARTOUT — ne pas les renommer sans grep global.
@@ -149,9 +150,14 @@ body{
 .intro-close{width:100%;font-size:13px;padding:14px 20px}
 
 /* [ACCOUNTS] ======================================================= */
-#page-login{min-height:100vh;align-items:center;justify-content:center;padding:20px;background:var(--bg)}
+/* La page de connexion porte désormais le bloc de contenu SEO (.lore) sous
+   la carte, donc elle dépasse la hauteur de l'écran. `align-items:center`
+   sur un conteneur qui déborde rend le haut du contenu inatteignable au
+   scroll ; `margin-block:auto` sur l'enfant centre quand il y a de la place
+   et retombe proprement en haut quand il n'y en a plus. */
+#page-login{min-height:100vh;align-items:flex-start;justify-content:center;padding:20px;background:var(--bg)}
 #page-login.active{display:flex}
-.login-wrap{width:100%;max-width:480px}
+.login-wrap{width:100%;max-width:480px;margin-block:auto}
 .login-logo{text-align:center;margin-bottom:28px}
 .login-logo h1{font-family:'Cinzel Decorative','Cinzel',serif;font-size:clamp(28px,7vw,48px);background:linear-gradient(135deg,var(--gold),var(--gold2),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;text-shadow:0 2px 10px rgba(0,0,0,.35)}
 .login-logo p{font-size:13px;color:var(--muted);margin-top:6px;font-style:italic}
@@ -851,3 +857,31 @@ body.cube-active .admin-badge{bottom:90px}
   .intro-parchment-inner{padding:24px 18px 22px}
   .intro-list li{font-size:13px;padding:8px 11px}
 }
+
+/* [SEO] ========================================================= */
+/* Bloc de contenu indexable sous la carte de connexion (voir le
+   commentaire dans index.html). Volontairement discret : texte en retrait,
+   pas de fond plein, pour rester une note de bas de page et ne pas
+   concurrencer visuellement le formulaire de connexion. */
+.lore{margin-top:34px;padding-top:26px;border-top:1px solid var(--border);color:var(--muted);font-size:14px;line-height:1.65}
+.lore p{margin:0 0 12px}
+.lore strong{color:var(--text);font-weight:600}
+.lore-h{font-family:'Cinzel',serif;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:var(--gold);margin:0 0 14px}
+.lore-h:not(:first-child){margin-top:28px}
+.lore-list{list-style:none;padding:0;margin:0 0 16px}
+.lore-list li{position:relative;padding-left:18px;margin-bottom:7px}
+/* Puce « goutte de réactif » plutôt qu'un disque neutre, pour rester dans
+   le registre alchimique du reste de l'interface. */
+.lore-list li::before{content:'';position:absolute;left:0;top:.62em;width:6px;height:6px;border-radius:50%;background:var(--potion);box-shadow:0 0 6px var(--potion-glow)}
+
+.lore-faq{border-bottom:1px solid var(--border);padding:2px 0}
+.lore-faq summary{cursor:pointer;padding:10px 0;font-family:'Cinzel',serif;font-size:13px;font-weight:600;color:var(--text);list-style:none;display:flex;align-items:center;gap:9px;transition:color .15s}
+.lore-faq summary::-webkit-details-marker{display:none}
+.lore-faq summary:hover{color:var(--gold2)}
+/* Chevron dessiné en CSS (pas de glyphe : la police Cinzel n'en a pas). */
+.lore-faq summary::before{content:'';flex-shrink:0;width:5px;height:5px;border-right:1.5px solid var(--gold);border-bottom:1.5px solid var(--gold);transform:rotate(-45deg);transition:transform .2s}
+.lore-faq[open] summary::before{transform:rotate(45deg)}
+.lore-faq[open] summary{color:var(--gold2)}
+.lore-faq p{padding:0 0 12px 14px;font-size:13.5px}
+
+@media(prefers-reduced-motion:reduce){.lore-faq summary::before{transition:none}}
