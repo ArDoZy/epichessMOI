@@ -207,38 +207,11 @@ body.has-acc .game-wrap{height:calc(100vh - 50px);margin-top:50px}
 .confirm-msg{font-family:'Cinzel',serif;font-size:15px;margin-bottom:20px;line-height:1.5}
 
 /* [BUILDER] ======================================================= */
-/* Pas de padding-bottom permanent : la page s'arrête dès qu'il n'y a plus
-   d'éléments. Pour que la dernière section (Sorcier) puisse quand même
-   atteindre le haut du viewport au clic sur le bandeau de raccourcis, une
-   marge temporaire est ajoutée/retirée en JS le temps du défilement (voir
-   le listener des .cj-btn dans builder.js). */
-/* Marge droite large : réserve une gouttière pour le bandeau de catégories
-   (fixe, bord droit) afin qu'il ne recouvre jamais les cartes ni le curseur. */
-#page-builder{padding:clamp(16px,3vw,32px) clamp(90px,14vw,136px) clamp(16px,3vw,32px) clamp(12px,2vw,20px)}
+#page-builder{padding:clamp(16px,3vw,32px) clamp(12px,2vw,20px)}
 .builder-inner{max-width:1400px;margin:0 auto}
 .builder-topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:10px;flex-wrap:wrap}
 .theme-btn{padding:7px 14px;border:1px solid var(--border2);border-radius:8px;background:var(--surface);color:var(--text);cursor:pointer;font-size:12px;font-family:'Cinzel',serif;transition:all .2s;display:flex;align-items:center;gap:6px}
 .theme-btn:hover{border-color:var(--gold);color:var(--gold)}
-/* Bandeau de raccourcis par catégorie — fixe sur le bord droit (hors de
-   #page-builder dans le DOM pour ne jamais être piégé par un containing
-   block créé par une animation de transform sur .page.active). Affiché
-   uniquement quand la page builder est active (voir showPage() dans
-   main.js). align-items:flex-end évite l'effet "stretch" par défaut d'un
-   flex-column : sans lui, agrandir UN bouton au survol agrandissait tous
-   ses voisins (ils se calent tous sur la largeur du plus large enfant). */
-.class-jump-rail{position:fixed;top:50%;right:0;transform:translateY(-50%);z-index:600;display:none;flex-direction:column;align-items:flex-end;gap:6px}
-.class-jump-rail.show{display:flex}
-/* padding vertical réduit (20px→13px) pour faire de la place au 6e onglet
-   "Armée" tout en gardant approximativement la même hauteur totale de
-   bandeau qu'avec les 5 onglets d'origine (rétrécissement proportionnel). */
-.cj-btn{writing-mode:vertical-rl;text-orientation:mixed;width:46px;padding:13px 10px;border:1px solid var(--border2);border-right:none;border-radius:10px 0 0 10px;background:var(--surface2);color:var(--muted);cursor:pointer;font-size:13px;font-weight:700;font-family:'Cinzel',serif;letter-spacing:1.5px;transition:all .2s}
-.cj-btn:hover{color:var(--gold);border-color:var(--gold);background:var(--surface);width:66px}
-.cj-btn-armee{border-color:var(--gold2);color:var(--gold2)}
-.cj-btn-armee:hover{color:var(--gold2);border-color:var(--gold2)}
-.cj-btn[data-class="Général"]:hover{color:var(--general);border-color:var(--general)}
-.cj-btn[data-class="Primordiale"]:hover{color:var(--primordiale);border-color:var(--primordiale)}
-.cj-btn[data-class="Brute"]:hover{color:var(--brute);border-color:var(--brute)}
-.cj-btn[data-class="Sorcier"]:hover{color:var(--sorcier);border-color:var(--sorcier)}
 /* Topbar (boutons + valeur) et "Votre armée" fusionnés en UN seul panneau
    compact (.army-box) plutôt que deux blocs empilés — voir markup dans
    index.html. .builder-panel-top est juste la rangée boutons/valeur à
@@ -274,13 +247,11 @@ body.has-acc .game-wrap{height:calc(100vh - 50px);margin-top:50px}
 .comp-slot.Sorcier.filled{background:var(--sorcier-bg);border-color:var(--sorcier)}.comp-slot.Sorcier .cs-val{color:var(--sorcier)}
 .comp-slot.Brute.filled{background:var(--brute-bg);border-color:var(--brute)}.comp-slot.Brute .cs-val{color:var(--brute)}
 
-/* scroll-margin-top réserve la hauteur du bandeau compte (.cab, fixe, 50px)
-   pour que le saut de catégorie n'affiche pas l'en-tête de section sous lui. */
 /* Le "slot" de catégorie englobe TOUTE la section (titre + toutes ses
    cartes), pas seulement le bandeau de titre. Un simple accent de couleur à
    gauche suffit à l'identifier — un fond entièrement teinté de la même
    couleur sur tout le bloc rendait la page criarde. */
-.class-sec{margin-bottom:20px;scroll-margin-top:66px;border-radius:4px 12px 12px 4px;
+.class-sec{margin-bottom:20px;border-radius:4px 12px 12px 4px;
   padding:14px 16px 16px;border:1px solid var(--border);border-left-width:4px;background:var(--surface)}
 .class-sec.Monarque{border-left-color:var(--monarque)}
 .class-sec.Général{border-left-color:var(--general)}
@@ -659,15 +630,6 @@ body.light .gc.l{background:#eddab0}body.light .gc.d{background:#8a5f38}
 .admin-badge{position:fixed;bottom:14px;right:14px;z-index:8000;font-family:'Cinzel',serif;font-size:10px;padding:5px 10px;background:rgba(201,168,76,.15);border:1px solid rgba(201,168,76,.3);border-radius:7px;color:var(--gold);cursor:pointer;transition:all .2s}
 .admin-badge:hover{background:rgba(201,168,76,.3);border-color:var(--gold)}
 .admin-badge.active-admin{background:rgba(201,168,76,.35);border-color:var(--gold);color:var(--gold2)}
-/* Quand le bandeau de catégories du builder (vertical, bord droit) est
-   affiché, le badge Admin et l'engrenage réglages se retrouvaient sous lui
-   — on les décale pour ne jamais chevaucher. Uniquement en desktop : sur
-   téléphone le bandeau devient une barre horizontale basse (voir
-   [RESPONSIVE]), qui ne partage plus le même espace. */
-@media(min-width:641px){
-  body:has(#class-jump-rail.show) .admin-badge{right:78px}
-  body:has(#class-jump-rail.show) #settings-btn{right:78px}
-}
 
 
 /* [ORNAMENTS & CINEMATICS] ======================================================= */
@@ -712,7 +674,7 @@ body.light .gc.l{background:#eddab0}body.light .gc.d{background:#8a5f38}
    Navigation principale par cube (illusion 3D CSS). Voir js/cube-nav.js.
    Le cube est une simple coquille visuelle : les vraies pages Mes armées /
    partie y sont déplacées à l'exécution. Chrome global (barre compte,
-   modals, réglages, bandeau catégories) reste HORS du cube.
+   modals, réglages) reste HORS du cube.
    ================================================================ */
 #cube-stage{position:fixed;inset:0;overflow:hidden;z-index:10;display:none;
   perspective:2400px;perspective-origin:50% 50%}
@@ -816,9 +778,8 @@ body.light .cube-face[data-face="variantes"]{background:
   box-shadow:0 8px 28px rgba(201,162,39,.35)}
 .cube-arrow svg{display:block;width:55%;height:55%;pointer-events:none}
 /* Flèches horizontales dans les coins bas : jamais en collision avec la
-   barre de compte (haut) ni le bandeau de catégories (bord droit, builder).
-   Le badge Admin (bottom-right) est remonté au-dessus d'elles (voir plus
-   bas) pour ne jamais se chevaucher. */
+   barre de compte (haut). Le badge Admin (bottom-right) est remonté
+   au-dessus d'elles (voir plus bas) pour ne jamais se chevaucher. */
 .cube-arrow-side{bottom:22px;width:56px;height:56px;border-radius:15px}
 #cube-arrow-left{left:22px}
 #cube-arrow-right{right:22px}
@@ -832,15 +793,6 @@ body.light .cube-face[data-face="variantes"]{background:
    masquent le cube quand elles sont actives. */
 .page.active{position:fixed;inset:0;z-index:200;overflow-y:auto;background:var(--bg)}
 
-/* Sous un overlay (page secondaire active), le bandeau de catégories (hors
-   de #cube-stage) doit aussi disparaître — le cube lui-même est déjà masqué
-   entièrement plus haut (body.nav-overlay #cube-stage). Exception : le
-   builder (composition d'armée) est lui-même un overlay mais doit garder son
-   bandeau de catégories (classe .show posée par cube-nav.js uniquement pour
-   #page-builder). */
-body.nav-overlay .class-jump-rail{display:none!important}
-body.nav-overlay .class-jump-rail.show{display:flex!important}
-
 /* Le badge Admin (chrome préexistant, coin bas-droit) est remonté tant que
    le cube est actif, pour ne jamais chevaucher la flèche de rotation droite
    qui occupe le même coin. */
@@ -850,8 +802,7 @@ body.cube-active .admin-badge{bottom:90px}
    Le cube (vmax) et la plupart des titres (clamp()) s'adaptent déjà en
    continu à la taille de l'écran. Ce bloc gère surtout les changements
    STRUCTURELS nécessaires sur petit écran : bandeau de compte compact,
-   bandeau de catégories basculé en barre horizontale basse, grilles à
-   moins de colonnes, flèches de cube resserrées. */
+   grilles à moins de colonnes, flèches de cube resserrées. */
 @media(max-width:640px){
   .cab{padding:0 42px 0 10px;gap:8px;height:46px;font-size:11px}
   .cab-av{width:28px;height:28px;font-size:13px}
@@ -863,18 +814,7 @@ body.cube-active .admin-badge{bottom:90px}
   body.has-acc #page-armies,body.has-acc #page-ai-armies,body.has-acc #page-voie,body.has-acc #page-tournoi{padding-top:calc(46px + 14px)}
   body.has-acc #page-combat{padding-top:46px}
 
-  /* Bandeau de catégories du builder : vertical sur le bord droit en
-     desktop, devient une barre horizontale collée en bas sur téléphone
-     (plus naturel au pouce, ne mange plus de largeur utile). */
-  #page-builder{padding:14px 14px 70px 14px}
-  .class-jump-rail{top:auto;bottom:0;right:0;left:0;transform:none;
-    flex-direction:row;justify-content:flex-start;gap:4px;padding:6px;
-    background:var(--surface2);border-top:1px solid var(--border2);
-    overflow-x:auto;-webkit-overflow-scrolling:touch}
-  .cj-btn{writing-mode:horizontal-tb;width:auto;flex-shrink:0;padding:8px 10px;
-    font-size:10px;border-radius:8px;border:1px solid var(--border2);white-space:nowrap}
-  .cj-btn:hover{width:auto}
-
+  #page-builder{padding:14px}
   .cards-grid{grid-template-columns:repeat(2,1fr);gap:10px}
   .comp-grid{grid-template-columns:repeat(2,1fr)}
   .army-box{padding:16px}

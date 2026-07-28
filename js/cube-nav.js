@@ -164,8 +164,6 @@
     document.body.classList.add('cube-active');
     locked=false;
     slots=Object.assign({},CANON);   // disposition canonique (jouer devant, partie en haut)
-    const rail=document.getElementById('class-jump-rail');
-    if(rail)rail.classList.remove('show');
     settle(); refresh();
   }
   window.goToMainMenu=goToMainMenu;
@@ -180,13 +178,11 @@
       document.body.classList.remove('nav-overlay');
       document.body.classList.add('cube-active');
       locked=false; setFrontInstant('armees');
-      document.getElementById('class-jump-rail')?.classList.remove('show');
       return;
     }
     if(face==='game'){
       document.body.classList.remove('nav-overlay');
       document.body.classList.add('cube-active');
-      document.getElementById('class-jump-rail')?.classList.remove('show');
       // Rotation VERTICALE vers la face partie si elle est en haut (cas
       // normal : lancement depuis JOUER / armées). Sinon bascule directe.
       if(slotOf('game')==='top' && SIDE.has(slots.front)) animate('up', lock);
@@ -196,12 +192,9 @@
     // Page secondaire (overlay) : elle couvre le cube. On masque le chrome du
     // cube et on remet la face JOUER au repos derrière l'overlay. Le builder
     // (composition d'armée) est désormais l'une de ces pages secondaires
-    // (ouvert depuis "Mes armées" → "Nouvelle armée"/"Modifier"), donc le
-    // bandeau de catégories doit rester visible pour lui uniquement.
+    // (ouvert depuis "Mes armées" → "Nouvelle armée"/"Modifier").
     const el=document.getElementById(id);
     if(el && el.classList.contains('page')) document.body.classList.add('nav-overlay');
-    const rail=document.getElementById('class-jump-rail');
-    if(rail)rail.classList.toggle('show', id==='page-builder');
     if(document.body.classList.contains('cube-active')){
       locked=false;
       if(slots.front!=='jouer') setFrontInstant('jouer');
