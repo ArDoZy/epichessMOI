@@ -23,33 +23,34 @@ d'apothicaire abandonné.
 - Le plateau est un échiquier **classique 8×8**. Les règles de base des
   échecs (échec, échec et mat, promotion des pions) sont conservées.
 - Avant chaque partie, le joueur compose une armée de **5 pièces** :
-  **1 Monarque, 1 Général et 3 créatures libres**.
+  **1 Monarque, 1 Général et 3 créatures**.
 - La composition est limitée à un **budget de 24 points**. Chaque pièce
   coûte un nombre de points proportionnel à sa puissance : la Dame vaut
   10 points, le Grand Maître 13, le Cavalier Primordial 3, l'Alpha 2.
   Prendre une pièce forte en tête laisse donc moins de points pour le
-  reste — c'est l'arbitrage central du jeu.
+  reste, ce qui constitue l'arbitrage central du jeu.
 - Perdre son Monarque fait perdre la partie.
 
 ## Les pièces
 
 Le catalogue compte **32 pièces** réparties en **5 classes** :
 
-- **Monarque** — la pièce à protéger. Exemples : Roi (3 pts, 1 case dans
-  toutes les directions), Empereur (7 pts, se déplace comme un roi ou un
-  cavalier).
-- **Général** — la pièce maîtresse de l'armée. Exemples : Amazone (7 pts,
-  cavalier + fou), Chevaucheur de Rhinocéros (8 pts, tour + cavalier),
-  Dame (10 pts, dame standard), Grand Maître (13 pts, dame + cavalier,
-  et empêche les pions ennemis d'avancer de 2 cases tant qu'il est vivant).
-- **Primordiale** — les pièces d'échecs classiques revisitées : Cavalier
-  Primordial, Fou Primordial, Tour Primordiale. Une seule primordiale est
-  autorisée par armée.
-- **Brute** — créatures de mêlée aux déplacements courts et agressifs.
-  Exemples : Alpha (2 pts, saute exactement 2 cases en diagonale),
+- **Monarque** : l'équivalent du roi, la pièce à protéger. Exemples : Roi
+  (3 pts, 1 case dans toutes les directions), Empereur (7 pts, se déplace
+  comme un roi ou un cavalier).
+- **Général** : l'équivalent de la dame, la pièce maîtresse. Exemples :
+  Amazone (7 pts, cavalier + fou), Chevaucheur de Rhinocéros (8 pts, tour +
+  cavalier), Dame (10 pts, dame standard), Grand Maître (13 pts, dame +
+  cavalier, et empêche les pions ennemis d'avancer de 2 cases tant qu'il
+  est vivant).
+- **Primordiale** : les pièces d'échecs classiques. Cavalier Primordial,
+  Fou Primordial, Tour Primordiale. Une seule primordiale est autorisée
+  par armée.
+- **Brute** : les pièces ayant un déplacement puissant, mais un pouvoir
+  faible. Exemples : Alpha (2 pts, saute exactement 2 cases en diagonale),
   Fourmi, Preux Chevalier, Garde de Pierre.
-- **Sorcier** — créatures à capacités spéciales. Exemples : Méduse,
-  Typhon, Banshee, Prêtre.
+- **Sorcier** : les pièces possédant des capacités spéciales avancées, mais
+  à la mobilité réduite. Exemples : Méduse, Typhon, Banshee, Prêtre.
 
 Chaque pièce possède son propre schéma de déplacement, et beaucoup ont une
 capacité spéciale affichée directement sur leur carte dans le jeu.

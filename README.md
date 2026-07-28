@@ -83,9 +83,12 @@ Le domaine `https://epichess.app/` est codé en dur dans le `canonical`, les
 balises Open Graph, le JSON-LD, `robots.txt` et `sitemap.xml` — un
 changement de domaine impose un `grep epichess.app` global.
 
-`og-image.png` et `apple-touch-icon.png` sont générés à partir de rendus
-HTML (fiole + damier estompé, mêmes couleurs que le thème) ; les
-régénérer demande juste de refaire une capture 1200×630 et 180×180.
+`og-image.png` (1200×630) et `apple-touch-icon.png` (180×180) sont générés
+à partir de rendus HTML, aux couleurs du thème. Piège si vous les
+régénérez au navigateur headless : **une fenêtre de moins de ~500 px est
+silencieusement élargie**, et la capture ressort tronquée. Rendre en grand
+puis réduire via le facteur d'échelle (par exemple une fenêtre de 360 px
+avec un facteur 0,5 pour obtenir 180 px).
 
 ## Ordre de chargement (`index.html`, en bas de page)
 
