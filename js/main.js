@@ -70,20 +70,29 @@ function showPage(id){
 // intégrée au thème. Un seul jeu de listeners (posés une fois) réutilisé à
 // chaque appel via une fermeture (onYes courante).
 // ----------------------------------------------------------------
-let _confirmOnYes=null;
-function showConfirmModal(msg,onYes){
-  _confirmOnYes=onYes;
+// opts (facultatif) : {okLabel, cancelLabel, okClass, onNo} — permet une vraie
+// question « Oui / Non » où le refus déclenche lui aussi une action (utilisé
+// par la reprise de tournoi : « Non » supprime le tournoi abandonné).
+let _confirmOnYes=null,_confirmOnNo=null;
+function showConfirmModal(msg,onYes,opts){
+  opts=opts||{};
+  _confirmOnYes=onYes;_confirmOnNo=opts.onNo||null;
   document.getElementById('confirm-msg').textContent=msg;
+  const ok=document.getElementById('confirm-ok'),cancel=document.getElementById('confirm-cancel');
+  ok.textContent=opts.okLabel||'Confirmer';
+  cancel.textContent=opts.cancelLabel||'Annuler';
+  ok.className='btn '+(opts.okClass||'btn-danger');
   document.getElementById('confirm-modal').classList.add('show');
 }
 document.getElementById('confirm-ok').addEventListener('click',()=>{
   document.getElementById('confirm-modal').classList.remove('show');
-  const fn=_confirmOnYes;_confirmOnYes=null;
+  const fn=_confirmOnYes;_confirmOnYes=null;_confirmOnNo=null;
   if(fn)fn();
 });
 document.getElementById('confirm-cancel').addEventListener('click',()=>{
   document.getElementById('confirm-modal').classList.remove('show');
-  _confirmOnYes=null;
+  const fn=_confirmOnNo;_confirmOnYes=null;_confirmOnNo=null;
+  if(fn)fn();
 });
 
 // ----------------------------------------------------------------

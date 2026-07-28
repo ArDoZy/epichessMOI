@@ -1,7 +1,8 @@
 // ================================================================
 // TOURNOI.JS — Mode Tournoi (#page-tournoi) : 7 rounds contre chaque
-// instructeur IA, bonus/malus ELO de fin de tournoi, et modal d'analyse
-// replay des parties jouées.
+// instructeur IA, abandon/reprise d'un tournoi en cours, et modal d'analyse
+// replay des parties jouées. Aucun bonus/pénalité d'ELO de fin de tournoi :
+// seul l'ELO gagné ou perdu round par round compte.
 // ================================================================
 // Contient : l'état `tournamentState` (rounds, round courant, armée
 // utilisée), le rendu de la page tournoi (progression, liste des rounds,
@@ -38,6 +39,35 @@ let tournamentState={
 
 function vvLoadTournaments(){return accGet('tournaments',[]);}
 function vvSaveTournaments(arr){accSet('tournaments',arr.slice(-20));}
+
+// ----------------------------------------------------------------
+// TOURNOI ABANDONNÉ — sauvegarde de la progression pour pouvoir reprendre
+// ----------------------------------------------------------------
+// Quitter un tournoi en cours (bouton « Quitter le tournoi » de l'overlay de
+// fin de round) le met de côté ici ; au prochain clic sur « Tournoi » depuis
+// le menu principal, on propose de le reprendre.
+// L'historique des plateaux (rounds[].boardHistory) N'EST PAS conservé : ce
+// sont des dizaines de plateaux 8×8 complets par round, bien trop volumineux
+// pour localStorage. L'analyse des rounds joués avant l'interruption repart
+// donc de la position initiale.
+const TOURNOI_SAVE_KEY='tournoi_saved';
+function saveTournoiProgress(){
+  if(!tournamentState.active||!tournamentState.armyData){accSet(TOURNOI_SAVE_KEY,null);return;}
+  accSet(TOURNOI_SAVE_KEY,{
+    rounds:tournamentState.rounds.map(r=>({
+      instructorIdx:r.instructorIdx,result:r.result,eloDelta:r.eloDelta,
+      aiArmy:r.aiArmy||null,playerColor:r.playerColor||null,movesLog:r.movesLog||null
+    })),
+    currentRound:tournamentState.currentRound,
+    armyData:tournamentState.armyData
+  });
+}
+function loadTournoiProgress(){return accGet(TOURNOI_SAVE_KEY,null);}
+function clearTournoiProgress(){accSet(TOURNOI_SAVE_KEY,null);}
+function hasAbandonedTournoi(){
+  const s=loadTournoiProgress();
+  return !!(s&&s.armyData&&Array.isArray(s.rounds)&&s.rounds.some(r=>r.result===null));
+}
 
 function tournoi_wins(){return tournamentState.rounds.filter(r=>r.result==='win').length;}
 function tournoi_done(){return tournamentState.rounds.filter(r=>r.result!==null).length;}
@@ -92,11 +122,6 @@ function renderTournoiPage(){
     document.getElementById('trb-icon').textContent=isChampion?'▲':'◆';
     document.getElementById('trb-title').textContent=isChampion?'Champion du tournoi !':'Tournoi terminé';
     document.getElementById('trb-sub').textContent=wins+'/7 victoires'+(isChampion?' — Vous avez dominé le tournoi !':wins>=3?' — Bon score, continuez !':" — L'entraînement continue !");
-    const bonusEl=document.getElementById('trb-bonus');
-    const bonus=wins>=5?50:wins<3?-50:0;
-    if(bonus>0){bonusEl.style.display='';bonusEl.textContent='Bonus tournoi : +'+bonus+' ELO';}
-    else if(bonus<0){bonusEl.style.display='';bonusEl.textContent='Pénalité tournoi : '+bonus+' ELO';}
-    else{bonusEl.style.display='none';}
   }else{
     resultBanner.classList.remove('show');
   }
@@ -112,12 +137,10 @@ function renderTournoiHistory(){
   sec.style.display='';
   list.innerHTML=[...hist].reverse().map(t=>{
     const wins=t.wins;const isChamp=wins>=5;
-    const bonus=wins>=5?50:wins<3?-50:0;
     const d=new Date(t.date);
     return '<div class="th-row">'+
       '<span style="font-size:18px;color:var(--gold2)">'+(isChamp?'▲':'◆')+'</span>'+
       '<span class="th-wins '+(isChamp?'champion':'normal')+'">'+wins+'/7 victoires</span>'+
-      (bonus>0?'<span class="th-bonus pos">+'+bonus+' ELO</span>':bonus<0?'<span class="th-bonus neg">'+bonus+' ELO</span>':'<span class="th-bonus zero">Aucun bonus</span>')+
       '<span class="th-date">'+d.toLocaleDateString('fr-FR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})+'</span>'+
       '</div>';
   }).join('');
@@ -128,16 +151,39 @@ function renderTournoiHistory(){
 // ----------------------------------------------------------------
 function startTournoi(){
   if(!currentArmyData){showNotif('Choisissez une armée dans "Mes armées" avant de lancer un tournoi.','err');return;}
+  clearTournoiProgress();   // un nouveau tournoi remplace tout tournoi abandonné
   tournamentState={
     active:true,
     rounds:TOURNOI_ROUNDS.map(idx=>({instructorIdx:idx,result:null,eloDelta:0})),
     currentRound:0,
-    armyData:currentArmyData,
-    bonusAwarded:false
+    armyData:currentArmyData
   };
   renderTournoiPage();
   launchTournoiRound(0);
 }
+
+// Reprise d'un tournoi abandonné : on repart du round où il s'était arrêté.
+function resumeTournoi(saved){
+  tournamentState={
+    active:true,
+    rounds:saved.rounds.map(r=>({...r})),
+    currentRound:saved.currentRound,
+    armyData:saved.armyData
+  };
+  currentArmyData=saved.armyData;
+  renderTournoiPage();showPage('page-tournoi');
+  setTimeout(()=>launchTournoiRound(tournamentState.currentRound),150);
+}
+
+// Abandon depuis l'overlay de fin de round : la progression est mise de côté
+// (reprise possible), le tournoi disparaît de l'écran et on rentre au menu.
+window.quitTournoi=()=>{
+  saveTournoiProgress();
+  tournamentState.active=false;
+  document.getElementById('round-overlay').classList.remove('show');
+  showNotif('Tournoi interrompu — vous pourrez le reprendre depuis le menu.','ok');
+  if(typeof goToMainMenu==='function')goToMainMenu();else showPage('page-builder');
+};
 
 // Réinitialise _endGameTriggered au début de CHAQUE round (launchTournoiRound
 // construit la partie manuellement sans passer par startGame(), qui fait
@@ -154,8 +200,11 @@ function launchTournoiRound(roundIdx){
   tournamentState.rounds[roundIdx].movesLog=null;
   currentArmyData=tournamentState.armyData;
   if(!currentArmyData||!aiArmyData){showNotif('Erreur armée.','err');return;}
-  // Tirage couleur aléatoire pour le tournoi aussi
+  // Tirage couleur aléatoire pour le tournoi aussi. Mémorisée sur le round :
+  // l'analyse a besoin de savoir de quel côté le joueur était pour reconstruire
+  // et orienter correctement le plateau.
   _playerColor=Math.random()<0.5?'w':'b';
+  tournamentState.rounds[roundIdx].playerColor=_playerColor;
   const _aiColor2=_playerColor==='w'?'b':'w';
   const whiteSideArmy2=_playerColor==='w'?currentArmyData:aiArmyData;
   const blackSideArmy2=_playerColor==='w'?aiArmyData:currentArmyData;
@@ -174,28 +223,23 @@ function launchTournoiRound(roundIdx){
   setTimeout(()=>{buildGameLabels(GS);renderGame(GS);},80);
   if(_playerColor==='b')setTimeout(()=>doAIMove(GS),800);
   showArmyIntro(currentArmyData,aiArmyData);
+  saveTournoiProgress();
 }
 
 // ----------------------------------------------------------------
-// FIN DE TOURNOI — bonus/malus ELO cumulé
+// FIN DE TOURNOI
 // ----------------------------------------------------------------
+// Aucun bonus ni pénalité d'ELO de fin de tournoi : seul l'ELO gagné/perdu
+// round par round (comme une partie normale) compte.
 function finishTournoi(){
   const wins=tournoi_wins();
-  const bonus=wins>=5?50:wins<3?-50:0;
-  if(bonus!==0&&!tournamentState.bonusAwarded){
-    tournamentState.bonusAwarded=true;
-    const oldElo=vvLoadElo();
-    const newElo=Math.max(0,oldElo+bonus);
-    vvSaveElo(newElo);
-    if(bonus>0)vvCheckNewUnlocks(oldElo,newElo);
-  }
   const hist=vvLoadTournaments();
   hist.push({
     date:Date.now(),wins,
-    rounds:tournamentState.rounds.map(r=>({instIdx:r.instructorIdx,result:r.result,eloDelta:r.eloDelta,playerArmy:tournamentState.armyData,aiArmy:r.aiArmy})),
-    bonus:wins>=5?50:wins<3?-50:0
+    rounds:tournamentState.rounds.map(r=>({instIdx:r.instructorIdx,result:r.result,eloDelta:r.eloDelta,playerArmy:tournamentState.armyData,aiArmy:r.aiArmy}))
   });
   vvSaveTournaments(hist);
+  clearTournoiProgress();   // tournoi terminé : plus rien à reprendre
   renderTournoiPage();
   showPage('page-tournoi');
 }
@@ -232,6 +276,11 @@ function showRoundOverlay(roundIdx,result,eloBefore,eloAfter,eloDelta){
     nextBtn.textContent='Voir le résultat final';
   }
 
+  // « Quitter le tournoi » n'a de sens que s'il reste des rounds à jouer :
+  // au dernier round, le tournoi est terminé, il n'y a plus rien à abandonner.
+  const quitBtn=document.getElementById('rb-quit-btn');
+  if(quitBtn)quitBtn.style.display=isLast?'none':'';
+
   overlay.classList.add('show');
 
   const newBtn=nextBtn.cloneNode(true);nextBtn.replaceWith(newBtn);
@@ -239,6 +288,7 @@ function showRoundOverlay(roundIdx,result,eloBefore,eloAfter,eloDelta){
     overlay.classList.remove('show');
     if(!isLast){
       tournamentState.currentRound=roundIdx+1;
+      saveTournoiProgress();
       renderTournoiPage();
       launchTournoiRound(roundIdx+1);
     }else{
@@ -269,10 +319,17 @@ function triggerTournoiEndOfGame(result){
   tournamentState.rounds[roundIdx].result=result;
   tournamentState.rounds[roundIdx].eloDelta=delta;
   tournamentState.rounds[roundIdx].movesLog=GS.movePairs?JSON.parse(JSON.stringify(GS.movePairs)):[];
-  const boardSnapshots=[buildGameBoard(tournamentState.armyData,tournamentState.rounds[roundIdx].aiArmy)];
-  (GS.history||[]).forEach(snap=>{boardSnapshots.push(snap.board.map(r=>r.map(p=>p?{...p}:null)));});
+  // Les positions de l'analyse viennent UNIQUEMENT de GS : un instantané est
+  // empilé dans GS.history AVANT chaque coup, donc GS.history[0] EST déjà la
+  // position de départ. Reconstruire une position initiale à part (comme
+  // avant) donnait un premier plateau reconstruit avec le joueur toujours du
+  // côté des Blancs : quand le joueur avait les Noirs, le plateau se
+  // retournait dès qu'on avançait d'un coup — et il y avait en plus un
+  // doublon de la position de départ.
+  const boardSnapshots=(GS.history||[]).map(snap=>snap.board.map(r=>r.map(p=>p?{...p}:null)));
   boardSnapshots.push(GS.board.map(r=>r.map(p=>p?{...p}:null)));
   tournamentState.rounds[roundIdx].boardHistory=boardSnapshots;
+  saveTournoiProgress();
 
   setTimeout(()=>playSound(result==='win'?'win':result==='loss'?'loss':'draw'),200);
 
@@ -285,9 +342,21 @@ function triggerTournoiEndOfGame(result){
 // Bouton "Tournoi" du menu principal : comme le bouton COMBAT, il passe
 // d'abord par "Mes armées" en mode sélection — le tournoi démarre une fois
 // l'armée choisie (voir armies.js : startArmySelection/launchTournoiFromArmy).
-document.getElementById('b-tournoi').addEventListener('click',()=>{
+// Un tournoi abandonné en cours de route est proposé à la reprise ; « Non »
+// le supprime définitivement et enchaîne sur un nouveau tournoi.
+function startNewTournoi(){
+  clearTournoiProgress();
   if(typeof startArmySelection==='function')startArmySelection('tournoi');
   else{renderTournoiPage();showPage('page-tournoi');}
+}
+document.getElementById('b-tournoi').addEventListener('click',()=>{
+  if(hasAbandonedTournoi()){
+    const saved=loadTournoiProgress();
+    showConfirmModal('Continuer le tournoi précédent ?',()=>resumeTournoi(saved),
+      {okLabel:'Oui',cancelLabel:'Non',okClass:'btn-gold',onNo:startNewTournoi});
+    return;
+  }
+  startNewTournoi();
 });
 // Le bouton "Tournoi" n'est plus dans le builder (il vit désormais sous
 // JOUER sur la face principale du cube) : les retours ramènent donc au
@@ -301,9 +370,9 @@ document.getElementById('tournoi-back2').addEventListener('click',()=>{
 });
 document.getElementById('tournoi-restart').addEventListener('click',()=>{
   tournamentState.active=false;
-  showNotif('Sélectionnez votre armée depuis "Mes armées" puis lancez un nouveau tournoi.','ok');
-  renderArmiesPage();showPage('page-armies');
+  startNewTournoi();
 });
+document.getElementById('rb-quit-btn').addEventListener('click',quitTournoi);
 
 // ================================================================
 // ANALYSE DE TOURNOI — modal de replay coup par coup
@@ -311,6 +380,7 @@ document.getElementById('tournoi-restart').addEventListener('click',()=>{
 let taCurrentRound=null;
 let taMoveIdx=0;
 let taBoardStates=[];
+let taFlip=false;   // vrai si le joueur avait les Noirs sur le round analysé
 
 function openTournoiAnalyse(){
   const modal=document.getElementById('tournoi-analyse-modal');
@@ -363,10 +433,17 @@ window.loadTournoiRoundReplay=function(roundIdx){
   document.getElementById('ta-ai-army').textContent=aPieces.map(p=>p.emoji).join(' ');
   document.getElementById('ta-ai-names').textContent=aPieces.map(p=>p.name).join(' · ');
 
+  // Le plateau est présenté du point de vue du joueur, comme pendant la
+  // partie : retourné s'il avait les Noirs sur ce round.
+  taFlip=rd.playerColor==='b';
+
   if(rd.boardHistory&&rd.boardHistory.length>0){
     taBoardStates=rd.boardHistory;
   }else{
-    taBoardStates=[buildGameBoard(pArmy,aArmy||{mon:{id:'roi'},gen:{id:'dame'},extras:[]})];
+    // Pas d'historique (round rejoué après reprise d'un tournoi interrompu) :
+    // on se contente de la position de départ, reconstruite du bon côté.
+    const fallbackAi=aArmy||{mon:{id:'roi'},gen:{id:'dame'},extras:[]};
+    taBoardStates=[taFlip?buildGameBoard(fallbackAi,pArmy):buildGameBoard(pArmy,fallbackAi)];
   }
 
   taMoveIdx=0;
@@ -380,11 +457,13 @@ window.loadTournoiRoundReplay=function(roundIdx){
 function renderTaBoard(boardState,fromCell,toCell){
   const cont=document.getElementById('ta-board');
   let html='';
-  for(let r=0;r<8;r++)for(let c=0;c<8;c++){
+  for(let vi=0;vi<8;vi++)for(let vc=0;vc<8;vc++){
+    const r=taFlip?7-vi:vi;
+    const c=taFlip?7-vc:vc;
     const isLight=(r+c)%2===0;
     const cell=boardState[r][c];
     const isHL=(fromCell&&fromCell.r===r&&fromCell.c===c)||(toCell&&toCell.r===r&&toCell.c===c);
-    html+='<div class="ta-cell '+(isLight?'light':'dark')+(isHL?' highlight':'')+'">'+(cell?cell.emoji||'':'')+'</div>';
+    html+='<div class="ta-cell '+(isLight?'light':'dark')+(isHL?' highlight':'')+'">'+(cell?getPieceEmoji(cell):'')+'</div>';
   }
   cont.innerHTML=html;
   const idx=taMoveIdx;const total=taBoardStates.length-1;
