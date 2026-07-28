@@ -1,0 +1,17 @@
+{
+  "name": "Epic Chess",
+  "short_name": "Epic Chess",
+  "description": "Un savant fou, dans un laboratoire d'échecs oublié, a fait naître des créatures de l'alchimie. Composez votre armée et affrontez d'autres esprits dérangés.",
+  "lang": "fr",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#1d1a10",
+  "theme_color": "#1d1a10",
+  "categories": ["games", "board", "strategy"],
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/apple-touch-icon.png", "sizes": "180x180", "type": "image/png" }
+  ]
+}

@@ -1,0 +1,60 @@
+# Epic Chess — https://epichess.app/
+#
+# Tout le site est public et indexable. Les crawlers des moteurs de réponse
+# IA (ChatGPT, Claude, Perplexity, Gemini) sont autorisés explicitement :
+# sans cette autorisation, plusieurs d'entre eux s'abstiennent par défaut et
+# le jeu ne peut pas être cité dans leurs réponses.
+
+User-agent: *
+Allow: /
+
+# --- Moteurs de recherche classiques ---
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+# --- Moteurs de réponse IA (GEO) ---
+# Google-Extended : autorise la citation dans les AI Overviews / Gemini.
+User-agent: Google-Extended
+Allow: /
+
+# OAI-SearchBot alimente la recherche ChatGPT ; GPTBot l'entraînement.
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: GPTBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Claude-Web
+Allow: /
+
+User-agent: anthropic-ai
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Perplexity-User
+Allow: /
+
+User-agent: Applebot
+Allow: /
+
+User-agent: Applebot-Extended
+Allow: /
+
+User-agent: cohere-ai
+Allow: /
+
+User-agent: Bytespider
+Allow: /
+
+Sitemap: https://epichess.app/sitemap.xml

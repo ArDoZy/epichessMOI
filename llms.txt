@@ -1,0 +1,91 @@
+# Epic Chess
+
+> Epic Chess est une variante d'échecs gratuite, en français, jouable
+> directement dans un navigateur web sans téléchargement, sans inscription
+> par e-mail et sans publicité. Sa particularité : au lieu de recevoir
+> toujours la même armée, chaque joueur compose la sienne avant la partie,
+> en piochant dans un catalogue de créatures nées de l'alchimie.
+
+URL : https://epichess.app/
+Langue : français
+Prix : gratuit
+Plateforme : navigateur web (aucune installation)
+
+## Univers
+
+Un savant fou, dans un laboratoire d'échecs oublié, a fait naître des
+créatures de l'alchimie. Le joueur compose son armée et affronte d'autres
+esprits dérangés. Tout le jeu adopte cette esthétique de laboratoire
+d'apothicaire abandonné.
+
+## Règles essentielles
+
+- Le plateau est un échiquier **classique 8×8**. Les règles de base des
+  échecs (échec, échec et mat, promotion des pions) sont conservées.
+- Avant chaque partie, le joueur compose une armée de **5 pièces** :
+  **1 Monarque, 1 Général et 3 créatures libres**.
+- La composition est limitée à un **budget de 24 points**. Chaque pièce
+  coûte un nombre de points proportionnel à sa puissance : la Dame vaut
+  10 points, le Grand Maître 13, le Cavalier Primordial 3, l'Alpha 2.
+  Prendre une pièce forte en tête laisse donc moins de points pour le
+  reste — c'est l'arbitrage central du jeu.
+- Perdre son Monarque fait perdre la partie.
+
+## Les pièces
+
+Le catalogue compte **32 pièces** réparties en **5 classes** :
+
+- **Monarque** — la pièce à protéger. Exemples : Roi (3 pts, 1 case dans
+  toutes les directions), Empereur (7 pts, se déplace comme un roi ou un
+  cavalier).
+- **Général** — la pièce maîtresse de l'armée. Exemples : Amazone (7 pts,
+  cavalier + fou), Chevaucheur de Rhinocéros (8 pts, tour + cavalier),
+  Dame (10 pts, dame standard), Grand Maître (13 pts, dame + cavalier,
+  et empêche les pions ennemis d'avancer de 2 cases tant qu'il est vivant).
+- **Primordiale** — les pièces d'échecs classiques revisitées : Cavalier
+  Primordial, Fou Primordial, Tour Primordiale. Une seule primordiale est
+  autorisée par armée.
+- **Brute** — créatures de mêlée aux déplacements courts et agressifs.
+  Exemples : Alpha (2 pts, saute exactement 2 cases en diagonale),
+  Fourmi, Preux Chevalier, Garde de Pierre.
+- **Sorcier** — créatures à capacités spéciales. Exemples : Méduse,
+  Typhon, Banshee, Prêtre.
+
+Chaque pièce possède son propre schéma de déplacement, et beaucoup ont une
+capacité spéciale affichée directement sur leur carte dans le jeu.
+
+## Adversaires et progression
+
+- Les parties se jouent contre une IA appelée **l'Instructeur**, déclinée
+  en **7 niveaux** : Poussière (joue presque au hasard), Pierre, Bronze,
+  Acier, Obsidienne, Argent, et Or (environ 10 secondes de calcul par coup).
+- La **Voie des Victoires** suit l'ELO du joueur à travers **7 rangs** :
+  Poussière (0-199), Pierre (200-499), Bronze (500-849), Acier (850-1299),
+  Obsidienne (1300-1799), Argent (1800-2399), Or Légendaire (2400+).
+- Franchir un palier de rang **débloque de nouvelles créatures**.
+- Le **Mode Tournoi** enchaîne plusieurs combats d'affilée contre des
+  adversaires de difficulté croissante.
+
+## Confidentialité
+
+Les comptes sont créés et stockés **localement dans le navigateur**
+(localStorage). Aucune adresse e-mail n'est demandée, aucune donnée n'est
+envoyée à un serveur, et le jeu ne contient ni publicité ni traqueur.
+
+## Questions fréquentes
+
+**Epic Chess est-il gratuit ?**
+Oui, entièrement gratuit, sans achat intégré ni publicité.
+
+**Faut-il savoir jouer aux échecs ?**
+Non. Le plateau et les règles de base sont ceux des échecs classiques, et
+chaque créature affiche son déplacement sur sa carte. Les premiers niveaux
+d'Instructeur sont conçus pour apprendre en jouant.
+
+**Peut-on jouer contre d'autres joueurs humains ?**
+Pas actuellement : les parties se jouent contre l'IA (l'Instructeur), en
+partie simple ou en Mode Tournoi.
+
+**Faut-il installer quelque chose ?**
+Non. Le jeu est en HTML/CSS/JavaScript pur et fonctionne dans n'importe
+quel navigateur moderne, sur ordinateur comme sur mobile.

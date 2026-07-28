@@ -26,6 +26,13 @@ epic-chess/
 ├── index.html              # Coquille HTML légère : tout le markup des pages
 │                            # + chargement ordonné des <script src="...">
 ├── README.md                # Ce fichier
+├── robots.txt               # Autorise les crawlers, y compris ceux des IA
+├── sitemap.xml              # Une seule URL (le jeu est une SPA)
+├── llms.txt                 # Résumé factuel du jeu pour les moteurs IA
+├── site.webmanifest         # Métadonnées d'installation (icône, couleurs)
+├── favicon.svg              # Icône d'onglet (fiole d'alchimiste)
+├── apple-touch-icon.png     # 180×180, écran d'accueil iOS
+├── og-image.png             # 1200×630, aperçu de partage (Discord, X...)
 ├── css/
 │   └── style.css            # Tout le CSS, organisé en sections [TAG] commentées
 └── js/
@@ -46,6 +53,39 @@ epic-chess/
     ├── tournoi.js             # Mode Tournoi + modal d'analyse replay
     └── settings-admin.js     # Panneau réglages + mode Administrateur
 ```
+
+## SEO / GEO — ce qu'il ne faut pas casser
+
+Le site est une SPA : toutes les pages sauf `#page-login` sont en
+`display:none` tant que le joueur n'est pas connecté. **Un robot ne voit
+donc que la page de connexion.** C'est pour ça que `#page-login` porte un
+bloc `<section class="lore">` (présentation + FAQ) — c'est le seul texte
+indexable du site. Le supprimer ramènerait la page à ~40 mots et Google
+recommencerait à fabriquer sa propre description à partir des libellés de
+navigation.
+
+Trois points de vigilance :
+
+- **Les réponses de la FAQ existent en double** : en HTML visible dans
+  `.lore`, et en JSON-LD (`FAQPage`) dans le `<head>`. Google invalide le
+  balisage si les deux textes divergent — modifier l'un, c'est modifier
+  l'autre.
+- **Les chiffres du JSON-LD et de `llms.txt`** (32 pièces, 5 classes,
+  budget 24 points, 7 instructeurs, 7 rangs) proviennent de
+  `js/data-pieces.js` et `js/builder.js`. Ajouter une pièce ou un rang veut
+  dire mettre ces deux fichiers à jour, sinon les moteurs de réponse IA
+  citeront des données fausses.
+- **`llms.txt`** est destiné aux moteurs de réponse (ChatGPT, Perplexity,
+  Claude, AI Overviews) : c'est un résumé factuel en Markdown, pas une page
+  marketing. Rester descriptif et exact.
+
+Le domaine `https://epichess.app/` est codé en dur dans le `canonical`, les
+balises Open Graph, le JSON-LD, `robots.txt` et `sitemap.xml` — un
+changement de domaine impose un `grep epichess.app` global.
+
+`og-image.png` et `apple-touch-icon.png` sont générés à partir de rendus
+HTML (fiole + damier estompé, mêmes couleurs que le thème) ; les
+régénérer demande juste de refaire une capture 1200×630 et 180×180.
 
 ## Ordre de chargement (`index.html`, en bas de page)
 

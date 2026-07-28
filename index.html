@@ -3,9 +3,158 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Epic Chess</title>
+
+<!-- ============================================================
+     SEO / GEO — voir aussi robots.txt, sitemap.xml et llms.txt à la
+     racine. La description ci-dessous est celle qui s'affiche dans les
+     résultats Google ; sans elle, Google fabriquait son propre extrait à
+     partir des libellés de navigation ("Votre armée · Monarque · ...").
+     Le bloc JSON-LD en bas de ce <head> sert aux résultats enrichis et
+     aux moteurs de réponse IA (ChatGPT, Perplexity, AI Overviews).
+     ============================================================ -->
+<title>Epic Chess — variante d'échecs alchimique : composez votre armée</title>
+<meta name="description" content="Un savant fou, dans un laboratoire d'échecs oublié, a fait naître des créatures de l'alchimie. Composez votre armée et affrontez d'autres esprits dérangés."/>
+<link rel="canonical" href="https://epichess.app/"/>
+<meta name="robots" content="index,follow,max-snippet:-1,max-image-preview:large,max-video-preview:-1"/>
+<meta name="author" content="Epic Chess"/>
+<meta name="theme-color" content="#1d1a10"/>
+
+<!-- Open Graph / Twitter — aperçus de partage (Discord, X, WhatsApp, iMessage) -->
+<meta property="og:site_name" content="Epic Chess"/>
+<meta property="og:title" content="Epic Chess — variante d'échecs alchimique"/>
+<meta property="og:description" content="Un savant fou, dans un laboratoire d'échecs oublié, a fait naître des créatures de l'alchimie. Composez votre armée et affrontez d'autres esprits dérangés."/>
+<meta property="og:type" content="website"/>
+<meta property="og:url" content="https://epichess.app/"/>
+<meta property="og:locale" content="fr_FR"/>
+<meta property="og:image" content="https://epichess.app/og-image.png"/>
+<meta property="og:image:width" content="1200"/>
+<meta property="og:image:height" content="630"/>
+<meta property="og:image:alt" content="Epic Chess — un échiquier alchimique dans un laboratoire abandonné"/>
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:title" content="Epic Chess — variante d'échecs alchimique"/>
+<meta name="twitter:description" content="Un savant fou, dans un laboratoire d'échecs oublié, a fait naître des créatures de l'alchimie. Composez votre armée et affrontez d'autres esprits dérangés."/>
+<meta name="twitter:image" content="https://epichess.app/og-image.png"/>
+
+<link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
+<link rel="apple-touch-icon" href="/apple-touch-icon.png"/>
+<link rel="manifest" href="/site.webmanifest"/>
+
+<!-- preconnect : les polices viennent d'un autre domaine ; ouvrir la
+     connexion en avance évite ~100-300ms de latence au premier rendu
+     (le LCP compte dans le classement Google). -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Cinzel+Decorative:wght@400;700;900&family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,300;1,400&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/style.css">
+
+<!-- Données structurées Schema.org. Les faits (32 pièces, 5 classes,
+     budget 24 points, 7 instructeurs, 7 rangs) doivent rester synchronisés
+     avec js/data-pieces.js — c'est ce que citent les moteurs de réponse. -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "VideoGame",
+      "@id": "https://epichess.app/#game",
+      "name": "Epic Chess",
+      "url": "https://epichess.app/",
+      "description": "Epic Chess est une variante d'échecs gratuite jouable dans le navigateur. Dans un laboratoire d'alchimie abandonné, un savant fou a mêlé les pièces d'un jeu d'échecs à des créatures alchimiques. Avant chaque partie, le joueur compose son armée — 1 Monarque, 1 Général et 3 créatures — dans une limite de 24 points, puis affronte une IA sur un échiquier classique 8×8.",
+      "inLanguage": "fr",
+      "image": "https://epichess.app/og-image.png",
+      "genre": ["Jeu de stratégie", "Variante d'échecs", "Jeu de réflexion"],
+      "gamePlatform": "Navigateur web",
+      "playMode": "SinglePlayer",
+      "applicationCategory": "GameApplication",
+      "operatingSystem": "Tout navigateur web moderne",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "EUR",
+        "availability": "https://schema.org/InStock"
+      },
+      "gameItem": [
+        {"@type": "Thing", "name": "Monarque", "description": "La pièce à protéger : sa perte fait perdre la partie. Roi ou Empereur."},
+        {"@type": "Thing", "name": "Général", "description": "La pièce maîtresse de l'armée. Dame, Amazone, Chevaucheur de Rhinocéros ou Grand Maître."},
+        {"@type": "Thing", "name": "Primordiale", "description": "Les pièces d'échecs classiques revisitées : Cavalier, Fou et Tour primordiaux."},
+        {"@type": "Thing", "name": "Brute", "description": "Créatures de mêlée aux déplacements courts et agressifs, comme l'Alpha ou la Fourmi."},
+        {"@type": "Thing", "name": "Sorcier", "description": "Créatures à capacités spéciales, comme la Méduse, la Banshee ou le Prêtre."}
+      ]
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://epichess.app/#website",
+      "url": "https://epichess.app/",
+      "name": "Epic Chess",
+      "description": "Un savant fou, dans un laboratoire d'échecs oublié, a fait naître des créatures de l'alchimie. Composez votre armée et affrontez d'autres esprits dérangés.",
+      "inLanguage": "fr",
+      "about": {"@id": "https://epichess.app/#game"}
+    },
+    {
+      "@type": "FAQPage",
+      "@id": "https://epichess.app/#faq",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Qu'est-ce qu'Epic Chess ?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Epic Chess est une variante d'échecs gratuite jouable directement dans le navigateur, sans inscription par e-mail ni téléchargement. Elle se déroule dans un laboratoire d'alchimie abandonné où un savant fou a mêlé les pièces d'un jeu d'échecs à des créatures nées de l'alchimie. La différence majeure avec les échecs classiques : au lieu de recevoir toujours la même armée, chaque joueur compose la sienne avant la partie."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Comment compose-t-on son armée dans Epic Chess ?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Chaque armée compte 5 pièces choisies par le joueur : 1 Monarque, 1 Général et 3 créatures libres, le tout dans une limite de 24 points. Chaque pièce a un coût lié à sa puissance — la Dame vaut 10 points, le Grand Maître 13, l'Alpha seulement 2. Une armée puissante en tête coûte donc cher et laisse moins de points pour le reste : c'est là tout l'arbitrage du jeu."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Combien de pièces différentes existe-t-il dans Epic Chess ?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Le catalogue compte 32 pièces réparties en 5 classes : Monarque, Général, Primordiale, Brute et Sorcier. Chacune possède son propre schéma de déplacement et, pour beaucoup, une capacité spéciale — la Méduse, la Banshee ou le Prêtre ne se contentent pas de se déplacer et de capturer."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Contre qui joue-t-on à Epic Chess ?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Les parties se jouent contre une IA appelée l'Instructeur, déclinée en 7 niveaux, de l'Instructeur Poussière — qui joue presque au hasard — à l'Instructeur Or, qui calcule une dizaine de secondes par coup. Le Mode Tournoi enchaîne plusieurs combats d'affilée contre des adversaires de plus en plus aguerris."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Epic Chess est-il gratuit ?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Oui. Epic Chess est entièrement gratuit et se joue dans le navigateur, sans téléchargement, sans achat et sans publicité. Le compte est créé localement sur l'appareil et aucune adresse e-mail n'est demandée."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Comment débloque-t-on de nouvelles créatures ?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Chaque partie fait évoluer l'ELO du joueur le long de la Voie des Victoires, qui compte 7 rangs successifs : Poussière, Pierre, Bronze, Acier, Obsidienne, Argent et Or Légendaire. Franchir un palier débloque de nouvelles créatures à intégrer à ses armées."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Faut-il savoir jouer aux échecs pour jouer à Epic Chess ?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Non. Le plateau reste un 8×8 classique et les règles de base — échec, échec et mat, promotion des pions — sont celles des échecs traditionnels, mais chaque créature affiche son déplacement et sa capacité directement sur sa carte. Les premiers niveaux d'Instructeur sont conçus pour apprendre en jouant."
+          }
+        }
+      ]
+    }
+  ]
+}
+</script>
 </head>
 <body>
 <div class="drag-ghost" id="drag-ghost"></div>
@@ -54,6 +203,60 @@
         <button class="btn btn-primary" id="btn-reg">Créer et jouer</button>
       </div>
     </div>
+
+    <!-- ============================================================
+         CONTENU INDEXABLE (SEO / GEO) — ne pas supprimer.
+         C'est le seul texte réel que voient Google et les moteurs de
+         réponse IA : toutes les autres pages sont en `display:none`
+         tant que le joueur n'est pas connecté, donc invisibles pour un
+         crawler. Les réponses de la FAQ ci-dessous doivent rester
+         identiques à celles du bloc JSON-LD FAQPage dans le <head> —
+         Google invalide le balisage si le texte visible ne correspond
+         pas. Contenu volontairement bref pour ne pas noyer le
+         formulaire de connexion, qui reste l'action principale.
+         ============================================================ -->
+    <section class="lore" aria-labelledby="lore-title">
+      <h2 class="lore-h" id="lore-title">Qu'est-ce qu'Epic Chess ?</h2>
+      <p><strong>Epic Chess</strong> est une variante d'échecs gratuite, jouable directement dans le navigateur, sans téléchargement ni adresse e-mail. Dans un laboratoire d'alchimie abandonné, un savant fou a mêlé les pièces d'un jeu d'échecs ordinaire à des créatures nées de ses expériences. Le plateau reste un 8×8 classique : c'est l'armée qui change.</p>
+      <p>Avant chaque partie, vous <strong>composez la vôtre</strong> — 1 Monarque, 1 Général et 3 créatures libres, dans une limite de 24 points. Le catalogue compte 32 pièces réparties en cinq classes, chacune avec son déplacement et sa capacité propres.</p>
+
+      <ul class="lore-list">
+        <li><strong>Monarque</strong> — la pièce à protéger : la perdre, c'est perdre la partie.</li>
+        <li><strong>Général</strong> — la pièce maîtresse, de l'Amazone au Grand Maître.</li>
+        <li><strong>Primordiale</strong> — les classiques revisités : Cavalier, Fou et Tour.</li>
+        <li><strong>Brute</strong> — la mêlée, courte et agressive, comme l'Alpha ou la Fourmi.</li>
+        <li><strong>Sorcier</strong> — les capacités spéciales : Méduse, Banshee, Prêtre.</li>
+      </ul>
+
+      <p>Les parties se jouent contre l'Instructeur, une IA déclinée en 7 niveaux. Chaque combat fait évoluer votre ELO le long de la <strong>Voie des Victoires</strong> — Poussière, Pierre, Bronze, Acier, Obsidienne, Argent, Or Légendaire — et chaque palier franchi débloque de nouvelles créatures.</p>
+
+      <h2 class="lore-h">Questions fréquentes</h2>
+
+      <details class="lore-faq">
+        <summary>Epic Chess est-il gratuit ?</summary>
+        <p>Oui. Epic Chess est entièrement gratuit et se joue dans le navigateur, sans téléchargement, sans achat et sans publicité. Le compte est créé localement sur l'appareil et aucune adresse e-mail n'est demandée.</p>
+      </details>
+
+      <details class="lore-faq">
+        <summary>Faut-il savoir jouer aux échecs ?</summary>
+        <p>Non. Le plateau reste un 8×8 classique et les règles de base — échec, échec et mat, promotion des pions — sont celles des échecs traditionnels, mais chaque créature affiche son déplacement et sa capacité directement sur sa carte. Les premiers niveaux d'Instructeur sont conçus pour apprendre en jouant.</p>
+      </details>
+
+      <details class="lore-faq">
+        <summary>Comment compose-t-on son armée ?</summary>
+        <p>Chaque armée compte 5 pièces choisies par le joueur : 1 Monarque, 1 Général et 3 créatures libres, le tout dans une limite de 24 points. Chaque pièce a un coût lié à sa puissance — la Dame vaut 10 points, le Grand Maître 13, l'Alpha seulement 2. Une armée puissante en tête coûte donc cher et laisse moins de points pour le reste : c'est là tout l'arbitrage du jeu.</p>
+      </details>
+
+      <details class="lore-faq">
+        <summary>Contre qui joue-t-on ?</summary>
+        <p>Les parties se jouent contre une IA appelée l'Instructeur, déclinée en 7 niveaux, de l'Instructeur Poussière — qui joue presque au hasard — à l'Instructeur Or, qui calcule une dizaine de secondes par coup. Le Mode Tournoi enchaîne plusieurs combats d'affilée contre des adversaires de plus en plus aguerris.</p>
+      </details>
+
+      <details class="lore-faq">
+        <summary>Comment débloque-t-on de nouvelles créatures ?</summary>
+        <p>Chaque partie fait évoluer l'ELO du joueur le long de la Voie des Victoires, qui compte 7 rangs successifs : Poussière, Pierre, Bronze, Acier, Obsidienne, Argent et Or Légendaire. Franchir un palier débloque de nouvelles créatures à intégrer à ses armées.</p>
+      </details>
+    </section>
   </div>
 </div>
 
