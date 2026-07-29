@@ -85,7 +85,7 @@ function updateGamePlayerBars(){
 // ----------------------------------------------------------------
 // startGame accepte un paramètre colorAlreadyChosen. Quand cb-play a déjà
 // tiré _playerColor (voir combat-intro.js), on n'écrase pas ce choix ici.
-function startGame(colorAlreadyChosen){
+function startGame(colorAlreadyChosen,multiplayer){
   _endGameTriggered=false;
   stopCombatMusicImmediate();
   if(!currentArmyData||!aiArmyData){showNotif('Aucune armée sélectionnée.');return;}
@@ -95,14 +95,16 @@ function startGame(colorAlreadyChosen){
   const whiteSideArmy=playerIsWhite?currentArmyData:aiArmyData;
   const blackSideArmy=playerIsWhite?aiArmyData:currentArmyData;
   const clockMs=(typeof selectedTimeControl==='number'&&selectedTimeControl>0)?selectedTimeControl*60000:0;
-  GS={board:[],turn:'w',selected:null,legalMoves:[],history:[],enPassant:null,halfmoveClock:0,gameOver:false,playerArmy:currentArmyData,aiArmy:aiArmyData,playerColor:_playerColor,aiColor:_aiColor,movePairs:[],capturedW:[],capturedB:[],pendingPromo:null,medusaParalyzed:new Set(),lastMove:null,anchored:new Set(),pretreProtected:new Set(),amazonePostCapture:null,grandMaitreAlive:{w:false,b:false},gardePierreUsed:{w:false,b:false},turnCount:0,historyView:null,lastMoveHistory:[],clockMs,timeWhite:clockMs,timeBlack:clockMs};
+  GS={board:[],turn:'w',selected:null,legalMoves:[],history:[],enPassant:null,halfmoveClock:0,gameOver:false,playerArmy:currentArmyData,aiArmy:aiArmyData,playerColor:_playerColor,aiColor:_aiColor,multiplayer:!!multiplayer,movePairs:[],capturedW:[],capturedB:[],pendingPromo:null,medusaParalyzed:new Set(),lastMove:null,anchored:new Set(),pretreProtected:new Set(),amazonePostCapture:null,grandMaitreAlive:{w:false,b:false},gardePierreUsed:{w:false,b:false},turnCount:0,historyView:null,lastMoveHistory:[],clockMs,timeWhite:clockMs,timeBlack:clockMs};
   GS.board=buildGameBoard(whiteSideArmy,blackSideArmy);
   updateMedusaParalysis(GS.board,GS);updatePretreProtection(GS.board,GS);updateGrandMaitre(GS.board,GS);
   showPage('page-game');
   updateGamePlayerBars();
   renderGame(GS);updateStatus(GS);updateHistoryNav();
   setTimeout(()=>{buildGameLabels(GS);renderGame(GS);},80);
-  if(_playerColor==='b'){
+  if(multiplayer){
+    showNotif(_playerColor==='w'?'Vous jouez avec les Blancs : à vous de commencer !':'Vous jouez avec les Noirs, attendez le coup adverse.','ok');
+  }else if(_playerColor==='b'){
     showNotif('Vous jouez avec les Noirs : l\'IA commence !','ok');
     setTimeout(()=>doAIMove(GS),800);
   } else {

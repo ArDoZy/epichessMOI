@@ -516,7 +516,7 @@ function postMoveUpdate(gs){
   updateMedusaParalysis(gs.board,gs);updatePretreProtection(gs.board,gs);updateGrandMaitre(gs.board,gs);
   updateStatus(gs);renderGame(gs);
   const aiCol=gs.aiColor||'b';
-  if(gs.turn===aiCol&&!gs.gameOver&&!gs.pendingPromo)setTimeout(()=>doAIMove(gs),500);
+  if(gs.turn===aiCol&&!gs.multiplayer&&!gs.gameOver&&!gs.pendingPromo)setTimeout(()=>doAIMove(gs),500);
 }
 
 // ================================================================
