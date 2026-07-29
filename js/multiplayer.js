@@ -11,9 +11,14 @@
 // l'armée qu'il a composée : les deux armées sont échangées au moment
 // de la connexion.
 //
-// AVANT DE POUVOIR JOUER EN LIGNE : renseignez SUPABASE_URL et
-// SUPABASE_ANON_KEY ci-dessous (Settings > API de votre projet
-// supabase.com). Ces clés "anon" sont publiques par conception.
+// AVANT DE POUVOIR JOUER EN LIGNE : renseignez SUPABASE_URL ci-dessous
+// (Settings > API de votre projet supabase.com > "Project URL"). Ce n'est
+// PAS l'adresse de ce site, mais celle du projet Supabase, de la forme
+// https://abcdefghijk.supabase.co
+//
+// La clé publishable est publique par conception : elle est faite pour
+// vivre dans le code d'un site web. La clé "secret", elle, ne doit JAMAIS
+// apparaître ici : elle contourne toutes les règles de sécurité.
 //
 // Dépendances : SDK supabase-js (chargé via CDN dans index.html),
 // rules-engine.js (executeGameMove, GS), game-flow.js (startGame,
@@ -21,8 +26,9 @@
 // Utilisé par : combat-intro.js (bouton #cb-play-online).
 // ================================================================
 
+// À REMPLACER : Supabase > Settings > API > "Project URL"
 const SUPABASE_URL='https://VOTRE-PROJET.supabase.co';
-const SUPABASE_ANON_KEY='VOTRE_CLE_ANON_PUBLIQUE';
+const SUPABASE_PUBLISHABLE_KEY='sb_publishable_8PgQoH4YhF6oitNVRh3JBQ_T9fcNwwQ';
 
 const MP={
   client:null,
@@ -37,10 +43,10 @@ const MP={
   joinTimeoutId:null,
 };
 
-// Vrai seulement si les clés ont été renseignées : permet d'afficher un
-// message clair plutôt qu'un échec réseau obscur.
+// Vrai seulement si l'URL et la clé ont été renseignées : permet d'afficher
+// un message clair plutôt qu'un échec réseau obscur.
 function mpIsConfigured(){
-  return !SUPABASE_URL.includes('VOTRE-PROJET')&&!SUPABASE_ANON_KEY.includes('VOTRE_CLE');
+  return !SUPABASE_URL.includes('VOTRE-PROJET')&&!SUPABASE_PUBLISHABLE_KEY.includes('VOTRE_CLE');
 }
 
 function mpStatus(msg,kind){
@@ -64,7 +70,7 @@ function mpInitClient(){
     mpStatus('Le SDK Supabase n\'a pas pu être chargé (connexion internet ?).','err');
     return null;
   }
-  MP.client=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+  MP.client=supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
   return MP.client;
 }
 
@@ -213,7 +219,7 @@ function mpOpenModal(){
   mpLeave();
   mpShowScreen('choice');
   mpStatus('');
-  if(!mpIsConfigured())mpStatus('Le multijoueur n\'est pas encore configuré : renseignez vos clés Supabase dans js/multiplayer.js.','err');
+  if(!mpIsConfigured())mpStatus('Multijoueur pas encore configuré : renseignez l\'URL de votre projet Supabase (Settings > API > Project URL) dans js/multiplayer.js.','err');
   document.getElementById('mp-modal').classList.add('show');
 }
 
