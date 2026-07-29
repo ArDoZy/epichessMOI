@@ -1,5 +1,5 @@
 // ================================================================
-// COMBAT-MUSIC.JS — Musique de combat en boucle sans coupure audible
+// COMBAT-MUSIC.JS : Musique de combat en boucle sans coupure audible
 // ================================================================
 // Utilise l'API Web Audio (AudioBufferSourceNode.loopStart/loopEnd) plutôt
 // qu'une <audio> HTML : les points de boucle sont respectés à l'échantillon

@@ -1,5 +1,5 @@
 // ================================================================
-// BUILDER.JS — Page de composition d'armée (#page-builder)
+// BUILDER.JS : Page de composition d'armée (#page-builder)
 // ================================================================
 // Contient : la logique de sélection des pièces (Monarque/Général/3 pièces
 // libres, budget 24 points), le rendu des cartes de pièces (triées par
@@ -93,7 +93,7 @@ const toggle=p=>{
   if(!VV_UNLOCKED.has(p.id)){
     const m=UNLOCK_MILESTONES.find(u=>u.pieceId===p.id);
     if(m&&m.coffre)showNotif('Cette pièce s\'obtient dans un coffre !');
-    else showNotif('Pièce verrouillée — requis : '+(m&&m.eloRequired<999999?vvGetRank(m.eloRequired).name+' ('+m.eloRequired+' ELO)':'ELO insuffisant'));
+    else showNotif('Pièce verrouillée, requis : '+(m&&m.eloRequired<999999?vvGetRank(m.eloRequired).name+' ('+m.eloRequired+' ELO)':'ELO insuffisant'));
     return;
   }
   const sel=isSel(p);
@@ -114,7 +114,7 @@ const toggle=p=>{
 };
 
 // ----------------------------------------------------------------
-// RENDU DES CARTES — toujours triées par classe puis par valeur croissante
+// RENDU DES CARTES : toujours triées par classe puis par valeur croissante
 // (plus de tri/filtre manuel : voir le bandeau de raccourcis par catégorie,
 // géré plus bas par wireClassJumpRail()).
 // ----------------------------------------------------------------
@@ -154,11 +154,11 @@ const renderCards=()=>{
 };
 
 // Uniformise la hauteur de toutes les cartes de pièces sur celle de la plus
-// grande (le contenu — mouvement/pouvoir — varie beaucoup en longueur).
+// grande (le contenu, mouvement/pouvoir, varie beaucoup en longueur).
 function equalizeCardHeights(){
   const cards=document.querySelectorAll('.piece-card');
   if(!cards.length)return;
-  // Si la page est encore cachée (display:none), toute mesure vaut 0 —
+  // Si la page est encore cachée (display:none), toute mesure vaut 0 :
   // on abandonne plutôt que de figer les cartes à une hauteur nulle.
   // #page-builder est un overlay en position:fixed une fois actif : son
   // offsetParent reste null même visible, donc on teste .active plutôt.
@@ -172,7 +172,7 @@ function equalizeCardHeights(){
 function updateBuilderBanner(){
   const banner=document.getElementById('builder-mode-banner');
   const armyTitle=document.querySelector('.army-box-title');
-  if(builderMode==='ai'){banner.textContent='Mode Instructeur — Vous composez une armée pour l\'Instructeur adverse';banner.classList.add('show');if(armyTitle)armyTitle.textContent='Armée de l\'Instructeur';}
+  if(builderMode==='ai'){banner.textContent='Mode Instructeur : Vous composez une armée pour l\'Instructeur adverse';banner.classList.add('show');if(armyTitle)armyTitle.textContent='Armée de l\'Instructeur';}
   else{banner.classList.remove('show');if(armyTitle)armyTitle.textContent='Votre armée';}
 }
 
@@ -210,7 +210,7 @@ function saveArmyFromBuilder(){
 }
 
 // ----------------------------------------------------------------
-// ARMÉE ALÉATOIRE — 1 monarque, 1 général, 3 pièces, tirés parmi les
+// ARMÉE ALÉATOIRE : 1 monarque, 1 général, 3 pièces, tirés parmi les
 // pièces débloquées par le joueur (budget 24 pts, 1 primordiale max).
 // ----------------------------------------------------------------
 function randomizeArmy(){

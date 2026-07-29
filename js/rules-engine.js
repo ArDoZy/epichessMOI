@@ -1,5 +1,5 @@
 // ================================================================
-// RULES-ENGINE.JS — Moteur de règles pur (génération de coups, échecs,
+// RULES-ENGINE.JS : Moteur de règles pur (génération de coups, échecs,
 // exécution des coups avec tous les pouvoirs spéciaux des pièces)
 // ================================================================
 // Contient : toute la logique de règles indépendante du rendu :
@@ -15,7 +15,7 @@
 //   - L'état de partie GS (game state) et sa structure
 //
 // Ce module NE FAIT PAS de rendu DOM (sauf appels différés à renderGame/
-// postMoveUpdate définis dans game-render.js et game-flow.js — couplage
+// postMoveUpdate définis dans game-render.js et game-flow.js, couplage
 // volontaire car la fin d'un coup doit déclencher un re-rendu et l'IA).
 //
 // Dépendances : data-pieces.js (PIECES, TRUE_PAWN_IDS).
@@ -30,7 +30,7 @@
 
 const FILES=['A','B','C','D','E','F','G','H'];
 
-// État de partie global — reconstruit par startGame()/launchTournoiRound()
+// État de partie global : reconstruit par startGame()/launchTournoiRound()
 // dans game-flow.js / tournoi.js. Voir la structure complète dans ces fichiers.
 let GS={board:[],turn:'w',selected:null,legalMoves:[],history:[],enPassant:null,halfmoveClock:0,gameOver:false,playerArmy:null,aiArmy:null,movePairs:[],capturedW:[],capturedB:[],pendingPromo:null,medusaParalyzed:new Set(),lastMove:null,anchored:new Set(),pretreProtected:new Set(),amazonePostCapture:null,grandMaitreAlive:{w:false,b:false},gardePierreUsed:{w:false,b:false},turnCount:0,historyView:null,lastMoveHistory:[],clockMs:0,timeWhite:0,timeBlack:0};
 
@@ -40,7 +40,7 @@ function cloneBoard(b){return b.map(r=>r.map(p=>p?{...p}:null));}
 function getPieceEmoji(cell){if(!cell)return '';return cell.emoji||'?';}
 
 // ================================================================
-// HORLOGE DE PARTIE — décompte simple par joueur (pas d'incrément).
+// HORLOGE DE PARTIE : décompte simple par joueur (pas d'incrément).
 // gs.clockMs = temps de départ par joueur en ms (0 = illimité, pas d'horloge).
 // Démarrée par showArmyIntro() à la fermeture de l'overlay (game-flow.js),
 // arrêtée dans triggerEndOfGame()/triggerTournoiEndOfGame(). Le rendu des
@@ -74,7 +74,7 @@ function tickClock(gs){
 }
 
 // ================================================================
-// GÉNÉRATION DE COUPS — helpers génériques
+// GÉNÉRATION DE COUPS : helpers génériques
 // ================================================================
 function slidingMoves(board,r,c,p,dirs,gs){
   const moves=[];
@@ -124,7 +124,7 @@ function pawnMoves(board,r,c,p,gs){
 }
 
 // ================================================================
-// GÉNÉRATION DE COUPS — dispatch par pieceId (cœur des règles spéciales)
+// GÉNÉRATION DE COUPS : dispatch par pieceId (cœur des règles spéciales)
 // ================================================================
 function generateMovesRaw(board,r,c,gs){
   const p=board[r][c];if(!p)return[];
@@ -159,12 +159,12 @@ function generateMovesRaw(board,r,c,gs){
       // Avant diagonal gauche et droit (déplacement ET capture)
       for(const dc of[-1,1]){const nrD=r+fwd,ncD=c+dc;if(inB(nrD,ncD)&&(!board[nrD][ncD]||(board[nrD][ncD].color!==p.color&&board[nrD][ncD].pieceId!=='preux-chevalier')))moves.push({r:nrD,c:ncD});}
       break;}
-    // Preux Chevalier — exactement 2 ortho (pas de saut) OU 1 diag
+    // Preux Chevalier : exactement 2 ortho (pas de saut) OU 1 diag
     case 'preux-chevalier':
       for(const[dr,dc] of[[2,0],[-2,0],[0,2],[0,-2]]){
         const nr=r+dr,nc=c+dc;if(!inB(nr,nc))continue;
         const mr=r+dr/2,mc_=c+dc/2;
-        if(board[mr][mc_])continue;// chemin bloqué — pas de saut
+        if(board[mr][mc_])continue;// chemin bloqué, pas de saut
         if(!board[nr][nc]||board[nr][nc].color!==p.color)moves.push({r:nr,c:nc});
       }
       for(const[dr,dc] of[[1,1],[1,-1],[-1,1],[-1,-1]]){const nr=r+dr,nc=c+dc;if(inB(nr,nc)&&(!board[nr][nc]||board[nr][nc].color!==p.color))moves.push({r:nr,c:nc});}
@@ -218,7 +218,7 @@ function isInCheckSimple(color,board){
 // CUSTOM_MOVE_IDS : pièces dont le déplacement/attaque N'EST PAS celui de
 // leur pieceType de base. Elles ont une détection d'échec DÉDIÉE plus bas,
 // donc le raccourci « attaque comme son pieceType » ne doit JAMAIS jouer
-// pour elles — sinon l'Alpha, la Banshee ou le Typhon (tous de pieceType
+// pour elles, sinon l'Alpha, la Banshee ou le Typhon (tous de pieceType
 // 'b' pour le rendu) donneraient échec comme un fou tout le long de la
 // diagonale, ce qui est faux.
 const CUSTOM_MOVE_IDS=new Set(['amazone','alpha','fourmi','preux-chevalier','dresseur-elephant','garde-pierre','meduse','typhon','banshee','pretre']);
@@ -272,7 +272,7 @@ function isSquareAttackedSimple(tr,tc,defColor,board){
   // --- Typhon : 1 case en diagonale ---
   for(const[dr,dc] of[[1,1],[1,-1],[-1,1],[-1,-1]]){const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;const p=board[r][c];if(p&&p.color===atk&&p.pieceId==='typhon')return true;}
   // --- Alpha : EXACTEMENT 2 cases en diagonale (saut). PAS les cases
-  //     adjacentes en diagonale — c'est volontaire (voir data-pieces). ---
+  //     adjacentes en diagonale, c'est volontaire (voir data-pieces). ---
   for(const[dr,dc] of[[2,2],[2,-2],[-2,2],[-2,-2]]){const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;const p=board[r][c];if(p&&p.color===atk&&p.pieceId==='alpha')return true;}
   // --- Banshee : 1 OU 2 cases en diagonale (les 2 cases sans sauter) ---
   for(const[dr,dc] of[[1,1],[1,-1],[-1,1],[-1,-1]]){const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;const p=board[r][c];if(p&&p.color===atk&&p.pieceId==='banshee')return true;}
@@ -367,7 +367,7 @@ function applyDresseurEffect(move,board,p,gs){
 }
 
 // ================================================================
-// EXÉCUTION D'UN COUP — cœur du moteur, tous les effets spéciaux
+// EXÉCUTION D'UN COUP : cœur du moteur, tous les effets spéciaux
 // ================================================================
 function executeGameMove(from,to,gs){
   const b=gs.board;const p=b[from.r][from.c];if(!p)return;
@@ -437,7 +437,7 @@ function executeGameMove(from,to,gs){
 }
 
 // ================================================================
-// AUDIO ENGINE — Web Audio API, aucun fichier externe
+// AUDIO ENGINE : Web Audio API, aucun fichier externe
 // ================================================================
 let _audioCtx=null;
 let _soundEnabled=true;
@@ -508,7 +508,7 @@ function initAudioOnInteraction(){
 initAudioOnInteraction();
 
 // ================================================================
-// POST-COUP — enchaîne mise à jour d'états spéciaux + rendu + tour IA
+// POST-COUP : enchaîne mise à jour d'états spéciaux + rendu + tour IA
 // (renderGame/updateStatus sont définis dans game-render.js ;
 //  doAIMove est défini dans ai-engine.js)
 // ================================================================
@@ -520,7 +520,7 @@ function postMoveUpdate(gs){
 }
 
 // ================================================================
-// PROMOTION DU PION (joueur humain) — inclut le Général + les pièces de l'armée
+// PROMOTION DU PION (joueur humain) : inclut le Général + les pièces de l'armée
 // ================================================================
 function showPromoModal(gs){
   const modal=document.getElementById('promo-modal');const box=document.getElementById('promo-box');
@@ -555,7 +555,7 @@ function renderMoveLog(gs){
 }
 
 // ================================================================
-// FIN DE PARTIE — nulle par matériel insuffisant / répétition / 50 coups
+// FIN DE PARTIE : nulle par matériel insuffisant / répétition / 50 coups
 // ================================================================
 function boardFEN(board){
   // Représentation simplifiée pour la détection de répétition

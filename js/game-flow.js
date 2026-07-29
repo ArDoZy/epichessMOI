@@ -1,12 +1,12 @@
 // ================================================================
-// GAME-FLOW.JS — Démarrage de partie, construction du plateau initial,
+// GAME-FLOW.JS : Démarrage de partie, construction du plateau initial,
 // intro des armées, fin de partie & modal de résultat, annulation de coup
 // ================================================================
 // Contient : buildGameBoard() (place les pièces des deux armées sur
 // l'échiquier 8x8 initial), startGame() (point d'entrée normal, hors
 // tournoi), showArmyIntro() (overlay de présentation des deux armées avant
 // la partie), triggerEndOfGame() (calcule le nouvel ELO et affiche le modal
-// de résultat — mode normal, PAS tournoi), showResultModal(), et le bouton
+// de résultat, mode normal, PAS tournoi), showResultModal(), et le bouton
 // "Annuler coup".
 //
 // Dépendances : rules-engine.js (GS, cloneBoard, updateMedusaParalysis...),
@@ -14,7 +14,7 @@
 // updateStatus, buildGameLabels), accounts.js (vvLoadElo, vvSaveElo...),
 // voie.js (vvCalcNewElo, vvCheckNewUnlocks, vvEstimateAiElo),
 // ai-level-modal.js (selectedAILevel, AI_INSTRUCTORS), data-pieces.js
-// (PIECES), tournoi.js (tournamentState — pour distinguer partie normale
+// (PIECES), tournoi.js (tournamentState, pour distinguer partie normale
 // vs round de tournoi dans triggerEndOfGame/game-quit).
 //
 // _playerColor (couleur assignée au joueur pour LA partie en cours) est une
@@ -80,7 +80,7 @@ function updateGamePlayerBars(){
 }
 
 // ----------------------------------------------------------------
-// DÉMARRAGE DE PARTIE (hors tournoi — voir tournoi.js::launchTournoiRound
+// DÉMARRAGE DE PARTIE (hors tournoi, voir tournoi.js::launchTournoiRound
 // pour l'équivalent en mode tournoi)
 // ----------------------------------------------------------------
 // startGame accepte un paramètre colorAlreadyChosen. Quand cb-play a déjà
@@ -103,10 +103,10 @@ function startGame(colorAlreadyChosen){
   renderGame(GS);updateStatus(GS);updateHistoryNav();
   setTimeout(()=>{buildGameLabels(GS);renderGame(GS);},80);
   if(_playerColor==='b'){
-    showNotif('Vous jouez avec les Noirs — l\'IA commence !','ok');
+    showNotif('Vous jouez avec les Noirs : l\'IA commence !','ok');
     setTimeout(()=>doAIMove(GS),800);
   } else {
-    showNotif('Vous jouez avec les Blancs — à vous de commencer !','ok');
+    showNotif('Vous jouez avec les Blancs : à vous de commencer !','ok');
   }
   showArmyIntro(currentArmyData,aiArmyData);
 }
@@ -135,7 +135,7 @@ function showArmyIntro(playerArmy,aiArmy){
   };
   const INTRO_DURATION=10;
   const overlay=document.createElement('div');overlay.className='army-intro-overlay';
-  overlay.innerHTML='<div class="army-intro-box"><span class="aio-close" id="aio-close-btn">✕</span><div class="aio-title">Les Armées en Présence — '+inst.name+'</div><div class="aio-sides">'+buildSide(playerArmy,playerLabel,playerTitleCls)+buildSide(aiArmy,aiLabel,aiTitleCls)+'</div><div class="aio-timer"><span id="aio-countdown">'+INTRO_DURATION+'</span>s — Cliquez ✕ pour fermer<div class="aio-timer-bar"><div class="aio-timer-fill" id="aio-timer-fill" style="width:100%"></div></div></div></div>';
+  overlay.innerHTML='<div class="army-intro-box"><span class="aio-close" id="aio-close-btn">✕</span><div class="aio-title">Les Armées en Présence : '+inst.name+'</div><div class="aio-sides">'+buildSide(playerArmy,playerLabel,playerTitleCls)+buildSide(aiArmy,aiLabel,aiTitleCls)+'</div><div class="aio-timer"><span id="aio-countdown">'+INTRO_DURATION+'</span>s, cliquez ✕ pour fermer<div class="aio-timer-bar"><div class="aio-timer-fill" id="aio-timer-fill" style="width:100%"></div></div></div></div>';
   document.body.appendChild(overlay);
   // L'horloge ne démarre qu'à la fermeture de cet aperçu (pas pendant la
   // présentation des armées), pour ne pas gruger le temps du 1er joueur.
@@ -161,7 +161,7 @@ function showResultModal(result,oldElo,newElo,delta,newUnlockIds){
   document.getElementById('result-elo-after').textContent=newElo;
   const deltaEl=document.getElementById('result-elo-delta');deltaEl.textContent=(delta>0?'+':'')+delta;
   deltaEl.className='result-elo-delta '+(delta>0?'pos':delta<0?'neg':'zero');
-  document.getElementById('result-rank-name').textContent=rank.name+' — '+newElo+' ELO';
+  document.getElementById('result-rank-name').textContent=rank.name+' · '+newElo+' ELO';
   const unlockSec=document.getElementById('unlock-section');
   if(newUnlockIds&&newUnlockIds.length>0){
     const pid=newUnlockIds[0];const pd=PIECES.find(p=>p.id===pid);
@@ -205,7 +205,7 @@ document.getElementById('result-revanche').addEventListener('click',()=>{
 });
 
 // ----------------------------------------------------------------
-// FIN DE PARTIE — calcule le nouvel ELO et déclenche le modal de résultat.
+// FIN DE PARTIE : calcule le nouvel ELO et déclenche le modal de résultat.
 // Délègue à tournoi.js::triggerTournoiEndOfGame si un tournoi est actif.
 // ----------------------------------------------------------------
 let _endGameTriggered=false;
@@ -253,7 +253,7 @@ document.getElementById('game-undo').addEventListener('click',()=>{
 });
 
 // ----------------------------------------------------------------
-// BOUTON "ABANDONNER / QUITTER" — gère aussi bien une partie normale
+// BOUTON "ABANDONNER / QUITTER" : gère aussi bien une partie normale
 // qu'un round de tournoi
 // ----------------------------------------------------------------
 document.getElementById('game-quit').addEventListener('click',()=>{

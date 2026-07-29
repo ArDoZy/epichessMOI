@@ -1,5 +1,5 @@
 // ================================================================
-// TOURNOI.JS — Mode Tournoi (#page-tournoi) : 7 rounds contre chaque
+// TOURNOI.JS : Mode Tournoi (#page-tournoi), 7 rounds contre chaque
 // instructeur IA, abandon/reprise d'un tournoi en cours, et modal d'analyse
 // replay des parties jouées. Aucun bonus/pénalité d'ELO de fin de tournoi :
 // seul l'ELO gagné ou perdu round par round compte.
@@ -41,7 +41,7 @@ function vvLoadTournaments(){return accGet('tournaments',[]);}
 function vvSaveTournaments(arr){accSet('tournaments',arr.slice(-20));}
 
 // ----------------------------------------------------------------
-// TOURNOI ABANDONNÉ — sauvegarde de la progression pour pouvoir reprendre
+// TOURNOI ABANDONNÉ : sauvegarde de la progression pour pouvoir reprendre
 // ----------------------------------------------------------------
 // Quitter un tournoi en cours (bouton « Quitter le tournoi » de l'overlay de
 // fin de round) le met de côté ici ; au prochain clic sur « Tournoi » depuis
@@ -121,7 +121,7 @@ function renderTournoiPage(){
     const isChampion=wins>=5;
     document.getElementById('trb-icon').textContent=isChampion?'▲':'◆';
     document.getElementById('trb-title').textContent=isChampion?'Champion du tournoi !':'Tournoi terminé';
-    document.getElementById('trb-sub').textContent=wins+'/7 victoires'+(isChampion?' — Vous avez dominé le tournoi !':wins>=3?' — Bon score, continuez !':" — L'entraînement continue !");
+    document.getElementById('trb-sub').textContent=wins+'/7 victoires. '+(isChampion?'Vous avez dominé le tournoi !':wins>=3?'Bon score, continuez !':"L'entraînement continue !");
   }else{
     resultBanner.classList.remove('show');
   }
@@ -181,7 +181,7 @@ window.quitTournoi=()=>{
   saveTournoiProgress();
   tournamentState.active=false;
   document.getElementById('round-overlay').classList.remove('show');
-  showNotif('Tournoi interrompu — vous pourrez le reprendre depuis le menu.','ok');
+  showNotif('Tournoi interrompu, vous pourrez le reprendre depuis le menu.','ok');
   if(typeof goToMainMenu==='function')goToMainMenu();else showPage('page-builder');
 };
 
@@ -325,7 +325,7 @@ function triggerTournoiEndOfGame(result){
   // position de départ. Reconstruire une position initiale à part (comme
   // avant) donnait un premier plateau reconstruit avec le joueur toujours du
   // côté des Blancs : quand le joueur avait les Noirs, le plateau se
-  // retournait dès qu'on avançait d'un coup — et il y avait en plus un
+  // retournait dès qu'on avançait d'un coup, et il y avait en plus un
   // doublon de la position de départ.
   const boardSnapshots=(GS.history||[]).map(snap=>snap.board.map(r=>r.map(p=>p?{...p}:null)));
   boardSnapshots.push(GS.board.map(r=>r.map(p=>p?{...p}:null)));
@@ -341,7 +341,7 @@ function triggerTournoiEndOfGame(result){
 // LISTENERS UI PAGE TOURNOI
 // ----------------------------------------------------------------
 // Bouton "Tournoi" du menu principal : comme le bouton COMBAT, il passe
-// d'abord par "Mes armées" en mode sélection — le tournoi démarre une fois
+// d'abord par "Mes armées" en mode sélection, le tournoi démarre une fois
 // l'armée choisie (voir armies.js : startArmySelection/launchTournoiFromArmy).
 // Un tournoi abandonné en cours de route est proposé à la reprise ; « Non »
 // le supprime définitivement et enchaîne sur un nouveau tournoi.
@@ -376,7 +376,7 @@ document.getElementById('tournoi-restart').addEventListener('click',()=>{
 document.getElementById('rb-quit-btn').addEventListener('click',quitTournoi);
 
 // ================================================================
-// ANALYSE DE TOURNOI — modal de replay coup par coup
+// ANALYSE DE TOURNOI : modal de replay coup par coup
 // ================================================================
 let taCurrentRound=null;
 let taMoveIdx=0;
@@ -414,7 +414,7 @@ window.loadTournoiRoundReplay=function(roundIdx){
   const inst=AI_INSTRUCTORS[rd.instructorIdx];
 
   document.getElementById('tournoi-analyse-replay-title').textContent=
-    'Round '+(roundIdx+1)+' — '+inst.name+' — '+(rd.result==='win'?'Victoire':rd.result==='loss'?'Défaite':'Nulle');
+    'Round '+(roundIdx+1)+' · '+inst.name+' · '+(rd.result==='win'?'Victoire':rd.result==='loss'?'Défaite':'Nulle');
 
   const pArmy=tournamentState.armyData;
   const aArmy=rd.aiArmy;
@@ -476,7 +476,7 @@ function renderTaMoveLog(movePairs){
   if(!movePairs||!movePairs.length){log.innerHTML='<span style="color:var(--muted)">Aucun coup enregistré</span>';return;}
   let html='';
   movePairs.forEach((pair,i)=>{
-    const wTxt=Array.isArray(pair)?pair[0]||'—':(pair.w||'—');
+    const wTxt=Array.isArray(pair)?pair[0]||'':(pair.w||'');
     const bTxt=Array.isArray(pair)?pair[1]||'':(pair.b||'');
     const miW=i*2+1;
     const miB=i*2+2;

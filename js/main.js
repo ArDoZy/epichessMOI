@@ -1,5 +1,5 @@
 // ================================================================
-// MAIN.JS — État global partagé, navigation entre pages, utilitaires communs
+// MAIN.JS : État global partagé, navigation entre pages, utilitaires communs
 // ================================================================
 // Contient : l'état global de l'armée en cours de composition (`army`),
 // l'état des filtres du builder, les listes d'armées sauvegardées, le mode
@@ -20,7 +20,7 @@
 // game-flow.js, voie.js, tournoi.js, settings-admin.js)
 // ----------------------------------------------------------------
 // army.extras : liste ORDONNÉE des 3 pièces choisies (l'ordre définit la
-// disposition en partie — voir builder.js::derivePlacements).
+// disposition en partie, voir builder.js::derivePlacements).
 let army={mon:null,gen:null,extras:[]};
 let savedArmies=[];
 let savedAiArmies=[];
@@ -30,7 +30,7 @@ let currentArmyData=null;
 let aiArmyData=null;
 let darkMode=true;
 let VV_UNLOCKED=new Set();
-// ADMIN — sauvegarde l'état pré-admin pour une restauration correcte
+// ADMIN : sauvegarde l'état pré-admin pour une restauration correcte
 let ADMIN_MODE=false;
 let _preAdminUnlocked=null;
 
@@ -48,7 +48,7 @@ function toggleTheme(){
   if(t)t.classList.toggle('on',darkMode);
 }
 
-// Notifications en haut d'écran désactivées à la demande — la fonction est
+// Notifications en haut d'écran désactivées à la demande, la fonction est
 // conservée (no-op) car de nombreux modules l'appellent encore.
 function showNotif(msg,type='err'){}
 
@@ -66,11 +66,11 @@ function showPage(id){
 }
 
 // ----------------------------------------------------------------
-// CONFIRM MODAL — remplace window.confirm() par une boîte de dialogue
+// CONFIRM MODAL : remplace window.confirm() par une boîte de dialogue
 // intégrée au thème. Un seul jeu de listeners (posés une fois) réutilisé à
 // chaque appel via une fermeture (onYes courante).
 // ----------------------------------------------------------------
-// opts (facultatif) : {okLabel, cancelLabel, okClass, onNo} — permet une vraie
+// opts (facultatif) : {okLabel, cancelLabel, okClass, onNo}, permet une vraie
 // question « Oui / Non » où le refus déclenche lui aussi une action (utilisé
 // par la reprise de tournoi : « Non » supprime le tournoi abandonné).
 let _confirmOnYes=null,_confirmOnNo=null;
@@ -96,7 +96,7 @@ document.getElementById('confirm-cancel').addEventListener('click',()=>{
 });
 
 // ----------------------------------------------------------------
-// MENU CONTEXTUEL — fonction factorisée, utilisée par builder.js,
+// MENU CONTEXTUEL : fonction factorisée, utilisée par builder.js,
 // et game-render.js (clic droit sur une pièce).
 // ctxActivePower est déclaré dans game-render.js (section pouvoirs en partie) ;
 // cette fonction n'est appelée qu'au clic droit, donc après le chargement
@@ -127,7 +127,7 @@ function showPieceCtxMenu(e,pieceDef,opts){
 }
 
 // ----------------------------------------------------------------
-// PARCHEMIN D'ACCUEIL — affiché juste après la création d'un NOUVEAU compte
+// PARCHEMIN D'ACCUEIL : affiché juste après la création d'un NOUVEAU compte
 // (voir enterAccount() dans accounts.js, appelé avec isNewAccount=true depuis
 // le listener de #btn-reg), pas à l'arrivée sur le site : avant la création
 // d'un compte, il n'y a encore ni armée ni ELO à expliquer.
@@ -142,7 +142,7 @@ document.getElementById('intro-close')?.addEventListener('click',()=>{
 });
 
 // ----------------------------------------------------------------
-// INIT — appelé en tout dernier (voir bas de index.html)
+// INIT : appelé en tout dernier (voir bas de index.html)
 // ----------------------------------------------------------------
 function initApp(){
   renderLoginPage();

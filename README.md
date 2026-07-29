@@ -1,4 +1,4 @@
-# Epic Chess — Architecture du projet
+# Epic Chess : Architecture du projet
 
 Ce projet est un jeu d'échecs variant ("Epic Chess") en HTML/CSS/JS pur,
 **sans build step, sans modules ES, sans dépendance externe** (hors polices
@@ -9,13 +9,13 @@ n'est nécessaire.
 
 Le fichier était à l'origine un unique `.html` de ~3000 lignes. Il a été
 découpé en modules **par domaine fonctionnel** pour qu'on puisse te donner
-(ou que tu puisses éditer) un seul fichier à la fois — par exemple
-`css/style.css` ou `js/tournoi.js` — sans avoir besoin de relire tout le
+(ou que tu puisses éditer) un seul fichier à la fois (par exemple
+`css/style.css` ou `js/tournoi.js`) sans avoir besoin de relire tout le
 reste, du moment que la structure ci-dessous est connue.
 
 Tous les scripts sont chargés via des balises `<script src="...">`
 classiques (pas de `import`/`export`, pas de bundler). Toutes les variables
-et fonctions sont donc dans un espace de noms global partagé — c'est
+et fonctions sont donc dans un espace de noms global partagé : c'est
 volontaire et c'est ce qui permet au moteur de jeu, au rendu, et à l'IA de
 se parler directement.
 
@@ -54,12 +54,12 @@ epic-chess/
     └── settings-admin.js     # Panneau réglages + mode Administrateur
 ```
 
-## SEO / GEO — ce qu'il ne faut pas casser
+## SEO / GEO : ce qu'il ne faut pas casser
 
 Le site est une SPA : toutes les pages sauf `#page-login` sont en
 `display:none` tant que le joueur n'est pas connecté. **Un robot ne voit
 donc que la page de connexion.** C'est pour ça que `#page-login` porte un
-bloc `<section class="lore">` (présentation + FAQ) — c'est le seul texte
+bloc `<section class="lore">` (présentation + FAQ), c'est le seul texte
 indexable du site. Le supprimer ramènerait la page à ~40 mots et Google
 recommencerait à fabriquer sa propre description à partir des libellés de
 navigation.
@@ -68,7 +68,7 @@ Trois points de vigilance :
 
 - **Les réponses de la FAQ existent en double** : en HTML visible dans
   `.lore`, et en JSON-LD (`FAQPage`) dans le `<head>`. Google invalide le
-  balisage si les deux textes divergent — modifier l'un, c'est modifier
+  balisage si les deux textes divergent : modifier l'un, c'est modifier
   l'autre.
 - **Les chiffres du JSON-LD et de `llms.txt`** (32 pièces, 5 classes,
   budget 24 points, 7 instructeurs, 7 rangs) proviennent de
@@ -80,8 +80,8 @@ Trois points de vigilance :
   marketing. Rester descriptif et exact.
 
 Le domaine `https://epichess.app/` est codé en dur dans le `canonical`, les
-balises Open Graph, le JSON-LD, `robots.txt` et `sitemap.xml` — un
-changement de domaine impose un `grep epichess.app` global.
+balises Open Graph, le JSON-LD, `robots.txt` et `sitemap.xml`. Un
+changement de domaine impose donc un `grep epichess.app` global.
 
 `og-image.png` (1200×630) et `apple-touch-icon.png` (180×180) sont générés
 à partir de rendus HTML, aux couleurs du thème. Piège si vous les
@@ -106,7 +106,7 @@ data-pieces.js → main.js → cube-nav.js → accounts.js → ai-level-modal.js
 navigation devient un cube 3D en CSS) et déplace à l'exécution les pages
 `#page-armies` / `#page-game` dans les faces du cube (face de droite = "Mes
 armées", face du haut = la partie). Il ne connaît QUE la face courante, les
-rotations et le verrouillage — aucune logique de jeu. Le builder (composition
+rotations et le verrouillage, aucune logique de jeu. Le builder (composition
 d'armée, `#page-builder`) n'est PAS une face du cube : c'est une page
 secondaire (overlay) ouverte depuis "Mes armées" via "Nouvelle armée" ou
 "Modifier". Les autres pages secondaires (voie, tournoi, combat, login)
@@ -135,14 +135,14 @@ explicitement ses dépendances et qui l'utilise).
 - **Style de code** : pas de point-virgule systématique après chaque
   instruction dans certains blocs, usage massif de fonctions fléchées et de
   templates strings concaténées avec `+`. Le style existant est délibérément
-  dense — le conserver pour la cohérence plutôt que de reformatter.
+  dense : le conserver pour la cohérence plutôt que de reformatter.
 - **État global partagé** (déclaré dans `main.js` et `rules-engine.js`) :
-  - `army` — armée en cours de composition dans le builder
-  - `GS` — état complet de la partie en cours (board, tours, historique...)
-  - `currentArmyData` / `aiArmyData` — armées sélectionnées pour le combat
-  - `VV_UNLOCKED` — `Set` des ids de pièces débloquées pour le compte courant
-  - `CUR_ACC` — pseudo du compte actuellement connecté
-  - `tournamentState` — état du tournoi en cours (dans `tournoi.js`)
+  - `army` : armée en cours de composition dans le builder
+  - `GS` : état complet de la partie en cours (board, tours, historique...)
+  - `currentArmyData` / `aiArmyData` : armées sélectionnées pour le combat
+  - `VV_UNLOCKED` : `Set` des ids de pièces débloquées pour le compte courant
+  - `CUR_ACC` : pseudo du compte actuellement connecté
+  - `tournamentState` : état du tournoi en cours (dans `tournoi.js`)
 - **Persistance** : tout passe par `accGet(clé, défaut)` / `accSet(clé,
   valeur)` (définis dans `accounts.js`), qui préfixent automatiquement la clé
   localStorage avec le pseudo du compte connecté. Ne jamais utiliser
@@ -166,6 +166,6 @@ Il suffit de me coller le contenu du fichier concerné (ex: juste
 `js/tournoi.js` ou juste `css/style.css`) et de me dire ce que tu veux
 changer. Grâce à ce README et aux en-têtes de dépendances en haut de chaque
 fichier, je peux éditer ce fichier isolément sans avoir besoin du reste du
-code — sauf si ta demande touche une interaction entre modules (auquel cas
+code, sauf si ta demande touche une interaction entre modules (auquel cas
 je te le signalerai et te demanderai le(s) fichier(s) complémentaire(s)
 nécessaire(s)).
