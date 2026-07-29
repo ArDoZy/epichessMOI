@@ -42,6 +42,8 @@ const MP={
   roomCode:null,
   started:false,
   joinTimeoutId:null,
+  lobby:null,        // salon d'attente du matchmaking (null hors recherche)
+  matched:false,     // paire déjà formée : ignore les sync de presence suivants
 };
 
 // Vrai seulement si l'URL et la clé ont été renseignées : permet d'afficher
@@ -102,6 +104,11 @@ function mpConnect(code,asHost){
     mpApplyRemoteMove(payload.from,payload.to,payload.promo);
   });
 
+  MP.channel.on('broadcast',{event:'power'},({payload})=>{
+    if(payload.senderId===MP.myId)return;
+    mpApplyRemotePower(payload.r,payload.c,payload.pieceId);
+  });
+
   MP.channel.on('broadcast',{event:'resign'},({payload})=>{
     if(payload.senderId===MP.myId||!GS||!GS.multiplayer||GS.gameOver)return;
     showNotif('Votre adversaire a abandonné : vous gagnez !','ok');
@@ -155,27 +162,100 @@ function mpTryStart(){
 }
 
 // ----------------------------------------------------------------
-// SYNCHRONISATION DES COUPS
+// SYNCHRONISATION DES COUPS ET ANTI-TRICHE
 // ----------------------------------------------------------------
 // Les coups reçus sont rejoués via executeGameMove : les deux clients
-// exécutent donc exactement la même logique de règles sur le même
-// plateau initial, et restent alignés.
+// exécutent donc la même logique de règles sur le même plateau initial, et
+// restent alignés.
+//
+// Mais le réseau n'est jamais une source de vérité : un joueur peut modifier le
+// code de sa page et émettre n'importe quel message. Chaque client rejuge
+// donc le coup reçu avec son propre moteur de règles, et n'applique QUE des
+// coups qu'il a lui-même calculés comme légaux.
+function mpRejectMove(reason){
+  console.warn('[MP] coup rejeté :',reason);
+  showNotif('Coup adverse invalide, ignoré ('+reason+').','err');
+}
+
+function mpOppColor(){return MP.myColor==='w'?'b':'w';}
+
+// Reconstruit localement la liste des promotions autorisées pour le camp
+// adverse (son armée + les pièces standard), afin qu'un adversaire ne puisse
+// pas se promouvoir en une pièce qu'il ne possède pas.
+function mpAllowedPromotions(){
+  const army=GS.aiArmy;const allowed=[];
+  (army?.extras||[]).forEach(id=>{const p=PIECES.find(x=>x.id===id);if(p)allowed.push({type:p.pieceType||'q',emoji:p.emoji,pieceId:p.id});});
+  const gen=army?.gen?.id?PIECES.find(p=>p.id===army.gen.id):null;
+  if(gen)allowed.push({type:gen.pieceType||'q',emoji:gen.emoji,pieceId:gen.id});
+  [['q','♕','dame-promo'],['r','♖','tour-promo'],['b','♗','fou-promo'],['n','♘','cav-promo']].forEach(([t,e,id])=>allowed.push({type:t,emoji:e,pieceId:id}));
+  return allowed;
+}
+
+// Renvoie l'option locale correspondante (jamais l'objet reçu) pour empêcher
+// l'injection d'un type, d'un emoji ou d'un pieceId arbitraire.
+function mpSanitizePromo(promo){
+  if(!promo||!promo.pieceId)return null;
+  return mpAllowedPromotions().find(o=>o.pieceId===promo.pieceId)||null;
+}
+
 let _mpApplyingRemote=false;
 function mpApplyRemoteMove(from,to,promo){
-  if(!GS||!GS.multiplayer)return;
+  if(!GS||!GS.multiplayer||GS.gameOver)return;
+  const oppCol=mpOppColor();
+
+  if(GS.turn!==oppCol)return mpRejectMove('ce n\'est pas son tour');
+  if(!from||!to||!inB(from.r,from.c)||!inB(to.r,to.c))return mpRejectMove('coordonnées hors plateau');
+
+  const piece=GS.board[from.r][from.c];
+  if(!piece)return mpRejectMove('aucune pièce au départ');
+  if(piece.color!==oppCol)return mpRejectMove('pièce qui ne lui appartient pas');
+
+  // On cherche le coup parmi CEUX QUE NOUS AVONS CALCULÉS, et on applique
+  // notre propre objet : les effets spéciaux (destroysPath, castle, ep...)
+  // viennent donc de notre moteur, pas du message reçu.
+  const legal=getLegalMoves(GS.board,from.r,from.c,GS);
+  const move=legal.find(m=>m.r===to.r&&m.c===to.c&&!m.stayPut)||legal.find(m=>m.r===to.r&&m.c===to.c);
+  if(!move)return mpRejectMove('coup illégal');
+
+  // Une promotion doit être accompagnée d'un choix valide, sinon la modal de
+  // promotion s'ouvrirait chez le mauvais joueur.
+  const isPromo=TRUE_PAWN_IDS.has(piece.pieceId)&&(move.r===0||move.r===7);
+  let safePromo=null;
+  if(isPromo){
+    safePromo=mpSanitizePromo(promo);
+    if(!safePromo)return mpRejectMove('promotion manquante ou non autorisée');
+  }
+
   _mpApplyingRemote=true;
-  // Transmet le choix de promotion à executeGameMove, qui l'appliquera au
-  // lieu d'ouvrir la modal de choix ou de laisser l'IA décider.
-  GS._forcedPromo=promo||null;
-  GS.lastMove={from,to,capture:!!GS.board[to.r][to.c]};
-  executeGameMove(from,to,GS);
+  GS._forcedPromo=safePromo;
+  GS.lastMove={from:{r:from.r,c:from.c},to:move,capture:!!GS.board[move.r][move.c]};
+  executeGameMove({r:from.r,c:from.c},move,GS);
   GS._forcedPromo=null;
   _mpApplyingRemote=false;
+}
+
+// Pouvoir du Garde de Pierre : il change le tour sans passer par
+// executeGameMove, il a donc son propre message, revalidé de la même façon.
+function mpApplyRemotePower(r,c,pieceId){
+  if(!GS||!GS.multiplayer||GS.gameOver)return;
+  const oppCol=mpOppColor();
+  if(GS.turn!==oppCol)return mpRejectMove('pouvoir hors tour');
+  if(!inB(r,c))return mpRejectMove('pouvoir hors plateau');
+  const cell=GS.board[r][c];
+  if(!cell||cell.color!==oppCol)return mpRejectMove('pouvoir sur une pièce qui ne lui appartient pas');
+  if(cell.pieceId!==pieceId||pieceId!=='garde-pierre')return mpRejectMove('pouvoir inconnu');
+  if(GS.gardePierreUsed[oppCol])return mpRejectMove('pouvoir déjà utilisé');
+  applyGardePierre(r,c,oppCol,GS);
 }
 
 function mpSendMove(from,to,promo){
   if(!MP.channel)return;
   MP.channel.send({type:'broadcast',event:'move',payload:{senderId:MP.myId,from,to,promo:promo||null}});
+}
+
+function mpSendPower(r,c,pieceId){
+  if(!MP.channel)return;
+  MP.channel.send({type:'broadcast',event:'power',payload:{senderId:MP.myId,r,c,pieceId}});
 }
 
 // executeGameMove est le point de passage unique de tout coup joué :
@@ -198,14 +278,69 @@ function mpNotifyResign(){
 function mpLeave(){
   if(MP.joinTimeoutId){clearTimeout(MP.joinTimeoutId);MP.joinTimeoutId=null;}
   if(MP.channel){MP.channel.unsubscribe();MP.channel=null;}
-  MP.started=false;MP.oppArmy=null;MP.roomCode=null;
+  mpLeaveLobby();
+  MP.started=false;MP.matched=false;MP.oppArmy=null;MP.roomCode=null;
+}
+
+// ----------------------------------------------------------------
+// MATCHMAKING AUTOMATIQUE
+// ----------------------------------------------------------------
+// Aucune table n'est nécessaire : les joueurs en attente se déclarent par
+// "presence" dans un salon d'attente unique. Les deux plus anciens
+// s'apparient, le premier arrivé devenant l'hôte (Blancs). Les deux clients
+// trient la même liste selon les mêmes critères, ils aboutissent donc à la
+// même décision sans avoir à négocier.
+const MP_LOBBY='epichess-lobby-v1';
+
+function mpLeaveLobby(){
+  if(MP.lobby){MP.lobby.unsubscribe();MP.lobby=null;}
+}
+
+function mpQuickPlay(){
+  const client=mpInitClient();if(!client)return;
+  mpLeaveLobby();
+  MP.myArmy=currentArmyData;MP.matched=false;MP.started=false;
+  const joinedAt=Date.now();
+  MP.lobby=client.channel(MP_LOBBY,{config:{presence:{key:MP.myId}}});
+
+  MP.lobby.on('presence',{event:'sync'},()=>{
+    if(MP.matched||MP.started||!MP.lobby)return;
+    const state=MP.lobby.presenceState();
+    const waiting=Object.keys(state).map(k=>{
+      const meta=(state[k]&&state[k][0])||{};
+      return{id:k,joinedAt:meta.joinedAt||0};
+    }).sort((a,b)=>(a.joinedAt-b.joinedAt)||a.id.localeCompare(b.id));
+
+    if(waiting.length<2){mpStatus('Recherche d\'un adversaire','wait');return;}
+    // Seuls les deux plus anciens s'apparient ; les suivants patientent
+    // jusqu'à ce que cette paire quitte le salon d'attente.
+    const idx=waiting.findIndex(w=>w.id===MP.myId);
+    if(idx<0||idx>1)return;
+
+    MP.matched=true;
+    const host=waiting[0];
+    mpStatus('Adversaire trouvé, préparation de la partie','wait');
+    mpLeaveLobby();
+    // Le nom du salon dérive de l'id de l'hôte : les deux camps le calculent
+    // à l'identique.
+    mpConnect('q-'+host.id.slice(0,12),MP.myId===host.id);
+  });
+
+  MP.lobby.subscribe(async status=>{
+    if(status==='SUBSCRIBED'){
+      await MP.lobby.track({joinedAt});
+      mpStatus('Recherche d\'un adversaire','wait');
+    }else if(status==='CHANNEL_ERROR'||status==='TIMED_OUT'){
+      mpStatus('Connexion impossible. Vérifiez votre réseau.','err');
+    }
+  });
 }
 
 // ----------------------------------------------------------------
 // MODAL : écran de choix → écran hôte (code) ou écran invité (saisie)
 // ----------------------------------------------------------------
 function mpShowScreen(name){
-  ['choice','host','join'].forEach(s=>{
+  ['choice','quick','host','join'].forEach(s=>{
     const el=document.getElementById('mp-screen-'+s);
     if(el)el.style.display=(s===name)?'':'none';
   });
@@ -225,6 +360,12 @@ function mpOpenModal(){
 }
 
 document.getElementById('cb-play-online')?.addEventListener('click',mpOpenModal);
+
+document.getElementById('mp-quick-btn')?.addEventListener('click',()=>{
+  if(!mpIsConfigured())return;
+  mpShowScreen('quick');
+  mpQuickPlay();
+});
 
 document.getElementById('mp-create-btn')?.addEventListener('click',()=>{
   if(!mpIsConfigured())return;
