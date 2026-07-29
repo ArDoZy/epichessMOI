@@ -57,10 +57,15 @@ function renderGame(gs){
   const aiCol=gs.aiColor||'b';
   const flipped=playerCol==='b'; // échiquier retourné si le joueur joue les noirs
   let html='';
-  for(let vi=0;vi<8;vi++)for(let c=0;c<8;c++){
-    // vi = index visuel de rangée (0=haut), r = index réel dans board[]
+  for(let vi=0;vi<8;vi++)for(let vc=0;vc<8;vc++){
+    // vi/vc = indices VISUELS (0,0 = case en haut à gauche, ordre de sortie
+    // dans la grille CSS) ; r/c = indices réels dans board[].
+    // Jouer les noirs fait pivoter le plateau de 180° : les rangées ET les
+    // colonnes sont inversées. Inverser les rangées seulement produirait une
+    // image miroir, en désaccord avec renderBoardFromSnapshot(),
+    // getBoardCell() et buildGameLabels(), qui pivotent tous de 180°.
     const r=flipped?7-vi:vi;
-    const vc=flipped?7-c:c; // colonne visuelle
+    const c=flipped?7-vc:vc;
     const isLight=(r+c)%2===0;const cell=b[r][c];
     let cls='gc '+(isLight?'l':'d');
     const key=`${r},${c}`;
