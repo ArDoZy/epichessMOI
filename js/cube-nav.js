@@ -1,5 +1,5 @@
 // ================================================================
-// CUBE-NAV.JS — Navigation principale par cube (illusion 3D CSS)
+// CUBE-NAV.JS : Navigation principale par cube (illusion 3D CSS)
 // ================================================================
 // Remplace UNIQUEMENT la navigation de haut niveau par un cube qui tourne
 // par incréments de 90°. Ce module ne connaît QUE la face courante, les
@@ -31,7 +31,7 @@
 
 (function(){
   // Emplacements 3D fixes autour de la caméra. Une seule face occupe le
-  // « front » (angle 0) à la fois — c'est la seule interactive.
+  // « front » (angle 0) à la fois : c'est la seule interactive.
   const SLOT_TF={
     front :'translateZ(50vmax)',
     right :'rotateY(90deg) translateZ(50vmax)',
@@ -41,14 +41,14 @@
     bottom:'rotateX(-90deg) translateZ(50vmax)'
   };
   const REST='translateZ(-50vmax)';
-  // Durée de rotation — doit correspondre à la transition CSS de #cube
+  // Durée de rotation : doit correspondre à la transition CSS de #cube
   // (voir [CUBE] dans style.css). Assez courte pour rester fluide et pour
   // qu'on puisse enchaîner deux rotations sans temps mort perceptible
   // (voir queuedKind plus bas : un second clic pendant l'animation en cours
   // est mémorisé et rejoué instantanément à la fin de celle-ci).
   const ROTATE_MS=280;
   // Disposition canonique (au menu principal). La face de droite est
-  // "armees" (Mes armées) — le builder (composition) n'est plus une face du
+  // "armees" (Mes armées) : le builder (composition) n'est plus une face du
   // cube, c'est un overlay ouvert depuis "Mes armées" (bouton "Nouvelle armée").
   const CANON={front:'jouer',right:'armees',back:'magasin',left:'missions',top:'game',bottom:'variantes'};
   const SIDE=new Set(['jouer','armees','magasin','missions']);
@@ -85,7 +85,7 @@
   }
   // Les flèches restent visibles/cliquables PENDANT une rotation (elles ne
   // dépendent plus de `animating`) : c'est ce qui permet d'enchaîner deux
-  // rotations sans temps mort — le clic pendant l'animation en cours est mis
+  // rotations sans temps mort : le clic pendant l'animation en cours est mis
   // en file par animate() et rejoué instantanément à la fin de celle-ci.
   function updateArrows(){
     const active=document.body.classList.contains('cube-active') && !document.body.classList.contains('nav-overlay');
@@ -151,7 +151,7 @@
 
   // ---- Rotations déclenchées par l'utilisateur -------------------
   // Pendant une animation en cours, on laisse passer la demande (elle sera
-  // mise en file par animate()) plutôt que de l'ignorer — c'est ce qui
+  // mise en file par animate()) plutôt que de l'ignorer, c'est ce qui
   // permet d'enchaîner deux rotations sans attendre.
   function nav(kind){ if(!locked && (animating || SIDE.has(slots.front))) animate(kind); }
 
@@ -207,7 +207,7 @@
   // ---- Bouton COMBAT ---------------------------------------------
   // Ne lance plus la partie directement : amène sur "Mes armées" en mode
   // sélection (voir armies.js). Le clic sur une carte enchaîne ensuite le
-  // flux habituel — page de prévisualisation, instructeur, armées en
+  // flux habituel : page de prévisualisation, instructeur, armées en
   // présence, puis la partie.
   function onCombat(){
     if(locked||animating)return;

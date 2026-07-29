@@ -1,4 +1,4 @@
-# Epic Chess — https://epichess.app/
+# Epic Chess : https://epichess.app/
 #
 # Tout le site est public et indexable. Les crawlers des moteurs de réponse
 # IA (ChatGPT, Claude, Perplexity, Gemini) sont autorisés explicitement :

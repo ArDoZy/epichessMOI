@@ -1,5 +1,5 @@
 // ================================================================
-// DATA-PIECES.JS — Données statiques du jeu (aucune logique de rendu ici)
+// DATA-PIECES.JS : Données statiques du jeu (aucune logique de rendu ici)
 // ================================================================
 // Contient : RANKS (rangs ELO), PIECES (catalogue complet des pièces),
 // AI_INSTRUCTORS (les 7 niveaux d'IA), UNLOCK_TABLE / UNLOCK_MILESTONES
@@ -12,7 +12,7 @@
 // Si vous ajoutez une nouvelle pièce : l'ajouter dans PIECES, puis dans
 // UNLOCK_TABLE si elle doit être débloquée par ELO (ou coffre/primordiale).
 // Si vous ajoutez un rang ELO : l'ajouter dans RANKS (ordre croissant, min/max
-// contigus) — tout le reste (vvGetRank, badges, filtres IA) s'adapte seul.
+// contigus), tout le reste (vvGetRank, badges, filtres IA) s'adapte seul.
 // ================================================================
 
 // ----------------------------------------------------------------
@@ -32,7 +32,7 @@ function vvGetRankFloor(elo){return vvGetRank(elo).min;}
 function vvGetRankIdx(elo){for(let i=RANKS.length-1;i>=0;i--)if(elo>=RANKS[i].min)return i;return 0;}
 
 // ----------------------------------------------------------------
-// 7 INSTRUCTEURS IA — basés sur budget temps (ms) + bruit
+// 7 INSTRUCTEURS IA : basés sur budget temps (ms) + bruit
 // ----------------------------------------------------------------
 const AI_INSTRUCTORS=[
   {id:'poussiere', name:'Instructeur Poussière',  rankId:'poussiere', timeMs:0,    noise:0.95, desc:'Joue presque au hasard.',          elo:400},
@@ -70,11 +70,11 @@ const PIECES=[
 
 const TRUE_PAWN_IDS=new Set(['std-pawn']);
 const CLASS_ORDER={Monarque:1,Général:2,Primordiale:3,Brute:4,Sorcier:5};
-// Couleurs partagées par classe de pièce — utilisées par le menu contextuel factorisé
+// Couleurs partagées par classe de pièce : utilisées par le menu contextuel factorisé
 const CLASS_COLOR_VARS={Monarque:'var(--monarque)',Général:'var(--general)',Primordiale:'var(--primordiale)',Brute:'var(--brute)',Sorcier:'var(--sorcier)'};
 
 // ----------------------------------------------------------------
-// TABLE DE DÉBLOCAGE — pièces débloquées par palier d'ELO
+// TABLE DE DÉBLOCAGE : pièces débloquées par palier d'ELO
 // ----------------------------------------------------------------
 const UNLOCK_TABLE=[
   {pieceId:'roi',eloRequired:0},{pieceId:'dame',eloRequired:0},{pieceId:'alpha',eloRequired:0},{pieceId:'fourmi',eloRequired:0},

@@ -1,5 +1,5 @@
 // ================================================================
-// AI-ENGINE.JS — Évaluation de position, recherche minimax, Web Worker IA
+// AI-ENGINE.JS : Évaluation de position, recherche minimax, Web Worker IA
 // ================================================================
 // Contient : la fonction d'évaluation heuristique (evalBoard), les tables
 // de valeur des pièces et tables position-carrés (PST), la recherche
@@ -187,7 +187,7 @@ function applyMoveQuick(board,from,to,p){
 }
 
 // ================================================================
-// TABLE DE TRANSPOSITION — Zobrist + TT avec aging
+// TABLE DE TRANSPOSITION : Zobrist + TT avec aging
 // ================================================================
 const ZK=(()=>{
   let seed=0xDEADBEEF;
@@ -300,7 +300,7 @@ function quiesce(board,alpha,beta,maxing,fgs,qdepth){
 }
 
 // ================================================================
-// MINIMAX — Alpha-Beta + TT + Null Move + LMR + Killers
+// MINIMAX : Alpha-Beta + TT + Null Move + LMR + Killers
 // ================================================================
 function minimax(board,depth,alpha,beta,maxing,fgs,nullOk,plyFromRoot){
   if(_aiAborted||Date.now()>_aiDeadline){_aiAborted=true;return 0;}
@@ -388,7 +388,7 @@ function minimax(board,depth,alpha,beta,maxing,fgs,nullOk,plyFromRoot){
 }
 
 // ================================================================
-// WEB WORKER IA — calcul en arrière-plan pour ne pas bloquer l'UI
+// WEB WORKER IA : calcul en arrière-plan pour ne pas bloquer l'UI
 // ================================================================
 let _aiWorker=null;
 let _aiWorkerBusy=false;
@@ -583,7 +583,7 @@ function mirrorBoardForWorker(gsData){
 }
 
 // ----------------------------------------------------------------
-// FALLBACK — recherche IA sur le thread principal (si Web Worker
+// FALLBACK : recherche IA sur le thread principal (si Web Worker
 // indisponible, ex: certains contextes file:// restrictifs)
 // ----------------------------------------------------------------
 function doAIMoveMainThread(gs){

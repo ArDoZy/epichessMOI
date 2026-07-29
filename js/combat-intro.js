@@ -1,5 +1,5 @@
 // ================================================================
-// COMBAT-INTRO.JS — Page d'introduction du combat (#page-combat)
+// COMBAT-INTRO.JS : Page d'introduction du combat (#page-combat)
 // ================================================================
 // Contient : le rendu de l'écran "VS" avant une partie (aperçu des deux
 // armées, sélection de l'armée IA aléatoire/personnalisée/miroir),
@@ -48,7 +48,7 @@ document.getElementById('cb-choose-ai').addEventListener('click',()=>{
   if(!savedAiArmies.length){builderMode='ai';updateBuilderBanner();army={mon:null,gen:null,extras:[]};editingArmyId=null;showPage('page-builder');updAll();}
   else{renderAiArmiesPage();showPage('page-ai-armies');}
 });
-// Armée miroir — l'IA copie exactement l'armée du joueur (mêmes pièces, mêmes positions)
+// Armée miroir : l'IA copie exactement l'armée du joueur (mêmes pièces, mêmes positions)
 document.getElementById('cb-mirror-ai').addEventListener('click',()=>{
   if(!currentArmyData){showNotif('Aucune armée joueur sélectionnée.','err');return;}
   aiArmyData={

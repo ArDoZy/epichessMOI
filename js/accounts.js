@@ -1,5 +1,5 @@
 // ================================================================
-// ACCOUNTS.JS — Comptes locaux (localStorage), connexion, barre de compte
+// ACCOUNTS.JS : Comptes locaux (localStorage), connexion, barre de compte
 // ================================================================
 // Contient : le système de comptes multi-utilisateurs stocké en localStorage
 // (un compte = un pseudo + hash de mot de passe + toutes ses données de jeu
@@ -14,7 +14,7 @@
 // (armies.js, voie.js, tournoi.js, game-flow.js...) via accGet/accSet.
 //
 // Pour ajouter un nouveau champ de sauvegarde par compte : utiliser
-// accGet('ma_cle', valeurParDefaut) / accSet('ma_cle', valeur) — inutile de
+// accGet('ma_cle', valeurParDefaut) / accSet('ma_cle', valeur), inutile de
 // toucher à ce fichier, le préfixage par compte est automatique.
 // ================================================================
 
@@ -36,7 +36,7 @@ function renderLoginPage(){
   const list=document.getElementById('acc-list');
   const lbl=document.getElementById('accs-lbl');
   if(!names.length){
-    list.innerHTML='<div style="text-align:center;color:var(--muted);font-size:12px;padding:12px;font-style:italic">Aucun compte — créez-en un ci-dessous.</div>';
+    list.innerHTML='<div style="text-align:center;color:var(--muted);font-size:12px;padding:12px;font-style:italic">Aucun compte. Créez-en un ci-dessous.</div>';
     lbl.style.display='none';
   }else{
     lbl.style.display='';
@@ -81,12 +81,13 @@ document.getElementById('pw-cancel').onclick=()=>document.getElementById('pw-mod
 
 window.deleteAcc=(username,ev)=>{
   ev.stopPropagation();
-  if(!confirm('Supprimer le compte "'+username+'" et toutes ses données ?'))return;
-  const accs=loadAccs();delete accs[username];saveAccs(accs);
-  const dead=[];for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith('mc_p_'+username+'_'))dead.push(k);}
-  dead.forEach(k=>localStorage.removeItem(k));
-  if(CUR_ACC===username){CUR_ACC=null;document.body.classList.remove('has-acc');document.getElementById('cab').style.display='none';}
-  renderLoginPage();
+  showConfirmModal('Supprimer le compte "'+username+'" et toutes ses données ?',()=>{
+    const accs=loadAccs();delete accs[username];saveAccs(accs);
+    const dead=[];for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith('mc_p_'+username+'_'))dead.push(k);}
+    dead.forEach(k=>localStorage.removeItem(k));
+    if(CUR_ACC===username){CUR_ACC=null;document.body.classList.remove('has-acc');document.getElementById('cab').style.display='none';}
+    renderLoginPage();
+  });
 };
 
 function enterAccount(username,isNewAccount){
@@ -99,11 +100,11 @@ function enterAccount(username,isNewAccount){
   editingArmyId=null;builderMode='player';
   // Après connexion : on prépare le builder (bannière + rendu) puis on
   // affiche le MENU PRINCIPAL du cube (face JOUER), pas directement le
-  // builder — la face builder est atteinte en tournant le cube.
+  // builder, la face builder est atteinte en tournant le cube.
   updateBuilderBanner();updAll();
   if(typeof goToMainMenu==='function')goToMainMenu();else showPage('page-builder');
   // Parchemin d'accueil : uniquement à la création d'un nouveau compte (pas
-  // à chaque connexion d'un compte existant) — voir showIntroModal() dans
+  // à chaque connexion d'un compte existant) : voir showIntroModal() dans
   // main.js. Au-dessus du modal Primordiale (z-index plus faible) : celui-ci
   // reste visible dès la fermeture du parchemin, sans double délai perçu.
   if(isNewAccount && typeof showIntroModal==='function')showIntroModal();
@@ -157,7 +158,7 @@ function switchAccount(){
 }
 
 // ----------------------------------------------------------------
-// PROGRESSION ELO / DÉBLOCAGES / HISTORIQUE — wrappers accGet/accSet
+// PROGRESSION ELO / DÉBLOCAGES / HISTORIQUE : wrappers accGet/accSet
 // (utilisés par voie.js, tournoi.js, game-flow.js)
 // ----------------------------------------------------------------
 function vvLoadElo(){return accGet('elo',0);}

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 
 <!-- ============================================================
-     SEO / GEO — voir aussi robots.txt, sitemap.xml et llms.txt à la
+     SEO / GEO : voir aussi robots.txt, sitemap.xml et llms.txt à la
      racine. La description ci-dessous est celle qui s'affiche dans les
      résultats Google ; sans elle, Google fabriquait son propre extrait à
      partir des libellés de navigation ("Votre armée · Monarque · ...").
@@ -19,7 +19,7 @@
 <meta name="author" content="Epic Chess"/>
 <meta name="theme-color" content="#1d1a10"/>
 
-<!-- Open Graph / Twitter — aperçus de partage (Discord, X, WhatsApp, iMessage) -->
+<!-- Open Graph / Twitter : aperçus de partage (Discord, X, WhatsApp, iMessage) -->
 <meta property="og:site_name" content="Epic Chess"/>
 <meta property="og:title" content="Epic Chess, variante d'échecs alchimique"/>
 <meta property="og:description" content="Un savant fou, dans un laboratoire d'échecs oublié, a fait naître des créatures de l'alchimie. Composez votre armée et affrontez d'autres esprits dérangés."/>
@@ -49,7 +49,7 @@
 
 <!-- Données structurées Schema.org. Les faits (32 pièces, 5 classes,
      budget 24 points, 7 instructeurs, 7 rangs) doivent rester synchronisés
-     avec js/data-pieces.js — c'est ce que citent les moteurs de réponse. -->
+     avec js/data-pieces.js : c'est ce que citent les moteurs de réponse. -->
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -159,7 +159,7 @@
 <body>
 <div class="drag-ghost" id="drag-ghost"></div>
 
-<!-- PARCHEMIN D'ACCUEIL — affiché juste après la création d'un nouveau
+<!-- PARCHEMIN D'ACCUEIL : affiché juste après la création d'un nouveau
      compte (voir enterAccount() dans js/accounts.js et showIntroModal() dans
      js/main.js), pas à l'arrivée sur le site : masqué par défaut ici. -->
 <div class="intro-modal" id="intro-modal" style="display:none">
@@ -205,12 +205,12 @@
     </div>
 
     <!-- ============================================================
-         CONTENU INDEXABLE (SEO / GEO) — ne pas supprimer.
+         CONTENU INDEXABLE (SEO / GEO) : ne pas supprimer.
          C'est le seul texte réel que voient Google et les moteurs de
          réponse IA : toutes les autres pages sont en `display:none`
          tant que le joueur n'est pas connecté, donc invisibles pour un
          crawler. Les réponses de la FAQ ci-dessous doivent rester
-         identiques à celles du bloc JSON-LD FAQPage dans le <head> —
+         identiques à celles du bloc JSON-LD FAQPage dans le <head> :
          Google invalide le balisage si le texte visible ne correspond
          pas. Contenu volontairement bref pour ne pas noyer le
          formulaire de connexion, qui reste l'action principale.
@@ -287,7 +287,7 @@
   </div>
 </div>
 
-<!-- CONFIRM MODAL — remplace window.confirm() par une boîte de dialogue
+<!-- CONFIRM MODAL : remplace window.confirm() par une boîte de dialogue
      intégrée au thème (voir showConfirmModal() dans main.js). -->
 <div class="confirm-modal" id="confirm-modal">
   <div class="confirm-box">
@@ -301,7 +301,7 @@
 
 
 <!-- ================================================================
-     CUBE DE NAVIGATION — menu principal. Coquille visuelle uniquement :
+     CUBE DE NAVIGATION : menu principal. Coquille visuelle uniquement :
      les vraies pages #page-armies / #page-game sont déplacées à
      l'exécution dans les faces "armees" / "game" par js/cube-nav.js.
      Le chrome global (barre compte, modals, réglages)
@@ -595,7 +595,7 @@
 
 <!-- MODALS -->
 <div class="promo-modal" id="promo-modal"><div class="promo-box"><div class="promo-title">Choisir la promotion</div><div class="promo-pieces-row" id="promo-box"></div></div></div>
-<div class="primordiale-modal" id="primordiale-modal" style="display:none"><div class="primordiale-box"><h2>Choisissez votre Primordiale</h2><p>Votre premier mélange réussi. Choisissez la créature qui survit à l'expérience — les deux autres formules attendront dans des coffres scellés.</p><div class="primordiale-choices" id="primordiale-choices"></div></div></div>
+<div class="primordiale-modal" id="primordiale-modal" style="display:none"><div class="primordiale-box"><h2>Choisissez votre Primordiale</h2><p>Votre premier mélange réussi. Choisissez la créature qui survit à l'expérience : les deux autres formules attendront dans des coffres scellés.</p><div class="primordiale-choices" id="primordiale-choices"></div></div></div>
 <button class="admin-badge" id="admin-badge" title="Mode Administrateur">Admin</button>
 <div class="result-modal" id="result-modal"><div class="result-box" id="result-box"><button id="result-close-btn" style="position:absolute;top:12px;right:14px;background:transparent;border:none;cursor:pointer;color:var(--muted);font-size:22px;line-height:1;font-family:inherit;transition:color .15s;z-index:1" title="Fermer et analyser la partie">✕</button><span class="result-icon" id="result-icon"></span><div class="result-title" id="result-title"></div><div class="result-elo-row"><span class="result-elo-before" id="result-elo-before"></span><span class="result-elo-arrow">→</span><span class="result-elo-after" id="result-elo-after"></span><span class="result-elo-delta" id="result-elo-delta"></span></div><div class="result-rank-row"><span class="result-rank-icon" id="result-rank-icon"></span><span class="result-rank-name" id="result-rank-name"></span></div><div class="unlock-section" id="unlock-section" style="display:none"><div class="unlock-title">Nouvelle pièce débloquée !</div><span class="unlock-piece-emoji" id="unlock-piece-emoji"></span><div class="unlock-piece-name" id="unlock-piece-name"></div><div class="unlock-piece-class" id="unlock-piece-class"></div><div class="unlock-piece-ability" id="unlock-piece-ability"></div></div><div style="display:flex;flex-direction:column;gap:8px;margin-top:20px"><button class="btn btn-gold" style="width:100%" id="result-continue">Continuer</button><div style="display:flex;gap:8px"><button class="btn btn-primary" style="flex:1" id="result-rejouer">↺ Rejouer</button><button class="btn btn-ghost" style="flex:1;border-color:var(--accent2);color:var(--accent2)" id="result-revanche">Revanche</button></div></div></div></div>
 <div class="ctx-menu" id="ctx-menu"><span class="ctx-close" onclick="closeCtx()">✕</span><div class="ctx-title" id="ctx-title"></div><div class="ctx-class" id="ctx-class-lbl"></div><div class="ctx-row"><span class="ctx-label">Valeur : </span><span id="ctx-val"></span></div><div class="ctx-row"><span class="ctx-label">Déplacement : </span><span id="ctx-mvt"></span></div><div class="ctx-row" id="ctx-ability-row" style="display:none"><span class="ctx-label">Pouvoir : </span><span id="ctx-ability"></span></div><button class="btn btn-gold ctx-power-btn" id="ctx-power-btn" style="display:none" onclick="activatePower()"></button></div>
@@ -625,7 +625,7 @@
 </div>
 
 <!-- ================================================================
-     CHARGEMENT DES SCRIPTS — L'ORDRE COMPTE.
+     CHARGEMENT DES SCRIPTS : L'ORDRE COMPTE.
      Voir README.md pour le détail des dépendances entre modules.
      Résumé de l'ordre requis :
        1. data-pieces.js    (données pures, aucune dépendance)
@@ -637,17 +637,19 @@
        7. combat-intro.js   (dépend de armies+ai-level-modal+main)
        8. rules-engine.js   (moteur pur ; dépend de data-pieces seulement,
                               mais appelle des fonctions de game-render/
-                              game-flow définies plus bas — OK car appelées
+                              game-flow définies plus bas : OK car appelées
                               seulement lors de l'exécution d'un coup, jamais
                               au chargement du script)
-       9. game-render.js    (dépend de rules-engine+data+main)
-      10. ai-engine.js      (dépend de rules-engine+data)
-      11. game-flow.js      (dépend de tout ce qui précède)
-      12. voie.js           (dépend de data+accounts+main)
-      13. tournoi.js        (dépend de tout ce qui précède, notamment
+       9. combat-music.js   (musique de combat, dépend de rules-engine pour
+                              getAudioCtx)
+      10. game-render.js    (dépend de rules-engine+data+main)
+      11. ai-engine.js      (dépend de rules-engine+data)
+      12. game-flow.js      (dépend de tout ce qui précède)
+      13. voie.js           (dépend de data+accounts+main)
+      14. tournoi.js        (dépend de tout ce qui précède, notamment
                               game-flow pour buildGameBoard/updateGamePlayerBars)
-      14. settings-admin.js (dépend de main+accounts+data)
-      15. app-init.js       (dernier : lance renderLoginPage())
+      15. settings-admin.js (dépend de main+accounts+data)
+      16. app-init.js       (dernier : lance renderLoginPage())
    ================================================================ -->
 <script src="js/data-pieces.js"></script>
 <script src="js/main.js"></script>
@@ -658,6 +660,7 @@
 <script src="js/armies.js"></script>
 <script src="js/combat-intro.js"></script>
 <script src="js/rules-engine.js"></script>
+<script src="js/combat-music.js"></script>
 <script src="js/game-render.js"></script>
 <script src="js/ai-engine.js"></script>
 <script src="js/game-flow.js"></script>
@@ -666,7 +669,7 @@
 <script src="js/settings-admin.js"></script>
 <script>
 // ================================================================
-// APP-INIT — dernier script exécuté : démarre l'application
+// APP-INIT : dernier script exécuté, démarre l'application
 // ================================================================
 initApp();
 </script>

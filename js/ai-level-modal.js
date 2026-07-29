@@ -1,5 +1,5 @@
 // ================================================================
-// AI-LEVEL-MODAL.JS — Modal de choix de l'instructeur IA avant un combat
+// AI-LEVEL-MODAL.JS : Modal de choix de l'instructeur IA avant un combat
 // ================================================================
 // Contient : la logique du modal #ai-lvl-modal (grille des 7 instructeurs,
 // verrouillage selon le rang ELO atteint, sélection).

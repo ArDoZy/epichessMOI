@@ -1,5 +1,5 @@
 // ================================================================
-// GAME-RENDER.JS — Rendu du plateau de jeu, interactions (clic/drag&drop),
+// GAME-RENDER.JS : Rendu du plateau de jeu, interactions (clic/drag&drop),
 // navigation d'historique, menu contextuel en partie
 // ================================================================
 // Contient : renderGame() (rendu complet du plateau), le système de
@@ -267,7 +267,7 @@ function renderHistoryPosition(idx){
   const snap=GS.history[idx];if(!snap)return;
   renderBoardFromSnapshot(snap.board,null);updateHistoryNav();
   const bar=document.getElementById('game-status');
-  if(bar){bar.textContent='Historique — position '+idx+'/'+GS.history.length;bar.className='status-bar';}
+  if(bar){bar.textContent='Historique : position '+idx+'/'+GS.history.length;bar.className='status-bar';}
 }
 function renderBoardFromSnapshot(board,lastMove){
   const boardEl=document.getElementById('game-board');if(!boardEl)return;
@@ -297,7 +297,7 @@ document.addEventListener('keydown',e=>{
 });
 
 // ----------------------------------------------------------------
-// STATUT DE PARTIE (échec/mat/pat/nulle) — appelée par postMoveUpdate()
+// STATUT DE PARTIE (échec/mat/pat/nulle) : appelée par postMoveUpdate()
 // dans rules-engine.js. Déclenche triggerEndOfGame() (game-flow.js) ou
 // triggerTournoiEndOfGame() (tournoi.js) selon le contexte.
 // ----------------------------------------------------------------
@@ -305,18 +305,18 @@ function updateStatus(gs){
   const bar=document.getElementById('game-status');if(!bar)return;
   const qBtn=document.getElementById('game-quit');
   if(qBtn)qBtn.textContent=gs.gameOver?'Quitter':'Abandonner';
-  if(gs.historyView!==null){bar.textContent='Historique — coup '+gs.historyView+'/'+gs.history.length;bar.className='status-bar';return;}
+  if(gs.historyView!==null){bar.textContent='Historique : coup '+gs.historyView+'/'+gs.history.length;bar.className='status-bar';return;}
   const t=gs.turn;
 
   // Règle des 50 coups
   if(gs.halfmoveClock>=100){
-    bar.textContent='Nulle — règle des 50 coups';bar.className='status-bar';
+    bar.textContent='Nulle : règle des 50 coups';bar.className='status-bar';
     gs.gameOver=true;if(!_endGameTriggered)triggerEndOfGame('draw');return;
   }
 
   // Mat insuffisant
   if(isInsufficientMaterial(gs.board)){
-    bar.textContent='Nulle — matériel insuffisant';bar.className='status-bar';
+    bar.textContent='Nulle : matériel insuffisant';bar.className='status-bar';
     gs.gameOver=true;if(!_endGameTriggered)triggerEndOfGame('draw');return;
   }
 
@@ -329,7 +329,7 @@ function updateStatus(gs){
       if(count>=3)break;
     }
     if(count>=3){
-      bar.textContent='Nulle — répétition de position (3×)';bar.className='status-bar';
+      bar.textContent='Nulle : répétition de position (3×)';bar.className='status-bar';
       gs.gameOver=true;if(!_endGameTriggered)triggerEndOfGame('draw');return;
     }
   }
@@ -346,7 +346,7 @@ function updateStatus(gs){
       if(!_endGameTriggered)triggerEndOfGame(playerWins?'win':'loss');
       playSound(playerWins?'win':'loss');
     }else{
-      bar.textContent='Pat — Partie nulle (aucun coup légal)';
+      bar.textContent='Pat : Partie nulle (aucun coup légal)';
       bar.className='status-bar';gs.gameOver=true;
       if(!_endGameTriggered)triggerEndOfGame('draw');
     }

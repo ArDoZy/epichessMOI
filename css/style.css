@@ -1,5 +1,5 @@
 /* ================================================================
-   EPIC CHESS — STYLE PRINCIPAL
+   EPIC CHESS : STYLE PRINCIPAL
    ================================================================
    Structure de ce fichier (recherchez les tags [SECTION] pour naviguer) :
      [THEME]        variables CSS clair/sombre + reset
@@ -19,7 +19,7 @@
      [SEO]          bloc de contenu indexable sous la carte de connexion
    Si vous ne modifiez qu'une page, cherchez son tag pour cibler la zone
    à éditer sans tout relire. Les variables de thème (:root / body.light)
-   sont utilisées PARTOUT — ne pas les renommer sans grep global.
+   sont utilisées PARTOUT : ne pas les renommer sans grep global.
    ================================================================ */
 
 /* [THEME] ======================================================= */
@@ -32,7 +32,7 @@
    distinguent des catégories de jeu, pas l'ambiance générale. */
 :root{
   /* Palette éclaircie (v2) : le labo reste sombre et ambré, mais les fonds
-     n'écrasent plus le texte — luminosité et contraste relevés partout pour
+     n'écrasent plus le texte, luminosité et contraste relevés partout pour
      ne plus forcer les yeux en usage normal. */
   --bg:#1d1a10;--surface:#2a2417;--surface2:#342d1c;--border:#584d31;--border2:#7a6c44;
   --text:#ecdfbb;--muted:#a89f7c;--accent:#5c2f6b;--accent2:#8d4b96;--gold:#bd9548;--gold2:#e0bc63;
@@ -58,7 +58,7 @@ html,body{min-height:100%;color:var(--text);overflow-x:hidden;font-family:'Crims
 body{
   background-color:var(--bg);
   /* Lueur toxique en coin (fiole hors-champ) + voile de vignette + grain
-     parchemin, en plus du dégradé doré d'origine — ambiance labo abandonné. */
+     parchemin, en plus du dégradé doré d'origine, pour une ambiance labo abandonné. */
   background-image:var(--parchment-noise),radial-gradient(ellipse at 8% 108%,var(--potion-glow),transparent 45%),radial-gradient(ellipse at 50% -10%,rgba(168,130,58,.14),transparent 60%),radial-gradient(ellipse at 50% 110%,rgba(0,0,0,.24),transparent 55%);
   background-blend-mode:overlay,normal,normal,normal;
   background-attachment:fixed;
@@ -86,7 +86,7 @@ body{
 .btn:disabled{opacity:.35;cursor:not-allowed;transform:none!important;box-shadow:none!important}
 @keyframes nIn{from{transform:translate(-50%,-50px);opacity:0}to{transform:translateX(-50%);opacity:1}}
 
-/* --- FIOLE D'ALCHIMISTE — icône décorative dessinée en CSS pur (pas
+/* --- FIOLE D'ALCHIMISTE : icône décorative dessinée en CSS pur (pas
    d'émoji) : col + ballon avec un fond de liquide et un léger bouillonnement.
    Réutilisée pour les états vides et les emplacements de face du cube.
    Tailles via .vial-lg (grande, faces du cube) / défaut = petite. --- */
@@ -97,14 +97,14 @@ body{
 .vial-lg{width:64px;height:90px}
 .vial-lg::before{width:18px;height:30px;margin-left:-9px;border-width:4px}
 .vial-lg::after{width:58px;height:56px;margin-left:-29px;border-width:4px}
-/* Teinte différente par face du cube — chaque fiole de laboratoire a son propre mélange. */
+/* Teinte différente par face du cube : chaque fiole de laboratoire a son propre mélange. */
 .vial-missions::before,.vial-missions::after{border-color:var(--accent2)}
 .vial-missions::after{background:linear-gradient(180deg,transparent 0 45%,var(--accent2) 45%)}
 .vial-variantes::before,.vial-variantes::after{border-color:var(--danger)}
 .vial-variantes::after{background:linear-gradient(180deg,transparent 0 45%,var(--danger) 45%)}
 @keyframes vialBubble{0%{transform:translateY(0);opacity:.9}90%{opacity:.5}100%{transform:translateY(-30px);opacity:0}}
 
-/* --- BULLES AMBIANTES — quelques bulles de potion qui montent lentement en
+/* --- BULLES AMBIANTES : quelques bulles de potion qui montent lentement en
    arrière-plan, pour ne pas laisser les faces/pages peu remplies totalement
    figées. Une seule couche de particules réutilisable. --- */
 .ambient-bubbles{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:0}
@@ -205,7 +205,7 @@ body.has-acc .game-wrap{height:calc(100vh - 50px);margin-top:50px}
 .lvl-ok{font-size:9px;color:var(--success);font-family:'Cinzel',serif}
 .lvl-lock{font-size:9px;color:var(--danger);font-family:'Cinzel',serif}
 
-/* [CONFIRM MODAL] — remplace window.confirm() ================== */
+/* [CONFIRM MODAL] : remplace window.confirm() ================== */
 .confirm-modal{position:fixed;inset:0;background:rgba(0,0,0,.88);display:flex;align-items:center;justify-content:center;z-index:8500;visibility:hidden;opacity:0;transition:opacity .15s ease}
 .confirm-modal.show{visibility:visible;opacity:1}
 .confirm-box{background:var(--surface2);border:1px solid var(--border2);border-radius:16px;padding:26px 28px;max-width:380px;width:90%;position:relative;overflow:hidden;text-align:center}
@@ -219,7 +219,7 @@ body.has-acc .game-wrap{height:calc(100vh - 50px);margin-top:50px}
 .theme-btn{padding:7px 14px;border:1px solid var(--border2);border-radius:8px;background:var(--surface);color:var(--text);cursor:pointer;font-size:12px;font-family:'Cinzel',serif;transition:all .2s;display:flex;align-items:center;gap:6px}
 .theme-btn:hover{border-color:var(--gold);color:var(--gold)}
 /* Topbar (boutons + valeur) et "Votre armée" fusionnés en UN seul panneau
-   compact (.army-box) plutôt que deux blocs empilés — voir markup dans
+   compact (.army-box) plutôt que deux blocs empilés, voir markup dans
    index.html. .builder-panel-top est juste la rangée boutons/valeur à
    l'intérieur de ce panneau, sans fond ni bordure propres. */
 .builder-panel-top{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
@@ -297,7 +297,7 @@ body.has-acc .game-wrap{height:calc(100vh - 50px);margin-top:50px}
 .pc-val.Brute{background:var(--brute-bg);color:var(--brute);border-color:rgba(239,68,68,.3)}
 
 .pc-emoji{font-size:36px;margin-bottom:10px;display:block;line-height:1}
-/* .pc-class : utilisé par voie.js (jalons) et game-flow.js (déblocage) —
+/* .pc-class : utilisé par voie.js (jalons) et game-flow.js (déblocage),
    pas seulement par les cartes de pièces du builder (qui n'affichent plus
    ce badge, jugé redondant avec l'en-tête de section). */
 .pc-class{font-size:9px;text-transform:uppercase;font-family:'Cinzel',serif;letter-spacing:.8px;margin-bottom:10px;padding:3px 8px;border-radius:5px;display:inline-block;font-weight:700}
@@ -404,7 +404,7 @@ body.has-acc .game-wrap{height:calc(100vh - 50px);margin-top:50px}
 /* Réserve verticale pour : barre de statut + labels de colonnes + le
    padding de .game-main. Les identifiants/horloges des joueurs sont
    maintenant dans la sidebar de droite, pas au-dessus/en-dessous du
-   plateau — ils n'ont donc plus besoin d'espace ici. */
+   plateau, ils n'ont donc plus besoin d'espace ici. */
 .game-board-container{display:flex;flex-direction:column;align-items:center;width:100%;max-width:min(calc(100vh - 100px),calc(100vw - 500px),600px)}
 .game-player-bar{display:flex;flex-direction:column;gap:6px;width:100%;padding:10px;font-family:'Cinzel',serif;background:var(--bg);border:1px solid var(--border);border-radius:9px;margin-bottom:10px}
 .gpb-top{display:flex;align-items:center;gap:8px;min-width:0}
@@ -611,8 +611,8 @@ body.light .gc.l{background:#eddab0}body.light .gc.d{background:#8a5f38}
 .th-wins.champion{color:var(--gold)}
 .th-wins.normal{color:var(--muted)}
 /* Mêmes couleurs de cases et même ombre portée que le plateau de jeu : sur
-   les cases claires d'origine (#f0d9b5), les glyphes d'échecs blancs — qui
-   sont des contours vides — devenaient tout bonnement invisibles. */
+   les cases claires d'origine (#f0d9b5), les glyphes d'échecs blancs (qui
+   sont des contours vides) devenaient tout bonnement invisibles. */
 .ta-cell{display:flex;align-items:center;justify-content:center;font-size:18px;cursor:default;aspect-ratio:1;filter:drop-shadow(0 1px 1px rgba(0,0,0,.45))}
 .ta-cell.light{background:#c8a96a}
 .ta-cell.dark{background:#7a5330}
@@ -657,7 +657,7 @@ body.light .ta-cell.dark{background:#8a5f38}
 .login-card,.ai-lvl-box,.army-box,.army-intro-box,.voie-elo-banner,.tournoi-progress-wrap,.round-box{
   position:relative;
 }
-/* Médaillon décoratif — une « perle d'alchimiste » dessinée en CSS pur (pas
+/* Médaillon décoratif : une « perle d'alchimiste » dessinée en CSS pur (pas
    de glyphe/emoji) : un dégradé radial imitant une bille de verre/métal. */
 .login-card::after,.ai-lvl-box::after,.army-box::after,.army-intro-box::after,.voie-elo-banner::after,.tournoi-progress-wrap::after,.round-box::after{
   content:'';position:absolute;top:-1px;left:50%;transform:translate(-50%,-50%);
@@ -670,11 +670,11 @@ body.light .ta-cell.dark{background:#8a5f38}
 .status-bar.check{animation:checkShake .4s ease}
 @keyframes checkShake{0%,100%{transform:translateX(0)}20%{transform:translateX(-4px)}40%{transform:translateX(4px)}60%{transform:translateX(-3px)}80%{transform:translateX(3px)}}
 
-/* Cinématique — intro des armées : bannière qui se déroule */
+/* Cinématique, intro des armées : bannière qui se déroule */
 .army-intro-box{animation:bannerUnfurl .55s cubic-bezier(.22,.9,.34,1) both}
 @keyframes bannerUnfurl{from{transform:scaleY(.3) translateY(-30px);opacity:0}to{transform:scaleY(1) translateY(0);opacity:1}}
 
-/* Cinématique — résultat de partie : gloire ou cendres */
+/* Cinématique, résultat de partie : gloire ou cendres */
 .result-box{animation:resultRise .5s cubic-bezier(.22,.9,.34,1) both}
 @keyframes resultRise{from{transform:translateY(40px) scale(.92);opacity:0}to{transform:translateY(0) scale(1);opacity:1}}
 .result-box.win-result{position:relative}
@@ -688,7 +688,7 @@ body.light .ta-cell.dark{background:#8a5f38}
 @keyframes emberFall{0%{transform:translateY(-14px) scale(.4);opacity:0;filter:brightness(1.6)}60%{transform:translateY(3px) scale(1.05);opacity:1}100%{transform:translateY(0) scale(1);filter:brightness(1)}}
 .result-box>*{position:relative;z-index:1}
 
-/* Cinématique — page combat : titre pulsant façon flamme de torche */
+/* Cinématique, page combat : titre pulsant façon flamme de torche */
 .vs-div{filter:drop-shadow(0 0 10px rgba(122,31,43,.5))}
 
 /* [CUBE] ==========================================================
@@ -701,13 +701,13 @@ body.light .ta-cell.dark{background:#8a5f38}
   perspective:2400px;perspective-origin:50% 50%}
 body.cube-active #cube-stage{display:block}
 /* Sous un overlay (page secondaire active), le cube est masqué ENTIÈREMENT
-   (pas juste son chrome) — sinon la face de repos (JOUER) apparaît en
+   (pas juste son chrome), sinon la face de repos (JOUER) apparaît en
    transparence pendant le fondu d'entrée de la page (.32s) qui se joue
    par-dessus, le temps d'un flash. */
 body.nav-overlay #cube-stage{display:none}
 
 /* Durée de rotation fluide, pensée pour pouvoir enchaîner deux rotations
-   sans temps mort — voir js/cube-nav.js (ROTATE_MS) qui pilote la même
+   sans temps mort, voir js/cube-nav.js (ROTATE_MS) qui pilote la même
    durée en JS, et queuedKind pour l'enchaînement instantané. */
 #cube{position:absolute;inset:0;transform-style:preserve-3d;will-change:transform;
   transition:transform .28s cubic-bezier(.22,.61,.36,1);
@@ -738,7 +738,7 @@ body.nav-overlay #cube-stage{display:none}
    visibilité est gérée par la rotation du cube, plus par .page/.active). */
 .cube-embedded{display:block;min-height:100%}
 
-/* --- Face JOUER (menu principal) — premium, minimaliste. Dégradé propre à
+/* --- Face JOUER (menu principal) : premium, minimaliste. Dégradé propre à
    chaque thème (pas de var() ici : le rendu voulu diffère trop entre les
    deux pour un simple changement de teinte). --- */
 .cube-face[data-face="jouer"]{background:

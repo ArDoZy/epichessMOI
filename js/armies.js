@@ -1,5 +1,5 @@
 // ================================================================
-// ARMIES.JS — Pages "Mes armées" / "Armées IA" + générateur d'armée IA
+// ARMIES.JS : Pages "Mes armées" / "Armées IA" + générateur d'armée IA
 // ================================================================
 // Contient : le rendu des listes d'armées sauvegardées (#page-armies et
 // #page-ai-armies), les actions modifier/supprimer, le mode SÉLECTION
@@ -31,7 +31,7 @@ const loadArmyForEdit=ad=>{
 };
 
 // ----------------------------------------------------------------
-// NOM DE L'ARMÉE — bouton "Nommer l'armée" (ou nom + petit stylo une fois
+// NOM DE L'ARMÉE : bouton "Nommer l'armée" (ou nom + petit stylo une fois
 // nommée) affiché au-dessus de la carte, à la place des dates.
 // ----------------------------------------------------------------
 // Icône stylo en SVG (et non en glyphe unicode/emoji) pour un rendu net et
@@ -173,7 +173,7 @@ function generateAIArmy(){
   const monarques=PIECES.filter(p=>p.class==='Monarque'&&unlocked.has(p.id));
   const generaux=PIECES.filter(p=>p.class==='Général'&&unlocked.has(p.id));
   // L'IA peut utiliser TOUTES les Primordiaux (exception spéciale), + les autres pièces débloquées
-  // Règle : une pièce avec qty>=2 crée une paire — l'IA ne peut avoir qu'UNE paire de Primordiale max
+  // Règle : une pièce avec qty>=2 crée une paire, l'IA ne peut avoir qu'UNE paire de Primordiale max
   // et jamais plusieurs paires de la même pièce (ie. une seule pièce qty>=2 au total parmi les extras)
   const primordiaux=PIECES.filter(p=>p.class==='Primordiale');
   const othersUnlocked=PIECES.filter(p=>p.class!=='Monarque'&&p.class!=='Général'&&p.class!=='Primordiale'&&unlocked.has(p.id));
@@ -199,7 +199,7 @@ function generateAIArmy(){
       if(p.class==='Primordiale')primCount++;
     }
     if(chosen.length===3){
-      // Colonnes gauches canoniques {0,1,2} — buildGameBoard miroite en 7-col,
+      // Colonnes gauches canoniques {0,1,2} : buildGameBoard miroite en 7-col,
       // donc placement symétrique sans collision. Ordre aléatoire entre les 3.
       const cols=[0,1,2].sort(()=>Math.random()-0.5);const placements={};
       chosen.forEach((p,i)=>{placements[p.id]=cols[i];});
