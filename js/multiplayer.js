@@ -1,20 +1,35 @@
 // ================================================================
-// MULTIPLAYER.JS : Prototype minimal de synchronisation temps réel
-// via Supabase Realtime (broadcast + presence), sans base de données.
+// MULTIPLAYER.JS : Parties en ligne joueur contre joueur via
+// Supabase Realtime (broadcast + presence), sans base de données.
 // ================================================================
-// Étape 1 du plan multijoueur : valider que deux navigateurs peuvent
-// se connecter à un même "salon" (room code) et synchroniser leurs
-// coups en direct. Pas de matchmaking, pas de persistance, pas de
-// revalidation anti-triche : tout ça viendra aux étapes suivantes.
+// PARCOURS UTILISATEUR :
+//   Menu → choisir son armée → page Combat → "⚔ Affronter un joueur"
+//   → Créer une partie (donne un code à transmettre) ou Rejoindre
+//   avec le code d'un ami → la partie démarre des deux côtés.
 //
-// AVANT DE TESTER : remplissez SUPABASE_URL et SUPABASE_ANON_KEY
-// ci-dessous avec les valeurs de votre projet (Settings > API sur
-// supabase.com). Ces clés publiques ("anon") sont faites pour être
-// exposées côté client.
+// L'hôte joue les Blancs, l'invité les Noirs. Chaque camp joue avec
+// l'armée qu'il a composée : les deux armées sont échangées au moment
+// de la connexion.
+//
+// AVANT DE POUVOIR JOUER EN LIGNE : renseignez SUPABASE_URL ci-dessous
+// (Settings > API de votre projet supabase.com > "Project URL"). Ce n'est
+// PAS l'adresse de ce site, mais celle du projet Supabase, de la forme
+// https://abcdefghijk.supabase.co
+//
+// La clé publishable est publique par conception : elle est faite pour
+// vivre dans le code d'un site web. La clé "secret", elle, ne doit JAMAIS
+// apparaître ici : elle contourne toutes les règles de sécurité.
+//
+// Dépendances : SDK supabase-js (chargé via CDN dans index.html),
+// rules-engine.js (executeGameMove, GS), game-flow.js (startGame,
+// _playerColor), main.js (currentArmyData, aiArmyData, showNotif).
+// Utilisé par : combat-intro.js (bouton #cb-play-online).
 // ================================================================
 
-const SUPABASE_URL='https://VOTRE-PROJET.supabase.co';
-const SUPABASE_ANON_KEY='VOTRE_CLE_ANON_PUBLIQUE';
+// Project URL du projet Supabase, sans chemin : le SDK ajoute lui-même
+// /rest/v1 ou /realtime/v1 selon ce qu'il appelle.
+const SUPABASE_URL='https://qwtlmaacjfxlbvrvooim.supabase.co';
+const SUPABASE_PUBLISHABLE_KEY='sb_publishable_8PgQoH4YhF6oitNVRh3JBQ_T9fcNwwQ';
 
 const MP={
   client:null,
@@ -26,147 +41,224 @@ const MP={
   oppArmy:null,
   roomCode:null,
   started:false,
+  joinTimeoutId:null,
 };
 
-function mpLog(msg){
+// Vrai seulement si l'URL et la clé ont été renseignées : permet d'afficher
+// un message clair plutôt qu'un échec réseau obscur.
+function mpIsConfigured(){
+  return !SUPABASE_URL.includes('VOTRE-PROJET')&&!SUPABASE_PUBLISHABLE_KEY.includes('VOTRE_CLE');
+}
+
+function mpStatus(msg,kind){
   const el=document.getElementById('mp-status');
-  if(el)el.textContent=msg;
-  console.log('[MP]',msg);
+  if(!el)return;
+  el.textContent=msg;
+  el.className='mp-status'+(kind?' mp-'+kind:'');
+}
+
+function mpGenCode(){
+  // Alphabet sans caractères ambigus (0/O, 1/I) : le code se dicte à l'oral.
+  const chars='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let out='';
+  for(let i=0;i<4;i++)out+=chars[Math.floor(Math.random()*chars.length)];
+  return out;
 }
 
 function mpInitClient(){
   if(MP.client)return MP.client;
   if(typeof supabase==='undefined'){
-    mpLog('Erreur : le SDK Supabase n\'est pas chargé (vérifiez le <script> dans index.html).');
+    mpStatus('Le SDK Supabase n\'a pas pu être chargé (connexion internet ?).','err');
     return null;
   }
-  MP.client=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+  MP.client=supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
   return MP.client;
 }
 
 // ----------------------------------------------------------------
-// CONNEXION AU SALON : host = Blancs, invité = Noirs (choix simple
-// et déterministe pour ce prototype).
+// CONNEXION AU SALON
 // ----------------------------------------------------------------
+// L'hôte crée le salon et joue les Blancs, l'invité rejoint et joue
+// les Noirs : répartition déterministe, aucune négociation nécessaire.
 function mpConnect(code,asHost){
-  if(!currentArmyData){mpLog('Choisissez d\'abord votre armée avant de rejoindre un salon.');return;}
   const client=mpInitClient();if(!client)return;
-  MP.roomCode=code;MP.isHost=asHost;MP.myColor=asHost?'w':'b';MP.myArmy=currentArmyData;MP.started=false;
+
+  MP.roomCode=code;MP.isHost=asHost;MP.myColor=asHost?'w':'b';
+  MP.myArmy=currentArmyData;MP.oppArmy=null;MP.started=false;
 
   MP.channel=client.channel('epichess-room-'+code,{config:{presence:{key:MP.myId}}});
 
+  // Réception de l'armée adverse. On répond avec la nôtre pour couvrir le
+  // cas où notre premier envoi est parti avant que l'autre camp n'écoute.
   MP.channel.on('broadcast',{event:'army'},({payload})=>{
-    if(payload.senderId===MP.myId)return;
+    if(payload.senderId===MP.myId||MP.started)return;
     MP.oppArmy=payload.army;
-    mpLog('Armée adverse reçue, préparation de la partie...');
+    mpSendArmy();
     mpTryStart();
   });
 
   MP.channel.on('broadcast',{event:'move'},({payload})=>{
     if(payload.senderId===MP.myId)return;
-    mpApplyRemoteMove(payload.from,payload.to);
+    mpApplyRemoteMove(payload.from,payload.to,payload.promo);
   });
 
+  MP.channel.on('broadcast',{event:'resign'},({payload})=>{
+    if(payload.senderId===MP.myId||!GS||!GS.multiplayer||GS.gameOver)return;
+    showNotif('Votre adversaire a abandonné : vous gagnez !','ok');
+    GS.gameOver=true;stopClockTick(GS);
+    if(!_endGameTriggered)triggerEndOfGame('win');
+  });
+
+  // Dès qu'un second joueur est présent dans le salon, on s'échange les armées.
   MP.channel.on('presence',{event:'sync'},()=>{
-    const state=MP.channel.presenceState();
-    const count=Object.keys(state).length;
+    if(MP.started)return;
+    const count=Object.keys(MP.channel.presenceState()).length;
     if(count>=2){
-      mpLog('Adversaire connecté, échange des armées...');
-      MP.channel.send({type:'broadcast',event:'army',payload:{senderId:MP.myId,army:MP.myArmy}});
+      if(MP.joinTimeoutId){clearTimeout(MP.joinTimeoutId);MP.joinTimeoutId=null;}
+      mpStatus('Adversaire trouvé, préparation de la partie','wait');
+      mpSendArmy();
     }
   });
 
   MP.channel.subscribe(async(status)=>{
     if(status==='SUBSCRIBED'){
-      mpLog(asHost?'Salon créé, en attente d\'un adversaire...':'Connexion au salon...');
       await MP.channel.track({joinedAt:Date.now()});
+      if(asHost)mpStatus('En attente de votre adversaire','wait');
+      else{
+        mpStatus('Connexion au salon','wait');
+        // Si personne n'est là après quelques secondes, le code est
+        // probablement faux ou la partie n'a pas encore été créée.
+        MP.joinTimeoutId=setTimeout(()=>{
+          if(!MP.started)mpStatus('Aucune partie trouvée avec ce code. Vérifiez-le, ou demandez à votre ami de créer la partie.','err');
+        },8000);
+      }
+    }else if(status==='CHANNEL_ERROR'||status==='TIMED_OUT'){
+      mpStatus('Connexion impossible. Vérifiez vos clés Supabase et votre réseau.','err');
     }
   });
 }
 
+function mpSendArmy(){
+  if(!MP.channel)return;
+  MP.channel.send({type:'broadcast',event:'army',payload:{senderId:MP.myId,army:MP.myArmy}});
+}
+
 function mpTryStart(){
-  if(MP.started)return;
-  if(!MP.oppArmy)return;
+  if(MP.started||!MP.oppArmy)return;
   MP.started=true;
+  if(MP.joinTimeoutId){clearTimeout(MP.joinTimeoutId);MP.joinTimeoutId=null;}
   currentArmyData=MP.myArmy;
-  aiArmyData=MP.oppArmy;
+  aiArmyData=MP.oppArmy;      // "aiArmyData" = armée du camp adverse
   _playerColor=MP.myColor;
-  startGame(true,true);
   mpCloseModal();
+  startGame(true,true);
 }
 
 // ----------------------------------------------------------------
-// APPLICATION D'UN COUP REÇU : rejoue le même coup côté distant sur
-// notre propre plateau. On suppose les deux plateaux synchronisés
-// (aucune revalidation stricte à ce stade du prototype).
+// SYNCHRONISATION DES COUPS
 // ----------------------------------------------------------------
+// Les coups reçus sont rejoués via executeGameMove : les deux clients
+// exécutent donc exactement la même logique de règles sur le même
+// plateau initial, et restent alignés.
 let _mpApplyingRemote=false;
-function mpApplyRemoteMove(from,to){
+function mpApplyRemoteMove(from,to,promo){
   if(!GS||!GS.multiplayer)return;
   _mpApplyingRemote=true;
+  // Transmet le choix de promotion à executeGameMove, qui l'appliquera au
+  // lieu d'ouvrir la modal de choix ou de laisser l'IA décider.
+  GS._forcedPromo=promo||null;
   GS.lastMove={from,to,capture:!!GS.board[to.r][to.c]};
   executeGameMove(from,to,GS);
+  GS._forcedPromo=null;
   _mpApplyingRemote=false;
 }
 
-// ----------------------------------------------------------------
-// ENVOI D'UN COUP : on intercepte executeGameMove (défini dans
-// rules-engine.js). Seuls les coups joués localement (pas ceux qu'on
-// vient d'appliquer depuis le réseau) sont rediffusés.
-// ----------------------------------------------------------------
+function mpSendMove(from,to,promo){
+  if(!MP.channel)return;
+  MP.channel.send({type:'broadcast',event:'move',payload:{senderId:MP.myId,from,to,promo:promo||null}});
+}
+
+// executeGameMove est le point de passage unique de tout coup joué :
+// on l'enveloppe pour rediffuser nos propres coups au camp adverse.
 const _executeGameMoveOriginal=executeGameMove;
 executeGameMove=function(from,to,gs){
   const shouldBroadcast=gs&&gs.multiplayer&&!_mpApplyingRemote;
   _executeGameMoveOriginal(from,to,gs);
-  if(shouldBroadcast&&MP.channel){
-    MP.channel.send({type:'broadcast',event:'move',payload:{senderId:MP.myId,from,to}});
-  }
+  // Une promotion laisse le coup en suspens tant que la pièce n'est pas
+  // choisie : c'est showPromoModal() qui appellera mpSendMove() ensuite.
+  if(shouldBroadcast&&!gs.pendingPromo)mpSendMove(from,to,null);
 };
 
+// Prévient l'adversaire quand on quitte la partie (bouton Abandonner).
+function mpNotifyResign(){
+  if(!MP.channel||!GS||!GS.multiplayer)return;
+  MP.channel.send({type:'broadcast',event:'resign',payload:{senderId:MP.myId}});
+}
+
+function mpLeave(){
+  if(MP.joinTimeoutId){clearTimeout(MP.joinTimeoutId);MP.joinTimeoutId=null;}
+  if(MP.channel){MP.channel.unsubscribe();MP.channel=null;}
+  MP.started=false;MP.oppArmy=null;MP.roomCode=null;
+}
+
 // ----------------------------------------------------------------
-// UI MINIMALE : bouton flottant + petite modale (créés dynamiquement
-// pour ne pas toucher au HTML existant à ce stade du prototype).
+// MODAL : écran de choix → écran hôte (code) ou écran invité (saisie)
 // ----------------------------------------------------------------
+function mpShowScreen(name){
+  ['choice','host','join'].forEach(s=>{
+    const el=document.getElementById('mp-screen-'+s);
+    if(el)el.style.display=(s===name)?'':'none';
+  });
+}
+
 function mpCloseModal(){
-  document.getElementById('mp-modal')?.remove();
+  document.getElementById('mp-modal')?.classList.remove('show');
 }
 
 function mpOpenModal(){
-  mpCloseModal();
-  const modal=document.createElement('div');
-  modal.id='mp-modal';
-  modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:center;justify-content:center;';
-  modal.innerHTML=`
-    <div style="background:#1a1a1a;color:#eee;padding:24px;border-radius:12px;width:280px;font-family:sans-serif;">
-      <h3 style="margin:0 0 12px;">Multijoueur (prototype)</h3>
-      <p style="font-size:12px;opacity:.7;margin:0 0 12px;">Choisissez d'abord votre armée, puis créez ou rejoignez un salon avec le même code sur les deux navigateurs.</p>
-      <input id="mp-room-input" placeholder="Code du salon" style="width:100%;padding:8px;margin-bottom:10px;box-sizing:border-box;">
-      <div style="display:flex;gap:8px;">
-        <button id="mp-create-btn" style="flex:1;padding:8px;">Créer</button>
-        <button id="mp-join-btn" style="flex:1;padding:8px;">Rejoindre</button>
-      </div>
-      <p id="mp-status" style="font-size:12px;margin-top:10px;min-height:16px;"></p>
-      <button id="mp-close-btn" style="margin-top:6px;width:100%;padding:6px;">Fermer</button>
-    </div>`;
-  document.body.appendChild(modal);
-  document.getElementById('mp-create-btn').addEventListener('click',()=>{
-    const code=document.getElementById('mp-room-input').value.trim();
-    if(!code){mpLog('Entrez un code de salon.');return;}
-    mpConnect(code,true);
-  });
-  document.getElementById('mp-join-btn').addEventListener('click',()=>{
-    const code=document.getElementById('mp-room-input').value.trim();
-    if(!code){mpLog('Entrez un code de salon.');return;}
-    mpConnect(code,false);
-  });
-  document.getElementById('mp-close-btn').addEventListener('click',mpCloseModal);
+  if(!currentArmyData){showNotif('Choisissez d\'abord votre armée.','err');return;}
+  mpLeave();
+  mpShowScreen('choice');
+  mpStatus('');
+  if(!mpIsConfigured())mpStatus('Multijoueur pas encore configuré : renseignez l\'URL de votre projet Supabase (Settings > API > Project URL) dans js/multiplayer.js.','err');
+  document.getElementById('mp-modal').classList.add('show');
 }
 
-function mpInjectFloatingButton(){
-  const btn=document.createElement('button');
-  btn.textContent='🌐 Multijoueur (bêta)';
-  btn.style.cssText='position:fixed;bottom:16px;right:16px;z-index:9998;padding:10px 14px;border-radius:8px;background:#2a5;color:#fff;border:none;cursor:pointer;';
-  btn.addEventListener('click',mpOpenModal);
-  document.body.appendChild(btn);
-}
-document.addEventListener('DOMContentLoaded',mpInjectFloatingButton);
+document.getElementById('cb-play-online')?.addEventListener('click',mpOpenModal);
+
+document.getElementById('mp-create-btn')?.addEventListener('click',()=>{
+  if(!mpIsConfigured())return;
+  const code=mpGenCode();
+  document.getElementById('mp-code-value').textContent=code;
+  mpShowScreen('host');
+  mpConnect(code,true);
+});
+
+document.getElementById('mp-join-screen-btn')?.addEventListener('click',()=>{
+  if(!mpIsConfigured())return;
+  mpShowScreen('join');
+  mpStatus('');
+  document.getElementById('mp-code-input').focus();
+});
+
+document.getElementById('mp-join-confirm')?.addEventListener('click',()=>{
+  const code=document.getElementById('mp-code-input').value.trim().toUpperCase();
+  if(code.length<4){mpStatus('Entrez le code à 4 caractères reçu de votre ami.','err');return;}
+  mpConnect(code,false);
+});
+
+document.getElementById('mp-code-input')?.addEventListener('keydown',e=>{
+  if(e.key==='Enter')document.getElementById('mp-join-confirm').click();
+});
+
+document.getElementById('mp-copy-btn')?.addEventListener('click',()=>{
+  const code=document.getElementById('mp-code-value').textContent;
+  navigator.clipboard?.writeText(code)
+    .then(()=>showNotif('Code copié : '+code,'ok'))
+    .catch(()=>showNotif('Copie impossible, notez le code : '+code,'err'));
+});
+
+document.getElementById('mp-cancel')?.addEventListener('click',()=>{
+  mpLeave();
+  mpCloseModal();
+});

@@ -287,6 +287,35 @@
   </div>
 </div>
 
+<!-- MODAL MULTIJOUEUR : create/join d'une partie en ligne -->
+<div class="ai-lvl-modal" id="mp-modal">
+  <div class="ai-lvl-box" style="max-width:420px;text-align:center">
+    <div style="font-family:'Cinzel',serif;font-size:18px;font-weight:900;margin-bottom:6px">Affronter un joueur</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:16px;font-style:italic">Votre armée est prête. Invitez un ami, ou rejoignez sa partie.</div>
+
+    <div id="mp-screen-choice">
+      <button class="btn btn-primary" id="mp-create-btn" style="width:100%;margin-bottom:10px;padding:12px">Créer une partie</button>
+      <button class="btn btn-ghost" id="mp-join-screen-btn" style="width:100%;padding:12px">Rejoindre avec un code</button>
+    </div>
+
+    <div id="mp-screen-host" style="display:none">
+      <div style="font-size:11px;color:var(--muted);font-family:'Cinzel',serif;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Code de la partie</div>
+      <div class="mp-code" id="mp-code-value">----</div>
+      <button class="btn btn-ghost" id="mp-copy-btn" style="margin-bottom:12px">Copier le code</button>
+      <div style="font-size:12px;color:var(--muted);line-height:1.5">Transmettez ce code à votre adversaire.<br>La partie démarrera automatiquement.</div>
+    </div>
+
+    <div id="mp-screen-join" style="display:none">
+      <div style="font-size:11px;color:var(--muted);font-family:'Cinzel',serif;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Code reçu</div>
+      <input id="mp-code-input" maxlength="6" placeholder="CODE" class="mp-code-input">
+      <button class="btn btn-primary" id="mp-join-confirm" style="width:100%;padding:12px">Rejoindre la partie</button>
+    </div>
+
+    <div class="mp-status" id="mp-status"></div>
+    <button class="btn btn-ghost" id="mp-cancel" style="margin-top:14px">Annuler</button>
+  </div>
+</div>
+
 <!-- CONFIRM MODAL : remplace window.confirm() par une boîte de dialogue
      intégrée au thème (voir showConfirmModal() dans main.js). -->
 <div class="confirm-modal" id="confirm-modal">
@@ -534,6 +563,7 @@
       <button class="btn btn-ghost" id="cb-back">← Quitter</button>
       <button class="btn btn-ghost" id="cb-choose-ai">Choisir l'armée de l'Instructeur</button>
       <button class="btn btn-ghost" id="cb-mirror-ai" style="border-color:var(--primordiale);color:var(--primordiale)">Armée miroir</button>
+      <button class="btn btn-ghost" id="cb-play-online" style="border-color:var(--gold);color:var(--gold)">⚔ Affronter un joueur</button>
       <button class="btn btn-primary" id="cb-play" style="font-size:15px;padding:12px 28px">Choisir l'instructeur →</button>
     </div>
   </div>
@@ -667,7 +697,7 @@
 <script src="js/voie.js"></script>
 <script src="js/tournoi.js"></script>
 <script src="js/settings-admin.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/multiplayer.js"></script>
 <script>
 // ================================================================

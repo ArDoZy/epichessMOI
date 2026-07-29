@@ -885,3 +885,13 @@ body.cube-active .admin-badge{bottom:90px}
 .lore-faq p{padding:0 0 12px 14px;font-size:13.5px}
 
 @media(prefers-reduced-motion:reduce){.lore-faq summary::before{transition:none}}
+
+/* [MULTIJOUEUR] : modal de création/rejointe de partie en ligne ==== */
+.mp-code{font-family:'Cinzel',serif;font-size:38px;font-weight:900;letter-spacing:8px;color:var(--gold);background:var(--bg);border:2px solid var(--border2);border-radius:12px;padding:14px 10px;margin-bottom:12px;user-select:all}
+.mp-code-input{width:100%;box-sizing:border-box;font-family:'Cinzel',serif;font-size:26px;font-weight:900;letter-spacing:6px;text-align:center;text-transform:uppercase;color:var(--gold);background:var(--bg);border:2px solid var(--border2);border-radius:12px;padding:12px 10px;margin-bottom:12px;outline:none}
+.mp-code-input:focus{border-color:var(--gold)}
+.mp-status{font-size:12px;color:var(--muted);min-height:18px;margin-top:12px;line-height:1.5}
+.mp-status.mp-err{color:var(--danger)}
+.mp-status.mp-ok{color:var(--success)}
+.mp-status.mp-wait::after{content:'';display:inline-block;width:10px;text-align:left;animation:mpDots 1.2s steps(4,end) infinite}
+@keyframes mpDots{0%{content:''}25%{content:'.'}50%{content:'..'}75%{content:'...'}}
