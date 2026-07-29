@@ -294,8 +294,17 @@
     <div style="font-size:12px;color:var(--muted);margin-bottom:16px;font-style:italic">Votre armée est prête. Invitez un ami, ou rejoignez sa partie.</div>
 
     <div id="mp-screen-choice">
-      <button class="btn btn-primary" id="mp-create-btn" style="width:100%;margin-bottom:10px;padding:12px">Créer une partie</button>
+      <button class="btn btn-primary" id="mp-quick-btn" style="width:100%;margin-bottom:6px;padding:12px">Partie rapide</button>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:14px">Appariement automatique avec un joueur en attente.</div>
+      <button class="btn btn-ghost" id="mp-create-btn" style="width:100%;margin-bottom:6px;padding:12px">Créer une partie privée</button>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:14px">Pour jouer avec un ami, via un code à lui transmettre.</div>
       <button class="btn btn-ghost" id="mp-join-screen-btn" style="width:100%;padding:12px">Rejoindre avec un code</button>
+    </div>
+
+    <div id="mp-screen-quick" style="display:none">
+      <div style="font-family:'Cinzel',serif;font-size:15px;margin-bottom:10px">Recherche d'un adversaire</div>
+      <div style="font-size:34px;letter-spacing:6px;color:var(--gold);margin-bottom:10px">⚔</div>
+      <div style="font-size:12px;color:var(--muted);line-height:1.5">Vous serez appairé dès qu'un autre joueur lancera une partie rapide.</div>
     </div>
 
     <div id="mp-screen-host" style="display:none">

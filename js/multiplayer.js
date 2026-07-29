@@ -42,6 +42,8 @@ const MP={
   roomCode:null,
   started:false,
   joinTimeoutId:null,
+  lobby:null,        // salon d'attente du matchmaking (null hors recherche)
+  matched:false,     // paire déjà formée : ignore les sync de presence suivants
 };
 
 // Vrai seulement si l'URL et la clé ont été renseignées : permet d'afficher
@@ -276,14 +278,69 @@ function mpNotifyResign(){
 function mpLeave(){
   if(MP.joinTimeoutId){clearTimeout(MP.joinTimeoutId);MP.joinTimeoutId=null;}
   if(MP.channel){MP.channel.unsubscribe();MP.channel=null;}
-  MP.started=false;MP.oppArmy=null;MP.roomCode=null;
+  mpLeaveLobby();
+  MP.started=false;MP.matched=false;MP.oppArmy=null;MP.roomCode=null;
+}
+
+// ----------------------------------------------------------------
+// MATCHMAKING AUTOMATIQUE
+// ----------------------------------------------------------------
+// Aucune table n'est nécessaire : les joueurs en attente se déclarent par
+// "presence" dans un salon d'attente unique. Les deux plus anciens
+// s'apparient, le premier arrivé devenant l'hôte (Blancs). Les deux clients
+// trient la même liste selon les mêmes critères, ils aboutissent donc à la
+// même décision sans avoir à négocier.
+const MP_LOBBY='epichess-lobby-v1';
+
+function mpLeaveLobby(){
+  if(MP.lobby){MP.lobby.unsubscribe();MP.lobby=null;}
+}
+
+function mpQuickPlay(){
+  const client=mpInitClient();if(!client)return;
+  mpLeaveLobby();
+  MP.myArmy=currentArmyData;MP.matched=false;MP.started=false;
+  const joinedAt=Date.now();
+  MP.lobby=client.channel(MP_LOBBY,{config:{presence:{key:MP.myId}}});
+
+  MP.lobby.on('presence',{event:'sync'},()=>{
+    if(MP.matched||MP.started||!MP.lobby)return;
+    const state=MP.lobby.presenceState();
+    const waiting=Object.keys(state).map(k=>{
+      const meta=(state[k]&&state[k][0])||{};
+      return{id:k,joinedAt:meta.joinedAt||0};
+    }).sort((a,b)=>(a.joinedAt-b.joinedAt)||a.id.localeCompare(b.id));
+
+    if(waiting.length<2){mpStatus('Recherche d\'un adversaire','wait');return;}
+    // Seuls les deux plus anciens s'apparient ; les suivants patientent
+    // jusqu'à ce que cette paire quitte le salon d'attente.
+    const idx=waiting.findIndex(w=>w.id===MP.myId);
+    if(idx<0||idx>1)return;
+
+    MP.matched=true;
+    const host=waiting[0];
+    mpStatus('Adversaire trouvé, préparation de la partie','wait');
+    mpLeaveLobby();
+    // Le nom du salon dérive de l'id de l'hôte : les deux camps le calculent
+    // à l'identique.
+    mpConnect('q-'+host.id.slice(0,12),MP.myId===host.id);
+  });
+
+  MP.lobby.subscribe(async status=>{
+    if(status==='SUBSCRIBED'){
+      await MP.lobby.track({joinedAt});
+      mpStatus('Recherche d\'un adversaire','wait');
+    }else if(status==='CHANNEL_ERROR'||status==='TIMED_OUT'){
+      mpStatus('Connexion impossible. Vérifiez votre réseau.','err');
+    }
+  });
 }
 
 // ----------------------------------------------------------------
 // MODAL : écran de choix → écran hôte (code) ou écran invité (saisie)
 // ----------------------------------------------------------------
 function mpShowScreen(name){
-  ['choice','host','join'].forEach(s=>{
+  ['choice','quick','host','join'].forEach(s=>{
     const el=document.getElementById('mp-screen-'+s);
     if(el)el.style.display=(s===name)?'':'none';
   });
@@ -303,6 +360,12 @@ function mpOpenModal(){
 }
 
 document.getElementById('cb-play-online')?.addEventListener('click',mpOpenModal);
+
+document.getElementById('mp-quick-btn')?.addEventListener('click',()=>{
+  if(!mpIsConfigured())return;
+  mpShowScreen('quick');
+  mpQuickPlay();
+});
 
 document.getElementById('mp-create-btn')?.addEventListener('click',()=>{
   if(!mpIsConfigured())return;
