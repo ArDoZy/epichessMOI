@@ -338,10 +338,11 @@ function updateStatus(gs){
   const hasLegal=hasLegalMovesForColor(t,gs.board,gs);
   const playerCol=gs.playerColor||'w';
   const aiCol=gs.aiColor||'b';
+  const oppLabel=gs.multiplayer?'Votre adversaire':'L\'IA';
   if(!hasLegal){
     if(check){
       const playerWins=opp(t)===playerCol;
-      bar.textContent='Échec et mat ! '+(playerWins?'Vous gagnez !':'L\'IA gagne !');
+      bar.textContent='Échec et mat ! '+(playerWins?'Vous gagnez !':oppLabel+' gagne !');
       bar.className='status-bar mate';gs.gameOver=true;
       if(!_endGameTriggered)triggerEndOfGame(playerWins?'win':'loss');
       playSound(playerWins?'win':'loss');
@@ -352,9 +353,11 @@ function updateStatus(gs){
     }
     return;
   }
-  if(check){bar.textContent='Échec ! Tour : '+(t===playerCol?'Vous':'IA');bar.className='status-bar check';playSound('check');}
+  if(check){bar.textContent='Échec ! Tour : '+(t===playerCol?'Vous':(gs.multiplayer?'Adversaire':'IA'));bar.className='status-bar check';playSound('check');}
   else{
-    if(t===aiCol){
+    if(t===aiCol&&gs.multiplayer){
+      bar.textContent='Au tour de votre adversaire…';
+    }else if(t===aiCol){
       const inst=AI_INSTRUCTORS[selectedAILevel];
       const timeStr=inst.timeMs===0?'':inst.timeMs<1000?' ('+inst.timeMs+'ms)':' (~'+Math.round(inst.timeMs/1000)+'s)';
       bar.textContent=inst.name+' réfléchit…'+timeStr;

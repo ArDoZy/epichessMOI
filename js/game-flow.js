@@ -72,6 +72,14 @@ function updateGamePlayerBars(){
   const aav=document.getElementById('ai-player-avatar');
   const aan=document.getElementById('ai-player-name');
   const aae=document.getElementById('ai-player-elo');
+  // En ligne, le camp adverse est un vrai joueur : on n'affiche ni nom
+  // d'instructeur ni ELO estimé d'IA.
+  if(GS&&GS.multiplayer){
+    if(aav)aav.textContent='A';
+    if(aan)aan.textContent='Adversaire';
+    if(aae)aae.textContent='En ligne';
+    return;
+  }
   // Avatar IA : initiale de son rang (ex. "Instructeur Poussière" → "P"),
   // même logique que l'avatar humain (initiale du pseudo).
   if(aav)aav.textContent=inst.name.trim().split(' ').pop().charAt(0).toUpperCase();
@@ -233,7 +241,10 @@ function triggerEndOfGame(result){
 // (mat/pat/nulle) doit permettre à triggerEndOfGame() de s'exécuter à
 // nouveau si la partie reprend et se termine une seconde fois.
 document.getElementById('game-undo').addEventListener('click',()=>{
-  if(!GS||GS.history.length<1)return;GS.historyView=null;
+  if(!GS||GS.history.length<1)return;
+  // En ligne, annuler unilatéralement désynchroniserait les deux plateaux.
+  if(GS.multiplayer){showNotif('Impossible d\'annuler un coup en partie en ligne.','err');return;}
+  GS.historyView=null;
   const plies=Math.min(2,GS.history.length);
   for(let i=0;i<plies;i++){
     if(!GS.history.length)break;
@@ -259,6 +270,11 @@ document.getElementById('game-undo').addEventListener('click',()=>{
 // qu'un round de tournoi
 // ----------------------------------------------------------------
 document.getElementById('game-quit').addEventListener('click',()=>{
+  // En ligne : prévenir l'adversaire de l'abandon avant de fermer le salon.
+  if(GS&&GS.multiplayer){
+    if(!GS.gameOver&&typeof mpNotifyResign==='function')mpNotifyResign();
+    if(typeof mpLeave==='function')mpLeave();
+  }
   if(GS&&GS.gameOver){
     stopClockTick(GS);
     if(_aiWorker&&_aiWorkerBusy){_aiWorker.terminate();_aiWorker=null;_aiWorkerBusy=false;}
