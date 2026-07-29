@@ -92,7 +92,7 @@ function mpConnect(code,asHost){
 
   MP.channel.on('broadcast',{event:'move'},({payload})=>{
     if(payload.senderId===MP.myId)return;
-    mpApplyRemoteMove(payload.from,payload.to);
+    mpApplyRemoteMove(payload.from,payload.to,payload.promo);
   });
 
   MP.channel.on('broadcast',{event:'resign'},({payload})=>{
@@ -154,12 +154,21 @@ function mpTryStart(){
 // exécutent donc exactement la même logique de règles sur le même
 // plateau initial, et restent alignés.
 let _mpApplyingRemote=false;
-function mpApplyRemoteMove(from,to){
+function mpApplyRemoteMove(from,to,promo){
   if(!GS||!GS.multiplayer)return;
   _mpApplyingRemote=true;
+  // Transmet le choix de promotion à executeGameMove, qui l'appliquera au
+  // lieu d'ouvrir la modal de choix ou de laisser l'IA décider.
+  GS._forcedPromo=promo||null;
   GS.lastMove={from,to,capture:!!GS.board[to.r][to.c]};
   executeGameMove(from,to,GS);
+  GS._forcedPromo=null;
   _mpApplyingRemote=false;
+}
+
+function mpSendMove(from,to,promo){
+  if(!MP.channel)return;
+  MP.channel.send({type:'broadcast',event:'move',payload:{senderId:MP.myId,from,to,promo:promo||null}});
 }
 
 // executeGameMove est le point de passage unique de tout coup joué :
@@ -168,9 +177,9 @@ const _executeGameMoveOriginal=executeGameMove;
 executeGameMove=function(from,to,gs){
   const shouldBroadcast=gs&&gs.multiplayer&&!_mpApplyingRemote;
   _executeGameMoveOriginal(from,to,gs);
-  if(shouldBroadcast&&MP.channel){
-    MP.channel.send({type:'broadcast',event:'move',payload:{senderId:MP.myId,from,to}});
-  }
+  // Une promotion laisse le coup en suspens tant que la pièce n'est pas
+  // choisie : c'est showPromoModal() qui appellera mpSendMove() ensuite.
+  if(shouldBroadcast&&!gs.pendingPromo)mpSendMove(from,to,null);
 };
 
 // Prévient l'adversaire quand on quitte la partie (bouton Abandonner).

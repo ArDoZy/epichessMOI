@@ -398,7 +398,15 @@ function executeGameMove(from,to,gs){
   const isPawnPromo=TRUE_PAWN_IDS.has(p.pieceId)&&(to.r===0||to.r===7);
   if(isPawnPromo){
     const aiCol=gs.aiColor||'b';
-    if(p.color===aiCol){
+    // Promotion imposée : coup reçu d'un adversaire en ligne, qui a déjà
+    // choisi sa pièce. On l'applique telle quelle, sans modal ni évaluation
+    // IA, pour que les deux plateaux restent identiques.
+    if(gs._forcedPromo){
+      const opt=gs._forcedPromo;gs._forcedPromo=null;
+      b[to.r][to.c]={...p,type:opt.type,emoji:opt.emoji,pieceId:opt.pieceId};
+      playSound('promo');recordMove(p,to,!!captured,gs);gs.turn=opp(gs.turn);gs.turnCount++;postMoveUpdate(gs);
+    }
+    else if(p.color===aiCol&&!gs.multiplayer){
       // L'IA choisit la meilleure pièce de son armée via évaluation rapide
       const aiExtras=(gs.aiArmy?.extras||[]).map(id=>PIECES.find(x=>x.id===id)).filter(Boolean);
       const aiGen=gs.aiArmy?.gen?.id?PIECES.find(x=>x.id===gs.aiArmy.gen.id):null;
@@ -535,7 +543,15 @@ function showPromoModal(gs){
     if(genPiece&&!options.find(o=>o.pieceId===genPiece.id))options.push({type:genPiece.pieceType||'q',emoji:genPiece.emoji,label:genPiece.name,pieceId:genPiece.id});
   }else options=stdPieces;
   box.innerHTML=options.map((pp,i)=>'<div class="promo-piece" data-idx="'+i+'" title="'+pp.label+'">'+pp.emoji+'</div>').join('');
-  box.querySelectorAll('.promo-piece').forEach((el,i)=>{el.addEventListener('click',()=>{const opt=options[i];const{p,to}=gs.pendingPromo;gs.board[to.r][to.c]={...p,type:opt.type,emoji:opt.emoji,pieceId:opt.pieceId};gs.pendingPromo=null;modal.classList.remove('active');playSound('promo');recordMove(p,to,false,gs);gs.turn=opp(gs.turn);gs.turnCount++;postMoveUpdate(gs);});});
+  box.querySelectorAll('.promo-piece').forEach((el,i)=>{el.addEventListener('click',()=>{
+    const opt=options[i];const{from,to,p}=gs.pendingPromo;
+    gs.board[to.r][to.c]={...p,type:opt.type,emoji:opt.emoji,pieceId:opt.pieceId};
+    gs.pendingPromo=null;modal.classList.remove('active');playSound('promo');
+    // En ligne, le coup n'est transmis qu'ici : l'adversaire a besoin de la
+    // pièce choisie, pas seulement des cases de départ et d'arrivée.
+    if(gs.multiplayer&&typeof mpSendMove==='function')mpSendMove(from,to,{type:opt.type,emoji:opt.emoji,pieceId:opt.pieceId});
+    recordMove(p,to,false,gs);gs.turn=opp(gs.turn);gs.turnCount++;postMoveUpdate(gs);
+  });});
 }
 
 // ================================================================
