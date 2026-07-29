@@ -26,8 +26,9 @@
 // Utilisé par : combat-intro.js (bouton #cb-play-online).
 // ================================================================
 
-// À REMPLACER : Supabase > Settings > API > "Project URL"
-const SUPABASE_URL='https://VOTRE-PROJET.supabase.co';
+// Project URL du projet Supabase, sans chemin : le SDK ajoute lui-même
+// /rest/v1 ou /realtime/v1 selon ce qu'il appelle.
+const SUPABASE_URL='https://qwtlmaacjfxlbvrvooim.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY='sb_publishable_8PgQoH4YhF6oitNVRh3JBQ_T9fcNwwQ';
 
 const MP={
