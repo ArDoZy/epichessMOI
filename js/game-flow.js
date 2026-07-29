@@ -107,6 +107,10 @@ function startGame(colorAlreadyChosen,multiplayer){
   GS.board=buildGameBoard(whiteSideArmy,blackSideArmy);
   updateMedusaParalysis(GS.board,GS);updatePretreProtection(GS.board,GS);updateGrandMaitre(GS.board,GS);
   showPage('page-game');
+  // "Annuler coup" est retiré en ligne : l'annulation serait unilatérale et
+  // désynchroniserait les deux plateaux.
+  const undoBtn=document.getElementById('game-undo');
+  if(undoBtn)undoBtn.style.display=multiplayer?'none':'';
   updateGamePlayerBars();
   renderGame(GS);updateStatus(GS);updateHistoryNav();
   setTimeout(()=>{buildGameLabels(GS);renderGame(GS);},80);

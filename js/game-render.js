@@ -34,14 +34,24 @@ function showCtxMenu(e,r,c,gs){
   }
   showPieceCtxMenu(e,pd||{emoji:getPieceEmoji(cell),name:pid},opts);
 }
+// Ancrage du Garde de Pierre, extrait d'activatePower() : ce pouvoir change
+// le tour sans passer par executeGameMove(), il doit donc pouvoir être rejoué
+// à l'identique par un adversaire en ligne (mpApplyRemotePower).
+function applyGardePierre(r,c,color,gs){
+  gs.anchored=gs.anchored||new Set();gs.anchored.add(`${r},${c}`);gs.gardePierreUsed[color]=true;
+  recordMove(gs.board[r][c],{r,c},false,gs);gs.turn=opp(gs.turn);gs.turnCount++;
+  postMoveUpdate(gs);
+}
 window.activatePower=()=>{
   if(!ctxActivePower)return;
   const{r,c,pieceId,color}=ctxActivePower;
   if(pieceId==='garde-pierre'){
-    if(GS.gardePierreUsed[color]){showNotif('Déjà utilisé !');return;}
-    GS.anchored=GS.anchored||new Set();GS.anchored.add(`${r},${c}`);GS.gardePierreUsed[color]=true;
-    recordMove(GS.board[r][c],{r,c},false,GS);GS.turn=opp(GS.turn);GS.turnCount++;
-    showNotif('Garde de Pierre ancré !','ok');postMoveUpdate(GS);
+    if(GS.gardePierreUsed[color]){showNotif('Déjà utilisé !');closeCtx();return;}
+    // En ligne, on ne peut activer que ses propres pièces, et à son tour.
+    if(GS.multiplayer&&(color!==GS.playerColor||GS.turn!==GS.playerColor)){showNotif('Ce n\'est pas à vous de jouer.','err');closeCtx();return;}
+    applyGardePierre(r,c,color,GS);
+    showNotif('Garde de Pierre ancré !','ok');
+    if(GS.multiplayer&&typeof mpSendPower==='function')mpSendPower(r,c,pieceId);
   }
   closeCtx();
 };
