@@ -87,6 +87,7 @@ function updateGamePlayerBars(){
 // tiré _playerColor (voir combat-intro.js), on n'écrase pas ce choix ici.
 function startGame(colorAlreadyChosen){
   _endGameTriggered=false;
+  stopCombatMusicImmediate();
   if(!currentArmyData||!aiArmyData){showNotif('Aucune armée sélectionnée.');return;}
   if(!colorAlreadyChosen)_playerColor=Math.random()<0.5?'w':'b';
   const _aiColor=_playerColor==='w'?'b':'w';
@@ -138,7 +139,7 @@ function showArmyIntro(playerArmy,aiArmy){
   document.body.appendChild(overlay);
   // L'horloge ne démarre qu'à la fermeture de cet aperçu (pas pendant la
   // présentation des armées), pour ne pas gruger le temps du 1er joueur.
-  const closeOverlay=()=>{overlay.classList.add('hiding');setTimeout(()=>overlay.remove(),650);startClockTick(GS);renderClocks(GS);};
+  const closeOverlay=()=>{overlay.classList.add('hiding');setTimeout(()=>overlay.remove(),650);startClockTick(GS);renderClocks(GS);startCombatMusic();};
   document.getElementById('aio-close-btn').addEventListener('click',closeOverlay);
   let remaining=INTRO_DURATION;
   const tick=setInterval(()=>{remaining--;const el=document.getElementById('aio-countdown');const bar=document.getElementById('aio-timer-fill');if(el)el.textContent=remaining;if(bar)bar.style.width=(remaining/INTRO_DURATION*100)+'%';if(remaining<=0){clearInterval(tick);closeOverlay();}},1000);
@@ -213,6 +214,7 @@ function triggerEndOfGame(result){
   if(tournamentState.active){triggerTournoiEndOfGame(result);return;}
   if(_endGameTriggered)return;_endGameTriggered=true;
   stopClockTick(GS);
+  endCombatMusic();
   const oldElo=vvLoadElo();const aiElo=vvEstimateAiElo();
   const{newElo,delta}=vvCalcNewElo(oldElo,aiElo,result);
   const newRankIdx=vvGetRankIdx(newElo);if(newRankIdx>vvLoadRankMax())vvSaveRankMax(newRankIdx);

@@ -10,7 +10,7 @@
 // Dépendances : main.js (toggleTheme, ADMIN_MODE, VV_UNLOCKED, updAll),
 // accounts.js (updateCab, vvLoadPrimordialeChoisie, vvSaveUnlocked),
 // data-pieces.js (PIECES, UNLOCK_TABLE, UNLOCK_MILESTONES),
-// rules-engine.js (_soundEnabled, window._musicGain si utilisé).
+// rules-engine.js (_soundEnabled), combat-music.js (window._musicGain).
 //
 // Si vous ajoutez un nouveau réglage : ajoutez sa ligne .sp-row dans
 // index.html (section #settings-panel) et son listener ici.

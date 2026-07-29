@@ -304,6 +304,7 @@ function showRoundOverlay(roundIdx,result,eloBefore,eloAfter,eloDelta){
 function triggerTournoiEndOfGame(result){
   if(_endGameTriggered)return;_endGameTriggered=true;
   stopClockTick(GS);
+  endCombatMusic();
 
   const roundIdx=tournamentState.currentRound;
   const oldElo=vvLoadElo();
