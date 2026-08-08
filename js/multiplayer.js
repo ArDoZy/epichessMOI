@@ -3,9 +3,10 @@
 // Supabase Realtime (broadcast + presence), sans base de données.
 // ================================================================
 // PARCOURS UTILISATEUR :
-//   Menu → choisir son armée → page Combat → "⚔ Affronter un joueur"
-//   → Créer une partie (donne un code à transmettre) ou Rejoindre
-//   avec le code d'un ami → la partie démarre des deux côtés.
+//   Menu → COMBAT → choisir son armée → page d'engagement en ligne →
+//   « Chercher un adversaire » (appariement automatique), « Partie privée »
+//   (donne un code à transmettre) ou « Rejoindre avec un code »
+//   → la partie démarre des deux côtés.
 //
 // L'hôte joue les Blancs, l'invité les Noirs. Chaque camp joue avec
 // l'armée qu'il a composée : les deux armées sont échangées au moment
@@ -23,7 +24,8 @@
 // Dépendances : SDK supabase-js (chargé via CDN dans index.html),
 // rules-engine.js (executeGameMove, GS), game-flow.js (startGame,
 // _playerColor), main.js (currentArmyData, aiArmyData, showNotif).
-// Utilisé par : combat-intro.js (bouton #cb-play-online).
+// Utilisé par : combat-intro.js (boutons #cb-quick / #cb-private / #cb-join,
+// qui ouvrent la fenêtre du salon directement sur le bon écran).
 // ================================================================
 
 // Project URL du projet Supabase, sans chemin : le SDK ajoute lui-même
@@ -75,6 +77,82 @@ function mpStatus(msg,kind){
   el.className='mp-status'+(kind?' mp-'+kind:'');
 }
 
+// ----------------------------------------------------------------
+// DIAGNOSTIC D'UN ÉCHEC DE CONNEXION
+// ----------------------------------------------------------------
+// Le jeu affichait « Connexion impossible. Vérifiez votre réseau. » quelle
+// que soit la cause réelle. Quand le projet Supabase du plan gratuit s'est
+// mis en veille après 7 jours d'inactivité, le message accusait donc le
+// réseau du joueur, qui n'y pouvait rien et n'avait aucun moyen de le savoir.
+//
+// Realtime ne dit pas pourquoi il a échoué : on interroge donc l'API REST du
+// MÊME projet, dont les réponses, elles, sont parlantes. Cela distingue les
+// quatre cas qui n'appellent pas du tout la même action.
+function mpDiagnose(){
+  // 1. Le navigateur sait déjà qu'il n'a pas de réseau : inutile d'essayer.
+  if(typeof navigator!=='undefined'&&navigator.onLine===false){
+    return Promise.resolve({
+      kind:'offline',
+      msg:'Vous êtes hors ligne. Le multijoueur a besoin d\'une connexion internet.',
+    });
+  }
+  // 2. On demande au projet s'il est debout. AbortController plutôt que la
+  //    seule promesse de fetch : un projet en cours de réveil peut laisser
+  //    la requête pendante longtemps, et le joueur attend devant un écran fixe.
+  const ctl=(typeof AbortController!=='undefined')?new AbortController():null;
+  const timer=ctl?setTimeout(()=>ctl.abort(),8000):null;
+  return fetch(SUPABASE_URL+'/rest/v1/',{
+    method:'GET',
+    headers:{apikey:SUPABASE_PUBLISHABLE_KEY},
+    signal:ctl?ctl.signal:undefined,
+  }).then(r=>{
+    if(timer)clearTimeout(timer);
+    // 404 sur /rest/v1/ est NORMAL ici : le jeu n'expose aucune table. Ce
+    // qui compte est que le serveur ait répondu.
+    if(r.ok||r.status===404){
+      return{
+        kind:'realtime',
+        msg:'Le serveur répond, mais le temps réel refuse la connexion. Réessayez dans un instant ; si cela persiste, le service Realtime du projet est probablement indisponible.',
+      };
+    }
+    if(r.status===401||r.status===403){
+      return{
+        kind:'key',
+        msg:'Le serveur répond mais refuse la clé du jeu. Elle a probablement été régénérée : il faut mettre à jour SUPABASE_PUBLISHABLE_KEY dans js/multiplayer.js.',
+      };
+    }
+    return{
+      kind:'paused',
+      msg:'Le projet Supabase ne répond pas normalement (HTTP '+r.status+'). Le plus souvent, il a été mis en veille faute d\'activité : il faut le relancer depuis le tableau de bord Supabase.',
+    };
+  }).catch(e=>{
+    if(timer)clearTimeout(timer);
+    if(e&&e.name==='AbortError'){
+      return{
+        kind:'paused',
+        msg:'Le projet Supabase ne répond pas. Il est probablement en veille ou en cours de redémarrage : réessayez dans quelques minutes.',
+      };
+    }
+    // fetch qui rejette = le serveur n'a pas été joint du tout : réseau,
+    // DNS, bloqueur de contenu, ou URL de projet invalide.
+    return{
+      kind:'unreachable',
+      msg:'Impossible de joindre le serveur de jeu. Vérifiez votre connexion, ou un éventuel bloqueur de publicités qui filtrerait supabase.co.',
+    };
+  });
+}
+
+// Affiche le vrai motif, et journalise l'erreur brute de Realtime pour qui
+// ouvre la console.
+function mpReportFailure(status,err){
+  console.warn('[MP] echec de connexion :',status,err||'(aucun detail)');
+  mpStatus('Connexion en cours de vérification…','wait');
+  mpDiagnose().then(d=>{
+    console.warn('[MP] diagnostic :',d.kind);
+    mpStatus(d.msg,'err');
+  });
+}
+
 function mpGenCode(){
   // Alphabet sans caractères ambigus (0/O, 1/I) : le code se dicte à l'oral.
   const chars='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -86,7 +164,9 @@ function mpGenCode(){
 function mpInitClient(){
   if(MP.client)return MP.client;
   if(typeof supabase==='undefined'){
-    mpStatus('Le SDK Supabase n\'a pas pu être chargé (connexion internet ?).','err');
+    // Le SDK vient d'un CDN : un bloqueur de contenu ou un réseau d'entreprise
+    // peut l'avoir filtré alors que tout le reste du jeu fonctionne.
+    mpStatus('La bibliothèque de jeu en ligne n\'a pas pu être chargée. Un bloqueur de publicités ou un réseau filtré empêche l\'accès à cdn.jsdelivr.net.','err');
     return null;
   }
   MP.client=supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
@@ -170,7 +250,9 @@ function mpConnect(code,asHost){
     }
   });
 
-  MP.channel.subscribe(async(status)=>{
+  // Le second argument du rappel porte l'erreur de Realtime : l'ignorer,
+  // c'était perdre la seule information disponible sur la panne.
+  MP.channel.subscribe(async(status,err)=>{
     if(status==='SUBSCRIBED'){
       await MP.channel.track({joinedAt:Date.now()});
       if(asHost)mpStatus('En attente de votre adversaire','wait');
@@ -182,8 +264,9 @@ function mpConnect(code,asHost){
           if(!MP.started)mpStatus('Aucune partie trouvée avec ce code. Vérifiez-le, ou demandez à votre ami de créer la partie.','err');
         },8000);
       }
-    }else if(status==='CHANNEL_ERROR'||status==='TIMED_OUT'){
-      mpStatus('Connexion impossible. Vérifiez vos clés Supabase et votre réseau.','err');
+    }else if(status==='CHANNEL_ERROR'||status==='TIMED_OUT'||status==='CLOSED'){
+      if(MP.started)return;   // partie déjà lancée : la fermeture est normale
+      mpReportFailure(status,err);
     }
   });
 }
@@ -414,12 +497,13 @@ function mpQuickPlay(){
     mpConnect('q-'+host.id.slice(0,12),MP.myId===host.id);
   });
 
-  MP.lobby.subscribe(async status=>{
+  MP.lobby.subscribe(async(status,err)=>{
     if(status==='SUBSCRIBED'){
       await MP.lobby.track({joinedAt});
       mpStatus('Recherche d\'un adversaire','wait');
-    }else if(status==='CHANNEL_ERROR'||status==='TIMED_OUT'){
-      mpStatus('Connexion impossible. Vérifiez votre réseau.','err');
+    }else if(status==='CHANNEL_ERROR'||status==='TIMED_OUT'||status==='CLOSED'){
+      if(MP.matched||MP.started)return;   // paire formée : le salon se ferme normalement
+      mpReportFailure(status,err);
     }
   });
 }
@@ -446,8 +530,6 @@ function mpOpenModal(){
   if(!mpIsConfigured())mpStatus('Multijoueur pas encore configuré : renseignez l\'URL de votre projet Supabase (Settings > API > Project URL) dans js/multiplayer.js.','err');
   document.getElementById('mp-modal').classList.add('show');
 }
-
-document.getElementById('cb-play-online')?.addEventListener('click',mpOpenModal);
 
 document.getElementById('mp-quick-btn')?.addEventListener('click',()=>{
   if(!mpIsConfigured())return;

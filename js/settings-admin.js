@@ -31,6 +31,14 @@ let _sfxVol=1,_musicVol=0.5;
     _musicVol=parseFloat(this.value);
     if(window._musicGain)window._musicGain.gain.value=_musicVol;
   });
+  // Le tutoriel commence par tourner le cube : on ferme le panneau et on
+  // revient au menu principal, sinon la première étape désigne une flèche
+  // cachée derrière une page secondaire.
+  document.getElementById('sp-tuto')?.addEventListener('click',()=>{
+    panel.classList.remove('open');
+    if(typeof goToMainMenu==='function')goToMainMenu();
+    if(typeof tutoStart==='function')setTimeout(tutoStart,350);
+  });
 })();
 
 // ----------------------------------------------------------------

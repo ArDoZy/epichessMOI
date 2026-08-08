@@ -46,7 +46,11 @@
   // qu'on puisse enchaîner deux rotations sans temps mort perceptible
   // (voir queuedKind plus bas : un second clic pendant l'animation en cours
   // est mémorisé et rejoué instantanément à la fin de celle-ci).
-  const ROTATE_MS=280;
+  // Rotation volontairement posée : à 280 ms le cube « claquait » d'une face
+  // à l'autre et on perdait le sens du déplacement, qui est justement tout
+  // l'intérêt d'une navigation par cube. La transition CSS de #cube (voir
+  // [CUBE] dans style.css) doit rester alignée sur cette valeur.
+  const ROTATE_MS=460;
   // Disposition canonique (au menu principal). La face de droite est
   // "armees" (Mes armées) : le builder (composition) n'est plus une face du
   // cube, c'est un overlay ouvert depuis "Mes armées" (bouton "Nouvelle armée").
@@ -58,7 +62,7 @@
   const CANON={front:'jouer',right:'armees',back:'reserve',left:'voie',top:'game',bottom:null};
   const SIDE=new Set(['jouer','armees','reserve','voie']);
   const EMBED={'page-armies':'armees','page-game':'game','page-reserve':'reserve','page-voie':'voie'};
-  const FACE_LABEL={jouer:'Jouer',armees:'Mes armées',reserve:'La Réserve',voie:'Voie des Victoires',game:'Partie'};
+
 
   // Permutations des emplacements selon la rotation demandée. « right »
   // amène au front la face qui était à DROITE (le cube tourne visuellement
@@ -110,14 +114,6 @@
     const set=(id,show)=>{const e=document.getElementById(id);if(e)e.style.display=show?'':'none';};
     set('cube-arrow-left', h);
     set('cube-arrow-right', h);
-    // Boussole : sans elle, tourner le cube revient à naviguer à l'aveugle,
-    // on ne sait ce qu'on a atteint qu'une fois la rotation terminée.
-    const comp=document.getElementById('cube-compass');
-    if(comp){
-      comp.style.display=h?'':'none';
-      const nameEl=document.getElementById('cube-compass-name');
-      if(nameEl)nameEl.textContent=FACE_LABEL[slots.front]||'';
-    }
   }
 
   // Réinitialise le cube à l'angle 0 avec les emplacements courants (sans
@@ -176,11 +172,11 @@
   // mise en file par animate()) plutôt que de l'ignorer, c'est ce qui
   // permet d'enchaîner deux rotations sans attendre.
   function nav(kind){ if(!locked && (animating || SIDE.has(slots.front))) animate(kind); }
-  // Bouton « Affronter un joueur » du menu : même parcours que COMBAT, mais
-  // la sélection d'armée débouche sur le salon en ligne.
-  function onOnline(){
+  // Bouton secondaire « Affronter l'Instructeur » : même parcours que COMBAT,
+  // mais la sélection d'armée débouche sur le duel contre l'IA.
+  function onVsIa(){
     if(locked||animating)return;
-    if(typeof startArmySelection==='function')startArmySelection('online');
+    if(typeof startArmySelection==='function')startArmySelection('ia');
   }
 
   function lock(){ locked=true; refresh(); }
@@ -233,13 +229,12 @@
   window.cubeOnShowPage=cubeOnShowPage;
 
   // ---- Bouton COMBAT ---------------------------------------------
-  // Ne lance plus la partie directement : amène sur "Mes armées" en mode
-  // sélection (voir armies.js). Le clic sur une carte enchaîne ensuite le
-  // flux habituel : page de prévisualisation, instructeur, armées en
-  // présence, puis la partie.
+  // COMBAT = affronter un autre JOUEUR : c'est l'action principale du jeu,
+  // elle mérite le gros bouton. Elle amène sur "Mes armées" en mode
+  // sélection (voir armies.js), puis sur la page d'engagement en ligne.
   function onCombat(){
     if(locked||animating)return;
-    if(typeof startArmySelection==='function')startArmySelection('combat');
+    if(typeof startArmySelection==='function')startArmySelection('online');
   }
 
   // ---- Init ------------------------------------------------------
@@ -260,7 +255,7 @@
     document.getElementById('cube-arrow-right')?.addEventListener('click',()=>nav('right'));
     document.getElementById('cube-arrow-left') ?.addEventListener('click',()=>nav('left'));
     document.getElementById('cube-jouer-btn')  ?.addEventListener('click',onCombat);
-    document.getElementById('b-online-quick')  ?.addEventListener('click',onOnline);
+    document.getElementById('b-vs-ia')         ?.addEventListener('click',onVsIa);
 
     document.addEventListener('keydown',e=>{
       if(locked||!document.body.classList.contains('cube-active')||document.body.classList.contains('nav-overlay'))return;

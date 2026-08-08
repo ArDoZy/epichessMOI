@@ -71,7 +71,7 @@ window.confirmRenameArmy=(id,isAi)=>{
 // choix : toutes les autres actions (Voie, Nouvelle armée, Modifier,
 // Renommer, Supprimer) sont masquées et un clic sur une carte lance
 // directement le combat/le tournoi avec cette armée.
-let armySelectMode=null;   // null | 'combat' | 'tournoi' | 'online'
+let armySelectMode=null;   // null | 'online' | 'ia' | 'tournoi'
 
 window.startArmySelection=mode=>{
   // Sans armée sauvegardée il n'y a rien à sélectionner : on affiche la page
@@ -108,19 +108,11 @@ window.pickArmyForBattle=id=>{
   }
   armySelectMode=null;renderArmiesPage();
   if(mode==='tournoi')launchTournoiFromArmy(id);
-  else if(mode==='online')launchOnlineFromArmy(id);
+  else if(mode==='online')launchOnline(id);
   else launchCombat(id);
 };
 
-// Parcours « affronter un joueur » depuis le menu : on charge l'armée puis on
-// ouvre directement le salon en ligne, sans passer par l'écran VS contre l'IA.
-window.launchOnlineFromArmy=id=>{
-  const a=savedArmies.find(x=>x.id===id);if(!a)return;
-  loadArmyForEdit(a);currentArmyData=a;
-  aiArmyData=generateAIArmy();
-  renderCombatPage(a,false);showPage('page-combat');launchParticles();
-  if(typeof mpOpenModal==='function')setTimeout(mpOpenModal,120);
-};
+
 
 const renderArmiesPage=()=>{
   const grid=document.getElementById('armies-grid');
@@ -130,7 +122,7 @@ const renderArmiesPage=()=>{
   const banner=document.getElementById('armies-select-banner');
   if(banner){
     banner.style.display=sel?'':'none';
-    banner.innerHTML=sel?'<span class="asb-txt">'+(armySelectMode==='tournoi'?'Sélectionnez l\'armée avec laquelle vous voulez disputer le tournoi':armySelectMode==='online'?'Sélectionnez l\'armée que vous engagez contre un autre joueur':'Sélectionnez l\'armée avec laquelle vous voulez combattre')+'</span><button class="btn btn-ghost" style="font-size:11px;padding:6px 12px" onclick="cancelArmySelection()">Annuler</button>':'';
+    banner.innerHTML=sel?'<span class="asb-txt">'+(armySelectMode==='tournoi'?'Sélectionnez l\'armée avec laquelle vous voulez disputer le tournoi':armySelectMode==='online'?'Sélectionnez l\'armée que vous engagez contre un autre joueur':'Sélectionnez l\'armée avec laquelle affronter l\'Instructeur')+'</span><button class="btn btn-ghost" style="font-size:11px;padding:6px 12px" onclick="cancelArmySelection()">Annuler</button>':'';
   }
   if(!savedArmies.length){grid.innerHTML='<div class="empty-armies"><span class="vial"><span class="vial-bubble"></span></span><p>Aucune armée enregistrée.<br>Composez votre première armée !</p></div>';return;}
   grid.innerHTML=savedArmies.map(a=>{
@@ -188,10 +180,10 @@ window.selectAiArmy=id=>{
   const a=savedAiArmies.find(x=>x.id===id);if(!a)return;
   const fp=id=>PIECES.find(p=>p.id===id);
   aiArmyData={mon:fp(a.mon.id),gen:fp(a.gen.id),extras:a.extras,placements:a.placements,totalValue:a.totalValue};
-  if(currentArmyData){renderCombatPage(currentArmyData,true);showPage('page-combat');launchParticles();}
+  if(currentArmyData){renderCombatPage(currentArmyData,'ia');showPage('page-combat');launchParticles();}
   else{showNotif('Sélectionnez d\'abord votre armée.');renderArmiesPage();showPage('page-armies');}
 };
-document.getElementById('ai-ar-back').addEventListener('click',()=>{if(currentArmyData){renderCombatPage(currentArmyData,aiArmyData&&!aiArmyData._random);showPage('page-combat');launchParticles();}else showPage('page-builder');});
+document.getElementById('ai-ar-back').addEventListener('click',()=>{if(currentArmyData){renderCombatPage(currentArmyData,'ia');showPage('page-combat');launchParticles();}else showPage('page-builder');});
 document.getElementById('ai-ar-new').addEventListener('click',()=>{builderMode='ai';updateBuilderBanner();army={mon:null,gen:null,extras:[]};editingArmyId=null;showPage('page-builder');updAll();});
 
 // ----------------------------------------------------------------

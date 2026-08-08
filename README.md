@@ -40,8 +40,13 @@ epic-chess/
 │       ├── acier.svg
 │       ├── argent.svg
 │       └── or.svg
+├── .github/
+│   └── workflows/
+│       └── supabase-keepalive.yml  # Ping quotidien : empêche le projet
+│                                   # Supabase gratuit de se mettre en veille
 ├── tools/
-│   └── gen-boards.js        # Générateur des textures d'échiquier (node)
+│   ├── gen-boards.js        # Générateur des textures d'échiquier (node)
+│   └── gen-social.js        # Régénère og-image.png et apple-touch-icon.png
 ├── css/
 │   └── style.css            # Tout le CSS, organisé en sections [TAG] commentées
 └── js/
@@ -65,6 +70,7 @@ epic-chess/
     ├── game-flow.js          # Démarrage partie, fin de partie, résultat
     ├── voie.js                # Page "Voie des Victoires" (ELO, rangs, jalons)
     ├── economy-ui.js         # Page "Réserve" : inventaire, coffres, échiquiers
+    ├── tutorial.js           # Visite guidée interactive par le savant fou
     ├── tournoi.js             # Mode Tournoi + modal d'analyse replay
     ├── settings-admin.js     # Panneau réglages + mode Administrateur
     └── multiplayer.js        # Parties en ligne (Supabase Realtime)
@@ -102,7 +108,21 @@ des émojis. Comme `pieceIcon` dimensionne en `em`, un `font-size:46px`
 hérité produit une icône de 120 px qui déborde. La section `[ICON-SIZES]`
 de `css/style.css` fixe donc la taille en pixels partout où c'est le cas.
 
-### 3. L'IA (`js/ai-engine.js`)
+### 3. Les deux parcours de combat (`js/combat-intro.js`)
+
+`#page-combat` a **deux modes**, portés par `combatMode` :
+
+- `'online'` : COMBAT, le gros bouton du menu. On cherche un adversaire
+  humain ; la page montre l'armée engagée face à un adversaire inconnu et
+  porte les trois façons d'en trouver un.
+- `'ia'` : bouton secondaire « Affronter l'Instructeur ». La page montre les
+  deux armées en présence.
+
+`renderCombatPage(armee, mode)` est le point d'entrée unique : tout appelant
+doit passer le mode, sinon on retombe sur `'ia'`. Les deux rangées de boutons
+existent dans le HTML et s'excluent (`#cactions-online` / `#cactions-ia`).
+
+### 4. L'IA (`js/ai-engine.js`)
 
 Il n'y a plus qu'un adversaire, `INSTRUCTOR`, qui joue toujours à pleine
 puissance. `evalBoard()` combine l'évaluation classique (matériel, tables
@@ -115,6 +135,42 @@ Ces deux fonctions sont sérialisées dans le Web Worker : si vous en ajoutez
 une nouvelle, **ajoutez-la aussi à la liste `fns` de `getWorkerCode()`**,
 sinon le Worker plantera et l'IA basculera silencieusement sur le thread
 principal (jouable, mais l'interface se figera pendant sa réflexion).
+
+### 5. Le tutoriel (`js/tutorial.js`)
+
+Une visite guidée où le savant parle et où le joueur AGIT : les étapes qui
+portent un `click` attendent un vrai clic sur le vrai bouton. À la fin, le
+joueur a réellement tourné le cube, composé une armée et ouvert sa Réserve.
+
+Il se déclenche une seule fois, après le choix de la Primordiale d'un compte
+neuf (voir `tutoMaybeStart` appelé depuis `voie.js`), et se rejoue depuis les
+réglages. Le drapeau est `accGet('tuto_done')`.
+
+**Si vous déplacez ou renommez un élément d'interface**, vérifiez les
+sélecteurs `at` et `click` de `TUTO_STEPS`. Une cible absente ne casse rien
+(l'étape devient un simple « Suivant »), mais elle perd son intérêt.
+
+Le projecteur est un rectangle avec une `box-shadow` de 9999px qui assombrit
+tout le reste ; il porte `pointer-events:none`, ce qui est **la condition**
+pour que les étapes interactives fonctionnent : sans cela, le voile
+intercepterait le clic destiné au bouton mis en lumière.
+
+## Le multijoueur et la mise en veille de Supabase
+
+Le jeu en ligne repose sur Supabase Realtime. Un projet du **plan gratuit
+s'endort après 7 jours sans activité** : le WebSocket ne répond alors plus et
+le multijoueur tombe, sans que rien dans le jeu ne l'explique.
+
+Deux réponses sont en place :
+
+- `.github/workflows/supabase-keepalive.yml` appelle l'API REST du projet une
+  fois par jour pour réarmer le compteur. Il demande deux secrets de dépôt,
+  `SUPABASE_URL` et `SUPABASE_KEY` (voir l'en-tête du fichier). C'est un
+  contournement, pas une garantie ; seul le plan Pro supprime le risque.
+- `mpDiagnose()` (js/multiplayer.js) interroge l'API REST quand Realtime
+  échoue, et distingue : joueur hors ligne, serveur injoignable, projet en
+  pause, clé refusée, ou panne du seul service Realtime. Le message affiché
+  dit ce qui se passe au lieu d'accuser le réseau du joueur.
 
 ## SEO / GEO : ce qu'il ne faut pas casser
 
@@ -161,8 +217,8 @@ chaque fichier suppose que les globals des fichiers précédents existent déjà
 data-pieces.js → piece-art.js → main.js → cube-nav.js → accounts.js
 → economy.js → ai-level-modal.js → builder.js → armies.js → combat-intro.js
 → rules-engine.js → combat-music.js → cinematics.js → game-render.js
-→ ai-engine.js → game-flow.js → voie.js → economy-ui.js → tournoi.js
-→ settings-admin.js → multiplayer.js → (script inline) initApp()
+→ ai-engine.js → game-flow.js → voie.js → economy-ui.js → tutorial.js
+→ tournoi.js → settings-admin.js → multiplayer.js → (script inline) initApp()
 ```
 
 `economy.js` doit venir après `accounts.js` (il utilise `accGet`/`accSet`) et
@@ -197,6 +253,9 @@ explicitement ses dépendances et qui l'utilise).
 | Ajouter un échiquier | `tools/gen-boards.js` (relancer `node tools/gen-boards.js`) + `BOARD_SKINS` dans `js/data-pieces.js` |
 | Modifier le dessin d'une pièce | `js/piece-art.js` (`PIECE_ART`) |
 | Modifier les cinématiques de combat | `js/cinematics.js` + section `[CINEMATIC]` de `css/style.css` |
+| Modifier le tutoriel (textes, étapes, cibles) | `js/tutorial.js` (`TUTO_STEPS`) |
+| Changer ce que lance le bouton COMBAT | `js/cube-nav.js` (`onCombat`/`onVsIa`) + `js/combat-intro.js` |
+| Régler la vitesse de rotation du cube | `js/cube-nav.js` (`ROTATE_MS`) **et** la transition de `#cube` dans `css/style.css` |
 | Modifier le mode tournoi (nombre de rounds, bonus ELO) | `js/tournoi.js` |
 | Modifier le système de comptes/sauvegarde | `js/accounts.js` |
 | Ajouter un nouveau réglage utilisateur | `index.html` (bloc `#settings-panel`) + `js/settings-admin.js` |
