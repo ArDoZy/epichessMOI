@@ -43,11 +43,20 @@ window.removePiece=(type,idx)=>{
 // ----------------------------------------------------------------
 // RENDU SLOTS DE COMPOSITION
 // ----------------------------------------------------------------
+// Rappel du stock sous chaque pièce placée : composer une armée qu'on ne peut
+// pas aligner est la première frustration possible du système d'économie, elle
+// doit se voir dans le slot, pas à la seconde où on lance le combat.
+function slotStockHTML(p){
+  if(typeof invCount!=='function'||typeof isOwnablePiece!=='function'||!isOwnablePiece(p.id))return '';
+  const need=pieceDeployCount(p.id),have=invCount(p.id);
+  return '<div class="cs-stock'+(have<need?' cs-stock-out':'')+'">'+have+' / '+need+' requis</div>';
+}
+
 const updSlots=()=>{
   const g=document.getElementById('comp-grid');const all=extraPieces();
   // eidx = index dans army.extras (uniquement pour les 3 pièces déplaçables)
   const mk=(cls,lbl,p,rm,eidx)=>p
-    ?'<div class="comp-slot filled '+cls+(eidx!=null?' draggable-slot':'')+'" data-pid="'+p.id+'"'+(eidx!=null?' draggable="true" data-eidx="'+eidx+'"':'')+'><div class="cs-label">'+lbl+'</div><span class="cs-emoji">'+p.emoji+'</span><div class="cs-name">'+p.name+'</div><div class="cs-val">'+p.value+' pts</div><div class="cs-rm" onclick="'+rm+'">'+svgX+'</div></div>'
+    ?'<div class="comp-slot filled '+cls+(eidx!=null?' draggable-slot':'')+'" data-pid="'+p.id+'"'+(eidx!=null?' draggable="true" data-eidx="'+eidx+'"':'')+'><div class="cs-label">'+lbl+'</div><span class="cs-emoji">'+pieceIcon(p.id,'n')+'</span><div class="cs-name">'+p.name+'</div><div class="cs-val">'+p.value+' pts</div>'+slotStockHTML(p)+'<div class="cs-rm" onclick="'+rm+'">'+svgX+'</div></div>'
     :'<div class="comp-slot"><div class="cs-label">'+lbl+'</div><div style="font-size:28px;opacity:.15;margin-top:8px">?</div></div>';
   const ic=['Pièce 1','Pièce 2','Pièce 3'];
   let h=mk('Monarque','Monarque',army.mon,"removePiece('mon')")+mk('Général','Général',army.gen,"removePiece('gen')");
@@ -83,6 +92,13 @@ function wireSlotDragSwap(g){
 const updStats=()=>{
   document.getElementById('s-val').textContent=getVal()+'/24';
   document.getElementById('b-validate').disabled=!armyValid();
+  const st=document.getElementById('s-stock');
+  if(st){
+    if(!armyValid()){st.textContent='—';st.className='sp-val';return;}
+    const stock=armyStock({mon:army.mon,gen:army.gen,extras:army.extras.map(p=>p.id)});
+    st.textContent=stock.ok?'Prête':'Manque';
+    st.className='sp-val '+(stock.ok?'sp-ok':'sp-bad');
+  }
 };
 const updAll=()=>{updSlots();renderCards();updStats();};
 
@@ -133,9 +149,16 @@ const renderCards=()=>{
         const m=UNLOCK_MILESTONES.find(u=>u.pieceId===p.id);
         const isCoffre=m?.coffre;
         const rankLabel=isCoffre?'Coffre':(m&&m.eloRequired<999999?vvGetRank(m.eloRequired).name+' ('+m.eloRequired+' ELO)':'');
-        html+='<div class="piece-card '+p.class+' locked" data-id="'+p.id+'"><span class="pc-emoji">'+p.emoji+'</span><div class="pc-head"><div class="pc-name">'+p.name+'</div><div class="pc-val '+p.class+'">'+p.value+'</div></div>'+(p.movement?'<div class="pc-mvt">'+p.movement+'</div>':'')+'<div class="locked-overlay"><span class="lock-icon"></span><span class="lock-rank">'+rankLabel+'</span></div></div>';
+        html+='<div class="piece-card '+p.class+' locked" data-id="'+p.id+'"><span class="pc-emoji">'+pieceIcon(p.id,'n')+'</span><div class="pc-head"><div class="pc-name">'+p.name+'</div><div class="pc-val '+p.class+'">'+p.value+'</div></div>'+(p.movement?'<div class="pc-mvt">'+p.movement+'</div>':'')+'<div class="locked-overlay"><span class="lock-icon"></span><span class="lock-rank">'+rankLabel+'</span></div></div>';
       }else{
-        html+='<div class="piece-card '+p.class+(isSel(p)?' sel':'')+'" data-id="'+p.id+'"><span class="pc-emoji">'+p.emoji+'</span><div class="pc-head"><div class="pc-name">'+p.name+'</div><div class="pc-val '+p.class+'">'+p.value+'</div></div>'+(p.movement?'<div class="pc-mvt">'+p.movement+'</div>':'')+(p.ability?'<div class="pc-ability">'+p.ability+'</div>':'')+'</div>';
+        const have=(typeof invCount==='function')?invCount(p.id):0;
+        const need=pieceDeployCount(p.id);
+        html+='<div class="piece-card '+p.class+(isSel(p)?' sel':'')+(have<need?' pc-nostock':'')+'" data-id="'+p.id+'">'+
+          '<span class="pc-stock'+(have<need?' pc-stock-out':'')+'" title="Exemplaires en réserve">'+have+'</span>'+
+          '<span class="pc-emoji">'+pieceIcon(p.id,'n')+'</span>'+
+          '<div class="pc-head"><div class="pc-name">'+p.name+'</div><div class="pc-val '+p.class+'">'+p.value+'</div></div>'+
+          (p.movement?'<div class="pc-mvt">'+p.movement+'</div>':'')+
+          (p.ability?'<div class="pc-ability">'+p.ability+'</div>':'')+'</div>';
       }
     });
     html+='</div></div>';

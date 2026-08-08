@@ -71,7 +71,7 @@ window.confirmRenameArmy=(id,isAi)=>{
 // choix : toutes les autres actions (Voie, Nouvelle armée, Modifier,
 // Renommer, Supprimer) sont masquées et un clic sur une carte lance
 // directement le combat/le tournoi avec cette armée.
-let armySelectMode=null;   // null | 'combat' | 'tournoi'
+let armySelectMode=null;   // null | 'combat' | 'tournoi' | 'online'
 
 window.startArmySelection=mode=>{
   // Sans armée sauvegardée il n'y a rien à sélectionner : on affiche la page
@@ -94,9 +94,32 @@ window.cancelArmySelection=()=>{
 };
 window.pickArmyForBattle=id=>{
   const mode=armySelectMode;if(!mode)return;
+  const a=savedArmies.find(x=>x.id===id);
+  // Dernier filet : une armée dont la réserve est insuffisante ne part pas
+  // au combat, quel que soit le mode.
+  if(a&&typeof armyStock==='function'){
+    const stock=armyStock(a);
+    if(!stock.ok){
+      showConfirmModal('Réserve insuffisante : '+stock.missing.map(m=>m.name+' ('+m.have+'/'+m.need+')').join(', ')+
+        '. Récupérez le coffre de réapprovisionnement dans la Réserve, ou composez une autre armée.',()=>{},
+        {okLabel:'Compris',cancelLabel:'Fermer',okClass:'btn-primary'});
+      return;
+    }
+  }
   armySelectMode=null;renderArmiesPage();
   if(mode==='tournoi')launchTournoiFromArmy(id);
+  else if(mode==='online')launchOnlineFromArmy(id);
   else launchCombat(id);
+};
+
+// Parcours « affronter un joueur » depuis le menu : on charge l'armée puis on
+// ouvre directement le salon en ligne, sans passer par l'écran VS contre l'IA.
+window.launchOnlineFromArmy=id=>{
+  const a=savedArmies.find(x=>x.id===id);if(!a)return;
+  loadArmyForEdit(a);currentArmyData=a;
+  aiArmyData=generateAIArmy();
+  renderCombatPage(a,false);showPage('page-combat');launchParticles();
+  if(typeof mpOpenModal==='function')setTimeout(mpOpenModal,120);
 };
 
 const renderArmiesPage=()=>{
@@ -107,7 +130,7 @@ const renderArmiesPage=()=>{
   const banner=document.getElementById('armies-select-banner');
   if(banner){
     banner.style.display=sel?'':'none';
-    banner.innerHTML=sel?'<span class="asb-txt">'+(armySelectMode==='tournoi'?'Sélectionnez l\'armée avec laquelle vous voulez disputer le tournoi':'Sélectionnez l\'armée avec laquelle vous voulez combattre')+'</span><button class="btn btn-ghost" style="font-size:11px;padding:6px 12px" onclick="cancelArmySelection()">Annuler</button>':'';
+    banner.innerHTML=sel?'<span class="asb-txt">'+(armySelectMode==='tournoi'?'Sélectionnez l\'armée avec laquelle vous voulez disputer le tournoi':armySelectMode==='online'?'Sélectionnez l\'armée que vous engagez contre un autre joueur':'Sélectionnez l\'armée avec laquelle vous voulez combattre')+'</span><button class="btn btn-ghost" style="font-size:11px;padding:6px 12px" onclick="cancelArmySelection()">Annuler</button>':'';
   }
   if(!savedArmies.length){grid.innerHTML='<div class="empty-armies"><span class="vial"><span class="vial-bubble"></span></span><p>Aucune armée enregistrée.<br>Composez votre première armée !</p></div>';return;}
   grid.innerHTML=savedArmies.map(a=>{
@@ -121,10 +144,16 @@ const renderArmiesPage=()=>{
       : buildNameBlock(a,false);
     const btns=sel?''
       : '<div class="ac-btns"><button class="btn btn-ghost" style="font-size:11px;padding:6px 12px" onclick="editPlayerArmy(\''+a.id+'\')">Modifier</button><button class="btn btn-danger" style="font-size:14px;padding:6px 10px" title="Supprimer cette armée" onclick="deletePlayerArmy(\''+a.id+'\')">🗑️</button></div>';
-    const open=sel
+    // Une armée dont le stock est insuffisant reste visible et modifiable,
+    // mais ne peut pas être engagée : elle est marquée, pas cachée.
+    const stock=(typeof armyStock==='function')?armyStock(a):{ok:true,missing:[]};
+    const open=(sel&&stock.ok)
       ? '<div class="army-card army-card-selectable" onclick="pickArmyForBattle(\''+a.id+'\')">'
-      : '<div class="army-card">';
-    return open+head+'<div class="ac-pieces">'+all.map(p=>'<span title="'+p.name+'">'+p.emoji+'</span>').join('')+'</div><div class="ac-names">'+( mon?.name||'?')+' (Monarque) · '+(gen?.name||'?')+' (Général)<br>'+extras.map(p=>p.name).join(' · ')+'</div><div class="ac-val">'+a.totalValue+' pts</div>'+btns+'</div>';
+      : '<div class="army-card'+(stock.ok?'':' army-card-nostock')+'">';
+    const stockLine=stock.ok
+      ? ''
+      : '<div class="ac-nostock">Réserve insuffisante : '+stock.missing.map(m=>escH(m.name)+' '+m.have+'/'+m.need).join(', ')+'</div>';
+    return open+head+'<div class="ac-pieces">'+all.map(p=>'<span title="'+escH(p.name)+'">'+pieceIcon(p.id,'n',1.7)+'</span>').join('')+'</div><div class="ac-names">'+( mon?.name||'?')+' (Monarque) · '+(gen?.name||'?')+' (Général)<br>'+extras.map(p=>p.name).join(' · ')+'</div><div class="ac-val">'+a.totalValue+' pts</div>'+stockLine+btns+'</div>';
   }).join('');
 };
 window.editPlayerArmy=id=>{const a=savedArmies.find(x=>x.id===id);if(!a)return;builderMode='player';updateBuilderBanner();loadArmyForEdit(a);showPage('page-builder');updAll();};
@@ -168,7 +197,13 @@ document.getElementById('ai-ar-new').addEventListener('click',()=>{builderMode='
 // ----------------------------------------------------------------
 // GÉNÉRATEUR D'ARMÉE IA ALÉATOIRE
 // ----------------------------------------------------------------
-function generateAIArmy(){
+// minValue : budget minimum que doit atteindre l'armée générée. Utilisé par
+// le tournoi pour faire monter la difficulté palier après palier, maintenant
+// que l'adversaire est toujours le même instructeur (voir tournoi.js).
+function generateAIArmy(minValue){
+  const floor=typeof minValue==='number'?minValue:0;
+  // L'IA n'est pas soumise à l'économie : elle ne « possède » pas ses pièces,
+  // sinon il faudrait lui tenir un inventaire qui n'a aucun sens de jeu.
   const unlocked=VV_UNLOCKED;
   const monarques=PIECES.filter(p=>p.class==='Monarque'&&unlocked.has(p.id));
   const generaux=PIECES.filter(p=>p.class==='Général'&&unlocked.has(p.id));
@@ -198,7 +233,7 @@ function generateAIArmy(){
       chosen.push(p);val+=p.value;usedIds.add(p.id);
       if(p.class==='Primordiale')primCount++;
     }
-    if(chosen.length===3){
+    if(chosen.length===3&&(mon.value+gen.value+val)>=floor){
       // Colonnes gauches canoniques {0,1,2} : buildGameBoard miroite en 7-col,
       // donc placement symétrique sans collision. Ordre aléatoire entre les 3.
       const cols=[0,1,2].sort(()=>Math.random()-0.5);const placements={};

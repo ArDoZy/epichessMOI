@@ -20,9 +20,14 @@
 // ----------------------------------------------------------------
 // CALCULS ELO
 // ----------------------------------------------------------------
+// ELO attribué à l'adversaire pour le calcul du gain/perte. Il n'y a plus
+// qu'un instructeur, donc une seule valeur par défaut ; le tournoi et le jeu
+// en ligne la remplacent par celle de l'adversaire réel via cette surcharge.
+let _opponentEloOverride=null;
+function vvSetOpponentElo(v){_opponentEloOverride=(typeof v==='number'&&v>0)?v:null;}
 function vvEstimateAiElo(){
-  const inst=AI_INSTRUCTORS[selectedAILevel];
-  return inst?inst.elo:800;
+  if(typeof _opponentEloOverride==='number')return _opponentEloOverride;
+  return INSTRUCTOR?INSTRUCTOR.elo:800;
 }
 function vvCalcNewElo(playerElo,aiElo,result){
   const K=32;
@@ -66,7 +71,7 @@ function renderVoiePage(){
   }
   const route=document.getElementById('voie-route');let html='';
   const chosen=vvLoadPrimordialeChoisie();
-  if(chosen){const pd=PIECES.find(p=>p.id===chosen);if(pd)html+='<div class="vm-rank-section"><div class="vm-rank-bar" style="background:var(--primordiale-bg);border:1px solid var(--primordiale)"><span class="vm-rank-label" style="color:var(--primordiale)">Primordiale de départ</span></div></div><div class="voie-milestone"><div class="vm-card reached"><span class="vm-piece-emoji">'+pd.emoji+'</span><div class="vm-piece-name">'+pd.name+'</div><div class="vm-piece-class pc-class Primordiale" style="color:var(--primordiale)">Primordiale · '+pd.value+' pts</div>'+(pd.ability?'<div class="vm-piece-ability">'+pd.ability.slice(0,80)+'…</div>':'')+'</div><div class="vm-center"><div class="vm-dot reached"></div><div class="vm-elo-badge">Départ</div></div><div style="flex:1;max-width:calc(50% - 40px)"></div></div>';}
+  if(chosen){const pd=PIECES.find(p=>p.id===chosen);if(pd)html+='<div class="vm-rank-section"><div class="vm-rank-bar" style="background:var(--primordiale-bg);border:1px solid var(--primordiale)"><span class="vm-rank-label" style="color:var(--primordiale)">Primordiale de départ</span></div></div><div class="voie-milestone"><div class="vm-card reached"><span class="vm-piece-emoji">'+pieceIcon(pd.id,'n')+'</span><div class="vm-piece-name">'+pd.name+'</div><div class="vm-piece-class pc-class Primordiale" style="color:var(--primordiale)">Primordiale · '+pd.value+' pts</div>'+(pd.ability?'<div class="vm-piece-ability">'+pd.ability.slice(0,80)+'…</div>':'')+'</div><div class="vm-center"><div class="vm-dot reached"></div><div class="vm-elo-badge">Départ</div></div><div style="flex:1;max-width:calc(50% - 40px)"></div></div>';}
   let lastRankId=null;
   UNLOCK_MILESTONES.forEach((milestone,idx)=>{
     if(milestone.primordialeChoix)return;
@@ -80,7 +85,7 @@ function renderVoiePage(){
     const cardCls=reached?'vm-card reached':isCurrent?'vm-card current-milestone':'vm-card locked-milestone';
     const cc=CLASS_COLOR_VARS[pd.class]||'var(--muted)';
     const bigBadge=milestone.bigReward?'<span style="font-size:9px;background:rgba(201,168,76,.2);color:var(--gold);padding:2px 6px;border-radius:4px;font-family:Cinzel,serif;margin-left:4px">+ Récompenses</span>':'';
-    html+='<div class="voie-milestone"><div class="'+cardCls+'"><span class="vm-piece-emoji">'+pd.emoji+'</span><div class="vm-piece-name">'+pd.name+bigBadge+'</div><div class="vm-piece-class pc-class '+pd.class+'" style="color:'+cc+'">'+pd.class+' · '+pd.value+' pts</div>'+(pd.ability?'<div class="vm-piece-ability">'+(pd.ability.length>80?pd.ability.slice(0,80)+'…':pd.ability)+'</div>':'')+'</div><div class="vm-center"><div class="'+dotCls+'"></div><div class="vm-elo-badge">'+(milestone.eloRequired===0?'Départ':milestone.eloRequired+' ELO')+'</div></div><div style="flex:1;max-width:calc(50% - 40px)"></div></div>';
+    html+='<div class="voie-milestone"><div class="'+cardCls+'"><span class="vm-piece-emoji">'+pieceIcon(pd.id,'n')+'</span><div class="vm-piece-name">'+pd.name+bigBadge+'</div><div class="vm-piece-class pc-class '+pd.class+'" style="color:'+cc+'">'+pd.class+' · '+pd.value+' pts</div>'+(pd.ability?'<div class="vm-piece-ability">'+(pd.ability.length>80?pd.ability.slice(0,80)+'…':pd.ability)+'</div>':'')+'</div><div class="vm-center"><div class="'+dotCls+'"></div><div class="vm-elo-badge">'+(milestone.eloRequired===0?'Départ':milestone.eloRequired+' ELO')+'</div></div><div style="flex:1;max-width:calc(50% - 40px)"></div></div>';
   });
   route.innerHTML=html;
   const history=vvLoadHistory().slice().reverse();const histDiv=document.getElementById('voie-history');
@@ -96,11 +101,13 @@ function renderVoiePage(){
   histDiv.innerHTML=hhtml;
 }
 
-document.getElementById('b-voie').addEventListener('click',()=>{renderVoiePage();showPage('page-voie');});
-document.getElementById('voie-back').addEventListener('click',()=>{renderArmiesPage();showPage('page-armies');});
+// La Voie est devenue une face du cube (js/cube-nav.js) : elle n'a plus ni
+// bouton d'entrée dans « Mes armées », ni bouton de retour.
+// La Voie est embarquée dans une face du cube : c'est le conteneur de la
+// face qui défile, pas le document. Remonter window ne faisait donc rien.
 document.getElementById('voie-scroll-top').addEventListener('click',()=>{
-  document.documentElement.scrollTop=0;document.body.scrollTop=0;
-  document.getElementById('page-voie').scrollTop=0;
+  const host=document.getElementById('face-viewport-voie')||document.getElementById('page-voie');
+  if(host)host.scrollTop=0;
   window.scrollTo({top:0,left:0,behavior:'instant'});
 });
 
@@ -111,10 +118,11 @@ function showPrimordialeChoiceModal(){
   const modal=document.getElementById('primordiale-modal');modal.style.display='flex';
   const cont=document.getElementById('primordiale-choices');
   const primordiaux=PRIMORDIAUX_CHOIX.map(id=>PIECES.find(p=>p.id===id)).filter(Boolean);
-  cont.innerHTML=primordiaux.map(p=>'<div class="primordiale-choice-card" data-id="'+p.id+'"><span class="pc-big-emoji">'+p.emoji+'</span><div class="pc-big-name">'+p.name+'</div><div class="pc-big-mvt">'+p.movement+'</div></div>').join('');
+  cont.innerHTML=primordiaux.map(p=>'<div class="primordiale-choice-card" data-id="'+p.id+'"><span class="pc-big-emoji">'+pieceIcon(p.id,'n')+'</span><div class="pc-big-name">'+p.name+'</div><div class="pc-big-mvt">'+p.movement+'</div></div>').join('');
   cont.querySelectorAll('.primordiale-choice-card').forEach(el=>{
     el.addEventListener('click',()=>{
       const id=el.dataset.id;vvSavePrimordialeChoisie(id);VV_UNLOCKED.add(id);vvSaveUnlocked(VV_UNLOCKED);
+      if(typeof invEnsureStarter==='function')invEnsureStarter();
       modal.style.display='none';showNotif((PIECES.find(p=>p.id===id)?.name)+' choisie ! Bonne chance !','ok');updAll();
     });
   });

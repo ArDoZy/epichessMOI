@@ -28,13 +28,12 @@ const renderCombatPage=(ad,aiIsCustom)=>{
   const aiGen=aiArmyData.gen?.id?PIECES.find(p=>p.id===aiArmyData.gen.id)||aiArmyData.gen:aiArmyData.gen;
   const aiExtras=(aiArmyData.extras||[]).map(id=>PIECES.find(p=>p.id===id)).filter(Boolean);
   const aiAll=[aiMon,aiGen,...aiExtras].filter(Boolean);
-  // L'instructeur n'est choisi qu'à l'étape suivante : on affiche donc le
-  // libellé générique « Instructeur », et non le nom d'un instructeur
-  // particulier (selectedAILevel garde ici la valeur de la partie précédente).
   document.getElementById('cvs-display').innerHTML=
-    '<div class="cside"><div class="cside-lbl">Votre armée</div><div class="cside-pieces">'+all.map(p=>'<span>'+p.emoji+'</span>').join('')+'</div><div class="cside-name">'+ad.totalValue+' pts</div></div>'+
+    '<div class="cside"><div class="cside-lbl">Votre armée</div><div class="cside-pieces">'+all.map(p=>'<span title="'+escH(p.name)+'">'+pieceIcon(p.id,'n')+'</span>').join('')+'</div><div class="cside-name">'+ad.totalValue+' pts</div></div>'+
     '<div class="vs-div">VS</div>'+
-    '<div class="cside"><div class="cside-lbl">Instructeur</div><div class="cside-pieces">'+aiAll.map(p=>'<span>'+p.emoji+'</span>').join('')+'</div><div class="cside-name">'+aiArmyData.totalValue+' pts</div></div>';
+    '<div class="cside"><div class="cside-lbl">'+INSTRUCTOR.name+'</div><div class="cside-pieces">'+aiAll.map(p=>'<span title="'+escH(p.name)+'">'+pieceIcon(p.id,'n')+'</span>').join('')+'</div><div class="cside-name">'+aiArmyData.totalValue+' pts</div></div>';
+  // Rappel de la mise avant de s'engager (js/economy-ui.js).
+  if(typeof renderCombatStake==='function')renderCombatStake(ad);
 };
 
 const launchParticles=()=>{
@@ -63,9 +62,19 @@ document.getElementById('cb-mirror-ai').addEventListener('click',()=>{
 // La couleur du joueur est tirée ICI et transmise à startGame(true) pour
 // qu'elle ne soit pas re-tirée au hasard une seconde fois.
 document.getElementById('cb-play').addEventListener('click',()=>{
-  showAILevelModal(()=>{
-    renderCombatPage(currentArmyData,aiArmyData&&!aiArmyData._random);
-    _playerColor=Math.random()<0.5?'w':'b';
-    startGame(true);
-  });
+  // Garde-fou d'économie : lancer une partie avec une réserve insuffisante
+  // produirait un plateau incomplet et une perte incompréhensible.
+  if(typeof armyStock==='function'){
+    const stock=armyStock(currentArmyData);
+    if(!stock.ok){
+      showConfirmModal('Réserve insuffisante pour cette armée : '+
+        stock.missing.map(m=>m.name+' ('+m.have+'/'+m.need+')').join(', ')+
+        '. Récupérez le coffre de réapprovisionnement dans la Réserve.',()=>{},
+        {okLabel:'Compris',cancelLabel:'Fermer',okClass:'btn-primary'});
+      return;
+    }
+  }
+  if(typeof vvSetOpponentElo==='function')vvSetOpponentElo(null);
+  _playerColor=Math.random()<0.5?'w':'b';
+  startGame(true);
 });

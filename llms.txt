@@ -33,7 +33,7 @@ d'apothicaire abandonné.
 
 ## Les pièces
 
-Le catalogue compte **32 pièces** réparties en **5 classes** :
+Le catalogue compte **18 créatures** réparties en **5 classes** :
 
 - **Monarque** : l'équivalent du roi, la pièce à protéger. Exemples : Roi
   (3 pts, 1 case dans toutes les directions), Empereur (7 pts, se déplace
@@ -55,17 +55,46 @@ Le catalogue compte **32 pièces** réparties en **5 classes** :
 Chaque pièce possède son propre schéma de déplacement, et beaucoup ont une
 capacité spéciale affichée directement sur leur carte dans le jeu.
 
+## Possession des pièces, mise et coffres
+
+C'est la mécanique qui distingue le plus Epic Chess des autres variantes :
+
+- Les pièces se possèdent en **exemplaires**. On ne peut aligner une armée
+  que si l'on possède assez d'exemplaires de chacune de ses créatures.
+- Engager une armée, c'est la **risquer**. En cas de **défaite**, tous les
+  exemplaires engagés sont perdus. En cas de **victoire** ou de nulle, seuls
+  les exemplaires réellement **capturés** sont perdus, les survivants
+  reviennent en Réserve.
+- Une **promotion** de pion crée un exemplaire supplémentaire de la pièce
+  choisie.
+- Chaque victoire donne un **coffre**, dont la rareté suit la **série de
+  victoires consécutives** : Coffre Pion, puis Cavalier, Fou, Tour, Dame et
+  enfin Roi à partir de six victoires d'affilée. Une défaite remet la série
+  à zéro. Les coffres contiennent des exemplaires de pièces et, avec une
+  probabilité croissante selon leur rareté, une créature encore jamais
+  débloquée.
+- Un **coffre de réapprovisionnement quotidien** rend 4 exemplaires de
+  chaque pièce possédée : il est donc impossible de rester définitivement
+  bloqué sans armée jouable.
+
 ## Adversaires et progression
 
-- Les parties se jouent contre une IA appelée **l'Instructeur**, déclinée
-  en **7 niveaux** : Poussière (joue presque au hasard), Pierre, Bronze,
-  Acier, Obsidienne, Argent, et Or (environ 10 secondes de calcul par coup).
+- Les parties se jouent **contre d'autres joueurs en ligne** (appariement
+  automatique, ou partie privée avec un code d'invitation à transmettre)
+  ou contre **l'Instructeur**, l'adversaire IA du jeu.
+- L'Instructeur est **unique** et joue toujours à pleine puissance :
+  recherche alpha-bêta avec table de transposition, et une évaluation qui
+  tient compte des **pouvoirs** des créatures (paralysie de la Méduse,
+  protection du Prêtre, zone de destruction du Typhon, charge du Dresseur
+  d'Éléphant, domination du Grand Maître) et pas seulement de leurs
+  déplacements.
 - La **Voie des Victoires** suit l'ELO du joueur à travers **7 rangs** :
   Poussière (0-199), Pierre (200-499), Bronze (500-849), Acier (850-1299),
   Obsidienne (1300-1799), Argent (1800-2399), Or Légendaire (2400+).
-- Franchir un palier de rang **débloque de nouvelles créatures**.
-- Le **Mode Tournoi** enchaîne plusieurs combats d'affilée contre des
-  adversaires de difficulté croissante.
+- Franchir un palier de rang **débloque de nouvelles créatures** et de
+  nouveaux **échiquiers** : bois, pierre, acier, argent puis or.
+- Le **Mode Tournoi** enchaîne sept combats contre des armées de plus en
+  plus fortes.
 
 ## Confidentialité
 
@@ -80,12 +109,16 @@ Oui, entièrement gratuit, sans achat intégré ni publicité.
 
 **Faut-il savoir jouer aux échecs ?**
 Non. Le plateau et les règles de base sont ceux des échecs classiques, et
-chaque créature affiche son déplacement sur sa carte. Les premiers niveaux
-d'Instructeur sont conçus pour apprendre en jouant.
+chaque créature affiche son déplacement et son pouvoir sur sa carte.
 
 **Peut-on jouer contre d'autres joueurs humains ?**
-Pas actuellement : les parties se jouent contre l'IA (l'Instructeur), en
-partie simple ou en Mode Tournoi.
+Oui. Le jeu propose une partie rapide avec appariement automatique, et des
+parties privées entre amis via un code à quatre caractères.
+
+**Que perd-on quand on perd une partie ?**
+Tous les exemplaires de pièces engagés dans cette partie. Une victoire ne
+coûte que les pièces capturées. Un coffre quotidien de réapprovisionnement
+empêche de rester bloqué sans armée.
 
 **Faut-il installer quelque chose ?**
 Non. Le jeu est en HTML/CSS/JavaScript pur et fonctionne dans n'importe

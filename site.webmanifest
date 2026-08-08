@@ -7,8 +7,8 @@
   "scope": "/",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#1d1a10",
-  "theme_color": "#1d1a10",
+  "background_color": "#0e1216",
+  "theme_color": "#0e1216",
   "categories": ["games", "board", "strategy"],
   "icons": [
     { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },

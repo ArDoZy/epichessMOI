@@ -35,6 +35,13 @@ const FILES=['A','B','C','D','E','F','G','H'];
 let GS={board:[],turn:'w',selected:null,legalMoves:[],history:[],enPassant:null,halfmoveClock:0,gameOver:false,playerArmy:null,aiArmy:null,movePairs:[],capturedW:[],capturedB:[],pendingPromo:null,medusaParalyzed:new Set(),lastMove:null,anchored:new Set(),pretreProtected:new Set(),amazonePostCapture:null,grandMaitreAlive:{w:false,b:false},gardePierreUsed:{w:false,b:false},turnCount:0,historyView:null,lastMoveHistory:[],clockMs:0,timeWhite:0,timeBlack:0};
 
 function inB(r,c){return r>=0&&r<8&&c>=0&&c<8;}
+// Les listes de pièces capturées portent l'id et la couleur (et non un
+// caractère emoji) : c'est ce qui permet de les redessiner en SVG dans les
+// bandeaux joueurs, et de les compter pour l'économie.
+function pushCaptured(gs,piece){
+  const rec={id:piece.pieceId,color:piece.color};
+  if(piece.color==='w')gs.capturedW.push(rec);else gs.capturedB.push(rec);
+}
 function opp(color){return color==='w'?'b':'w';}
 function cloneBoard(b){return b.map(r=>r.map(p=>p?{...p}:null));}
 function getPieceEmoji(cell){if(!cell)return '';return cell.emoji||'?';}
@@ -344,7 +351,7 @@ function applyTyphonEffect(toR,toC,board,p,gs){
   if(p.pieceId!=='typhon')return;
   for(const[dr,dc] of[[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]]){
     const nr=toR+dr,nc=toC+dc;if(!inB(nr,nc))continue;const t=board[nr][nc];
-    if(t&&t.color!==p.color&&!gs.anchored?.has(`${nr},${nc}`)&&!(t.isKing||t.type==='k')){if(t.color==='w')gs.capturedW.push(t.emoji);else gs.capturedB.push(t.emoji);board[nr][nc]=null;}
+    if(t&&t.color!==p.color&&!gs.anchored?.has(`${nr},${nc}`)&&!(t.isKing||t.type==='k')){pushCaptured(gs,t);board[nr][nc]=null;}
   }
 }
 function applyBansheeEffect(toR,toC,board,p){
@@ -359,7 +366,7 @@ function applyDresseurEffect(move,board,p,gs){
   while(nr!==move.r||nc!==move.c){
     const t=board[nr][nc];
     if(t&&t.color!==p.color&&!gs.anchored?.has(`${nr},${nc}`)&&!(t.isKing||t.type==='k')){
-      if(t.color==='w')gs.capturedW.push(t.emoji);else gs.capturedB.push(t.emoji);
+      pushCaptured(gs,t);
       board[nr][nc]=null;
     }
     nr+=dr;nc+=dc;
@@ -375,12 +382,10 @@ function executeGameMove(from,to,gs){
   gs.history.push(snapshot);gs.historyView=null;
 
   let captured=null;
-  if(to.ep){const pr=to.r+(p.color==='w'?1:-1);captured=b[pr][to.c];if(captured){if(captured.color==='w')gs.capturedW.push(captured.emoji);else gs.capturedB.push(captured.emoji);}b[pr][to.c]=null;}
+  if(to.ep){const pr=to.r+(p.color==='w'?1:-1);captured=b[pr][to.c];if(captured)pushCaptured(gs,captured);b[pr][to.c]=null;}
   else{
     captured=b[to.r][to.c];
-    if(captured){
-      if(captured.color==='w')gs.capturedW.push(captured.emoji);else gs.capturedB.push(captured.emoji);
-    }
+    if(captured)pushCaptured(gs,captured);
   }
 
   if(to.castle){if(to.castle==='K'){b[from.r][5]=b[from.r][7];b[from.r][7]=null;if(b[from.r][5])b[from.r][5].hasMoved=true;}if(to.castle==='Q'){b[from.r][3]=b[from.r][0];b[from.r][0]=null;if(b[from.r][3])b[from.r][3].hasMoved=true;}}
@@ -542,11 +547,16 @@ function showPromoModal(gs){
     // Ajouter aussi le Général si pas déjà dedans
     if(genPiece&&!options.find(o=>o.pieceId===genPiece.id))options.push({type:genPiece.pieceType||'q',emoji:genPiece.emoji,label:genPiece.name,pieceId:genPiece.id});
   }else options=stdPieces;
-  box.innerHTML=options.map((pp,i)=>'<div class="promo-piece" data-idx="'+i+'" title="'+pp.label+'">'+pp.emoji+'</div>').join('');
+  const pcol=gs.playerColor||'w';
+  box.innerHTML=options.map((pp,i)=>'<div class="promo-piece" data-idx="'+i+'" title="'+pp.label+'">'+
+    pieceSVG(pp.pieceId,pcol)+'<span class="promo-piece-lbl">'+pp.label+'</span></div>').join('');
   box.querySelectorAll('.promo-piece').forEach((el,i)=>{el.addEventListener('click',()=>{
     const opt=options[i];const{from,to,p}=gs.pendingPromo;
     gs.board[to.r][to.c]={...p,type:opt.type,emoji:opt.emoji,pieceId:opt.pieceId};
     gs.pendingPromo=null;modal.classList.remove('active');playSound('promo');
+    // Règle d'économie : une promotion CRÉE un exemplaire de la pièce
+    // choisie, crédité immédiatement (voir economy.js::economyOnPromotion).
+    if(typeof economyOnPromotion==='function')economyOnPromotion(opt.pieceId,gs);
     // En ligne, le coup n'est transmis qu'ici : l'adversaire a besoin de la
     // pièce choisie, pas seulement des cases de départ et d'arrivée.
     if(gs.multiplayer&&typeof mpSendMove==='function')mpSendMove(from,to,{type:opt.type,emoji:opt.emoji,pieceId:opt.pieceId});
@@ -558,7 +568,11 @@ function showPromoModal(gs){
 // JOURNAL DES COUPS (notation textuelle simple, PAS la notation FIDE)
 // ================================================================
 function recordMove(p,to,isCapture,gs){
-  const col=FILES[to.c],row=8-to.r;const icon=getPieceEmoji(p);const txt=icon+(isCapture?'x':'')+col+row;
+  // Le journal affiche le LOGO de la pièce jouée : sur un jeu où les pièces
+  // sont des créatures, « 🪼xD4 » ne disait rien à personne.
+  const col=FILES[to.c],row=8-to.r;
+  const icon=(typeof pieceIcon==='function')?pieceIcon(p.pieceId,p.color,1.05):'';
+  const txt=icon+(isCapture?'<span style="opacity:.7">x</span>':'')+col+row;
   if(p.color==='w')gs.movePairs.push([txt,'']);
   else{if(gs.movePairs.length>0)gs.movePairs[gs.movePairs.length-1][1]=txt;else gs.movePairs.push(['…',txt]);}
   renderMoveLog(gs);

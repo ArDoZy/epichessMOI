@@ -44,7 +44,23 @@ const MP={
   joinTimeoutId:null,
   lobby:null,        // salon d'attente du matchmaking (null hors recherche)
   matched:false,     // paire déjà formée : ignore les sync de presence suivants
+  oppName:null,      // pseudo de l'adversaire (affiché dans son bandeau)
+  oppElo:null,       // son ELO, utilisé pour le calcul de gain/perte
+  oppId:null,        // son identifiant de session, pour détecter son départ
+  rematchMine:false, // j'ai proposé une revanche
+  rematchTheirs:false,
+  gameSeq:0,         // numéro de partie dans ce salon (revanches successives)
 };
+
+// Carte de visite envoyée avec l'armée : sans elle l'adversaire n'est qu'un
+// « Adversaire » anonyme, et le calcul d'ELO se fait contre une valeur
+// arbitraire au lieu de son classement réel.
+function mpMyCard(){
+  return{
+    name:(typeof CUR_ACC==='string'&&CUR_ACC)?CUR_ACC:'Joueur',
+    elo:(typeof vvLoadElo==='function')?vvLoadElo():0,
+  };
+}
 
 // Vrai seulement si l'URL et la clé ont été renseignées : permet d'afficher
 // un message clair plutôt qu'un échec réseau obscur.
@@ -87,6 +103,8 @@ function mpConnect(code,asHost){
 
   MP.roomCode=code;MP.isHost=asHost;MP.myColor=asHost?'w':'b';
   MP.myArmy=currentArmyData;MP.oppArmy=null;MP.started=false;
+  MP.oppName=null;MP.oppElo=null;MP.oppId=null;
+  MP.rematchMine=false;MP.rematchTheirs=false;MP.gameSeq=0;
 
   MP.channel=client.channel('epichess-room-'+code,{config:{presence:{key:MP.myId}}});
 
@@ -95,8 +113,21 @@ function mpConnect(code,asHost){
   MP.channel.on('broadcast',{event:'army'},({payload})=>{
     if(payload.senderId===MP.myId||MP.started)return;
     MP.oppArmy=payload.army;
+    MP.oppId=payload.senderId;
+    MP.oppName=(payload.card&&payload.card.name)||'Adversaire';
+    MP.oppElo=(payload.card&&typeof payload.card.elo==='number')?payload.card.elo:null;
     mpSendArmy();
     mpTryStart();
+  });
+
+  // Revanche : chacun annonce son souhait, la partie repart quand les deux
+  // l'ont fait. Les couleurs s'inversent, sinon le même camp commencerait
+  // toutes les parties de la soirée.
+  MP.channel.on('broadcast',{event:'rematch'},({payload})=>{
+    if(payload.senderId===MP.myId)return;
+    MP.rematchTheirs=true;
+    mpUpdateRematchUI();
+    mpTryRematch();
   });
 
   MP.channel.on('broadcast',{event:'move'},({payload})=>{
@@ -111,8 +142,20 @@ function mpConnect(code,asHost){
 
   MP.channel.on('broadcast',{event:'resign'},({payload})=>{
     if(payload.senderId===MP.myId||!GS||!GS.multiplayer||GS.gameOver)return;
-    showNotif('Votre adversaire a abandonné : vous gagnez !','ok');
+    mpGameMessage('Votre adversaire a abandonné : vous gagnez !','mate');
     GS.gameOver=true;stopClockTick(GS);
+    if(!_endGameTriggered)triggerEndOfGame('win');
+  });
+
+  // Départ de l'adversaire en cours de partie : fermer l'onglet ne doit pas
+  // être un moyen d'éviter une défaite. Le joueur resté en ligne gagne.
+  MP.channel.on('presence',{event:'leave'},({leftPresences})=>{
+    if(!MP.started||!GS||!GS.multiplayer||GS.gameOver)return;
+    const left=(leftPresences||[]).some(p=>p&&(p.key===MP.oppId||p.senderId===MP.oppId));
+    if(!left&&MP.oppId)return;
+    GS.gameOver=true;stopClockTick(GS);
+    const bar=document.getElementById('game-status');
+    if(bar){bar.textContent='Votre adversaire a quitté la partie : vous gagnez.';bar.className='status-bar mate';}
     if(!_endGameTriggered)triggerEndOfGame('win');
   });
 
@@ -147,7 +190,7 @@ function mpConnect(code,asHost){
 
 function mpSendArmy(){
   if(!MP.channel)return;
-  MP.channel.send({type:'broadcast',event:'army',payload:{senderId:MP.myId,army:MP.myArmy}});
+  MP.channel.send({type:'broadcast',event:'army',payload:{senderId:MP.myId,army:MP.myArmy,card:mpMyCard()}});
 }
 
 function mpTryStart(){
@@ -157,7 +200,41 @@ function mpTryStart(){
   currentArmyData=MP.myArmy;
   aiArmyData=MP.oppArmy;      // "aiArmyData" = armée du camp adverse
   _playerColor=MP.myColor;
+  // L'ELO gagné ou perdu se calcule contre le classement réel de
+  // l'adversaire, pas contre celui de l'IA.
+  if(typeof vvSetOpponentElo==='function')vvSetOpponentElo(MP.oppElo);
   mpCloseModal();
+  startGame(true,true);
+}
+
+// ----------------------------------------------------------------
+// REVANCHE
+// ----------------------------------------------------------------
+function mpProposeRematch(){
+  if(!MP.channel||!MP.started)return false;
+  MP.rematchMine=true;
+  MP.channel.send({type:'broadcast',event:'rematch',payload:{senderId:MP.myId}});
+  mpUpdateRematchUI();
+  mpTryRematch();
+  return true;
+}
+function mpUpdateRematchUI(){
+  const btn=document.getElementById('result-revanche');
+  if(!btn||!GS||!GS.multiplayer)return;
+  if(MP.rematchMine&&!MP.rematchTheirs)btn.textContent='Revanche demandée…';
+  else if(MP.rematchTheirs&&!MP.rematchMine)btn.textContent='Revanche proposée !';
+}
+function mpTryRematch(){
+  if(!MP.rematchMine||!MP.rematchTheirs)return;
+  MP.rematchMine=false;MP.rematchTheirs=false;
+  MP.gameSeq++;
+  // Les camps s'échangent : l'hôte ne garde pas les Blancs indéfiniment.
+  MP.myColor=MP.myColor==='w'?'b':'w';
+  MP.isHost=!MP.isHost;
+  currentArmyData=MP.myArmy;
+  aiArmyData=MP.oppArmy;
+  _playerColor=MP.myColor;
+  document.getElementById('result-modal')?.classList.remove('active');
   startGame(true,true);
 }
 
@@ -172,9 +249,16 @@ function mpTryStart(){
 // code de sa page et émettre n'importe quel message. Chaque client rejuge
 // donc le coup reçu avec son propre moteur de règles, et n'applique QUE des
 // coups qu'il a lui-même calculés comme légaux.
+// showNotif() est volontairement muette dans ce projet : les messages de
+// partie en ligne passent donc par la barre de statut du plateau, qui est le
+// seul endroit que le joueur regarde pendant une partie.
+function mpGameMessage(text,cls){
+  const bar=document.getElementById('game-status');
+  if(bar){bar.textContent=text;bar.className='status-bar '+(cls||'');}
+}
 function mpRejectMove(reason){
   console.warn('[MP] coup rejeté :',reason);
-  showNotif('Coup adverse invalide, ignoré ('+reason+').','err');
+  mpGameMessage('Coup adverse invalide, ignoré ('+reason+').','check');
 }
 
 function mpOppColor(){return MP.myColor==='w'?'b':'w';}
@@ -280,6 +364,10 @@ function mpLeave(){
   if(MP.channel){MP.channel.unsubscribe();MP.channel=null;}
   mpLeaveLobby();
   MP.started=false;MP.matched=false;MP.oppArmy=null;MP.roomCode=null;
+  MP.oppName=null;MP.oppElo=null;MP.oppId=null;
+  MP.rematchMine=false;MP.rematchTheirs=false;
+  // On repasse sur l'ELO de l'IA pour les prochaines parties hors ligne.
+  if(typeof vvSetOpponentElo==='function')vvSetOpponentElo(null);
 }
 
 // ----------------------------------------------------------------
