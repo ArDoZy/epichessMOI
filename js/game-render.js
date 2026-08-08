@@ -32,7 +32,7 @@ function showCtxMenu(e,r,c,gs){
     const used=gs.gardePierreUsed[cell.color];
     opts={powerActive:true,powerLabel:pd.powerLabel||'Activer pouvoir',powerDisabled:!!used,powerCtx:{r,c,pieceId:pd.id,color:cell.color}};
   }
-  showPieceCtxMenu(e,pd||{emoji:getPieceEmoji(cell),name:pid},opts);
+  showPieceCtxMenu(e,pd||{id:pid,name:pid},opts);
 }
 // Ancrage du Garde de Pierre, extrait d'activatePower() : ce pouvoir change
 // le tour sans passer par executeGameMove(), il doit donc pouvoir être rejoué
@@ -66,6 +66,7 @@ function renderGame(gs){
   const playerCol=gs.playerColor||'w';
   const aiCol=gs.aiColor||'b';
   const flipped=playerCol==='b'; // échiquier retourné si le joueur joue les noirs
+  const checkedColor=isInCheckSimple(gs.turn,b)?gs.turn:null;
   let html='';
   for(let vi=0;vi<8;vi++)for(let vc=0;vc<8;vc++){
     // vi/vc = indices VISUELS (0,0 = case en haut à gauche, ordre de sortie
@@ -87,16 +88,19 @@ function renderGame(gs){
     if(gs.lastMove&&((gs.lastMove.from.r===r&&gs.lastMove.from.c===c)||(gs.lastMove.to.r===r&&gs.lastMove.to.c===c)))cls+=' last-move';
     if(gs.lastMove&&gs.lastMove.capture&&gs.lastMove.to.r===r&&gs.lastMove.to.c===c)cls+=' cap-flash';
     const isAnchored=gs.anchored?.has(key);
-    let showCell=cell;
+    // Le roi en echec est signale sur le plateau lui-meme : la barre de
+    // statut seule passait inapercue au milieu d'une partie rapide.
+    if(cell&&(cell.isKing||cell.type==='k')&&cell.color===gs.turn&&checkedColor===gs.turn)cls+=' gc-check';
     let inner='';
-    if(showCell){
-      const em=getPieceEmoji(showCell);const paraStyle=gs.medusaParalyzed?.has(key)?'filter:sepia(1) brightness(.55);':'';
-      let displayEm=em;let badge='';
-      inner='<div class="gc-piece'+(isAnchored?' gc-anchored':'')+'" style="'+paraStyle+'" data-r="'+r+'" data-c="'+c+'">'+displayEm+badge+'</div>';
+    if(cell){
+      const para=gs.medusaParalyzed?.has(key);
+      inner='<div class="gc-piece'+(isAnchored?' gc-anchored':'')+(para?' pc-para':'')+
+        '" data-r="'+r+'" data-c="'+c+'">'+pieceSVG(cell.pieceId,cell.color)+'</div>';
     }
     html+='<div class="'+cls+'" data-r="'+r+'" data-c="'+c+'">'+inner+'</div>';
   }
   boardEl.innerHTML=html;
+  if(typeof applyBoardSkin==='function')applyBoardSkin();
   boardEl.querySelectorAll('.gc').forEach(el=>{
     const r=+el.dataset.r,c=+el.dataset.c;
     el.addEventListener('click',()=>{
@@ -127,7 +131,19 @@ function renderGame(gs){
       startDrag(r,c,gs,t.clientX,t.clientY);
     },{passive:true});
   });
-  buildGameLabels(gs);updateCaptured(gs);updateHistoryNav();renderClocks(gs);
+  buildGameLabels(gs);updateCaptured(gs);updateHistoryNav();renderClocks(gs);updateTurnBars(gs);
+}
+
+// Le bandeau du joueur au trait s'allume : indication permanente de « à qui
+// de jouer », lisible du coin de l'oeil sans lire la barre de statut.
+function updateTurnBars(gs){
+  const me=document.getElementById('human-player-bar');
+  const opp=document.getElementById('ai-player-bar');
+  if(!me||!opp)return;
+  const pc=gs.playerColor||'w';
+  const myTurn=!gs.gameOver&&gs.turn===pc;
+  me.classList.toggle('gp-turn',myTurn);
+  opp.classList.toggle('gp-turn',!gs.gameOver&&gs.turn!==pc);
 }
 
 // Affiche les deux badges d'horloge (masqués si gs.clockMs===0 = illimité).
@@ -141,10 +157,10 @@ function renderClocks(gs){
   const aTime=aiCol==='w'?gs.timeWhite:gs.timeBlack;
   hEl.style.display='';aEl.style.display='';
   hEl.textContent=fmt(hTime);aEl.textContent=fmt(aTime);
-  hEl.classList.toggle('clock-active',gs.turn===playerCol&&!gs.gameOver);
-  aEl.classList.toggle('clock-active',gs.turn===aiCol&&!gs.gameOver);
-  hEl.classList.toggle('clock-low',hTime<30000);
-  aEl.classList.toggle('clock-low',aTime<30000);
+  // Sous 30 s la pendule passe en rouge et pulse : c'est le seul moment ou
+  // elle doit reclamer l'attention.
+  hEl.classList.toggle('clock-low',hTime<30000&&!gs.gameOver);
+  aEl.classList.toggle('clock-low',aTime<30000&&!gs.gameOver);
 }
 
 function buildGameLabels(gs){
@@ -162,9 +178,30 @@ function buildGameLabels(gs){
     colFiles.forEach(f=>{const d=document.createElement('div');d.className='game-col-lbl';d.textContent=f;colLabels.appendChild(d);});
   });
 }
+// Chaque bandeau montre les pieces que CE joueur a prises, plus son avantage
+// materiel : c'est l'information utile, alors que deux listes « blanches » et
+// « noires » dans une colonne obligeaient a faire la soustraction de tete.
 function updateCaptured(gs){
-  const cw=document.getElementById('cap-white');const cb=document.getElementById('cap-black');
-  if(cw)cw.innerHTML=gs.capturedW.join('');if(cb)cb.innerHTML=gs.capturedB.join('');
+  const meEl=document.getElementById('cap-me');const oppEl=document.getElementById('cap-opp');
+  if(!meEl||!oppEl)return;
+  const pc=gs.playerColor||'w';
+  // capturedW = pieces BLANCHES capturees, donc prises par les Noirs.
+  const takenByMe=pc==='w'?gs.capturedB:gs.capturedW;
+  const takenByOpp=pc==='w'?gs.capturedW:gs.capturedB;
+  const val=list=>list.reduce((t,x)=>t+(pieceMaterialValue(x.id)||0),0);
+  const draw=list=>list.map(x=>pieceIcon(x.id,x.color,1.3)).join('');
+  const adv=val(takenByMe)-val(takenByOpp);
+  meEl.innerHTML=draw(takenByMe)+(adv>0?'<span class="gp-adv">+'+adv+'</span>':'');
+  oppEl.innerHTML=draw(takenByOpp)+(adv<0?'<span class="gp-adv">+'+(-adv)+'</span>':'');
+}
+// Valeur « points d'armee » (celle du builder), pas la valeur interne de
+// l'IA : c'est celle que le joueur connait, affichee sur chaque carte.
+function pieceMaterialValue(id){
+  if(id==='std-pawn')return 1;
+  if(id==='std-r')return 5;
+  if(id==='std-n'||id==='std-b')return 3;
+  const p=PIECES.find(x=>x.id===id);
+  return p?p.value:1;
 }
 
 // ----------------------------------------------------------------
@@ -191,7 +228,7 @@ function startDrag(r,c,gs,clientX,clientY){
   const moves=getLegalMoves(b,r,c,gs);
   gs.selected={r,c};gs.legalMoves=moves;
   dragState={fromR:r,fromC:c,gs,moved:false,startX:clientX,startY:clientY};
-  dragGhost.textContent=getPieceEmoji(cell);
+  dragGhost.innerHTML=pieceSVG(cell.pieceId,cell.color);
   dragGhost.style.left=clientX+'px';dragGhost.style.top=clientY+'px';
   if(!alreadySelected)renderGame(gs);
 }
@@ -294,7 +331,7 @@ function renderBoardFromSnapshot(board,lastMove){
     const isLight=(r+c)%2===0;const cell=board[r][c];
     let cls='gc '+(isLight?'l':'d');
     if(lastMove&&((lastMove.from?.r===r&&lastMove.from?.c===c)||(lastMove.to?.r===r&&lastMove.to?.c===c)))cls+=' last-move';
-    const inner=cell?'<div class="gc-piece">'+getPieceEmoji(cell)+'</div>':'';
+    const inner=cell?'<div class="gc-piece">'+pieceSVG(cell.pieceId,cell.color)+'</div>':'';
     html+='<div class="'+cls+'" data-r="'+r+'" data-c="'+c+'">'+inner+'</div>';
   }
   boardEl.innerHTML=html;buildGameLabels(GS);
@@ -373,10 +410,8 @@ function updateStatus(gs){
     if(t===aiCol&&gs.multiplayer){
       bar.textContent='Au tour de votre adversaire…';
     }else if(t===aiCol){
-      const inst=AI_INSTRUCTORS[selectedAILevel];
-      const timeStr=inst.timeMs===0?'':inst.timeMs<1000?' ('+inst.timeMs+'ms)':' (~'+Math.round(inst.timeMs/1000)+'s)';
-      bar.textContent=inst.name+' réfléchit…'+timeStr;
-    }else bar.textContent='Votre tour ('+(playerCol==='w'?'Blancs':'Noirs')+')';
+      bar.textContent=INSTRUCTOR.name+' réfléchit…';
+    }else bar.textContent='À vous de jouer ('+(playerCol==='w'?'Blancs':'Noirs')+')';
     bar.className='status-bar '+(t===aiCol?'thinking':'ok');
   }
 }

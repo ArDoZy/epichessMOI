@@ -107,11 +107,18 @@ function showPieceCtxMenu(e,pieceDef,opts){
   if(e.stopPropagation)e.stopPropagation();
   if(!pieceDef)return;
   const menu=document.getElementById('ctx-menu');
-  document.getElementById('ctx-title').innerHTML=(pieceDef.emoji||'')+' '+(pieceDef.name||'Pièce');
+  const pid=pieceDef.id||'';
+  document.getElementById('ctx-title').innerHTML=(pid?pieceIcon(pid,'n',1.6):'')+'<span>'+escH(pieceDef.name||'Pièce')+'</span>';
   document.getElementById('ctx-class-lbl').textContent=pieceDef.class||'';
   document.getElementById('ctx-class-lbl').style.color=CLASS_COLOR_VARS[pieceDef.class]||'var(--muted)';
   document.getElementById('ctx-val').textContent=(pieceDef.value!==undefined&&pieceDef.value!==null)?pieceDef.value:'?';
   document.getElementById('ctx-mvt').textContent=pieceDef.movement||'Standard';
+  const stockRow=document.getElementById('ctx-stock-row');
+  if(stockRow){
+    const own=pieceDef.id&&typeof invCount==='function'&&typeof isOwnablePiece==='function'&&isOwnablePiece(pieceDef.id);
+    stockRow.style.display=own?'':'none';
+    if(own)document.getElementById('ctx-stock').textContent=invCount(pieceDef.id)+' en réserve (se déploie par '+pieceDeployCount(pieceDef.id)+')';
+  }
   const abRow=document.getElementById('ctx-ability-row');
   if(pieceDef.ability){abRow.style.display='';document.getElementById('ctx-ability').textContent=pieceDef.ability;}
   else abRow.style.display='none';

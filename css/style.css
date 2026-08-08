@@ -23,67 +23,96 @@
    ================================================================ */
 
 /* [THEME] ======================================================= */
-/* Identité visuelle : laboratoire d'alchimie abandonné. --gold/--gold2
-   deviennent des tons laiton/cuivre (instruments d'apothicaire) plutôt que
-   de l'or de trésor ; --accent/--accent2 basculent vers une encre violette
-   arcanique. --potion (nouveau) sert aux touches de lueur toxique/phosphorescente
-   (fioles, éclaboussures) dans les zones ajoutées pour ce thème. Les couleurs
-   de classe de pièce (--monarque/--general/etc.) restent inchangées : elles
-   distinguent des catégories de jeu, pas l'ambiance générale. */
+/* Direction artistique v3 : ARDOISE, VERT-DE-GRIS ET LAITON.
+   L'ancienne palette était intégralement brune et dorée : fond ambré, cadres
+   ambrés, boutons ambrés, texte ambré. Tout se ressemblait, rien ne
+   hiérarchisait, et l'or servait aussi bien de fond que d'accent que de
+   texte, donc n'attirait plus l'œil nulle part.
+   Le principe est maintenant celui d'un atelier de métallurgie : des SURFACES
+   froides et neutres (ardoise) qui ne réclament aucune attention, une COULEUR
+   VIVE unique (--accent2, un vert-de-gris de cuivre oxydé) réservée à
+   l'action en cours, et un LAITON (--gold) réservé à ce qui se mérite (rang,
+   coffres, récompenses). Ces trois rôles ne se mélangent jamais, c'est ce qui
+   rend l'interface lisible d'un coup d'œil.
+   --ember est la couleur du combat : elle n'apparaît que sur le plateau et
+   dans les moments de tension (échec, capture, défaite).
+   Les couleurs de CLASSE de pièce sont recalibrées pour rester distinctes du
+   vert-de-gris de l'accent, qu'elles côtoient partout dans le builder. */
 :root{
-  /* Palette éclaircie (v2) : le labo reste sombre et ambré, mais les fonds
-     n'écrasent plus le texte, luminosité et contraste relevés partout pour
-     ne plus forcer les yeux en usage normal. */
-  --bg:#1d1a10;--surface:#2a2417;--surface2:#342d1c;--border:#584d31;--border2:#7a6c44;
-  --text:#ecdfbb;--muted:#a89f7c;--accent:#5c2f6b;--accent2:#8d4b96;--gold:#bd9548;--gold2:#e0bc63;
-  --success:#5fae4a;--danger:#b6394a;
-  --potion:#6fae44;--potion-glow:rgba(111,174,68,.28);--potion-dark:#2f5c28;
-  --monarque:#3b6ea5;--monarque-bg:rgba(59,110,165,0.14);
-  --general:#c9752e;--general-bg:rgba(201,117,46,0.14);
-  --primordiale:#3f7d4a;--primordiale-bg:rgba(63,125,74,0.14);
-  --sorcier:#9d3f7d;--sorcier-bg:rgba(157,63,125,0.14);
-  --brute:#a23a3a;--brute-bg:rgba(162,58,58,0.14);
-  --parchment-noise:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/></svg>");
+  --bg:#0e1216;--bg2:#11171c;
+  --surface:#171f25;--surface2:#1e282f;
+  --border:#2a353d;--border2:#3f4f5a;
+  --text:#e7ecea;--muted:#8698a1;
+  --accent:#186557;--accent2:#2fb197;--accent-bg:rgba(47,177,151,.12);
+  --gold:#c19a45;--gold2:#e6c576;
+  --ember:#d9552f;--success:#4fae6a;--danger:#d4453f;
+  --potion:#2fb197;--potion-glow:rgba(47,177,151,.22);--potion-dark:#0f3d35;
+  --monarque:#5b8fd6;--monarque-bg:rgba(91,143,214,.14);
+  --general:#e08a3c;--general-bg:rgba(224,138,60,.14);
+  --primordiale:#8fb050;--primordiale-bg:rgba(143,176,80,.14);
+  --sorcier:#a274d4;--sorcier-bg:rgba(162,116,212,.14);
+  --brute:#c9564a;--brute-bg:rgba(201,86,74,.14);
+  /* Grain fin appliqué au fond de page : sans lui les aplats sombres
+     ressortent en bandes sur les écrans 8 bits. */
+  --parchment-noise:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.45'/></svg>");
+  /* Pièces : deux couleurs suffisent, tous les logos SVG s'y adaptent. */
+  --pc-w-fill:#f2ede2;--pc-w-line:#1b1512;
+  --pc-b-fill:#23262b;--pc-b-line:#e9e3d6;
 }
 body.light{
-  --bg:#ece6ce;--surface:#f7f0d8;--surface2:#f0e8ca;--border:#c7b98c;--border2:#a8996699;
-  --text:#221d0d;--muted:#655c39;--accent:#4a2456;--accent2:#7a3f82;--gold:#82661f;--gold2:#a17c1c;
-  --success:#3f7a30;--potion:#4d8a35;--potion-glow:rgba(77,138,53,.18);
-  --monarque-bg:rgba(59,110,165,.10);--general-bg:rgba(201,117,46,.10);
-  --primordiale-bg:rgba(63,125,74,.10);--sorcier-bg:rgba(157,63,125,.10);--brute-bg:rgba(162,58,58,.10);
+  --bg:#e8e7e1;--bg2:#efeee9;
+  --surface:#f8f7f3;--surface2:#f1f0ea;
+  --border:#d2d0c7;--border2:#adaa9d;
+  --text:#141a19;--muted:#5b6764;
+  --accent:#12564a;--accent2:#12786a;--accent-bg:rgba(18,120,106,.10);
+  --gold:#8a6b1c;--gold2:#a5831f;
+  --ember:#b8421f;--success:#317a49;--danger:#b23530;
+  --potion:#12786a;--potion-glow:rgba(18,120,106,.16);
+  --monarque-bg:rgba(91,143,214,.12);--general-bg:rgba(224,138,60,.12);
+  --primordiale-bg:rgba(143,176,80,.14);--sorcier-bg:rgba(162,116,212,.12);--brute-bg:rgba(201,86,74,.12);
+  --pc-b-fill:#2b2f34;--pc-b-line:#f0ece1;
 }
 *{box-sizing:border-box;margin:0;padding:0;transition:background-color .45s ease,border-color .45s ease,color .45s ease,box-shadow .45s ease,fill .45s ease;}
 html{scroll-behavior:auto;scrollbar-gutter:stable}
 html,body{min-height:100%;color:var(--text);overflow-x:hidden;font-family:'Crimson Pro',Georgia,serif;transition:background .5s ease,color .5s ease}
 body{
   background-color:var(--bg);
-  /* Lueur toxique en coin (fiole hors-champ) + voile de vignette + grain
-     parchemin, en plus du dégradé doré d'origine, pour une ambiance labo abandonné. */
-  background-image:var(--parchment-noise),radial-gradient(ellipse at 8% 108%,var(--potion-glow),transparent 45%),radial-gradient(ellipse at 50% -10%,rgba(168,130,58,.14),transparent 60%),radial-gradient(ellipse at 50% 110%,rgba(0,0,0,.24),transparent 55%);
+  /* Une lueur de vert-de-gris en bas à gauche (la cuve du laboratoire), un
+     halo de laiton en haut, et le grain : trois couches suffisent, le fond
+     doit rester un fond. */
+  background-image:var(--parchment-noise),radial-gradient(ellipse at 6% 106%,var(--potion-glow),transparent 46%),radial-gradient(ellipse at 50% -12%,rgba(193,154,69,.10),transparent 58%),radial-gradient(ellipse at 50% 112%,rgba(0,0,0,.30),transparent 55%);
   background-blend-mode:overlay,normal,normal,normal;
   background-attachment:fixed;
   background-size:180px 180px,100% 100%,100% 100%,100% 100%;
 }
-::selection{background:var(--gold);color:#140f06}
+::selection{background:var(--accent2);color:#06100e}
 ::-webkit-scrollbar{width:11px;height:11px}
 ::-webkit-scrollbar-track{background:var(--bg)}
 ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:6px;border:2px solid var(--bg)}
-::-webkit-scrollbar-thumb:hover{background:var(--gold)}
+::-webkit-scrollbar-thumb:hover{background:var(--accent2)}
 .page{display:none}
 .page.active{display:block;animation:pageFadeIn .32s ease both}
 #page-combat.active,#page-game.active{animation:pageFadeIn .4s ease both}
 /* Fade + léger glissement, sans scale/blur (qui déformaient la page). */
 @keyframes pageFadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 .cinzel{font-family:'Cinzel',serif}
-.glow-text{background:linear-gradient(135deg,var(--gold),var(--gold2),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.glow-text{background:linear-gradient(135deg,var(--accent2),var(--gold2),var(--gold));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
 
 /* [COMMON] ======================================================= */
-.btn{padding:10px 20px;border-radius:8px;font-weight:600;cursor:pointer;border:none;font-size:13px;transition:all .2s;font-family:'Cinzel',serif;letter-spacing:.5px;text-transform:uppercase;position:relative}
-.btn-ghost{background:transparent;color:var(--text);border:1px solid var(--border2)}.btn-ghost:hover{border-color:var(--accent2);color:var(--accent2)}
-.btn-primary{background:var(--accent2);color:#f4e8d8;box-shadow:0 2px 0 rgba(0,0,0,.35) inset;border:1px solid rgba(0,0,0,.25)}.btn-primary:hover{background:var(--accent)}
-.btn-gold{background:var(--gold);color:#241a10;font-weight:700;box-shadow:0 2px 0 rgba(0,0,0,.3) inset;border:1px solid rgba(0,0,0,.25)}.btn-gold:hover{background:var(--gold2)}
-.btn-danger{background:rgba(239,68,68,.12);color:var(--danger);border:1px solid rgba(239,68,68,.25)}.btn-danger:hover{background:rgba(239,68,68,.22)}
-.btn:disabled{opacity:.35;cursor:not-allowed;transform:none!important;box-shadow:none!important}
+/* Trois niveaux de bouton seulement, et un seul « primaire » par écran :
+   .btn-primary = l'action attendue (vert-de-gris), .btn-gold = ce qui touche
+   aux récompenses, .btn-ghost = tout le reste. */
+.btn{padding:10px 20px;border-radius:9px;font-weight:600;cursor:pointer;border:none;font-size:13px;transition:transform .14s,background .18s,border-color .18s,color .18s;font-family:'Cinzel',serif;letter-spacing:.5px;text-transform:uppercase;position:relative}
+.btn:active:not(:disabled){transform:translateY(1px)}
+.btn-ghost{background:transparent;color:var(--text);border:1px solid var(--border2)}
+.btn-ghost:hover{border-color:var(--accent2);color:var(--accent2);background:var(--accent-bg)}
+.btn-primary{background:var(--accent2);color:#06100e;font-weight:700;border:1px solid rgba(0,0,0,.28);box-shadow:0 2px 0 rgba(0,0,0,.28)}
+.btn-primary:hover{background:#3ec9ac}
+.btn-gold{background:var(--gold);color:#1a1206;font-weight:700;border:1px solid rgba(0,0,0,.28);box-shadow:0 2px 0 rgba(0,0,0,.28)}
+.btn-gold:hover{background:var(--gold2)}
+.btn-danger{background:rgba(212,69,63,.12);color:var(--danger);border:1px solid rgba(212,69,63,.3)}
+.btn-danger:hover{background:rgba(212,69,63,.22)}
+.btn:disabled{opacity:.34;cursor:not-allowed;transform:none!important;box-shadow:none!important}
 @keyframes nIn{from{transform:translate(-50%,-50px);opacity:0}to{transform:translateX(-50%);opacity:1}}
 
 /* --- FIOLE D'ALCHIMISTE : icône décorative dessinée en CSS pur (pas
@@ -159,13 +188,13 @@ body{
 #page-login.active{display:flex}
 .login-wrap{width:100%;max-width:480px;margin-block:auto}
 .login-logo{text-align:center;margin-bottom:28px}
-.login-logo h1{font-family:'Cinzel Decorative','Cinzel',serif;font-size:clamp(28px,7vw,48px);background:linear-gradient(135deg,var(--gold),var(--gold2),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;text-shadow:0 2px 10px rgba(0,0,0,.35)}
+.login-logo h1{font-family:'Cinzel Decorative','Cinzel',serif;font-size:clamp(28px,7vw,48px);background:linear-gradient(135deg,var(--accent2),var(--gold2),var(--gold));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;text-shadow:0 2px 10px rgba(0,0,0,.35)}
 .login-logo p{font-size:13px;color:var(--muted);margin-top:6px;font-style:italic}
 .login-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:26px;position:relative;overflow:hidden}
 .login-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--gold)}
 .lbl{font-family:'Cinzel',serif;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:10px}
 .acc-item{display:flex;align-items:center;gap:11px;padding:11px 13px;border-radius:10px;border:1px solid var(--border);background:var(--bg);margin-bottom:7px;cursor:pointer;transition:all .18s}
-.acc-item:hover{border-color:var(--accent2);background:rgba(122,31,43,.06)}
+.acc-item:hover{border-color:var(--accent2);background:var(--accent-bg)}
 .acc-av{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Cinzel',serif;font-weight:800;font-size:16px;color:#fff;flex-shrink:0}
 .acc-info{flex:1}.acc-name{font-family:'Cinzel',serif;font-size:14px;font-weight:700}.acc-meta{font-size:11px;color:var(--muted);margin-top:2px}
 .acc-del{width:28px;height:28px;border-radius:6px;background:transparent;border:none;cursor:pointer;color:var(--muted);font-size:14px;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0}
@@ -177,17 +206,18 @@ body{
 .pw-modal{position:fixed;inset:0;background:rgba(0,0,0,.78);display:flex;align-items:center;justify-content:center;z-index:9000;visibility:hidden}
 .pw-modal.show{visibility:visible}
 .pw-box{background:var(--surface2);border:1px solid var(--border2);border-radius:14px;padding:28px;min-width:300px;max-width:380px;text-align:center}
-.cab{position:fixed;top:0;left:0;right:0;height:50px;background:linear-gradient(180deg,var(--surface2),var(--surface));border-bottom:2px solid var(--gold);box-shadow:0 2px 12px rgba(0,0,0,.4);display:flex;align-items:center;padding:0 58px 0 18px;gap:14px;z-index:500;font-family:'Cinzel',serif;font-size:13px}
+.cab{position:fixed;top:0;left:0;right:0;height:50px;background:linear-gradient(180deg,var(--surface2),var(--surface));border-bottom:2px solid var(--accent2);box-shadow:0 2px 12px rgba(0,0,0,.4);display:flex;align-items:center;padding:0 58px 0 18px;gap:14px;z-index:500;font-family:'Cinzel',serif;font-size:13px}
 .cab-av{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;color:#fff;flex-shrink:0;box-shadow:0 0 0 2px var(--gold),0 2px 6px rgba(0,0,0,.5)}
 #cab-name{font-size:15px;font-weight:800;letter-spacing:.5px}
-#cab-elo{font-size:13px!important;font-weight:800;padding:5px 14px;border-radius:8px;background:rgba(201,162,39,.14);border:1px solid var(--gold);color:var(--gold)!important;letter-spacing:.5px}
+#cab-elo{font-size:13px!important;font-weight:800;padding:5px 14px;border-radius:8px;background:rgba(193,154,69,.12);border:1px solid var(--gold);color:var(--gold2)!important;letter-spacing:.5px}
 #cab-elo.admin-elo{background:rgba(201,162,39,.24);border-color:var(--gold2)}
 .cab-sw{padding:8px 18px;font-size:12px;font-weight:700;border:1px solid rgba(230,90,100,.65)!important;border-radius:8px;background:rgba(230,90,100,.2);color:#f2b8bd!important;cursor:pointer;font-family:'Cinzel',serif;transition:all .15s;text-transform:uppercase;letter-spacing:.6px;white-space:nowrap}
 .cab-sw:hover{border-color:#f2b8bd!important;background:rgba(230,90,100,.35);color:#fff!important;transform:translateY(-1px)}
 /* Pas de logo/titre sur la page builder (retiré) : juste la clearance de la
    barre de compte + un petit espace de respiration, la page remonte. */
 body.has-acc #page-builder{padding-top:calc(50px + 14px)}
-body.has-acc #page-armies,body.has-acc #page-ai-armies,body.has-acc #page-voie{padding-top:calc(50px + 32px)}
+body.has-acc #page-armies,body.has-acc #page-ai-armies,body.has-acc #page-voie,body.has-acc #page-tournoi{padding-top:calc(50px + 32px)}
+body.has-acc #page-reserve .reserve-wrap{padding-top:calc(50px + 24px)}
 body.has-acc #page-combat{padding-top:50px}
 body.has-acc .game-wrap{height:calc(100vh - 50px);margin-top:50px}
 
@@ -392,70 +422,166 @@ body.has-acc .game-wrap{height:calc(100vh - 50px);margin-top:50px}
 @keyframes rise{0%{transform:translateY(0) scale(.5);opacity:0}10%{opacity:.8}90%{opacity:.3}100%{transform:translateY(-90vh) scale(2.5);opacity:0}}
 .rise-particle{position:absolute;border-radius:50%;pointer-events:none;animation:rise linear infinite}
 
-/* [GAME] ======================================================= */
+/* [GAME] =======================================================
+   Refonte du plateau : l'ancienne disposition enfermait l'échiquier entre
+   deux colonnes fixes de 200 et 250 px, ce qui le limitait à ~600 px alors
+   que le reste de l'écran restait vide, et reléguait les pendules dans un
+   coin de la colonne de droite, en 14 px, sous l'ELO.
+   Nouvelle disposition, celle de tous les jeux d'échecs sérieux : le plateau
+   au centre, aussi grand que l'écran le permet, et les deux joueurs en
+   BANDEAUX pleine largeur au-dessus et en dessous, chacun avec sa pendule en
+   très gros caractères. Le journal des coups, l'historique et les actions
+   passent dans une seule colonne latérale.
+   ============================================================== */
 #page-game{padding:0;min-height:100vh;background:var(--bg)}
 #page-game.active{display:block}
-.game-wrap{display:flex;height:100vh;overflow:hidden}
-.game-sidebar-left{width:200px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:10px;gap:8px;overflow-y:auto;transition:background .3s}
-.game-main{flex:1;display:flex;align-items:center;justify-content:center;padding:10px;min-width:0;overflow-y:auto;overflow-x:hidden}
-.game-sidebar-right{width:250px;flex-shrink:0;background:var(--surface);border-left:1px solid var(--border);display:flex;flex-direction:column;padding:10px;overflow:hidden;transition:background .3s}
-.gsb-title{font-family:'Cinzel',serif;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--gold);margin-bottom:10px;padding-bottom:7px;border-bottom:1px solid var(--border)}
-.captured-row{display:flex;flex-wrap:wrap;gap:3px;margin-bottom:8px;font-size:18px;min-height:26px}
-/* Réserve verticale pour : barre de statut + labels de colonnes + le
-   padding de .game-main. Les identifiants/horloges des joueurs sont
-   maintenant dans la sidebar de droite, pas au-dessus/en-dessous du
-   plateau, ils n'ont donc plus besoin d'espace ici. */
-.game-board-container{display:flex;flex-direction:column;align-items:center;width:100%;max-width:min(calc(100vh - 100px),calc(100vw - 500px),600px)}
-.game-player-bar{display:flex;flex-direction:column;gap:6px;width:100%;padding:10px;font-family:'Cinzel',serif;background:var(--bg);border:1px solid var(--border);border-radius:9px;margin-bottom:10px}
-.gpb-top{display:flex;align-items:center;gap:8px;min-width:0}
-.gpb-bottom{display:flex;align-items:center;justify-content:space-between;gap:8px}
-.game-player-avatar{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#fff;flex-shrink:0}
-.game-player-name{font-size:12px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
-.game-player-elo{font-size:11px;color:var(--gold);font-weight:700}
-.game-player-clock{font-family:'Cinzel',serif;font-size:14px;font-weight:800;padding:3px 10px;border-radius:7px;background:var(--surface2);border:1px solid var(--border2);color:var(--text);min-width:52px;text-align:center;letter-spacing:.5px}
-.game-player-clock.clock-active{border-color:var(--gold);color:var(--gold)}
-.game-player-clock.clock-low{color:#fff;background:rgba(182,57,74,.75);border-color:var(--danger);animation:clockLowPulse 1s ease-in-out infinite}
-@keyframes clockLowPulse{0%,100%{opacity:1}50%{opacity:.55}}
-.game-board-outer{display:flex;align-items:stretch;width:100%}
-.game-row-labels{display:flex;flex-direction:column;width:22px;flex-shrink:0}
-.game-row-lbl{font-size:10px;color:var(--muted);font-weight:700;display:flex;align-items:center;justify-content:flex-end;padding-right:4px;font-family:'Cinzel',serif}
-.game-board-col{display:flex;flex-direction:column;flex:1;min-width:0}
-.game-board{display:grid;grid-template-columns:repeat(8,1fr);border:2px solid #444;border-radius:4px;overflow:hidden;width:100%;aspect-ratio:1}
-.game-col-labels{display:flex;margin-top:4px;width:100%}
-.game-col-lbl{flex:1;text-align:center;font-size:10px;color:var(--muted);font-weight:700;font-family:'Cinzel',serif}
-.gc{aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:clamp(16px,3.5vw,32px);cursor:pointer;user-select:none;position:relative;transition:background .15s,box-shadow .15s;-webkit-user-drag:none}
-.gc.l{background:#c8a96a}.gc.d{background:#7a5330}
-body.light .gc.l{background:#eddab0}body.light .gc.d{background:#8a5f38}
-.gc.sel{background:rgba(201,162,39,.55)!important;box-shadow:inset 0 0 0 3px var(--gold)}
-.gc.avail::before{content:'';position:absolute;width:30%;height:30%;background:radial-gradient(circle,var(--gold2) 0%,var(--gold) 70%);border-radius:50%;z-index:1;pointer-events:none;box-shadow:0 0 8px rgba(201,162,39,.6);animation:availPulse 1.6s ease-in-out infinite}
-@keyframes availPulse{0%,100%{transform:scale(1);opacity:.9}50%{transform:scale(1.15);opacity:1}}
-.gc.avail-cap{box-shadow:inset 0 0 0 4px rgba(182,57,74,.75);animation:capPulse 1.1s ease-in-out infinite}
-@keyframes capPulse{0%,100%{box-shadow:inset 0 0 0 4px rgba(182,57,74,.65)}50%{box-shadow:inset 0 0 0 4px rgba(182,57,74,.95)}}
-.gc.last-move{background:rgba(201,162,39,.32)!important;box-shadow:inset 0 0 0 2px rgba(201,162,39,.55)}
-.gc.cap-flash{animation:captureFlash .5s ease}
-@keyframes captureFlash{0%{background:rgba(182,57,74,.75)!important;box-shadow:inset 0 0 0 5px rgba(255,220,180,.9)}100%{background:transparent!important;box-shadow:none}}
-.gc-piece{width:100%;height:100%;display:flex;align-items:center;justify-content:center;line-height:1;position:relative;cursor:grab;-webkit-user-drag:none;user-select:none;filter:drop-shadow(0 2px 2px rgba(0,0,0,.45))}
-.gc-piece.dragging{opacity:.4}.gc-piece:hover{transform:scale(1.1) translateY(-2px);filter:drop-shadow(0 4px 5px rgba(0,0,0,.55))}
-.status-bar{font-family:'Cinzel',serif;font-size:12px;padding:8px 12px;border-radius:7px;margin-bottom:8px;text-align:center;background:var(--surface2);border:1px solid var(--border)}
-.status-bar.check{border-color:rgba(239,68,68,.5);color:var(--danger)}.status-bar.ok{border-color:rgba(16,185,129,.3);color:var(--success)}.status-bar.thinking{border-color:rgba(168,58,74,.4);color:var(--accent2)}.status-bar.mate{border-color:rgba(201,168,76,.6);color:var(--gold)}
-.move-log{flex:1;overflow-y:auto;font-size:11px;font-family:'Cinzel',serif;line-height:2}
-.move-log-item{display:flex;gap:6px;padding:2px 0;border-bottom:1px solid rgba(255,255,255,.03)}
-.move-log-num{color:var(--muted);min-width:22px}.move-log-w{flex:1;color:var(--text)}.move-log-b{flex:1;color:var(--muted)}
+.game-wrap{display:flex;height:100vh;overflow:hidden;gap:0}
+/* Taille du plateau : la plus grande valeur compatible avec la hauteur
+   disponible (moins les deux bandeaux joueurs et les repères), la largeur
+   disponible (moins la colonne latérale) et un plafond de confort. */
+.game-main{
+  --bsz:min(calc(100vh - 210px),calc(100vw - 360px),780px);
+  flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:10px;padding:14px 16px;overflow:auto}
+.board-frame{width:var(--bsz)}
+
+/* --- Bandeaux joueur : identité à gauche, prises au milieu, pendule à
+   droite. Le bandeau du joueur au trait s'allume. --- */
+.gp-bar{width:var(--bsz);display:flex;align-items:center;gap:12px;
+  padding:9px 14px;border:1px solid var(--border);border-radius:12px;
+  background:var(--surface);font-family:'Cinzel',serif;position:relative;
+  transition:border-color .2s,background .2s}
+.gp-bar.gp-turn{border-color:var(--accent2);background:linear-gradient(90deg,var(--accent-bg),var(--surface) 40%)}
+.gp-av{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;
+  justify-content:center;font-size:14px;font-weight:800;color:#08110f;flex-shrink:0;
+  background:linear-gradient(135deg,var(--accent2),var(--accent))}
+.gp-id{min-width:0}
+.gp-name{font-size:14px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gp-elo{font-size:11px;color:var(--muted);letter-spacing:.4px}
+/* Pièces prises par ce joueur : petites, alignées, sans jamais pousser la
+   pendule hors du bandeau. */
+.gp-taken{flex:1;min-width:0;display:flex;flex-wrap:wrap;gap:1px;align-items:center;
+  justify-content:flex-end;max-height:34px;overflow:hidden;padding-right:6px}
+.gp-taken .pc-icon{width:20px;height:20px}
+.gp-adv{font-size:12px;font-weight:700;color:var(--gold);margin-left:4px;white-space:nowrap}
+
+/* LA PENDULE : c'est l'information la plus consultée d'une partie chronométrée,
+   elle est donc traitée comme un afficheur, pas comme une étiquette. */
+.gp-clock{font-family:'Cinzel',serif;font-size:clamp(22px,2.6vw,34px);font-weight:900;
+  letter-spacing:1px;font-variant-numeric:tabular-nums;padding:4px 16px;border-radius:10px;
+  background:var(--bg2);border:1px solid var(--border2);color:var(--muted);
+  min-width:126px;text-align:center;flex-shrink:0;transition:all .2s}
+.gp-bar.gp-turn .gp-clock{color:var(--text);border-color:var(--accent2);
+  background:var(--surface2);box-shadow:0 0 0 1px var(--accent2) inset,0 0 18px var(--potion-glow)}
+.gp-clock.clock-low{color:#fff;background:rgba(217,85,47,.85);border-color:var(--ember);
+  animation:clockLowPulse 1s ease-in-out infinite}
+@keyframes clockLowPulse{0%,100%{opacity:1}50%{opacity:.6}}
+
+/* --- Colonne latérale --- */
+.game-side{width:300px;flex-shrink:0;background:var(--surface);border-left:1px solid var(--border);
+  display:flex;flex-direction:column;padding:12px;gap:10px;overflow:hidden}
+.gsb-title{font-family:'Cinzel',serif;font-size:10px;font-weight:700;text-transform:uppercase;
+  letter-spacing:1.2px;color:var(--accent2);margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border)}
+.gs-block{background:var(--bg2);border:1px solid var(--border);border-radius:11px;padding:11px 12px;
+  display:flex;flex-direction:column;min-height:0}
+.gs-block.gs-grow{flex:1}
+.status-bar{font-family:'Cinzel',serif;font-size:12.5px;padding:11px 12px;border-radius:11px;
+  text-align:center;background:var(--surface2);border:1px solid var(--border);line-height:1.4}
+.status-bar.check{border-color:var(--ember);color:var(--ember);animation:checkShake .4s ease}
+.status-bar.ok{border-color:rgba(79,174,106,.4);color:var(--success)}
+.status-bar.thinking{border-color:rgba(47,177,151,.4);color:var(--accent2)}
+.status-bar.mate{border-color:var(--gold);color:var(--gold2)}
+.move-log{flex:1;overflow-y:auto;font-size:11.5px;font-family:'Cinzel',serif;line-height:1.9;min-height:60px}
+.move-log-item{display:flex;gap:8px;align-items:center;padding:2px 4px;border-radius:5px}
+.move-log-item:nth-child(odd){background:rgba(255,255,255,.02)}
+.move-log-num{color:var(--muted);min-width:24px;font-size:10px}
+.move-log-w{flex:1;color:var(--text);display:flex;align-items:center;gap:3px}
+.move-log-b{flex:1;color:var(--muted);display:flex;align-items:center;gap:3px}
+.move-log .pc-icon{width:15px;height:15px}
 .game-btns{display:flex;flex-direction:column;gap:7px;margin-top:auto}
 .history-nav{display:flex;gap:5px;justify-content:center;margin-bottom:6px}
-.history-nav button{background:var(--surface2);border:1px solid var(--border2);border-radius:6px;color:var(--text);cursor:pointer;font-size:14px;padding:4px 10px;transition:all .15s}
-.history-nav button:hover:not(:disabled){border-color:var(--accent2);color:var(--accent2)}.history-nav button:disabled{opacity:.3;cursor:not-allowed}
-.history-badge{font-family:'Cinzel',serif;font-size:9px;color:var(--gold);text-align:center;margin-bottom:4px;min-height:14px}
-.drag-ghost{position:fixed;pointer-events:none;z-index:9999;font-size:40px;transform:translate(-50%,-50%);opacity:.85;line-height:1;display:none}
-.ctx-menu{position:fixed;background:var(--surface2);border:1px solid var(--border2);border-radius:12px;padding:16px;z-index:2000;min-width:240px;max-width:320px;box-shadow:0 12px 40px rgba(0,0,0,.7);display:none}
+.history-nav button{background:var(--surface2);border:1px solid var(--border2);border-radius:7px;
+  color:var(--text);cursor:pointer;font-size:13px;padding:4px 11px;transition:all .15s}
+.history-nav button:hover:not(:disabled){border-color:var(--accent2);color:var(--accent2)}
+.history-nav button:disabled{opacity:.28;cursor:not-allowed}
+.history-badge{font-family:'Cinzel',serif;font-size:9.5px;color:var(--muted);text-align:center;margin-bottom:6px;min-height:13px}
+
+/* --- La mise : rappel de ce que la partie coûte ou rapporte (economy.js) --- */
+.gs-stake{background:var(--bg2);border:1px solid var(--border);border-radius:11px;padding:10px 12px}
+.gs-stake-row{display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin-top:6px}
+.gs-stake-row .pc-icon{width:19px;height:19px}
+.gs-stake-q{font-family:'Cinzel',serif;font-size:10px;color:var(--muted);margin-left:-2px;margin-right:5px}
+.gs-streak{font-family:'Cinzel',serif;font-size:10.5px;color:var(--gold);margin-top:8px}
+
+/* --- L'ÉCHIQUIER --- */
+.game-board-outer{display:flex;align-items:stretch;width:100%}
+/* Assez large pour laisser passer le cadre du plateau : celui-ci est dessiné
+   en box-shadow de 7 px VERS L'EXTÉRIEUR, il empiétait sur les chiffres. */
+.game-row-labels{display:flex;flex-direction:column;width:28px;flex-shrink:0}
+.game-row-lbl{font-size:11px;color:var(--muted);font-weight:700;display:flex;align-items:center;
+  justify-content:flex-end;padding-right:11px;font-family:'Cinzel',serif}
+.game-board-col{display:flex;flex-direction:column;flex:1;min-width:0}
+/* La texture de matière (assets/boards/*.svg) est le FOND du plateau : les
+   cases elles-mêmes sont transparentes et ne portent plus que les
+   surbrillances. Elle est posée en JS par applyBoardSkin() (economy-ui.js) :
+   une url() relative dans une variable CSS serait résolue par rapport à ce
+   fichier, donc dans css/, et ne trouverait rien. */
+.game-board{display:grid;grid-template-columns:repeat(8,1fr);width:100%;aspect-ratio:1;
+  border:1px solid var(--border2);border-radius:6px;overflow:hidden;
+  background-size:100% 100%;background-repeat:no-repeat;
+  box-shadow:0 18px 46px rgba(0,0,0,.5),0 0 0 6px var(--surface),0 0 0 7px var(--border2)}
+.game-col-labels{display:flex;margin-top:11px;width:100%}
+.game-col-lbl{flex:1;text-align:center;font-size:10px;color:var(--muted);font-weight:700;font-family:'Cinzel',serif}
+.gc{aspect-ratio:1;display:flex;align-items:center;justify-content:center;cursor:pointer;
+  user-select:none;position:relative;-webkit-user-drag:none;transition:box-shadow .14s}
+/* Surbrillances : posées PAR-DESSUS la texture, jamais en remplacement, sinon
+   la matière du plateau disparaîtrait sous chaque case jouable. */
+.gc.sel{box-shadow:inset 0 0 0 3px var(--accent2),inset 0 0 26px rgba(47,177,151,.4)}
+.gc.avail::before{content:'';position:absolute;width:28%;height:28%;border-radius:50%;
+  background:radial-gradient(circle,rgba(255,255,255,.9),var(--accent2) 72%);
+  z-index:1;pointer-events:none;box-shadow:0 0 10px rgba(47,177,151,.75);
+  animation:availPulse 1.7s ease-in-out infinite}
+@keyframes availPulse{0%,100%{transform:scale(1);opacity:.85}50%{transform:scale(1.18);opacity:1}}
+.gc.avail-cap{box-shadow:inset 0 0 0 4px rgba(217,85,47,.9);animation:capPulse 1.2s ease-in-out infinite}
+@keyframes capPulse{0%,100%{box-shadow:inset 0 0 0 4px rgba(217,85,47,.65)}50%{box-shadow:inset 0 0 0 4px rgba(217,85,47,1)}}
+.gc.last-move::after{content:'';position:absolute;inset:0;background:rgba(47,177,151,.22);
+  box-shadow:inset 0 0 0 2px rgba(47,177,151,.5);pointer-events:none}
+.gc.cap-flash{animation:captureFlash .55s ease}
+@keyframes captureFlash{0%{box-shadow:inset 0 0 0 6px rgba(255,220,180,.95),inset 0 0 40px rgba(217,85,47,.9)}100%{box-shadow:none}}
+.gc.gc-check{box-shadow:inset 0 0 0 4px var(--ember),inset 0 0 30px rgba(217,85,47,.55)}
+.gc-piece{width:86%;height:86%;display:flex;align-items:center;justify-content:center;
+  position:relative;cursor:grab;-webkit-user-drag:none;user-select:none;z-index:2;
+  filter:drop-shadow(0 3px 3px rgba(0,0,0,.5));transition:transform .12s,filter .12s}
+.gc-piece.dragging{opacity:.35}
+.gc-piece:hover{transform:scale(1.07) translateY(-2px);filter:drop-shadow(0 6px 6px rgba(0,0,0,.6))}
+/* Pièce paralysée par une Méduse, et pièce ancrée par un Garde de Pierre :
+   deux états qui doivent se voir sans lire le journal. */
+.gc-piece.pc-para{filter:grayscale(1) brightness(.6) drop-shadow(0 0 6px var(--sorcier))}
+.gc-piece.gc-anchored{filter:drop-shadow(0 0 7px var(--gold2)) drop-shadow(0 2px 2px rgba(0,0,0,.5))}
+.drag-ghost{position:fixed;pointer-events:none;z-index:9999;width:64px;height:64px;
+  transform:translate(-50%,-50%);opacity:.9;display:none;filter:drop-shadow(0 6px 8px rgba(0,0,0,.6))}
+.ctx-menu{position:fixed;background:var(--surface2);border:1px solid var(--border2);border-radius:13px;
+  padding:16px;z-index:2000;min-width:250px;max-width:330px;box-shadow:0 16px 44px rgba(0,0,0,.7);display:none}
 .ctx-menu.show{display:block;animation:nIn .18s ease}
 .ctx-title{font-family:'Cinzel',serif;font-size:15px;font-weight:700;margin-bottom:4px;display:flex;align-items:center;gap:8px}
+.ctx-title .pc-icon{width:1.6em;height:1.6em}
 .ctx-class{font-size:10px;text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px;font-family:'Cinzel',serif}
 .ctx-row{font-size:12px;margin-bottom:5px;line-height:1.5}.ctx-label{color:var(--muted);font-weight:600}
 .ctx-power-btn{margin-top:10px;width:100%}
-.ctx-close{position:absolute;top:8px;right:10px;cursor:pointer;color:var(--muted);font-size:16px;line-height:1}.ctx-close:hover{color:var(--danger)}
-.gc.amazone-repos{box-shadow:inset 0 0 0 3px rgba(249,115,22,.8)!important;background:rgba(249,115,22,.18)!important}
-@media(max-width:760px){.game-wrap{flex-direction:column;height:auto}.game-sidebar-left{width:100%;max-height:140px}.game-sidebar-right{width:100%;max-height:none}.game-main{padding:8px}.game-board-container{max-width:100%}}
+.ctx-close{position:absolute;top:8px;right:10px;cursor:pointer;color:var(--muted);font-size:16px;line-height:1}
+.ctx-close:hover{color:var(--danger)}
+
+@media(max-width:1080px){
+  .game-side{width:250px}
+  .game-main{--bsz:min(calc(100vh - 200px),calc(100vw - 300px),780px)}
+}
+@media(max-width:820px){
+  .game-wrap{flex-direction:column;height:auto;overflow:visible}
+  .game-main{--bsz:min(calc(100vw - 46px),560px);padding:10px}
+  .game-side{width:100%;border-left:none;border-top:1px solid var(--border);max-height:none}
+  .gp-clock{font-size:22px;min-width:92px;padding:3px 10px}
+  .gp-taken{display:none}
+}
 
 /* [MODALS-GAME] ======================================================= */
 .promo-modal{position:fixed;inset:0;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;z-index:1000;visibility:hidden}
@@ -741,14 +867,16 @@ body.nav-overlay #cube-stage{display:none}
 /* --- Face JOUER (menu principal) : premium, minimaliste. Dégradé propre à
    chaque thème (pas de var() ici : le rendu voulu diffère trop entre les
    deux pour un simple changement de teinte). --- */
+/* Ardoise froide traversée d'une lueur de vert-de-gris : c'est le décor de
+   fond du jeu, il ne doit pas concurrencer le bouton COMBAT. */
 .cube-face[data-face="jouer"]{background:
-  radial-gradient(ellipse at 50% 32%,rgba(201,162,39,.18),transparent 60%),
-  radial-gradient(ellipse at 50% 120%,rgba(0,0,0,.45),transparent 55%),
-  linear-gradient(160deg,#2a2013,#180f07)}
+  radial-gradient(ellipse at 50% 34%,rgba(47,177,151,.14),transparent 62%),
+  radial-gradient(ellipse at 50% 118%,rgba(0,0,0,.55),transparent 58%),
+  linear-gradient(165deg,#161f24,#0b0f12)}
 body.light .cube-face[data-face="jouer"]{background:
-  radial-gradient(ellipse at 50% 32%,rgba(130,102,31,.16),transparent 60%),
-  radial-gradient(ellipse at 50% 120%,rgba(80,60,20,.12),transparent 55%),
-  linear-gradient(160deg,#f4edd4,#e5d8a8)}
+  radial-gradient(ellipse at 50% 34%,rgba(18,120,106,.13),transparent 62%),
+  radial-gradient(ellipse at 50% 118%,rgba(40,60,58,.10),transparent 58%),
+  linear-gradient(165deg,#f4f3ee,#dcdbd3)}
 .jouer-menu{position:absolute;inset:0;display:flex;flex-direction:column;
   align-items:center;justify-content:center;gap:34px;text-align:center;padding:24px}
 .jouer-logo{font-family:'Cinzel Decorative','Cinzel',serif;font-weight:900;
@@ -771,16 +899,19 @@ body.light .cube-face[data-face="jouer"]{background:
 .jouer-tournoi-btn{font-size:12px;padding:10px 26px}
 
 /* --- Faces placeholder (Magasin / Missions / Variantes) --- */
-.cube-face[data-face="magasin"],
-.cube-face[data-face="missions"],
-.cube-face[data-face="variantes"]{background:
-  radial-gradient(ellipse at 50% 40%,rgba(107,77,44,.22),transparent 60%),
-  linear-gradient(160deg,#28200f,#180f07)}
-body.light .cube-face[data-face="magasin"],
-body.light .cube-face[data-face="missions"],
-body.light .cube-face[data-face="variantes"]{background:
-  radial-gradient(ellipse at 50% 40%,rgba(130,102,31,.16),transparent 60%),
-  linear-gradient(160deg,#f1e9cc,#e2d4a2)}
+/* Réserve et Voie : mêmes matières que le menu, un ton plus neutre pour que
+   le contenu (cartes, coffres, jalons) ressorte. */
+.cube-face[data-face="reserve"],
+.cube-face[data-face="voie"]{background:
+  radial-gradient(ellipse at 50% 8%,rgba(47,177,151,.09),transparent 58%),
+  linear-gradient(165deg,#141b20,#0c1114)}
+body.light .cube-face[data-face="reserve"],
+body.light .cube-face[data-face="voie"]{background:
+  radial-gradient(ellipse at 50% 8%,rgba(18,120,106,.10),transparent 58%),
+  linear-gradient(165deg,#f2f1ec,#e2e1da)}
+/* Les deux faces embarquent des pages longues : elles doivent défiler. */
+#face-viewport-reserve,#face-viewport-voie{overflow-y:auto}
+#page-reserve.cube-embedded,#page-voie.cube-embedded{background:transparent}
 .face-placeholder{position:absolute;inset:0;display:flex;flex-direction:column;
   align-items:center;justify-content:center;gap:14px;text-align:center;padding:24px}
 .fp-title{font-family:'Cinzel',serif;font-weight:900;letter-spacing:3px;
@@ -895,3 +1026,356 @@ body.cube-active .admin-badge{bottom:90px}
 .mp-status.mp-ok{color:var(--success)}
 .mp-status.mp-wait::after{content:'';display:inline-block;width:10px;text-align:left;animation:mpDots 1.2s steps(4,end) infinite}
 @keyframes mpDots{0%{content:''}25%{content:'.'}50%{content:'..'}75%{content:'...'}}
+
+/* [PIECE-ART] ===================================================
+   Logos de pièces (js/piece-art.js). Un même dessin sert aux deux camps :
+   seules --pc-fill et --pc-line changent. Les épaisseurs de trait sont
+   données en unités du viewBox (0..100), donc elles restent proportionnelles
+   quelle que soit la taille d'affichage, du plateau plein écran à l'icône de
+   12 px du journal des coups.
+   ============================================================== */
+.pc-svg{width:100%;height:100%;display:block;overflow:visible}
+.pc-svg .b{fill:var(--pc-fill);stroke:var(--pc-line);stroke-width:3.4;stroke-linejoin:round;stroke-linecap:round}
+.pc-svg .l{fill:none;stroke:var(--pc-line);stroke-width:3.4;stroke-linecap:round;stroke-linejoin:round}
+.pc-svg .k{fill:var(--pc-line)}
+.pc-w{--pc-fill:var(--pc-w-fill);--pc-line:var(--pc-w-line)}
+.pc-b{--pc-fill:var(--pc-b-fill);--pc-line:var(--pc-b-line)}
+/* Variante neutre : hors partie (cartes, inventaire, coffres), une pièce
+   n'appartient à aucun camp. Un simple contour se perdrait sur les fonds
+   sombres comme clairs : on garde donc un aplat clair et un trait sombre,
+   c'est-à-dire la lisibilité d'une pièce blanche, en légèrement désaturé. */
+.pc-n{--pc-fill:#cfd7d5;--pc-line:#141a1c}
+body.light .pc-n{--pc-fill:#f6f5f1;--pc-line:#20282a}
+.pc-icon{display:inline-block;vertical-align:middle;width:1.5em;height:1.5em;flex-shrink:0}
+.pc-icon .pc-svg{width:100%;height:100%}
+
+/* [RESERVE] =====================================================
+   Face « Réserve » du cube : inventaire des pièces possédées, coffres en
+   attente d'ouverture, coffre de réapprovisionnement quotidien.
+   ============================================================== */
+.reserve-wrap{position:absolute;inset:0;overflow-y:auto;padding:70px 22px 40px}
+.reserve-inner{max-width:1000px;margin:0 auto}
+.rs-hdr{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:6px}
+.rs-title{font-family:'Cinzel Decorative','Cinzel',serif;font-size:clamp(22px,4vw,32px);font-weight:900;color:var(--gold2)}
+.rs-sub{font-size:13px;color:var(--muted);font-style:italic}
+.rs-sec{margin-top:24px}
+.rs-sec-title{font-family:'Cinzel',serif;font-size:11px;font-weight:700;text-transform:uppercase;
+  letter-spacing:1.4px;color:var(--accent2);margin-bottom:12px;display:flex;align-items:center;gap:10px}
+.rs-sec-title::after{content:'';flex:1;height:1px;background:var(--border)}
+
+/* --- Coffre quotidien --- */
+.daily-card{display:flex;align-items:center;gap:18px;flex-wrap:wrap;background:var(--surface);
+  border:1px solid var(--border);border-radius:16px;padding:18px 20px;position:relative;overflow:hidden}
+.daily-card.daily-ready{border-color:var(--gold);box-shadow:0 0 30px rgba(193,154,69,.16)}
+.daily-card.daily-ready::before{content:'';position:absolute;inset:0;
+  background:radial-gradient(ellipse at 12% 50%,rgba(193,154,69,.16),transparent 55%);pointer-events:none}
+.daily-info{flex:1;min-width:200px;position:relative}
+.daily-name{font-family:'Cinzel',serif;font-size:16px;font-weight:800;color:var(--gold2);margin-bottom:4px}
+.daily-desc{font-size:13px;color:var(--muted);line-height:1.5}
+
+/* --- Coffres : un coffre dessiné en CSS, teinté par sa rareté --- */
+.chest{position:relative;width:64px;height:56px;flex-shrink:0}
+.chest-lid{position:absolute;left:0;top:0;width:64px;height:24px;border-radius:12px 12px 3px 3px;
+  background:linear-gradient(180deg,var(--chest-c,#7f8b94),color-mix(in srgb,var(--chest-c,#7f8b94) 60%,#000));
+  border:2px solid rgba(0,0,0,.45);transform-origin:50% 100%}
+.chest-body{position:absolute;left:0;top:22px;width:64px;height:34px;border-radius:3px 3px 8px 8px;
+  background:linear-gradient(180deg,color-mix(in srgb,var(--chest-c,#7f8b94) 75%,#000),color-mix(in srgb,var(--chest-c,#7f8b94) 40%,#000));
+  border:2px solid rgba(0,0,0,.45)}
+.chest-lock{position:absolute;left:50%;top:16px;width:15px;height:17px;margin-left:-7.5px;border-radius:3px;
+  background:var(--gold2);border:2px solid rgba(0,0,0,.5);z-index:2}
+.chest-lock::after{content:'';position:absolute;left:50%;top:5px;width:4px;height:6px;margin-left:-2px;
+  border-radius:2px;background:rgba(0,0,0,.55)}
+.chest-lg{width:132px;height:116px}
+.chest-lg .chest-lid{width:132px;height:50px;border-radius:24px 24px 5px 5px;border-width:3px}
+.chest-lg .chest-body{width:132px;height:70px;top:46px;border-width:3px}
+.chest-lg .chest-lock{width:30px;height:34px;margin-left:-15px;top:33px;border-width:3px}
+.chest-lg .chest-lock::after{width:8px;height:12px;margin-left:-4px;top:9px}
+/* Le couvercle tremble quand un coffre est prêt à être ouvert. */
+.chest-ready .chest-lid{animation:chestShiver 2.6s ease-in-out infinite}
+@keyframes chestShiver{0%,86%,100%{transform:rotate(0)}90%{transform:rotate(-4deg)}94%{transform:rotate(3deg)}}
+
+.chest-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+.chest-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 12px;
+  text-align:center;cursor:pointer;transition:transform .18s,border-color .18s,box-shadow .18s;position:relative}
+.chest-card:hover{transform:translateY(-4px);border-color:var(--chest-c);box-shadow:0 10px 26px rgba(0,0,0,.45)}
+.chest-card .chest{margin:0 auto 10px}
+.chest-name{font-family:'Cinzel',serif;font-size:12px;font-weight:700;color:var(--text)}
+.chest-rar{font-size:10px;color:var(--muted);font-family:'Cinzel',serif;margin-top:3px;letter-spacing:.6px}
+.chest-count{position:absolute;top:8px;right:10px;font-family:'Cinzel',serif;font-size:11px;font-weight:800;
+  color:#08110f;background:var(--accent2);border-radius:9px;padding:1px 8px}
+.rs-empty{color:var(--muted);font-style:italic;font-size:13.5px;padding:22px;text-align:center;
+  border:1px dashed var(--border2);border-radius:14px}
+
+/* --- Inventaire --- */
+.inv-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(126px,1fr));gap:10px}
+.inv-cell{background:var(--surface);border:1px solid var(--border);border-radius:13px;padding:12px 8px;text-align:center;position:relative}
+.inv-cell.inv-out{opacity:.5;border-style:dashed}
+.inv-cell .pc-icon{width:44px;height:44px}
+.inv-name{font-family:'Cinzel',serif;font-size:10.5px;font-weight:700;margin-top:6px;line-height:1.25}
+.inv-qty{font-family:'Cinzel',serif;font-size:17px;font-weight:900;color:var(--accent2);margin-top:3px}
+.inv-cell.inv-out .inv-qty{color:var(--danger)}
+.inv-tag{font-size:9px;text-transform:uppercase;letter-spacing:.7px;font-family:'Cinzel',serif;color:var(--muted);margin-top:2px}
+
+/* --- Sélecteur d'échiquier --- */
+.skin-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+.skin-card{border:2px solid var(--border);border-radius:14px;overflow:hidden;cursor:pointer;
+  background:var(--surface);transition:transform .18s,border-color .18s}
+.skin-card:hover{transform:translateY(-3px)}
+.skin-card.skin-on{border-color:var(--accent2);box-shadow:0 0 20px var(--potion-glow)}
+.skin-card.skin-locked{opacity:.45;cursor:not-allowed;filter:grayscale(.7)}
+.skin-prev{aspect-ratio:1;background-size:cover;background-position:center}
+.skin-meta{padding:9px 10px}
+.skin-name{font-family:'Cinzel',serif;font-size:12px;font-weight:700}
+.skin-req{font-size:10px;color:var(--muted);margin-top:2px}
+
+/* [CHEST-OPENING] : cérémonie d'ouverture ======================== */
+.chest-modal{position:fixed;inset:0;background:rgba(4,7,9,.94);z-index:9200;display:none;
+  align-items:center;justify-content:center;padding:20px}
+.chest-modal.show{display:flex}
+.chest-stage{text-align:center;max-width:560px;width:100%;position:relative}
+.chest-rays{position:absolute;left:50%;top:88px;width:520px;height:520px;margin-left:-260px;margin-top:-260px;
+  background:conic-gradient(from 0deg,transparent 0 6deg,var(--chest-c,#c19a45) 6deg 9deg,transparent 9deg 18deg);
+  opacity:0;pointer-events:none;filter:blur(1px)}
+.chest-modal.opening .chest-rays{opacity:.24;animation:raysSpin 14s linear infinite}
+@keyframes raysSpin{to{transform:rotate(360deg)}}
+/* Le couvercle bascule en ARRIÈRE sur sa charnière (rotateX en perspective),
+   comme un vrai coffre. Une rotation 2D le faisait pivoter à plat sur le côté,
+   ce qui ressemblait à une planche qui décolle. */
+.chest-stage .chest-lg{margin:0 auto 18px;position:relative;z-index:2;perspective:520px}
+.chest-lg .chest-lid{transform-origin:50% 0}
+.chest-modal.opening .chest-lg .chest-lid{animation:lidOpen .75s cubic-bezier(.3,1.4,.45,1) forwards}
+@keyframes lidOpen{
+  0%{transform:rotateX(0)}
+  30%{transform:rotateX(-14deg)}
+  100%{transform:rotateX(-122deg)}
+}
+.chest-modal.opening .chest-lg .chest-lock{opacity:0;transition:opacity .25s}
+.chest-title{font-family:'Cinzel Decorative','Cinzel',serif;font-size:22px;font-weight:900;
+  color:var(--gold2);margin-bottom:6px;position:relative;z-index:2}
+.chest-hint{font-size:13px;color:var(--muted);font-style:italic;margin-bottom:20px;position:relative;z-index:2}
+.chest-loot{display:flex;flex-wrap:wrap;gap:12px;justify-content:center;margin-bottom:24px;
+  min-height:120px;position:relative;z-index:2}
+.loot{background:var(--surface);border:1px solid var(--border2);border-radius:14px;padding:13px 15px;
+  min-width:110px;opacity:0;transform:translateY(18px) scale(.86);animation:lootIn .5s cubic-bezier(.2,1.4,.4,1) forwards}
+.loot .pc-icon{width:48px;height:48px}
+.loot-name{font-family:'Cinzel',serif;font-size:10.5px;margin-top:5px;color:var(--muted);line-height:1.25}
+.loot-qty{font-family:'Cinzel',serif;font-size:19px;font-weight:900;color:var(--accent2);margin-top:3px}
+.loot.loot-new{border-color:var(--gold);box-shadow:0 0 26px rgba(193,154,69,.35);background:linear-gradient(180deg,rgba(193,154,69,.12),var(--surface))}
+.loot-new-tag{font-family:'Cinzel',serif;font-size:9px;text-transform:uppercase;letter-spacing:1.2px;
+  color:#1a1206;background:var(--gold2);border-radius:5px;padding:1px 7px;display:inline-block;margin-top:5px}
+@keyframes lootIn{to{opacity:1;transform:translateY(0) scale(1)}}
+
+/* [CINEMATIC] ===================================================
+   Deux moments mis en scène : l'entrée en combat et son issue. Ce sont des
+   overlays plein écran, indépendants des pages, qui se retirent tout seuls.
+   ============================================================== */
+.cine{position:fixed;inset:0;z-index:9400;display:flex;align-items:center;justify-content:center;
+  background:radial-gradient(ellipse at 50% 50%,rgba(12,18,20,.9),rgba(3,5,6,.98));overflow:hidden}
+.cine.cine-out{animation:cineOut .5s ease forwards}
+@keyframes cineOut{to{opacity:0;visibility:hidden}}
+/* Deux volets d'ardoise qui se referment puis s'écartent : c'est le rideau. */
+.cine-shutter{position:absolute;left:0;right:0;height:50%;background:linear-gradient(180deg,#0b0f12,#141c21);
+  border-color:var(--accent2);z-index:3}
+.cine-shutter.top{top:0;border-bottom:2px solid;animation:shutTop 1.15s cubic-bezier(.7,0,.2,1) forwards}
+.cine-shutter.bot{bottom:0;border-top:2px solid;animation:shutBot 1.15s cubic-bezier(.7,0,.2,1) forwards}
+@keyframes shutTop{0%{transform:translateY(-100%)}38%{transform:translateY(0)}100%{transform:translateY(-100%)}}
+@keyframes shutBot{0%{transform:translateY(100%)}38%{transform:translateY(0)}100%{transform:translateY(100%)}}
+.cine-body{position:relative;z-index:2;text-align:center;width:100%;max-width:900px;padding:20px}
+.cine-vs{display:flex;align-items:center;justify-content:center;gap:clamp(16px,5vw,60px);flex-wrap:nowrap}
+.cine-side{flex:1;min-width:0}
+.cine-side-lbl{font-family:'Cinzel',serif;font-size:10px;letter-spacing:2.5px;text-transform:uppercase;
+  color:var(--muted);margin-bottom:10px}
+.cine-side-name{font-family:'Cinzel',serif;font-size:clamp(13px,2vw,17px);font-weight:700;color:var(--text);margin-top:10px}
+.cine-row{display:flex;justify-content:center;gap:6px;flex-wrap:wrap}
+.cine-row .pc-icon{width:clamp(34px,5vw,58px);height:clamp(34px,5vw,58px);
+  opacity:0;animation:cinePiece .5s cubic-bezier(.2,1.5,.4,1) forwards}
+.cine-left .pc-icon{transform:translateX(-40px)}
+.cine-right .pc-icon{transform:translateX(40px)}
+@keyframes cinePiece{to{opacity:1;transform:translateX(0)}}
+.cine-clash{font-family:'Cinzel Decorative','Cinzel',serif;font-size:clamp(30px,7vw,68px);font-weight:900;
+  color:var(--ember);text-shadow:0 0 40px rgba(217,85,47,.75);opacity:0;
+  animation:clashIn .55s cubic-bezier(.2,1.7,.4,1) .75s forwards}
+@keyframes clashIn{0%{opacity:0;transform:scale(2.6) rotate(-9deg)}70%{opacity:1;transform:scale(.92) rotate(2deg)}100%{opacity:1;transform:scale(1) rotate(0)}}
+/* Onde de choc au moment du VS. */
+.cine-shock{position:absolute;left:50%;top:50%;width:20px;height:20px;margin:-10px 0 0 -10px;border-radius:50%;
+  border:3px solid var(--ember);opacity:0;animation:shock .9s ease-out .78s forwards;z-index:1}
+@keyframes shock{0%{opacity:.95;transform:scale(1)}100%{opacity:0;transform:scale(46)}}
+.cine-skip{position:absolute;bottom:22px;left:50%;transform:translateX(-50%);z-index:5;
+  font-family:'Cinzel',serif;font-size:11px;letter-spacing:1px;color:var(--muted);
+  background:transparent;border:1px solid var(--border2);border-radius:8px;padding:7px 16px;cursor:pointer}
+.cine-skip:hover{color:var(--accent2);border-color:var(--accent2)}
+
+/* Issue de la partie : le verdict tombe avant le décompte des pertes. */
+.cine-verdict{font-family:'Cinzel Decorative','Cinzel',serif;font-size:clamp(34px,8vw,78px);font-weight:900;
+  opacity:0;animation:verdictIn .7s cubic-bezier(.2,1.4,.4,1) forwards}
+.cine-verdict.v-win{color:var(--gold2);text-shadow:0 0 50px rgba(230,197,118,.5)}
+.cine-verdict.v-loss{color:var(--ember);text-shadow:0 0 50px rgba(217,85,47,.45)}
+.cine-verdict.v-draw{color:var(--muted)}
+@keyframes verdictIn{0%{opacity:0;transform:scale(1.5) translateY(-16px)}100%{opacity:1;transform:scale(1) translateY(0)}}
+.cine-verdict-sub{font-family:'Cinzel',serif;font-size:14px;color:var(--muted);margin-top:10px;
+  opacity:0;animation:verdictIn .6s ease .35s forwards}
+/* Braises pour une défaite, étincelles dorées pour une victoire. */
+.cine-motes{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:1}
+.cine-mote{position:absolute;border-radius:50%;opacity:0;animation:moteRise linear forwards}
+@keyframes moteRise{0%{opacity:0;transform:translateY(0) scale(.5)}12%{opacity:.9}100%{opacity:0;transform:translateY(-92vh) scale(1.5)}}
+.cine-tally{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:26px;
+  opacity:0;animation:verdictIn .6s ease .7s forwards}
+.tally-box{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:13px 18px;min-width:170px}
+.tally-lbl{font-family:'Cinzel',serif;font-size:9.5px;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);margin-bottom:8px}
+.tally-row{display:flex;flex-wrap:wrap;gap:4px;justify-content:center;align-items:center}
+.tally-row .pc-icon{width:24px;height:24px}
+.tally-q{font-family:'Cinzel',serif;font-size:10px;color:var(--muted);margin-right:5px}
+.tally-none{font-size:12px;color:var(--success);font-family:'Cinzel',serif}
+.tally-box.tally-loss{border-color:rgba(212,69,63,.45)}
+.tally-box.tally-gain{border-color:rgba(193,154,69,.45)}
+
+/* [SERIE] : compteur de victoires consécutives ================== */
+.streak-badge{display:inline-flex;align-items:center;gap:7px;font-family:'Cinzel',serif;font-size:11px;
+  font-weight:700;color:var(--gold2);background:rgba(193,154,69,.1);border:1px solid rgba(193,154,69,.3);
+  border-radius:9px;padding:4px 11px;letter-spacing:.5px}
+.streak-dots{display:flex;gap:3px}
+.streak-dot{width:7px;height:7px;border-radius:50%;background:var(--border2)}
+.streak-dot.on{background:var(--gold2);box-shadow:0 0 7px rgba(230,197,118,.7)}
+
+/* [ECONOMY-INLINE] : rappels d'économie dans les écrans existants ====
+   Le stock possédé doit être visible LÀ OÙ on compose et LÀ OÙ on engage,
+   pas seulement dans la Réserve : sinon on découvre qu'on ne peut pas jouer
+   au moment de cliquer « Combattre ».
+   ============================================================== */
+.pc-stock{position:absolute;top:9px;right:10px;font-family:'Cinzel',serif;font-size:11px;font-weight:800;
+  color:var(--accent2);background:var(--accent-bg);border:1px solid rgba(47,177,151,.3);
+  border-radius:7px;padding:1px 8px;z-index:2}
+.pc-stock-out{color:var(--danger);background:rgba(212,69,63,.12);border-color:rgba(212,69,63,.35)}
+.piece-card.pc-nostock{opacity:.72}
+.cs-stock{font-family:'Cinzel',serif;font-size:9.5px;color:var(--muted);margin-top:6px;letter-spacing:.4px}
+.cs-stock-out{color:var(--danger)}
+.sp-val.sp-ok{color:var(--accent2)}
+.sp-val.sp-bad{color:var(--danger)}
+.ac-nostock{font-family:'Cinzel',serif;font-size:10.5px;color:var(--danger);
+  background:rgba(212,69,63,.09);border:1px solid rgba(212,69,63,.25);border-radius:8px;
+  padding:6px 9px;margin-top:10px;line-height:1.4}
+.army-card.army-card-nostock{opacity:.78}
+.army-card.army-card-nostock::before{background:var(--danger)}
+/* Bandeau « ce que vous engagez » de la page Combat. */
+.cstake{display:inline-flex;flex-direction:column;align-items:center;gap:6px;
+  background:var(--surface);border:1px solid var(--border);border-radius:13px;
+  padding:12px 20px;margin-bottom:22px;max-width:100%}
+.cstake-lbl{font-family:'Cinzel',serif;font-size:9.5px;text-transform:uppercase;letter-spacing:1.4px;color:var(--muted)}
+.cstake-row{display:flex;flex-wrap:wrap;gap:5px;align-items:center;justify-content:center}
+.cstake-row .pc-icon{width:26px;height:26px}
+.cstake-row .gs-stake-q{font-family:'Cinzel',serif;font-size:11px;color:var(--muted)}
+.cstake-warn{font-family:'Cinzel',serif;font-size:11px;color:var(--danger);margin-top:4px;text-align:center}
+/* Coffre annoncé dans le modal de fin de partie. */
+.result-chest{margin-top:16px;padding:13px 16px;border-radius:12px;text-align:center;
+  background:linear-gradient(180deg,rgba(193,154,69,.14),rgba(193,154,69,.04));border:1px solid rgba(193,154,69,.35)}
+.rc-lbl{font-family:'Cinzel',serif;font-size:9.5px;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted)}
+.rc-name{font-family:'Cinzel',serif;font-size:16px;font-weight:800;color:var(--gold2);margin:4px 0 2px}
+.rc-hint{font-size:11.5px;color:var(--muted)}
+
+/* [MENU] : face JOUER ============================================ */
+.jouer-second{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+.jouer-tournoi-btn{font-size:12px;padding:10px 24px}
+#jouer-streak{min-height:24px}
+/* Boussole du cube : nomme la face affichée. */
+.cube-compass{position:fixed;bottom:34px;left:50%;transform:translateX(-50%);z-index:400;
+  font-family:'Cinzel',serif;font-size:11px;letter-spacing:2.4px;text-transform:uppercase;
+  color:var(--gold2);background:rgba(14,18,22,.72);backdrop-filter:blur(6px);
+  border:1px solid var(--border2);border-radius:9px;padding:7px 20px;pointer-events:none}
+body.light .cube-compass{background:rgba(248,247,243,.8)}
+
+/* Promotion : le libellé sous le logo, sinon deux créatures inconnues se
+   ressemblent au moment où il faut choisir vite. */
+.promo-piece{width:92px;padding:10px 6px 8px;display:flex;flex-direction:column;align-items:center;gap:6px;
+  cursor:pointer;border-radius:12px;border:2px solid transparent;transition:transform .15s,border-color .15s,background .15s}
+.promo-piece .pc-svg{width:56px;height:56px}
+.promo-piece:hover{transform:translateY(-3px);border-color:var(--accent2);background:var(--accent-bg)}
+.promo-piece-lbl{font-family:'Cinzel',serif;font-size:10px;color:var(--muted);text-align:center;line-height:1.2}
+
+/* Les listes d'armées affichent des logos et non plus des émojis : ils ont
+   besoin d'une taille propre, un font-size ne les dimensionne plus. */
+.ac-pieces,.cside-pieces{display:flex;flex-wrap:wrap;gap:5px;align-items:center}
+.ac-pieces .pc-icon{width:30px;height:30px}
+.cside-pieces{justify-content:center}
+.vm-piece-emoji{display:block;margin-bottom:5px}
+.unlock-piece-emoji{display:block;margin:0 auto 6px;width:64px;height:64px}
+.primordiale-choice-card .pc-big-emoji{display:block;margin:0 auto 8px}
+
+/* [PROTO-NOTE] : mention de bas de page de connexion =============== */
+.proto-note{margin:30px 0 8px;padding-top:18px;border-top:1px solid var(--border);
+  font-size:12.5px;line-height:1.6;color:var(--muted);font-style:italic;text-align:center}
+
+/* [ICON-SIZES] ==================================================
+   Les logos SVG remplacent des émojis qui étaient dimensionnés par
+   `font-size`. Un `font-size:46px` hérité multipliait la taille en `em` de
+   l'icône (46 × 2,6 = 120 px), qui débordait de son bloc et recouvrait le
+   texte ; et un `font-size:0` (posé pour supprimer les blancs entre icônes)
+   la réduisait à zéro. Chaque emplacement fixe donc sa taille en PIXELS, et
+   les appels correspondants à pieceIcon() ne passent PAS de taille : sinon
+   elle partirait en style inline et l'emporterait sur ces règles.
+   ============================================================== */
+.unlock-piece-emoji{display:block;margin:0 auto 8px;line-height:0;font-size:0}
+.unlock-piece-emoji .pc-icon{width:72px;height:72px}
+.comp-slot .cs-emoji{font-size:0;line-height:0;margin-bottom:10px}
+.comp-slot .cs-emoji .pc-icon{width:78px;height:78px}
+.piece-card .pc-emoji{font-size:0;line-height:0;margin-bottom:10px}
+.piece-card .pc-emoji .pc-icon{width:62px;height:62px}
+.cside-pieces{font-size:0}
+.cside-pieces .pc-icon{width:52px;height:52px}
+.vm-piece-emoji{font-size:0;line-height:0}
+.vm-piece-emoji .pc-icon{width:48px;height:48px}
+.primordiale-choice-card .pc-big-emoji{font-size:0;line-height:0;margin-bottom:10px}
+.primordiale-choice-card .pc-big-emoji .pc-icon{width:74px;height:74px}
+#tournoi-army-pieces,#ta-player-army,#ta-ai-army{font-size:0;display:flex;flex-wrap:wrap;gap:4px}
+#tournoi-army-pieces .pc-icon{width:34px;height:34px}
+#ta-player-army .pc-icon,#ta-ai-army .pc-icon{width:28px;height:28px}
+.ta-cell{font-size:0;padding:2px}
+.ta-cell .pc-svg{width:100%;height:100%}
+
+/* Les pièces d'une cinématique se détachent du fond noir : sans ce petit
+   plateau, une pièce noire sur fond noir n'existe pas. */
+.cine-row .pc-icon{box-sizing:border-box;padding:5px;border-radius:16px;
+  background:rgba(255,255,255,.07);box-shadow:inset 0 0 0 1px rgba(255,255,255,.09)}
+.tally-row .pc-icon,.loot .pc-icon,.gp-taken .pc-icon{box-sizing:border-box}
+
+/* [THEME-LIGHT-FIXES] ===========================================
+   Plusieurs éléments de chrome portaient des couleurs écrites en dur pour le
+   thème sombre (flèches du cube, bouton de déconnexion, bouton COMBAT). En
+   thème clair ils devenaient illisibles : texte rose pâle sur fond rose,
+   flèches presque noires sur fond crème, or foncé sur or foncé.
+   ============================================================== */
+body.light .cube-arrow{background:rgba(255,255,255,.82);color:var(--accent);border-color:var(--border2)}
+body.light .cube-arrow:hover{background:#fff;border-color:var(--accent2);color:var(--accent2)}
+body.light .cube-compass{color:var(--accent);border-color:var(--border2)}
+body.light .cab-sw{border-color:rgba(178,53,48,.55)!important;background:rgba(178,53,48,.10);color:#8d2a26!important}
+body.light .cab-sw:hover{background:rgba(178,53,48,.2);color:#5e1a17!important}
+/* Le bouton COMBAT reste l'élément le plus lumineux de l'écran dans les deux
+   thèmes : en clair, c'est le vert-de-gris qui joue ce rôle, le laiton foncé
+   du thème clair ne ressortirait pas sur un fond crème. */
+body.light .jouer-btn{background:var(--accent2);color:#fff;box-shadow:0 3px 0 #0d4c42}
+body.light .jouer-btn:hover{box-shadow:0 5px 0 #0d4c42}
+body.light .jouer-btn:active{box-shadow:0 2px 0 #0d4c42}
+body.light .jouer-logo{background:linear-gradient(180deg,#3b3428,#7b6320 55%,#4a3a12);
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+body.light .gp-clock{background:#fff}
+body.light .intro-close{color:#241a10}
+
+/* [MOBILE-GAME] =================================================
+   Sur petit écran la partie s'empile (plateau, bandeaux, colonne latérale)
+   et dépasse donc la hauteur de l'écran. Deux règles écrites pour le grand
+   écran l'en empêchaient : la hauteur fixe de .game-wrap (posée avec une
+   spécificité supérieure à la règle du media query, donc gagnante malgré
+   lui) et l'overflow:hidden de la face du cube qui l'héberge. Résultat : les
+   bandeaux joueurs étaient rognés à quelques pixels et la colonne latérale
+   inatteignable.
+   ============================================================== */
+@media(max-width:820px){
+  body.has-acc .game-wrap{height:auto;margin-top:46px;overflow:visible}
+  #face-viewport-game{overflow-y:auto;-webkit-overflow-scrolling:touch}
+  .game-main{justify-content:flex-start;min-height:0}
+  .gp-bar{padding:8px 10px;gap:8px}
+  .gp-av{width:28px;height:28px;font-size:12px;border-radius:8px}
+  .gp-name{font-size:13px}
+  .gp-id{flex:1;min-width:0}
+  .game-side{padding:10px;gap:8px}
+  .move-log{max-height:180px}
+}

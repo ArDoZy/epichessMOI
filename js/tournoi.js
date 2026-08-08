@@ -14,7 +14,7 @@
 //
 // Dépendances : rules-engine.js (GS et son cycle de vie complet),
 // game-flow.js (buildGameBoard, updateGamePlayerBars, _playerColor),
-// ai-level-modal.js (selectedAILevel, AI_INSTRUCTORS), voie.js
+// ai-level-modal.js (selectedAILevel), voie.js
 // (vvCalcNewElo, vvCheckNewUnlocks, vvEstimateAiElo), armies.js
 // (generateAIArmy), accounts.js (accGet/accSet via vvLoadHistory etc.),
 // data-pieces.js (PIECES).
@@ -27,7 +27,22 @@
 // n'a pas d'importance tant que les deux sont chargés avant tout clic).
 // ================================================================
 
-const TOURNOI_ROUNDS=[0,1,2,3,4,5,6]; // Poussière → Pierre → Bronze → Acier → Obsidienne → Argent → Or
+// Les sept rounds affrontaient les sept instructeurs, du plus faible au plus
+// fort. Il n'y a plus qu'un instructeur : la difficulté monte désormais par
+// la QUALITÉ DE L'ARMÉE qu'il aligne (budget minimum croissant) et non par sa
+// force de calcul, qui est maximale à chaque round. Chaque palier porte aussi
+// un ELO de référence, utilisé pour le calcul du gain ou de la perte.
+const TOURNOI_TIERS=[
+  {name:'Épreuve du Creuset',    minValue:13,elo:1300},
+  {name:'Épreuve de l\'Alambic', minValue:15,elo:1450},
+  {name:'Épreuve du Mortier',    minValue:17,elo:1600},
+  {name:'Épreuve du Fourneau',   minValue:19,elo:1750},
+  {name:'Épreuve de l\'Athanor',  minValue:21,elo:1900},
+  {name:'Épreuve du Sceau',      minValue:23,elo:2050},
+  {name:'Épreuve du Grand Œuvre',minValue:24,elo:2200},
+];
+const TOURNOI_ROUNDS=[0,1,2,3,4,5,6];
+function tournoiTier(i){return TOURNOI_TIERS[Math.min(Math.max(i,0),TOURNOI_TIERS.length-1)];}
 
 let tournamentState={
   active:false,
@@ -83,7 +98,7 @@ function renderTournoiPage(){
     const mon=fp(ad.mon?.id||ad.mon);const gen=fp(ad.gen?.id||ad.gen);
     const extras=(ad.extras||[]).map(id=>fp(id)).filter(Boolean);
     const all=[mon,gen,...extras].filter(Boolean);
-    document.getElementById('tournoi-army-pieces').textContent=all.map(p=>p.emoji).join(' ');
+    document.getElementById('tournoi-army-pieces').innerHTML=all.map(p=>pieceIcon(p.id,'n')).join('');
     document.getElementById('tournoi-army-names').textContent=all.map(p=>p.name).join(' · ');
     banner.style.display='';
   }else{
@@ -99,7 +114,7 @@ function renderTournoiPage(){
   const statusLabel={null:'En attente…',win:'Victoire ✓',loss:'Défaite ✗',draw:'Nulle ~'};
   const statusCls={null:'pending',win:'win',loss:'loss',draw:'draw'};
   cont.innerHTML=TOURNOI_ROUNDS.map((instIdx,i)=>{
-    const inst=AI_INSTRUCTORS[instIdx];
+    const inst=tournoiTier(i);
     const rd=tournamentState.rounds[i]||{result:null};
     const isActive=tournamentState.active&&i===tournamentState.currentRound&&rd.result===null;
     let cls='tournoi-round';
@@ -192,9 +207,12 @@ function launchTournoiRound(roundIdx){
   if(roundIdx>=7){finishTournoi();return;}
   _endGameTriggered=false;
   const rd=tournamentState.rounds[roundIdx];
-  const instIdx=rd.instructorIdx;
-  selectedAILevel=instIdx;
-  aiArmyData=generateAIArmy();
+  const tier=tournoiTier(roundIdx);
+  selectedAILevel=0;
+  // L'ELO de référence du palier sert au calcul du gain : perdre au round 7
+  // ne doit pas coûter autant que perdre au round 1.
+  if(typeof vvSetOpponentElo==='function')vvSetOpponentElo(tier.elo);
+  aiArmyData=generateAIArmy(tier.minValue);
   // Sauvegarder l'armée IA du round pour l'analyse ultérieure
   tournamentState.rounds[roundIdx].aiArmy=JSON.parse(JSON.stringify(aiArmyData));
   tournamentState.rounds[roundIdx].movesLog=null;
@@ -217,11 +235,15 @@ function launchTournoiRound(roundIdx){
     turnCount:0,historyView:null,lastMoveHistory:[],clockMs:clockMs2,timeWhite:clockMs2,timeBlack:clockMs2};
   GS.board=buildGameBoard(whiteSideArmy2,blackSideArmy2);
   updateMedusaParalysis(GS.board,GS);updatePretreProtection(GS.board,GS);updateGrandMaitre(GS.board,GS);
+  // Un round de tournoi engage les pièces comme n'importe quelle partie.
+  if(typeof economyCommit==='function')economyCommit(currentArmyData);
+  if(typeof renderGameStake==='function')renderGameStake(GS);
   showPage('page-game');
   updateGamePlayerBars();
   renderGame(GS);updateStatus(GS);updateHistoryNav();
   setTimeout(()=>{buildGameLabels(GS);renderGame(GS);},80);
-  if(_playerColor==='b')setTimeout(()=>doAIMove(GS),800);
+  // Le premier coup de l'IA est déclenché par la fin de la cinématique
+  // d'entrée (showArmyIntro), comme en partie normale.
   showArmyIntro(currentArmyData,aiArmyData);
   saveTournoiProgress();
 }
@@ -267,9 +289,9 @@ function showRoundOverlay(roundIdx,result,eloBefore,eloAfter,eloDelta){
   const nextBtn=document.getElementById('rb-next-btn');
   if(!isLast){
     nextWrap.style.display='';
-    const nextInst=AI_INSTRUCTORS[TOURNOI_ROUNDS[roundIdx+1]];
+    const nextInst=tournoiTier(roundIdx+1);
     document.getElementById('rb-next-name').textContent=nextInst.name;
-    document.getElementById('rb-next-elo').textContent=nextInst.elo+' ELO';
+    document.getElementById('rb-next-elo').textContent=nextInst.elo+' ELO · armée '+nextInst.minValue+'+ pts';
     nextBtn.textContent='Round suivant →';
   }else{
     nextWrap.style.display='none';
@@ -332,9 +354,14 @@ function triggerTournoiEndOfGame(result){
   tournamentState.rounds[roundIdx].boardHistory=boardSnapshots;
   saveTournoiProgress();
 
+  const settlement=(typeof economySettle==='function')?economySettle(result,GS):null;
+  if(typeof renderStreakBadge==='function')renderStreakBadge();
+
   setTimeout(()=>playSound(result==='win'?'win':result==='loss'?'loss':'draw'),200);
 
-  setTimeout(()=>showRoundOverlay(roundIdx,result,oldElo,newElo,delta),400);
+  const showOverlay=()=>showRoundOverlay(roundIdx,result,oldElo,newElo,delta);
+  if(typeof playOutcomeCinematic==='function')playOutcomeCinematic(result,settlement,showOverlay);
+  else setTimeout(showOverlay,400);
 }
 
 // ----------------------------------------------------------------
@@ -395,7 +422,7 @@ function renderTournoiAnalyseRounds(){
   const statusIcon={win:'▲',loss:'▼',draw:'◆',null:'○'};
   const statusCls={win:'var(--success)',loss:'var(--danger)',draw:'var(--gold)',null:'var(--muted)'};
   cont.innerHTML=tournamentState.rounds.map((rd,i)=>{
-    const inst=AI_INSTRUCTORS[rd.instructorIdx];
+    const inst=tournoiTier(i);
     const canReplay=rd.result!==null;
     return '<div style="background:var(--bg);border:2px solid var(--border);border-radius:12px;padding:14px;text-align:center;cursor:'+(canReplay?'pointer':'default')+';transition:all .2s" '
       +(canReplay?'onclick="loadTournoiRoundReplay('+i+')" onmouseenter="this.style.borderColor=\'var(--gold)\'" onmouseleave="this.style.borderColor=\'var(--border)\'"':'')+'>'
@@ -411,7 +438,7 @@ window.loadTournoiRoundReplay=function(roundIdx){
   const rd=tournamentState.rounds[roundIdx];
   if(!rd||rd.result===null)return;
   taCurrentRound=roundIdx;
-  const inst=AI_INSTRUCTORS[rd.instructorIdx];
+  const inst=tournoiTier(roundIdx);
 
   document.getElementById('tournoi-analyse-replay-title').textContent=
     'Round '+(roundIdx+1)+' · '+inst.name+' · '+(rd.result==='win'?'Victoire':rd.result==='loss'?'Défaite':'Nulle');
@@ -428,10 +455,10 @@ window.loadTournoiRoundReplay=function(roundIdx){
   }
   const pPieces=armyPieces(pArmy);
   const aPieces=armyPieces(aArmy);
-  document.getElementById('ta-player-army').textContent=pPieces.map(p=>p.emoji).join(' ');
+  document.getElementById('ta-player-army').innerHTML=pPieces.map(p=>pieceIcon(p.id,'n')).join('');
   document.getElementById('ta-player-names').textContent=pPieces.map(p=>p.name).join(' · ');
   document.getElementById('ta-ai-label').textContent=inst.name;
-  document.getElementById('ta-ai-army').textContent=aPieces.map(p=>p.emoji).join(' ');
+  document.getElementById('ta-ai-army').innerHTML=aPieces.map(p=>pieceIcon(p.id,'n')).join('');
   document.getElementById('ta-ai-names').textContent=aPieces.map(p=>p.name).join(' · ');
 
   // Le plateau est présenté du point de vue du joueur, comme pendant la
@@ -464,7 +491,7 @@ function renderTaBoard(boardState,fromCell,toCell){
     const isLight=(r+c)%2===0;
     const cell=boardState[r][c];
     const isHL=(fromCell&&fromCell.r===r&&fromCell.c===c)||(toCell&&toCell.r===r&&toCell.c===c);
-    html+='<div class="ta-cell '+(isLight?'light':'dark')+(isHL?' highlight':'')+'">'+(cell?getPieceEmoji(cell):'')+'</div>';
+    html+='<div class="ta-cell '+(isLight?'light':'dark')+(isHL?' highlight':'')+'">'+(cell?pieceSVG(cell.pieceId,cell.color):'')+'</div>';
   }
   cont.innerHTML=html;
   const idx=taMoveIdx;const total=taBoardStates.length-1;

@@ -33,26 +33,88 @@ epic-chess/
 ├── favicon.svg              # Icône d'onglet (fiole d'alchimiste)
 ├── apple-touch-icon.png     # 180×180, écran d'accueil iOS
 ├── og-image.png             # 1200×630, aperçu de partage (Discord, X...)
+├── assets/
+│   └── boards/              # Textures d'échiquier en SVG procédural
+│       ├── bois.svg          # (générées par tools/gen-boards.js, ne pas
+│       ├── pierre.svg        #  éditer à la main : relancer le script)
+│       ├── acier.svg
+│       ├── argent.svg
+│       └── or.svg
+├── tools/
+│   └── gen-boards.js        # Générateur des textures d'échiquier (node)
 ├── css/
 │   └── style.css            # Tout le CSS, organisé en sections [TAG] commentées
 └── js/
-    ├── data-pieces.js       # Données pures (pièces, rangs, IA, déblocages)
+    ├── data-pieces.js       # Données pures (pièces, rangs, INSTRUCTOR,
+    │                          # BOARD_SKINS, CHESTS, déblocages)
+    ├── piece-art.js         # Logos de pièces dessinés en SVG (remplace les emojis)
     ├── main.js               # État global partagé + helpers (showPage, showNotif...)
     ├── cube-nav.js           # Navigation principale par cube 3D (CSS). Déplace
-    │                          # builder/partie dans les faces ; showPage y délègue.
+    │                          # armées/partie/réserve/voie dans les faces.
     ├── accounts.js           # Comptes locaux (localStorage), connexion
-    ├── ai-level-modal.js     # Modal de choix de l'instructeur IA
+    ├── economy.js            # Possession des pièces, mise en jeu, coffres, séries
+    ├── ai-level-modal.js     # Réduit à selectedAILevel/selectedTimeControl
     ├── builder.js            # Page de composition d'armée
     ├── armies.js             # Pages "Mes armées" / "Armées IA" + génération IA
     ├── combat-intro.js       # Page d'intro combat (VS)
     ├── rules-engine.js       # Moteur de règles pur (coups, échecs, exécution)
+    ├── combat-music.js       # Musique de combat en boucle
+    ├── cinematics.js         # Cinématiques d'entrée en combat et d'issue
     ├── game-render.js        # Rendu plateau, drag&drop, clics, historique
-    ├── ai-engine.js          # Évaluation, minimax, Web Worker IA
+    ├── ai-engine.js          # Évaluation (dont les POUVOIRS), minimax, Worker IA
     ├── game-flow.js          # Démarrage partie, fin de partie, résultat
     ├── voie.js                # Page "Voie des Victoires" (ELO, rangs, jalons)
+    ├── economy-ui.js         # Page "Réserve" : inventaire, coffres, échiquiers
     ├── tournoi.js             # Mode Tournoi + modal d'analyse replay
-    └── settings-admin.js     # Panneau réglages + mode Administrateur
+    ├── settings-admin.js     # Panneau réglages + mode Administrateur
+    └── multiplayer.js        # Parties en ligne (Supabase Realtime)
 ```
+
+## Les trois systèmes à comprendre avant d'éditer
+
+### 1. L'économie des pièces (`js/economy.js`)
+
+C'est la mécanique centrale et celle qui a le plus de ramifications. Une
+pièce se **possède en exemplaires** ; l'engager dans une partie la
+**retire de l'inventaire au lancement** (`economyCommit`), et la fin de
+partie décide de ce qui revient (`economySettle`) : rien en cas de défaite,
+les survivants en cas de victoire ou de nulle. Les pions et pièces standard
+qui complètent le plateau (`FREE_PIECE_IDS`) ne se possèdent pas, sinon une
+défaite coûterait huit pions et le jeu deviendrait injouable.
+
+Toute nouvelle façon de démarrer une partie DOIT appeler `economyCommit()`,
+et toute nouvelle façon de la terminer DOIT appeler `economySettle()`, sinon
+les exemplaires engagés restent hors inventaire. Le garde-fou est
+`economyRecoverOrphanEngagement()`, appelé à la connexion : il rend les
+pièces d'une partie interrompue.
+
+### 2. Les logos de pièces (`js/piece-art.js`)
+
+Les émojis ont été remplacés par des silhouettes SVG. `pieceSVG(id,color)`
+rend une pièce plein format (plateau), `pieceIcon(id,color,tailleEm)` une
+version en ligne (listes, journal des coups). Les deux camps partagent le
+même dessin : seules les variables CSS `--pc-fill` / `--pc-line` changent.
+Une pièce sans entrée dans `PIECE_ART` retombe sur un jeton neutre, le jeu
+reste jouable.
+
+**Piège** : plusieurs emplacements héritaient d'un `font-size` prévu pour
+des émojis. Comme `pieceIcon` dimensionne en `em`, un `font-size:46px`
+hérité produit une icône de 120 px qui déborde. La section `[ICON-SIZES]`
+de `css/style.css` fixe donc la taille en pixels partout où c'est le cas.
+
+### 3. L'IA (`js/ai-engine.js`)
+
+Il n'y a plus qu'un adversaire, `INSTRUCTOR`, qui joue toujours à pleine
+puissance. `evalBoard()` combine l'évaluation classique (matériel, tables
+position-carrés, mobilité, structure de pions) et `evalPowers()`, qui note
+les **capacités spéciales** : paralysie de la Méduse, protection du Prêtre,
+zone de destruction du Typhon, charge du Dresseur, domination du Grand
+Maître, ancrage du Garde de Pierre.
+
+Ces deux fonctions sont sérialisées dans le Web Worker : si vous en ajoutez
+une nouvelle, **ajoutez-la aussi à la liste `fns` de `getWorkerCode()`**,
+sinon le Worker plantera et l'IA basculera silencieusement sur le thread
+principal (jouable, mais l'interface se figera pendant sa réflexion).
 
 ## SEO / GEO : ce qu'il ne faut pas casser
 
@@ -70,8 +132,8 @@ Trois points de vigilance :
   `.lore`, et en JSON-LD (`FAQPage`) dans le `<head>`. Google invalide le
   balisage si les deux textes divergent : modifier l'un, c'est modifier
   l'autre.
-- **Les chiffres du JSON-LD et de `llms.txt`** (32 pièces, 5 classes,
-  budget 24 points, 7 instructeurs, 7 rangs) proviennent de
+- **Les chiffres du JSON-LD et de `llms.txt`** (18 créatures, 5 classes,
+  budget 24 points, 7 rangs, 6 raretés de coffre) proviennent de
   `js/data-pieces.js` et `js/builder.js`. Ajouter une pièce ou un rang veut
   dire mettre ces deux fichiers à jour, sinon les moteurs de réponse IA
   citeront des données fausses.
@@ -96,11 +158,16 @@ L'ordre des `<script>` est important car il n'y a pas de système de modules :
 chaque fichier suppose que les globals des fichiers précédents existent déjà.
 
 ```
-data-pieces.js → main.js → cube-nav.js → accounts.js → ai-level-modal.js
-→ builder.js → armies.js → combat-intro.js → rules-engine.js
-→ game-render.js → ai-engine.js → game-flow.js → voie.js → tournoi.js
-→ settings-admin.js → (script inline) initApp()
+data-pieces.js → piece-art.js → main.js → cube-nav.js → accounts.js
+→ economy.js → ai-level-modal.js → builder.js → armies.js → combat-intro.js
+→ rules-engine.js → combat-music.js → cinematics.js → game-render.js
+→ ai-engine.js → game-flow.js → voie.js → economy-ui.js → tournoi.js
+→ settings-admin.js → multiplayer.js → (script inline) initApp()
 ```
+
+`economy.js` doit venir après `accounts.js` (il utilise `accGet`/`accSet`) et
+avant tous les modules de page qui affichent des stocks. `piece-art.js` doit
+venir juste après `data-pieces.js` : à peu près tous les rendus l'utilisent.
 
 `cube-nav.js` est chargé juste après `main.js` : il étend `showPage()` (la
 navigation devient un cube 3D en CSS) et déplace à l'exécution les pages
@@ -124,7 +191,12 @@ explicitement ses dépendances et qui l'utilise).
 | Ajouter/modifier une pièce (valeur, emoji, description) | `js/data-pieces.js` (tableau `PIECES`) |
 | Changer les règles de mouvement d'une pièce existante ou en ajouter une | `js/rules-engine.js` (fonction `generateMovesRaw`, + `isSquareAttackedSimple` si elle peut mettre en échec) |
 | Changer le calcul d'ELO, les rangs, les paliers de déblocage | `js/voie.js` (calcul) + `js/data-pieces.js` (table `UNLOCK_TABLE`/`RANKS`) |
-| Modifier le comportement de l'IA (force, style de jeu) | `js/ai-engine.js` (`evalBoard`, `minimax`) + `js/data-pieces.js` (`AI_INSTRUCTORS`) |
+| Modifier le comportement de l'IA (force, style de jeu) | `js/ai-engine.js` (`evalBoard`, `evalPowers`, `minimax`) + `js/data-pieces.js` (`INSTRUCTOR`) |
+| Changer le contenu ou la rareté des coffres | `js/data-pieces.js` (`CHESTS`, `DAILY_CHEST`) + `js/economy.js` (`chestRoll`) |
+| Changer ce qu'une partie fait risquer ou rapporter | `js/economy.js` (`economyCommit` / `economySettle`) |
+| Ajouter un échiquier | `tools/gen-boards.js` (relancer `node tools/gen-boards.js`) + `BOARD_SKINS` dans `js/data-pieces.js` |
+| Modifier le dessin d'une pièce | `js/piece-art.js` (`PIECE_ART`) |
+| Modifier les cinématiques de combat | `js/cinematics.js` + section `[CINEMATIC]` de `css/style.css` |
 | Modifier le mode tournoi (nombre de rounds, bonus ELO) | `js/tournoi.js` |
 | Modifier le système de comptes/sauvegarde | `js/accounts.js` |
 | Ajouter un nouveau réglage utilisateur | `index.html` (bloc `#settings-panel`) + `js/settings-admin.js` |

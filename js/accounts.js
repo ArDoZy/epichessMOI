@@ -43,11 +43,13 @@ function renderLoginPage(){
     const gradColors=[['#7a7590','#555'],['#9a8c7a','#665'],['#cd7f32','#8b5e20'],['#8fa8b8','#607080'],['#5a3f8a','#3a1f60'],['#c0c0c0','#888'],['#c9a84c','#8a6020']];
     list.innerHTML=names.map(n=>{
       const elo=JSON.parse(localStorage.getItem(accKey(n,'elo'))||'0');
+      const streak=JSON.parse(localStorage.getItem(accKey(n,'win_streak'))||'0');
       const rank=vvGetRank(elo);const ri=vvGetRankIdx(elo);
       const [c1,c2]=gradColors[ri]||gradColors[0];
+      const streakTxt=streak>0?` · ${streak} victoire${streak>1?'s':''} d'affilée`:'';
       return `<div class="acc-item" data-n="${escH(n)}">
         <div class="acc-av" style="background:linear-gradient(135deg,${c1},${c2})">${n.charAt(0).toUpperCase()}</div>
-        <div class="acc-info"><div class="acc-name">${escH(n)}</div><div class="acc-meta">${rank.name} · ${elo} ELO</div></div>
+        <div class="acc-info"><div class="acc-name">${escH(n)}</div><div class="acc-meta">${rank.name} · ${elo} ELO${streakTxt}</div></div>
         <button class="acc-del" title="Supprimer ce compte" onclick="deleteAcc('${escH(n)}',event)">🗑️</button>
       </div>`;
     }).join('');
@@ -93,6 +95,12 @@ window.deleteAcc=(username,ev)=>{
 function enterAccount(username,isNewAccount){
   CUR_ACC=username;
   loadAccountGlobals();
+  // Économie (js/economy.js) : dotation de départ pour les pièces débloquées
+  // qui n'ont pas encore de stock, et restitution des pièces d'une partie
+  // interrompue (onglet fermé en cours de jeu). Une interruption n'est pas
+  // une défaite, les exemplaires engagés doivent revenir.
+  if(typeof invEnsureStarter==='function')invEnsureStarter();
+  if(typeof economyRecoverOrphanEngagement==='function')economyRecoverOrphanEngagement();
   updateCab();
   document.body.classList.add('has-acc');
   document.getElementById('cab').style.display='flex';
@@ -102,6 +110,7 @@ function enterAccount(username,isNewAccount){
   // affiche le MENU PRINCIPAL du cube (face JOUER), pas directement le
   // builder, la face builder est atteinte en tournant le cube.
   updateBuilderBanner();updAll();
+  if(typeof renderStreakBadge==='function')renderStreakBadge();
   if(typeof goToMainMenu==='function')goToMainMenu();else showPage('page-builder');
   // Parchemin d'accueil : uniquement à la création d'un nouveau compte (pas
   // à chaque connexion d'un compte existant) : voir showIntroModal() dans

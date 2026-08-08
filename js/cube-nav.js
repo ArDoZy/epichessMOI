@@ -50,9 +50,15 @@
   // Disposition canonique (au menu principal). La face de droite est
   // "armees" (Mes armées) : le builder (composition) n'est plus une face du
   // cube, c'est un overlay ouvert depuis "Mes armées" (bouton "Nouvelle armée").
-  const CANON={front:'jouer',right:'armees',back:'magasin',left:'missions',top:'game',bottom:'variantes'};
-  const SIDE=new Set(['jouer','armees','magasin','missions']);
-  const EMBED={'page-armies':'armees','page-game':'game'};
+  // Les deux faces « bientôt disponible » (Magasin, Missions) portent
+  // maintenant du vrai contenu : la Réserve (inventaire et coffres) et la
+  // Voie des Victoires. La face du bas (Variantes) a été retirée, elle ne
+  // menait qu'à un écran vide ; son emplacement 3D reste déclaré parce que
+  // les permutations de rotation le référencent, mais aucune face ne l'occupe.
+  const CANON={front:'jouer',right:'armees',back:'reserve',left:'voie',top:'game',bottom:null};
+  const SIDE=new Set(['jouer','armees','reserve','voie']);
+  const EMBED={'page-armies':'armees','page-game':'game','page-reserve':'reserve','page-voie':'voie'};
+  const FACE_LABEL={jouer:'Jouer',armees:'Mes armées',reserve:'La Réserve',voie:'Voie des Victoires',game:'Partie'};
 
   // Permutations des emplacements selon la rotation demandée. « right »
   // amène au front la face qui était à DROITE (le cube tourne visuellement
@@ -82,6 +88,16 @@
     if(!cube)return;
     cube.querySelectorAll('.cube-face').forEach(f=>f.classList.toggle('is-front', f.dataset.face===slots.front));
     updateArrows();
+    refreshFaceContent(slots.front);
+  }
+  // Chaque face se recalcule à l'arrivée : l'inventaire, les coffres et l'ELO
+  // bougent à chaque partie, une face rendue une seule fois au chargement
+  // afficherait des données périmées.
+  function refreshFaceContent(name){
+    if(name==='reserve'&&typeof renderReservePage==='function')renderReservePage();
+    else if(name==='voie'&&typeof renderVoiePage==='function')renderVoiePage();
+    else if(name==='armees'&&typeof renderArmiesPage==='function')renderArmiesPage();
+    else if(name==='jouer'&&typeof renderStreakBadge==='function')renderStreakBadge();
   }
   // Les flèches restent visibles/cliquables PENDANT une rotation (elles ne
   // dépendent plus de `animating`) : c'est ce qui permet d'enchaîner deux
@@ -94,8 +110,14 @@
     const set=(id,show)=>{const e=document.getElementById(id);if(e)e.style.display=show?'':'none';};
     set('cube-arrow-left', h);
     set('cube-arrow-right', h);
-    set('cube-arrow-down', h && slots.front==='jouer');           // descendre vers Variantes
-    set('cube-arrow-up',   active && !locked && slots.front==='variantes'); // remonter
+    // Boussole : sans elle, tourner le cube revient à naviguer à l'aveugle,
+    // on ne sait ce qu'on a atteint qu'une fois la rotation terminée.
+    const comp=document.getElementById('cube-compass');
+    if(comp){
+      comp.style.display=h?'':'none';
+      const nameEl=document.getElementById('cube-compass-name');
+      if(nameEl)nameEl.textContent=FACE_LABEL[slots.front]||'';
+    }
   }
 
   // Réinitialise le cube à l'angle 0 avec les emplacements courants (sans
@@ -154,6 +176,12 @@
   // mise en file par animate()) plutôt que de l'ignorer, c'est ce qui
   // permet d'enchaîner deux rotations sans attendre.
   function nav(kind){ if(!locked && (animating || SIDE.has(slots.front))) animate(kind); }
+  // Bouton « Affronter un joueur » du menu : même parcours que COMBAT, mais
+  // la sélection d'armée débouche sur le salon en ligne.
+  function onOnline(){
+    if(locked||animating)return;
+    if(typeof startArmySelection==='function')startArmySelection('online');
+  }
 
   function lock(){ locked=true; refresh(); }
   function unlock(){ locked=false; refresh(); }
@@ -175,10 +203,10 @@
     if(id==='page-login'){ document.body.classList.remove('cube-active','nav-overlay'); locked=false; return; }
     if(id==='face-jouer'){ goToMainMenu(); return; }
     const face=EMBED[id];
-    if(face==='armees'){
+    if(face==='armees'||face==='reserve'||face==='voie'){
       document.body.classList.remove('nav-overlay');
       document.body.classList.add('cube-active');
-      locked=false; setFrontInstant('armees');
+      locked=false; setFrontInstant(face);
       return;
     }
     if(face==='game'){
@@ -225,13 +253,14 @@
     };
     moveInto('page-armies','face-viewport-armees');
     moveInto('page-game','face-viewport-game');
+    moveInto('page-reserve','face-viewport-reserve');
+    moveInto('page-voie','face-viewport-voie');
 
     // Flèches : DROITE = voir la face de droite (cube tourne à gauche), etc.
     document.getElementById('cube-arrow-right')?.addEventListener('click',()=>nav('right'));
     document.getElementById('cube-arrow-left') ?.addEventListener('click',()=>nav('left'));
-    document.getElementById('cube-arrow-down') ?.addEventListener('click',()=>{ if(!locked&&(animating||slots.front==='jouer'))animate('down'); });
-    document.getElementById('cube-arrow-up')   ?.addEventListener('click',()=>{ if(!locked&&(animating||slots.front==='variantes'))animate('up'); });
     document.getElementById('cube-jouer-btn')  ?.addEventListener('click',onCombat);
+    document.getElementById('b-online-quick')  ?.addEventListener('click',onOnline);
 
     document.addEventListener('keydown',e=>{
       if(locked||!document.body.classList.contains('cube-active')||document.body.classList.contains('nav-overlay'))return;

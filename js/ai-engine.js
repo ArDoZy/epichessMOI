@@ -74,6 +74,153 @@ function getPST(p, r, c){
 }
 
 // ================================================================
+// ÉVALUATION DES POUVOIRS
+// ================================================================
+// L'évaluation ne regardait jusqu'ici QUE les déplacements : matériel,
+// mobilité, structure de pions. Elle était donc aveugle à ce qui fait la
+// spécificité du jeu. Une Méduse valait ses 240 points même quand elle
+// paralysait la Dame adverse ; un Typhon ne voyait jamais qu'il pouvait
+// effacer trois pièces d'un coup ; le Prêtre ne comprenait pas qu'il rendait
+// ses voisines intouchables.
+//
+// evalPowers() ajoute un terme par pouvoir, du point de vue du camp de la
+// pièce. La convention de signe est celle d'evalBoard : POSITIF favorise les
+// Noirs, négatif les Blancs.
+//
+// Les valeurs sont volontairement modestes (10 à 60 % de la valeur de la
+// pièce concernée) : un pouvoir change une position, il ne remplace pas une
+// dame. Les surévaluer produirait une IA qui court après ses effets spéciaux
+// en laissant ses pièces en prise.
+function powerValueAt(board,r,c){
+  const p=board[r][c];
+  if(!p)return 0;
+  return CVAL[p.pieceId]||PVAL[p.type]||100;
+}
+
+function evalPowers(board,fgs){
+  let s=0;
+  const sign=col=>col==='b'?1:-1;
+
+  for(let r=0;r<8;r++)for(let c=0;c<8;c++){
+    const p=board[r][c];if(!p)continue;
+    const id=p.pieceId;const sg=sign(p.color);
+
+    // MÉDUSE : chaque pièce ennemie paralysée en diagonale est retirée du jeu
+    // tant que la Méduse tient. Vaut d'autant plus que la victime est chère.
+    if(id==='meduse'){
+      for(const[dr,dc] of [[1,1],[1,-1],[-1,1],[-1,-1]]){
+        const nr=r+dr,nc=c+dc;
+        if(nr<0||nr>7||nc<0||nc>7)continue;
+        const t=board[nr][nc];
+        if(t&&t.color!==p.color)s+=sg*Math.min(260,powerValueAt(board,nr,nc)*0.34);
+      }
+    }
+
+    // PRÊTRE : interdit les captures sur ses quatre diagonales. Compte les
+    // pièces AMIES ainsi mises à l'abri (une case vide protégée ne vaut rien).
+    else if(id==='pretre'){
+      for(const[dr,dc] of [[1,1],[1,-1],[-1,1],[-1,-1]]){
+        const nr=r+dr,nc=c+dc;
+        if(nr<0||nr>7||nc<0||nc>7)continue;
+        const t=board[nr][nc];
+        if(t&&t.color===p.color)s+=sg*Math.min(120,powerValueAt(board,nr,nc)*0.16);
+      }
+    }
+
+    // TYPHON : détruit tout ce qui est adjacent à sa case d'ARRIVÉE. On
+    // évalue la meilleure de ses quatre destinations, pas sa case actuelle :
+    // c'est la menace qui pèse sur l'adversaire.
+    else if(id==='typhon'){
+      let best=0;
+      for(const[dr,dc] of [[1,1],[1,-1],[-1,1],[-1,-1]]){
+        const tr=r+dr,tc=c+dc;
+        if(tr<0||tr>7||tc<0||tc>7)continue;
+        const occ=board[tr][tc];
+        if(occ&&occ.color===p.color)continue;
+        let gain=occ?powerValueAt(board,tr,tc):0;
+        for(const[ar,ac] of [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]]){
+          const br2=tr+ar,bc=tc+ac;
+          if(br2<0||br2>7||bc<0||bc>7)continue;
+          const v=board[br2][bc];
+          if(v&&v.color!==p.color&&!(v.isKing||v.type==='k'))gain+=powerValueAt(board,br2,bc);
+        }
+        if(gain>best)best=gain;
+      }
+      // 40 % : la menace n'est pas encore encaissée, l'adversaire peut parer.
+      s+=sg*best*0.40;
+    }
+
+    // DRESSEUR D'ÉLÉPHANT : la charge de 2 cases écrase ce qu'elle traverse.
+    else if(id==='dresseur-elephant'){
+      let best=0;
+      for(const[dr,dc] of [[2,0],[-2,0],[0,2],[0,-2]]){
+        const tr=r+dr,tc=c+dc;
+        if(tr<0||tr>7||tc<0||tc>7)continue;
+        const mid=board[r+dr/2][c+dc/2];
+        if(mid&&mid.color===p.color)continue;
+        const dest=board[tr][tc];
+        if(dest&&dest.color===p.color)continue;
+        let gain=0;
+        if(mid&&mid.color!==p.color&&!(mid.isKing||mid.type==='k'))gain+=powerValueAt(board,r+dr/2,c+dc/2);
+        if(dest&&dest.color!==p.color)gain+=powerValueAt(board,tr,tc);
+        if(gain>best)best=gain;
+      }
+      s+=sg*best*0.35;
+    }
+
+    // GRAND MAÎTRE : sa seule présence prive l'adversaire du double pas de
+    // pion, ce qui étouffe son développement. Effet global, pas positionnel.
+    else if(id==='grand-maitre'){
+      if(!fgs.grandMaitreAlive||!fgs.grandMaitreAlive[p.color==='w'?'b':'w'])s+=sg*55;
+    }
+
+    // GARDE DE PIERRE : une fois ancré il est imprenable ET immobile. C'est
+    // un mur : précieux devant son roi, quasi inutile ailleurs.
+    else if(id==='garde-pierre'){
+      const anchored=fgs.anchored&&fgs.anchored.has(r+','+c);
+      if(anchored){
+        let shields=0;
+        for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++){
+          if(!dr&&!dc)continue;
+          const nr=r+dr,nc=c+dc;
+          if(nr<0||nr>7||nc<0||nc>7)continue;
+          const t=board[nr][nc];
+          if(t&&t.color===p.color&&(t.isKing||t.type==='k'))shields+=1;
+        }
+        s+=sg*(shields?130:-30);
+      }
+    }
+
+    // PREUX CHEVALIER : sa cuirasse le rend intouchable par les pions, qui
+    // sont justement la moitié des pièces du plateau. Prime constante.
+    else if(id==='preux-chevalier'){
+      s+=sg*40;
+    }
+
+    // BANSHEE : repousse les pions adverses proches, ce qui casse leur
+    // structure. Vaut par le nombre de pions à portée de hurlement.
+    else if(id==='banshee'){
+      const dir=p.color==='w'?-1:1;
+      for(let dc=-1;dc<=1;dc++){
+        const nr=r+dir,nc=c+dc;
+        if(nr<0||nr>7||nc<0||nc>7)continue;
+        const t=board[nr][nc];
+        if(t&&t.color!==p.color&&(t.type==='p'||t.pieceId==='std-pawn'))s+=sg*22;
+      }
+    }
+
+    // ALPHA : saute exactement à 2 cases en diagonale, donc il ignore les
+    // blocages mais laisse les cases adjacentes libres. Utile au contact des
+    // lignes ennemies, faible à l'arrière.
+    else if(id==='alpha'){
+      const adv=p.color==='b'?r:(7-r);
+      s+=sg*adv*4;
+    }
+  }
+  return s;
+}
+
+// ================================================================
 // ÉVALUATION DE POSITION
 // ================================================================
 function evalBoard(board,gs){
@@ -85,6 +232,10 @@ function evalBoard(board,gs){
     const p=board[r][c];if(!p)continue;
     const v=CVAL[p.pieceId]||PVAL[p.type]||100;
     const pst=getPST(p,r,c);
+
+    // Une pièce paralysée par une Méduse ne peut rien faire : la compter à sa
+    // pleine valeur ferait croire à l'IA qu'elle a du matériel utilisable.
+    const paralyzed=fgs.medusaParalyzed.has(r+','+c);
 
     let mob=0;
     try{mob=generateMovesRaw(board,r,c,fgs).length;}catch(e){}
@@ -147,11 +298,13 @@ function evalBoard(board,gs){
       stagnationPenalty=-12;
     }
 
-    const total=v+pst+mobBonus+passedBonus+kingSafetyBonus+rookBonus+devBonus+stagnationPenalty;
+    const paralysisPenalty=paralyzed?-Math.min(200,v*0.30):0;
+
+    const total=v+pst+mobBonus+passedBonus+kingSafetyBonus+rookBonus+devBonus+stagnationPenalty+paralysisPenalty;
     s+=total*(p.color==='b'?1:-1);
   }
 
-  return s;
+  return s+evalPowers(board,fgs);
 }
 
 function getAllMovesColor(color,board,gs){
@@ -244,6 +397,18 @@ function ttProbe(hash,depth,alpha,beta){
 }
 
 const KILLERS=Array.from({length:32},()=>[null,null]);
+
+// TABLE D'HISTOIRE : mémorise quelles paires (case de départ, case d'arrivée)
+// ont provoqué des coupures alpha-beta, toutes profondeurs confondues. Un coup
+// qui réfute souvent la position sera essayé plus tôt la prochaine fois, ce
+// qui fait tomber l'arbre plus vite. Complément des killers, qui eux ne
+// valent que pour une profondeur donnée.
+const HIST=new Int32Array(4096);
+function histIdx(m){return ((m.from.r*8+m.from.c)<<6)|(m.to.r*8+m.to.c);}
+function histBump(m,depth){const i=histIdx(m);HIST[i]=Math.min(1<<22,HIST[i]+depth*depth);}
+function histGet(m){return HIST[histIdx(m)];}
+function histDecay(){for(let i=0;i<HIST.length;i++)HIST[i]>>=1;}
+
 function storeKiller(depth,move){
   if(!move)return;
   const k=KILLERS[depth%32];
@@ -342,7 +507,9 @@ function minimax(board,depth,alpha,beta,maxing,fgs,nullOk,plyFromRoot){
       const atkV=atk?(CVAL[atk.pieceId]||PVAL[atk.type]||999):999;
       if(vicV>0)return 100000+vicV*10-atkV;
       if(isKiller(m,plyFromRoot))return 90000;
-      return Math.max(0,3-Math.abs(3.5-m.to.c))+Math.max(0,3-Math.abs(3.5-m.to.r));
+      // Coups tranquilles : l'historique des coupures passe avant la simple
+      // proximite du centre, c'est un signal bien plus informatif.
+      return histGet(m)+Math.max(0,3-Math.abs(3.5-m.to.c))+Math.max(0,3-Math.abs(3.5-m.to.r));
     };
     return sc(b2)-sc(a);
   });
@@ -375,11 +542,11 @@ function minimax(board,depth,alpha,beta,maxing,fgs,nullOk,plyFromRoot){
     if(maxing){
       if(ev>best){best=ev;bestMoveFound={from,to};}
       if(ev>alpha){alpha=ev;flag=TT_EXACT;}
-      if(alpha>=beta){if(!isCapture)storeKiller(plyFromRoot,{from,to});flag=TT_LOWER;break;}
+      if(alpha>=beta){if(!isCapture){storeKiller(plyFromRoot,{from,to});histBump({from,to},d);}flag=TT_LOWER;break;}
     }else{
       if(ev<best){best=ev;bestMoveFound={from,to};}
       if(ev<beta){beta=ev;flag=TT_EXACT;}
-      if(alpha>=beta){if(!isCapture)storeKiller(plyFromRoot,{from,to});flag=TT_UPPER;break;}
+      if(alpha>=beta){if(!isCapture){storeKiller(plyFromRoot,{from,to});histBump({from,to},d);}flag=TT_UPPER;break;}
     }
   }
 
@@ -399,9 +566,9 @@ function getWorkerCode(){
     slidingMoves,jumpMoves,knightMoves,kingMoves,pawnMoves,generateMovesRaw,
     isInCheckSimple,isSquareAttackedSimple,getLegalMovesKingFiltered,moveLeavesKingInCheck,getLegalMoves,
     updateMedusaParalysis,updateGrandMaitre,
-    applyMoveQuick,evalBoard,getAllMovesColor,
+    applyMoveQuick,powerValueAt,evalPowers,evalBoard,getAllMovesColor,
     boardHash,ttStore,ttProbe,storeKiller,isKiller,quiesce,minimax,
-    getPST
+    histIdx,histBump,histGet,histDecay,getPST
   ].map(f=>f.toString()).join('\n');
 
   const consts=`
@@ -421,6 +588,7 @@ const TT_SIZE=1<<18;const TT_MASK=TT_SIZE-1;const TT=new Array(TT_SIZE).fill(nul
 let _ttGeneration=0;
 const TT_EXACT=0,TT_LOWER=1,TT_UPPER=2;
 const KILLERS=Array.from({length:32},()=>[null,null]);
+const HIST=new Int32Array(4096);
 const AI_INSTRUCTORS=${JSON.stringify(AI_INSTRUCTORS)};
 let _aiDeadline=0;let _aiAborted=false;
 function inB(r,c){return r>=0&&r<8&&c>=0&&c<8;}
@@ -466,6 +634,7 @@ self.onmessage=function(e){
 
   _ttGeneration=(_ttGeneration+1)%256;
   KILLERS.forEach(k=>{k[0]=null;k[1]=null;});
+  histDecay();
   _aiDeadline=Date.now()+instructor.timeMs;
   _aiAborted=false;
 
@@ -619,6 +788,7 @@ function doAIMoveMainThread(gs){
   }
   _ttGeneration=(_ttGeneration+1)%256;
   KILLERS.forEach(k=>{k[0]=null;k[1]=null;});
+  histDecay();
   _aiDeadline=Date.now()+instructor.timeMs;
   _aiAborted=false;
   let searchMoves=[...moves];let bestMove=searchMoves[0];let prevScore=null;

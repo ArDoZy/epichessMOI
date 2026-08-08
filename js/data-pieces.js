@@ -32,17 +32,72 @@ function vvGetRankFloor(elo){return vvGetRank(elo).min;}
 function vvGetRankIdx(elo){for(let i=RANKS.length-1;i>=0;i--)if(elo>=RANKS[i].min)return i;return 0;}
 
 // ----------------------------------------------------------------
-// 7 INSTRUCTEURS IA : basés sur budget temps (ms) + bruit
+// L'INSTRUCTEUR : un seul adversaire IA, à pleine puissance
 // ----------------------------------------------------------------
-const AI_INSTRUCTORS=[
-  {id:'poussiere', name:'Instructeur Poussière',  rankId:'poussiere', timeMs:0,    noise:0.95, desc:'Joue presque au hasard.',          elo:400},
-  {id:'pierre',    name:'Instructeur Pierre',     rankId:'pierre',    timeMs:50,   noise:0.50, desc:'Réfléchit un tout petit peu.',      elo:600},
-  {id:'bronze',    name:'Instructeur Bronze',     rankId:'bronze',    timeMs:200,  noise:0.15, desc:'~200ms de calcul, quelques coups.', elo:800},
-  {id:'acier',     name:'Instructeur Acier',      rankId:'acier',     timeMs:500,  noise:0.05, desc:'~500ms, captures et positionnement.',elo:1000},
-  {id:'obsidienne',name:'Instructeur Obsidienne', rankId:'obsidienne',timeMs:1500, noise:0.01, desc:'~1.5s, tactique solide.',            elo:1200},
-  {id:'argent',    name:'Instructeur Argent',     rankId:'argent',    timeMs:4000, noise:0,    desc:'~4s, stratégie avancée.',            elo:1600},
-  {id:'or',        name:'Instructeur Or',         rankId:'or',        timeMs:10000,noise:0,    desc:'~10s, profondeur maximale.',         elo:2000},
+// Le jeu proposait sept instructeurs de force croissante, dont six qui
+// jouaient volontairement mal (jusqu'à 95 % de coups au hasard). Un
+// adversaire qui se saborde n'apprend rien à personne et brouillait le
+// classement ELO. Il n'en reste qu'un, qui joue son meilleur coup, et dont
+// l'évaluation tient compte des POUVOIRS des pièces et pas seulement de
+// leurs déplacements (voir evalBoard/evalPowers dans js/ai-engine.js).
+//
+// timeMs est le budget de réflexion par coup. 3 s tient largement la
+// profondeur nécessaire sur un 8x8 grâce à la table de transposition, sans
+// donner l'impression que le jeu a planté.
+const INSTRUCTOR={
+  id:'instructeur',
+  name:'L\'Instructeur',
+  timeMs:3000,
+  noise:0,
+  elo:2000,
+  desc:'Recherche complète, consciente des pouvoirs de chaque créature.',
+};
+// Conservé sous forme de tableau à un élément : tout le code existant lit
+// AI_INSTRUCTORS[selectedAILevel], qui vaut toujours 0 désormais.
+const AI_INSTRUCTORS=[INSTRUCTOR];
+
+// ----------------------------------------------------------------
+// ÉCHIQUIERS : matières débloquées le long de la Voie
+// ----------------------------------------------------------------
+// Les fichiers sont générés par tools/gen-boards.js (SVG procédural).
+// eloRequired s'aligne sur les seuils de RANKS pour que le déblocage d'un
+// plateau coïncide avec un passage de rang.
+const BOARD_SKINS=[
+  {id:'bois',   name:'Bois',   file:'assets/boards/bois.svg',   eloRequired:0,    desc:'Chêne huilé, le plateau de l\'atelier.'},
+  {id:'pierre', name:'Pierre', file:'assets/boards/pierre.svg', eloRequired:200,  desc:'Dalle de marbre gris taillée au ciseau.'},
+  {id:'acier',  name:'Acier',  file:'assets/boards/acier.svg',  eloRequired:850,  desc:'Acier brossé, froid sous les doigts.'},
+  {id:'argent', name:'Argent', file:'assets/boards/argent.svg', eloRequired:1800, desc:'Argent poli miroir.'},
+  {id:'or',     name:'Or',     file:'assets/boards/or.svg',     eloRequired:2400, desc:'Or massif. Il n\'y a rien au-delà.'},
 ];
+function boardSkinById(id){return BOARD_SKINS.find(b=>b.id===id)||BOARD_SKINS[0];}
+
+// ----------------------------------------------------------------
+// COFFRES : six raretés nommées d'après les pièces d'échecs
+// ----------------------------------------------------------------
+// Ils s'obtiennent en enchaînant les victoires : 1re victoire = Pion,
+// 2e d'affilée = Cavalier, puis Fou, Tour, Dame et Roi. Une défaite remet la
+// série à zéro (voir economy.js::economySettle).
+//
+// rolls   : nombre de lots de pièces tirés
+// qty     : fourchette de quantité par lot
+// newChance : probabilité de contenir une pièce ENCORE JAMAIS DÉBLOQUÉE
+// bias    : plus il est élevé, plus les pièces chères sont probables
+const CHESTS=[
+  {id:'pion',    tier:0,name:'Coffre Pion',    rolls:2,qty:[1,3], newChance:0.03,bias:0.55,color:'#7f8b94'},
+  {id:'cavalier',tier:1,name:'Coffre Cavalier',rolls:3,qty:[2,4], newChance:0.07,bias:0.85,color:'#7d9c6a'},
+  {id:'fou',     tier:2,name:'Coffre Fou',     rolls:3,qty:[3,6], newChance:0.13,bias:1.20,color:'#5f93b8'},
+  {id:'tour',    tier:3,name:'Coffre Tour',    rolls:4,qty:[4,8], newChance:0.22,bias:1.70,color:'#9a6fc4'},
+  {id:'dame',    tier:4,name:'Coffre Dame',    rolls:5,qty:[6,12],newChance:0.34,bias:2.30,color:'#d0742e'},
+  {id:'roi',     tier:5,name:'Coffre Roi',     rolls:6,qty:[8,16],newChance:0.52,bias:3.20,color:'#d9b64e'},
+];
+function chestById(id){return CHESTS.find(c=>c.id===id)||CHESTS[0];}
+// Une série de n victoires donne le coffre de rang n-1, plafonné au Roi.
+function chestForStreak(streak){return CHESTS[Math.min(Math.max(streak,1)-1,CHESTS.length-1)];}
+
+// Coffre de réapprovisionnement quotidien : +4 exemplaires de CHAQUE pièce
+// possédée. C'est le filet de sécurité du système : sans lui, un joueur qui
+// perd tout son inventaire ne pourrait plus composer d'armée du tout.
+const DAILY_CHEST={id:'reappro',name:'Coffre de réapprovisionnement',perPiece:4};
 
 // ----------------------------------------------------------------
 // CATALOGUE COMPLET DES PIÈCES (version light)

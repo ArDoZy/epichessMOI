@@ -60,31 +60,32 @@ function buildGameBoard(playerArmyData,aiArmyData){
 // BARRES JOUEUR / IA (avatar, nom, ELO) en haut/bas du plateau
 // ----------------------------------------------------------------
 function updateGamePlayerBars(){
-  const inst=AI_INSTRUCTORS[selectedAILevel];
   const playerElo=vvLoadElo();
   const playerName=CUR_ACC||'Joueur';
+  const pc=(GS&&GS.playerColor)||_playerColor||'w';
+  const sideLbl=col=>col==='w'?'Blancs':'Noirs';
   const hav=document.getElementById('human-player-avatar');
   const han=document.getElementById('human-player-name');
   const hae=document.getElementById('human-player-elo');
   if(hav)hav.textContent=playerName.charAt(0).toUpperCase();
   if(han)han.textContent=playerName;
-  if(hae)hae.textContent=playerElo+' ELO';
+  if(hae)hae.textContent=playerElo+' ELO · '+sideLbl(pc);
   const aav=document.getElementById('ai-player-avatar');
   const aan=document.getElementById('ai-player-name');
   const aae=document.getElementById('ai-player-elo');
-  // En ligne, le camp adverse est un vrai joueur : on n'affiche ni nom
-  // d'instructeur ni ELO estimé d'IA.
+  // En ligne, le camp adverse est un vrai joueur : on affiche le pseudo et
+  // l'ELO qu'il a transmis à la connexion plutôt qu'un « Adversaire » anonyme.
   if(GS&&GS.multiplayer){
-    if(aav)aav.textContent='A';
-    if(aan)aan.textContent='Adversaire';
-    if(aae)aae.textContent='En ligne';
+    const oppName=(typeof MP!=='undefined'&&MP.oppName)?MP.oppName:'Adversaire';
+    const oppElo=(typeof MP!=='undefined'&&typeof MP.oppElo==='number')?MP.oppElo+' ELO':'En ligne';
+    if(aav)aav.textContent=oppName.charAt(0).toUpperCase();
+    if(aan)aan.textContent=oppName;
+    if(aae)aae.textContent=oppElo+' · '+sideLbl(pc==='w'?'b':'w');
     return;
   }
-  // Avatar IA : initiale de son rang (ex. "Instructeur Poussière" → "P"),
-  // même logique que l'avatar humain (initiale du pseudo).
-  if(aav)aav.textContent=inst.name.trim().split(' ').pop().charAt(0).toUpperCase();
-  if(aan)aan.textContent=inst.name;
-  if(aae)aae.textContent=vvEstimateAiElo()+' ELO';
+  if(aav)aav.textContent='I';
+  if(aan)aan.textContent=INSTRUCTOR.name;
+  if(aae)aae.textContent=INSTRUCTOR.elo+' ELO · '+sideLbl(pc==='w'?'b':'w');
 }
 
 // ----------------------------------------------------------------
@@ -106,6 +107,10 @@ function startGame(colorAlreadyChosen,multiplayer){
   GS={board:[],turn:'w',selected:null,legalMoves:[],history:[],enPassant:null,halfmoveClock:0,gameOver:false,playerArmy:currentArmyData,aiArmy:aiArmyData,playerColor:_playerColor,aiColor:_aiColor,multiplayer:!!multiplayer,movePairs:[],capturedW:[],capturedB:[],pendingPromo:null,medusaParalyzed:new Set(),lastMove:null,anchored:new Set(),pretreProtected:new Set(),amazonePostCapture:null,grandMaitreAlive:{w:false,b:false},gardePierreUsed:{w:false,b:false},turnCount:0,historyView:null,lastMoveHistory:[],clockMs,timeWhite:clockMs,timeBlack:clockMs};
   GS.board=buildGameBoard(whiteSideArmy,blackSideArmy);
   updateMedusaParalysis(GS.board,GS);updatePretreProtection(GS.board,GS);updateGrandMaitre(GS.board,GS);
+  // Les exemplaires quittent la Réserve MAINTENANT : ils sont sur le terrain
+  // et donc en jeu (voir js/economy.js, en-tête).
+  if(typeof economyCommit==='function')economyCommit(currentArmyData);
+  if(typeof renderGameStake==='function')renderGameStake(GS);
   showPage('page-game');
   // "Annuler coup" est retiré en ligne : l'annulation serait unilatérale et
   // désynchroniserait les deux plateaux.
@@ -114,14 +119,10 @@ function startGame(colorAlreadyChosen,multiplayer){
   updateGamePlayerBars();
   renderGame(GS);updateStatus(GS);updateHistoryNav();
   setTimeout(()=>{buildGameLabels(GS);renderGame(GS);},80);
-  if(multiplayer){
-    showNotif(_playerColor==='w'?'Vous jouez avec les Blancs : à vous de commencer !':'Vous jouez avec les Noirs, attendez le coup adverse.','ok');
-  }else if(_playerColor==='b'){
-    showNotif('Vous jouez avec les Noirs : l\'IA commence !','ok');
-    setTimeout(()=>doAIMove(GS),800);
-  } else {
-    showNotif('Vous jouez avec les Blancs : à vous de commencer !','ok');
-  }
+  // Le premier coup de l'IA n'est PAS déclenché ici : il l'est à la fin de la
+  // cinématique d'entrée (showArmyIntro), en même temps que l'horloge. Sinon
+  // l'IA jouerait derrière le rideau, sur un plateau que le joueur n'a pas
+  // encore vu, et le joueur découvrirait la partie déjà entamée.
   showArmyIntro(currentArmyData,aiArmyData);
 }
 
@@ -131,32 +132,24 @@ function startGame(colorAlreadyChosen,multiplayer){
 // Les libellés "Votre armée (Blancs/Noirs)" reflètent la couleur réellement
 // assignée pour cette partie (GS.playerColor), qui est tirée au hasard.
 function showArmyIntro(playerArmy,aiArmy){
-  document.querySelector('.army-intro-overlay')?.remove();
-  const fp=id=>PIECES.find(p=>p.id===id);
-  const inst=AI_INSTRUCTORS[selectedAILevel];
-  const pCol=(GS&&GS.playerColor)||_playerColor||'w';
-  const playerLabel='Votre armée ('+(pCol==='w'?'Blancs':'Noirs')+')';
-  const aiLabel='Armée adverse ('+(pCol==='w'?'Noirs':'Blancs')+')';
-  const playerTitleCls=pCol==='w'?'white':'black';
-  const aiTitleCls=pCol==='w'?'black':'white';
-  const buildSide=(armyData,label,titleCls)=>{
-    const mon=fp(armyData.mon?.id||armyData.mon)||armyData.mon;
-    const gen=fp(armyData.gen?.id||armyData.gen)||armyData.gen;
-    const extras=(armyData.extras||[]).map(id=>fp(id)).filter(Boolean);
-    const all=[mon,gen,...extras].filter(Boolean);
-    const rows=all.map(p=>'<div class="aio-piece-row"><div class="aio-emoji">'+p.emoji+'</div><div class="aio-piece-info"><div class="aio-piece-name">'+p.name+' <span style="font-size:9px;color:var(--muted);font-family:Cinzel,serif">'+p.class+'</span></div><div class="aio-piece-mvt">'+(p.movement||'')+'</div>'+(p.ability?'<div class="aio-piece-ability">'+p.ability+'</div>':'')+'</div></div>').join('');
-    return '<div class="aio-side"><div class="aio-side-title '+titleCls+'">'+label+'</div>'+rows+'</div>';
+  // L'ancien écran était un tableau de deux colonnes listant le déplacement
+  // et le pouvoir de chaque pièce, avec un compte à rebours de 10 secondes :
+  // beaucoup de texte, aucune tension, et 10 s d'attente à chaque partie.
+  // C'est maintenant une vraie séquence d'entrée en combat (js/cinematics.js),
+  // interrompable d'un clic. Les fiches de pièces restent consultables à tout
+  // moment par clic droit, elles n'ont pas à bloquer le lancement.
+  const oppName=(GS&&GS.multiplayer)
+    ?((typeof MP!=='undefined'&&MP.oppName)?MP.oppName:'Votre adversaire')
+    :INSTRUCTOR.name;
+  const start=()=>{
+    startClockTick(GS);renderClocks(GS);startCombatMusic();
+    // Rideau levé : si c'est à l'IA de jouer, elle s'y met maintenant. Ce
+    // point unique couvre la partie normale ET les rounds de tournoi.
+    if(!GS.multiplayer&&!GS.gameOver&&GS.turn===(GS.aiColor||'b'))setTimeout(()=>doAIMove(GS),450);
   };
-  const INTRO_DURATION=10;
-  const overlay=document.createElement('div');overlay.className='army-intro-overlay';
-  overlay.innerHTML='<div class="army-intro-box"><span class="aio-close" id="aio-close-btn">✕</span><div class="aio-title">Les Armées en Présence : '+inst.name+'</div><div class="aio-sides">'+buildSide(playerArmy,playerLabel,playerTitleCls)+buildSide(aiArmy,aiLabel,aiTitleCls)+'</div><div class="aio-timer"><span id="aio-countdown">'+INTRO_DURATION+'</span>s, cliquez ✕ pour fermer<div class="aio-timer-bar"><div class="aio-timer-fill" id="aio-timer-fill" style="width:100%"></div></div></div></div>';
-  document.body.appendChild(overlay);
-  // L'horloge ne démarre qu'à la fermeture de cet aperçu (pas pendant la
-  // présentation des armées), pour ne pas gruger le temps du 1er joueur.
-  const closeOverlay=()=>{overlay.classList.add('hiding');setTimeout(()=>overlay.remove(),650);startClockTick(GS);renderClocks(GS);startCombatMusic();};
-  document.getElementById('aio-close-btn').addEventListener('click',closeOverlay);
-  let remaining=INTRO_DURATION;
-  const tick=setInterval(()=>{remaining--;const el=document.getElementById('aio-countdown');const bar=document.getElementById('aio-timer-fill');if(el)el.textContent=remaining;if(bar)bar.style.width=(remaining/INTRO_DURATION*100)+'%';if(remaining<=0){clearInterval(tick);closeOverlay();}},1000);
+  if(typeof playCombatCinematic==='function')
+    playCombatCinematic(playerArmy,aiArmy,oppName,(GS&&GS.playerColor)||_playerColor||'w',start);
+  else start();
 }
 
 // ----------------------------------------------------------------
@@ -179,9 +172,21 @@ function showResultModal(result,oldElo,newElo,delta,newUnlockIds){
   const unlockSec=document.getElementById('unlock-section');
   if(newUnlockIds&&newUnlockIds.length>0){
     const pid=newUnlockIds[0];const pd=PIECES.find(p=>p.id===pid);
-    if(pd){unlockSec.style.display='';document.getElementById('unlock-piece-emoji').textContent=pd.emoji;document.getElementById('unlock-piece-name').textContent=pd.name;const clsEl=document.getElementById('unlock-piece-class');clsEl.textContent=pd.class;clsEl.className='unlock-piece-class pc-class '+pd.class;document.getElementById('unlock-piece-ability').textContent=pd.ability||'Aucun pouvoir spécial.';}
+    if(pd){unlockSec.style.display='';document.getElementById('unlock-piece-emoji').innerHTML=pieceIcon(pd.id,'n');document.getElementById('unlock-piece-name').textContent=pd.name;const clsEl=document.getElementById('unlock-piece-class');clsEl.textContent=pd.class;clsEl.className='unlock-piece-class pc-class '+pd.class;document.getElementById('unlock-piece-ability').textContent=pd.ability||'Aucun pouvoir spécial.';}
     else unlockSec.style.display='none';
   }else unlockSec.style.display='none';
+  // Coffre obtenu : le modal l'annonce, la Réserve l'ouvre. Ouvrir un coffre
+  // ici, par-dessus le modal de fin, empilerait deux célébrations.
+  const chestSec=document.getElementById('result-chest');
+  if(chestSec){
+    const st=_lastSettlement;
+    if(st&&st.chest){
+      chestSec.style.display='';
+      chestSec.innerHTML='<div class="rc-lbl">Série de '+st.streak+' victoire'+(st.streak>1?'s':'')+'</div>'+
+        '<div class="rc-name">'+st.chest.name+' obtenu</div>'+
+        '<div class="rc-hint">Ouvrez-le dans la Réserve.</div>';
+    }else chestSec.style.display='none';
+  }
   modal.classList.add('active');
 }
 document.getElementById('result-close-btn').addEventListener('click',()=>{
@@ -200,6 +205,12 @@ document.getElementById('result-continue').addEventListener('click',()=>{
 document.getElementById('result-rejouer').addEventListener('click',()=>{
   document.getElementById('result-modal').classList.remove('active');
   if(!GS||!GS.playerArmy){renderArmiesPage();showPage('page-armies');return;}
+  if(typeof armyStock==='function'&&!armyStock(GS.playerArmy).ok){
+    showConfirmModal('Votre réserve ne permet plus d\'aligner cette armée. Passez par la Réserve ou composez-en une autre.',()=>{
+      renderArmiesPage();showPage('page-armies');
+    },{okLabel:'Mes armées',cancelLabel:'Fermer',okClass:'btn-primary'});
+    return;
+  }
   const prevPlayerArmy=GS.playerArmy;
   currentArmyData=prevPlayerArmy;
   aiArmyData=generateAIArmy();
@@ -208,6 +219,9 @@ document.getElementById('result-rejouer').addEventListener('click',()=>{
 });
 
 document.getElementById('result-revanche').addEventListener('click',()=>{
+  // En ligne, une revanche se NÉGOCIE : elle ne démarre que si l'adversaire
+  // la demande aussi (voir mpTryRematch). Le modal reste ouvert entre-temps.
+  if(GS&&GS.multiplayer&&typeof mpProposeRematch==='function'&&mpProposeRematch())return;
   document.getElementById('result-modal').classList.remove('active');
   if(!GS||!GS.playerArmy||!GS.aiArmy){renderArmiesPage();showPage('page-armies');return;}
   const prevPlayerArmy=GS.playerArmy;
@@ -223,6 +237,7 @@ document.getElementById('result-revanche').addEventListener('click',()=>{
 // Délègue à tournoi.js::triggerTournoiEndOfGame si un tournoi est actif.
 // ----------------------------------------------------------------
 let _endGameTriggered=false;
+let _lastSettlement=null;   // rapport d'économie de la dernière partie
 function triggerEndOfGame(result){
   // En mode tournoi, déléguer au gestionnaire tournoi
   if(tournamentState.active){triggerTournoiEndOfGame(result);return;}
@@ -235,7 +250,15 @@ function triggerEndOfGame(result){
   const newUnlocks=vvCheckNewUnlocks(oldElo,newElo);
   vvSaveElo(newElo);
   const history=vvLoadHistory();history.push({result,oldElo,newElo,delta,date:Date.now(),aiElo});vvSaveHistory(history);
-  setTimeout(()=>showResultModal(result,oldElo,newElo,delta,newUnlocks),400);
+  // Règlement des pièces engagées AVANT l'affichage : la cinématique montre
+  // le décompte réel, pas une estimation.
+  _lastSettlement=(typeof economySettle==='function')?economySettle(result,GS):null;
+  if(typeof renderStreakBadge==='function')renderStreakBadge();
+  // La cinématique d'issue passe en premier, le modal de résultat (ELO,
+  // déblocages) prend le relais à sa fermeture.
+  const showModal=()=>showResultModal(result,oldElo,newElo,delta,newUnlocks);
+  if(typeof playOutcomeCinematic==='function')playOutcomeCinematic(result,_lastSettlement,showModal);
+  else setTimeout(showModal,400);
 }
 
 // ----------------------------------------------------------------
