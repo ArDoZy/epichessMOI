@@ -35,7 +35,7 @@ epic-chess/
 ├── og-image.png             # 1200×630, aperçu de partage (Discord, X...)
 ├── img/
 │   └── pieces/              # Blasons de pièces en SVG (noir et blanc)
-│       └── garde-pierre.svg # Rocher fissuré, gravure héraldique
+│       └── garde-pierre.svg # Sentinelle de roche casquée, gravure héraldique
 ├── css/
 │   └── style.css            # Tout le CSS, organisé en sections [TAG] commentées
 └── js/
