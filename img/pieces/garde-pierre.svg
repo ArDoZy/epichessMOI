@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64"
+     class="gp-piece" role="img" aria-labelledby="gp-title">
+  <title id="gp-title">Garde de Pierre</title>
+  <!--
+    Garde de Pierre (classe Brute) — rocher fissuré, gravure héraldique.
+    Noir et blanc uniquement, comme le reste des pièces.
+
+      camp blanc (défaut) : intérieur blanc, traits noirs
+      camp noir           : ajouter data-camp="noir" sur cette balise <svg>
+                            → intérieur noir, traits blancs (l'exact opposé)
+
+    Les deux couleurs passent par des variables CSS : une page hôte peut
+    surcharger --gp-fill / --gp-stroke (et leurs variantes -noir) sans
+    toucher au fichier. Le SVG reste valable en <img src> : il tombe alors
+    sur les valeurs par défaut, donc sur la version blanche.
+
+    Dessiné pour ~30 px sur le plateau. Deux contraintes en découlent, à
+    respecter si on retouche le tracé :
+      - jamais deux traits à moins de ~5 unités l'un de l'autre, sinon ils
+        fusionnent en tache à petite taille (des hachures serrées avaient
+        été essayées : illisibles sous 40 px) ;
+      - la terrasse reste nettement détachée de la base du rocher, sinon la
+        vignette se lit comme un bloc unique.
+  -->
+  <style>
+    .gp-piece{
+      --_fill:   var(--gp-fill,   #ffffff);
+      --_stroke: var(--gp-stroke, #101010);
+    }
+    .gp-piece[data-camp="noir"]{
+      --_fill:   var(--gp-fill-noir,   #101010);
+      --_stroke: var(--gp-stroke-noir, #ffffff);
+    }
+    .gp-body{ fill: var(--_fill); stroke: var(--_stroke); }
+    .gp-line{ fill: none; stroke: var(--_stroke); }
+  </style>
+
+  <!-- Masse du rocher : décagone irrégulier, base large et sommet en pointe.
+       C'est ce contour seul qui doit rester lisible en vignette. -->
+  <path class="gp-body"
+        d="M32 7 L45.5 12 L55 24 L56 38.5 L48.5 49 L33 54 L16.5 51.5 L8.5 40.5 L10 25.5 L19.5 13.5 Z"
+        stroke-width="3.2" stroke-linejoin="round"/>
+
+  <!-- Fissure maîtresse : part du sommet et traverse le bloc jusqu'à la base,
+       le rocher est fendu de part en part (le Roc de Pierre encaisse). -->
+  <path class="gp-line" d="M32 7 L29 18 L34 25.5 L29.5 35.5 L32.6 54"
+        stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+
+  <!-- Deux ramifications, greffées sur les coudes de la fissure principale -->
+  <path class="gp-line" d="M34 25.5 L44.5 29 L50 26"
+        stroke-width="2.1" stroke-linejoin="round" stroke-linecap="round"/>
+  <path class="gp-line" d="M29.5 35.5 L19.5 38.5 L13 33.5"
+        stroke-width="2.1" stroke-linejoin="round" stroke-linecap="round"/>
+
+  <!-- Éclat isolé dans la facette basse-droite : une seule ligne suffit à
+       occuper la seule zone laissée vide, sans encombrer la vignette. -->
+  <path class="gp-line" d="M42 51 L45 43.5 L51.5 39.5"
+        stroke-width="2.1" stroke-linejoin="round" stroke-linecap="round"/>
+
+  <!-- Terrasse : le rocher est posé, pas flottant. Rappelle l'ancrage
+       (imprenable et inamovible) et stabilise la vignette. -->
+  <path class="gp-line" d="M11 60 H53" stroke-width="3" stroke-linecap="round"/>
+</svg>

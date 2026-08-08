@@ -33,6 +33,9 @@ epic-chess/
 ├── favicon.svg              # Icône d'onglet (fiole d'alchimiste)
 ├── apple-touch-icon.png     # 180×180, écran d'accueil iOS
 ├── og-image.png             # 1200×630, aperçu de partage (Discord, X...)
+├── img/
+│   └── pieces/              # Blasons de pièces en SVG (noir et blanc)
+│       └── garde-pierre.svg # Rocher fissuré, gravure héraldique
 ├── css/
 │   └── style.css            # Tout le CSS, organisé en sections [TAG] commentées
 └── js/
