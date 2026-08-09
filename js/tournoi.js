@@ -269,7 +269,8 @@ function finishTournoi(){
 // ----------------------------------------------------------------
 // OVERLAY INTERSTITIEL ENTRE LES ROUNDS
 // ----------------------------------------------------------------
-function showRoundOverlay(roundIdx,result,eloBefore,eloAfter,eloDelta){
+// noEloReason : renseigné quand le round n'a pas compté (mode admin).
+function showRoundOverlay(roundIdx,result,eloBefore,eloAfter,eloDelta,noEloReason){
   const overlay=document.getElementById('round-overlay');
   const icons={win:'▲',loss:'▼',draw:'◆'};
   const texts={win:'Victoire !',loss:'Défaite',draw:'Nulle'};
@@ -284,6 +285,8 @@ function showRoundOverlay(roundIdx,result,eloBefore,eloAfter,eloDelta){
   const de=document.getElementById('rb-elo-delta');
   de.textContent=(eloDelta>0?'+':'')+eloDelta;
   de.className='rb-elo-delta '+(eloDelta>0?'pos':eloDelta<0?'neg':'zero');
+  const eloRow=document.querySelector('#round-overlay .rb-elo-row');
+  if(eloRow)eloRow.style.display=noEloReason?'none':'';
 
   const nextWrap=document.getElementById('rb-next-wrap');
   const nextBtn=document.getElementById('rb-next-btn');
@@ -331,12 +334,19 @@ function triggerTournoiEndOfGame(result){
   const roundIdx=tournamentState.currentRound;
   const oldElo=vvLoadElo();
   const aiElo=vvEstimateAiElo();
-  const{newElo,delta}=vvCalcNewElo(oldElo,aiElo,result);
-  const newRankIdx=vvGetRankIdx(newElo);if(newRankIdx>vvLoadRankMax())vvSaveRankMax(newRankIdx);
-  vvCheckNewUnlocks(oldElo,newElo);
-  vvSaveElo(newElo);
+  // Mode admin : un round de tournoi ne rapporte rien non plus (voir
+  // vvNoEloReason dans voie.js).
+  const noEloReason=(typeof vvNoEloReason==='function')?vvNoEloReason(GS):null;
+  let newElo=oldElo,delta=0;
+  if(!noEloReason){
+    const calc=vvCalcNewElo(oldElo,aiElo,result);
+    newElo=calc.newElo;delta=calc.delta;
+    const newRankIdx=vvGetRankIdx(newElo);if(newRankIdx>vvLoadRankMax())vvSaveRankMax(newRankIdx);
+    vvCheckNewUnlocks(oldElo,newElo);
+    vvSaveElo(newElo);
+  }
   const history=vvLoadHistory();
-  history.push({result,oldElo,newElo,delta,date:Date.now(),aiElo,tournoi:true});
+  history.push({result,oldElo,newElo,delta,date:Date.now(),aiElo,tournoi:true,ranked:!noEloReason});
   vvSaveHistory(history);
 
   tournamentState.rounds[roundIdx].result=result;
@@ -359,7 +369,7 @@ function triggerTournoiEndOfGame(result){
 
   setTimeout(()=>playSound(result==='win'?'win':result==='loss'?'loss':'draw'),200);
 
-  const showOverlay=()=>showRoundOverlay(roundIdx,result,oldElo,newElo,delta);
+  const showOverlay=()=>showRoundOverlay(roundIdx,result,oldElo,newElo,delta,noEloReason);
   if(typeof playOutcomeCinematic==='function')playOutcomeCinematic(result,settlement,showOverlay);
   else setTimeout(showOverlay,400);
 }

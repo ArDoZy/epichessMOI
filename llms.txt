@@ -7,6 +7,7 @@
 > en piochant dans un catalogue de créatures nées de l'alchimie.
 
 URL : https://epichess.app/
+Présentation et FAQ : https://epichess.app/info
 Langue : français
 Prix : gratuit
 Plateforme : navigateur web (aucune installation)
@@ -91,6 +92,9 @@ C'est la mécanique qui distingue le plus Epic Chess des autres variantes :
   protection du Prêtre, zone de destruction du Typhon, charge du Dresseur
   d'Éléphant, domination du Grand Maître) et pas seulement de leurs
   déplacements.
+- Les parties contre l'Instructeur sont un **entraînement** : elles ne font
+  pas bouger l'ELO. Seuls les combats en ligne (et les rounds du Mode
+  Tournoi) sont classés.
 - La **Voie des Victoires** suit l'ELO du joueur à travers **7 rangs** :
   Poussière (0-199), Pierre (200-499), Bronze (500-849), Acier (850-1299),
   Obsidienne (1300-1799), Argent (1800-2399), Or Légendaire (2400+).

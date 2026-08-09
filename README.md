@@ -40,6 +40,8 @@ epic-chess/
 │       ├── acier.svg
 │       ├── argent.svg
 │       └── or.svg
+├── info.html                # Page /info : présentation + FAQ indexables
+│                            # (déplacées hors de la page de connexion)
 ├── .github/
 │   └── workflows/
 │       └── supabase-keepalive.yml  # Ping quotidien : empêche le projet
@@ -176,18 +178,22 @@ Deux réponses sont en place :
 
 Le site est une SPA : toutes les pages sauf `#page-login` sont en
 `display:none` tant que le joueur n'est pas connecté. **Un robot ne voit
-donc que la page de connexion.** C'est pour ça que `#page-login` porte un
-bloc `<section class="lore">` (présentation + FAQ), c'est le seul texte
-indexable du site. Le supprimer ramènerait la page à ~40 mots et Google
-recommencerait à fabriquer sa propre description à partir des libellés de
-navigation.
+donc que la page de connexion**, qui ne contient plus que le formulaire.
+Tout le texte indexable (présentation + FAQ) vit désormais dans
+**`info.html`**, servi sur `https://epichess.app/info` grâce à
+`cleanUrls: true` dans `vercel.json`, et atteignable depuis le jeu par le
+petit bouton « i » en bas à gauche de la page de connexion
+(`.login-info-btn`). Supprimer `info.html` ramènerait le site indexable à
+~40 mots et Google recommencerait à fabriquer sa propre description à
+partir des libellés de navigation.
 
 Trois points de vigilance :
 
-- **Les réponses de la FAQ existent en double** : en HTML visible dans
-  `.lore`, et en JSON-LD (`FAQPage`) dans le `<head>`. Google invalide le
-  balisage si les deux textes divergent : modifier l'un, c'est modifier
-  l'autre.
+- **Les réponses de la FAQ existent en double** : en HTML visible dans le
+  bloc `.lore` d'`info.html`, et en JSON-LD (`FAQPage`) dans le `<head>` du
+  même fichier. Google invalide le balisage si les deux textes divergent :
+  modifier l'un, c'est modifier l'autre. Le `<head>` d'`index.html` ne porte
+  plus que `VideoGame`/`WebSite`.
 - **Les chiffres du JSON-LD et de `llms.txt`** (18 créatures, 5 classes,
   budget 24 points, 7 rangs, 6 raretés de coffre) proviennent de
   `js/data-pieces.js` et `js/builder.js`. Ajouter une pièce ou un rang veut
@@ -259,6 +265,9 @@ explicitement ses dépendances et qui l'utilise).
 | Modifier le mode tournoi (nombre de rounds, bonus ELO) | `js/tournoi.js` |
 | Modifier le système de comptes/sauvegarde | `js/accounts.js` |
 | Ajouter un nouveau réglage utilisateur | `index.html` (bloc `#settings-panel`) + `js/settings-admin.js` |
+| Modifier la présentation ou la FAQ publiques | `info.html` (texte visible **et** JSON-LD `FAQPage`) |
+| Changer les modes qui rapportent de l'ELO | `js/voie.js` (`vvNoEloReason`) |
+| Changer ce que fait le mode admin | `js/settings-admin.js` + `renderAdminChests()` dans `js/economy-ui.js` |
 | Changer le HTML d'une page (structure, nouveaux boutons) | `index.html` (cherche `<!-- PAGE ... -->`) + le module JS de la page concernée pour les listeners |
 
 ## Conventions à connaître avant d'éditer un seul fichier

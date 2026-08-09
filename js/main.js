@@ -30,9 +30,10 @@ let currentArmyData=null;
 let aiArmyData=null;
 let darkMode=true;
 let VV_UNLOCKED=new Set();
-// ADMIN : sauvegarde l'état pré-admin pour une restauration correcte
+// ADMIN : le mode admin ne touche plus à VV_UNLOCKED (il ne fait qu'ouvrir
+// des coffres illimités et sortir les parties du classement), il n'y a donc
+// plus d'instantané de progression à restaurer en le désactivant.
 let ADMIN_MODE=false;
-let _preAdminUnlocked=null;
 
 // ----------------------------------------------------------------
 // UTILITAIRES PARTAGÉS

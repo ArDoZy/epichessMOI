@@ -1,13 +1,21 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- Epic Chess est une application d'une seule page : toute la navigation
      (builder, armées, voie, tournoi, partie) se fait en JavaScript sans
-     changer d'URL. Le sitemap ne contient donc qu'une entrée : en ajouter
-     d'autres pointerait vers des URLs qui n'existent pas côté serveur. -->
+     changer d'URL. Deux URLs existent donc réellement côté serveur : le jeu
+     (/) et la page de présentation (/info, servie par info.html grâce à
+     cleanUrls dans vercel.json). N'en ajouter aucune autre : elle
+     pointerait vers une page qui n'existe pas. -->
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://epichess.app/</loc>
     <lastmod>2026-07-28</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://epichess.app/info</loc>
+    <lastmod>2026-08-09</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
   </url>
 </urlset>

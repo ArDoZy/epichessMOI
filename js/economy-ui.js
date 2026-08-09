@@ -3,8 +3,9 @@
 // affichages liés à l'économie ailleurs dans le jeu
 // ================================================================
 // Contient : le rendu de la face « Réserve » du cube (#page-reserve), la
-// cérémonie d'ouverture d'un coffre, le badge de série de victoires, le
-// rappel de la mise pendant la partie, et le choix de l'échiquier.
+// cérémonie d'ouverture d'un coffre, les coffres illimités du mode admin
+// (renderAdminChests), le badge de série de victoires, le rappel de la mise
+// pendant la partie, et le choix de l'échiquier.
 //
 // Dépendances : economy.js (inventaire, coffres, quotidien), data-pieces.js
 // (PIECES, CHESTS, BOARD_SKINS), piece-art.js (pieceIcon/pieceSVG),
@@ -19,8 +20,10 @@
 // Le plateau est une récompense de progression : on ne peut sélectionner que
 // les matières dont le seuil d'ELO est atteint. Par défaut, la meilleure
 // débloquée, pour que franchir un rang se voie tout de suite.
+// Le mode admin ne débloque plus les échiquiers : il ne donne rien
+// directement, il ne fait qu'ouvrir des coffres illimités (voir
+// renderAdminChests plus bas).
 function boardSkinUnlocked(skin){
-  if(typeof ADMIN_MODE!=='undefined'&&ADMIN_MODE)return true;
   return (typeof vvLoadElo==='function'?vvLoadElo():0)>=skin.eloRequired;
 }
 function bestUnlockedSkin(){
@@ -111,9 +114,52 @@ function chestVisual(chest,extraCls){
 function renderReservePage(){
   if(!CUR_ACC)return;
   renderDailyChest();
+  renderAdminChests();
   renderPendingChests();
   renderBoardSkins();
   renderInventory();
+}
+
+// ----------------------------------------------------------------
+// COFFRES ILLIMITÉS DU MODE ADMIN
+// ----------------------------------------------------------------
+// C'est TOUT ce que fait le mode admin côté récompenses : les six coffres
+// (Pion, Cavalier, Fou, Tour, Dame, Roi) deviennent ouvrables autant de fois
+// qu'on veut. Il ne donne aucune pièce directement : le contenu est tiré par
+// le même chestRoll() et crédité par le même chestApply() qu'un coffre gagné
+// en jouant, et une pièce inédite s'y débloque comme partout ailleurs.
+// La section est masquée (et vide) hors mode admin.
+function renderAdminChests(){
+  const sec=document.getElementById('rs-admin-sec');
+  const el=document.getElementById('rs-admin-chests');
+  if(!sec||!el)return;
+  const on=(typeof ADMIN_MODE!=='undefined')&&ADMIN_MODE;
+  sec.style.display=on?'':'none';
+  if(!on){el.innerHTML='';return;}
+  el.innerHTML='<div class="rs-admin-note">Coffres de test, ouvrables sans limite. Aucune pièce n\'est offerte : le contenu est tiré au sort comme pour un coffre gagné en jouant.</div>'+
+    '<div class="chest-grid">'+CHESTS.map(ch=>
+      '<div class="chest-card chest-admin" data-chest="'+ch.id+'" style="--chest-c:'+ch.color+'">'+
+        '<span class="chest-count">∞</span>'+
+        chestVisual(ch,'chest-ready')+
+        '<div class="chest-name">'+ch.name+'</div>'+
+        '<div class="chest-rar">'+ch.rolls+' lots · '+Math.round(ch.newChance*100)+'% pièce inédite</div>'+
+      '</div>').join('')+'</div>';
+  el.querySelectorAll('.chest-card').forEach(card=>{
+    card.addEventListener('click',()=>openAdminChest(card.dataset.chest));
+  });
+}
+
+// Ouvre un coffre admin : rien n'est retiré d'une file d'attente, il n'y en a
+// pas. Le tirage et l'application restent ceux du jeu normal.
+function openAdminChest(chestId){
+  if(typeof ADMIN_MODE==='undefined'||!ADMIN_MODE)return;
+  const chest=chestById(chestId);
+  const lots=chestRoll(chest.id);
+  showChestCeremony(chest,lots,true,()=>{
+    renderReservePage();
+    if(typeof updAll==='function')updAll();
+    if(typeof renderArmiesPage==='function')renderArmiesPage();
+  });
 }
 
 function renderDailyChest(){

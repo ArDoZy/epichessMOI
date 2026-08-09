@@ -11,6 +11,9 @@
      partir des libellés de navigation ("Votre armée · Monarque · ...").
      Le bloc JSON-LD en bas de ce <head> sert aux résultats enrichis et
      aux moteurs de réponse IA (ChatGPT, Perplexity, AI Overviews).
+     Le texte de présentation et la FAQ (visibles + balisage FAQPage) ont
+     déménagé dans info.html : la page de connexion ne porte plus que le
+     formulaire et un bouton « i » qui y renvoie.
      ============================================================ -->
 <title>Epic Chess, variante d'échecs alchimique : composez votre armée</title>
 <meta name="description" content="Un savant fou, dans un laboratoire d'échecs oublié, a fait naître des créatures de l'alchimie. Composez votre armée et affrontez d'autres esprits dérangés."/>
@@ -92,74 +95,12 @@
       "about": {"@id": "https://epichess.app/#game"}
     },
     {
-      "@type": "FAQPage",
-      "@id": "https://epichess.app/#faq",
-      "mainEntity": [
-        {
-          "@type": "Question",
-          "name": "Qu'est-ce qu'Epic Chess ?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Epic Chess est une variante d'échecs gratuite jouable directement dans le navigateur, sans inscription par e-mail ni téléchargement. Elle se déroule dans un laboratoire d'alchimie abandonné où un savant fou a mêlé les pièces d'un jeu d'échecs à des créatures nées de l'alchimie. La différence majeure avec les échecs classiques : au lieu de recevoir toujours la même armée, chaque joueur compose la sienne avant la partie."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Comment compose-t-on son armée dans Epic Chess ?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Chaque armée compte 5 pièces choisies par le joueur : 1 Monarque, 1 Général et 3 créatures, le tout dans une limite de 24 points. Chaque pièce a un coût lié à sa puissance."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Combien de créatures différentes existe-t-il dans Epic Chess ?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Le catalogue compte 18 créatures réparties en 5 classes : Monarque, Général, Primordiale, Brute et Sorcier. Chacune possède son propre schéma de déplacement et, pour beaucoup, une capacité spéciale. Les Brutes ont un déplacement puissant mais un pouvoir faible, tandis que les Sorciers disposent de capacités avancées avec une mobilité réduite."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Contre qui joue-t-on à Epic Chess ?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Contre d'autres joueurs en ligne, par appariement automatique ou avec un code d'invitation, et contre l'Instructeur, l'adversaire IA du jeu. L'Instructeur est unique et joue toujours à pleine puissance : son évaluation tient compte des pouvoirs des créatures et pas seulement de leurs déplacements. Le Mode Tournoi enchaîne sept combats contre des armées de plus en plus fortes."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Epic Chess est-il gratuit ?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Oui. Epic Chess est entièrement gratuit et se joue dans le navigateur, sans téléchargement, sans achat et sans publicité. Le compte est créé localement sur l'appareil et aucune adresse e-mail n'est demandée."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Comment débloque-t-on de nouvelles créatures ?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Chaque partie fait évoluer l'ELO du joueur le long de la Voie des Victoires, qui compte 7 rangs successifs : Poussière, Pierre, Bronze, Acier, Obsidienne, Argent et Or Légendaire. Franchir un palier débloque de nouvelles créatures. Les coffres gagnés en enchaînant les victoires en offrent également."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Que risque-t-on en jouant une pièce dans Epic Chess ?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Les pièces se possèdent en exemplaires. Les engager dans une partie, c'est les risquer : une défaite fait perdre toute l'armée engagée, une victoire ne coûte que les pièces réellement capturées. Un coffre de réapprovisionnement quotidien rend 4 exemplaires de chaque pièce possédée, il est donc impossible de rester bloqué sans armée."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Faut-il savoir jouer aux échecs pour jouer à Epic Chess ?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Non. Le plateau reste un 8×8 classique et les règles de base (échec, échec et mat, promotion des pions) sont celles des échecs traditionnels, mais chaque créature affiche son déplacement et sa capacité directement sur sa carte. Les premiers niveaux d'Instructeur sont conçus pour apprendre en jouant."
-          }
-        }
-      ]
+      "@type": "WebPage",
+      "@id": "https://epichess.app/info#page",
+      "url": "https://epichess.app/info",
+      "name": "Epic Chess : règles, créatures et questions fréquentes",
+      "inLanguage": "fr",
+      "about": {"@id": "https://epichess.app/#game"}
     }
   ]
 }
@@ -176,13 +117,11 @@
     <div class="intro-parchment-inner">
       <span class="vial vial-lg intro-seal"><span class="vial-bubble"></span></span>
       <h2 class="intro-title">Bienvenue, apprenti alchimiste</h2>
-      <p class="intro-p">Dans ce laboratoire abandonné, un savant fou a mélangé les pièces d'un jeu d'échecs ordinaire avec des créatures nées de l'alchimie. Le résultat : <strong>Epic Chess</strong>, une variante où chaque créature a son propre pouvoir et ses propres déplacements.</p>
+      <p class="intro-p">Dans ce laboratoire abandonné, un savant fou a fusionné les pièces d'un jeu d'échecs ordinaire avec des créatures nées de l'alchimie. Le résultat : <strong>Epic Chess</strong>, une variante où chaque créature a son propre pouvoir et ses propres déplacements.</p>
       <ul class="intro-list">
-        <li><strong>Composez votre armée</strong> : 1 Monarque, 1 Général et 3 créatures de votre choix, pour un budget de 24 points.</li>
-        <li><strong>Vous ne jouez que ce que vous possédez</strong> : engager une créature, c'est la risquer. Une défaite fait perdre toute l'armée engagée ; une victoire ne coûte que les pièces capturées.</li>
-        <li><strong>Enchaînez les victoires</strong> : la première donne un Coffre Pion, la deuxième un Coffre Cavalier, et ainsi de suite jusqu'au Coffre Roi. Une défaite remet la série à zéro.</li>
-        <li><strong>Ne restez jamais bloqué</strong> : chaque jour, le coffre de réapprovisionnement de la Réserve rend 4 exemplaires de chacune de vos pièces.</li>
-        <li><strong>Affrontez de vrais joueurs</strong>, ou l'Instructeur, l'adversaire IA du jeu, qui joue toujours à pleine puissance.</li>
+        <li><strong>Composez votre armée</strong> : Choisissez 1 Monarque, 1 Général et 3 créatures de votre choix, respectant une limite de 24 points.</li>
+        <li><strong>Défiez un adversaire</strong> : Affrontez des joueurs du monde entier ainsi que des armées toujours différentes.</li>
+        <li><strong>Avancez dans la voie des victoires</strong> : Débloquez de nouvelles créatures qui rejoindront vos soldats.</li>
       </ul>
       <button class="btn btn-gold intro-close" id="intro-close">Continuer</button>
     </div>
@@ -208,78 +147,27 @@
       <div class="lbl">Créer un compte</div>
       <div class="iform">
         <input class="linput" id="reg-u" type="text" placeholder="Pseudo (2–20 caractères)" maxlength="20" autocomplete="off">
-        <input class="linput" id="reg-p" type="password" placeholder="Mot de passe (4+ caractères)" maxlength="40">
-        <input class="linput" id="reg-p2" type="password" placeholder="Confirmer le mot de passe" maxlength="40">
+        <!-- .pw-field : le champ + son œil de révélation. Le bouton n'est
+             ajouté qu'ici, en HTML ; sa logique (apparition, bascule) est
+             générique et posée par bindPasswordEye() dans js/accounts.js. -->
+        <div class="pw-field">
+          <input class="linput" id="reg-p" type="password" placeholder="Mot de passe (4+ caractères)" maxlength="40">
+          <button type="button" class="pw-eye" data-for="reg-p" aria-label="Afficher le mot de passe" aria-pressed="false" tabindex="-1"></button>
+        </div>
+        <div class="pw-field">
+          <input class="linput" id="reg-p2" type="password" placeholder="Confirmer le mot de passe" maxlength="40">
+          <button type="button" class="pw-eye" data-for="reg-p2" aria-label="Afficher le mot de passe" aria-pressed="false" tabindex="-1"></button>
+        </div>
         <button class="btn btn-primary" id="btn-reg">Créer et jouer</button>
       </div>
     </div>
 
-    <!-- ============================================================
-         CONTENU INDEXABLE (SEO / GEO) : ne pas supprimer.
-         C'est le seul texte réel que voient Google et les moteurs de
-         réponse IA : toutes les autres pages sont en `display:none`
-         tant que le joueur n'est pas connecté, donc invisibles pour un
-         crawler. Les réponses de la FAQ ci-dessous doivent rester
-         identiques à celles du bloc JSON-LD FAQPage dans le <head> :
-         Google invalide le balisage si le texte visible ne correspond
-         pas. Contenu volontairement bref pour ne pas noyer le
-         formulaire de connexion, qui reste l'action principale.
-         ============================================================ -->
-    <section class="lore" aria-labelledby="lore-title">
-      <h2 class="lore-h" id="lore-title">Qu'est-ce qu'Epic Chess ?</h2>
-      <p><strong>Epic Chess</strong> est une variante d'échecs gratuite, jouable directement dans le navigateur. Dans un laboratoire d'alchimie abandonné, un savant fou a mêlé les pièces d'un jeu d'échecs ordinaire à des créatures nées de ses expériences. Le plateau reste un 8×8 classique.</p>
-      <p>Avant chaque partie, vous <strong>composez votre armée</strong> dans une limite de 24 points. Le catalogue compte 18 créatures réparties en cinq classes, chacune avec son déplacement et sa capacité propres.</p>
-
-      <ul class="lore-list">
-        <li><strong>Monarque</strong> : l'équivalent du roi, la pièce à protéger.</li>
-        <li><strong>Général</strong> : l'équivalent de la dame, la pièce maîtresse.</li>
-        <li><strong>Primordiale</strong> : les pièces classiques : Cavalier, Fou et Tour.</li>
-        <li><strong>Brute</strong> : les pièces ayant un déplacement puissant, mais un pouvoir faible.</li>
-        <li><strong>Sorcier</strong> : les pièces possédant des capacités spéciales avancées, mais à la mobilité réduite.</li>
-      </ul>
-
-      <p>Les parties se jouent <strong>en ligne contre d'autres joueurs</strong>, ou contre l'Instructeur, l'adversaire IA du jeu. Chaque combat fait évoluer votre ELO le long de la <strong>Voie des Victoires</strong> et débloque de nouvelles créatures et de nouveaux échiquiers.</p>
-      <p>Les pièces se possèdent en exemplaires : les engager, c'est les <strong>risquer</strong>. Une victoire rapporte un coffre, et sa rareté monte à chaque victoire consécutive.</p>
-
-      <h2 class="lore-h">Questions fréquentes</h2>
-
-      <details class="lore-faq">
-        <summary>Epic Chess est-il gratuit ?</summary>
-        <p>Oui. Epic Chess est entièrement gratuit et se joue dans le navigateur, sans téléchargement, sans achat et sans publicité. Le compte est créé localement sur l'appareil et aucune adresse e-mail n'est demandée.</p>
-      </details>
-
-      <details class="lore-faq">
-        <summary>Faut-il savoir jouer aux échecs ?</summary>
-        <p>Non. Le plateau reste un 8×8 classique et les règles de base (échec, échec et mat, promotion des pions) sont celles des échecs traditionnels, mais chaque créature affiche son déplacement et sa capacité directement sur sa carte. Les premiers niveaux d'Instructeur sont conçus pour apprendre en jouant.</p>
-      </details>
-
-      <details class="lore-faq">
-        <summary>Comment compose-t-on son armée ?</summary>
-        <p>Chaque armée compte 5 pièces choisies par le joueur : 1 Monarque, 1 Général et 3 créatures, le tout dans une limite de 24 points. Chaque pièce a un coût lié à sa puissance.</p>
-      </details>
-
-      <details class="lore-faq">
-        <summary>Contre qui joue-t-on ?</summary>
-        <p>Contre d'autres joueurs en ligne, par appariement automatique ou avec un code d'invitation, et contre l'Instructeur, l'adversaire IA du jeu. L'Instructeur est unique et joue toujours à pleine puissance : son évaluation tient compte des pouvoirs des créatures et pas seulement de leurs déplacements. Le Mode Tournoi enchaîne sept combats contre des armées de plus en plus fortes.</p>
-      </details>
-
-      <details class="lore-faq">
-        <summary>Comment débloque-t-on de nouvelles créatures ?</summary>
-        <p>Chaque partie fait évoluer l'ELO du joueur le long de la Voie des Victoires, qui compte 7 rangs successifs : Poussière, Pierre, Bronze, Acier, Obsidienne, Argent et Or Légendaire. Franchir un palier débloque de nouvelles créatures. Les coffres gagnés en enchaînant les victoires en offrent également.</p>
-      </details>
-
-      <details class="lore-faq">
-        <summary>Que risque-t-on en jouant une pièce ?</summary>
-        <p>Les pièces se possèdent en exemplaires. Les engager dans une partie, c'est les risquer : une défaite fait perdre toute l'armée engagée, une victoire ne coûte que les pièces réellement capturées. Un coffre de réapprovisionnement quotidien rend 4 exemplaires de chaque pièce possédée, il est donc impossible de rester bloqué sans armée.</p>
-      </details>
-    </section>
-
-    <!-- Mention demandée par l'auteur du jeu : elle doit rester en toute fin
-         de page de connexion, sous le contenu indexable. -->
-    <p class="proto-note">
-      Ceci est un prototype du jeu fait avec de l'IA car je ne sais pas coder.
-      J'accepterais avec grand plaisir de l'aide pour améliorer humainement.
-    </p>
+    <!-- Le texte de présentation, la FAQ indexable et la mention de
+         prototype vivaient ici, sous le formulaire : ils poussaient la
+         connexion vers le haut d'une page qu'il fallait dérouler. Tout est
+         désormais sur /info (info.html), atteignable par le bouton « i »
+         ci-dessous, discret et en bas à gauche de l'écran. -->
+    <a class="login-info-btn" id="login-info-btn" href="/info" title="À propos d'Epic Chess" aria-label="À propos d'Epic Chess">i</a>
   </div>
 </div>
 
@@ -288,7 +176,10 @@
   <div class="pw-box">
     <div style="font-family:'Cinzel',serif;font-size:16px;font-weight:700;margin-bottom:6px;color:var(--text)">Connexion</div>
     <div style="font-size:13px;color:var(--muted);margin-bottom:16px">Compte : <strong id="pw-acc" style="color:var(--text)"></strong></div>
-    <input class="linput" id="pw-inp" type="password" placeholder="Mot de passe" style="margin-bottom:12px">
+    <div class="pw-field" style="margin-bottom:12px">
+      <input class="linput" id="pw-inp" type="password" placeholder="Mot de passe">
+      <button type="button" class="pw-eye" data-for="pw-inp" aria-label="Afficher le mot de passe" aria-pressed="false" tabindex="-1"></button>
+    </div>
     <div style="display:flex;gap:8px;justify-content:center">
       <button class="btn btn-ghost" id="pw-cancel">Annuler</button>
       <button class="btn btn-primary" id="pw-ok">Se connecter</button>
@@ -479,6 +370,14 @@
         <div class="rs-sub">Vous ne jouez que ce que vous possédez.</div>
       </div>
       <div id="rs-daily"></div>
+      <!-- MODE ADMIN : les six récompenses en accès illimité. Vide (et
+           masquée) hors mode admin, remplie par renderAdminChests()
+           dans js/economy-ui.js. Le mode admin ne donne aucune pièce
+           directement : il donne des coffres, qu'il faut ouvrir. -->
+      <div class="rs-sec" id="rs-admin-sec" style="display:none">
+        <div class="rs-sec-title">Récompenses illimitées (mode admin)</div>
+        <div id="rs-admin-chests"></div>
+      </div>
       <div class="rs-sec"><div class="rs-sec-title">Coffres à ouvrir</div><div id="rs-chests"></div></div>
       <div class="rs-sec"><div class="rs-sec-title">Échiquiers</div><div class="skin-grid" id="rs-skins"></div></div>
       <div class="rs-sec"><div class="rs-sec-title">Vos pièces</div><div class="inv-grid" id="rs-inv"></div></div>
@@ -700,7 +599,7 @@
 <div class="promo-modal" id="promo-modal"><div class="promo-box"><div class="promo-title">Choisir la promotion</div><div class="promo-pieces-row" id="promo-box"></div></div></div>
 <div class="primordiale-modal" id="primordiale-modal" style="display:none"><div class="primordiale-box"><h2>Choisissez votre Primordiale</h2><p>Votre premier mélange réussi. Choisissez la créature qui survit à l'expérience : les deux autres formules attendront dans des coffres scellés.</p><div class="primordiale-choices" id="primordiale-choices"></div></div></div>
 <button class="admin-badge" id="admin-badge" title="Mode Administrateur">Admin</button>
-<div class="result-modal" id="result-modal"><div class="result-box" id="result-box"><button id="result-close-btn" style="position:absolute;top:12px;right:14px;background:transparent;border:none;cursor:pointer;color:var(--muted);font-size:22px;line-height:1;font-family:inherit;transition:color .15s;z-index:1" title="Fermer et analyser la partie">✕</button><span class="result-icon" id="result-icon"></span><div class="result-title" id="result-title"></div><div class="result-elo-row"><span class="result-elo-before" id="result-elo-before"></span><span class="result-elo-arrow">→</span><span class="result-elo-after" id="result-elo-after"></span><span class="result-elo-delta" id="result-elo-delta"></span></div><div class="result-rank-row"><span class="result-rank-icon" id="result-rank-icon"></span><span class="result-rank-name" id="result-rank-name"></span></div><div class="result-chest" id="result-chest" style="display:none"></div><div class="unlock-section" id="unlock-section" style="display:none"><div class="unlock-title">Nouvelle pièce débloquée !</div><span class="unlock-piece-emoji" id="unlock-piece-emoji"></span><div class="unlock-piece-name" id="unlock-piece-name"></div><div class="unlock-piece-class" id="unlock-piece-class"></div><div class="unlock-piece-ability" id="unlock-piece-ability"></div></div><div style="display:flex;flex-direction:column;gap:8px;margin-top:20px"><button class="btn btn-gold" style="width:100%" id="result-continue">Continuer</button><div style="display:flex;gap:8px"><button class="btn btn-primary" style="flex:1" id="result-rejouer">↺ Rejouer</button><button class="btn btn-ghost" style="flex:1;border-color:var(--accent2);color:var(--accent2)" id="result-revanche">Revanche</button></div></div></div></div>
+<div class="result-modal" id="result-modal"><div class="result-box" id="result-box"><button id="result-close-btn" style="position:absolute;top:12px;right:14px;background:transparent;border:none;cursor:pointer;color:var(--muted);font-size:22px;line-height:1;font-family:inherit;transition:color .15s;z-index:1" title="Fermer et analyser la partie">✕</button><span class="result-icon" id="result-icon"></span><div class="result-title" id="result-title"></div><div class="result-elo-row"><span class="result-elo-before" id="result-elo-before"></span><span class="result-elo-arrow">→</span><span class="result-elo-after" id="result-elo-after"></span><span class="result-elo-delta" id="result-elo-delta"></span></div><div class="result-elo-note" id="result-elo-note" style="display:none"></div><div class="result-rank-row"><span class="result-rank-icon" id="result-rank-icon"></span><span class="result-rank-name" id="result-rank-name"></span></div><div class="result-chest" id="result-chest" style="display:none"></div><div class="unlock-section" id="unlock-section" style="display:none"><div class="unlock-title">Nouvelle pièce débloquée !</div><span class="unlock-piece-emoji" id="unlock-piece-emoji"></span><div class="unlock-piece-name" id="unlock-piece-name"></div><div class="unlock-piece-class" id="unlock-piece-class"></div><div class="unlock-piece-ability" id="unlock-piece-ability"></div></div><div style="display:flex;flex-direction:column;gap:8px;margin-top:20px"><button class="btn btn-gold" style="width:100%" id="result-continue">Continuer</button><div style="display:flex;gap:8px"><button class="btn btn-primary" style="flex:1" id="result-rejouer">↺ Rejouer</button><button class="btn btn-ghost" style="flex:1;border-color:var(--accent2);color:var(--accent2)" id="result-revanche">Revanche</button></div></div></div></div>
 <!-- CÉRÉMONIE D'OUVERTURE DE COFFRE (js/economy-ui.js) -->
 <div class="chest-modal" id="chest-modal">
   <div class="chest-stage">
