@@ -155,7 +155,10 @@ function showArmyIntro(playerArmy,aiArmy){
 // ----------------------------------------------------------------
 // MODAL DE RÉSULTAT DE PARTIE (victoire/défaite/nulle)
 // ----------------------------------------------------------------
-function showResultModal(result,oldElo,newElo,delta,newUnlockIds){
+// noEloReason : renseigné quand la partie n'était pas classée (voir
+// vvNoEloReason dans voie.js). La ligne « ancien → nouveau ELO » laisse alors
+// la place à la raison : afficher « 0 → 0 · +0 » ferait croire à un bug.
+function showResultModal(result,oldElo,newElo,delta,newUnlockIds,noEloReason){
   setTimeout(()=>playSound(result==='win'?'win':result==='loss'?'loss':'draw'),200);
   const modal=document.getElementById('result-modal');const box=document.getElementById('result-box');
   const rank=vvGetRank(newElo);
@@ -168,6 +171,10 @@ function showResultModal(result,oldElo,newElo,delta,newUnlockIds){
   document.getElementById('result-elo-after').textContent=newElo;
   const deltaEl=document.getElementById('result-elo-delta');deltaEl.textContent=(delta>0?'+':'')+delta;
   deltaEl.className='result-elo-delta '+(delta>0?'pos':delta<0?'neg':'zero');
+  const eloRow=box.querySelector('.result-elo-row');
+  const noteEl=document.getElementById('result-elo-note');
+  if(eloRow)eloRow.style.display=noEloReason?'none':'';
+  if(noteEl){noteEl.style.display=noEloReason?'':'none';noteEl.textContent=noEloReason||'';}
   document.getElementById('result-rank-name').textContent=rank.name+' · '+newElo+' ELO';
   const unlockSec=document.getElementById('unlock-section');
   if(newUnlockIds&&newUnlockIds.length>0){
@@ -245,18 +252,27 @@ function triggerEndOfGame(result){
   stopClockTick(GS);
   endCombatMusic();
   const oldElo=vvLoadElo();const aiElo=vvEstimateAiElo();
-  const{newElo,delta}=vvCalcNewElo(oldElo,aiElo,result);
-  const newRankIdx=vvGetRankIdx(newElo);if(newRankIdx>vvLoadRankMax())vvSaveRankMax(newRankIdx);
-  const newUnlocks=vvCheckNewUnlocks(oldElo,newElo);
-  vvSaveElo(newElo);
-  const history=vvLoadHistory();history.push({result,oldElo,newElo,delta,date:Date.now(),aiElo});vvSaveHistory(history);
+  // Partie non classée (entraînement contre l'Instructeur, mode admin) :
+  // l'ELO ne bouge pas d'un point, donc aucun déblocage par palier non plus.
+  // Le reste de la fin de partie est inchangé : la série de victoires, les
+  // coffres et le règlement des pièces engagées valent dans tous les modes.
+  const noEloReason=(typeof vvNoEloReason==='function')?vvNoEloReason(GS):null;
+  let newElo=oldElo,delta=0,newUnlocks=[];
+  if(!noEloReason){
+    const calc=vvCalcNewElo(oldElo,aiElo,result);
+    newElo=calc.newElo;delta=calc.delta;
+    const newRankIdx=vvGetRankIdx(newElo);if(newRankIdx>vvLoadRankMax())vvSaveRankMax(newRankIdx);
+    newUnlocks=vvCheckNewUnlocks(oldElo,newElo);
+    vvSaveElo(newElo);
+  }
+  const history=vvLoadHistory();history.push({result,oldElo,newElo,delta,date:Date.now(),aiElo,ranked:!noEloReason});vvSaveHistory(history);
   // Règlement des pièces engagées AVANT l'affichage : la cinématique montre
   // le décompte réel, pas une estimation.
   _lastSettlement=(typeof economySettle==='function')?economySettle(result,GS):null;
   if(typeof renderStreakBadge==='function')renderStreakBadge();
   // La cinématique d'issue passe en premier, le modal de résultat (ELO,
   // déblocages) prend le relais à sa fermeture.
-  const showModal=()=>showResultModal(result,oldElo,newElo,delta,newUnlocks);
+  const showModal=()=>showResultModal(result,oldElo,newElo,delta,newUnlocks,noEloReason);
   if(typeof playOutcomeCinematic==='function')playOutcomeCinematic(result,_lastSettlement,showModal);
   else setTimeout(showModal,400);
 }

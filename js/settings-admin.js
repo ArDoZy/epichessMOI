@@ -4,12 +4,11 @@
 // Contient : le bouton et panneau flottant de réglages (#settings-btn /
 // #settings-panel) qui contrôle le thème clair/sombre et les volumes
 // bruitages/musique, et le mode Administrateur (bouton #admin-badge) qui
-// débloque temporairement toutes les pièces en mémoire (sans jamais toucher
-// à la progression réelle sauvegardée) pour tester/démontrer le jeu.
+// ouvre des coffres illimités dans la Réserve et met les parties hors
+// classement, pour tester/démontrer le jeu sans fausser la progression.
 //
-// Dépendances : main.js (toggleTheme, ADMIN_MODE, VV_UNLOCKED, updAll),
-// accounts.js (updateCab, vvLoadPrimordialeChoisie, vvSaveUnlocked),
-// data-pieces.js (PIECES, UNLOCK_TABLE, UNLOCK_MILESTONES),
+// Dépendances : main.js (toggleTheme, ADMIN_MODE, updAll),
+// accounts.js (updateCab, CUR_ACC), economy-ui.js (renderReservePage),
 // rules-engine.js (_soundEnabled), combat-music.js (window._musicGain).
 //
 // Si vous ajoutez un nouveau réglage : ajoutez sa ligne .sp-row dans
@@ -42,37 +41,33 @@ let _sfxVol=1,_musicVol=0.5;
 })();
 
 // ----------------------------------------------------------------
-// MODE ADMINISTRATEUR : débloque tout en mémoire, ne sauvegarde jamais
-// les pièces admin dans localStorage (restauration exacte à la désactivation)
+// MODE ADMINISTRATEUR : récompenses illimitées, rien d'offert
 // ----------------------------------------------------------------
+// Le mode admin donnait auparavant TOUTES les pièces d'un coup
+// (VV_UNLOCKED = tout le catalogue) : il ne restait plus rien à tester, la
+// Voie s'affichait comme terminée, et il fallait un instantané de la
+// progression réelle pour ne pas l'abîmer en sortant.
+//
+// Il ne fait plus qu'une chose : ouvrir l'accès aux six coffres (Pion,
+// Cavalier, Fou, Tour, Dame, Roi) en quantité illimitée dans la Réserve. Les
+// pièces s'obtiennent donc par le chemin normal du jeu — en ouvrant des
+// coffres — et non par décret. Les gains, eux, sont bien réels : ce sont de
+// vrais coffres, ouverts par la vraie cérémonie.
+//
+// Second effet : aucune partie jouée en mode admin ne compte au classement
+// (voir vvNoEloReason dans js/voie.js).
 document.getElementById('admin-badge').addEventListener('click',()=>{
   ADMIN_MODE=!ADMIN_MODE;
   const btn=document.getElementById('admin-badge');
   if(ADMIN_MODE){
-    // Snapshot EXACT avant admin, NE PAS sauvegarder en localStorage
-    _preAdminUnlocked=new Set(VV_UNLOCKED);
-    // Débloquer tout en mémoire seulement
-    VV_UNLOCKED=new Set(PIECES.map(p=>p.id));
     btn.classList.add('active-admin');btn.textContent='Admin ON';
-    showNotif('Mode Admin : ELO figé, tout débloqué (non sauvegardé)','ok');
+    showNotif('Mode Admin : coffres illimités dans la Réserve, aucun ELO en jeu','ok');
   }else{
-    // RESTAURER snapshot exact, ne jamais sauvegarder les pièces admin
-    if(_preAdminUnlocked){
-      VV_UNLOCKED=new Set(_preAdminUnlocked);
-      _preAdminUnlocked=null;
-    }else{
-      const defs=UNLOCK_TABLE.filter(u=>u.eloRequired===0&&!u.primordialeChoix&&!u.coffre&&u.pieceId).map(u=>u.pieceId);
-      const chosen=vvLoadPrimordialeChoisie();if(chosen)defs.push(chosen);
-      VV_UNLOCKED=new Set(defs);
-      const elo=vvLoadElo();
-      UNLOCK_MILESTONES.forEach(u=>{if(!u.pieceId||u.primordialeChoix||u.coffre)return;if(u.eloRequired<=elo)VV_UNLOCKED.add(u.pieceId);});
-      if(chosen)VV_UNLOCKED.add(chosen);
-    }
-    // Sauvegarder uniquement les pièces légitimement débloquées
-    vvSaveUnlocked(VV_UNLOCKED);
     btn.classList.remove('active-admin');btn.textContent='Admin';
-    showNotif('Mode Admin désactivé : progression restaurée','ok');
+    showNotif('Mode Admin désactivé','ok');
   }
   updateCab();
   updAll();
+  // La Réserve affiche/retire la section des coffres illimités.
+  if(typeof renderReservePage==='function'&&CUR_ACC)renderReservePage();
 });

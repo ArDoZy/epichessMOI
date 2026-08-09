@@ -43,6 +43,21 @@ function vvCalcNewElo(playerElo,aiElo,result){
   const newElo=Math.max(floor,rawNew);
   return{newElo,delta:newElo-playerElo};
 }
+// Une partie est-elle CLASSÉE, c'est-à-dire fait-elle bouger l'ELO ?
+// Renvoie null si oui, sinon la raison (affichée dans le modal de résultat).
+//   - Mode admin : rien de ce qui s'y passe ne compte au classement, sinon
+//     une démonstration polluerait la progression réelle du compte.
+//   - Affronter l'Instructeur : c'est un entraînement. L'IA joue toujours à
+//     pleine puissance et joue autant de fois qu'on veut : un ELO gagné là
+//     ne mesure rien. Seuls les combats contre de vrais joueurs (et les
+//     rounds de tournoi, qui ont leurs propres paliers) sont classés.
+function vvNoEloReason(gs){
+  if(typeof ADMIN_MODE!=='undefined'&&ADMIN_MODE)return 'Mode admin : partie non classée, aucun ELO en jeu.';
+  const inTournoi=(typeof tournamentState!=='undefined')&&tournamentState&&tournamentState.active;
+  if(!inTournoi&&!(gs&&gs.multiplayer))
+    return 'Entraînement contre l\'Instructeur : aucun ELO en jeu.';
+  return null;
+}
 function vvCheckNewUnlocks(oldElo,newElo){
   const newUnlocks=[];
   UNLOCK_MILESTONES.forEach(u=>{
@@ -55,20 +70,19 @@ function vvCheckNewUnlocks(oldElo,newElo){
 // ----------------------------------------------------------------
 // RENDU DE LA PAGE VOIE
 // ----------------------------------------------------------------
+// La Voie affiche TOUJOURS la progression réelle, mode admin compris : le
+// mode admin ne débloque plus les pièces, il ne fait qu'ouvrir l'accès à des
+// coffres illimités dans la Réserve. Une Voie affichée comme terminée alors
+// que les pièces ne le sont pas serait un mensonge à l'écran.
 function renderVoiePage(){
-  const realElo=vvLoadElo();
-  const elo=ADMIN_MODE?9999:realElo;
-  const rank=ADMIN_MODE?RANKS[RANKS.length-1]:vvGetRank(realElo);
-  const nextRank=ADMIN_MODE?null:(RANKS[vvGetRankIdx(realElo)+1]||null);
+  const elo=vvLoadElo();
+  const rank=vvGetRank(elo);
+  const nextRank=RANKS[vvGetRankIdx(elo)+1]||null;
   const playableMilestones=UNLOCK_MILESTONES.filter(u=>u.pieceId&&!u.primordialeChoix&&!u.coffre);
-  const unlockedCount=ADMIN_MODE?playableMilestones.length:playableMilestones.filter(u=>VV_UNLOCKED.has(u.pieceId)).length;
-  const progress=ADMIN_MODE?100:(nextRank?Math.min(100,Math.round((realElo-rank.min)/(nextRank.min-rank.min)*100)):100);
+  const unlockedCount=playableMilestones.filter(u=>VV_UNLOCKED.has(u.pieceId)).length;
+  const progress=nextRank?Math.min(100,Math.round((elo-rank.min)/(nextRank.min-rank.min)*100)):100;
   const banner=document.getElementById('voie-elo-banner');
-  if(ADMIN_MODE){
-    banner.innerHTML='<div class="veb-info"><div class="veb-rank-name" style="color:var(--gold)">MODE ADMINISTRATEUR</div><div class="veb-elo" style="color:var(--gold)">ELO <span>masqué</span></div><div class="veb-progress-wrap"><div class="veb-progress-bar" style="width:100%;background:linear-gradient(90deg,var(--gold),var(--accent2))"></div></div><div class="veb-progress-label">Voie complète en mode admin : progression réelle préservée</div></div><div class="veb-stats"><div class="veb-stat"><div class="veb-stat-label">ELO réel</div><div class="veb-stat-val" style="color:var(--muted)">???</div></div><div class="veb-stat"><div class="veb-stat-label">Pièces</div><div class="veb-stat-val" style="color:var(--gold)">'+unlockedCount+'/'+playableMilestones.length+'</div></div></div>';
-  }else{
-    banner.innerHTML='<div class="veb-info"><div class="veb-rank-name" style="color:'+rank.color+'">'+rank.name+'</div><div class="veb-elo">'+realElo+' <span>ELO</span></div><div class="veb-progress-wrap"><div class="veb-progress-bar" style="width:'+progress+'%;background:linear-gradient(90deg,'+rank.color+',var(--gold))"></div></div><div class="veb-progress-label">'+(nextRank?'Vers '+nextRank.name+' ('+nextRank.min+' ELO) · '+progress+'%':'Rang maximum atteint !')+'</div></div><div class="veb-stats"><div class="veb-stat"><div class="veb-stat-label">Parties</div><div class="veb-stat-val" style="color:var(--text)">'+vvLoadHistory().length+'</div></div><div class="veb-stat"><div class="veb-stat-label">Victoires</div><div class="veb-stat-val" style="color:var(--success)">'+vvLoadHistory().filter(h=>h.result==='win').length+'</div></div><div class="veb-stat"><div class="veb-stat-label">Pièces</div><div class="veb-stat-val" style="color:var(--gold)">'+unlockedCount+'/'+playableMilestones.length+'</div></div></div>';
-  }
+  banner.innerHTML='<div class="veb-info"><div class="veb-rank-name" style="color:'+rank.color+'">'+rank.name+'</div><div class="veb-elo">'+elo+' <span>ELO</span></div><div class="veb-progress-wrap"><div class="veb-progress-bar" style="width:'+progress+'%;background:linear-gradient(90deg,'+rank.color+',var(--gold))"></div></div><div class="veb-progress-label">'+(nextRank?'Vers '+nextRank.name+' ('+nextRank.min+' ELO) · '+progress+'%':'Rang maximum atteint !')+'</div></div><div class="veb-stats"><div class="veb-stat"><div class="veb-stat-label">Parties</div><div class="veb-stat-val" style="color:var(--text)">'+vvLoadHistory().length+'</div></div><div class="veb-stat"><div class="veb-stat-label">Victoires</div><div class="veb-stat-val" style="color:var(--success)">'+vvLoadHistory().filter(h=>h.result==='win').length+'</div></div><div class="veb-stat"><div class="veb-stat-label">Pièces</div><div class="veb-stat-val" style="color:var(--gold)">'+unlockedCount+'/'+playableMilestones.length+'</div></div></div>';
   const route=document.getElementById('voie-route');let html='';
   const chosen=vvLoadPrimordialeChoisie();
   if(chosen){const pd=PIECES.find(p=>p.id===chosen);if(pd)html+='<div class="vm-rank-section"><div class="vm-rank-bar" style="background:var(--primordiale-bg);border:1px solid var(--primordiale)"><span class="vm-rank-label" style="color:var(--primordiale)">Primordiale de départ</span></div></div><div class="voie-milestone"><div class="vm-card reached"><span class="vm-piece-emoji">'+pieceIcon(pd.id,'n')+'</span><div class="vm-piece-name">'+pd.name+'</div><div class="vm-piece-class pc-class Primordiale" style="color:var(--primordiale)">Primordiale · '+pd.value+' pts</div>'+(pd.ability?'<div class="vm-piece-ability">'+pd.ability.slice(0,80)+'…</div>':'')+'</div><div class="vm-center"><div class="vm-dot reached"></div><div class="vm-elo-badge">Départ</div></div><div style="flex:1;max-width:calc(50% - 40px)"></div></div>';}
@@ -96,7 +110,12 @@ function renderVoiePage(){
     const rCls=h.result==='win'?'win':h.result==='loss'?'loss':'draw';
     const dCls=h.delta>0?'pos':h.delta<0?'neg':'zero';
     const d=new Date(h.date);
-    hhtml+='<div class="vh-row"><span class="vh-result '+rCls+'">'+rLbl+'</span><span class="vh-delta '+dCls+'">'+(h.delta>0?'+':'')+h.delta+'</span><span class="vh-elo">'+h.oldElo+' → '+h.newElo+'</span><span class="vh-date">'+d.toLocaleDateString('fr-FR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})+'</span></div>';
+    // Les parties non classées (entraînement, mode admin) sont bien listées,
+    // mais sans flèche d'ELO : elles n'en ont pas fait bouger.
+    const eloCell=(h.ranked===false)
+      ?'<span class="vh-delta zero">—</span><span class="vh-elo">Non classée</span>'
+      :'<span class="vh-delta '+dCls+'">'+(h.delta>0?'+':'')+h.delta+'</span><span class="vh-elo">'+h.oldElo+' → '+h.newElo+'</span>';
+    hhtml+='<div class="vh-row"><span class="vh-result '+rCls+'">'+rLbl+'</span>'+eloCell+'<span class="vh-date">'+d.toLocaleDateString('fr-FR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})+'</span></div>';
   });
   histDiv.innerHTML=hhtml;
 }

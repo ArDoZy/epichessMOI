@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+
+<!-- ============================================================
+     PAGE INFO (epichess.app/info)
+     ============================================================
+     Cette page rassemble tout le texte de présentation et la FAQ qui
+     encombraient auparavant le bas de la page de connexion : la connexion
+     est une action, pas une lecture. C'est aussi désormais LE contenu
+     indexable du site (l'application, elle, est une page unique dont tout
+     est masqué tant que le joueur n'est pas connecté), d'où le balisage
+     FAQPage ci-dessous : ses réponses doivent rester identiques au texte
+     visible, sinon Google invalide le balisage.
+     La page de connexion y renvoie par le bouton « i » en bas à gauche
+     (voir #login-info-btn dans index.html).
+     ============================================================ -->
+<title>Epic Chess : règles, créatures et questions fréquentes</title>
+<meta name="description" content="Tout sur Epic Chess : composition d'armée en 24 points, 18 créatures en 5 classes, coffres, Voie des Victoires et réponses aux questions fréquentes."/>
+<link rel="canonical" href="https://epichess.app/info"/>
+<meta name="robots" content="index,follow,max-snippet:-1,max-image-preview:large"/>
+<meta name="theme-color" content="#0e1216"/>
+
+<meta property="og:site_name" content="Epic Chess"/>
+<meta property="og:title" content="Epic Chess : règles, créatures et questions fréquentes"/>
+<meta property="og:description" content="Tout sur Epic Chess : composition d'armée en 24 points, 18 créatures en 5 classes, coffres, Voie des Victoires et réponses aux questions fréquentes."/>
+<meta property="og:type" content="article"/>
+<meta property="og:url" content="https://epichess.app/info"/>
+<meta property="og:locale" content="fr_FR"/>
+<meta property="og:image" content="https://epichess.app/og-image.png"/>
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:image" content="https://epichess.app/og-image.png"/>
+
+<link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
+<link rel="apple-touch-icon" href="/apple-touch-icon.png"/>
+<link rel="manifest" href="/site.webmanifest"/>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Cinzel+Decorative:wght@400;700;900&family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,300;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+
+<!-- FAQPage : déplacé ici depuis index.html avec le texte qu'il décrit.
+     Les faits (18 pièces, 5 classes, budget 24 points, 7 rangs, 6 raretés de
+     coffre) doivent rester synchronisés avec js/data-pieces.js. -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebPage",
+      "@id": "https://epichess.app/info#page",
+      "url": "https://epichess.app/info",
+      "name": "Epic Chess : règles, créatures et questions fréquentes",
+      "inLanguage": "fr",
+      "about": {"@id": "https://epichess.app/#game"}
+    },
+    {
+      "@type": "FAQPage",
+      "@id": "https://epichess.app/info#faq",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Qu'est-ce qu'Epic Chess ?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Epic Chess est une variante d'échecs gratuite jouable directement dans le navigateur, sans inscription par e-mail ni téléchargement. Elle se déroule dans un laboratoire d'alchimie abandonné où un savant fou a mêlé les pièces d'un jeu d'échecs à des créatures nées de l'alchimie. La différence majeure avec les échecs classiques : au lieu de recevoir toujours la même armée, chaque joueur compose la sienne avant la partie."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Comment compose-t-on son armée dans Epic Chess ?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Chaque armée compte 5 pièces choisies par le joueur : 1 Monarque, 1 Général et 3 créatures, le tout dans une limite de 24 points. Chaque pièce a un coût lié à sa puissance."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Combien de créatures différentes existe-t-il dans Epic Chess ?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Le catalogue compte 18 créatures réparties en 5 classes : Monarque, Général, Primordiale, Brute et Sorcier. Chacune possède son propre schéma de déplacement et, pour beaucoup, une capacité spéciale. Les Brutes ont un déplacement puissant mais un pouvoir faible, tandis que les Sorciers disposent de capacités avancées avec une mobilité réduite."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Contre qui joue-t-on à Epic Chess ?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Contre d'autres joueurs en ligne, par appariement automatique ou avec un code d'invitation, et contre l'Instructeur, l'adversaire IA du jeu. L'Instructeur est unique et joue toujours à pleine puissance : son évaluation tient compte des pouvoirs des créatures et pas seulement de leurs déplacements. Les parties contre l'Instructeur sont un entraînement : elles ne font pas bouger l'ELO. Le Mode Tournoi enchaîne sept combats contre des armées de plus en plus fortes."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Epic Chess est-il gratuit ?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Oui. Epic Chess est entièrement gratuit et se joue dans le navigateur, sans téléchargement, sans achat et sans publicité. Le compte est créé localement sur l'appareil et aucune adresse e-mail n'est demandée."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Comment débloque-t-on de nouvelles créatures ?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Chaque partie classée fait évoluer l'ELO du joueur le long de la Voie des Victoires, qui compte 7 rangs successifs : Poussière, Pierre, Bronze, Acier, Obsidienne, Argent et Or Légendaire. Franchir un palier débloque de nouvelles créatures. Les coffres gagnés en enchaînant les victoires en offrent également."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Que risque-t-on en jouant une pièce dans Epic Chess ?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Les pièces se possèdent en exemplaires. Les engager dans une partie, c'est les risquer : une défaite fait perdre toute l'armée engagée, une victoire ne coûte que les pièces réellement capturées. Un coffre de réapprovisionnement quotidien rend 4 exemplaires de chaque pièce possédée, il est donc impossible de rester bloqué sans armée."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Faut-il savoir jouer aux échecs pour jouer à Epic Chess ?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Non. Le plateau reste un 8×8 classique et les règles de base (échec, échec et mat, promotion des pions) sont celles des échecs traditionnels, mais chaque créature affiche son déplacement et sa capacité directement sur sa carte. Les parties contre l'Instructeur ne coûtent aucun ELO : on peut y apprendre sans rien risquer au classement."
+          }
+        }
+      ]
+    }
+  ]
+}
+</script>
+</head>
+<body class="info-body">
+<main class="info-wrap">
+  <div class="login-logo">
+    <h1>EPIC CHESS</h1>
+    <p>Un savant fou, dans un laboratoire d'échecs oublié, a fait naître des créatures de l'alchimie.</p>
+  </div>
+
+  <a class="btn btn-primary info-play" href="/">Jouer maintenant →</a>
+
+  <section class="lore" aria-labelledby="lore-title">
+    <h2 class="lore-h" id="lore-title">Qu'est-ce qu'Epic Chess ?</h2>
+    <p><strong>Epic Chess</strong> est une variante d'échecs gratuite, jouable directement dans le navigateur. Dans un laboratoire d'alchimie abandonné, un savant fou a mêlé les pièces d'un jeu d'échecs ordinaire à des créatures nées de ses expériences. Le plateau reste un 8×8 classique.</p>
+    <p>Avant chaque partie, vous <strong>composez votre armée</strong> dans une limite de 24 points. Le catalogue compte 18 créatures réparties en cinq classes, chacune avec son déplacement et sa capacité propres.</p>
+
+    <ul class="lore-list">
+      <li><strong>Monarque</strong> : l'équivalent du roi, la pièce à protéger.</li>
+      <li><strong>Général</strong> : l'équivalent de la dame, la pièce maîtresse.</li>
+      <li><strong>Primordiale</strong> : les pièces classiques : Cavalier, Fou et Tour.</li>
+      <li><strong>Brute</strong> : les pièces ayant un déplacement puissant, mais un pouvoir faible.</li>
+      <li><strong>Sorcier</strong> : les pièces possédant des capacités spéciales avancées, mais à la mobilité réduite.</li>
+    </ul>
+
+    <p>Les parties se jouent <strong>en ligne contre d'autres joueurs</strong>, ou contre l'Instructeur, l'adversaire IA du jeu. Seuls les combats en ligne font évoluer votre ELO le long de la <strong>Voie des Victoires</strong> : affronter l'Instructeur est un entraînement libre, sans enjeu de classement.</p>
+    <p>Les pièces se possèdent en exemplaires : les engager, c'est les <strong>risquer</strong>. Une victoire rapporte un coffre, et sa rareté monte à chaque victoire consécutive.</p>
+
+    <h2 class="lore-h">Questions fréquentes</h2>
+
+    <details class="lore-faq">
+      <summary>Epic Chess est-il gratuit ?</summary>
+      <p>Oui. Epic Chess est entièrement gratuit et se joue dans le navigateur, sans téléchargement, sans achat et sans publicité. Le compte est créé localement sur l'appareil et aucune adresse e-mail n'est demandée.</p>
+    </details>
+
+    <details class="lore-faq">
+      <summary>Faut-il savoir jouer aux échecs ?</summary>
+      <p>Non. Le plateau reste un 8×8 classique et les règles de base (échec, échec et mat, promotion des pions) sont celles des échecs traditionnels, mais chaque créature affiche son déplacement et sa capacité directement sur sa carte. Les parties contre l'Instructeur ne coûtent aucun ELO : on peut y apprendre sans rien risquer au classement.</p>
+    </details>
+
+    <details class="lore-faq">
+      <summary>Comment compose-t-on son armée ?</summary>
+      <p>Chaque armée compte 5 pièces choisies par le joueur : 1 Monarque, 1 Général et 3 créatures, le tout dans une limite de 24 points. Chaque pièce a un coût lié à sa puissance.</p>
+    </details>
+
+    <details class="lore-faq">
+      <summary>Contre qui joue-t-on ?</summary>
+      <p>Contre d'autres joueurs en ligne, par appariement automatique ou avec un code d'invitation, et contre l'Instructeur, l'adversaire IA du jeu. L'Instructeur est unique et joue toujours à pleine puissance : son évaluation tient compte des pouvoirs des créatures et pas seulement de leurs déplacements. Les parties contre l'Instructeur sont un entraînement : elles ne font pas bouger l'ELO. Le Mode Tournoi enchaîne sept combats contre des armées de plus en plus fortes.</p>
+    </details>
+
+    <details class="lore-faq">
+      <summary>Comment débloque-t-on de nouvelles créatures ?</summary>
+      <p>Chaque partie classée fait évoluer l'ELO du joueur le long de la Voie des Victoires, qui compte 7 rangs successifs : Poussière, Pierre, Bronze, Acier, Obsidienne, Argent et Or Légendaire. Franchir un palier débloque de nouvelles créatures. Les coffres gagnés en enchaînant les victoires en offrent également.</p>
+    </details>
+
+    <details class="lore-faq">
+      <summary>Que risque-t-on en jouant une pièce ?</summary>
+      <p>Les pièces se possèdent en exemplaires. Les engager dans une partie, c'est les risquer : une défaite fait perdre toute l'armée engagée, une victoire ne coûte que les pièces réellement capturées. Un coffre de réapprovisionnement quotidien rend 4 exemplaires de chaque pièce possédée, il est donc impossible de rester bloqué sans armée.</p>
+    </details>
+  </section>
+
+  <!-- Mention demandée par l'auteur du jeu. -->
+  <p class="proto-note">
+    Ceci est un prototype du jeu fait avec de l'IA car je ne sais pas coder.
+    J'accepterais avec grand plaisir de l'aide pour améliorer humainement.
+  </p>
+
+  <p class="info-back"><a href="/">← Retour à la connexion</a></p>
+</main>
+</body>
+</html>

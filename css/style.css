@@ -16,7 +16,7 @@
      [VOIE]         page "Voie des Victoires" (ELO, rangs, jalons)
      [TOURNOI]      page tournoi + modal d'analyse replay
      [ADMIN]        badge mode administrateur
-     [SEO]          bloc de contenu indexable sous la carte de connexion
+     [SEO]          page /info (info.html) : présentation + FAQ indexables
    Si vous ne modifiez qu'une page, cherchez son tag pour cibler la zone
    à éditer sans tout relire. Les variables de thème (:root / body.light)
    sont utilisées PARTOUT : ne pas les renommer sans grep global.
@@ -203,6 +203,46 @@ body{
 .iform{display:flex;flex-direction:column;gap:10px}
 .linput{background:var(--bg);border:1px solid var(--border2);border-radius:8px;padding:11px 14px;color:var(--text);font-size:14px;font-family:'Crimson Pro',serif;outline:none;transition:border-color .2s;width:100%}
 .linput:focus{border-color:var(--accent2)}.linput::placeholder{color:var(--muted)}
+
+/* --- Œil de révélation du mot de passe ---------------------------
+   Le bouton n'apparaît que sur le champ où l'on est en train d'écrire
+   (classe .pw-eye-on posée par bindPasswordEye() dans js/accounts.js) :
+   trois yeux affichés en permanence sur la carte de connexion feraient
+   trois icônes à ignorer. L'œil et l'œil barré sont dessinés en CSS pur
+   (::before = paupière, ::after = pupille ou barre), comme le reste des
+   ornements du jeu : aucun glyphe de police n'a les deux états. */
+.pw-field{position:relative;display:block}
+/* Place pour l'œil : le texte du mot de passe ne doit pas passer dessous. */
+.pw-field .linput{padding-right:44px}
+.pw-eye{position:absolute;right:6px;top:50%;transform:translateY(-50%);
+  width:32px;height:32px;border:none;background:transparent;cursor:pointer;padding:0;
+  opacity:0;pointer-events:none;transition:opacity .18s,color .15s;color:var(--muted)}
+.pw-field.pw-eye-on .pw-eye{opacity:1;pointer-events:auto}
+.pw-eye:hover{color:var(--accent2)}
+/* Paupière : un « œil de chat » obtenu par deux coins arrondis opposés. */
+.pw-eye::before{content:'';position:absolute;left:50%;top:50%;width:20px;height:13px;
+  margin:-6.5px 0 0 -10px;border:1.6px solid currentColor;
+  border-radius:11px 2px 11px 2px;transform:rotate(45deg)}
+.pw-eye::after{content:'';position:absolute;left:50%;top:50%;width:6px;height:6px;
+  margin:-3px 0 0 -3px;border-radius:50%;background:currentColor;transition:none}
+/* État « révélé » : l'œil se barre d'un trait oblique (la pupille devient
+   la barre), c'est ce bouton qui remasque le mot de passe. */
+.pw-eye.pw-eye-off{color:var(--gold)}
+.pw-eye.pw-eye-off::after{width:24px;height:1.8px;border-radius:2px;
+  margin:-.9px 0 0 -12px;transform:rotate(-45deg)}
+
+/* --- Bouton « i » de la page de connexion ------------------------
+   Toutes les explications sont sur /info : ce bouton est le seul lien
+   vers elles, volontairement discret et hors du chemin du formulaire.
+   position:fixed, mais imbriqué dans #page-login : la page est en
+   display:none tant qu'on est connecté, donc le bouton disparaît avec
+   elle sans règle supplémentaire. */
+.login-info-btn{position:fixed;left:14px;bottom:14px;z-index:400;
+  width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-family:'Cinzel',serif;font-size:15px;font-weight:800;font-style:italic;
+  text-decoration:none;color:var(--gold);background:rgba(193,154,69,.13);
+  border:1px solid rgba(193,154,69,.35);transition:all .2s}
+.login-info-btn:hover{background:rgba(193,154,69,.3);border-color:var(--gold);color:var(--gold2);transform:translateY(-2px)}
 .pw-modal{position:fixed;inset:0;background:rgba(0,0,0,.78);display:flex;align-items:center;justify-content:center;z-index:9000;visibility:hidden}
 .pw-modal.show{visibility:visible}
 .pw-box{background:var(--surface2);border:1px solid var(--border2);border-radius:14px;padding:28px;min-width:300px;max-width:380px;text-align:center}
@@ -618,6 +658,11 @@ body.has-acc .game-wrap{height:calc(100vh - 50px);margin-top:50px}
 .result-elo-before{font-size:20px;color:var(--muted)}.result-elo-arrow{font-size:18px;color:var(--border2)}.result-elo-after{font-size:24px;font-weight:800;color:var(--text)}
 .result-elo-delta{font-size:18px;font-weight:800;padding:3px 12px;border-radius:8px;font-family:'Cinzel',serif}
 .result-elo-delta.pos{background:rgba(16,185,129,.15);color:var(--success)}.result-elo-delta.neg{background:rgba(239,68,68,.15);color:var(--danger)}.result-elo-delta.zero{background:rgba(122,117,144,.15);color:var(--muted)}
+/* Remplace la ligne d'ELO quand la partie n'est pas classée (entraînement
+   contre l'Instructeur, mode admin) : voir showResultModal() dans
+   js/game-flow.js. */
+.result-elo-note{margin:14px 0;font-family:'Cinzel',serif;font-size:12px;letter-spacing:.6px;
+  color:var(--muted);background:var(--bg);border:1px dashed var(--border2);border-radius:8px;padding:9px 14px}
 .result-rank-row{display:flex;align-items:center;justify-content:center;gap:8px;margin:10px 0 18px;font-family:'Cinzel',serif;font-size:13px;background:var(--bg);border-radius:8px;padding:8px 16px;border:1px solid var(--border)}
 .result-rank-icon{font-size:22px}.result-rank-name{font-weight:700;color:var(--text)}
 .unlock-section{margin-top:18px;padding:16px;border-radius:12px;background:linear-gradient(135deg,rgba(201,168,76,.08),rgba(122,31,43,.08));border:1px solid rgba(201,168,76,.3);animation:unlockGlow .8s ease both .3s}
@@ -990,10 +1035,20 @@ body.cube-active .admin-badge{bottom:90px}
 }
 
 /* [SEO] ========================================================= */
-/* Bloc de contenu indexable sous la carte de connexion (voir le
-   commentaire dans index.html). Volontairement discret : texte en retrait,
-   pas de fond plein, pour rester une note de bas de page et ne pas
-   concurrencer visuellement le formulaire de connexion. */
+/* Contenu indexable : il vivait sous la carte de connexion, il occupe
+   maintenant sa propre page, info.html servie sur /info (voir le bouton
+   « i » de la page de connexion, .login-info-btn). Les classes .lore*
+   sont conservées telles quelles : c'est le même contenu, juste déplacé. */
+.info-body{padding:0}
+.info-wrap{width:100%;max-width:640px;margin:0 auto;padding:48px 20px 60px}
+.info-play{display:block;width:100%;text-align:center;font-size:14px;padding:13px 20px;text-decoration:none}
+/* Sur sa propre page, le bloc n'est plus une note de bas de page : il n'a
+   plus à s'effacer sous un formulaire, d'où le texte en pleine couleur. */
+.info-wrap .lore{color:var(--text)}
+.info-wrap .lore p{color:var(--muted)}
+.info-back{margin-top:26px;text-align:center;font-family:'Cinzel',serif;font-size:12px}
+.info-back a{color:var(--accent2);text-decoration:none;letter-spacing:.6px}
+.info-back a:hover{color:var(--gold2)}
 .lore{margin-top:34px;padding-top:26px;border-top:1px solid var(--border);color:var(--muted);font-size:14px;line-height:1.65}
 .lore p{margin:0 0 12px}
 .lore strong{color:var(--text);font-weight:600}
@@ -1105,6 +1160,11 @@ body.light .pc-n{--pc-fill:#f6f5f1;--pc-line:#20282a}
   color:#08110f;background:var(--accent2);border-radius:9px;padding:1px 8px}
 .rs-empty{color:var(--muted);font-style:italic;font-size:13.5px;padding:22px;text-align:center;
   border:1px dashed var(--border2);border-radius:14px}
+/* Coffres du mode admin : mêmes cartes, mais marquées « ∞ » et encadrées de
+   laiton pour qu'on ne les confonde jamais avec des coffres gagnés. */
+.chest-card.chest-admin{border-color:rgba(193,154,69,.45);background:linear-gradient(180deg,var(--surface),rgba(193,154,69,.06))}
+.chest-admin .chest-count{background:var(--gold);color:#1a1206;font-size:13px}
+.rs-admin-note{color:var(--muted);font-size:12.5px;font-style:italic;margin-bottom:12px;line-height:1.5}
 
 /* --- Inventaire --- */
 .inv-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(126px,1fr));gap:10px}
@@ -1294,7 +1354,7 @@ body.light .pc-n{--pc-fill:#f6f5f1;--pc-line:#20282a}
 .unlock-piece-emoji{display:block;margin:0 auto 6px;width:64px;height:64px}
 .primordiale-choice-card .pc-big-emoji{display:block;margin:0 auto 8px}
 
-/* [PROTO-NOTE] : mention de bas de page de connexion =============== */
+/* [PROTO-NOTE] : mention de bas de page, désormais sur /info ======== */
 .proto-note{margin:30px 0 8px;padding-top:18px;border-top:1px solid var(--border);
   font-size:12.5px;line-height:1.6;color:var(--muted);font-style:italic;text-align:center}
 

@@ -60,11 +60,67 @@ function renderLoginPage(){
   document.getElementById('reg-u').value='';
   document.getElementById('reg-p').value='';
   document.getElementById('reg-p2').value='';
+  // Les champs sont vidés : leur œil n'a plus rien à montrer, et un champ
+  // laissé en clair par la session précédente doit repasser en masqué.
+  document.querySelectorAll('#page-login .pw-field').forEach(f=>{
+    f.classList.remove('pw-eye-on');
+    const inp=f.querySelector('.linput');if(inp)inp.type='password';
+    const eye=f.querySelector('.pw-eye');
+    if(eye){eye.classList.remove('pw-eye-off');eye.setAttribute('aria-pressed','false');eye.setAttribute('aria-label','Afficher le mot de passe');}
+  });
 }
+
+// ----------------------------------------------------------------
+// ŒIL DE RÉVÉLATION DES MOTS DE PASSE
+// ----------------------------------------------------------------
+// Un seul comportement pour les trois champs (création + connexion) :
+//   - l'œil n'apparaît que sur le champ où l'on écrit (focus ou contenu
+//     non vide) : trois yeux visibles en permanence seraient trois icônes
+//     de plus à ignorer sur la carte de connexion ;
+//   - un clic montre le mot de passe et barre l'œil, un second le remasque ;
+//   - quitter le champ le remasque toujours : un mot de passe ne doit pas
+//     rester lisible à l'écran une fois qu'on est passé à autre chose.
+// Le bouton porte data-for="<id du champ>" (voir index.html).
+function bindPasswordEye(btn){
+  const inp=document.getElementById(btn.dataset.for);
+  if(!inp)return;
+  const field=btn.closest('.pw-field')||inp.parentElement;
+  const setVisible=on=>{
+    inp.type=on?'text':'password';
+    btn.classList.toggle('pw-eye-off',on);
+    btn.setAttribute('aria-pressed',on?'true':'false');
+    btn.setAttribute('aria-label',on?'Masquer le mot de passe':'Afficher le mot de passe');
+  };
+  const refresh=()=>{
+    const show=document.activeElement===inp||inp.value.length>0;
+    field.classList.toggle('pw-eye-on',show);
+  };
+  inp.addEventListener('input',refresh);
+  inp.addEventListener('focus',refresh);
+  inp.addEventListener('blur',()=>{
+    // Le mousedown du bouton est traité avant ce blur : sans ce délai, le
+    // clic sur l'œil masquerait le bouton avant d'avoir produit son effet.
+    setTimeout(()=>{setVisible(false);refresh();},120);
+  });
+  // mousedown plutôt que click : on garde le focus dans le champ, la frappe
+  // reprend là où elle s'était arrêtée.
+  btn.addEventListener('mousedown',e=>{
+    e.preventDefault();
+    setVisible(!btn.classList.contains('pw-eye-off'));
+    inp.focus();
+  });
+  setVisible(false);refresh();
+}
+document.querySelectorAll('.pw-eye').forEach(bindPasswordEye);
 
 function promptLogin(username){
   document.getElementById('pw-acc').textContent=username;
   document.getElementById('pw-inp').value='';
+  // Le champ repart toujours masqué, même si la tentative précédente l'avait
+  // révélé.
+  document.getElementById('pw-inp').type='password';
+  const pwEye=document.querySelector('.pw-eye[data-for="pw-inp"]');
+  if(pwEye)pwEye.classList.remove('pw-eye-off');
   document.getElementById('pw-err').textContent='';
   document.getElementById('pw-modal').classList.add('show');
   setTimeout(()=>document.getElementById('pw-inp').focus(),80);
@@ -146,15 +202,12 @@ function updateCab(){
   document.getElementById('cab-av').textContent=CUR_ACC.charAt(0).toUpperCase();
   document.getElementById('cab-av').style.background='linear-gradient(135deg,'+(cols[ri]||'#7c3aed')+',#333)';
   document.getElementById('cab-name').textContent=CUR_ACC;
-  // ELO masqué en mode admin
+  // L'ELO réel reste affiché en mode admin : il ne bouge plus d'un point
+  // là-dedans, il n'y a donc rien à masquer. Le suffixe rappelle simplement
+  // que les parties en cours ne sont pas classées.
   const eloEl=document.getElementById('cab-elo');
-  if(ADMIN_MODE){
-    eloEl.textContent='MODE ADMIN';
-    eloEl.classList.add('admin-elo');
-  }else{
-    eloEl.textContent=elo+' ELO';
-    eloEl.classList.remove('admin-elo');
-  }
+  eloEl.textContent=elo+' ELO'+(ADMIN_MODE?' · ADMIN':'');
+  eloEl.classList.toggle('admin-elo',!!ADMIN_MODE);
 }
 
 function switchAccount(){
