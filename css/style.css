@@ -18,6 +18,12 @@
      [ADMIN]        badge mode administrateur
      [DRILL]        exercice de déplacement d'une créature (tuto-drill.js)
      [SEO]          page /info (info.html) : présentation + FAQ indexables
+     [NOTIF]        bandeau de notifications (main.js::showNotif)
+     [EMBLEM]       emblème du jeu (ballon couronné), main.js::EMBLEM_SVG
+     [BOARD-MOTION] glissement de la pièce qui vient de jouer
+     [A11Y]         focus clavier, mouvement réduit
+     [MP-SEARCH]    écran de recherche d'adversaire (multiplayer.js)
+     [ICON-BUTTONS] boutons porteurs d'une icône SVG (stylo, corbeille)
    Si vous ne modifiez qu'une page, cherchez son tag pour cibler la zone
    à éditer sans tout relire. Les variables de thème (:root / body.light)
    sont utilisées PARTOUT : ne pas les renommer sans grep global.
@@ -1597,3 +1603,134 @@ body.light .intro-close{color:#241a10}
   .tuto-text{font-size:14px;min-height:0}
   .tuto-actions{flex-direction:row;width:100%;justify-content:space-between;align-items:center}
 }
+
+/* [NOTIF] =======================================================
+   Bandeau de notifications (js/main.js::showNotif). C'est le seul retour
+   du jeu sur un refus : « 3 pièces max », « Dépasse 24 points », « Les mots
+   de passe ne correspondent pas »… Il vit en bas à DROITE et non en haut :
+   le haut de l'écran est occupé par la barre de compte et par le bouton de
+   réglages, et un message posé dessus masquait l'un ou l'autre.
+   ============================================================== */
+.notif-host{position:fixed;right:16px;bottom:16px;z-index:9900;
+  display:flex;flex-direction:column;align-items:flex-end;gap:8px;
+  pointer-events:none;max-width:min(360px,calc(100vw - 32px))}
+.notif{pointer-events:auto;cursor:pointer;
+  font-family:'Crimson Pro',Georgia,serif;font-size:14px;line-height:1.45;
+  padding:11px 15px;border-radius:12px;
+  background:var(--surface2);color:var(--text);
+  border:1px solid var(--border2);border-left-width:4px;
+  box-shadow:0 10px 30px rgba(0,0,0,.45);
+  animation:notifIn .26s cubic-bezier(.2,1.3,.4,1) both}
+/* Les flèches de rotation du cube occupent les deux coins bas : quand elles
+   sont là, les messages se posent au-dessus plutôt que par-dessus. */
+body.cube-active:not(.nav-overlay) .notif-host{bottom:92px}
+.notif-err{border-left-color:var(--danger)}
+.notif-ok{border-left-color:var(--success)}
+.notif-info{border-left-color:var(--accent2)}
+.notif-out{animation:notifOut .24s ease forwards}
+/* Rappel visuel quand le même refus revient : la carte re-pulse au lieu de
+   s'empiler en double. */
+.notif-pop{animation:notifPop .3s ease}
+@keyframes notifIn{from{opacity:0;transform:translateX(22px) scale(.96)}to{opacity:1;transform:none}}
+@keyframes notifOut{to{opacity:0;transform:translateX(22px) scale(.96)}}
+@keyframes notifPop{0%,100%{transform:none}45%{transform:scale(1.04)}}
+@media(max-width:640px){
+  .notif-host{left:12px;right:12px;bottom:12px;align-items:stretch;max-width:none}
+  body.cube-active:not(.nav-overlay) .notif-host{bottom:68px}
+  .notif{font-size:13.5px}
+}
+
+/* [EMBLEM] ======================================================
+   L'emblème du jeu : un alambic dont le ballon porte une couronne. Il est
+   dessiné une seule fois (js/main.js::EMBLEM_SVG) et réutilisé sur la page
+   de connexion et au-dessus du menu principal. Il suit les couleurs du
+   thème par currentColor et par ses classes .b/.l, comme les pièces.
+   ============================================================== */
+.emblem{display:block;width:100%;height:100%}
+.emblem .em-glass{fill:none;stroke:var(--gold);stroke-width:3.2;stroke-linejoin:round;stroke-linecap:round}
+.emblem .em-liquid{fill:var(--accent2);opacity:.9}
+.emblem .em-crown{fill:var(--gold2);stroke:var(--gold);stroke-width:2;stroke-linejoin:round}
+.emblem .em-spark{fill:var(--gold2)}
+.login-emblem{width:74px;height:74px;margin:0 auto 10px}
+.jouer-emblem{width:clamp(54px,8vw,84px);height:clamp(54px,8vw,84px);margin:0 auto;
+  filter:drop-shadow(0 6px 22px rgba(201,162,39,.35));animation:emblemFloat 6s ease-in-out infinite}
+/* L'emblème et le titre forment un seul bloc : sans cette reprise, le gap de
+   34 px de .jouer-menu les séparait comme deux éléments sans rapport. */
+.jouer-emblem+.jouer-logo{margin-top:-20px}
+@keyframes emblemFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+/* La bulle du liquide monte en continu : l'emblème est vivant, comme les
+   fioles du reste de l'interface. */
+.emblem .em-bubble{fill:#fff;opacity:0;animation:emBubble 3.4s ease-in infinite}
+.emblem .em-bubble:nth-of-type(2){animation-delay:1.5s}
+@keyframes emBubble{0%{opacity:0;transform:translateY(0)}18%{opacity:.75}100%{opacity:0;transform:translateY(-16px)}}
+
+/* [BOARD-MOTION] ================================================
+   Le plateau est reconstruit en entier à chaque coup (innerHTML) : la pièce
+   déplacée apparaissait donc instantanément à l'arrivée, et un coup de l'IA
+   se résumait à un clignotement. On la fait GLISSER depuis sa case de
+   départ, en partant du décalage exact calculé par renderGame().
+   ============================================================== */
+.gc-piece.gc-move-in{animation:gcSlide .22s cubic-bezier(.3,.85,.4,1) both}
+@keyframes gcSlide{from{transform:translate(var(--mv-dx),var(--mv-dy))}to{transform:none}}
+/* Le survol ne doit pas interrompre le glissement en cours. */
+.gc-piece.gc-move-in:hover{transform:none}
+
+/* [A11Y] ========================================================
+   Deux manques : rien ne signalait le focus clavier (le contour natif est
+   supprimé par le reset sur les boutons), et aucune règle ne respectait
+   « réduire les animations » du système, alors que le jeu en compte
+   beaucoup (cube, cinématiques, particules, pulsations).
+   ============================================================== */
+.btn:focus-visible,.cube-arrow:focus-visible,.jouer-btn:focus-visible,
+.linput:focus-visible,.acc-item:focus-visible,.history-nav button:focus-visible,
+.chest-card:focus-visible,.skin-card:focus-visible,.army-card-selectable:focus-visible{
+  outline:2px solid var(--accent2);outline-offset:3px}
+/* Les pièces sont redessinées 32 fois par plateau : la transition universelle
+   de couleur du reset s'appliquait à chaque tracé SVG, pour rien. */
+.pc-svg,.pc-svg *{transition:none}
+
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;
+    transition-duration:.001ms!important;scroll-behavior:auto!important}
+  #cube{transition:none!important}
+  .ambient-bubbles,.cparts,.cine-motes{display:none}
+}
+
+/* [MP-SEARCH] ===================================================
+   Écran de recherche d'adversaire (js/multiplayer.js). Il ne montrait qu'un
+   glyphe « ⚔ » immobile : impossible de savoir si la recherche tournait
+   encore. Un radar qui balaie, trois chiffres, et une sortie de secours vers
+   l'Instructeur au bout de 40 secondes.
+   ============================================================== */
+.mp-radar{position:relative;width:78px;height:78px;margin:0 auto 14px}
+.mp-radar span{position:absolute;inset:0;border-radius:50%;
+  border:1px solid var(--accent2);opacity:0;animation:mpPing 2.4s ease-out infinite}
+.mp-radar span:nth-child(2){animation-delay:.8s}
+.mp-radar span:nth-child(3){animation-delay:1.6s}
+.mp-radar::after{content:'';position:absolute;left:50%;top:50%;width:12px;height:12px;
+  margin:-6px 0 0 -6px;border-radius:50%;background:var(--accent2);
+  box-shadow:0 0 16px var(--potion-glow)}
+@keyframes mpPing{0%{opacity:.85;transform:scale(.22)}100%{opacity:0;transform:scale(1)}}
+
+.mp-search-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.mp-search-cell{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:8px 6px}
+.mp-search-lbl{font-family:'Cinzel',serif;font-size:8.5px;text-transform:uppercase;
+  letter-spacing:1.1px;color:var(--muted);margin-bottom:3px}
+.mp-search-val{font-family:'Cinzel',serif;font-size:17px;font-weight:800;color:var(--text);
+  font-variant-numeric:tabular-nums}
+.mp-search-note{font-size:12px;color:var(--muted);line-height:1.5;min-height:36px}
+
+/* [ICON-BUTTONS] ================================================
+   Les boutons d'action des cartes portent maintenant des icônes SVG
+   (js/main.js : PEN_ICON, TRASH_ICON) et non plus des émojis : il leur faut
+   un centrage explicite, un `font-size` ne dimensionne plus rien.
+   ============================================================== */
+.ac-btns .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.ac-btns .btn svg,.ac-name-edit-btn svg,.acc-del svg{display:block}
+.acc-del svg{width:15px;height:15px}
+
+/* Compteur d'étapes du tutoriel, posé à côté du nom du savant. */
+.tuto-progress{font-family:'Cinzel',serif;font-size:9.5px;font-weight:700;letter-spacing:1px;
+  color:var(--muted);background:var(--bg);border:1px solid var(--border);
+  border-radius:6px;padding:1px 7px;margin-left:6px;vertical-align:1px}
+.tuto-progress:empty{display:none}

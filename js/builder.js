@@ -63,10 +63,12 @@ const updSlots=()=>{
   for(let i=0;i<3;i++)h+=mk(all[i]?.class||'',ic[i],all[i],"removePiece('pc',"+i+")",all[i]?i:null);
   g.innerHTML=h;
   g.querySelectorAll('.comp-slot.filled[data-pid]').forEach(el=>{
-    el.addEventListener('contextmenu',e=>{
+    const open=e=>{
       const p=PIECES.find(x=>x.id===el.dataset.pid);if(!p)return;
       showPieceCtxMenu(e,p);
-    });
+    };
+    el.addEventListener('contextmenu',open);
+    if(typeof bindLongPress==='function')bindLongPress(el,open);
   });
   wireSlotDragSwap(g);
 };
@@ -166,12 +168,20 @@ const renderCards=()=>{
   document.getElementById('cards-container').innerHTML=html;
   document.querySelectorAll('.piece-card:not(.locked)').forEach(el=>{
     const p=PIECES.find(x=>x.id===el.dataset.id);
-    el.addEventListener('click',()=>{if(!el.classList.contains('sel')||isSel(p))toggle(p);});
+    el.addEventListener('click',()=>{
+      // L'appui long a ouvert la fiche : ce clic-là n'est que le doigt qui se
+      // relève, il ne doit pas engager la pièce dans l'armée.
+      if(typeof longPressJustFired==='function'&&longPressJustFired())return;
+      if(!el.classList.contains('sel')||isSel(p))toggle(p);
+    });
     el.addEventListener('contextmenu',e=>showPieceCtxMenu(e,p));
+    if(typeof bindLongPress==='function')bindLongPress(el,e=>showPieceCtxMenu(e,p));
   });
   document.querySelectorAll('.piece-card.locked').forEach(el=>{
     const p=PIECES.find(x=>x.id===el.dataset.id);
-    if(p)el.addEventListener('contextmenu',e=>showPieceCtxMenu(e,p));
+    if(!p)return;
+    el.addEventListener('contextmenu',e=>showPieceCtxMenu(e,p));
+    if(typeof bindLongPress==='function')bindLongPress(el,e=>showPieceCtxMenu(e,p));
   });
   equalizeCardHeights();
 };

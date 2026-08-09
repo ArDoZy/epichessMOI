@@ -66,8 +66,11 @@ function startClockTick(gs){
 function stopClockTick(gs){
   if(gs&&gs._clockTimerId){clearInterval(gs._clockTimerId);gs._clockTimerId=null;}
 }
+// La pendule tourne aussi pendant qu'on relit l'historique : elle s'arrêtait
+// dès que `historyView` n'était plus nul, ce qui faisait des boutons ⏮◀▶⏭ une
+// pause illimitée en pleine partie.
 function tickClock(gs){
-  if(!gs.clockMs||gs.gameOver||gs.historyView!==null){gs._clockLastTs=Date.now();return;}
+  if(!gs.clockMs||gs.gameOver){gs._clockLastTs=Date.now();return;}
   const now=Date.now();const elapsed=now-gs._clockLastTs;gs._clockLastTs=now;
   const key=gs.turn==='w'?'timeWhite':'timeBlack';
   gs[key]=Math.max(0,gs[key]-elapsed);
@@ -314,12 +317,15 @@ function getLegalMovesKingFiltered(board,r,c,gs,moves){
   });
 }
 
-function moveLeavesKingInCheck(board,fromR,fromC,move,color){
+function moveLeavesKingInCheck(board,fromR,fromC,move,color,anchored){
   if(move.stayPut)return false;
   const b=cloneBoard(board);const p=b[fromR][fromC];if(!p)return false;
   if(move.ep){const pr=move.r+(color==='w'?1:-1);b[pr][move.c]=null;}
   if(move.castle){if(move.castle==='K'){b[fromR][5]=b[fromR][7];b[fromR][7]=null;}if(move.castle==='Q'){b[fromR][3]=b[fromR][0];b[fromR][0]=null;}}
   b[move.r][move.c]={...p,hasMoved:true};b[fromR][fromC]=null;
+  // Les pouvoirs qui effacent ou repoussent une pièce font partie du coup :
+  // les ignorer ici, c'était refuser une parade parfaitement valable.
+  applyCollateralOnBoard(b,{r:fromR,c:fromC},move,p,anchored);
   return isInCheckSimple(color,b);
 }
 
@@ -327,7 +333,8 @@ function getLegalMoves(board,r,c,gs){
   const p=board[r][c];if(!p)return[];
   let raw=generateMovesRaw(board,r,c,gs);
   raw=getLegalMovesKingFiltered(board,r,c,gs,raw);
-  return raw.filter(m=>!moveLeavesKingInCheck(board,r,c,m,p.color));
+  const anchored=gs&&gs.anchored;
+  return raw.filter(m=>!moveLeavesKingInCheck(board,r,c,m,p.color,anchored));
 }
 
 function hasLegalMovesForColor(color,board,gs){
@@ -362,6 +369,55 @@ function applyBansheeEffect(toR,toC,board,p){
   const oppDir=p.color==='w'?1:-1;
   for(let dc=-1;dc<=1;dc++){const nr=toR+oppDir,nc=toC+dc;if(!inB(nr,nc))continue;const t=board[nr][nc];if(t&&(t.type==='p'||t.pieceId==='std-pawn')&&t.color!==p.color){const back=t.color==='w'?1:-1;const br=nr+back;if(inB(br,nc)&&!board[br][nc]){board[br][nc]=t;board[nr][nc]=null;}}}
 }
+// ----------------------------------------------------------------
+// DÉGÂTS COLLATÉRAUX SUR UN PLATEAU SIMULÉ
+// ----------------------------------------------------------------
+// Mêmes effets que applyTyphonEffect / applyDresseurEffect /
+// applyBansheeEffect, mais sur un plateau NU : rien n'est inscrit dans les
+// listes de pièces capturées, aucun état de partie n'est touché. C'est ce
+// dont ont besoin les deux endroits qui SIMULENT un coup sans le jouer :
+//
+//   - moveLeavesKingInCheck : sans cela, « j'efface au Typhon la pièce qui me
+//     met en échec » était jugé illégal, parce que la simulation déplaçait le
+//     Typhon sans appliquer sa destruction — le roi restait donc en échec sur
+//     le plateau simulé. Idem pour la charge du Dresseur.
+//   - applyMoveQuick (js/ai-engine.js) : la recherche voyait ces coups comme
+//     de simples déplacements et ne découvrait leurs effets qu'une fois joués,
+//     donc l'IA n'a jamais joué un Typhon POUR ce qu'il fait.
+//
+// anchored (facultatif) : cases d'un Garde de Pierre ancré, imprenables.
+function applyCollateralOnBoard(b,from,to,p,anchored){
+  const hits=(t,r,c)=>t&&t.color!==p.color&&!(t.isKing||t.type==='k')&&!(anchored&&anchored.has(r+','+c));
+  if(to.destroysPath){
+    const fr=(to.fromR!==undefined)?to.fromR:from.r,fc=(to.fromC!==undefined)?to.fromC:from.c;
+    const dr=Math.sign(to.r-fr),dc=Math.sign(to.c-fc);
+    let nr=fr+dr,nc=fc+dc;
+    while(inB(nr,nc)&&(nr!==to.r||nc!==to.c)){
+      if(hits(b[nr][nc],nr,nc))b[nr][nc]=null;
+      nr+=dr;nc+=dc;
+    }
+  }
+  if(p.pieceId==='typhon'){
+    for(const[dr,dc] of [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]]){
+      const nr=to.r+dr,nc=to.c+dc;
+      if(!inB(nr,nc))continue;
+      if(hits(b[nr][nc],nr,nc))b[nr][nc]=null;
+    }
+  }
+  if(p.pieceId==='banshee'){
+    const oppDir=p.color==='w'?1:-1;
+    for(let dc=-1;dc<=1;dc++){
+      const nr=to.r+oppDir,nc=to.c+dc;
+      if(!inB(nr,nc))continue;
+      const t=b[nr][nc];
+      if(!t||t.color===p.color||!(t.type==='p'||t.pieceId==='std-pawn'))continue;
+      const back=t.color==='w'?1:-1,br=nr+back;
+      if(inB(br,nc)&&!b[br][nc]){b[br][nc]=t;b[nr][nc]=null;}
+    }
+  }
+  return b;
+}
+
 function applyDresseurEffect(move,board,p,gs){
   if(!move.destroysPath)return;
   const dr=Math.sign(move.r-move.fromR),dc=Math.sign(move.c-move.fromC);
@@ -457,6 +513,11 @@ function executeGameMove(from,to,gs){
 // ================================================================
 let _audioCtx=null;
 let _soundEnabled=true;
+// Volume des bruitages, 0 à 1. Déclaré ICI et non dans settings-admin.js :
+// playTone() en a besoin, et une variable `let` d'un autre script serait dans
+// sa zone morte tant que ce script n'a pas été exécuté. Le curseur des
+// réglages ne fait plus que l'écrire.
+let _sfxVol=1;
 
 function getAudioCtx(){
   if(!_audioCtx){
@@ -474,7 +535,10 @@ function playTone(freq,type,duration,volume,fadeOut){
   const gain=ctx.createGain();
   osc.connect(gain);gain.connect(ctx.destination);
   osc.type=type||'sine';osc.frequency.setValueAtTime(freq,ctx.currentTime);
-  gain.gain.setValueAtTime(volume||0.35,ctx.currentTime);
+  // Le curseur « Bruitages » ne faisait que couper le son à zéro : entre 10 %
+  // et 100 % tous les bruitages sortaient au même volume.
+  const vol=Math.max(0.0001,(volume||0.35)*_sfxVol);
+  gain.gain.setValueAtTime(vol,ctx.currentTime);
   if(fadeOut)gain.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+duration);
   osc.start(ctx.currentTime);osc.stop(ctx.currentTime+duration);
 }

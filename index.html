@@ -139,7 +139,9 @@
 <!-- PAGE LOGIN -->
 <div id="page-login" class="page active">
   <div class="login-wrap">
-    <div class="login-logo"><h1>EPIC CHESS</h1><p>Un savant fou, dans un laboratoire d'échecs oublié, a fait naître des créatures de l'alchimie. Composez votre armée et affrontez d'autres esprits dérangés.</p></div>
+    <!-- L'emblème (ballon d'alchimiste couronné) est injecté par
+         mountEmblems() dans js/main.js : un seul tracé, deux emplacements. -->
+    <div class="login-logo"><div class="login-emblem"></div><h1>EPIC CHESS</h1><p>Un savant fou, dans un laboratoire d'échecs oublié, a fait naître des créatures de l'alchimie. Composez votre armée et affrontez d'autres esprits dérangés.</p></div>
     <div class="login-card">
       <div class="lbl" id="accs-lbl">Comptes existants</div>
       <div id="acc-list"></div>
@@ -206,10 +208,21 @@
       <button class="btn btn-ghost" id="mp-join-screen-btn" style="width:100%;padding:12px">Rejoindre avec un code</button>
     </div>
 
+    <!-- ÉCRAN DE RECHERCHE : il ne disait rien d'autre que « ⚔ ». On ne
+         savait ni depuis combien de temps on cherchait, ni s'il y avait
+         seulement quelqu'un d'autre en ligne, ni pourquoi ça durait. Les
+         trois chiffres et la fenêtre de niveau sont remplis en continu par
+         mpRenderSearch() dans js/multiplayer.js. -->
     <div id="mp-screen-quick" style="display:none">
-      <div style="font-family:'Cinzel',serif;font-size:15px;margin-bottom:10px">Recherche d'un adversaire</div>
-      <div style="font-size:34px;letter-spacing:6px;color:var(--gold);margin-bottom:10px">⚔</div>
-      <div style="font-size:12px;color:var(--muted);line-height:1.5">Vous serez appairé dès qu'un autre joueur lancera une partie rapide.</div>
+      <div style="font-family:'Cinzel',serif;font-size:15px;margin-bottom:12px">Recherche d'un adversaire</div>
+      <div class="mp-radar"><span></span><span></span><span></span></div>
+      <div class="mp-search-grid">
+        <div class="mp-search-cell"><div class="mp-search-lbl">Recherche</div><div class="mp-search-val" id="mp-search-elapsed">0:00</div></div>
+        <div class="mp-search-cell"><div class="mp-search-lbl">En attente</div><div class="mp-search-val" id="mp-search-peers">1</div></div>
+        <div class="mp-search-cell"><div class="mp-search-lbl">Niveau visé</div><div class="mp-search-val" id="mp-search-window">±120</div></div>
+      </div>
+      <div class="mp-search-note" id="mp-search-note">On cherche d'abord un adversaire de votre niveau, puis on élargit.</div>
+      <button class="btn btn-ghost" id="mp-fallback-btn" style="display:none;width:100%;margin-top:10px">Affronter l'Instructeur à la place</button>
     </div>
 
     <div id="mp-screen-host" style="display:none">
@@ -257,6 +270,7 @@
       <div class="face-viewport">
         <div class="jouer-menu">
           <div class="ambient-bubbles"><span></span><span></span><span></span><span></span><span></span><span></span></div>
+          <div class="jouer-emblem"></div>
           <div class="jouer-logo">EPIC CHESS</div>
           <!-- Série de victoires en cours : c'est elle qui détermine la rareté
                du prochain coffre, elle doit être visible avant de lancer. -->
@@ -651,7 +665,10 @@
   <div id="tuto-box" class="tuto-box-bottom">
     <div class="tuto-portrait" id="tuto-portrait"></div>
     <div class="tuto-body">
-      <div class="tuto-name">Le Savant</div>
+      <!-- Le compteur d'étapes est rempli par tutoRenderProgress()
+           (js/tutorial.js) : sans lui on ne sait jamais s'il reste deux
+           répliques ou vingt. -->
+      <div class="tuto-name">Le Savant <span class="tuto-progress" id="tuto-progress"></span></div>
       <div class="tuto-text" id="tuto-text"></div>
       <div class="tuto-hint" id="tuto-hint"></div>
     </div>

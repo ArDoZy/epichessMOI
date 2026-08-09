@@ -5,9 +5,12 @@
   "private": true,
   "scripts": {
     "dev": "npx --yes serve -l 8080 .",
-    "start": "npx --yes serve -l 8080 ."
+    "start": "npx --yes serve -l 8080 .",
+    "test": "node tools/smoke-test.js"
   },
   "engines": {
     "node": ">=16"
-  }
+  },
+  "comment": "Aucune dependance de production : le jeu s'ouvre en double-cliquant sur index.html. Playwright n'est necessaire QUE pour `npm test` (voir tools/smoke-test.js) : npm i -D playwright && npx playwright install chromium.",
+  "devDependencies": {}
 }
