@@ -80,21 +80,35 @@
 
   let slots=Object.assign({},CANON);
   let animating=false, locked=false, cube=null;
-  // Rotation demandée pendant qu'une autre est déjà en cours : rejouée
-  // immédiatement à la fin de l'animation courante (permet d'enchaîner deux
-  // rotations sans avoir à attendre puis re-cliquer).
-  let queuedKind=null;
+  // Rotations demandées pendant qu'une autre est déjà en cours : rejouées
+  // l'une après l'autre à la fin de l'animation courante (permet d'enchaîner
+  // sans avoir à attendre puis re-cliquer). La file est volontairement courte :
+  // au-delà, un martèlement de clics ferait tourner le cube longtemps après
+  // qu'on ait arrêté de cliquer.
+  const queue=[];
+  const QUEUE_MAX=2;
+  // Numéro de génération de l'animation. Une rotation en vol dont la
+  // génération n'est plus la courante (page secondaire ouverte, retour au
+  // menu, saut direct sur une face) doit se terminer SANS rien permuter :
+  // sinon elle appliquait sa permutation à des emplacements déjà
+  // réinitialisés et la face affichée ne correspondait plus à son contenu.
+  // C'est ce qui « buguait » quand on cliquait vite d'une page à l'autre.
+  let animGen=0;
+  function abortAnim(){ animGen++; animating=false; queue.length=0; }
 
   const faceEl=name=>cube.querySelector('.cube-face[data-face="'+name+'"]');
   const slotOf=name=>{ for(const s in slots) if(slots[s]===name) return s; };
 
   function assignTransforms(){ for(const s in slots){ const el=faceEl(slots[s]); if(el)el.style.transform=SLOT_TF[s]; } }
 
-  function refresh(){
+  // skipContent : la face avant a déjà été rendue AVANT la rotation (voir
+  // animate), inutile de refaire ce travail au moment précis où l'on
+  // enchaîne sur la rotation suivante.
+  function refresh(skipContent){
     if(!cube)return;
     cube.querySelectorAll('.cube-face').forEach(f=>f.classList.toggle('is-front', f.dataset.face===slots.front));
     updateArrows();
-    refreshFaceContent(slots.front);
+    if(!skipContent)refreshFaceContent(slots.front);
   }
   // Chaque face se recalcule à l'arrivée : l'inventaire, les coffres et l'ELO
   // bougent à chaque partie, une face rendue une seule fois au chargement
@@ -134,32 +148,49 @@
   // sans que l'utilisateur ait besoin de recliquer.
   function animate(kind,after){
     if(!cube)return;
-    if(animating){ queuedKind=kind; return; }
+    if(animating){ if(queue.length<QUEUE_MAX)queue.push(kind); return; }
     animating=true; updateArrows();
+    const myGen=animGen;
+    // Le contenu de la face qui ARRIVE est rendu AVANT la rotation : on ne
+    // voit plus les données apparaître au dernier moment, et surtout la fin
+    // de rotation n'a plus de travail lourd à faire — c'est ce rendu
+    // synchrone en toute fin d'animation qui saccadait l'enchaînement.
+    refreshFaceContent(PERM[kind](slots).front);
     cube.style.transition='transform '+ROTATE_MS+'ms cubic-bezier(.22,.61,.36,1)';
     void cube.offsetWidth;
     cube.style.transform=REST+' '+CUBE_ANIM[kind];
-    let done=false;
-    const finish=()=>{
+    let done=false, guard=0;
+    const finish=e=>{
+      // transitionend REMONTE depuis les descendants des faces : boutons,
+      // cartes d'armée et coffres ont leurs propres transitions, et le
+      // moindre survol pendant la rotation coupait celle-ci en plein vol
+      // (le cube « claquait » sur la face suivante). On ne réagit qu'à la
+      // transition de transform du cube lui-même.
+      if(e&&(e.target!==cube||e.propertyName!=='transform'))return;
       if(done)return; done=true;
+      clearTimeout(guard);
       cube.removeEventListener('transitionend',finish);
+      // Rotation périmée (page secondaire ouverte entre-temps, retour menu) :
+      // on ne touche NI aux emplacements NI à l'état, quelqu'un d'autre les a
+      // déjà fixés.
+      if(myGen!==animGen)return;
       slots=PERM[kind](slots);   // la face amenée au front devient « front »
       animating=false;
       settle();                  // cube revient à l'angle 0, faces réaffectées (aucun saut visuel)
-      refresh();
+      refresh(true);             // contenu déjà rendu au départ de la rotation
       if(after)after();
-      if(queuedKind && !locked){
-        const k=queuedKind; queuedKind=null; animate(k);
-      }else queuedKind=null;
+      if(queue.length&&!locked)animate(queue.shift());
+      else queue.length=0;
     };
     cube.addEventListener('transitionend',finish);
-    setTimeout(finish,ROTATE_MS+40); // filet de sécurité si transitionend ne se déclenche pas
+    guard=setTimeout(finish,ROTATE_MS+80); // filet de sécurité si transitionend ne se déclenche pas
   }
 
   // Amène une face au front SANS animation (utilisé quand le cube est masqué
   // par un overlay, ou pour un changement de page programmatique).
   function setFrontInstant(name){
     if(!cube)return;
+    abortAnim();   // une rotation encore en vol ne doit plus rien permuter
     let g=0;
     while(slots.front!==name && g++<6){
       const s=slotOf(name);
@@ -191,6 +222,7 @@
     // Retour au menu = retour à l'adresse d'origine (/ ou /test) : /combat ne
     // désigne qu'une partie en ligne effectivement en cours.
     if(typeof setAppPath==='function'&&typeof appHomePath==='function')setAppPath(appHomePath());
+    abortAnim();
     document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
     document.body.classList.remove('nav-overlay');
     document.body.classList.add('cube-active');
@@ -204,7 +236,7 @@
   // ---- Intégration avec showPage() -------------------------------
   function cubeOnShowPage(id){
     if(!cube)return;
-    if(id==='page-login'){ document.body.classList.remove('cube-active','nav-overlay'); locked=false; return; }
+    if(id==='page-login'){ abortAnim(); document.body.classList.remove('cube-active','nav-overlay'); locked=false; return; }
     if(id==='face-jouer'){ goToMainMenu(); return; }
     const face=EMBED[id];
     if(face==='armees'||face==='reserve'||face==='voie'){
@@ -230,7 +262,12 @@
     if(el && el.classList.contains('page')) document.body.classList.add('nav-overlay');
     if(document.body.classList.contains('cube-active')){
       locked=false;
+      // setFrontInstant annule déjà la rotation en vol ; quand la face JOUER
+      // est déjà au front il faut quand même l'annuler, sinon la rotation
+      // reprise derrière l'overlay ferait réapparaître une autre face au
+      // retour au menu.
       if(slots.front!=='jouer') setFrontInstant('jouer');
+      else if(animating){ abortAnim(); settle(); refresh(true); }
     }
     updateArrows();
   }

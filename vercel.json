@@ -5,7 +5,9 @@
   "framework": null,
   "cleanUrls": true,
   "rewrites": [
-    { "source": "/combat", "destination": "/index.html" },
-    { "source": "/test", "destination": "/index.html" }
+    { "source": "/combat", "destination": "/" },
+    { "source": "/combat/", "destination": "/" },
+    { "source": "/test", "destination": "/" },
+    { "source": "/test/", "destination": "/" }
   ]
 }

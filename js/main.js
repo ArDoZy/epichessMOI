@@ -39,7 +39,12 @@ let VV_UNLOCKED=new Set();
 // en sort par les réglages, et l'adresse affichée dit toujours dans laquelle
 // des deux on se trouve — impossible d'oublier qu'on est en admin et de
 // s'étonner ensuite que l'ELO ne bouge pas.
-let ADMIN_MODE=(typeof location!=='undefined')&&/^\/test\/?$/.test(location.pathname);
+// ?admin=1 est un FILET DE SÉCURITÉ, pas l'entrée normale : si l'hébergeur ne
+// réécrit pas /test vers index.html (404), le mode admin reste atteignable.
+// L'entrée officielle, affichée dans les réglages, reste l'adresse /test.
+let ADMIN_MODE=(typeof location!=='undefined')&&(
+  /^\/test\/?$/.test(location.pathname)||/[?&]admin=1(&|$)/.test(location.search)
+);
 
 // ----------------------------------------------------------------
 // ADRESSES DU JEU : /, /combat, /test
