@@ -34,9 +34,7 @@ const loadArmyForEdit=ad=>{
 // NOM DE L'ARMÉE : bouton "Nommer l'armée" (ou nom + petit stylo une fois
 // nommée) affiché au-dessus de la carte, à la place des dates.
 // ----------------------------------------------------------------
-// Icône stylo en SVG (et non en glyphe unicode/emoji) pour un rendu net et
-// cohérent avec les flèches du cube (voir index.html #cube-arrow-*).
-const PEN_ICON='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="12" height="12"><path d="M17 3a2.83 2.83 0 0 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="M15 5l4 4"/></svg>';
+// PEN_ICON / TRASH_ICON sont définies dans js/main.js (icônes partagées).
 let _renamingArmyId=null;
 const buildNameBlock=(a,isAi)=>{
   if(_renamingArmyId===a.id){
@@ -129,8 +127,10 @@ window.pickArmyForBattle=id=>{
 const renderArmiesPage=()=>{
   const grid=document.getElementById('armies-grid');
   const sel=!!armySelectMode;
-  // Chrome de la page : masqué pendant la sélection.
-  ['b-voie','ar-new'].forEach(id=>{const e=document.getElementById(id);if(e)e.style.display=sel?'none':'';});
+  // Chrome de la page : masqué pendant la sélection. (Le bouton « Voie » a
+  // disparu de cette page — la Voie est une face du cube — d'où la liste à
+  // un seul élément.)
+  ['ar-new'].forEach(id=>{const e=document.getElementById(id);if(e)e.style.display=sel?'none':'';});
   const banner=document.getElementById('armies-select-banner');
   if(banner){
     banner.style.display=sel?'':'none';
@@ -147,7 +147,7 @@ const renderArmiesPage=()=>{
       ? '<div class="ac-name-row"><span class="ac-name'+(a.name?'':' ac-name-none')+'">'+escH(a.name||'Armée sans nom')+'</span></div>'
       : buildNameBlock(a,false);
     const btns=sel?''
-      : '<div class="ac-btns"><button class="btn btn-ghost" style="font-size:11px;padding:6px 12px" onclick="editPlayerArmy(\''+a.id+'\')">Modifier</button><button class="btn btn-danger" style="font-size:14px;padding:6px 10px" title="Supprimer cette armée" onclick="deletePlayerArmy(\''+a.id+'\')">🗑️</button></div>';
+      : '<div class="ac-btns"><button class="btn btn-ghost" style="font-size:11px;padding:6px 12px" onclick="editPlayerArmy(\''+a.id+'\')">Modifier</button><button class="btn btn-danger" style="font-size:14px;padding:6px 10px" title="Supprimer cette armée" onclick="deletePlayerArmy(\''+a.id+'\')">'+TRASH_ICON+'</button></div>';
     // Une armée dont le stock est insuffisant reste visible et modifiable,
     // mais ne peut pas être engagée : elle est marquée, pas cachée.
     const stock=(typeof armyStock==='function')?armyStock(a):{ok:true,missing:[]};
@@ -183,7 +183,7 @@ const renderAiArmiesPage=()=>{
     const mon=PIECES.find(p=>p.id===a.mon.id);const gen=PIECES.find(p=>p.id===a.gen.id);
     const extras=a.extras.map(id=>PIECES.find(p=>p.id===id)).filter(Boolean);
     const all=[mon,gen,...extras].filter(Boolean);
-    return '<div class="army-card" style="border-top-color:var(--accent2)">'+buildNameBlock(a,true)+'<div class="ac-pieces">'+all.map(p=>'<span>'+p.emoji+'</span>').join('')+'</div><div class="ac-names">'+(mon?.name||'?')+' · '+(gen?.name||'?')+'<br>'+extras.map(p=>p.name).join(' · ')+'</div><div class="ac-val">'+a.totalValue+' pts</div><div class="ac-btns"><button class="btn btn-ghost" style="font-size:11px;padding:6px 12px" onclick="editAiArmy(\''+a.id+'\')">Modifier</button><button class="btn btn-primary" style="font-size:11px;padding:6px 12px" onclick="selectAiArmy(\''+a.id+'\')">Choisir</button><button class="btn btn-danger" style="font-size:14px;padding:6px 10px" title="Supprimer cette armée" onclick="deleteAiArmy(\''+a.id+'\')">🗑️</button></div></div>';
+    return '<div class="army-card" style="border-top-color:var(--accent2)">'+buildNameBlock(a,true)+'<div class="ac-pieces">'+all.map(p=>'<span>'+p.emoji+'</span>').join('')+'</div><div class="ac-names">'+(mon?.name||'?')+' · '+(gen?.name||'?')+'<br>'+extras.map(p=>p.name).join(' · ')+'</div><div class="ac-val">'+a.totalValue+' pts</div><div class="ac-btns"><button class="btn btn-ghost" style="font-size:11px;padding:6px 12px" onclick="editAiArmy(\''+a.id+'\')">Modifier</button><button class="btn btn-primary" style="font-size:11px;padding:6px 12px" onclick="selectAiArmy(\''+a.id+'\')">Choisir</button><button class="btn btn-danger" style="font-size:14px;padding:6px 10px" title="Supprimer cette armée" onclick="deleteAiArmy(\''+a.id+'\')">'+TRASH_ICON+'</button></div></div>';
   }).join('');
 };
 window.editAiArmy=id=>{const a=savedAiArmies.find(x=>x.id===id);if(!a)return;builderMode='ai';updateBuilderBanner();loadArmyForEdit(a);showPage('page-builder');updAll();};

@@ -147,10 +147,16 @@ document.getElementById('cb-join')?.addEventListener('click',()=>{
 // ----------------------------------------------------------------
 // BOUTONS : MODE INSTRUCTEUR
 // ----------------------------------------------------------------
+// « Quitter » ramenait à l'armurerie, c'est-à-dire à l'écran d'où l'on venait
+// juste de partir : on se retrouvait à devoir encore reculer d'un cran pour
+// sortir. Le bouton rend maintenant la main au menu principal, qui est la
+// vraie destination quand on renonce à un combat.
 ['cb-back','cb-back-ia'].forEach(id=>{
   document.getElementById(id)?.addEventListener('click',()=>{
     if(typeof mpLeave==='function')mpLeave();
-    renderArmiesPage();showPage('page-armies');
+    currentArmyData=null;aiArmyData=null;
+    if(typeof goToMainMenu==='function')goToMainMenu();
+    else{renderArmiesPage();showPage('page-armies');}
   });
 });
 

@@ -100,6 +100,7 @@ function renderGame(gs){
     html+='<div class="'+cls+'" data-r="'+r+'" data-c="'+c+'">'+inner+'</div>';
   }
   boardEl.innerHTML=html;
+  animateLastMove(gs,boardEl,flipped);
   if(typeof applyBoardSkin==='function')applyBoardSkin();
   boardEl.querySelectorAll('.gc').forEach(el=>{
     const r=+el.dataset.r,c=+el.dataset.c;
@@ -110,6 +111,9 @@ function renderGame(gs){
     });
     // Touch tap sur mobile : si pas de drag actif, traiter comme un clic
     el.addEventListener('touchend',e=>{
+      // L'appui long vient d'ouvrir la fiche de la pièce : le relâchement du
+      // doigt ne doit pas, en plus, la sélectionner et refermer la fiche.
+      if(typeof longPressJustFired==='function'&&longPressJustFired())return;
       if(gs.gameOver||gs.turn!==playerCol)return;
       if(dragState&&dragState.moved)return; // drag actif, géré par endDrag
       if(gs.historyView!==null){gs.historyView=null;renderGame(gs);updateStatus(gs);updateHistoryNav();return;}
@@ -117,6 +121,8 @@ function renderGame(gs){
       handleGameClick(r,c,gs);
     },{passive:false});
     el.addEventListener('contextmenu',e=>showCtxMenu(e,r,c,gs));
+    // Écrans tactiles : appui long = clic droit (js/main.js::bindLongPress).
+    if(typeof bindLongPress==='function')bindLongPress(el,e=>showCtxMenu(e,r,c,gs));
   });
   boardEl.querySelectorAll('.gc-piece[data-r]').forEach(el=>{
     const r=+el.dataset.r,c=+el.dataset.c;const cell=b[r][c];
@@ -132,6 +138,40 @@ function renderGame(gs){
     },{passive:true});
   });
   buildGameLabels(gs);updateCaptured(gs);updateHistoryNav();renderClocks(gs);updateTurnBars(gs);
+}
+
+// ----------------------------------------------------------------
+// GLISSEMENT DE LA PIÈCE QUI VIENT DE JOUER
+// ----------------------------------------------------------------
+// renderGame reconstruit les 64 cases en une seule affectation d'innerHTML :
+// la pièce jouée n'était donc jamais vue en mouvement, elle disparaissait
+// d'une case et apparaissait sur l'autre. Un coup de l'IA se réduisait à un
+// clignotement, et sur un plateau chargé on cherchait ce qui avait bougé.
+//
+// On repart du décalage réel entre les deux cases (en pixels, calculé sur la
+// taille courante du plateau) : la pièce est posée à sa case de départ et
+// ramenée à l'arrivée par l'animation CSS [BOARD-MOTION].
+//
+// La clé mémorisée sur gs empêche de rejouer le glissement à chaque re-rendu
+// (sélection d'une pièce, retour d'historique) : il ne doit se jouer qu'une
+// fois, au coup lui-même.
+function animateLastMove(gs,boardEl,flipped){
+  const lm=gs.lastMove;
+  if(!lm||!lm.from||!lm.to)return;
+  // Ancrage du Garde de Pierre : la pièce ne bouge pas, il n'y a rien à faire
+  // glisser.
+  if(lm.from.r===lm.to.r&&lm.from.c===lm.to.c)return;
+  const key=lm.from.r+','+lm.from.c+'>'+lm.to.r+','+lm.to.c+'@'+gs.history.length;
+  if(gs._animKey===key)return;
+  const el=boardEl.querySelector('.gc-piece[data-r="'+lm.to.r+'"][data-c="'+lm.to.c+'"]');
+  if(!el)return;
+  const cell=boardEl.getBoundingClientRect().width/8;
+  if(!cell)return;
+  gs._animKey=key;
+  const sign=flipped?-1:1;
+  el.style.setProperty('--mv-dx',(sign*(lm.from.c-lm.to.c)*cell).toFixed(1)+'px');
+  el.style.setProperty('--mv-dy',(sign*(lm.from.r-lm.to.r)*cell).toFixed(1)+'px');
+  el.classList.add('gc-move-in');
 }
 
 // Le bandeau du joueur au trait s'allume : indication permanente de « à qui
@@ -390,7 +430,9 @@ function updateStatus(gs){
   const hasLegal=hasLegalMovesForColor(t,gs.board,gs);
   const playerCol=gs.playerColor||'w';
   const aiCol=gs.aiColor||'b';
-  const oppLabel=gs.multiplayer?'Votre adversaire':'L\'IA';
+  // Le jeu n'a plus « une IA » mais UN adversaire nommé : l'Instructeur (ou
+  // l'instructeur du tutoriel en cours). Le dire par son nom, partout.
+  const oppLabel=gs.multiplayer?'Votre adversaire':((gs.tuto&&gs.tuto.name)||INSTRUCTOR.name);
   if(!hasLegal){
     if(check){
       const playerWins=opp(t)===playerCol;
@@ -405,12 +447,12 @@ function updateStatus(gs){
     }
     return;
   }
-  if(check){bar.textContent='Échec ! Tour : '+(t===playerCol?'Vous':(gs.multiplayer?'Adversaire':'IA'));bar.className='status-bar check';playSound('check');}
+  if(check){bar.textContent='Échec ! Tour : '+(t===playerCol?'Vous':oppLabel);bar.className='status-bar check';playSound('check');}
   else{
     if(t===aiCol&&gs.multiplayer){
       bar.textContent='Au tour de votre adversaire…';
     }else if(t===aiCol){
-      bar.textContent=INSTRUCTOR.name+' réfléchit…';
+      bar.textContent=oppLabel+' réfléchit…';
     }else bar.textContent='À vous de jouer';
     bar.className='status-bar '+(t===aiCol?'thinking':'ok');
   }

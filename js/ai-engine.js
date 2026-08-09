@@ -65,8 +65,20 @@ const KING_MIDDLE_PST=[
   [20, 30, 10,  0,  0, 10, 30, 20]
 ];
 
+// ORIENTATION DES TABLES : la ligne 0 de chaque table est la rangée LA PLUS
+// AVANCÉE du camp considéré (celle de la promotion), la ligne 7 sa rangée de
+// départ. Sur ce plateau, r=0 est le fond des Noirs et r=7 celui des Blancs :
+// un Blanc avance donc vers r décroissant et lit la table à `r`, un Noir
+// avance vers r croissant et la lit à `7-r`.
+//
+// Les deux étaient INVERSÉS, avec deux conséquences que l'on voyait jouer :
+// un pion sur sa case de départ touchait la prime de la 7e rangée (+50) et
+// n'avait donc aucune raison d'avancer, et le roi était poussé vers le CENTRE
+// du plateau au lieu de rester à l'abri derrière ses pions. La table des
+// cavaliers, symétrique haut/bas, ne trahissait rien : le défaut est resté
+// invisible longtemps.
 function getPST(p, r, c){
-  const br = p.color==='b' ? r : (7-r);
+  const br = p.color==='w' ? r : (7-r);
   if(p.type==='p'||p.pieceId==='std-pawn'||p.pieceId==='fourmi')return PAWN_PST[br][c];
   if(p.type==='n'||p.pieceId==='cavalier-primordial')return KNIGHT_PST[br][c];
   if(p.isKing||p.type==='k')return KING_MIDDLE_PST[br][c];
@@ -307,12 +319,16 @@ function evalBoard(board,gs){
   return s+evalPowers(board,fgs);
 }
 
-function getAllMovesColor(color,board,gs){
+// unsorted : minimax refait son propre tri (table de transposition, killers,
+// historique), le tri MVV/LVA fait ici serait alors payé deux fois par nœud
+// pour rien. La quiescence, elle, garde ce tri : c'est son seul ordre.
+function getAllMovesColor(color,board,gs,unsorted){
   const moves=[];
   for(let r=0;r<8;r++)for(let c=0;c<8;c++){
     const p=board[r][c];
     if(p&&p.color===color)getLegalMoves(board,r,c,gs).forEach(m=>moves.push({from:{r,c},to:m}));
   }
+  if(unsorted)return moves;
   moves.sort((a,b)=>{
     const aVic=board[a.to.r][a.to.c];const bVic=board[b.to.r][b.to.c];
     const aV=aVic?(CVAL[aVic.pieceId]||PVAL[aVic.type]||0):0;
@@ -329,12 +345,16 @@ function getAllMovesColor(color,board,gs){
   return moves;
 }
 
-function applyMoveQuick(board,from,to,p){
+function applyMoveQuick(board,from,to,p,anchored){
   const b=cloneBoard(board);
   if(to.stayPut){if(b[to.r][to.c])b[to.r][to.c]=null;return b;}
   if(to.ep){const pr=to.r+(p.color==='w'?1:-1);b[pr][to.c]=null;}
   if(to.castle){if(to.castle==='K'){b[from.r][5]=b[from.r][7];b[from.r][7]=null;}if(to.castle==='Q'){b[from.r][3]=b[from.r][0];b[from.r][0]=null;}}
   b[to.r][to.c]={...p,hasMoved:true};b[from.r][from.c]=null;
+  // Typhon, charge du Dresseur, hurlement de la Banshee : ces effets sont le
+  // coup, pas un supplément. Sans eux la recherche évaluait un Typhon comme un
+  // fou d'une case et ne jouait jamais le coup qui efface trois pièces.
+  applyCollateralOnBoard(b,from,to,b[to.r][to.c],anchored);
   if(b[to.r]?.[to.c]?.pieceId==='std-pawn'&&(to.r===0||to.r===7)&&b[to.r][to.c])b[to.r][to.c]={...b[to.r][to.c],type:'q',emoji:'♛',pieceId:'dame'};
   return b;
 }
@@ -448,7 +468,7 @@ function quiesce(board,alpha,beta,maxing,fgs,qdepth){
   if(maxing){
     for(const{from,to} of moves){
       if(_aiAborted)return 0;
-      const nb=applyMoveQuick(board,from,to,board[from.r][from.c]);
+      const nb=applyMoveQuick(board,from,to,board[from.r][from.c],fgs2.anchored);
       const ev=quiesce(nb,alpha,beta,false,fgs2,qdepth-1);
       if(ev>alpha)alpha=ev;if(alpha>=beta)return beta;
     }
@@ -456,7 +476,7 @@ function quiesce(board,alpha,beta,maxing,fgs,qdepth){
   }else{
     for(const{from,to} of moves){
       if(_aiAborted)return 0;
-      const nb=applyMoveQuick(board,from,to,board[from.r][from.c]);
+      const nb=applyMoveQuick(board,from,to,board[from.r][from.c],fgs2.anchored);
       const ev=quiesce(nb,alpha,beta,true,fgs2,qdepth-1);
       if(ev<beta)beta=ev;if(alpha>=beta)return alpha;
     }
@@ -494,7 +514,7 @@ function minimax(board,depth,alpha,beta,maxing,fgs,nullOk,plyFromRoot){
     }
   }
 
-  let moves=getAllMovesColor(color,board,fgs2);
+  let moves=getAllMovesColor(color,board,fgs2,true);
   if(!moves.length)return inCheck?(maxing?-49000+plyFromRoot:49000-plyFromRoot):0;
 
   moves.sort((a,b2)=>{
@@ -522,7 +542,7 @@ function minimax(board,depth,alpha,beta,maxing,fgs,nullOk,plyFromRoot){
   for(const{from,to} of moves){
     if(_aiAborted)return 0;
     const p=board[from.r][from.c];if(!p)continue;
-    const nb=applyMoveQuick(board,from,to,p);
+    const nb=applyMoveQuick(board,from,to,p,fgs2.anchored);
     moveCount++;
 
     const isCapture=!!board[to.r][to.c];
@@ -564,7 +584,7 @@ function getWorkerCode(){
   const fns=[
     inB,opp,cloneBoard,getPieceEmoji,
     slidingMoves,jumpMoves,knightMoves,kingMoves,pawnMoves,generateMovesRaw,
-    isInCheckSimple,isSquareAttackedSimple,getLegalMovesKingFiltered,moveLeavesKingInCheck,getLegalMoves,
+    isInCheckSimple,isSquareAttackedSimple,getLegalMovesKingFiltered,applyCollateralOnBoard,moveLeavesKingInCheck,getLegalMoves,
     updateMedusaParalysis,updateGrandMaitre,
     applyMoveQuick,powerValueAt,evalPowers,evalBoard,getAllMovesColor,
     boardHash,ttStore,ttProbe,storeKiller,isKiller,quiesce,minimax,
@@ -620,7 +640,7 @@ self.onmessage=function(e){
     let bestMove=null,bestScore=-Infinity;
     for(const{from,to} of moves){
       const p=gs.board[from.r][from.c];if(!p)continue;
-      const nb=applyMoveQuick(gs.board,from,to,p);
+      const nb=applyMoveQuick(gs.board,from,to,p,gs.anchored);
       let backPenalty=0;
       if(gs.lastMoveHistory&&gs.lastMoveHistory.length>=2){
         const prev=gs.lastMoveHistory[gs.lastMoveHistory.length-2];
@@ -670,7 +690,7 @@ self.onmessage=function(e){
     for(const{from,to} of searchMoves){
       if(Date.now()>_aiDeadline)break;
       const p=gs.board[from.r][from.c];if(!p)continue;
-      const nb=applyMoveQuick(gs.board,from,to,p);
+      const nb=applyMoveQuick(gs.board,from,to,p,gs.anchored);
       const fgs2={...fgsRoot,board:nb,medusaParalyzed:new Set(),pretreProtected:new Set(),grandMaitreAlive:{w:false,b:false}};
       updateMedusaParalysis(nb,fgs2);updateGrandMaitre(nb,fgs2);
       let score=minimax(nb,depth-1,aAlpha,aBeta,false,fgs2,true,1);
@@ -712,11 +732,22 @@ function serializeGs(gs){
   };
 }
 
-function doAIMove(gs){
+function doAIMove(gs,retry){
   const aiCol=gs.aiColor||'b';
   if(gs.gameOver||gs.turn!==aiCol)return;
 
   ensureWorker();
+
+  // Le Worker est encore sur la recherche de la partie PRÉCÉDENTE (revanche
+  // ou nouveau round lancé pendant que l'Instructeur réfléchissait). Basculer
+  // sur le thread principal figerait l'interface trois secondes : on repasse
+  // simplement la main, et on n'insiste pas au-delà de trois secondes.
+  if(_aiWorker&&_aiWorkerBusy){
+    const n=(retry||0)+1;
+    if(n<=10){setTimeout(()=>doAIMove(gs,n),300);return;}
+    _aiWorker.terminate();_aiWorker=null;_aiWorkerBusy=false;
+    ensureWorker();
+  }
 
   if(_aiWorker&&!_aiWorkerBusy){
     _aiWorkerBusy=true;
@@ -778,7 +809,7 @@ function doAIMoveMainThread(gs){
     let bestMove=null,bestScore=-Infinity;
     for(const{from,to} of moves){
       const p=gs.board[from.r][from.c];if(!p)continue;
-      const nb=applyMoveQuick(gs.board,from,to,p);
+      const nb=applyMoveQuick(gs.board,from,to,p,gs.anchored);
       const backPenalty=(p&&recentPositions.has(p.id+'_'+to.r+'_'+to.c))?-30:0;
       const sc=evalBoard(nb,gs)+(Math.random()-0.5)*50+backPenalty;
       if(sc>bestScore){bestScore=sc;bestMove={from,to};}
@@ -803,7 +834,7 @@ function doAIMoveMainThread(gs){
     for(const{from,to} of searchMoves){
       if(Date.now()>_aiDeadline)break;
       const p=gs.board[from.r][from.c];if(!p)continue;
-      const nb=applyMoveQuick(gs.board,from,to,p);
+      const nb=applyMoveQuick(gs.board,from,to,p,gs.anchored);
       const fgs2={...fgsRoot,board:nb,medusaParalyzed:new Set(),pretreProtected:new Set(),grandMaitreAlive:{w:false,b:false}};
       updateMedusaParalysis(nb,fgs2);updateGrandMaitre(nb,fgs2);
       let score=minimax(nb,depth-1,aAlpha,aBeta,false,fgs2,true,1);

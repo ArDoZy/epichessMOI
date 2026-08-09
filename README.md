@@ -48,7 +48,9 @@ epic-chess/
 │                                   # Supabase gratuit de se mettre en veille
 ├── tools/
 │   ├── gen-boards.js        # Générateur des textures d'échiquier (node)
-│   └── gen-social.js        # Régénère og-image.png et apple-touch-icon.png
+│   ├── gen-social.js        # Régénère og-image.png et apple-touch-icon.png
+│   └── smoke-test.js        # `npm test` : rejoue tout le parcours du jeu
+│                            #  dans un vrai navigateur (voir plus bas)
 ├── css/
 │   └── style.css            # Tout le CSS, organisé en sections [TAG] commentées
 └── js/
@@ -139,6 +141,26 @@ une nouvelle, **ajoutez-la aussi à la liste `fns` de `getWorkerCode()`**,
 sinon le Worker plantera et l'IA basculera silencieusement sur le thread
 principal (jouable, mais l'interface se figera pendant sa réflexion).
 
+Trois points méritent d'être connus avant de toucher au moteur :
+
+- **L'orientation des tables position-carrés** (`getPST`). La ligne 0 de
+  `PAWN_PST` / `KING_MIDDLE_PST` est la rangée la plus AVANCÉE du camp
+  considéré. Sur ce plateau, `r=0` est le fond des Noirs : un Blanc lit donc
+  la table à `r`, un Noir à `7-r`. Les deux étaient inversés, ce qui donnait
+  une prime de 7e rangée aux pions restés sur leur case de départ et poussait
+  le roi vers le centre du plateau. La table des cavaliers étant symétrique,
+  rien ne le trahissait à l'œil.
+- **Les pouvoirs destructeurs font partie du coup.** `applyMoveQuick()`
+  applique `applyCollateralOnBoard()` (rules-engine.js) : sans lui, la
+  recherche voyait un Typhon comme un fou d'une case et ne jouait jamais le
+  coup qui efface trois pièces. La même fonction est appelée par
+  `moveLeavesKingInCheck()`, ce qui rend légale la parade « j'efface au
+  Typhon la pièce qui me met en échec » — elle était refusée avant.
+- **Le tri des coups n'a lieu qu'une fois.** `getAllMovesColor(…, unsorted)`
+  saute son tri MVV/LVA quand `minimax` va de toute façon refaire le sien
+  (table de transposition, killers, historique). La quiescence, elle, garde
+  le tri : c'est son seul ordre.
+
 ### 5. Le tutoriel (`js/tutorial.js`)
 
 Le savant parle, et le joueur AGIT. Le tutoriel se déroule en deux temps.
@@ -203,6 +225,47 @@ Le projecteur est un rectangle avec une `box-shadow` de 9999px qui assombrit
 tout le reste ; il porte `pointer-events:none`, ce qui est **la condition**
 pour que les étapes interactives fonctionnent : sans cela, le voile
 intercepterait le clic destiné au bouton mis en lumière.
+
+### 7. Les retours à l'écran (`js/main.js::showNotif`)
+
+`showNotif()` avait été vidée : c'était une fonction sans corps. Or c'est le
+**seul** retour du jeu sur une trentaine de refus — « Pseudo : 2 à 20
+caractères », « Les mots de passe ne correspondent pas », « 3 pièces max »,
+« Dépasse 24 points », « Pièce verrouillée », « Composez d'abord une armée ».
+Tous ces boutons ne faisaient donc rien du tout, sans un mot : le jeu
+paraissait cassé là où il refusait simplement une action.
+
+Le bandeau est de retour, en bas à droite (le haut de l'écran appartient à la
+barre de compte et au bouton de réglages), trois messages au plus, effacé au
+clic. `showNotif(msg, 'err' | 'ok' | 'info')`. **Ne la revidez pas** : un
+refus muet est un bug, pas un choix de sobriété.
+
+### 8. L'appariement en ligne (`js/multiplayer.js`)
+
+L'ancien algorithme appariait **les deux plus anciens**, point final : un
+joueur à 120 ELO tombait donc régulièrement contre un joueur à 2000, ce qui,
+dans un jeu où perdre coûte l'armée engagée, est la pire rencontre possible
+pour les deux. Il supposait en plus que les deux navigateurs aboutiraient au
+même calcul au même moment, alors que leurs horloges ne sont pas synchronisées.
+
+Le nouveau tient en quatre règles :
+
+1. **Fenêtre de niveau qui s'élargit** : ±120 ELO au départ, +120 toutes les
+   8 secondes, ouverte à tous au bout de 48 (`mpEloWindow`).
+2. **Un seul décideur** : le joueur qui attend depuis le plus longtemps
+   choisit, parmi les candidats de sa fenêtre, le plus proche en ELO. Les
+   autres ne calculent rien, ils répondent — plus aucun accord d'horloge
+   n'est nécessaire.
+3. **Poignée de main en deux temps** : `pair` → `pair-ok`. Sans confirmation
+   au bout de 3,5 s, la proposition est abandonnée et la recherche reprend.
+4. **Battement de ré-évaluation** (1 s) : « presence » n'émet un événement
+   que lorsque quelqu'un entre ou sort, alors que la fenêtre, elle, s'élargit
+   avec le temps.
+
+L'écran de recherche (`mpRenderSearch`) affiche le temps écoulé, le nombre de
+joueurs en attente et la fenêtre courante, et propose l'Instructeur au bout
+de 40 secondes. Le salon d'attente a changé de nom (`epichess-lobby-v2`) :
+les anciens clients ne peuvent pas s'y tromper de protocole.
 
 ## Le multijoueur et la mise en veille de Supabase
 
@@ -293,6 +356,31 @@ Si tu ajoutes un nouveau fichier JS, insère-le dans cette chaîne à l'endroit
 qui correspond à ses dépendances (voir l'en-tête de chaque fichier, qui liste
 explicitement ses dépendances et qui l'utilise).
 
+## Vérifier que le jeu démarre encore (`npm test`)
+
+Il n'y a ni build ni dépendance : rien ne signalait donc qu'un fichier venait
+d'être cassé. Or tout est chargé par une chaîne de `<script>` dans un espace
+de noms global partagé — une faute de frappe dans n'importe lequel casse tous
+les suivants, et on ne le découvre qu'en ouvrant la page à la main.
+
+`tools/smoke-test.js` ouvre le vrai jeu dans un vrai navigateur et refait le
+parcours : création de compte, refus expliqué, tutoriel, réglages conservés,
+partie contre l'Instructeur (avec un coup joué et la réponse de l'IA),
+pendule, orientation des tables position-carrés, destruction du Typhon dans
+la simulation de coup, rendu de la Réserve et de la Voie. Il échoue au
+premier message d'erreur de la console.
+
+```
+npm i -D playwright && npx playwright install chromium   # une seule fois
+npm test
+```
+
+Il ne fait **pas** partie du jeu : rien dans `index.html` ne le charge, il n'y
+a toujours aucune dépendance de production, et le jeu continue de s'ouvrir en
+double-cliquant sur `index.html`. Si Chromium est déjà présent sur la machine
+mais dans une version que Playwright refuse, le script le retrouve tout seul
+(ou suit `CHROMIUM_PATH`).
+
 ## Où éditer selon ce qu'on te demande
 
 | Demande | Fichier(s) à éditer |
@@ -322,6 +410,11 @@ explicitement ses dépendances et qui l'utilise).
 | Changer les modes qui rapportent de l'ELO | `js/voie.js` (`vvNoEloReason`) |
 | Changer ce que fait le mode admin | `js/settings-admin.js` + `renderAdminChests()` dans `js/economy-ui.js` |
 | Ajouter une adresse au jeu (comme `/combat` ou `/test`) | `vercel.json` (`rewrites`) + `setAppPath`/`appHomePath` dans `js/main.js` |
+| Changer un message de refus / d'information | l'appel `showNotif()` concerné ; l'apparence est dans `[NOTIF]` de `css/style.css` |
+| Modifier l'emblème (logo) du jeu | `EMBLEM_SVG` dans `js/main.js` + `favicon.svg` (même tracé) + `[EMBLEM]` de `css/style.css` |
+| Changer les règles d'appariement en ligne | `mpEloWindow` / `mpLobbyTick` dans `js/multiplayer.js` |
+| Ajouter une icône d'interface | `js/main.js` (`PEN_ICON`, `TRASH_ICON`, `svgX`), en SVG et jamais en émoji |
+| Modifier l'animation de déplacement des pièces | `animateLastMove()` dans `js/game-render.js` + `[BOARD-MOTION]` de `css/style.css` |
 | Changer le HTML d'une page (structure, nouveaux boutons) | `index.html` (cherche `<!-- PAGE ... -->`) + le module JS de la page concernée pour les listeners |
 
 ## Conventions à connaître avant d'éditer un seul fichier
@@ -349,6 +442,22 @@ explicitement ses dépendances et qui l'utilise).
   listée dans `getWorkerCode()`, sinon le Worker plantera silencieusement
   (il y a un fallback automatique sur le thread principal si le Worker
   échoue, donc le jeu reste jouable mais potentiellement plus lent).
+- **Aucun émoji dans l'interface** : tout ce qui est dessiné l'est en SVG
+  (pièces dans `piece-art.js`, emblème et icônes dans `main.js`, fiole /
+  cadenas / coffre / perle en CSS pur). Un émoji change de dessin d'un système
+  à l'autre et ne suit pas la couleur du thème. Les champs `emoji` de
+  `PIECES` ne servent plus qu'aux données historiques des sauvegardes.
+- **Accessibilité** : `@media (prefers-reduced-motion: reduce)` neutralise
+  toutes les animations (le jeu en compte beaucoup : cube, cinématiques,
+  particules, pulsations) et `:focus-visible` marque le focus clavier. Une
+  nouvelle animation n'a rien à ajouter, la règle est globale ; un nouveau
+  contrôle interactif, en revanche, doit rejoindre la liste des sélecteurs
+  `:focus-visible` de la section `[A11Y]`.
+- **Écrans tactiles** : il n'y a pas de clic droit. Tout ce qui ouvre une
+  fiche au clic droit doit aussi être passé à `bindLongPress()`
+  (`js/main.js`), et le gestionnaire de tap correspondant doit commencer par
+  `if(longPressJustFired())return;`, sinon le doigt qui se relève déclenche
+  l'action par-dessus la fiche qui vient de s'ouvrir.
 - **Pas de build step** : n'introduis pas de syntaxe ES modules
   (`import`/`export`), de JSX, de TypeScript, ou de dépendance nécessitant
   npm/bundler. Le jeu doit continuer à fonctionner en ouvrant `index.html`

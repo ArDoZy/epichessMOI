@@ -274,7 +274,8 @@ const TUTO_STEPS=[
   {
     text:'Chaque créature a son déplacement ET son pouvoir. La Méduse paralyse ses '+
          'voisines en diagonale, le Typhon rase tout autour de lui en arrivant…<br>'+
-         '<strong>Clic droit sur n\'importe quelle carte</strong> pour lire sa fiche complète.',
+         '<strong>Clic droit sur n\'importe quelle carte</strong> — ou un appui long sur '+
+         'écran tactile — pour lire sa fiche complète.',
     at:'#cards-container .class-sec',
   },
   {
@@ -345,8 +346,9 @@ const TUTO_STEPS=[
   },
   {
     text:'Une dernière chose, et je vous laisse&nbsp;: en pleine partie, <strong>clic droit '+
-         'sur une pièce</strong> vous rappelle son pouvoir. Personne ne les retient tous. '+
-         'Moi non plus.<br>Allez. Cassez quelque chose.',
+         'sur une pièce</strong> (ou un <strong>appui long</strong> au doigt) vous rappelle '+
+         'son pouvoir. Personne ne les retient tous. Moi non plus.<br>'+
+         'Allez. Cassez quelque chose.',
   },
 ];
 
@@ -433,6 +435,10 @@ function tutoShowMessage(html,btnLabel,action){
   hint.style.display='none';
   next.style.display='';
   next.textContent=btnLabel||'Suivant';
+  // Un message hors script (revanche après une bataille perdue) ne fait pas
+  // avancer le tutoriel : le compteur n'a rien à afficher.
+  const prog=document.getElementById('tuto-progress');
+  if(prog)prog.textContent='';
   _tutoMsgAction=action||null;
 }
 
@@ -609,9 +615,26 @@ function tutoInterceptCombat(){
   return true;
 }
 
+// ----------------------------------------------------------------
+// COMPTEUR D'ÉTAPES
+// ----------------------------------------------------------------
+// On ne comptait rien : le savant enchaînait une vingtaine de répliques, des
+// batailles et des exercices, sans jamais dire où l'on en était. C'est la
+// première raison de vouloir passer un tutoriel — l'impression qu'il ne
+// finira pas. Seules les étapes PARLÉES sont numérotées : les coffres et les
+// exercices n'ont pas de bulle, les compter afficherait un compteur qui saute.
+const TUTO_SPOKEN_IDX=TUTO_STEPS.map((s,i)=>s.text?i:-1).filter(i=>i>=0);
+function tutoRenderProgress(){
+  const el=document.getElementById('tuto-progress');
+  if(!el)return;
+  const pos=TUTO_SPOKEN_IDX.indexOf(_tutoIdx);
+  el.textContent=pos>=0?(pos+1)+' / '+TUTO_SPOKEN_IDX.length:'';
+}
+
 function tutoRender(step){
   const{box,text,next,hint}=tutoEls();
   if(!box)return;
+  tutoRenderProgress();
 
   const target=step.at?document.querySelector(step.at):null;
   tutoSpotlight(target);

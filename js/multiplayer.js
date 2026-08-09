@@ -45,6 +45,10 @@ const MP={
   started:false,
   joinTimeoutId:null,
   lobby:null,        // salon d'attente du matchmaking (null hors recherche)
+  lobbyTickId:null,  // battement de ré-évaluation de l'appariement
+  searchStartedAt:0, // début de la recherche : pilote la fenêtre d'ELO
+  pairPending:null,  // id du joueur à qui l'on vient de proposer une partie
+  pairTimerId:null,  // abandon de cette proposition faute de confirmation
   matched:false,     // paire déjà formée : ignore les sync de presence suivants
   armyRetryId:null,  // renvoi périodique de l'armée tant que la partie n'a pas démarré
   oppName:null,      // pseudo de l'adversaire (affiché dans son bandeau)
@@ -475,107 +479,237 @@ function mpLeave(){
   if(MP.channel){MP.channel.unsubscribe();MP.channel=null;}
   mpLeaveLobby();
   MP.started=false;MP.matched=false;MP.oppArmy=null;MP.roomCode=null;
+  MP.searchStartedAt=0;
   MP.oppName=null;MP.oppElo=null;MP.oppId=null;
   MP.rematchMine=false;MP.rematchTheirs=false;
   // On repasse sur l'ELO de l'IA pour les prochaines parties hors ligne.
   if(typeof vvSetOpponentElo==='function')vvSetOpponentElo(null);
 }
 
-// ----------------------------------------------------------------
-// MATCHMAKING AUTOMATIQUE
-// ----------------------------------------------------------------
+// ================================================================
+// MATCHMAKING AUTOMATIQUE : appariement par niveau
+// ================================================================
 // Aucune table n'est nécessaire : les joueurs en attente se déclarent par
-// "presence" dans un salon d'attente unique. Les deux plus anciens
-// s'apparient, le premier arrivé devenant l'hôte (Blancs). Les deux clients
-// trient la même liste selon les mêmes critères, ils aboutissent donc à la
-// même décision sans avoir à négocier.
+// "presence" dans un salon d'attente unique, en publiant leur heure d'arrivée
+// et leur ELO.
 //
-// -- POURQUOI LA RECHERCHE NE TROUVAIT PERSONNE ---------------------------
-// L'ancienne version quittait le salon d'attente à la MILLISECONDE où elle
-// se croyait appariée. Or "presence" ne garantit pas qu'un événement soit
-// livré isolément : le serveur regroupe les changements proches dans le
-// temps. Le joueur déjà en attente recevait donc, en un seul « sync »,
-// l'arrivée ET le départ de celui qui venait de l'apparier : il ne voyait
-// plus qu'une seule personne dans le salon (lui-même), concluait qu'il n'y
-// avait toujours personne, et continuait de chercher — pendant que l'autre
-// l'attendait seul dans un salon de partie. Les deux joueurs cherchaient au
-// même moment et ne se trouvaient jamais.
+// -- CE QUE FAISAIT L'ANCIEN ALGORITHME -----------------------------------
+// Il appariait les DEUX PLUS ANCIENS, point final. Un joueur à 120 ELO
+// tombait donc régulièrement contre un joueur à 2000, ce qui, dans un jeu où
+// perdre coûte l'armée engagée, est la pire rencontre possible pour les deux.
+// Il supposait aussi que les deux camps aboutiraient au même calcul en même
+// temps : les horloges de deux navigateurs ne sont pas synchronisées, et deux
+// clients pouvaient se croire tous les deux « le plus ancien ».
 //
-// Deux corrections, indépendantes et cumulatives :
-//   1. l'appariement est ANNONCÉ par un broadcast explicite (event 'pair'),
-//      qui ne dépend d'aucun regroupement de présence ;
-//   2. on ne quitte plus le salon d'attente à l'appariement : on y reste
-//      jusqu'à ce que la partie ait réellement démarré (mpTryStart), ce qui
-//      laisse à l'autre camp le temps de voir la paire se former.
-const MP_LOBBY='epichess-lobby-v1';
+// -- CE QU'IL FAIT MAINTENANT ---------------------------------------------
+//   1. FENÊTRE DE NIVEAU QUI S'ÉLARGIT. On cherche d'abord un adversaire à
+//      ±120 ELO ; toutes les 8 secondes la fenêtre s'élargit de 120, et au
+//      bout de 48 secondes on accepte n'importe qui. Personne n'attend
+//      indéfiniment, et personne n'est jeté d'emblée contre trois rangs
+//      au-dessus.
+//   2. UN SEUL DÉCIDEUR. Le joueur qui attend depuis le plus longtemps est le
+//      « chercheur » : lui seul choisit, parmi les candidats dans sa fenêtre,
+//      le plus proche en ELO, et il l'annonce. Les autres ne calculent rien,
+//      ils répondent. Plus aucun accord d'horloge n'est nécessaire.
+//   3. POIGNÉE DE MAIN EN DEUX TEMPS. Le chercheur propose ('pair'), le
+//      partenaire confirme ('pair-ok'), et seulement alors les deux entrent
+//      dans le salon de partie. Sans confirmation au bout de 3,5 s, la
+//      proposition est abandonnée et la recherche reprend : deux chercheurs
+//      simultanés (cas d'une désynchronisation d'horloges) ne peuvent plus
+//      laisser quelqu'un seul dans un salon.
+//   4. RÉ-ÉVALUATION PÉRIODIQUE. « Presence » n'émet un événement que lorsque
+//      quelqu'un entre ou sort ; la fenêtre, elle, s'élargit avec le temps.
+//      Un battement régulier relance donc le calcul, et met à jour l'écran de
+//      recherche (temps écoulé, joueurs en attente, fenêtre courante).
+//
+// On ne quitte le salon d'attente qu'une fois la partie réellement démarrée
+// (mpTryStart) : un départ immédiat, regroupé par le serveur avec l'arrivée,
+// faisait disparaître la paire aux yeux de l'autre camp.
+const MP_LOBBY='epichess-lobby-v2';
+const MP_TICK_MS=1000;        // battement de ré-évaluation et d'affichage
+const MP_ACK_MS=3500;         // délai avant d'abandonner une proposition
+const MP_ELO_BASE=120;        // fenêtre de départ, en points d'ELO
+const MP_ELO_STEP=120;        // élargissement…
+const MP_ELO_EVERY=8;         // …toutes les 8 secondes
+const MP_ELO_OPEN=48;         // au-delà : plus aucune fenêtre
+const MP_FALLBACK_S=40;       // on propose l'Instructeur à partir d'ici
+
+// Fenêtre d'ELO acceptée après `waitS` secondes d'attente. Infinity = tout le
+// monde convient.
+function mpEloWindow(waitS){
+  if(waitS>=MP_ELO_OPEN)return Infinity;
+  return MP_ELO_BASE+Math.floor(waitS/MP_ELO_EVERY)*MP_ELO_STEP;
+}
+
+// Liste des joueurs présents dans le salon d'attente, la nôtre comprise.
+function mpLobbyPeers(){
+  if(!MP.lobby)return[];
+  let state={};
+  try{state=MP.lobby.presenceState()||{};}catch(e){return[];}
+  return Object.keys(state).map(k=>{
+    const meta=(state[k]&&state[k][0])||{};
+    return{
+      id:k,
+      joinedAt:meta.joinedAt||0,
+      elo:(typeof meta.elo==='number')?meta.elo:0,
+      busy:!!meta.busy,
+    };
+  }).sort((a,b)=>(a.joinedAt-b.joinedAt)||a.id.localeCompare(b.id));
+}
 
 function mpLeaveLobby(){
+  mpStopLobbyTick();
+  mpClearProposal();
   if(MP.lobby){MP.lobby.unsubscribe();MP.lobby=null;}
 }
 
-// Entrée effective dans le salon de partie, appelée soit par notre propre
-// décision d'appariement, soit à la réception du 'pair' de l'autre camp.
+function mpStopLobbyTick(){
+  if(MP.lobbyTickId){clearInterval(MP.lobbyTickId);MP.lobbyTickId=null;}
+}
+function mpClearProposal(){
+  if(MP.pairTimerId){clearTimeout(MP.pairTimerId);MP.pairTimerId=null;}
+  MP.pairPending=null;
+}
+
+// Entrée effective dans le salon de partie, une fois la poignée de main faite.
 function mpEnterPair(hostId){
   if(MP.matched||MP.started)return;
   MP.matched=true;
+  mpStopLobbyTick();
   mpStatus('Adversaire trouvé, préparation de la partie','wait');
   // Le nom du salon dérive de l'id de l'hôte : les deux camps le calculent
   // à l'identique.
   mpConnect('q-'+hostId.slice(0,12),MP.myId===hostId);
 }
 
+// ----------------------------------------------------------------
+// ÉCRAN DE RECHERCHE
+// ----------------------------------------------------------------
+// Chercher sans rien voir bouger donne l'impression que le jeu est en panne.
+// Trois chiffres suffisent à dire le contraire : depuis combien de temps on
+// cherche, combien de joueurs attendent, et jusqu'où on accepte de descendre
+// ou de monter en niveau.
+function mpRenderSearch(waitS,peerCount,win){
+  const set=(id,txt)=>{const e=document.getElementById(id);if(e)e.textContent=txt;};
+  const m=Math.floor(waitS/60),s=waitS%60;
+  set('mp-search-elapsed',m+':'+(s<10?'0':'')+s);
+  set('mp-search-peers',peerCount);
+  set('mp-search-window',win===Infinity?'tous':'±'+win);
+  const note=document.getElementById('mp-search-note');
+  if(note){
+    note.textContent=peerCount<2
+      ? 'Personne d\'autre en attente pour l\'instant. Vous partirez au combat dès qu\'un joueur lancera une partie rapide.'
+      : (win===Infinity
+        ? 'Recherche ouverte à tous les niveaux.'
+        : 'Adversaire recherché entre '+Math.max(0,mpMyCard().elo-win)+' et '+(mpMyCard().elo+win)+' ELO.');
+  }
+  const fb=document.getElementById('mp-fallback-btn');
+  if(fb)fb.style.display=(waitS>=MP_FALLBACK_S)?'':'none';
+}
+
+// ----------------------------------------------------------------
+// BATTEMENT : ré-évaluation de l'appariement + rafraîchissement de l'écran
+// ----------------------------------------------------------------
+function mpLobbyTick(){
+  if(!MP.lobby||MP.matched||MP.started){mpStopLobbyTick();return;}
+  const now=Date.now();
+  const waitS=Math.max(0,Math.floor((now-(MP.searchStartedAt||now))/1000));
+  const peers=mpLobbyPeers();
+  const free=peers.filter(p=>!p.busy);
+  const win=mpEloWindow(waitS);
+  mpRenderSearch(waitS,free.length,win);
+
+  if(MP.pairPending)return;          // une proposition est déjà en vol
+  if(free.length<2)return;
+  // Seul le plus ancien décide. Les autres attendent d'être appelés : c'est
+  // ce qui évite d'avoir à supposer que deux navigateurs sont d'accord sur
+  // l'heure qu'il est.
+  if(free[0].id!==MP.myId)return;
+
+  const me=free[0];
+  const candidates=free.slice(1)
+    .map(p=>({p,gap:Math.abs((p.elo||0)-(me.elo||0))}))
+    .filter(x=>x.gap<=win)
+    .sort((a,b)=>a.gap-b.gap||a.p.joinedAt-b.p.joinedAt);
+  if(!candidates.length)return;
+
+  const guest=candidates[0].p;
+  MP.pairPending=guest.id;
+  MP.lobby.send({type:'broadcast',event:'pair',payload:{host:MP.myId,guest:guest.id}});
+  // Sans confirmation, on remet le candidat dans la file et on recommence.
+  MP.pairTimerId=setTimeout(()=>{
+    MP.pairTimerId=null;
+    if(!MP.matched&&!MP.started)MP.pairPending=null;
+  },MP_ACK_MS);
+}
+
 function mpQuickPlay(){
   const client=mpInitClient();if(!client)return;
   mpLeaveLobby();
   MP.myArmy=currentArmyData;MP.matched=false;MP.started=false;
+  const card=mpMyCard();
   const joinedAt=Date.now();
+  MP.searchStartedAt=joinedAt;
   MP.lobby=client.channel(MP_LOBBY,{config:{presence:{key:MP.myId}}});
 
-  // Annonce d'appariement : le message porte les deux identifiants, chacun
-  // sait donc s'il est concerné et lequel des deux est l'hôte.
+  // PROPOSITION reçue d'un chercheur : on confirme puis on entre. La
+  // confirmation est ce qui permet au chercheur de savoir que sa proposition
+  // a trouvé preneur, et donc de ne pas se retrouver seul dans un salon.
   MP.lobby.on('broadcast',{event:'pair'},({payload})=>{
     if(!payload||MP.matched||MP.started)return;
-    if(payload.host!==MP.myId&&payload.guest!==MP.myId)return;
+    if(payload.guest!==MP.myId)return;
+    MP.lobby.send({type:'broadcast',event:'pair-ok',payload:{host:payload.host,guest:MP.myId}});
+    try{MP.lobby.track({joinedAt,elo:card.elo,busy:true});}catch(e){}
     mpEnterPair(payload.host);
   });
 
-  MP.lobby.on('presence',{event:'sync'},()=>{
-    if(MP.matched||MP.started||!MP.lobby)return;
-    const state=MP.lobby.presenceState();
-    const waiting=Object.keys(state).map(k=>{
-      const meta=(state[k]&&state[k][0])||{};
-      return{id:k,joinedAt:meta.joinedAt||0,busy:!!meta.busy};
-    }).filter(w=>!w.busy)
-      .sort((a,b)=>(a.joinedAt-b.joinedAt)||a.id.localeCompare(b.id));
+  // CONFIRMATION reçue par le chercheur : la paire est scellée des deux côtés.
+  MP.lobby.on('broadcast',{event:'pair-ok'},({payload})=>{
+    if(!payload||MP.matched||MP.started)return;
+    if(payload.host!==MP.myId||payload.guest!==MP.pairPending)return;
+    mpClearProposal();
+    try{MP.lobby.track({joinedAt,elo:card.elo,busy:true});}catch(e){}
+    mpEnterPair(MP.myId);
+  });
 
-    if(waiting.length<2){mpStatus('Recherche d\'un adversaire','wait');return;}
-    // Seuls les deux plus anciens s'apparient ; les suivants patientent
-    // jusqu'à ce que cette paire quitte le salon d'attente.
-    const idx=waiting.findIndex(w=>w.id===MP.myId);
-    if(idx<0||idx>1)return;
-
-    const host=waiting[0],guest=waiting[1];
-    // Un seul des deux annonce, pour ne pas émettre deux fois la même paire ;
-    // mais les deux agissent, celui qui annonce sans attendre son propre
-    // message (un broadcast n'est pas renvoyé à son émetteur).
-    if(MP.myId===host.id)
-      MP.lobby.send({type:'broadcast',event:'pair',payload:{host:host.id,guest:guest.id}});
-    // On se déclare occupé : un troisième joueur qui arrive ne comptera pas
-    // cette paire parmi les gens encore disponibles.
-    MP.lobby.track({joinedAt,busy:true});
-    mpEnterPair(host.id);
+  // Une arrivée ou un départ relance le calcul tout de suite plutôt que
+  // d'attendre le prochain battement.
+  MP.lobby.on('presence',{event:'sync'},()=>mpLobbyTick());
+  MP.lobby.on('presence',{event:'leave'},({leftPresences})=>{
+    // Le candidat à qui l'on vient de proposer une partie est parti : inutile
+    // d'attendre les 3,5 s de la confirmation, on repart en recherche.
+    if(MP.pairPending&&(leftPresences||[]).some(p=>p&&p.key===MP.pairPending))mpClearProposal();
+    mpLobbyTick();
   });
 
   MP.lobby.subscribe(async(status,err)=>{
     if(status==='SUBSCRIBED'){
-      await MP.lobby.track({joinedAt,busy:false});
-      mpStatus('Recherche d\'un adversaire','wait');
+      await MP.lobby.track({joinedAt,elo:card.elo,busy:false});
+      mpStatus('');
+      mpRenderSearch(0,1,mpEloWindow(0));
+      mpStopLobbyTick();
+      MP.lobbyTickId=setInterval(mpLobbyTick,MP_TICK_MS);
     }else if(status==='CHANNEL_ERROR'||status==='TIMED_OUT'||status==='CLOSED'){
       if(MP.matched||MP.started)return;   // paire formée : le salon se ferme normalement
+      mpStopLobbyTick();
       mpReportFailure(status,err);
     }
   });
 }
+
+// « Affronter l'Instructeur à la place » : proposé après 40 s de recherche
+// infructueuse. On sort proprement du salon d'attente et on repart sur le
+// parcours hors ligne avec la MÊME armée, déjà sélectionnée.
+document.getElementById('mp-fallback-btn')?.addEventListener('click',()=>{
+  mpLeave();
+  mpCloseModal();
+  if(!currentArmyData)return;
+  if(typeof generateAIArmy==='function')aiArmyData=generateAIArmy();
+  if(typeof vvSetOpponentElo==='function')vvSetOpponentElo(null);
+  if(typeof renderCombatPage==='function')renderCombatPage(currentArmyData,'ia');
+  if(typeof showPage==='function')showPage('page-combat');
+  if(typeof launchParticles==='function')launchParticles();
+});
 
 // ----------------------------------------------------------------
 // MODAL : écran de choix → écran hôte (code) ou écran invité (saisie)
