@@ -33,6 +33,9 @@ const CVAL={
   'garde-pierre':290,'pretre':420,'std-pawn':100,
 };
 const PVAL={k:10000,q:950,r:530,b:360,n:360,p:100};
+// Classe de chaque pièce, indexée pour l'évaluation : PIECES.find() dans la
+// boucle d'évaluation coûterait une recherche linéaire par case et par nœud.
+const PIECE_CLASS_BY_ID=(()=>{const m={};PIECES.forEach(p=>{m[p.id]=p.class;});return m;})();
 
 const PAWN_PST=[
   [0,  0,  0,  0,  0,  0,  0,  0],
@@ -233,17 +236,54 @@ function evalPowers(board,fgs){
 }
 
 // ================================================================
+// STYLES DE JEU : ce qui distingue un adversaire d'un autre
+// ================================================================
+// Deux adversaires qui partagent la même fonction d'évaluation jouent la même
+// partie, à la profondeur près : la seule chose qui les séparait était leur
+// taux d'erreur, ce qui donne douze versions plus ou moins abîmées du même
+// joueur. Chaque adversaire porte donc un STYLE (voir AI_OPPONENTS dans
+// js/data-pieces.js) qui repondère les termes que evalBoard calcule DÉJÀ :
+// aucun parcours de plateau supplémentaire, donc aucun coût de recherche.
+//
+// Convention : le style s'applique aux pièces NOIRES. Dans le repère de la
+// recherche, l'IA est toujours noire (un adversaire qui joue les blancs reçoit
+// un plateau miroité, voir mirrorBoardForWorker), donc « noir » = « l'IA ».
+//
+//   mob    mobilité            adv   avancée dans le camp adverse
+//   pst    tables de cases     king  pièces autour de son propre roi
+//   pow    pouvoirs spéciaux   count prime par pièce encore en vie
+//   dev    développement       mat   multiplicateur de matériel
+const STYLE_W={
+  equilibre:  null,
+  erratique:  null,
+  gourmand:   {mob:0.4,dev:0.3,pow:0.5,mat:1.06},
+  nuee:       {count:20,mat:0.97},
+  brute:      {advBrute:7,mob:0.8},
+  agressif:   {adv:5,pow:1.25,king:0.5,dev:1.4},
+  sorcier:    {pow:2.0,mob:0.8,mat:0.96},
+  defensif:   {king:2.4,adv:-3,mob:0.9,mat:1.04},
+  mobile:     {mob:2.6,dev:1.4,adv:1.5},
+  positionnel:{pst:1.6,mob:1.3,dev:1.2,struct:1.6},
+};
+// Style de l'adversaire en cours de réflexion. Écrit juste avant la recherche
+// (aiApplyStyle), lu par evalBoard. Nul = évaluation neutre.
+let _aiStyleW=null;
+function aiApplyStyle(styleName){_aiStyleW=(styleName&&STYLE_W[styleName])||null;}
+
+// ================================================================
 // ÉVALUATION DE POSITION
 // ================================================================
 function evalBoard(board,gs){
   let s=0;
+  const SW=_aiStyleW;
   const fgs={medusaParalyzed:new Set(),pretreProtected:new Set(),anchored:new Set(gs?.anchored||[]),enPassant:null,grandMaitreAlive:{w:false,b:false},board};
   updateMedusaParalysis(board,fgs);updateGrandMaitre(board,fgs);
 
   for(let r=0;r<8;r++)for(let c=0;c<8;c++){
     const p=board[r][c];if(!p)continue;
-    const v=CVAL[p.pieceId]||PVAL[p.type]||100;
-    const pst=getPST(p,r,c);
+    const isAI=SW&&p.color==='b';
+    const v=(CVAL[p.pieceId]||PVAL[p.type]||100)*((isAI&&SW.mat)||1);
+    const pst=getPST(p,r,c)*((isAI&&SW.pst)||1);
 
     // Une pièce paralysée par une Méduse ne peut rien faire : la compter à sa
     // pleine valeur ferait croire à l'IA qu'elle a du matériel utilisable.
@@ -251,7 +291,7 @@ function evalBoard(board,gs){
 
     let mob=0;
     try{mob=generateMovesRaw(board,r,c,fgs).length;}catch(e){}
-    const mobBonus=mob*0.15;
+    const mobBonus=mob*0.15*((isAI&&SW.mob)||1);
 
     let passedBonus=0;
     if(p.type==='p'||p.pieceId==='std-pawn'){
@@ -266,7 +306,7 @@ function evalBoard(board,gs){
         }
         if(!passed)break;
       }
-      if(passed){const advRows=p.color==='b'?r:(7-r);passedBonus=advRows*8;}
+      if(passed){const advRows=p.color==='b'?r:(7-r);passedBonus=advRows*8*((isAI&&SW.struct)||1);}
     }
 
     let kingSafetyBonus=0;
@@ -279,7 +319,7 @@ function evalBoard(board,gs){
         const t=board[nr][nc];
         if(t&&t.color===p.color&&!t.isKing&&t.type!=='k')defenders++;
       }
-      kingSafetyBonus=defenders*6;
+      kingSafetyBonus=defenders*6*((isAI&&SW.king)||1);
     }
 
     let rookBonus=0;
@@ -303,6 +343,7 @@ function evalBoard(board,gs){
       } else {
         if(!p.hasMoved) devBonus=-8;
       }
+      devBonus*=((isAI&&SW.dev)||1);
     }
 
     let stagnationPenalty=0;
@@ -312,11 +353,27 @@ function evalBoard(board,gs){
 
     const paralysisPenalty=paralyzed?-Math.min(200,v*0.30):0;
 
-    const total=v+pst+mobBonus+passedBonus+kingSafetyBonus+rookBonus+devBonus+stagnationPenalty+paralysisPenalty;
+    // Termes propres au style, tous nuls hors adversaire stylé (SW==null).
+    let styleBonus=0;
+    if(isAI){
+      // Avancée : nombre de rangées gagnées vers le camp adverse. Un agressif
+      // veut être chez l'autre, un défensif veut rester chez lui.
+      if(SW.adv&&!isKingPiece)styleBonus+=r*SW.adv;
+      if(SW.advBrute&&PIECE_CLASS_BY_ID[p.pieceId]==='Brute')styleBonus+=r*SW.advBrute;
+      // Nuée : chaque pièce encore en vie compte, indépendamment de sa valeur.
+      // C'est ce qui produit un adversaire qui refuse les échanges.
+      if(SW.count&&!isKingPiece)styleBonus+=SW.count;
+    }
+
+    const total=v+pst+mobBonus+passedBonus+kingSafetyBonus+rookBonus+devBonus+stagnationPenalty+paralysisPenalty+styleBonus;
     s+=total*(p.color==='b'?1:-1);
   }
 
-  return s+evalPowers(board,fgs);
+  const pw=evalPowers(board,fgs);
+  // Un sorcier surévalue ses propres pouvoirs (et pas ceux de l'adversaire) :
+  // evalPowers est signé, on ne majore donc que la part positive (= noire).
+  if(SW&&SW.pow&&pw>0)return s+pw*SW.pow;
+  return s+pw;
 }
 
 // unsorted : minimax refait son propre tri (table de transposition, killers,
@@ -446,6 +503,19 @@ function isKiller(move,depth){
 let _aiDeadline=0;
 let _aiAborted=false;
 
+// Le Typhon efface-t-il au moins une pièce en se posant là ? Sert à la
+// quiescence, qui doit traiter ce coup comme une prise même quand la case
+// d'arrivée est vide. Le roi est épargné par le pouvoir, il ne compte pas.
+function destroysSomething(board,to,p){
+  for(const[dr,dc] of [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]]){
+    const nr=to.r+dr,nc=to.c+dc;
+    if(nr<0||nr>7||nc<0||nc>7)continue;
+    const t=board[nr][nc];
+    if(t&&t.color!==p.color&&!(t.isKing||t.type==='k'))return true;
+  }
+  return false;
+}
+
 function quiesce(board,alpha,beta,maxing,fgs,qdepth){
   if(_aiAborted||Date.now()>_aiDeadline){_aiAborted=true;return 0;}
   const standPat=evalBoard(board,fgs);
@@ -460,9 +530,21 @@ function quiesce(board,alpha,beta,maxing,fgs,qdepth){
   const color=maxing?'b':'w';
   const fgs2={...fgs,board,medusaParalyzed:new Set(),pretreProtected:new Set(),grandMaitreAlive:{w:false,b:false}};
   updateMedusaParalysis(board,fgs2);updateGrandMaitre(board,fgs2);
+  // La quiescence ne prolonge que les coups VIOLENTS, pour ne pas s'arrêter au
+  // milieu d'un échange. Elle ne retenait que les prises « classiques », celles
+  // qui atterrissent sur une pièce ennemie — or dans ce jeu les coups les plus
+  // violents n'en sont pas : un Typhon qui se pose sur une case VIDE efface
+  // jusqu'à huit voisines, et la charge du Dresseur écrase ce qu'elle traverse.
+  // La recherche évaluait donc tranquillement une position à un demi-coup
+  // d'être balayée, ce qui est exactement l'effet d'horizon que la quiescence
+  // existe pour supprimer.
   const moves=getAllMovesColor(color,board,fgs2).filter(({from,to})=>{
+    const p=board[from.r][from.c];
     const cap=board[to.r][to.c];
-    return (cap&&cap.color!==board[from.r][from.c]?.color)||to.stayPut;
+    if(cap&&cap.color!==p?.color)return true;
+    if(to.stayPut||to.destroysPath)return true;
+    if(p&&p.pieceId==='typhon')return destroysSomething(board,to,p);
+    return false;
   });
   if(!moves.length)return standPat;
   if(maxing){
@@ -575,6 +657,118 @@ function minimax(board,depth,alpha,beta,maxing,fgs,nullOk,plyFromRoot){
 }
 
 // ================================================================
+// RECHERCHE À LA RACINE ET CHOIX DU COUP
+// ================================================================
+// Ces deux fonctions sont partagées mot pour mot par le Worker et par le
+// repli sur le thread principal : la boucle d'approfondissement itératif
+// existait en double, à soixante lignes d'écart, et les deux copies avaient
+// déjà divergé (la pénalité d'aller-retour n'était appliquée que d'un côté).
+//
+// aiSearchRoot renvoie TOUS les coups avec leur score, et non le seul
+// meilleur : c'est ce que réclame le modèle de force (voir aiPickMove).
+
+// Le camp au trait dans le repère de recherche est toujours 'b'.
+function aiSearchRoot(gs,opp){
+  const moves=getAllMovesColor('b',gs.board,gs);
+  if(!moves.length)return null;
+
+  // Cases récemment occupées par la pièce qui s'y trouve : sert à décourager
+  // les allers-retours, qui font perdre la partie par répétition.
+  const recent=new Set();
+  const lmh=gs.lastMoveHistory||[];
+  for(let i=Math.max(0,lmh.length-4);i<lmh.length;i++){
+    const h=lmh[i];if(h)recent.add(h.piece+'_'+h.toR+'_'+h.toC);
+  }
+  const backPenalty=(p,to)=>(p&&recent.has(p.id+'_'+to.r+'_'+to.c))?20:0;
+
+  aiApplyStyle(opp.style);
+
+  // Adversaire sans budget de réflexion : la position est jugée juste après le
+  // coup, sans aucune recherche. Il voit la pièce à prendre, pas le mat en deux.
+  if(!opp.timeMs){
+    const scored=moves.map(({from,to})=>{
+      const p=gs.board[from.r][from.c];
+      if(!p)return{from,to,score:-Infinity};
+      const nb=applyMoveQuick(gs.board,from,to,p,gs.anchored);
+      return{from,to,score:evalBoard(nb,gs)-backPenalty(p,to)};
+    });
+    scored.sort((a,b)=>b.score-a.score);
+    return scored;
+  }
+
+  _ttGeneration=(_ttGeneration+1)%256;
+  KILLERS.forEach(k=>{k[0]=null;k[1]=null;});
+  histDecay();
+  _aiDeadline=Date.now()+opp.timeMs;
+  _aiAborted=false;
+
+  const maxDepth=Math.max(1,Math.min(30,opp.depthCap||30));
+  let searchMoves=[...moves];
+  // Résultat de la dernière itération COMPLÈTE : une itération interrompue par
+  // la pendule n'a évalué qu'une partie des coups, ses scores ne sont pas
+  // comparables entre eux et fausseraient le tirage de aiPickMove.
+  let scored=searchMoves.map(({from,to})=>({from,to,score:0}));
+  let prevScore=null;
+
+  for(let depth=1;depth<=maxDepth;depth++){
+    if(Date.now()>_aiDeadline)break;
+    _aiAborted=false;
+    let aAlpha=-Infinity,aBeta=Infinity;
+    if(depth>=4&&prevScore!==null){aAlpha=prevScore-50;aBeta=prevScore+50;}
+    const fgsRoot={...gs,board:gs.board,medusaParalyzed:new Set(),pretreProtected:new Set(),
+      anchored:new Set(gs.anchored||[]),enPassant:null,grandMaitreAlive:{w:false,b:false}};
+    updateMedusaParalysis(gs.board,fgsRoot);updateGrandMaitre(gs.board,fgsRoot);
+    const iter=[];let complete=true;
+    for(const{from,to} of searchMoves){
+      if(Date.now()>_aiDeadline){complete=false;break;}
+      const p=gs.board[from.r][from.c];if(!p)continue;
+      const nb=applyMoveQuick(gs.board,from,to,p,gs.anchored);
+      const fgs2={...fgsRoot,board:nb,medusaParalyzed:new Set(),pretreProtected:new Set(),grandMaitreAlive:{w:false,b:false}};
+      updateMedusaParalysis(nb,fgs2);updateGrandMaitre(nb,fgs2);
+      let score=minimax(nb,depth-1,aAlpha,aBeta,false,fgs2,true,1);
+      if(!_aiAborted&&(score<=aAlpha||score>=aBeta))score=minimax(nb,depth-1,-Infinity,Infinity,false,fgs2,true,1);
+      if(_aiAborted){complete=false;break;}
+      iter.push({from,to,score:score-backPenalty(p,to)});
+    }
+    if(!complete||!iter.length)break;
+    iter.sort((a,b)=>b.score-a.score);
+    scored=iter;prevScore=iter[0].score;
+    // Le meilleur coup de cette itération passe en tête de la suivante : c'est
+    // lui qui fait tomber l'arbre le plus vite.
+    searchMoves=iter.map(m=>({from:m.from,to:m.to}));
+  }
+  return scored;
+}
+
+// Choix du coup parmi les coups notés, selon la force de l'adversaire.
+//
+//   blunder : probabilité de lâcher franchement la position. Les débutants
+//             accrochent des pièces ; sans ce terme, un adversaire imprécis
+//             reste bizarrement solide et ne perd jamais bêtement.
+//   slack   : tolérance en centipions autour du meilleur coup. On tire au sort
+//             parmi TOUS les coups qui ne perdent pas plus que ça, ce qui
+//             produit des coups plausibles mais imprécis — et non le charabia
+//             que donnait l'ancien tirage uniforme sur tous les coups légaux.
+//
+// Un mat trouvé n'est jamais gâché : au-delà de 40000, la fenêtre se ferme.
+// Un adversaire faible ne voit pas le mat (sa recherche est trop courte), mais
+// s'il le voit, il le joue — sinon il aurait l'air de se moquer du joueur.
+function aiPickMove(scored,opp){
+  if(!scored||!scored.length)return null;
+  const pick=m=>({from:m.from,to:m.to});
+  if(scored.length===1)return pick(scored[0]);
+  const best=scored[0].score;
+  if(best>=40000)return pick(scored[0]);
+  if(opp.blunder&&Math.random()<opp.blunder)
+    return pick(scored[Math.floor(Math.random()*scored.length)]);
+  const slack=opp.slack||0;
+  if(slack<=0)return pick(scored[0]);
+  let n=1;
+  while(n<scored.length&&scored[n].score>=best-slack)n++;
+  return pick(scored[Math.floor(Math.random()*n)]);
+}
+
+// ================================================================
 // WEB WORKER IA : calcul en arrière-plan pour ne pas bloquer l'UI
 // ================================================================
 let _aiWorker=null;
@@ -587,14 +781,18 @@ function getWorkerCode(){
     isInCheckSimple,isSquareAttackedSimple,getLegalMovesKingFiltered,applyCollateralOnBoard,moveLeavesKingInCheck,getLegalMoves,
     updateMedusaParalysis,updateGrandMaitre,
     applyMoveQuick,powerValueAt,evalPowers,evalBoard,getAllMovesColor,
-    boardHash,ttStore,ttProbe,storeKiller,isKiller,quiesce,minimax,
-    histIdx,histBump,histGet,histDecay,getPST
+    boardHash,ttStore,ttProbe,storeKiller,isKiller,destroysSomething,quiesce,minimax,
+    histIdx,histBump,histGet,histDecay,getPST,
+    aiApplyStyle,aiSearchRoot,aiPickMove
   ].map(f=>f.toString()).join('\n');
 
   const consts=`
 const PIECES=${JSON.stringify(PIECES)};
 const CVAL=${JSON.stringify(CVAL)};
 const PVAL=${JSON.stringify(PVAL)};
+const PIECE_CLASS_BY_ID=${JSON.stringify(PIECE_CLASS_BY_ID)};
+const STYLE_W=${JSON.stringify(STYLE_W)};
+let _aiStyleW=null;
 const PAWN_PST=${JSON.stringify(PAWN_PST)};
 const KNIGHT_PST=${JSON.stringify(KNIGHT_PST)};
 const KING_MIDDLE_PST=${JSON.stringify(KING_MIDDLE_PST)};
@@ -628,85 +826,9 @@ function fixGs(gs){
 self.onmessage=function(e){
   const{gs:gsRaw,instructorIdx}=e.data;
   const gs=fixGs(gsRaw);
-  const instructor=AI_INSTRUCTORS[instructorIdx];
-
-  const moves=getAllMovesColor('b',gs.board,gs);
-  if(!moves.length){self.postMessage({bestMove:null});return;}
-
-  if(Math.random()<instructor.noise){
-    self.postMessage({bestMove:moves[Math.floor(Math.random()*moves.length)]});return;
-  }
-  if(instructor.timeMs===0){
-    let bestMove=null,bestScore=-Infinity;
-    for(const{from,to} of moves){
-      const p=gs.board[from.r][from.c];if(!p)continue;
-      const nb=applyMoveQuick(gs.board,from,to,p,gs.anchored);
-      let backPenalty=0;
-      if(gs.lastMoveHistory&&gs.lastMoveHistory.length>=2){
-        const prev=gs.lastMoveHistory[gs.lastMoveHistory.length-2];
-        if(prev&&prev.piece===p.id&&prev.fromR===to.r&&prev.fromC===to.c)backPenalty=-30;
-      }
-      const sc=evalBoard(nb,gs)+(Math.random()-0.5)*50+backPenalty;
-      if(sc>bestScore){bestScore=sc;bestMove={from,to};}
-    }
-    self.postMessage({bestMove});return;
-  }
-
-  _ttGeneration=(_ttGeneration+1)%256;
-  KILLERS.forEach(k=>{k[0]=null;k[1]=null;});
-  histDecay();
-  _aiDeadline=Date.now()+instructor.timeMs;
-  _aiAborted=false;
-
-  const recentPositions=new Set();
-  if(gs.lastMoveHistory){
-    for(let i=Math.max(0,gs.lastMoveHistory.length-4);i<gs.lastMoveHistory.length;i++){
-      const h=gs.lastMoveHistory[i];
-      if(h)recentPositions.add(h.piece+'_'+h.toR+'_'+h.toC);
-    }
-  }
-
-  let searchMoves=[...moves];
-  searchMoves.sort((a,b2)=>{
-    const pa=gs.board[a.from.r][a.from.c];
-    const pb=gs.board[b2.from.r][b2.from.c];
-    const aBack=pa&&recentPositions.has(pa.id+'_'+a.to.r+'_'+a.to.c)?-1:0;
-    const bBack=pb&&recentPositions.has(pb.id+'_'+b2.to.r+'_'+b2.to.c)?-1:0;
-    return bBack-aBack;
-  });
-
-  let bestMove=searchMoves[0];
-  let prevScore=null;
-
-  for(let depth=1;depth<=30;depth++){
-    if(Date.now()>_aiDeadline)break;
-    _aiAborted=false;
-    let aAlpha=-Infinity,aBeta=Infinity;
-    if(depth>=4&&prevScore!==null){aAlpha=prevScore-50;aBeta=prevScore+50;}
-    let iterBest=null,iterScore=-Infinity;
-    const fgsRoot={...gs,board:gs.board,medusaParalyzed:new Set(),pretreProtected:new Set(),
-      anchored:new Set(gs.anchored||[]),enPassant:null,grandMaitreAlive:{w:false,b:false}};
-    updateMedusaParalysis(gs.board,fgsRoot);updateGrandMaitre(gs.board,fgsRoot);
-    for(const{from,to} of searchMoves){
-      if(Date.now()>_aiDeadline)break;
-      const p=gs.board[from.r][from.c];if(!p)continue;
-      const nb=applyMoveQuick(gs.board,from,to,p,gs.anchored);
-      const fgs2={...fgsRoot,board:nb,medusaParalyzed:new Set(),pretreProtected:new Set(),grandMaitreAlive:{w:false,b:false}};
-      updateMedusaParalysis(nb,fgs2);updateGrandMaitre(nb,fgs2);
-      let score=minimax(nb,depth-1,aAlpha,aBeta,false,fgs2,true,1);
-      if(!_aiAborted&&(score<=aAlpha||score>=aBeta)){
-        score=minimax(nb,depth-1,-Infinity,Infinity,false,fgs2,true,1);
-      }
-      if(!_aiAborted&&p&&recentPositions.has(p.id+'_'+to.r+'_'+to.c))score-=20;
-      if(!_aiAborted&&score>iterScore){iterScore=score;iterBest={from,to};}
-    }
-    if(!_aiAborted&&iterBest){
-      bestMove=iterBest;prevScore=iterScore;
-      const idx=searchMoves.findIndex(m=>m.from.r===bestMove.from.r&&m.from.c===bestMove.from.c&&m.to.r===bestMove.to.r&&m.to.c===bestMove.to.c);
-      if(idx>0){const [m]=searchMoves.splice(idx,1);searchMoves.unshift(m);}
-    }
-  }
-  self.postMessage({bestMove});
+  const opp=AI_INSTRUCTORS[instructorIdx]||AI_INSTRUCTORS[0];
+  const scored=aiSearchRoot(gs,opp);
+  self.postMessage({bestMove:aiPickMove(scored,opp)});
 };
 `;
 }
@@ -757,10 +879,7 @@ function doAIMove(gs,retry){
       if(gs.gameOver||gs.turn!==aiCol)return;
       const{bestMove}=e.data;
       if(bestMove){
-        let move=bestMove;
-        if(aiCol==='w'){
-          move={from:{r:7-bestMove.from.r,c:bestMove.from.c},to:{r:7-bestMove.to.r,c:bestMove.to.c}};
-        }
+        const move=(aiCol==='w')?unmirrorMove(bestMove):bestMove;
         gs.lastMove={from:move.from,to:move.to,capture:!!gs.board[move.to.r][move.to.c]};
         executeGameMove(move.from,move.to,gs);
       }
@@ -779,7 +898,24 @@ function doAIMove(gs,retry){
 function mirrorBoardForWorker(gsData){
   const mirrorColor=c=>c==='w'?'b':'w';
   const mirrorBoard=gsData.board.slice().reverse().map(row=>row.map(p=>p?{...p,color:mirrorColor(p.color)}:null));
-  return{...gsData,board:mirrorBoard,turn:'b',_medusaArr:[],_pretreArr:[],_anchoredArr:[]};
+  // La case de prise en passant vit dans le repère du plateau : la laisser
+  // telle quelle sur un plateau retourné désignait une case à l'autre bout,
+  // et l'IA jouant les Blancs se voyait offrir (ou refuser) une prise qui
+  // n'existait pas.
+  const ep=gsData.enPassant?{r:7-gsData.enPassant.r,c:gsData.enPassant.c}:null;
+  return{...gsData,board:mirrorBoard,turn:'b',enPassant:ep,_medusaArr:[],_pretreArr:[],_anchoredArr:[]};
+}
+
+// Ramène un coup trouvé sur le plateau miroité dans le repère réel.
+// Les DRAPEAUX du coup font partie du coup : `castle`, `ep`, `typhon`,
+// `destroysPath` et le couple fromR/fromC de la charge du Dresseur étaient
+// perdus en route, parce que seules les coordonnées étaient recopiées. Une IA
+// jouant les Blancs roquait donc sans déplacer sa tour, prenait en passant
+// sans retirer le pion, et chargeait au Dresseur sans rien écraser.
+function unmirrorMove(m){
+  const to={...m.to,r:7-m.to.r,c:m.to.c};
+  if(to.fromR!==undefined)to.fromR=7-to.fromR;
+  return{from:{r:7-m.from.r,c:m.from.c},to};
 }
 
 // ----------------------------------------------------------------
@@ -789,64 +925,28 @@ function mirrorBoardForWorker(gsData){
 function doAIMoveMainThread(gs){
   const aiCol=gs.aiColor||'b';
   if(gs.gameOver||gs.turn!==aiCol)return;
-  const moves=getAllMovesColor(aiCol,gs.board,gs);
-  if(!moves.length)return;
-  const instructor=AI_INSTRUCTORS[selectedAILevel];
+  const opp=AI_INSTRUCTORS[selectedAILevel]||AI_INSTRUCTORS[0];
+  // aiSearchRoot raisonne toujours du point de vue des Noirs (c'est la
+  // convention de signe d'evalBoard). Une IA qui joue les Blancs reçoit donc
+  // le plateau miroité, exactement comme le Worker, et le coup rendu est
+  // ramené dans le repère réel.
+  const mirrored=aiCol==='w';
+  const searchGs=mirrored?mirrorGsForSearch(gs):gs;
+  const scored=aiSearchRoot(searchGs,opp);
+  let move=aiPickMove(scored,opp);
+  if(!move)return;
+  if(mirrored)move={from:{r:7-move.from.r,c:move.from.c},to:{...move.to,r:7-move.to.r,c:move.to.c}};
+  gs.lastMove={from:move.from,to:move.to,capture:!!gs.board[move.to.r][move.to.c]};
+  executeGameMove(move.from,move.to,gs);
+}
 
-  const recentPositions=new Set();
-  if(gs.lastMoveHistory){
-    for(let i=Math.max(0,gs.lastMoveHistory.length-4);i<gs.lastMoveHistory.length;i++){
-      const h=gs.lastMoveHistory[i];
-      if(h&&h.color===aiCol)recentPositions.add(h.piece+'_'+h.toR+'_'+h.toC);
-    }
-  }
-
-  if(Math.random()<instructor.noise){
-    const m=moves[Math.floor(Math.random()*moves.length)];
-    gs.lastMove={from:m.from,to:m.to,capture:!!gs.board[m.to.r][m.to.c]};executeGameMove(m.from,m.to,gs);return;
-  }
-  if(instructor.timeMs===0){
-    let bestMove=null,bestScore=-Infinity;
-    for(const{from,to} of moves){
-      const p=gs.board[from.r][from.c];if(!p)continue;
-      const nb=applyMoveQuick(gs.board,from,to,p,gs.anchored);
-      const backPenalty=(p&&recentPositions.has(p.id+'_'+to.r+'_'+to.c))?-30:0;
-      const sc=evalBoard(nb,gs)+(Math.random()-0.5)*50+backPenalty;
-      if(sc>bestScore){bestScore=sc;bestMove={from,to};}
-    }
-    if(bestMove){gs.lastMove={from:bestMove.from,to:bestMove.to,capture:!!gs.board[bestMove.to.r][bestMove.to.c]};executeGameMove(bestMove.from,bestMove.to,gs);}
-    return;
-  }
-  _ttGeneration=(_ttGeneration+1)%256;
-  KILLERS.forEach(k=>{k[0]=null;k[1]=null;});
-  histDecay();
-  _aiDeadline=Date.now()+instructor.timeMs;
-  _aiAborted=false;
-  let searchMoves=[...moves];let bestMove=searchMoves[0];let prevScore=null;
-  for(let depth=1;depth<=30;depth++){
-    if(Date.now()>_aiDeadline)break;
-    _aiAborted=false;
-    let aAlpha=-Infinity,aBeta=Infinity;
-    if(depth>=4&&prevScore!==null){aAlpha=prevScore-50;aBeta=prevScore+50;}
-    let iterBest=null,iterScore=-Infinity;
-    const fgsRoot={...gs,board:gs.board,medusaParalyzed:new Set(),pretreProtected:new Set(),anchored:new Set(gs.anchored||[]),enPassant:null,grandMaitreAlive:{w:false,b:false}};
-    updateMedusaParalysis(gs.board,fgsRoot);updateGrandMaitre(gs.board,fgsRoot);
-    for(const{from,to} of searchMoves){
-      if(Date.now()>_aiDeadline)break;
-      const p=gs.board[from.r][from.c];if(!p)continue;
-      const nb=applyMoveQuick(gs.board,from,to,p,gs.anchored);
-      const fgs2={...fgsRoot,board:nb,medusaParalyzed:new Set(),pretreProtected:new Set(),grandMaitreAlive:{w:false,b:false}};
-      updateMedusaParalysis(nb,fgs2);updateGrandMaitre(nb,fgs2);
-      let score=minimax(nb,depth-1,aAlpha,aBeta,false,fgs2,true,1);
-      if(!_aiAborted&&(score<=aAlpha||score>=aBeta))score=minimax(nb,depth-1,-Infinity,Infinity,false,fgs2,true,1);
-      if(!_aiAborted&&p&&recentPositions.has(p.id+'_'+to.r+'_'+to.c))score-=20;
-      if(!_aiAborted&&score>iterScore){iterScore=score;iterBest={from,to};}
-    }
-    if(!_aiAborted&&iterBest){
-      bestMove=iterBest;prevScore=iterScore;
-      const idx=searchMoves.findIndex(m=>m.from.r===bestMove.from.r&&m.from.c===bestMove.from.c&&m.to.r===bestMove.to.r&&m.to.c===bestMove.to.c);
-      if(idx>0){const [m]=searchMoves.splice(idx,1);searchMoves.unshift(m);}
-    }
-  }
-  if(bestMove){gs.lastMove={from:bestMove.from,to:bestMove.to,capture:!!gs.board[bestMove.to.r][bestMove.to.c]};executeGameMove(bestMove.from,bestMove.to,gs);}
+// Miroir haut/bas + inversion des couleurs, sur un etat de partie vivant.
+// Les etats speciaux (paralysie, protection, ancrage) sont recalcules par la
+// recherche elle-meme : les transposer ici ne servirait qu'a les transposer mal.
+function mirrorGsForSearch(gs){
+  const flip=c=>c==='w'?'b':'w';
+  const board=gs.board.slice().reverse().map(row=>row.map(p=>p?{...p,color:flip(p.color)}:null));
+  return{...gs,board,turn:'b',medusaParalyzed:new Set(),pretreProtected:new Set(),
+    anchored:new Set(),enPassant:null,grandMaitreAlive:{w:false,b:false},
+    lastMoveHistory:(gs.lastMoveHistory||[]).map(h=>({...h,fromR:7-h.fromR,toR:7-h.toR,color:flip(h.color)}))};
 }

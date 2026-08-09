@@ -157,6 +157,10 @@ function enterAccount(username,isNewAccount){
   // une défaite, les exemplaires engagés doivent revenir.
   if(typeof invEnsureStarter==='function')invEnsureStarter();
   if(typeof economyRecoverOrphanEngagement==='function')economyRecoverOrphanEngagement();
+  // Adversaire choisi la dernière fois (js/ai-level-modal.js) : deux comptes
+  // sur la même machine n'ont pas le même, et un rechargement de page ne doit
+  // pas renvoyer tout le monde devant l'Instructeur.
+  if(typeof aiLoadOpponent==='function')aiLoadOpponent();
   updateCab();
   document.body.classList.add('has-acc');
   document.getElementById('cab').style.display='flex';

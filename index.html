@@ -51,9 +51,9 @@
 <link rel="stylesheet" href="css/style.css">
 
 <!-- Données structurées Schema.org. Les faits (18 pièces, 5 classes,
-     budget 24 points, 7 rangs, 6 raretés de coffre) doivent rester
-     synchronisés avec js/data-pieces.js : c'est ce que citent les moteurs de
-     réponse. -->
+     budget 24 points, 7 rangs, 12 adversaires, 6 raretés de coffre) doivent
+     rester synchronisés avec js/data-pieces.js : c'est ce que citent les
+     moteurs de réponse. -->
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -63,7 +63,7 @@
       "@id": "https://epichess.app/#game",
       "name": "Epic Chess",
       "url": "https://epichess.app/",
-      "description": "Epic Chess est une variante d'échecs gratuite jouable dans le navigateur. Dans un laboratoire d'alchimie abandonné, un savant fou a mêlé les pièces d'un jeu d'échecs à des créatures alchimiques. Avant chaque partie, le joueur compose son armée de 5 pièces (1 Monarque, 1 Général et 3 créatures) dans une limite de 24 points, puis affronte un autre joueur en ligne ou l'Instructeur, l'adversaire IA du jeu, sur un échiquier classique 8×8. Les pièces se possèdent en exemplaires et se risquent à chaque partie.",
+      "description": "Epic Chess est une variante d'échecs gratuite jouable dans le navigateur. Dans un laboratoire d'alchimie abandonné, un savant fou a mêlé les pièces d'un jeu d'échecs à des créatures alchimiques. Avant chaque partie, le joueur compose son armée de 5 pièces (1 Monarque, 1 Général et 3 créatures) dans une limite de 24 points, puis affronte un autre joueur en ligne ou l'un des douze adversaires du laboratoire, une galerie d'IA nommées allant de 150 à 2300 ELO, sur un échiquier classique 8×8. Tous les duels sont classés. Les pièces se possèdent en exemplaires et se risquent à chaque partie.",
       "inLanguage": "fr",
       "image": "https://epichess.app/og-image.png",
       "genre": ["Jeu de stratégie", "Variante d'échecs", "Jeu de réflexion"],
@@ -222,7 +222,7 @@
         <div class="mp-search-cell"><div class="mp-search-lbl">Niveau visé</div><div class="mp-search-val" id="mp-search-window">±120</div></div>
       </div>
       <div class="mp-search-note" id="mp-search-note">On cherche d'abord un adversaire de votre niveau, puis on élargit.</div>
-      <button class="btn btn-ghost" id="mp-fallback-btn" style="display:none;width:100%;margin-top:10px">Affronter l'Instructeur à la place</button>
+      <button class="btn btn-ghost" id="mp-fallback-btn" style="display:none;width:100%;margin-top:10px">Affronter un adversaire du laboratoire</button>
     </div>
 
     <div id="mp-screen-host" style="display:none">
@@ -282,9 +282,13 @@
             <button class="jouer-btn" id="cube-jouer-btn"><span>COMBAT</span></button>
             <div class="jouer-btn-sub">Affrontez un autre joueur en ligne</div>
             <div class="jouer-second">
-              <button class="btn btn-ghost" id="b-vs-ia">Affronter l'Instructeur</button>
+              <button class="btn btn-ghost" id="b-vs-ia">Adversaires</button>
               <button class="btn btn-ghost jouer-tournoi-btn" id="b-tournoi">Tournoi</button>
             </div>
+            <!-- Prochain adversaire conseillé, rempli par renderNextFoeHint()
+                 (js/adversaires.js) : sans lui, « Adversaires » n'est qu'un
+                 bouton, alors que c'est là qu'est la progression solo. -->
+            <div class="jouer-foe-hint" id="jouer-foe-hint"></div>
           </div>
         </div>
       </div>
@@ -359,6 +363,23 @@
        principal) : rempli et affiché par renderArmiesPage(). -->
   <div class="armies-select-banner" id="armies-select-banner" style="display:none"></div>
   <div class="armies-grid" id="armies-grid"></div>
+</div>
+</div>
+
+<!-- PAGE ADVERSAIRES : la galerie des douze adversaires IA.
+     Rendue par js/adversaires.js. Chaque carte cherche son portrait dans
+     assets/adversaires/<id>.png et retombe sur un sceau SVG s'il manque :
+     le jeu est complet sans une seule image. -->
+<div id="page-adversaires" class="page">
+<div class="adv-inner">
+  <div class="adv-hdr">
+    <div>
+      <div class="adv-page-title cinzel glow-text">Les Adversaires</div>
+      <div class="adv-page-sub" id="adv-sub"></div>
+    </div>
+    <button class="btn btn-ghost" id="adv-back">← Retour</button>
+  </div>
+  <div class="adv-grid" id="adv-grid"></div>
 </div>
 </div>
 
@@ -640,7 +661,7 @@
 <div class="promo-modal" id="promo-modal"><div class="promo-box"><div class="promo-title">Choisir la promotion</div><div class="promo-pieces-row" id="promo-box"></div></div></div>
 <!-- Le badge « Admin » flottant a disparu : le mode admin est désormais
      l'adresse /test, ouverte depuis les réglages (js/settings-admin.js). -->
-<div class="result-modal" id="result-modal"><div class="result-box" id="result-box"><button id="result-close-btn" style="position:absolute;top:12px;right:14px;background:transparent;border:none;cursor:pointer;color:var(--muted);font-size:22px;line-height:1;font-family:inherit;transition:color .15s;z-index:1" title="Fermer et analyser la partie">✕</button><span class="result-icon" id="result-icon"></span><div class="result-title" id="result-title"></div><div class="result-elo-row"><span class="result-elo-before" id="result-elo-before"></span><span class="result-elo-arrow">→</span><span class="result-elo-after" id="result-elo-after"></span><span class="result-elo-delta" id="result-elo-delta"></span></div><div class="result-elo-note" id="result-elo-note" style="display:none"></div><div class="result-rank-row"><span class="result-rank-icon" id="result-rank-icon"></span><span class="result-rank-name" id="result-rank-name"></span></div><div class="result-chest" id="result-chest" style="display:none"></div><div class="unlock-section" id="unlock-section" style="display:none"><div class="unlock-title">Nouvelle pièce débloquée !</div><span class="unlock-piece-emoji" id="unlock-piece-emoji"></span><div class="unlock-piece-name" id="unlock-piece-name"></div><div class="unlock-piece-class" id="unlock-piece-class"></div><div class="unlock-piece-ability" id="unlock-piece-ability"></div></div><div style="display:flex;flex-direction:column;gap:8px;margin-top:20px"><button class="btn btn-gold" style="width:100%" id="result-continue">Continuer</button><div style="display:flex;gap:8px"><button class="btn btn-primary" style="flex:1" id="result-rejouer">↺ Rejouer</button><button class="btn btn-ghost" style="flex:1;border-color:var(--accent2);color:var(--accent2)" id="result-revanche">Revanche</button></div></div></div></div>
+<div class="result-modal" id="result-modal"><div class="result-box" id="result-box"><button id="result-close-btn" style="position:absolute;top:12px;right:14px;background:transparent;border:none;cursor:pointer;color:var(--muted);font-size:22px;line-height:1;font-family:inherit;transition:color .15s;z-index:1" title="Fermer et analyser la partie">✕</button><span class="result-icon" id="result-icon"></span><div class="result-title" id="result-title"></div><div class="result-foe" id="result-foe" style="display:none"></div><div class="result-elo-row"><span class="result-elo-before" id="result-elo-before"></span><span class="result-elo-arrow">→</span><span class="result-elo-after" id="result-elo-after"></span><span class="result-elo-delta" id="result-elo-delta"></span></div><div class="result-elo-note" id="result-elo-note" style="display:none"></div><div class="result-rank-row"><span class="result-rank-icon" id="result-rank-icon"></span><span class="result-rank-name" id="result-rank-name"></span></div><div class="result-chest" id="result-chest" style="display:none"></div><div class="unlock-section" id="unlock-section" style="display:none"><div class="unlock-title">Nouvelle pièce débloquée !</div><span class="unlock-piece-emoji" id="unlock-piece-emoji"></span><div class="unlock-piece-name" id="unlock-piece-name"></div><div class="unlock-piece-class" id="unlock-piece-class"></div><div class="unlock-piece-ability" id="unlock-piece-ability"></div></div><div style="display:flex;flex-direction:column;gap:8px;margin-top:20px"><button class="btn btn-gold" style="width:100%" id="result-continue">Continuer</button><div style="display:flex;gap:8px"><button class="btn btn-primary" style="flex:1" id="result-rejouer">↺ Rejouer</button><button class="btn btn-ghost" style="flex:1;border-color:var(--accent2);color:var(--accent2)" id="result-revanche">Revanche</button></div></div></div></div>
 <!-- CÉRÉMONIE D'OUVERTURE DE COFFRE (js/economy-ui.js) -->
 <div class="chest-modal" id="chest-modal">
   <div class="chest-stage">
@@ -758,6 +779,7 @@
 <script src="js/ai-level-modal.js"></script>
 <script src="js/builder.js"></script>
 <script src="js/armies.js"></script>
+<script src="js/adversaires.js"></script>
 <script src="js/combat-intro.js"></script>
 <script src="js/rules-engine.js"></script>
 <script src="js/combat-music.js"></script>

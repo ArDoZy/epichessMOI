@@ -80,10 +80,10 @@ C'est la mécanique qui distingue le plus Epic Chess des autres variantes :
 
 ## Adversaires et progression
 
-- Le mode principal est le jeu **contre d'autres joueurs en ligne** :
-  appariement automatique, ou partie privée avec un code d'invitation à
-  quatre caractères. S'entraîner contre **l'Instructeur**, l'adversaire IA du
-  jeu, est un mode secondaire.
+- Deux façons de jouer, toutes deux **classées** : contre d'autres joueurs
+  **en ligne** (appariement automatique par niveau, ou partie privée avec un
+  code d'invitation à quatre caractères), et contre les **douze adversaires
+  du laboratoire**, une galerie d'IA nommées.
 - Un compte neuf ne possède que son **Monarque et son Général** : toutes les
   créatures s'obtiennent en jouant.
 - Un **tutoriel interactif** guide le nouveau joueur : le savant fou lui fait
@@ -94,22 +94,33 @@ C'est la mécanique qui distingue le plus Epic Chess des autres variantes :
   elle. Le savant fait ensuite visiter le laboratoire et composer une armée.
 - Cet exercice de déplacement revient à chaque créature inédite sortie d'un
   coffre, tutoriel ou pas.
-- L'Instructeur est **unique** et joue toujours à pleine puissance :
-  recherche alpha-bêta avec table de transposition, et une évaluation qui
-  tient compte des **pouvoirs** des créatures (paralysie de la Méduse,
+- Les **douze adversaires** vont de 150 à 2300 ELO : Cendre (150),
+  Suie (300), Bruyère (450), Orpiment (620), Vitriol (800), Cinabre (980),
+  Antimoine (1150), Mercure (1350), Plombagine (1550), la Salamandre (1750),
+  l'Instructeur (2000) et l'Athanor (2300). Aucun n'est verrouillé : on peut
+  défier le dernier dès le premier jour.
+- Ils diffèrent par leur **force de calcul** (de l'évaluation à un demi-coup
+  jusqu'à cinq secondes de recherche alpha-bêta profonde), par leur **façon
+  de se tromper** (chacun tolère un écart en centipions autour du meilleur
+  coup, et les plus faibles lâchent parfois franchement la position) et par
+  leur **style d'armée** : force brute, sorcier, agressif, défensif, en nuée,
+  mobile, positionnel.
+- Le moteur évalue les **pouvoirs** des créatures (paralysie de la Méduse,
   protection du Prêtre, zone de destruction du Typhon, charge du Dresseur
-  d'Éléphant, domination du Grand Maître) et pas seulement de leurs
-  déplacements.
-- Les parties contre l'Instructeur sont un **entraînement** : elles ne font
-  pas bouger l'ELO. Seuls les combats en ligne (et les rounds du Mode
-  Tournoi) sont classés.
+  d'Éléphant, domination du Grand Maître) et pas seulement leurs déplacements.
+- **Tous les duels sont classés**, contre l'IA comme en ligne : un joueur
+  seul progresse donc entièrement. Seul le mode administrateur et les
+  batailles du tutoriel sont hors classement.
 - La **Voie des Victoires** suit l'ELO du joueur à travers **7 rangs** :
   Poussière (0-199), Pierre (200-499), Bronze (500-849), Acier (850-1299),
   Obsidienne (1300-1799), Argent (1800-2399), Or Légendaire (2400+).
 - Franchir un palier de rang **débloque de nouvelles créatures** et de
   nouveaux **échiquiers** : bois, pierre, acier, argent puis or.
-- Le **Mode Tournoi** enchaîne sept combats contre des armées de plus en
-  plus fortes.
+- La rareté du coffre gagné suit la **série de victoires**, plafonnée par le
+  niveau de l'adversaire battu : enchaîner les victoires contre le plus
+  faible ne donne pas les meilleurs coffres.
+- Le **Mode Tournoi** enchaîne sept combats contre les sept adversaires les
+  plus forts, de Vitriol (800) à l'Athanor (2300).
 
 ## Confidentialité
 

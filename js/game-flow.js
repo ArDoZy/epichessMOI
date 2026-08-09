@@ -92,9 +92,15 @@ function updateGamePlayerBars(){
     if(aae)aae.textContent='Entraînement';
     return;
   }
-  if(aav)aav.textContent='I';
-  if(aan)aan.textContent=INSTRUCTOR.name;
-  if(aae)aae.textContent=INSTRUCTOR.elo+' ELO';
+  const foe=(typeof aiCurrentOpponent==='function')?aiCurrentOpponent():INSTRUCTOR;
+  if(aav){
+    // Le portrait remplace l'initiale quand l'adversaire en a un : douze
+    // adversaires réduits à douze lettres seraient douze fois la même case.
+    if(typeof advPortrait==='function')aav.innerHTML=advPortrait(foe,'adv-portrait-xs');
+    else aav.textContent=foe.name.charAt(0).toUpperCase();
+  }
+  if(aan)aan.textContent=foe.name;
+  if(aae)aae.textContent=foe.elo+' ELO';
 }
 
 // ----------------------------------------------------------------
@@ -191,7 +197,7 @@ function showArmyIntro(playerArmy,aiArmy){
   // moment par clic droit, elles n'ont pas à bloquer le lancement.
   const oppName=(GS&&GS.multiplayer)
     ?((typeof MP!=='undefined'&&MP.oppName)?MP.oppName:'Votre adversaire')
-    :INSTRUCTOR.name;
+    :((typeof aiCurrentOpponent==='function')?aiCurrentOpponent().name:INSTRUCTOR.name);
   const start=startGameClockAndAI;
   if(typeof playCombatCinematic==='function')
     playCombatCinematic(playerArmy,aiArmy,oppName,(GS&&GS.playerColor)||_playerColor||'w',start);
@@ -218,6 +224,19 @@ function showResultModal(result,oldElo,newElo,delta,newUnlockIds,noEloReason){
   iconEl.style.display=icons[result]?'':'none';
   const titleEl=document.getElementById('result-title');titleEl.textContent=titles[result];
   titleEl.className='result-title '+(result==='win'?'win-text':result==='loss'?'loss-text':'draw-text');
+  // Contre QUI : avec douze adversaires, « Victoire ! +23 » ne dit plus la
+  // moitié de ce qui s'est passé. La ligne porte aussi le palmarès du duel,
+  // qui est la seule raison d'y revenir une fois l'adversaire battu.
+  const foeEl=document.getElementById('result-foe');
+  if(foeEl){
+    const foe=(!GS.multiplayer&&!GS.tuto&&typeof aiCurrentOpponent==='function')?aiCurrentOpponent():null;
+    if(foe){
+      const rec=(typeof advRecord==='function')?advRecord(foe.id):null;
+      const tally=rec?' · '+rec.w+'V '+rec.d+'N '+rec.l+'D':'';
+      foeEl.style.display='';
+      foeEl.textContent=foe.name+' · '+foe.elo+' ELO'+tally;
+    }else foeEl.style.display='none';
+  }
   document.getElementById('result-elo-before').textContent=oldElo;
   document.getElementById('result-elo-after').textContent=newElo;
   const deltaEl=document.getElementById('result-elo-delta');deltaEl.textContent=(delta>0?'+':'')+delta;
@@ -225,10 +244,10 @@ function showResultModal(result,oldElo,newElo,delta,newUnlockIds,noEloReason){
   const eloRow=box.querySelector('.result-elo-row');
   const noteEl=document.getElementById('result-elo-note');
   if(eloRow)eloRow.style.display=noEloReason?'none':'';
-  // L'entraînement contre l'Instructeur n'a pas besoin d'être justifié à
-  // chaque fin de partie : le joueur a choisi l'Instructeur, il sait que ce
-  // n'est pas classé. La ligne d'ELO disparaît, la phrase aussi. Le mode
-  // admin, lui, garde sa mention : elle rappelle où l'on se trouve.
+  // Les batailles du tutoriel n'ont pas besoin d'être justifiées à chaque fin
+  // de partie : le savant vient de dire que c'est un entraînement. La ligne
+  // d'ELO disparaît, la phrase aussi. Le mode admin, lui, garde sa mention :
+  // elle rappelle où l'on se trouve.
   const showNote=!!noEloReason&&noEloReason!==VV_NO_ELO_TRAINING;
   if(noteEl){noteEl.style.display=showNote?'':'none';noteEl.textContent=showNote?noEloReason:'';}
   document.getElementById('result-rank-name').textContent=rank.name+' · '+newElo+' ELO';
@@ -315,7 +334,8 @@ function triggerEndOfGame(result){
     return;
   }
   const oldElo=vvLoadElo();const aiElo=vvEstimateAiElo();
-  // Partie non classée (entraînement contre l'Instructeur, mode admin) :
+  // Partie non classée (mode admin uniquement, hors tutoriel qui sort plus
+  // haut) : les duels contre les adversaires du laboratoire, eux, comptent.
   // l'ELO ne bouge pas d'un point, donc aucun déblocage par palier non plus.
   // Le reste de la fin de partie est inchangé : la série de victoires, les
   // coffres et le règlement des pièces engagées valent dans tous les modes.
@@ -328,7 +348,9 @@ function triggerEndOfGame(result){
     newUnlocks=vvCheckNewUnlocks(oldElo,newElo);
     vvSaveElo(newElo);
   }
-  const history=vvLoadHistory();history.push({result,oldElo,newElo,delta,date:Date.now(),aiElo,ranked:!noEloReason});vvSaveHistory(history);
+  const foeId=(!GS.multiplayer&&typeof aiCurrentOpponent==='function')?aiCurrentOpponent().id:null;
+  if(foeId&&typeof advNoteResult==='function')advNoteResult(foeId,result);
+  const history=vvLoadHistory();history.push({result,oldElo,newElo,delta,date:Date.now(),aiElo,ranked:!noEloReason,opp:foeId});vvSaveHistory(history);
   // Règlement des pièces engagées AVANT l'affichage : la cinématique montre
   // le décompte réel, pas une estimation.
   _lastSettlement=(typeof economySettle==='function')?economySettle(result,GS):null;

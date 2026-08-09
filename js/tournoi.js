@@ -27,22 +27,22 @@
 // n'a pas d'importance tant que les deux sont chargés avant tout clic).
 // ================================================================
 
-// Les sept rounds affrontaient les sept instructeurs, du plus faible au plus
-// fort. Il n'y a plus qu'un instructeur : la difficulté monte désormais par
-// la QUALITÉ DE L'ARMÉE qu'il aligne (budget minimum croissant) et non par sa
-// force de calcul, qui est maximale à chaque round. Chaque palier porte aussi
-// un ELO de référence, utilisé pour le calcul du gain ou de la perte.
-const TOURNOI_TIERS=[
-  {name:'Épreuve du Creuset',    minValue:13,elo:1300},
-  {name:'Épreuve de l\'Alambic', minValue:15,elo:1450},
-  {name:'Épreuve du Mortier',    minValue:17,elo:1600},
-  {name:'Épreuve du Fourneau',   minValue:19,elo:1750},
-  {name:'Épreuve de l\'Athanor',  minValue:21,elo:1900},
-  {name:'Épreuve du Sceau',      minValue:23,elo:2050},
-  {name:'Épreuve du Grand Œuvre',minValue:24,elo:2200},
-];
+// Le tournoi opposait sept fois de suite le MÊME instructeur sous sept noms
+// d'épreuves, la difficulté ne montant que par le budget de son armée. Les
+// douze adversaires (AI_OPPONENTS dans js/data-pieces.js) rendent la
+// gradation réelle : le tournoi est la moitié haute de l'échelle, de Vitriol
+// (800 ELO) à l'Athanor (2300), chacun avec sa force de calcul, son style et
+// son armée. C'est le même parcours que la galerie, mais d'une traite et sans
+// pouvoir choisir son adversaire.
+const TOURNOI_OPPONENT_IDS=['vitriol','cinabre','antimoine','mercure','plombagine','salamandre','athanor'];
 const TOURNOI_ROUNDS=[0,1,2,3,4,5,6];
-function tournoiTier(i){return TOURNOI_TIERS[Math.min(Math.max(i,0),TOURNOI_TIERS.length-1)];}
+function tournoiTier(i){
+  const id=TOURNOI_OPPONENT_IDS[Math.min(Math.max(i,0),TOURNOI_OPPONENT_IDS.length-1)];
+  const o=aiOpponentById(id);
+  // minValue/name restent exposés sous ces noms : l'overlay de round et la
+  // page tournoi les lisent déjà.
+  return{...o,minValue:Math.max(0,o.budget-3)};
+}
 
 let tournamentState={
   active:false,
@@ -208,11 +208,14 @@ function launchTournoiRound(roundIdx){
   _endGameTriggered=false;
   const rd=tournamentState.rounds[roundIdx];
   const tier=tournoiTier(roundIdx);
-  selectedAILevel=0;
+  // Chaque round a son adversaire, avec sa propre force de calcul : c'est lui
+  // que la recherche doit incarner, pas l'index laissé par la partie
+  // précédente.
+  selectedAILevel=aiOpponentIndex(tier.id);
   // L'ELO de référence du palier sert au calcul du gain : perdre au round 7
   // ne doit pas coûter autant que perdre au round 1.
   if(typeof vvSetOpponentElo==='function')vvSetOpponentElo(tier.elo);
-  aiArmyData=generateAIArmy(tier.minValue);
+  aiArmyData=generateAIArmy(tier.minValue,{style:tier.style,budget:tier.budget,full:true});
   // Sauvegarder l'armée IA du round pour l'analyse ultérieure
   tournamentState.rounds[roundIdx].aiArmy=JSON.parse(JSON.stringify(aiArmyData));
   tournamentState.rounds[roundIdx].movesLog=null;

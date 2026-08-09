@@ -178,6 +178,15 @@ function economyOnPromotion(pieceId,gs){
   if(gs){gs.promoGains=gs.promoGains||{};gs.promoGains[pieceId]=(gs.promoGains[pieceId]||0)+1;}
 }
 
+// Palier de coffre maximal pour la partie qui vient de finir, ou null quand
+// il n'y a pas de plafond (jeu en ligne, tournoi : l'adversaire vaut le sien).
+function economyChestCap(gs){
+  if(gs&&gs.multiplayer)return null;
+  if(typeof tournamentState!=='undefined'&&tournamentState&&tournamentState.active)return null;
+  const o=(typeof aiCurrentOpponent==='function')?aiCurrentOpponent():null;
+  return(o&&typeof o.tier==='number')?o.tier:null;
+}
+
 // Règlement complet. Renvoie un rapport affiché par la cinématique de fin
 // (economy-ui.js) : ce qui a été perdu, ce qui rentre, la série et le coffre.
 function economySettle(result,gs){
@@ -197,11 +206,20 @@ function economySettle(result,gs){
   invAddMany(returned);
 
   // Série de victoires et coffre associé.
+  //
+  // La rareté suit la série, MAIS elle est plafonnée par le palier de
+  // l'adversaire battu (champ `tier` de AI_OPPONENTS). Sans ce plafond, six
+  // victoires d'affilée contre Cendre (150 ELO, qui joue presque au hasard)
+  // donneraient un Coffre Roi : le moyen le plus rentable de progresser
+  // serait de ne jamais affronter personne à sa mesure. Le tournoi et le jeu
+  // en ligne n'ont pas de plafond, l'adversaire y vaut toujours le sien.
   let streak=accGet('win_streak',0);
   let chest=null;
   if(result==='win'){
     streak=streak+1;
     chest=chestForStreak(streak);
+    const cap=economyChestCap(gs);
+    if(cap!==null&&chest.tier>cap)chest=CHESTS[cap];
     chestGrant(chest.id);
   }else if(result==='loss'){
     streak=0;

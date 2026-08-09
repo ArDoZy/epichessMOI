@@ -39,7 +39,7 @@ function showCtxMenu(e,r,c,gs){
 // à l'identique par un adversaire en ligne (mpApplyRemotePower).
 function applyGardePierre(r,c,color,gs){
   gs.anchored=gs.anchored||new Set();gs.anchored.add(`${r},${c}`);gs.gardePierreUsed[color]=true;
-  recordMove(gs.board[r][c],{r,c},false,gs);gs.turn=opp(gs.turn);gs.turnCount++;
+  recordMove(gs.board[r][c],{r,c},false,gs,{r,c});gs.turn=opp(gs.turn);gs.turnCount++;
   postMoveUpdate(gs);
 }
 window.activatePower=()=>{
@@ -432,7 +432,13 @@ function updateStatus(gs){
   const aiCol=gs.aiColor||'b';
   // Le jeu n'a plus « une IA » mais UN adversaire nommé : l'Instructeur (ou
   // l'instructeur du tutoriel en cours). Le dire par son nom, partout.
-  const oppLabel=gs.multiplayer?'Votre adversaire':((gs.tuto&&gs.tuto.name)||INSTRUCTOR.name);
+  const oppLabel=gs.multiplayer?'Votre adversaire':((gs.tuto&&gs.tuto.name)||
+    ((typeof aiCurrentOpponent==='function')?aiCurrentOpponent().name:INSTRUCTOR.name));
+  // Le journal note l'échec et le mat. C'est calculé ICI et non dans
+  // recordMove : à l'inscription du coup, les états spéciaux (paralysie de la
+  // Méduse, protection du Prêtre) n'ont pas encore été recalculés, et le mat
+  // serait jugé sur un plateau périmé.
+  if(typeof markLastMove==='function')markLastMove(gs,(!hasLegal&&check)?'#':check?'+':'');
   if(!hasLegal){
     if(check){
       const playerWins=opp(t)===playerCol;

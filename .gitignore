@@ -1,0 +1,3 @@
+# Playwright n'est necessaire QUE pour npm test (tools/smoke-test.js et
+# tools/ai-bench.js) : le jeu lui-meme n'a aucune dependance de production.
+node_modules/

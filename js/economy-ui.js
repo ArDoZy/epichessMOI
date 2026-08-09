@@ -71,6 +71,10 @@ function streakBadgeHTML(){
 function renderStreakBadge(){
   const el=document.getElementById('jouer-streak');
   if(el)el.innerHTML=CUR_ACC?streakBadgeHTML():'';
+  // Le menu principal se rafraîchit ici (connexion, fin de partie) : c'est
+  // aussi le moment de remettre à jour l'adversaire conseillé, dont l'ELO de
+  // référence est celui du joueur et vient peut-être de bouger.
+  if(typeof renderNextFoeHint==='function')renderNextFoeHint();
 }
 
 // ----------------------------------------------------------------

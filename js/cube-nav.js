@@ -174,14 +174,17 @@
   // mise en file par animate()) plutôt que de l'ignorer, c'est ce qui
   // permet d'enchaîner deux rotations sans attendre.
   function nav(kind){ if(!locked && (animating || SIDE.has(slots.front))) animate(kind); }
-  // Bouton secondaire « Affronter l'Instructeur » : même parcours que COMBAT,
-  // mais la sélection d'armée débouche sur le duel contre l'IA.
+  // Bouton secondaire « Adversaires » : il ouvre la galerie des douze
+  // adversaires (js/adversaires.js), qui enchaîne elle-même sur la sélection
+  // d'armée. Auparavant il partait directement affronter l'Instructeur, seul
+  // adversaire du jeu — il n'y avait rien à choisir.
   function onVsIa(){
     if(locked||animating)return;
     // Pendant le tutoriel, tout départ au combat mène à la bataille scriptée
     // de l'étape en cours : le joueur n'a pas encore d'armée à sélectionner.
     if(typeof tutoInterceptCombat==='function'&&tutoInterceptCombat())return;
-    if(typeof startArmySelection==='function')startArmySelection('ia');
+    if(typeof showAdversairesPage==='function')showAdversairesPage();
+    else if(typeof startArmySelection==='function')startArmySelection('ia');
   }
 
   function lock(){ locked=true; refresh(); }
