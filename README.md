@@ -217,6 +217,16 @@ Une itération d'approfondissement **interrompue par la pendule** est jetée :
 elle n'a évalué qu'une partie des coups, ses scores ne sont pas comparables
 entre eux et fausseraient le tirage de `aiPickMove`.
 
+**La quiescence doit connaître les pouvoirs destructeurs.** Elle ne prolonge
+que les coups violents, pour ne pas s'arrêter au milieu d'un échange — et elle
+ne retenait que les prises « classiques », celles qui atterrissent sur une
+pièce ennemie. Or les coups les plus violents de ce jeu n'en sont pas : un
+Typhon posé sur une case VIDE efface jusqu'à huit voisines, et la charge du
+Dresseur écrase ce qu'elle traverse. La recherche évaluait donc tranquillement
+une position à un demi-coup d'être balayée, ce qui est exactement l'effet
+d'horizon que la quiescence existe pour supprimer. Toute nouvelle pièce
+capable de détruire sans capturer doit rejoindre ce filtre.
+
 Ces deux fonctions sont sérialisées dans le Web Worker : si vous en ajoutez
 une nouvelle, **ajoutez-la aussi à la liste `fns` de `getWorkerCode()`**,
 sinon le Worker plantera et l'IA basculera silencieusement sur le thread

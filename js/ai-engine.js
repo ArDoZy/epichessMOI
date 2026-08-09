@@ -503,6 +503,19 @@ function isKiller(move,depth){
 let _aiDeadline=0;
 let _aiAborted=false;
 
+// Le Typhon efface-t-il au moins une pièce en se posant là ? Sert à la
+// quiescence, qui doit traiter ce coup comme une prise même quand la case
+// d'arrivée est vide. Le roi est épargné par le pouvoir, il ne compte pas.
+function destroysSomething(board,to,p){
+  for(const[dr,dc] of [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]]){
+    const nr=to.r+dr,nc=to.c+dc;
+    if(nr<0||nr>7||nc<0||nc>7)continue;
+    const t=board[nr][nc];
+    if(t&&t.color!==p.color&&!(t.isKing||t.type==='k'))return true;
+  }
+  return false;
+}
+
 function quiesce(board,alpha,beta,maxing,fgs,qdepth){
   if(_aiAborted||Date.now()>_aiDeadline){_aiAborted=true;return 0;}
   const standPat=evalBoard(board,fgs);
@@ -517,9 +530,21 @@ function quiesce(board,alpha,beta,maxing,fgs,qdepth){
   const color=maxing?'b':'w';
   const fgs2={...fgs,board,medusaParalyzed:new Set(),pretreProtected:new Set(),grandMaitreAlive:{w:false,b:false}};
   updateMedusaParalysis(board,fgs2);updateGrandMaitre(board,fgs2);
+  // La quiescence ne prolonge que les coups VIOLENTS, pour ne pas s'arrêter au
+  // milieu d'un échange. Elle ne retenait que les prises « classiques », celles
+  // qui atterrissent sur une pièce ennemie — or dans ce jeu les coups les plus
+  // violents n'en sont pas : un Typhon qui se pose sur une case VIDE efface
+  // jusqu'à huit voisines, et la charge du Dresseur écrase ce qu'elle traverse.
+  // La recherche évaluait donc tranquillement une position à un demi-coup
+  // d'être balayée, ce qui est exactement l'effet d'horizon que la quiescence
+  // existe pour supprimer.
   const moves=getAllMovesColor(color,board,fgs2).filter(({from,to})=>{
+    const p=board[from.r][from.c];
     const cap=board[to.r][to.c];
-    return (cap&&cap.color!==board[from.r][from.c]?.color)||to.stayPut;
+    if(cap&&cap.color!==p?.color)return true;
+    if(to.stayPut||to.destroysPath)return true;
+    if(p&&p.pieceId==='typhon')return destroysSomething(board,to,p);
+    return false;
   });
   if(!moves.length)return standPat;
   if(maxing){
@@ -756,7 +781,7 @@ function getWorkerCode(){
     isInCheckSimple,isSquareAttackedSimple,getLegalMovesKingFiltered,applyCollateralOnBoard,moveLeavesKingInCheck,getLegalMoves,
     updateMedusaParalysis,updateGrandMaitre,
     applyMoveQuick,powerValueAt,evalPowers,evalBoard,getAllMovesColor,
-    boardHash,ttStore,ttProbe,storeKiller,isKiller,quiesce,minimax,
+    boardHash,ttStore,ttProbe,storeKiller,isKiller,destroysSomething,quiesce,minimax,
     histIdx,histBump,histGet,histDecay,getPST,
     aiApplyStyle,aiSearchRoot,aiPickMove
   ].map(f=>f.toString()).join('\n');

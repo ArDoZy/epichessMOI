@@ -1829,7 +1829,11 @@ body.cube-active:not(.nav-overlay) .notif-host{bottom:92px}
   mask-image:radial-gradient(ellipse 46% 52% at 50% 48%,transparent 20%,#000 78%);
 }
 body.light .cube-face[data-face="jouer"] .face-viewport::before{opacity:.14}
-.jouer-menu{position:relative;z-index:1}
+/* Le menu passe DEVANT le fond. On ne touche qu'au z-index : .jouer-menu est
+   `position:absolute;inset:0` plus haut dans ce fichier, et c'est ce
+   positionnement qui le centre sur toute la face — le repasser en `relative`
+   ici le faisait retomber en haut de l'écran, sous la barre de compte. */
+.jouer-menu{z-index:1}
 @media(prefers-reduced-motion:reduce){
   .cube-face[data-face="jouer"] .face-viewport::before{opacity:.22}
 }
@@ -1864,3 +1868,8 @@ body.light .cube-face[data-face="jouer"] .face-viewport::before{opacity:.14}
    antérieures au roster, la ligne ne doit alors pas se décaler. */
 .vh-opp{font-family:'Cinzel',serif;font-size:10.5px;color:var(--muted);
   min-width:96px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* En thème clair, --accent est un vert FONCÉ : le texte quasi noir du badge
+   « Conseillé », lisible sur le vert clair du thème sombre, y devenait
+   illisible. Le badge inverse donc son texte avec le thème. */
+body.light .adv-advised{color:#f6f5f1}
