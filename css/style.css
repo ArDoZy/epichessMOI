@@ -1873,3 +1873,15 @@ body.light .cube-face[data-face="jouer"] .face-viewport::before{opacity:.14}
    « Conseillé », lisible sur le vert clair du thème sombre, y devenait
    illisible. Le badge inverse donc son texte avec le thème. */
 body.light .adv-advised{color:#f6f5f1}
+
+/* Nom de l'adversaire et palmarès du duel, sous le titre du modal de fin.
+   « Victoire ! +23 » ne dit plus la moitié de ce qui s'est passé maintenant
+   qu'il y a douze adversaires. */
+.result-foe{font-family:'Cinzel',serif;font-size:11px;letter-spacing:.8px;
+  color:var(--muted);margin:-4px 0 12px;font-variant-numeric:tabular-nums}
+
+/* Adversaire conseillé, sous les boutons secondaires du menu principal. */
+.jouer-foe-hint{margin-top:12px;font-family:'Cinzel',serif;font-size:10.5px;
+  letter-spacing:.9px;color:var(--muted);text-align:center;min-height:14px}
+.jouer-foe-hint b{font-weight:800}
+.jfh-beaten{color:var(--gold);opacity:.8}

@@ -499,6 +499,8 @@ mais dans une version que Playwright refuse, le script le retrouve tout seul
 | Modifier l'exercice de déplacement (nombre de repères, règles) | `js/tuto-drill.js` (`DRILL_DOTS`, `drillLayDots`) |
 | Changer les pièces d'un compte neuf | `js/data-pieces.js` (`UNLOCK_TABLE`, drapeau `coffre:true`) |
 | Changer ce que lance le bouton COMBAT | `js/cube-nav.js` (`onCombat`/`onVsIa`) + `js/combat-intro.js` |
+| Modifier la galerie des adversaires (cartes, sceaux, palmarès) | `js/adversaires.js` + section `[ADVERSAIRES]` de `css/style.css` |
+| Changer le fond du menu principal | `assets/lab-bg.jpg` + section `[LAB-BG]` de `css/style.css` |
 | Régler la vitesse de rotation du cube | `js/cube-nav.js` (`ROTATE_MS`) **et** la transition de `#cube` dans `css/style.css` |
 | Modifier le mode tournoi (adversaires, nombre de rounds) | `TOURNOI_OPPONENT_IDS` dans `js/tournoi.js` |
 | Modifier le système de comptes/sauvegarde | `js/accounts.js` |

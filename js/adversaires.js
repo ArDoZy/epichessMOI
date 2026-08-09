@@ -196,6 +196,29 @@ function showAdversairesPage(){
   showPage('page-adversaires');
 }
 
+// ----------------------------------------------------------------
+// RAPPEL SUR LE MENU PRINCIPAL
+// ----------------------------------------------------------------
+// « Adversaires » n'est qu'un bouton parmi trois, alors que c'est par là que
+// passe toute la progression d'un joueur seul. Le menu nomme donc celui qui
+// est à sa mesure : il y a toujours un prochain adversaire à viser, et une
+// raison d'y aller.
+function advNextFoe(){
+  const myElo=(typeof vvLoadElo==='function')?vvLoadElo():0;
+  let best=AI_OPPONENTS[0];
+  AI_OPPONENTS.forEach(o=>{if(Math.abs(o.elo-myElo)<Math.abs(best.elo-myElo))best=o;});
+  return best;
+}
+function renderNextFoeHint(){
+  const el=document.getElementById('jouer-foe-hint');
+  if(!el)return;
+  if(!CUR_ACC){el.innerHTML='';return;}
+  const o=advNextFoe();
+  const beaten=advDefeated(o.id);
+  el.innerHTML='À votre mesure : <b style="color:'+o.accent+'">'+escH(o.name)+'</b> · '+o.elo+' ELO'+
+    (beaten?' <span class="jfh-beaten">déjà vaincu</span>':'');
+}
+
 document.getElementById('adv-back')?.addEventListener('click',()=>{
   if(typeof goToMainMenu==='function')goToMainMenu();else showPage('page-armies');
 });

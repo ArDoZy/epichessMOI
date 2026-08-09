@@ -224,6 +224,19 @@ function showResultModal(result,oldElo,newElo,delta,newUnlockIds,noEloReason){
   iconEl.style.display=icons[result]?'':'none';
   const titleEl=document.getElementById('result-title');titleEl.textContent=titles[result];
   titleEl.className='result-title '+(result==='win'?'win-text':result==='loss'?'loss-text':'draw-text');
+  // Contre QUI : avec douze adversaires, « Victoire ! +23 » ne dit plus la
+  // moitié de ce qui s'est passé. La ligne porte aussi le palmarès du duel,
+  // qui est la seule raison d'y revenir une fois l'adversaire battu.
+  const foeEl=document.getElementById('result-foe');
+  if(foeEl){
+    const foe=(!GS.multiplayer&&!GS.tuto&&typeof aiCurrentOpponent==='function')?aiCurrentOpponent():null;
+    if(foe){
+      const rec=(typeof advRecord==='function')?advRecord(foe.id):null;
+      const tally=rec?' · '+rec.w+'V '+rec.d+'N '+rec.l+'D':'';
+      foeEl.style.display='';
+      foeEl.textContent=foe.name+' · '+foe.elo+' ELO'+tally;
+    }else foeEl.style.display='none';
+  }
   document.getElementById('result-elo-before').textContent=oldElo;
   document.getElementById('result-elo-after').textContent=newElo;
   const deltaEl=document.getElementById('result-elo-delta');deltaEl.textContent=(delta>0?'+':'')+delta;
