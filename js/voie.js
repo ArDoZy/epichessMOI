@@ -103,13 +103,57 @@ function renderVoiePage(){
 
 // La Voie est devenue une face du cube (js/cube-nav.js) : elle n'a plus ni
 // bouton d'entrée dans « Mes armées », ni bouton de retour.
+// ----------------------------------------------------------------
+// REMONTÉE DE LA VOIE
+// ----------------------------------------------------------------
 // La Voie est embarquée dans une face du cube : c'est le conteneur de la
 // face qui défile, pas le document. Remonter window ne faisait donc rien.
-document.getElementById('voie-scroll-top').addEventListener('click',()=>{
-  const host=document.getElementById('face-viewport-voie')||document.getElementById('page-voie');
-  if(host)host.scrollTop=0;
-  window.scrollTo({top:0,left:0,behavior:'instant'});
-});
+//
+// Le bouton téléportait en haut de page, ce qui faisait perdre le fil : on ne
+// voyait pas les rangs défiler et on ne savait plus où on avait atterri. Il
+// remonte maintenant en ACCÉLÉRANT (courbe en ease-in), comme une bille qui
+// dévale la pente à l'envers : le regard suit le mouvement et comprend la
+// distance parcourue.
+function voieScrollHost(){
+  return document.getElementById('face-viewport-voie')||
+         document.getElementById('page-voie')||
+         document.scrollingElement;
+}
+
+let _voieScrollRaf=null;
+function voieSmoothTop(){
+  const host=voieScrollHost();
+  if(!host)return;
+  if(_voieScrollRaf)cancelAnimationFrame(_voieScrollRaf);
+  const start=host.scrollTop;
+  if(start<=0)return;
+  // Durée proportionnelle à la distance, mais bornée : une Voie très longue
+  // ne doit pas imposer une remontée interminable.
+  const duration=Math.min(1100,Math.max(420,start*0.55));
+  const t0=performance.now();
+  // ease-in cubique : lent au départ, de plus en plus rapide.
+  const ease=t=>t*t*t;
+  const step=now=>{
+    const t=Math.min(1,(now-t0)/duration);
+    host.scrollTop=start*(1-ease(t));
+    if(t<1)_voieScrollRaf=requestAnimationFrame(step);
+    else{host.scrollTop=0;_voieScrollRaf=null;}
+  };
+  _voieScrollRaf=requestAnimationFrame(step);
+}
+document.getElementById('voie-scroll-top').addEventListener('click',voieSmoothTop);
+
+// Le bouton ne sert à rien quand on est déjà en haut : il n'apparaît qu'une
+// fois la page réellement descendue.
+(function(){
+  const btn=document.getElementById('voie-scroll-top');
+  if(!btn)return;
+  const host=voieScrollHost();
+  if(!host||!host.addEventListener)return;
+  const sync=()=>{btn.style.visibility=host.scrollTop>320?'':'hidden';};
+  host.addEventListener('scroll',sync,{passive:true});
+  sync();
+})();
 
 // ----------------------------------------------------------------
 // CHOIX DE LA PRIMORDIALE DE DÉPART (premier lancement du compte)
@@ -123,7 +167,11 @@ function showPrimordialeChoiceModal(){
     el.addEventListener('click',()=>{
       const id=el.dataset.id;vvSavePrimordialeChoisie(id);VV_UNLOCKED.add(id);vvSaveUnlocked(VV_UNLOCKED);
       if(typeof invEnsureStarter==='function')invEnsureStarter();
-      modal.style.display='none';showNotif((PIECES.find(p=>p.id===id)?.name)+' choisie ! Bonne chance !','ok');updAll();
+      modal.style.display='none';updAll();
+      // Le compte est prêt : le savant peut entrer en scène. C'est le seul
+      // moment où toutes les données du joueur existent (armée vide,
+      // inventaire de départ, Primordiale choisie).
+      if(typeof tutoMaybeStart==='function')tutoMaybeStart();
     });
   });
 }

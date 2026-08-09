@@ -214,7 +214,7 @@ document.getElementById('result-rejouer').addEventListener('click',()=>{
   const prevPlayerArmy=GS.playerArmy;
   currentArmyData=prevPlayerArmy;
   aiArmyData=generateAIArmy();
-  renderCombatPage(prevPlayerArmy,false);
+  renderCombatPage(prevPlayerArmy,GS.multiplayer?'online':'ia');
   showPage('page-combat');launchParticles();
 });
 
@@ -228,7 +228,7 @@ document.getElementById('result-revanche').addEventListener('click',()=>{
   const prevAiArmy=GS.aiArmy;
   currentArmyData=prevPlayerArmy;
   aiArmyData=prevAiArmy;
-  renderCombatPage(prevPlayerArmy,true);
+  renderCombatPage(prevPlayerArmy,GS.multiplayer?'online':'ia');
   showPage('page-combat');launchParticles();
 });
 

@@ -370,10 +370,14 @@
           <!-- Série de victoires en cours : c'est elle qui détermine la rareté
                du prochain coffre, elle doit être visible avant de lancer. -->
           <div id="jouer-streak"></div>
+          <!-- COMBAT = affronter un autre joueur. C'est ce que les gens
+               viennent chercher, donc c'est le gros bouton. S'entraîner
+               contre l'IA est une action secondaire, pas l'inverse. -->
           <div class="jouer-actions">
             <button class="jouer-btn" id="cube-jouer-btn"><span>COMBAT</span></button>
+            <div class="jouer-btn-sub">Affrontez un autre joueur en ligne</div>
             <div class="jouer-second">
-              <button class="btn btn-ghost" id="b-online-quick">Affronter un joueur</button>
+              <button class="btn btn-ghost" id="b-vs-ia">Affronter l'Instructeur</button>
               <button class="btn btn-ghost jouer-tournoi-btn" id="b-tournoi">Tournoi</button>
             </div>
           </div>
@@ -415,8 +419,6 @@
   <button class="cube-arrow cube-arrow-side" id="cube-arrow-right" title="Tourner à droite" style="display:none">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 5, 16 12, 9 19"/></svg>
   </button>
-  <!-- Boussole : nomme la face affichée, sinon on tourne le cube à l'aveugle. -->
-  <div class="cube-compass" id="cube-compass" style="display:none"><span id="cube-compass-name">Jouer</span></div>
 </div>
 
 <!-- PAGE 1: BUILDER -->
@@ -601,18 +603,33 @@
 <!-- PAGE COMBAT -->
 <div id="page-combat" class="page">
   <div class="cbg"></div><div class="cparts" id="cparts"></div>
+  <!-- Cette page a DEUX modes, pilotés par renderCombatPage() dans
+       js/combat-intro.js : « en ligne » (on cherche un adversaire humain) et
+       « ia » (on affronte l'Instructeur). Auparavant elle ne présentait que le
+       duel contre l'IA, et le jeu en ligne s'ouvrait dans une fenêtre posée
+       par-dessus, ce qui donnait un écran qui annonçait une chose et en
+       faisait une autre. -->
   <div class="cinner">
-    <div class="ctitle rv">COMBAT</div>
-    <div class="csubt rv rv1">Que la bataille commence…</div>
+    <div class="ctitle rv" id="ctitle">COMBAT</div>
+    <div class="csubt rv rv1" id="csubt">Que la bataille commence…</div>
     <div class="cvs rv rv2" id="cvs-display"></div>
     <!-- Ce que la partie met en jeu (js/economy.js) : le joueur doit le voir
          AVANT de s'engager, pas après avoir perdu ses pièces. -->
     <div class="cstake rv rv3" id="cstake"></div>
-    <div class="rv rv5" style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+
+    <!-- Actions du mode EN LIGNE -->
+    <div class="rv rv5 cactions" id="cactions-online">
       <button class="btn btn-ghost" id="cb-back">← Quitter</button>
+      <button class="btn btn-ghost" id="cb-private">Partie privée</button>
+      <button class="btn btn-ghost" id="cb-join">Rejoindre avec un code</button>
+      <button class="btn btn-primary" id="cb-quick" style="font-size:15px;padding:12px 30px">Chercher un adversaire →</button>
+    </div>
+
+    <!-- Actions du mode INSTRUCTEUR -->
+    <div class="rv rv5 cactions" id="cactions-ia" style="display:none">
+      <button class="btn btn-ghost" id="cb-back-ia">← Quitter</button>
       <button class="btn btn-ghost" id="cb-choose-ai">Armée de l'Instructeur</button>
       <button class="btn btn-ghost" id="cb-mirror-ai" style="border-color:var(--primordiale);color:var(--primordiale)">Armée miroir</button>
-      <button class="btn btn-gold" id="cb-play-online">Affronter un joueur</button>
       <button class="btn btn-primary" id="cb-play" style="font-size:15px;padding:12px 30px">Combattre →</button>
     </div>
   </div>
@@ -699,6 +716,26 @@
 <!-- Racine des cinématiques d'entrée et de fin de combat (js/cinematics.js) -->
 <div id="cine-root"></div>
 
+<!-- TUTORIEL (js/tutorial.js) : le savant fou fait visiter le laboratoire.
+     Le projecteur ne capte aucun clic, la vraie interface reste utilisable
+     dessous : c'est ce qui permet aux étapes d'attendre un vrai clic sur un
+     vrai bouton. -->
+<div id="tuto-root">
+  <div id="tuto-spot"></div>
+  <div id="tuto-box" class="tuto-box-bottom">
+    <div class="tuto-portrait" id="tuto-portrait"></div>
+    <div class="tuto-body">
+      <div class="tuto-name">Le Savant</div>
+      <div class="tuto-text" id="tuto-text"></div>
+      <div class="tuto-hint" id="tuto-hint"></div>
+    </div>
+    <div class="tuto-actions">
+      <button class="btn btn-primary" id="tuto-next">Suivant</button>
+      <button class="tuto-quit" id="tuto-quit">Quitter le tutoriel</button>
+    </div>
+  </div>
+</div>
+
 <div class="ctx-menu" id="ctx-menu"><span class="ctx-close" onclick="closeCtx()">✕</span><div class="ctx-title" id="ctx-title"></div><div class="ctx-class" id="ctx-class-lbl"></div><div class="ctx-row"><span class="ctx-label">Valeur : </span><span id="ctx-val"></span></div><div class="ctx-row"><span class="ctx-label">Déplacement : </span><span id="ctx-mvt"></span></div><div class="ctx-row" id="ctx-stock-row" style="display:none"><span class="ctx-label">Réserve : </span><span id="ctx-stock"></span></div><div class="ctx-row" id="ctx-ability-row" style="display:none"><span class="ctx-label">Pouvoir : </span><span id="ctx-ability"></span></div><button class="btn btn-gold ctx-power-btn" id="ctx-power-btn" style="display:none" onclick="activatePower()"></button></div>
 
 <!-- SETTINGS BUTTON & PANEL -->
@@ -722,6 +759,11 @@
   <div class="sp-row">
     <span class="sp-label">Musique</span>
     <input type="range" class="sp-slider" id="sp-music-vol" min="0" max="1" step="0.05" value="0.5">
+  </div>
+  <hr class="sp-divider">
+  <div class="sp-row">
+    <span class="sp-label">Tutoriel</span>
+    <button class="btn btn-ghost" id="sp-tuto" style="font-size:10px;padding:5px 12px">Revoir</button>
   </div>
 </div>
 
@@ -770,6 +812,7 @@
 <script src="js/game-flow.js"></script>
 <script src="js/voie.js"></script>
 <script src="js/economy-ui.js"></script>
+<script src="js/tutorial.js"></script>
 <script src="js/tournoi.js"></script>
 <script src="js/settings-admin.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
