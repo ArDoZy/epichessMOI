@@ -12,5 +12,7 @@
     "node": ">=16"
   },
   "comment": "Aucune dependance de production : le jeu s'ouvre en double-cliquant sur index.html. Playwright n'est necessaire QUE pour `npm test` (voir tools/smoke-test.js) : npm i -D playwright && npx playwright install chromium.",
-  "devDependencies": {}
+  "devDependencies": {
+    "playwright": "^1.62.1"
+  }
 }

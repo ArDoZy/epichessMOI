@@ -27,7 +27,11 @@ let _opponentEloOverride=null;
 function vvSetOpponentElo(v){_opponentEloOverride=(typeof v==='number'&&v>0)?v:null;}
 function vvEstimateAiElo(){
   if(typeof _opponentEloOverride==='number')return _opponentEloOverride;
-  return INSTRUCTOR?INSTRUCTOR.elo:800;
+  // Chaque adversaire porte son propre ELO (AI_OPPONENTS dans
+  // js/data-pieces.js) : c'est lui, et non une valeur unique, qui décide de ce
+  // que vaut la victoire.
+  const o=(typeof aiCurrentOpponent==='function')?aiCurrentOpponent():INSTRUCTOR;
+  return(o&&o.elo)||800;
 }
 function vvCalcNewElo(playerElo,aiElo,result){
   const K=32;
@@ -45,20 +49,29 @@ function vvCalcNewElo(playerElo,aiElo,result){
 }
 // Une partie est-elle CLASSÉE, c'est-à-dire fait-elle bouger l'ELO ?
 // Renvoie null si oui, sinon la raison (affichée dans le modal de résultat).
-//   - Mode admin : rien de ce qui s'y passe ne compte au classement, sinon
-//     une démonstration polluerait la progression réelle du compte.
-//   - Affronter l'Instructeur : c'est un entraînement. L'IA joue toujours à
-//     pleine puissance et joue autant de fois qu'on veut : un ELO gagné là
-//     ne mesure rien. Seuls les combats contre de vrais joueurs (et les
-//     rounds de tournoi, qui ont leurs propres paliers) sont classés.
-// VV_NO_ELO_TRAINING est une valeur reconnaissable, et pas seulement une
-// phrase : le modal de fin de partie s'en sert pour masquer la mention sans
-// masquer celle du mode admin (voir showResultModal dans js/game-flow.js).
-const VV_NO_ELO_TRAINING='Entraînement contre l\'Instructeur : aucun ELO en jeu.';
+//
+// AVANT, seuls le jeu en ligne et le tournoi comptaient : affronter l'IA était
+// « un entraînement ». C'était défendable avec un adversaire unique à pleine
+// puissance, mais cela fermait tout le jeu à qui joue seul. Le classement
+// n'avançait pas d'un point, donc aucune pièce à palier d'ELO (Garde de
+// Pierre à 30, Méduse à 210, Typhon à 1000, Grand Maître à 1700) et aucun
+// échiquier n'était atteignable sans trouver un adversaire humain.
+//
+// Il y a maintenant douze adversaires d'ELO connu et espacé (AI_OPPONENTS) :
+// une victoire contre l'un d'eux mesure exactement ce que mesure une victoire
+// contre un humain de même niveau. Ces parties sont donc CLASSÉES, et le
+// classement se régule tout seul — battre un adversaire très au-dessous de
+// son propre niveau ne rapporte quasiment rien (formule Elo), et la rareté du
+// coffre gagné est plafonnée par le palier de l'adversaire (economySettle).
+//
+// Restent non classés : le mode admin (une démonstration ne doit pas polluer
+// la progression réelle) et les batailles du tutoriel, qui ne passent de toute
+// façon pas par ici (voir triggerEndOfGame).
+// VV_NO_ELO_TRAINING est conservée pour les sauvegardes et le modal de fin.
+const VV_NO_ELO_TRAINING='Entraînement : aucun ELO en jeu.';
 function vvNoEloReason(gs){
   if(typeof ADMIN_MODE!=='undefined'&&ADMIN_MODE)return 'Mode admin : partie non classée, aucun ELO en jeu.';
-  const inTournoi=(typeof tournamentState!=='undefined')&&tournamentState&&tournamentState.active;
-  if(!inTournoi&&!(gs&&gs.multiplayer))return VV_NO_ELO_TRAINING;
+  if(gs&&gs.tuto)return VV_NO_ELO_TRAINING;
   return null;
 }
 function vvCheckNewUnlocks(oldElo,newElo){
@@ -115,7 +128,13 @@ function renderVoiePage(){
     const eloCell=(h.ranked===false)
       ?'<span class="vh-delta zero">—</span><span class="vh-elo">Non classée</span>'
       :'<span class="vh-delta '+dCls+'">'+(h.delta>0?'+':'')+h.delta+'</span><span class="vh-elo">'+h.oldElo+' → '+h.newElo+'</span>';
-    hhtml+='<div class="vh-row"><span class="vh-result '+rCls+'">'+rLbl+'</span>'+eloCell+'<span class="vh-date">'+d.toLocaleDateString('fr-FR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})+'</span></div>';
+    // Contre QUI : « Victoire +18 » ne dit rien sans le nom de l'adversaire,
+    // maintenant qu'il y en a douze. Les parties antérieures au roster n'ont
+    // pas le champ, la colonne reste alors vide plutôt que d'inventer un nom.
+    const foe=h.opp?escH(aiOpponentById(h.opp).name):(h.tournoi?'Tournoi':h.opp===null?'En ligne':'');
+    hhtml+='<div class="vh-row"><span class="vh-result '+rCls+'">'+rLbl+'</span>'+
+      '<span class="vh-opp">'+foe+'</span>'+eloCell+
+      '<span class="vh-date">'+d.toLocaleDateString('fr-FR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})+'</span></div>';
   });
   histDiv.innerHTML=hhtml;
 }

@@ -43,7 +43,7 @@
 <link rel="stylesheet" href="css/style.css">
 
 <!-- FAQPage : déplacé ici depuis index.html avec le texte qu'il décrit.
-     Les faits (18 pièces, 5 classes, budget 24 points, 7 rangs, 6 raretés de
+     Les faits (18 pièces, 5 classes, budget 24 points, 7 rangs, 12 adversaires, 6 raretés de
      coffre) doivent rester synchronisés avec js/data-pieces.js. -->
 <script type="application/ld+json">
 {
@@ -90,7 +90,7 @@
           "name": "Contre qui joue-t-on à Epic Chess ?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Contre d'autres joueurs en ligne, par appariement automatique ou avec un code d'invitation, et contre l'Instructeur, l'adversaire IA du jeu. L'Instructeur est unique et joue toujours à pleine puissance : son évaluation tient compte des pouvoirs des créatures et pas seulement de leurs déplacements. Les parties contre l'Instructeur sont un entraînement : elles ne font pas bouger l'ELO. Le Mode Tournoi enchaîne sept combats contre des armées de plus en plus fortes."
+            "text": "Contre d'autres joueurs en ligne, par appariement automatique ou avec un code d'invitation, et contre les douze adversaires du laboratoire, une galerie d'IA nommées qui va de Cendre (150 ELO, qui joue presque au hasard) à l'Athanor (2300 ELO, qui n'oublie rien). Chacun a sa force de calcul, sa façon de se tromper et son style d'armée : Cinabre paralyse et repousse au lieu de prendre, Orpiment charge en ligne droite, Antimoine ne concède pas une case. Aucun n'est verrouillé et TOUS les duels sont classés : on peut donc progresser entièrement seul. Le Mode Tournoi enchaîne sept combats contre les sept plus forts, de Vitriol à l'Athanor."
           }
         },
         {
@@ -106,7 +106,7 @@
           "name": "Comment débloque-t-on de nouvelles créatures ?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Un compte neuf ne possède que son Monarque et son Général. Les trois premières créatures s'obtiennent dans le tutoriel, en gagnant ses premières batailles. Ensuite, chaque partie classée fait évoluer l'ELO du joueur le long de la Voie des Victoires, qui compte 7 rangs successifs : Poussière, Pierre, Bronze, Acier, Obsidienne, Argent et Or Légendaire. Franchir un palier débloque de nouvelles créatures, et les coffres gagnés en enchaînant les victoires en offrent également. Chaque créature inédite s'accompagne d'un petit exercice où l'on apprend son déplacement."
+            "text": "Un compte neuf ne possède que son Monarque et son Général. Les trois premières créatures s'obtiennent dans le tutoriel, en gagnant ses premières batailles. Ensuite, chaque partie classée fait évoluer l'ELO du joueur le long de la Voie des Victoires, qui compte 7 rangs successifs : Poussière, Pierre, Bronze, Acier, Obsidienne, Argent et Or Légendaire. Franchir un palier débloque de nouvelles créatures, et les coffres gagnés en enchaînant les victoires en offrent également. La rareté du coffre suit la série de victoires, plafonnée par le niveau de l'adversaire battu. Chaque créature inédite s'accompagne d'un petit exercice où l'on apprend son déplacement."
           }
         },
         {
@@ -122,7 +122,7 @@
           "name": "Faut-il savoir jouer aux échecs pour jouer à Epic Chess ?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Non. Le plateau reste un 8×8 classique et les règles de base (échec, échec et mat, promotion des pions) sont celles des échecs traditionnels, mais chaque créature affiche son déplacement et sa capacité directement sur sa carte. Les parties contre l'Instructeur ne coûtent aucun ELO : on peut y apprendre sans rien risquer au classement."
+            "text": "Non. Le plateau reste un 8×8 classique et les règles de base (échec, échec et mat, promotion des pions) sont celles des échecs traditionnels, mais chaque créature affiche son déplacement et sa capacité directement sur sa carte. Et l'on choisit son adversaire : les premiers de la galerie sont là pour être battus par un débutant."
           }
         }
       ]
@@ -153,7 +153,7 @@
       <li><strong>Sorcier</strong> : les pièces possédant des capacités spéciales avancées, mais à la mobilité réduite.</li>
     </ul>
 
-    <p>Les parties se jouent <strong>en ligne contre d'autres joueurs</strong>, ou contre l'Instructeur, l'adversaire IA du jeu. Seuls les combats en ligne font évoluer votre ELO le long de la <strong>Voie des Victoires</strong> : affronter l'Instructeur est un entraînement libre, sans enjeu de classement.</p>
+    <p>Les parties se jouent <strong>en ligne contre d'autres joueurs</strong>, ou contre les <strong>douze adversaires du laboratoire</strong>, de Cendre (150 ELO) à l'Athanor (2300). Tous les duels sont classés et font évoluer votre ELO le long de la <strong>Voie des Victoires</strong> : on progresse aussi bien seul qu'accompagné.</p>
     <p>Les pièces se possèdent en exemplaires : les engager, c'est les <strong>risquer</strong>. Une victoire rapporte un coffre, et sa rareté monte à chaque victoire consécutive.</p>
 
     <h2 class="lore-h">Questions fréquentes</h2>
@@ -165,7 +165,7 @@
 
     <details class="lore-faq">
       <summary>Faut-il savoir jouer aux échecs ?</summary>
-      <p>Non. Le plateau reste un 8×8 classique et les règles de base (échec, échec et mat, promotion des pions) sont celles des échecs traditionnels, mais chaque créature affiche son déplacement et sa capacité directement sur sa carte. Les parties contre l'Instructeur ne coûtent aucun ELO : on peut y apprendre sans rien risquer au classement.</p>
+      <p>Non. Le plateau reste un 8×8 classique et les règles de base (échec, échec et mat, promotion des pions) sont celles des échecs traditionnels, mais chaque créature affiche son déplacement et sa capacité directement sur sa carte. Et l'on choisit son adversaire : les premiers de la galerie sont là pour être battus par un débutant.</p>
     </details>
 
     <details class="lore-faq">
@@ -175,12 +175,12 @@
 
     <details class="lore-faq">
       <summary>Contre qui joue-t-on ?</summary>
-      <p>Contre d'autres joueurs en ligne, par appariement automatique ou avec un code d'invitation, et contre l'Instructeur, l'adversaire IA du jeu. L'Instructeur est unique et joue toujours à pleine puissance : son évaluation tient compte des pouvoirs des créatures et pas seulement de leurs déplacements. Les parties contre l'Instructeur sont un entraînement : elles ne font pas bouger l'ELO. Le Mode Tournoi enchaîne sept combats contre des armées de plus en plus fortes.</p>
+      <p>Contre d'autres joueurs en ligne, par appariement automatique ou avec un code d'invitation, et contre les douze adversaires du laboratoire, une galerie d'IA nommées qui va de Cendre (150 ELO, qui joue presque au hasard) à l'Athanor (2300 ELO, qui n'oublie rien). Chacun a sa force de calcul, sa façon de se tromper et son style d'armée : Cinabre paralyse et repousse au lieu de prendre, Orpiment charge en ligne droite, Antimoine ne concède pas une case. Aucun n'est verrouillé et TOUS les duels sont classés : on peut donc progresser entièrement seul. Le Mode Tournoi enchaîne sept combats contre les sept plus forts, de Vitriol à l'Athanor.</p>
     </details>
 
     <details class="lore-faq">
       <summary>Comment débloque-t-on de nouvelles créatures ?</summary>
-      <p>Un compte neuf ne possède que son Monarque et son Général. Les trois premières créatures s'obtiennent dans le tutoriel, en gagnant ses premières batailles. Ensuite, chaque partie classée fait évoluer l'ELO du joueur le long de la Voie des Victoires, qui compte 7 rangs successifs : Poussière, Pierre, Bronze, Acier, Obsidienne, Argent et Or Légendaire. Franchir un palier débloque de nouvelles créatures, et les coffres gagnés en enchaînant les victoires en offrent également. Chaque créature inédite s'accompagne d'un petit exercice où l'on apprend son déplacement.</p>
+      <p>Un compte neuf ne possède que son Monarque et son Général. Les trois premières créatures s'obtiennent dans le tutoriel, en gagnant ses premières batailles. Ensuite, chaque partie classée fait évoluer l'ELO du joueur le long de la Voie des Victoires, qui compte 7 rangs successifs : Poussière, Pierre, Bronze, Acier, Obsidienne, Argent et Or Légendaire. Franchir un palier débloque de nouvelles créatures, et les coffres gagnés en enchaînant les victoires en offrent également. La rareté du coffre suit la série de victoires, plafonnée par le niveau de l'adversaire battu. Chaque créature inédite s'accompagne d'un petit exercice où l'on apprend son déplacement.</p>
     </details>
 
     <details class="lore-faq">

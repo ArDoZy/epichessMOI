@@ -12,7 +12,7 @@
 //
 // Auparavant la page ne connaissait que le duel contre l'IA, et le jeu en
 // ligne s'ouvrait dans une fenêtre posée par-dessus : l'écran annonçait un
-// combat contre l'Instructeur pendant qu'on cherchait un joueur humain.
+// combat contre un adversaire IA pendant qu'on cherchait un joueur humain.
 //
 // Dépendances : data-pieces.js (PIECES, INSTRUCTOR), armies.js
 // (generateAIArmy, renderArmiesPage, renderAiArmiesPage), game-flow.js
@@ -30,9 +30,19 @@ let combatMode='ia';
 // Depuis "Mes armées" en mode sélection (voir armies.js::pickArmyForBattle).
 window.launchCombat=id=>{
   const a=savedArmies.find(x=>x.id===id);if(!a)return;
-  loadArmyForEdit(a);currentArmyData=a;aiArmyData=generateAIArmy();
+  loadArmyForEdit(a);currentArmyData=a;
+  aiArmyData=aiArmyForOpponent();
   renderCombatPage(a,'ia');showPage('page-combat');launchParticles();
 };
+
+// Armée de l'adversaire courant : son budget et son style (AI_OPPONENTS), et
+// tout le catalogue à sa disposition — c'est en la voyant qu'on découvre les
+// créatures qu'on n'a pas encore débloquées.
+function aiArmyForOpponent(){
+  const o=(typeof aiChosenOpponent==='function')?aiChosenOpponent():null;
+  if(!o)return generateAIArmy();
+  return generateAIArmy(Math.max(0,o.budget-4),{style:o.style,budget:o.budget,full:true});
+}
 
 window.launchOnline=id=>{
   const a=savedArmies.find(x=>x.id===id);if(!a)return;
@@ -62,10 +72,11 @@ const renderCombatPage=(ad,mode)=>{
   const online=combatMode==='online';
   const all=resolveArmyPieces(ad);
 
-  document.getElementById('ctitle').textContent=online?'COMBAT':'L\'INSTRUCTEUR';
+  const foe=(typeof aiChosenOpponent==='function')?aiChosenOpponent():INSTRUCTOR;
+  document.getElementById('ctitle').textContent=online?'COMBAT':foe.name.toUpperCase();
   document.getElementById('csubt').textContent=online
     ? 'Cherchez un adversaire, ou invitez un ami avec un code.'
-    : 'Un entraînement contre l\'IA du laboratoire.';
+    : foe.title+' · '+foe.elo+' ELO · partie classée';
 
   const mine='<div class="cside"><div class="cside-lbl">Votre armée</div>'+
     '<div class="cside-pieces">'+armyIconRow(all)+'</div>'+
@@ -81,7 +92,8 @@ const renderCombatPage=(ad,mode)=>{
       '<div class="cside-name">En attente d\'un joueur</div></div>';
   }else{
     const aiAll=resolveArmyPieces(aiArmyData||{});
-    theirs='<div class="cside"><div class="cside-lbl">'+escH(INSTRUCTOR.name)+'</div>'+
+    const face=(typeof advPortrait==='function')?advPortrait(foe,'adv-portrait-sm'):'';
+    theirs='<div class="cside"><div class="cside-lbl">'+face+escH(foe.name)+'</div>'+
       '<div class="cside-pieces">'+armyIconRow(aiAll)+'</div>'+
       '<div class="cside-name">'+((aiArmyData&&aiArmyData.totalValue)||0)+' pts</div></div>';
   }

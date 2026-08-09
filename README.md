@@ -34,6 +34,9 @@ epic-chess/
 ├── apple-touch-icon.png     # 180×180, écran d'accueil iOS
 ├── og-image.png             # 1200×630, aperçu de partage (Discord, X...)
 ├── assets/
+│   ├── lab-bg.jpg           # FACULTATIF : fond d'atelier du menu principal
+│   ├── adversaires/         # FACULTATIF : <id>.png, un portrait par
+│   │                        #  adversaire. Absent = sceau SVG procédural.
 │   └── boards/              # Textures d'échiquier en SVG procédural
 │       ├── bois.svg          # (générées par tools/gen-boards.js, ne pas
 │       ├── pierre.svg        #  éditer à la main : relancer le script)
@@ -49,6 +52,8 @@ epic-chess/
 ├── tools/
 │   ├── gen-boards.js        # Générateur des textures d'échiquier (node)
 │   ├── gen-social.js        # Régénère og-image.png et apple-touch-icon.png
+│   ├── ai-bench.js          # Autopartie entre adversaires : vérifie que
+│   │                        #  l'échelle de force tient (voir plus bas)
 │   └── smoke-test.js        # `npm test` : rejoue tout le parcours du jeu
 │                            #  dans un vrai navigateur (voir plus bas)
 ├── css/
@@ -65,6 +70,7 @@ epic-chess/
     ├── ai-level-modal.js     # Réduit à selectedAILevel/selectedTimeControl
     ├── builder.js            # Page de composition d'armée
     ├── armies.js             # Pages "Mes armées" / "Armées IA" + génération IA
+    ├── adversaires.js        # Galerie des douze adversaires (portraits/sceaux)
     ├── combat-intro.js       # Page d'intro combat (VS)
     ├── rules-engine.js       # Moteur de règles pur (coups, échecs, exécution)
     ├── combat-music.js       # Musique de combat en boucle
@@ -120,21 +126,96 @@ de `css/style.css` fixe donc la taille en pixels partout où c'est le cas.
 - `'online'` : COMBAT, le gros bouton du menu. On cherche un adversaire
   humain ; la page montre l'armée engagée face à un adversaire inconnu et
   porte les trois façons d'en trouver un.
-- `'ia'` : bouton secondaire « Affronter l'Instructeur ». La page montre les
-  deux armées en présence.
+- `'ia'` : bouton secondaire « Adversaires », qui ouvre d'abord la galerie
+  (`showAdversairesPage`, js/adversaires.js) puis la sélection d'armée. La
+  page montre les deux armées en présence, sous le nom et le portrait de
+  l'adversaire choisi.
 
 `renderCombatPage(armee, mode)` est le point d'entrée unique : tout appelant
 doit passer le mode, sinon on retombe sur `'ia'`. Les deux rangées de boutons
 existent dans le HTML et s'excluent (`#cactions-online` / `#cactions-ia`).
 
-### 4. L'IA (`js/ai-engine.js`)
+### 4. Les adversaires (`js/data-pieces.js`, `js/adversaires.js`)
 
-Il n'y a plus qu'un adversaire, `INSTRUCTOR`, qui joue toujours à pleine
-puissance. `evalBoard()` combine l'évaluation classique (matériel, tables
+**C'est le système qui a rouvert le jeu solo.** Il n'y avait qu'un adversaire,
+l'Instructeur, à 2000 ELO et à pleine puissance — et l'affronter n'était pas
+classé. Un joueur seul sortait donc du tutoriel (dont le dernier instructeur
+laisse passer un coup sur trois) face à un mur, et ne pouvait gagner **aucun
+point d'ELO** : ni le Garde de Pierre (30), ni la Méduse (210), ni le Typhon
+(1000), ni le Grand Maître (1700), ni un seul échiquier ne lui étaient
+accessibles. La moitié du contenu était injouable sans trouver un humain.
+
+`AI_OPPONENTS` (data-pieces.js) décrit maintenant **douze adversaires**, de
+Cendre (150 ELO) à l'Athanor (2300). Aucun n'est verrouillé, et **tous les
+duels sont classés** (`vvNoEloReason`, js/voie.js) : seuls le mode admin et le
+tutoriel restent hors classement.
+
+Quatre champs font la force d'un adversaire, et il faut les distinguer :
+
+- `timeMs` / `depthCap` : ce qu'il **voit**. À 0, la position est jugée à un
+  demi-coup — il voit la pièce à prendre, pas le mat en deux.
+- `slack` : ce qu'il **tolère**. Il tire au sort parmi tous les coups qui ne
+  perdent pas plus que ce nombre de centipions par rapport au meilleur. C'est
+  le cœur du modèle : un joueur faible ne joue pas au hasard, il joue des
+  coups plausibles mais imprécis. L'ancien réglage (`noise`, jusqu'à 95 % de
+  coups tirés uniformément parmi tous les coups légaux) produisait un
+  charabia que personne ne prenait pour un adversaire.
+- `blunder` : la probabilité de **lâcher franchement** la position. Les vrais
+  débutants accrochent des pièces ; sans ce terme, un adversaire à `slack`
+  élevé reste bizarrement solide et ne perd jamais bêtement.
+- `style` : ce qu'il **cherche**. `STYLE_W` (ai-engine.js) repondère les
+  termes que `evalBoard` calcule déjà — aucun parcours de plateau
+  supplémentaire, donc aucun coût de recherche — et `ARMY_STYLE_CLASS`
+  (armies.js) penche la composition de son armée vers une classe de créature.
+
+Un mat trouvé n'est jamais gâché : au-delà de 40000, `aiPickMove` ferme la
+fenêtre. Un adversaire faible ne voit pas le mat, mais s'il le voit, il le
+joue — sinon il aurait l'air de se moquer du joueur.
+
+Deux garde-fous contre le farm du bas de l'échelle : la formule Elo elle-même
+(battre beaucoup plus faible que soi ne rapporte quasiment rien), et le
+**plafond de coffre** par palier d'adversaire (`economyChestCap`,
+js/economy.js) — six victoires d'affilée contre Cendre ne donnent pas un
+Coffre Roi.
+
+`tools/ai-bench.js` fait s'affronter les adversaires en autopartie et vérifie
+que l'échelle tient dans le bon sens. Il ne fait pas partie de `npm test` (une
+passe prend plusieurs minutes) :
+
+```
+node tools/ai-bench.js               # paires voisines + deux paires éloignées
+node tools/ai-bench.js --pair cendre,athanor --games 6
+```
+
+Entre paliers **voisins** (150 à 250 points d'écart), quatre parties ne
+prouvent rien : c'est l'écart entre paliers **éloignés** qui doit être net, et
+il l'est (Orpiment 620 contre la Salamandre 1750 : 0–4).
+
+**Les portraits sont facultatifs.** Chaque adversaire cherche
+`assets/adversaires/<id>.png` ; sans le fichier, `advSealSVG()` dessine un
+sceau d'alchimiste déterministe à partir de son id. Le jeu est donc complet
+sans un seul octet d'image, et déposer un portrait suffit à le faire
+apparaître — il n'y a aucune liste à tenir à jour. Même principe pour
+`assets/lab-bg.jpg`, le fond du menu. Leur 404 est un comportement voulu, et
+`tools/smoke-test.js` l'ignore explicitement (`OPTIONAL_ASSET`).
+
+### 4 bis. Le moteur (`js/ai-engine.js`)
+
+`evalBoard()` combine l'évaluation classique (matériel, tables
 position-carrés, mobilité, structure de pions) et `evalPowers()`, qui note
 les **capacités spéciales** : paralysie de la Méduse, protection du Prêtre,
 zone de destruction du Typhon, charge du Dresseur, domination du Grand
 Maître, ancrage du Garde de Pierre.
+
+`aiSearchRoot()` et `aiPickMove()` sont partagées **mot pour mot** par le
+Worker et par le repli sur le thread principal. La boucle d'approfondissement
+itératif existait en double, à soixante lignes d'écart, et les deux copies
+avaient déjà divergé. `aiSearchRoot` renvoie **tous** les coups avec leur
+score, et non le seul meilleur : c'est ce dont `aiPickMove` a besoin.
+
+Une itération d'approfondissement **interrompue par la pendule** est jetée :
+elle n'a évalué qu'une partie des coups, ses scores ne sont pas comparables
+entre eux et fausseraient le tirage de `aiPickMove`.
 
 Ces deux fonctions sont sérialisées dans le Web Worker : si vous en ajoutez
 une nouvelle, **ajoutez-la aussi à la liste `fns` de `getWorkerCode()`**,
@@ -169,7 +250,8 @@ Le savant parle, et le joueur AGIT. Le tutoriel se déroule en deux temps.
 sa Dame : les créatures s'obtiennent en jouant, et les trois premières
 s'obtiennent ici. Chaque bataille oppose le joueur à un instructeur
 volontairement faible (`TUTO_INSTRUCTORS` dans `data-pieces.js`, ajoutés à
-`AI_INSTRUCTORS` après l'Instructeur normal), avec **la même armée des deux
+`AI_INSTRUCTORS` **après** les douze adversaires — d'où
+`tutoInstructorLevel(i) = AI_OPPONENTS.length + i`), avec **la même armée des deux
 côtés, posée en dur** (`tutoBuildBoard`) : personne ne perd parce qu'il a mal
 composé. Une victoire ouvre un coffre au contenu **imposé** qui débloque une
 créature (Alpha, Fourmi, Garde de Pierre), suivie de son exercice de
@@ -263,8 +345,8 @@ Le nouveau tient en quatre règles :
    avec le temps.
 
 L'écran de recherche (`mpRenderSearch`) affiche le temps écoulé, le nombre de
-joueurs en attente et la fenêtre courante, et propose l'Instructeur au bout
-de 40 secondes. Le salon d'attente a changé de nom (`epichess-lobby-v2`) :
+joueurs en attente et la fenêtre courante, et propose un adversaire du
+laboratoire au bout de 40 secondes. Le salon d'attente a changé de nom (`epichess-lobby-v2`) :
 les anciens clients ne peuvent pas s'y tromper de protocole.
 
 ## Le multijoueur et la mise en veille de Supabase
@@ -331,7 +413,8 @@ chaque fichier suppose que les globals des fichiers précédents existent déjà
 
 ```
 data-pieces.js → piece-art.js → main.js → cube-nav.js → accounts.js
-→ economy.js → ai-level-modal.js → builder.js → armies.js → combat-intro.js
+→ economy.js → ai-level-modal.js → builder.js → armies.js → adversaires.js
+→ combat-intro.js
 → rules-engine.js → combat-music.js → cinematics.js → game-render.js
 → ai-engine.js → game-flow.js → voie.js → economy-ui.js → tuto-drill.js
 → tutorial.js
@@ -365,9 +448,10 @@ les suivants, et on ne le découvre qu'en ouvrant la page à la main.
 
 `tools/smoke-test.js` ouvre le vrai jeu dans un vrai navigateur et refait le
 parcours : création de compte, refus expliqué, tutoriel, réglages conservés,
-partie contre l'Instructeur (avec un coup joué et la réponse de l'IA),
-pendule, orientation des tables position-carrés, destruction du Typhon dans
-la simulation de coup, rendu de la Réserve et de la Voie. Il échoue au
+galerie des douze adversaires, partie CLASSÉE contre l'un d'eux (avec un coup
+joué et la réponse de l'IA), pendule, orientation des tables position-carrés,
+destruction du Typhon dans la simulation de coup, rendu de la Réserve et de
+la Voie. Il échoue au
 premier message d'erreur de la console.
 
 ```
@@ -389,7 +473,10 @@ mais dans une version que Playwright refuse, le script le retrouve tout seul
 | Ajouter/modifier une pièce (valeur, emoji, description) | `js/data-pieces.js` (tableau `PIECES`) |
 | Changer les règles de mouvement d'une pièce existante ou en ajouter une | `js/rules-engine.js` (fonction `generateMovesRaw`, + `isSquareAttackedSimple` si elle peut mettre en échec) |
 | Changer le calcul d'ELO, les rangs, les paliers de déblocage | `js/voie.js` (calcul) + `js/data-pieces.js` (table `UNLOCK_TABLE`/`RANKS`) |
-| Modifier le comportement de l'IA (force, style de jeu) | `js/ai-engine.js` (`evalBoard`, `evalPowers`, `minimax`) + `js/data-pieces.js` (`INSTRUCTOR`) |
+| Ajouter / régler un adversaire (niveau, style, lore) | `js/data-pieces.js` (`AI_OPPONENTS`), puis `node tools/ai-bench.js` pour vérifier l'échelle |
+| Modifier le moteur lui-même (évaluation, recherche) | `js/ai-engine.js` (`evalBoard`, `evalPowers`, `minimax`, `aiSearchRoot`, `aiPickMove`) |
+| Changer la façon dont un style se joue | `STYLE_W` dans `js/ai-engine.js` (évaluation) + `ARMY_STYLE_CLASS` dans `js/armies.js` (composition) |
+| Ajouter un portrait d'adversaire | déposer `assets/adversaires/<id>.png` — rien à déclarer |
 | Changer le contenu ou la rareté des coffres | `js/data-pieces.js` (`CHESTS`, `DAILY_CHEST`) + `js/economy.js` (`chestRoll`) |
 | Changer les perles (gains en coffre, prix en boutique) | `js/data-pieces.js` (`CHEST_PEARLS`) + `js/economy.js` (`chestRoll`, `pearlBuyChest`) + `renderPearlShop()` dans `js/economy-ui.js` |
 | Changer la cadence des parties (temps, incrément) | `js/ai-level-modal.js` (`selectedTimeControl`, `selectedTimeIncrement`) ; l'incrément est crédité par `recordMove()` dans `js/rules-engine.js` |
@@ -403,11 +490,12 @@ mais dans une version que Playwright refuse, le script le retrouve tout seul
 | Changer les pièces d'un compte neuf | `js/data-pieces.js` (`UNLOCK_TABLE`, drapeau `coffre:true`) |
 | Changer ce que lance le bouton COMBAT | `js/cube-nav.js` (`onCombat`/`onVsIa`) + `js/combat-intro.js` |
 | Régler la vitesse de rotation du cube | `js/cube-nav.js` (`ROTATE_MS`) **et** la transition de `#cube` dans `css/style.css` |
-| Modifier le mode tournoi (nombre de rounds, bonus ELO) | `js/tournoi.js` |
+| Modifier le mode tournoi (adversaires, nombre de rounds) | `TOURNOI_OPPONENT_IDS` dans `js/tournoi.js` |
 | Modifier le système de comptes/sauvegarde | `js/accounts.js` |
 | Ajouter un nouveau réglage utilisateur | `index.html` (bloc `#settings-panel`) + `js/settings-admin.js` |
 | Modifier la présentation ou la FAQ publiques | `info.html` (texte visible **et** JSON-LD `FAQPage`) |
 | Changer les modes qui rapportent de l'ELO | `js/voie.js` (`vvNoEloReason`) |
+| Changer le plafond de coffre par adversaire | `tier` dans `AI_OPPONENTS` + `economyChestCap` dans `js/economy.js` |
 | Changer ce que fait le mode admin | `js/settings-admin.js` + `renderAdminChests()` dans `js/economy-ui.js` |
 | Ajouter une adresse au jeu (comme `/combat` ou `/test`) | `vercel.json` (`rewrites`) + `setAppPath`/`appHomePath` dans `js/main.js` |
 | Changer un message de refus / d'information | l'appel `showNotif()` concerné ; l'apparence est dans `[NOTIF]` de `css/style.css` |

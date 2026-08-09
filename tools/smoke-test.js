@@ -82,7 +82,13 @@ async function launchChromium(){
   }
 }
 
+// Les portraits d'adversaires (assets/adversaires/<id>.png) et le fond
+// d'atelier (assets/lab-bg.jpg) sont FACULTATIFS par construction : le jeu
+// dessine un sceau SVG de repli quand ils manquent. Leur 404 est donc un
+// comportement voulu et non une panne, au même titre que les polices Google
+// ou le CDN Supabase quand le réseau est coupé.
 const IGNORED_CONSOLE=/ERR_TUNNEL_CONNECTION_FAILED|ERR_CONNECTION_RESET|ERR_NAME_NOT_RESOLVED|fonts\.googleapis|fonts\.gstatic|jsdelivr|supabase/;
+const OPTIONAL_ASSET=/adversaires\/[a-z-]+\.png|lab-bg\.jpg/;
 
 (async()=>{
   const server=serve();
@@ -94,6 +100,10 @@ const IGNORED_CONSOLE=/ERR_TUNNEL_CONNECTION_FAILED|ERR_CONNECTION_RESET|ERR_NAM
   page.on('console',m=>{
     if(m.type()!=='error')return;
     const t=m.text();
+    // Le texte d'un 404 de ressource ne porte pas l'URL : elle est dans
+    // location(), c'est donc là qu'on reconnaît un asset facultatif.
+    const url=(m.location()&&m.location().url)||'';
+    if(OPTIONAL_ASSET.test(url))return;
     if(!IGNORED_CONSOLE.test(t))failures.push('console : '+t);
   });
   page.on('pageerror',e=>failures.push('exception : '+e.message));
@@ -148,9 +158,24 @@ const IGNORED_CONSOLE=/ERR_TUNNEL_CONNECTION_FAILED|ERR_CONNECTION_RESET|ERR_NAM
     await page.keyboard.press('Escape');
   });
 
-  await step('une partie contre l\'Instructeur se lance',async()=>{
+  await step('la galerie des adversaires s\'affiche',async()=>{
     await page.click('#b-vs-ia');
+    await page.waitForSelector('#page-adversaires.active',{timeout:8000});
+    const n=await page.locator('#adv-grid .adv-card').count();
+    if(n!==12)throw new Error('la galerie montre '+n+' adversaires au lieu de 12');
+    // Aucun adversaire n'est verrouillé : on doit pouvoir défier le dernier
+    // dès le premier jour.
+    if(await page.locator('#adv-grid .adv-card[disabled]').count())throw new Error('un adversaire est verrouillé');
+  });
+
+  await step('une partie contre un adversaire choisi se lance',async()=>{
+    await page.click('#adv-grid .adv-card[data-id="vitriol"]');
     await page.waitForSelector('#page-combat.active',{timeout:8000});
+    const engaged=await page.evaluate(()=>aiCurrentOpponent().id);
+    if(engaged!=='vitriol')throw new Error('adversaire engagé : '+engaged);
+    // La partie doit être CLASSÉE : c'est tout l'intérêt du roster.
+    const reason=await page.evaluate(()=>vvNoEloReason({multiplayer:false}));
+    if(reason)throw new Error('partie non classée : '+reason);
     await page.click('#cb-play');
     await page.waitForTimeout(700);
     await page.click('.cine-skip');

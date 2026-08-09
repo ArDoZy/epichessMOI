@@ -532,7 +532,7 @@ const MP_ELO_BASE=120;        // fenêtre de départ, en points d'ELO
 const MP_ELO_STEP=120;        // élargissement…
 const MP_ELO_EVERY=8;         // …toutes les 8 secondes
 const MP_ELO_OPEN=48;         // au-delà : plus aucune fenêtre
-const MP_FALLBACK_S=40;       // on propose l'Instructeur à partir d'ici
+const MP_FALLBACK_S=40;       // on propose un adversaire IA à partir d'ici
 
 // Fenêtre d'ELO acceptée après `waitS` secondes d'attente. Infinity = tout le
 // monde convient.
@@ -697,14 +697,26 @@ function mpQuickPlay(){
   });
 }
 
-// « Affronter l'Instructeur à la place » : proposé après 40 s de recherche
-// infructueuse. On sort proprement du salon d'attente et on repart sur le
-// parcours hors ligne avec la MÊME armée, déjà sélectionnée.
+// « Affronter un adversaire du laboratoire à la place » : proposé après 40 s
+// de recherche infructueuse. On sort proprement du salon d'attente et on
+// repart sur le parcours hors ligne avec la MÊME armée, déjà sélectionnée.
+//
+// L'adversaire retenu est celui dont l'ELO est le plus proche du joueur, et
+// non l'Instructeur à 2000 : on vient d'échouer à trouver quelqu'un à sa
+// mesure, le remplaçant doit précisément l'être. La partie est classée comme
+// n'importe quelle autre.
 document.getElementById('mp-fallback-btn')?.addEventListener('click',()=>{
   mpLeave();
   mpCloseModal();
   if(!currentArmyData)return;
-  if(typeof generateAIArmy==='function')aiArmyData=generateAIArmy();
+  if(typeof aiSetOpponent==='function'&&typeof AI_OPPONENTS!=='undefined'){
+    const myElo=(typeof vvLoadElo==='function')?vvLoadElo():0;
+    let best=AI_OPPONENTS[0];
+    AI_OPPONENTS.forEach(o=>{if(Math.abs(o.elo-myElo)<Math.abs(best.elo-myElo))best=o;});
+    aiSetOpponent(best.id);
+  }
+  aiArmyData=(typeof aiArmyForOpponent==='function')?aiArmyForOpponent()
+    :((typeof generateAIArmy==='function')?generateAIArmy():null);
   if(typeof vvSetOpponentElo==='function')vvSetOpponentElo(null);
   if(typeof renderCombatPage==='function')renderCombatPage(currentArmyData,'ia');
   if(typeof showPage==='function')showPage('page-combat');

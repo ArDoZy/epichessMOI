@@ -51,9 +51,9 @@
 <link rel="stylesheet" href="css/style.css">
 
 <!-- Données structurées Schema.org. Les faits (18 pièces, 5 classes,
-     budget 24 points, 7 rangs, 6 raretés de coffre) doivent rester
-     synchronisés avec js/data-pieces.js : c'est ce que citent les moteurs de
-     réponse. -->
+     budget 24 points, 7 rangs, 12 adversaires, 6 raretés de coffre) doivent
+     rester synchronisés avec js/data-pieces.js : c'est ce que citent les
+     moteurs de réponse. -->
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -63,7 +63,7 @@
       "@id": "https://epichess.app/#game",
       "name": "Epic Chess",
       "url": "https://epichess.app/",
-      "description": "Epic Chess est une variante d'échecs gratuite jouable dans le navigateur. Dans un laboratoire d'alchimie abandonné, un savant fou a mêlé les pièces d'un jeu d'échecs à des créatures alchimiques. Avant chaque partie, le joueur compose son armée de 5 pièces (1 Monarque, 1 Général et 3 créatures) dans une limite de 24 points, puis affronte un autre joueur en ligne ou l'Instructeur, l'adversaire IA du jeu, sur un échiquier classique 8×8. Les pièces se possèdent en exemplaires et se risquent à chaque partie.",
+      "description": "Epic Chess est une variante d'échecs gratuite jouable dans le navigateur. Dans un laboratoire d'alchimie abandonné, un savant fou a mêlé les pièces d'un jeu d'échecs à des créatures alchimiques. Avant chaque partie, le joueur compose son armée de 5 pièces (1 Monarque, 1 Général et 3 créatures) dans une limite de 24 points, puis affronte un autre joueur en ligne ou l'un des douze adversaires du laboratoire, une galerie d'IA nommées allant de 150 à 2300 ELO, sur un échiquier classique 8×8. Tous les duels sont classés. Les pièces se possèdent en exemplaires et se risquent à chaque partie.",
       "inLanguage": "fr",
       "image": "https://epichess.app/og-image.png",
       "genre": ["Jeu de stratégie", "Variante d'échecs", "Jeu de réflexion"],
@@ -222,7 +222,7 @@
         <div class="mp-search-cell"><div class="mp-search-lbl">Niveau visé</div><div class="mp-search-val" id="mp-search-window">±120</div></div>
       </div>
       <div class="mp-search-note" id="mp-search-note">On cherche d'abord un adversaire de votre niveau, puis on élargit.</div>
-      <button class="btn btn-ghost" id="mp-fallback-btn" style="display:none;width:100%;margin-top:10px">Affronter l'Instructeur à la place</button>
+      <button class="btn btn-ghost" id="mp-fallback-btn" style="display:none;width:100%;margin-top:10px">Affronter un adversaire du laboratoire</button>
     </div>
 
     <div id="mp-screen-host" style="display:none">
@@ -282,7 +282,7 @@
             <button class="jouer-btn" id="cube-jouer-btn"><span>COMBAT</span></button>
             <div class="jouer-btn-sub">Affrontez un autre joueur en ligne</div>
             <div class="jouer-second">
-              <button class="btn btn-ghost" id="b-vs-ia">Affronter l'Instructeur</button>
+              <button class="btn btn-ghost" id="b-vs-ia">Adversaires</button>
               <button class="btn btn-ghost jouer-tournoi-btn" id="b-tournoi">Tournoi</button>
             </div>
           </div>
@@ -359,6 +359,23 @@
        principal) : rempli et affiché par renderArmiesPage(). -->
   <div class="armies-select-banner" id="armies-select-banner" style="display:none"></div>
   <div class="armies-grid" id="armies-grid"></div>
+</div>
+</div>
+
+<!-- PAGE ADVERSAIRES : la galerie des douze adversaires IA.
+     Rendue par js/adversaires.js. Chaque carte cherche son portrait dans
+     assets/adversaires/<id>.png et retombe sur un sceau SVG s'il manque :
+     le jeu est complet sans une seule image. -->
+<div id="page-adversaires" class="page">
+<div class="adv-inner">
+  <div class="adv-hdr">
+    <div>
+      <div class="adv-page-title cinzel glow-text">Les Adversaires</div>
+      <div class="adv-page-sub" id="adv-sub"></div>
+    </div>
+    <button class="btn btn-ghost" id="adv-back">← Retour</button>
+  </div>
+  <div class="adv-grid" id="adv-grid"></div>
 </div>
 </div>
 
@@ -758,6 +775,7 @@
 <script src="js/ai-level-modal.js"></script>
 <script src="js/builder.js"></script>
 <script src="js/armies.js"></script>
+<script src="js/adversaires.js"></script>
 <script src="js/combat-intro.js"></script>
 <script src="js/rules-engine.js"></script>
 <script src="js/combat-music.js"></script>

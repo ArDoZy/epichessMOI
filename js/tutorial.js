@@ -157,7 +157,10 @@ function tutoStartBattle(battleIdx){
 function tutoOnBattleEnd(result){
   const battleIdx=_tutoBattle;
   _tutoBattle=null;
-  if(typeof selectedAILevel!=='undefined')selectedAILevel=0;
+  // Rendre la main à l'adversaire CHOISI par le joueur, et non à l'index 0
+  // qui désigne maintenant Cendre, la plus faible des douze.
+  if(typeof aiSetOpponent==='function')aiSetOpponent(chosenOpponentId);
+  else if(typeof selectedAILevel!=='undefined')selectedAILevel=DEFAULT_AI_LEVEL;
   const back=()=>{
     if(typeof goToMainMenu==='function')goToMainMenu();
     if(typeof updAll==='function')updAll();

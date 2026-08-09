@@ -34,26 +34,103 @@ function vvGetRankFloor(elo){return vvGetRank(elo).min;}
 function vvGetRankIdx(elo){for(let i=RANKS.length-1;i>=0;i--)if(elo>=RANKS[i].min)return i;return 0;}
 
 // ----------------------------------------------------------------
-// L'INSTRUCTEUR : un seul adversaire IA, à pleine puissance
+// LES ADVERSAIRES : douze paliers, de 150 à 2300 ELO
 // ----------------------------------------------------------------
-// Le jeu proposait sept instructeurs de force croissante, dont six qui
-// jouaient volontairement mal (jusqu'à 95 % de coups au hasard). Un
-// adversaire qui se saborde n'apprend rien à personne et brouillait le
-// classement ELO. Il n'en reste qu'un, qui joue son meilleur coup, et dont
-// l'évaluation tient compte des POUVOIRS des pièces et pas seulement de
-// leurs déplacements (voir evalBoard/evalPowers dans js/ai-engine.js).
+// Il n'y avait qu'UN adversaire, l'Instructeur, à 2000 ELO et à pleine
+// puissance. Or le tutoriel se termine contre un instructeur qui laisse passer
+// un coup sur trois : le joueur sortait donc de l'apprentissage face à un mur.
+// Et comme l'entraînement contre l'IA n'était pas classé, un joueur seul ne
+// pouvait gagner un seul point d'ELO — c'est-à-dire ne débloquer ni le Garde
+// de Pierre (30 ELO), ni la Méduse (210), ni le Typhon (1000), ni un seul
+// échiquier. Toute la progression du jeu lui était fermée.
 //
-// timeMs est le budget de réflexion par coup. 3 s tient largement la
-// profondeur nécessaire sur un 8x8 grâce à la table de transposition, sans
-// donner l'impression que le jeu a planté.
-const INSTRUCTOR={
-  id:'instructeur',
-  name:'L\'Instructeur',
-  timeMs:3000,
-  noise:0,
-  elo:2000,
-  desc:'Recherche complète, consciente des pouvoirs de chaque créature.',
-};
+// Il y a maintenant une PENDERIE d'adversaires, chacun avec son niveau, son
+// style d'armée et sa façon de se tromper. Les affronter est CLASSÉ (voir
+// vvNoEloReason dans js/voie.js) : le classement redevient une échelle qu'on
+// gravit en jouant, seul, contre des forces connues.
+//
+// Les champs qui pilotent la force (lus par js/ai-engine.js) :
+//
+//   timeMs   budget de réflexion par coup. 0 = aucune recherche, la position
+//            est jugée à un demi-coup (« je vois la pièce à prendre, pas le
+//            mat en deux »).
+//   depthCap profondeur maximale, même si le temps le permet. C'est elle qui
+//            empêche un adversaire faible de trouver une combinaison longue.
+//   slack    tolérance en centipions AUTOUR du meilleur coup : l'adversaire
+//            tire au sort parmi tous les coups qui ne perdent pas plus que ça.
+//            C'est le cœur du modèle : un joueur faible ne joue pas au hasard,
+//            il joue des coups plausibles mais imprécis.
+//   blunder  probabilité, à chaque coup, de lâcher franchement la position
+//            (un coup pris au hasard dans la moitié basse). Les vrais
+//            débutants accrochent des pièces : sans ce terme, un adversaire à
+//            slack élevé reste bizarrement solide.
+//   style    biais de composition d'armée ET d'évaluation (voir STYLE_EVAL
+//            dans js/ai-engine.js et generateAIArmy dans js/armies.js).
+//   budget   valeur d'armée visée, sur les 24 points du builder.
+//   tier     plafond de rareté du coffre gagné en le battant (index dans
+//            CHESTS). Battre un débutant vingt fois ne donne pas un Coffre
+//            Roi : c'est ce qui empêche de farmer le bas de l'échelle.
+//
+// PORTRAITS : chaque adversaire cherche `assets/adversaires/<id>.png`. Le
+// fichier est FACULTATIF — sans lui, js/adversaires.js dessine un sceau SVG
+// procédural à partir de l'id et de la couleur d'accent. Déposer une image
+// suffit à la faire apparaître, il n'y a aucune liste à mettre à jour.
+const AI_OPPONENTS=[
+  {id:'cendre',name:'Cendre',title:'Balayeuse de l\'atelier',elo:150,tier:0,
+   accent:'#8b8578',style:'erratique',budget:12,
+   timeMs:0,depthCap:1,slack:900,blunder:0.34,
+   desc:'Elle a vu jouer par-dessus l\'épaule du savant, jamais rien de plus.'},
+  {id:'suie',name:'Suie',title:'Souffleur de verre',elo:300,tier:0,
+   accent:'#6f7a86',style:'gourmand',budget:14,
+   timeMs:0,depthCap:1,slack:620,blunder:0.24,
+   desc:'Prend tout ce qui passe à portée, sans jamais demander pourquoi.'},
+  {id:'bruyere',name:'Bruyère',title:'Herboriste',elo:450,tier:1,
+   accent:'#7d9c6a',style:'nuee',budget:16,
+   timeMs:250,depthCap:2,slack:440,blunder:0.16,
+   desc:'Avance en nombre. Chaque petite chose qu\'elle pousse en cache une autre.'},
+  {id:'orpiment',name:'Orpiment',title:'Broyeur de minerai',elo:620,tier:1,
+   accent:'#c08a3e',style:'brute',budget:17,
+   timeMs:400,depthCap:3,slack:340,blunder:0.11,
+   desc:'Ne connaît qu\'une trajectoire : la ligne droite, et ce qu\'elle écrase.'},
+  {id:'vitriol',name:'Vitriol',title:'Maître des acides',elo:800,tier:2,
+   accent:'#5f93b8',style:'agressif',budget:18,
+   timeMs:600,depthCap:4,slack:250,blunder:0.075,
+   desc:'Attaque tôt, attaque mal, mais attaque toujours en premier.'},
+  {id:'cinabre',name:'Cinabre',title:'Teinturière du mercure',elo:980,tier:2,
+   accent:'#c0504a',style:'sorcier',budget:19,
+   timeMs:800,depthCap:5,slack:185,blunder:0.05,
+   desc:'Ne prend presque rien. Elle paralyse, elle repousse, et elle attend.'},
+  {id:'antimoine',name:'Antimoine',title:'Gardien du seuil',elo:1150,tier:3,
+   accent:'#8fa8b8',style:'defensif',budget:20,
+   timeMs:1000,depthCap:6,slack:135,blunder:0.035,
+   desc:'Une muraille qui ne recule pas d\'un pas et ne concède pas une case.'},
+  {id:'mercure',name:'Mercure',title:'Messager instable',elo:1350,tier:3,
+   accent:'#a9b6bd',style:'mobile',budget:21,
+   timeMs:1300,depthCap:8,slack:95,blunder:0.022,
+   desc:'Il est déjà ailleurs. Ce que vous préparez arrive toujours un coup trop tard.'},
+  {id:'plombagine',name:'Plombagine',title:'Scribe des positions',elo:1550,tier:4,
+   accent:'#7a7590',style:'positionnel',budget:22,
+   timeMs:1700,depthCap:10,slack:60,blunder:0.012,
+   desc:'Ne cherche pas la combinaison. Il installe la position, puis vous étouffe.'},
+  {id:'salamandre',name:'La Salamandre',title:'Née du fourneau',elo:1750,tier:4,
+   accent:'#d9552f',style:'agressif',budget:23,
+   timeMs:2200,depthCap:14,slack:35,blunder:0.006,
+   desc:'Elle sacrifie sans hésiter. Le calcul suit toujours, et il est juste.'},
+  {id:'instructeur',name:'L\'Instructeur',title:'Second du laboratoire',elo:2000,tier:5,
+   accent:'#2fb197',style:'equilibre',budget:24,
+   timeMs:3000,depthCap:30,slack:0,blunder:0,
+   desc:'Recherche complète, consciente des pouvoirs de chaque créature.'},
+  {id:'athanor',name:'L\'Athanor',title:'Le four qui ne s\'éteint pas',elo:2300,tier:5,
+   accent:'#c9a84c',style:'equilibre',budget:24,
+   timeMs:5000,depthCap:30,slack:0,blunder:0,
+   desc:'Le savant l\'a allumé une fois et n\'a jamais su l\'arrêter. Il n\'oublie rien.'},
+];
+function aiOpponentById(id){return AI_OPPONENTS.find(o=>o.id===id)||AI_OPPONENTS[0];}
+function aiOpponentIndex(id){const i=AI_OPPONENTS.findIndex(o=>o.id===id);return i<0?0:i;}
+// L'Instructeur reste exporté sous son ancien nom : plusieurs modules
+// l'affichent encore comme adversaire par défaut, et le tutoriel comme le
+// multijoueur s'y réfèrent.
+const INSTRUCTOR=AI_OPPONENTS[aiOpponentIndex('instructeur')];
 // ----------------------------------------------------------------
 // LES INSTRUCTEURS DU TUTORIEL : quatre paliers volontairement faibles
 // ----------------------------------------------------------------
@@ -62,29 +139,25 @@ const INSTRUCTOR={
 // servent QUE pendant le tutoriel (js/tutorial.js), jamais dans le jeu
 // normal, et aucune partie du tutoriel ne compte au classement.
 //
-// noise = probabilité de jouer un coup complètement au hasard ; le reste du
-// temps l'IA joue son meilleur coup à l'évaluation immédiate (timeMs:0, donc
-// aucune recherche en profondeur : elle voit la pièce à prendre, pas le mat
-// en deux). C'est le mélange qui produit un adversaire « nul » crédible
-// plutôt qu'un générateur de coups aléatoires.
-//
-// Ces quatre-là ont été REVUS À LA BAISSE : ce sont les toutes premières
-// parties du joueur, personne ne doit rester bloqué sur le tutoriel. Même le
-// dernier palier laisse passer un coup sur trois, et l'ancien « Confirmé »
-// (noise 0.05, qui ne laissait rien passer) n'existe plus.
+// Ils suivent le même modèle de force que les adversaires ci-dessus (slack =
+// tolérance autour du meilleur coup, blunder = probabilité de lâcher la
+// position), à des réglages volontairement très bas : ce sont les toutes
+// premières parties du joueur, personne ne doit rester bloqué sur le tutoriel.
 const TUTO_INSTRUCTORS=[
-  {id:'tuto-nul',      name:'Instructeur Novice',   timeMs:0,noise:0.95,elo:0,desc:'Joue au hasard, ou presque.'},
-  {id:'tuto-nul-plus', name:'Instructeur Apprenti', timeMs:0,noise:0.80,elo:0,desc:'Commence à voir les prises.'},
-  {id:'tuto-moyen-nul',name:'Instructeur Assistant',timeMs:0,noise:0.60,elo:0,desc:'Prend ce qui traîne.'},
-  {id:'tuto-moyen',    name:'Instructeur Confirmé', timeMs:0,noise:0.40,elo:0,desc:'Se laisse encore surprendre.'},
+  {id:'tuto-nul',      name:'Instructeur Novice',   elo:0,timeMs:0,depthCap:1,slack:1200,blunder:0.45,desc:'Joue au hasard, ou presque.'},
+  {id:'tuto-nul-plus', name:'Instructeur Apprenti', elo:0,timeMs:0,depthCap:1,slack:900, blunder:0.34,desc:'Commence à voir les prises.'},
+  {id:'tuto-moyen-nul',name:'Instructeur Assistant',elo:0,timeMs:0,depthCap:1,slack:700, blunder:0.26,desc:'Prend ce qui traîne.'},
+  {id:'tuto-moyen',    name:'Instructeur Confirmé', elo:0,timeMs:0,depthCap:1,slack:520, blunder:0.18,desc:'Se laisse encore surprendre.'},
 ];
-// Index 0 = l'Instructeur du jeu normal (selectedAILevel vaut 0 partout
-// ailleurs), puis les quatre paliers du tutoriel. Le Worker IA reçoit ce
-// tableau sérialisé et lit AI_INSTRUCTORS[instructorIdx] : ajouter une entrée
-// ici suffit, il n'y a rien à modifier dans js/ai-engine.js.
-const AI_INSTRUCTORS=[INSTRUCTOR,...TUTO_INSTRUCTORS];
+// Le Worker IA reçoit ce tableau sérialisé et lit AI_INSTRUCTORS[instructorIdx]
+// (selectedAILevel) : les douze adversaires d'abord, les quatre paliers du
+// tutoriel ensuite. Ajouter une entrée dans AI_OPPONENTS suffit, il n'y a rien
+// à modifier dans js/ai-engine.js.
+const AI_INSTRUCTORS=[...AI_OPPONENTS,...TUTO_INSTRUCTORS];
 // Index dans AI_INSTRUCTORS du palier de tutoriel n° i (0 à 3).
-function tutoInstructorLevel(i){return 1+Math.max(0,Math.min(TUTO_INSTRUCTORS.length-1,i));}
+function tutoInstructorLevel(i){return AI_OPPONENTS.length+Math.max(0,Math.min(TUTO_INSTRUCTORS.length-1,i));}
+// Index par défaut : l'Instructeur, qui reste l'adversaire de référence.
+const DEFAULT_AI_LEVEL=aiOpponentIndex('instructeur');
 
 // ----------------------------------------------------------------
 // ÉCHIQUIERS : matières débloquées le long de la Voie

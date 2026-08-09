@@ -263,7 +263,7 @@ body{
 /* Pas de logo/titre sur la page builder (retiré) : juste la clearance de la
    barre de compte + un petit espace de respiration, la page remonte. */
 body.has-acc #page-builder{padding-top:calc(50px + 14px)}
-body.has-acc #page-armies,body.has-acc #page-ai-armies,body.has-acc #page-voie,body.has-acc #page-tournoi{padding-top:calc(50px + 32px)}
+body.has-acc #page-armies,body.has-acc #page-ai-armies,body.has-acc #page-voie,body.has-acc #page-tournoi,body.has-acc #page-adversaires{padding-top:calc(50px + 32px)}
 body.has-acc #page-reserve .reserve-wrap{padding-top:calc(50px + 24px)}
 body.has-acc #page-combat{padding-top:50px}
 /* La barre de compte occupe 50 px en haut : la partie prend ce qui reste.
@@ -1023,7 +1023,7 @@ body.light .cube-face[data-face="voie"]{background:
   .cab-sw{padding:6px 10px;font-size:10px}
   #settings-btn{width:28px;height:28px;top:6px;right:8px}
   body.has-acc #page-builder{padding-top:calc(46px + 10px)}
-  body.has-acc #page-armies,body.has-acc #page-ai-armies,body.has-acc #page-voie,body.has-acc #page-tournoi{padding-top:calc(46px + 14px)}
+  body.has-acc #page-armies,body.has-acc #page-ai-armies,body.has-acc #page-voie,body.has-acc #page-tournoi,body.has-acc #page-adversaires{padding-top:calc(46px + 14px)}
   body.has-acc #page-combat{padding-top:46px}
 
   #page-builder{padding:14px}
@@ -1734,3 +1734,133 @@ body.cube-active:not(.nav-overlay) .notif-host{bottom:92px}
   color:var(--muted);background:var(--bg);border:1px solid var(--border);
   border-radius:6px;padding:1px 7px;margin-left:6px;vertical-align:1px}
 .tuto-progress:empty{display:none}
+
+/* [ADVERSAIRES] =================================================
+   La galerie des douze adversaires (js/adversaires.js, #page-adversaires).
+   Chaque carte porte sa couleur d'accent dans --accent, écrite en style
+   inline depuis le JS : toutes les teintes de la carte en dérivent, il n'y a
+   donc qu'une seule règle pour douze apparences.
+   ============================================================== */
+.adv-inner{max-width:1180px;margin:0 auto;padding:22px 18px 60px}
+.adv-hdr{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;margin-bottom:20px}
+.adv-page-title{font-size:30px;font-weight:800;letter-spacing:1px}
+.adv-page-sub{font-size:13px;color:var(--muted);margin-top:6px;max-width:620px;line-height:1.5}
+.adv-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:14px}
+
+.adv-card{position:relative;display:flex;gap:14px;text-align:left;align-items:flex-start;
+  background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--accent);
+  border-radius:12px;padding:14px;cursor:pointer;color:var(--text);font-family:inherit;
+  transition:transform .18s ease,border-color .2s ease,box-shadow .2s ease,background .2s ease}
+.adv-card:hover{transform:translateY(-2px);border-color:var(--accent);
+  box-shadow:0 10px 26px rgba(0,0,0,.34)}
+.adv-card-on{background:var(--surface2);box-shadow:0 0 0 1px var(--accent) inset}
+.adv-beaten-mark{position:absolute;top:9px;right:11px;color:var(--gold);font-size:14px;line-height:1}
+
+/* Le portrait : une image si le fichier existe, sinon le sceau SVG que
+   js/adversaires.js dessine à partir de l'id. Même gabarit dans les deux cas,
+   pour que la grille ne bouge pas selon les fichiers présents. */
+.adv-portrait{flex:0 0 auto;width:72px;height:72px;border-radius:10px;overflow:hidden;
+  display:block;background:radial-gradient(circle at 50% 35%,rgba(255,255,255,.05),transparent 70%),var(--bg);
+  border:1px solid var(--border)}
+.adv-portrait img{width:100%;height:100%;object-fit:cover;display:block}
+.adv-portrait .adv-seal{width:100%;height:100%;display:block}
+.adv-portrait-sm{width:26px;height:26px;border-radius:6px;display:inline-block;vertical-align:-7px;margin-right:7px}
+.adv-portrait-xs{width:100%;height:100%;border-radius:50%;border:none;background:none}
+
+.adv-seal .as-ring{fill:none;stroke:var(--seal);stroke-width:1.6;opacity:.5}
+.adv-seal .as-ring2{opacity:.28}
+.adv-seal .as-fig{fill:color-mix(in srgb,var(--seal) 16%,transparent);stroke:var(--seal);stroke-width:2.4;stroke-linejoin:round}
+.adv-seal .as-chord line{stroke:var(--seal);stroke-width:1.3;opacity:.55}
+.adv-seal .as-mark line{stroke:var(--seal);stroke-width:2;opacity:.75;stroke-linecap:round}
+.adv-seal .as-core{fill:var(--seal)}
+
+.adv-body{flex:1;min-width:0}
+.adv-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.adv-name{font-family:'Cinzel',serif;font-size:16px;font-weight:800;color:var(--accent)}
+.adv-elo{font-family:'Cinzel',serif;font-size:15px;font-weight:800;color:var(--text);
+  font-variant-numeric:tabular-nums}
+.adv-elo::after{content:' ELO';font-size:8.5px;color:var(--muted);letter-spacing:1px}
+.adv-title{font-size:11.5px;color:var(--muted);font-style:italic;margin-top:1px}
+.adv-desc{font-size:12.5px;color:var(--text);opacity:.86;line-height:1.45;margin:7px 0 8px}
+.adv-tags{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px}
+.adv-tag{font-family:'Cinzel',serif;font-size:8.5px;letter-spacing:.8px;text-transform:uppercase;
+  background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:2px 6px;color:var(--muted)}
+.adv-tag-chest{color:var(--gold);border-color:rgba(201,168,76,.35)}
+.adv-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;
+  border-top:1px solid var(--border);padding-top:7px}
+.adv-gap{font-family:'Cinzel',serif;font-size:9px;letter-spacing:.7px;text-transform:uppercase}
+.adv-gap-low{color:var(--muted)}
+.adv-gap-even{color:var(--success)}
+.adv-gap-high{color:var(--gold)}
+.adv-gap-far{color:var(--danger)}
+.adv-rec{display:flex;gap:6px;font-family:'Cinzel',serif;font-size:9.5px;font-weight:700;
+  font-variant-numeric:tabular-nums}
+.adv-rec-w{color:var(--success)}
+.adv-rec-d{color:var(--muted)}
+.adv-rec-l{color:var(--danger)}
+.adv-rec-none{color:var(--muted);font-style:italic;font-weight:400;letter-spacing:.4px}
+
+/* Le bandeau d'adversaire en partie porte le portrait à la place de
+   l'initiale : il ne doit alors ni marge ni fond propre. */
+#ai-player-avatar:has(.adv-portrait){padding:0;overflow:hidden}
+
+@media(max-width:560px){
+  .adv-grid{grid-template-columns:1fr}
+  .adv-portrait{width:56px;height:56px}
+}
+
+/* [LAB-BG] ======================================================
+   Fond d'atelier du menu principal : assets/lab-bg.jpg.
+   Le fichier est FACULTATIF. Une image absente ne produit qu'un 404
+   silencieux et la face garde son dégradé : rien à conditionner en JS, et le
+   jeu reste complet sans un seul octet d'image (voir aussi les portraits
+   d'adversaires, même principe).
+   L'image est volontairement assombrie et désaturée par-dessus : elle doit
+   rester un fond, l'emblème et le bouton COMBAT passent devant.
+   ============================================================== */
+.cube-face[data-face="jouer"] .face-viewport::before{
+  content:'';position:absolute;inset:0;z-index:0;pointer-events:none;
+  background-image:url('../assets/lab-bg.jpg');
+  background-size:cover;background-position:center 60%;
+  opacity:.30;filter:saturate(.7) contrast(1.05);
+  /* Le centre reste dégagé : c'est là que vivent l'emblème, le titre et le
+     gros bouton. Le masque éteint l'image au milieu et la laisse aux bords. */
+  -webkit-mask-image:radial-gradient(ellipse 46% 52% at 50% 48%,transparent 20%,#000 78%);
+  mask-image:radial-gradient(ellipse 46% 52% at 50% 48%,transparent 20%,#000 78%);
+}
+body.light .cube-face[data-face="jouer"] .face-viewport::before{opacity:.14}
+.jouer-menu{position:relative;z-index:1}
+@media(prefers-reduced-motion:reduce){
+  .cube-face[data-face="jouer"] .face-viewport::before{opacity:.22}
+}
+
+/* [MOVE-LOG] ====================================================
+   Notation du journal des coups. Le journal ne portait que la case
+   d'arrivée : sur un plateau qui peut compter trois exemplaires d'une même
+   créature, « ♟D4 » ne désignait aucun coup en particulier et relire sa
+   partie était impossible. Il porte maintenant départ, liaison, arrivée, les
+   drapeaux du coup (prise en passant, charge, typhon) et l'échec/mat.
+   Tailles en chiffres tabulaires pour que les colonnes ne dansent pas.
+   ============================================================== */
+.move-log-w,.move-log-b{font-variant-numeric:tabular-nums;font-size:11.5px;white-space:nowrap}
+.ml-from{opacity:.55;letter-spacing:.3px}
+.ml-sq{font-weight:700;letter-spacing:.3px}
+.ml-dash{opacity:.35;margin:0 1px}
+.ml-x{color:var(--ember);font-weight:700;margin:0 1px}
+.ml-mark{color:var(--gold);font-weight:800;margin-left:1px}
+.ml-flag{font-family:'Cinzel',serif;font-size:7.5px;letter-spacing:.6px;text-transform:uppercase;
+  color:var(--muted);border:1px solid var(--border);border-radius:4px;padding:0 3px;margin-left:3px}
+
+/* L'adversaire le plus proche du niveau du joueur. Un compte neuf est à 0 ELO
+   et voit sinon douze fois « au-dessus de vous » : il faut toujours un
+   prochain adversaire désigné, sinon la page ne propose rien. */
+.adv-card-advised{border-color:var(--accent)}
+.adv-advised{position:absolute;bottom:-1px;right:-1px;font-family:'Cinzel',serif;font-size:7.5px;
+  letter-spacing:1px;text-transform:uppercase;background:var(--accent);color:#06100e;
+  padding:2px 8px;border-radius:8px 0 10px 0}
+.adv-card-advised .adv-gap{color:var(--accent)}
+
+/* Nom de l'adversaire dans l'historique de la Voie. Vide pour les parties
+   antérieures au roster, la ligne ne doit alors pas se décaler. */
+.vh-opp{font-family:'Cinzel',serif;font-size:10.5px;color:var(--muted);
+  min-width:96px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

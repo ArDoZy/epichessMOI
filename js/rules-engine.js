@@ -219,10 +219,19 @@ function generateMovesRaw(board,r,c,gs){
 // ================================================================
 // DÉTECTION D'ÉCHEC
 // ================================================================
+// Appelée une fois par coup CANDIDAT dans moveLeavesKingInCheck, donc des
+// dizaines de milliers de fois par seconde pendant la recherche : elle rend la
+// main dès qu'elle a trouvé le roi, au lieu de balayer les 64 cases à chaque
+// appel pour retenir le dernier trouvé (il n'y en a jamais qu'un par camp).
 function isInCheckSimple(color,board){
-  let kr=-1,kc=-1;
-  for(let r=0;r<8;r++)for(let c=0;c<8;c++){const p=board[r][c];if(p&&p.color===color&&(p.type==='k'||p.isKing)){kr=r;kc=c;}}
-  if(kr===-1)return false;return isSquareAttackedSimple(kr,kc,color,board);
+  for(let r=0;r<8;r++){
+    const row=board[r];
+    for(let c=0;c<8;c++){
+      const p=row[c];
+      if(p&&p.color===color&&(p.type==='k'||p.isKing))return isSquareAttackedSimple(r,c,color,board);
+    }
+  }
+  return false;
 }
 
 // ----------------------------------------------------------------
@@ -468,7 +477,7 @@ function executeGameMove(from,to,gs){
     if(gs._forcedPromo){
       const opt=gs._forcedPromo;gs._forcedPromo=null;
       b[to.r][to.c]={...p,type:opt.type,emoji:opt.emoji,pieceId:opt.pieceId};
-      playSound('promo');recordMove(p,to,!!captured,gs);gs.turn=opp(gs.turn);gs.turnCount++;postMoveUpdate(gs);
+      playSound('promo');recordMove(p,to,!!captured,gs,from);gs.turn=opp(gs.turn);gs.turnCount++;postMoveUpdate(gs);
     }
     else if(p.color===aiCol&&!gs.multiplayer){
       // L'IA choisit la meilleure pièce de son armée via évaluation rapide
@@ -492,7 +501,7 @@ function executeGameMove(from,to,gs){
         if(sc>bestSc){bestSc=sc;bestOpt=opt;}
       }
       b[to.r][to.c]={...p,type:bestOpt.type,emoji:bestOpt.emoji,pieceId:bestOpt.pieceId};
-      playSound('promo');recordMove(p,to,!!captured,gs);gs.turn=opp(gs.turn);gs.turnCount++;postMoveUpdate(gs);
+      playSound('promo');recordMove(p,to,!!captured,gs,from);gs.turn=opp(gs.turn);gs.turnCount++;postMoveUpdate(gs);
     }
     else{gs.pendingPromo={from,to,p};showPromoModal(gs);return;}
   }else{
@@ -504,7 +513,7 @@ function executeGameMove(from,to,gs){
     gs.lastMoveHistory=gs.lastMoveHistory||[];
     gs.lastMoveHistory.push({piece:p.id,fromR:from.r,fromC:from.c,toR:to.r,toC:to.c,color:p.color});
     if(gs.lastMoveHistory.length>8)gs.lastMoveHistory.shift();
-    recordMove(p,to,!!captured,gs);gs.turn=opp(gs.turn);gs.turnCount++;postMoveUpdate(gs);
+    recordMove(p,to,!!captured,gs,from);gs.turn=opp(gs.turn);gs.turnCount++;postMoveUpdate(gs);
   }
 }
 
@@ -627,14 +636,14 @@ function showPromoModal(gs){
     // En ligne, le coup n'est transmis qu'ici : l'adversaire a besoin de la
     // pièce choisie, pas seulement des cases de départ et d'arrivée.
     if(gs.multiplayer&&typeof mpSendMove==='function')mpSendMove(from,to,{type:opt.type,emoji:opt.emoji,pieceId:opt.pieceId});
-    recordMove(p,to,false,gs);gs.turn=opp(gs.turn);gs.turnCount++;postMoveUpdate(gs);
+    recordMove(p,to,false,gs,from);gs.turn=opp(gs.turn);gs.turnCount++;postMoveUpdate(gs);
   });});
 }
 
 // ================================================================
 // JOURNAL DES COUPS (notation textuelle simple, PAS la notation FIDE)
 // ================================================================
-function recordMove(p,to,isCapture,gs){
+function recordMove(p,to,isCapture,gs,from){
   // Incrément Fischer : le joueur qui vient de jouer récupère son bonus. Ici
   // et pas ailleurs, parce que recordMove est le seul point par lequel passe
   // TOUT coup effectivement joué (y compris l'ancrage du Garde de Pierre, qui
@@ -646,11 +655,43 @@ function recordMove(p,to,isCapture,gs){
   }
   // Le journal affiche le LOGO de la pièce jouée : sur un jeu où les pièces
   // sont des créatures, « 🪼xD4 » ne disait rien à personne.
-  const col=FILES[to.c],row=8-to.r;
+  //
+  // Il affiche AUSSI la case de départ. Sans elle, « ♟D4 » sur un plateau qui
+  // compte jusqu'à trois exemplaires d'une même créature ne désigne aucun coup
+  // en particulier : relire sa partie était impossible, et le journal ne
+  // servait qu'à compter les coups. Le roque a sa notation d'échecs, la seule
+  // que tout le monde lise du premier coup d'œil.
+  const sq=(r,c)=>FILES[c]+(8-r);
   const icon=(typeof pieceIcon==='function')?pieceIcon(p.pieceId,p.color,1.05):'';
-  const txt=icon+(isCapture?'<span style="opacity:.7">x</span>':'')+col+row;
+  let txt;
+  if(to.castle)txt=icon+'<span class="ml-sq">'+(to.castle==='K'?'O-O':'O-O-O')+'</span>';
+  else if(from&&from.r===to.r&&from.c===to.c)
+    // Ancrage du Garde de Pierre : la pièce ne se déplace pas, elle se fixe.
+    txt=icon+'<span class="ml-sq">'+sq(to.r,to.c)+'</span><span class="ml-flag">ancré</span>';
+  else{
+    const dep=from?'<span class="ml-from">'+sq(from.r,from.c)+'</span>':'';
+    const link=isCapture?'<span class="ml-x">×</span>':'<span class="ml-dash">–</span>';
+    txt=icon+dep+link+'<span class="ml-sq">'+sq(to.r,to.c)+'</span>'+
+      (to.ep?'<span class="ml-flag">e.p.</span>':'')+
+      (to.destroysPath?'<span class="ml-flag">charge</span>':'')+
+      (p.pieceId==='typhon'?'<span class="ml-flag">typhon</span>':'');
+  }
   if(p.color==='w')gs.movePairs.push([txt,'']);
   else{if(gs.movePairs.length>0)gs.movePairs[gs.movePairs.length-1][1]=txt;else gs.movePairs.push(['…',txt]);}
+  renderMoveLog(gs);
+}
+
+// Ajoute « + » (échec) ou « # » (mat) au DERNIER demi-coup inscrit.
+// Appelée par updateStatus et non par recordMove : au moment où le coup est
+// inscrit, les états spéciaux (paralysie de la Méduse, protection du Prêtre)
+// n'ont pas encore été recalculés, et le mat serait donc jugé sur un plateau
+// périmé — on annoncerait des mats qui n'en sont pas.
+function markLastMove(gs,mark){
+  if(!gs.movePairs.length||!mark)return;
+  const pair=gs.movePairs[gs.movePairs.length-1];
+  const i=pair[1]?1:0;
+  if(!pair[i]||pair[i].indexOf('ml-mark')>=0)return;
+  pair[i]+='<span class="ml-mark">'+mark+'</span>';
   renderMoveLog(gs);
 }
 function renderMoveLog(gs){
