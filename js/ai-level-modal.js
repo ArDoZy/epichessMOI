@@ -18,8 +18,12 @@
 // tutoStartBattle() dans tutorial.js) puis le remettent à 0.
 let selectedAILevel=0;
 
-// Cadence fixe : 10 minutes par joueur.
+// Cadence fixe : 10 minutes par joueur, plus 5 secondes rendues à chaque coup
+// joué. La cadence sèche punissait la réflexion en finale, là où ce jeu la
+// demande le plus (les pouvoirs se calculent). L'incrément est appliqué par
+// recordMove() dans js/rules-engine.js.
 const selectedTimeControl=10;
+const selectedTimeIncrement=5;
 
 // Plus d'écran intermédiaire : cliquer « Combattre » lance le combat.
 function showAILevelModal(callback){if(callback)callback();}

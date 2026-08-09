@@ -411,7 +411,7 @@ function updateStatus(gs){
       bar.textContent='Au tour de votre adversaire…';
     }else if(t===aiCol){
       bar.textContent=INSTRUCTOR.name+' réfléchit…';
-    }else bar.textContent='À vous de jouer ('+(playerCol==='w'?'Blancs':'Noirs')+')';
+    }else bar.textContent='À vous de jouer';
     bar.className='status-bar '+(t===aiCol?'thinking':'ok');
   }
 }

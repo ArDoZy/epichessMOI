@@ -369,6 +369,9 @@
         <div class="rs-title">La Réserve</div>
         <div class="rs-sub">Vous ne jouez que ce que vous possédez.</div>
       </div>
+      <!-- Solde de perles (js/economy-ui.js::renderPearls) : la monnaie qui
+           sort des coffres et rachète des coffres. -->
+      <div id="rs-pearls"></div>
       <div id="rs-daily"></div>
       <!-- MODE ADMIN : les six récompenses en accès illimité. Vide (et
            masquée) hors mode admin, remplie par renderAdminChests()
@@ -379,6 +382,9 @@
         <div id="rs-admin-chests"></div>
       </div>
       <div class="rs-sec"><div class="rs-sec-title">Coffres à ouvrir</div><div id="rs-chests"></div></div>
+      <!-- BOUTIQUE : les mêmes coffres, achetés avec des perles
+           (js/economy-ui.js::renderPearlShop). -->
+      <div class="rs-sec"><div class="rs-sec-title">Boutique · coffres contre perles</div><div id="rs-shop"></div></div>
       <div class="rs-sec"><div class="rs-sec-title">Échiquiers</div><div class="skin-grid" id="rs-skins"></div></div>
       <div class="rs-sec"><div class="rs-sec-title">Vos pièces</div><div class="inv-grid" id="rs-inv"></div></div>
     </div>
@@ -553,24 +559,16 @@
 </div>
 
 <!-- PAGE 5: GAME
-     Disposition « salle de tournoi » : le plateau au centre, encadré par les
-     deux bandeaux joueurs (identité, prises, PENDULE en gros), et une seule
-     colonne latérale pour le statut, les coups et les actions. Voir la
-     section [GAME] de css/style.css pour le calcul de la taille du plateau. -->
+     Disposition : l'échiquier occupe SEUL la zone principale, aussi grand que
+     l'écran le permet et sans jamais demander de défilement. Tout le reste —
+     les deux bandeaux joueurs (identité, ELO, prises, PENDULE), le statut, le
+     journal des coups et les actions — tient dans la colonne de droite, le
+     bandeau adverse en haut et le sien en bas, comme aux deux bouts d'un
+     plateau. Voir la section [GAME] de css/style.css pour le calcul de la
+     taille du plateau. -->
 <div id="page-game" class="page">
   <div class="game-wrap">
     <div class="game-main">
-
-      <div class="gp-bar" id="ai-player-bar">
-        <div class="gp-av" id="ai-player-avatar">I</div>
-        <div class="gp-id">
-          <div class="gp-name" id="ai-player-name">L'Instructeur</div>
-          <div class="gp-elo" id="ai-player-elo"></div>
-        </div>
-        <div class="gp-taken" id="cap-opp"></div>
-        <div class="gp-clock" id="ai-player-clock" style="display:none"></div>
-      </div>
-
       <div class="board-frame">
         <div class="game-board-outer">
           <div class="game-row-labels" id="game-row-labels"></div>
@@ -580,20 +578,20 @@
           </div>
         </div>
       </div>
-
-      <div class="gp-bar" id="human-player-bar">
-        <div class="gp-av" id="human-player-avatar">?</div>
-        <div class="gp-id">
-          <div class="gp-name" id="human-player-name">Joueur</div>
-          <div class="gp-elo" id="human-player-elo"></div>
-        </div>
-        <div class="gp-taken" id="cap-me"></div>
-        <div class="gp-clock" id="human-player-clock" style="display:none"></div>
-      </div>
-
     </div>
 
     <aside class="game-side">
+
+      <div class="gp-bar" id="ai-player-bar">
+        <div class="gp-av" id="ai-player-avatar">I</div>
+        <div class="gp-id">
+          <div class="gp-name" id="ai-player-name">L'Instructeur</div>
+          <div class="gp-elo" id="ai-player-elo"></div>
+        </div>
+        <div class="gp-clock" id="ai-player-clock" style="display:none"></div>
+        <div class="gp-taken" id="cap-opp"></div>
+      </div>
+
       <div class="status-bar" id="game-status">En attente...</div>
       <div class="gs-block gs-grow">
         <div class="gsb-title">Journal des coups</div>
@@ -605,6 +603,17 @@
       </div>
       <!-- Ce qui est engagé dans cette partie (voir js/economy.js). -->
       <div class="gs-stake" id="game-stake"></div>
+
+      <div class="gp-bar" id="human-player-bar">
+        <div class="gp-av" id="human-player-avatar">?</div>
+        <div class="gp-id">
+          <div class="gp-name" id="human-player-name">Joueur</div>
+          <div class="gp-elo" id="human-player-elo"></div>
+        </div>
+        <div class="gp-clock" id="human-player-clock" style="display:none"></div>
+        <div class="gp-taken" id="cap-me"></div>
+      </div>
+
       <div class="game-btns">
         <button class="btn btn-ghost" id="game-undo" style="font-size:11px;padding:8px">Annuler coup</button>
         <button class="btn btn-danger" id="game-quit" style="font-size:11px;padding:8px">Abandonner</button>
@@ -615,7 +624,8 @@
 
 <!-- MODALS -->
 <div class="promo-modal" id="promo-modal"><div class="promo-box"><div class="promo-title">Choisir la promotion</div><div class="promo-pieces-row" id="promo-box"></div></div></div>
-<button class="admin-badge" id="admin-badge" title="Mode Administrateur">Admin</button>
+<!-- Le badge « Admin » flottant a disparu : le mode admin est désormais
+     l'adresse /test, ouverte depuis les réglages (js/settings-admin.js). -->
 <div class="result-modal" id="result-modal"><div class="result-box" id="result-box"><button id="result-close-btn" style="position:absolute;top:12px;right:14px;background:transparent;border:none;cursor:pointer;color:var(--muted);font-size:22px;line-height:1;font-family:inherit;transition:color .15s;z-index:1" title="Fermer et analyser la partie">✕</button><span class="result-icon" id="result-icon"></span><div class="result-title" id="result-title"></div><div class="result-elo-row"><span class="result-elo-before" id="result-elo-before"></span><span class="result-elo-arrow">→</span><span class="result-elo-after" id="result-elo-after"></span><span class="result-elo-delta" id="result-elo-delta"></span></div><div class="result-elo-note" id="result-elo-note" style="display:none"></div><div class="result-rank-row"><span class="result-rank-icon" id="result-rank-icon"></span><span class="result-rank-name" id="result-rank-name"></span></div><div class="result-chest" id="result-chest" style="display:none"></div><div class="unlock-section" id="unlock-section" style="display:none"><div class="unlock-title">Nouvelle pièce débloquée !</div><span class="unlock-piece-emoji" id="unlock-piece-emoji"></span><div class="unlock-piece-name" id="unlock-piece-name"></div><div class="unlock-piece-class" id="unlock-piece-class"></div><div class="unlock-piece-ability" id="unlock-piece-ability"></div></div><div style="display:flex;flex-direction:column;gap:8px;margin-top:20px"><button class="btn btn-gold" style="width:100%" id="result-continue">Continuer</button><div style="display:flex;gap:8px"><button class="btn btn-primary" style="flex:1" id="result-rejouer">↺ Rejouer</button><button class="btn btn-ghost" style="flex:1;border-color:var(--accent2);color:var(--accent2)" id="result-revanche">Revanche</button></div></div></div></div>
 <!-- CÉRÉMONIE D'OUVERTURE DE COFFRE (js/economy-ui.js) -->
 <div class="chest-modal" id="chest-modal">
@@ -647,6 +657,10 @@
     </div>
     <div class="tuto-actions">
       <button class="btn btn-primary" id="tuto-next">Suivant</button>
+      <!-- Sortie du tutoriel, disponible à toutes les étapes : elle donne les
+           trois créatures et une première armée, pour ne jamais laisser
+           quelqu'un dehors avec une armurerie vide (js/tutorial.js::tutoSkip). -->
+      <button class="btn btn-ghost tuto-skip-btn" id="tuto-skip">Passer le tutoriel</button>
     </div>
   </div>
 </div>
@@ -680,6 +694,15 @@
     <span class="sp-label">Tutoriel</span>
     <button class="btn btn-ghost" id="sp-tuto" style="font-size:10px;padding:5px 12px">Revoir</button>
   </div>
+  <hr class="sp-divider">
+  <!-- MODE ADMIN : ce n'est plus un interrupteur, c'est une adresse. Le
+       bouton emmène sur /test (mêmes fonctionnalités, coffres illimités,
+       parties non classées) et en ramène. Voir js/settings-admin.js. -->
+  <div class="sp-row">
+    <span class="sp-label">Mode admin</span>
+    <button class="btn btn-ghost" id="sp-admin" style="font-size:10px;padding:5px 12px">Ouvrir /test</button>
+  </div>
+  <div class="sp-admin-note" id="sp-admin-note">Coffres illimités, parties non classées.</div>
 </div>
 
 <!-- ================================================================

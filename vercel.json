@@ -3,5 +3,9 @@
   "installCommand": null,
   "outputDirectory": ".",
   "framework": null,
-  "cleanUrls": true
+  "cleanUrls": true,
+  "rewrites": [
+    { "source": "/combat", "destination": "/index.html" },
+    { "source": "/test", "destination": "/index.html" }
+  ]
 }

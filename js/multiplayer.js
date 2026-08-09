@@ -46,6 +46,7 @@ const MP={
   joinTimeoutId:null,
   lobby:null,        // salon d'attente du matchmaking (null hors recherche)
   matched:false,     // paire déjà formée : ignore les sync de presence suivants
+  armyRetryId:null,  // renvoi périodique de l'armée tant que la partie n'a pas démarré
   oppName:null,      // pseudo de l'adversaire (affiché dans son bandeau)
   oppElo:null,       // son ELO, utilisé pour le calcul de gain/perte
   oppId:null,        // son identifiant de session, pour détecter son départ
@@ -250,6 +251,13 @@ function mpConnect(code,asHost){
     }
   });
 
+  // RENVOI PÉRIODIQUE DE L'ARMÉE. Un seul envoi ne suffit pas : les deux
+  // camps ne s'abonnent pas à la même seconde, et un broadcast émis avant que
+  // l'autre n'écoute est perdu sans erreur ni accusé de réception. Les deux
+  // clients restaient alors face à face, chacun attendant une armée déjà
+  // envoyée. On réémet donc jusqu'à ce que la partie démarre.
+  mpStartArmyRetry();
+
   // Le second argument du rappel porte l'erreur de Realtime : l'ignorer,
   // c'était perdre la seule information disponible sur la panne.
   MP.channel.subscribe(async(status,err)=>{
@@ -276,9 +284,28 @@ function mpSendArmy(){
   MP.channel.send({type:'broadcast',event:'army',payload:{senderId:MP.myId,army:MP.myArmy,card:mpMyCard()}});
 }
 
+// Réémission de la carte de visite tant que la partie n'a pas démarré. Elle
+// n'émet QUE si quelqu'un d'autre est effectivement dans le salon : un hôte
+// qui attend un ami avec un code peut patienter des minutes, il ne doit pas
+// pour autant arroser le serveur de messages destinés à personne.
+function mpStartArmyRetry(){
+  mpStopArmyRetry();
+  MP.armyRetryId=setInterval(()=>{
+    if(MP.started||!MP.channel){mpStopArmyRetry();return;}
+    let count=0;
+    try{count=Object.keys(MP.channel.presenceState()).length;}catch(e){count=0;}
+    if(count>=2)mpSendArmy();
+  },1500);
+}
+function mpStopArmyRetry(){
+  if(MP.armyRetryId){clearInterval(MP.armyRetryId);MP.armyRetryId=null;}
+}
+
 function mpTryStart(){
   if(MP.started||!MP.oppArmy)return;
   MP.started=true;
+  mpStopArmyRetry();
+  mpLeaveLobby();
   if(MP.joinTimeoutId){clearTimeout(MP.joinTimeoutId);MP.joinTimeoutId=null;}
   currentArmyData=MP.myArmy;
   aiArmyData=MP.oppArmy;      // "aiArmyData" = armée du camp adverse
@@ -444,6 +471,7 @@ function mpNotifyResign(){
 
 function mpLeave(){
   if(MP.joinTimeoutId){clearTimeout(MP.joinTimeoutId);MP.joinTimeoutId=null;}
+  mpStopArmyRetry();
   if(MP.channel){MP.channel.unsubscribe();MP.channel=null;}
   mpLeaveLobby();
   MP.started=false;MP.matched=false;MP.oppArmy=null;MP.roomCode=null;
@@ -461,10 +489,39 @@ function mpLeave(){
 // s'apparient, le premier arrivé devenant l'hôte (Blancs). Les deux clients
 // trient la même liste selon les mêmes critères, ils aboutissent donc à la
 // même décision sans avoir à négocier.
+//
+// -- POURQUOI LA RECHERCHE NE TROUVAIT PERSONNE ---------------------------
+// L'ancienne version quittait le salon d'attente à la MILLISECONDE où elle
+// se croyait appariée. Or "presence" ne garantit pas qu'un événement soit
+// livré isolément : le serveur regroupe les changements proches dans le
+// temps. Le joueur déjà en attente recevait donc, en un seul « sync »,
+// l'arrivée ET le départ de celui qui venait de l'apparier : il ne voyait
+// plus qu'une seule personne dans le salon (lui-même), concluait qu'il n'y
+// avait toujours personne, et continuait de chercher — pendant que l'autre
+// l'attendait seul dans un salon de partie. Les deux joueurs cherchaient au
+// même moment et ne se trouvaient jamais.
+//
+// Deux corrections, indépendantes et cumulatives :
+//   1. l'appariement est ANNONCÉ par un broadcast explicite (event 'pair'),
+//      qui ne dépend d'aucun regroupement de présence ;
+//   2. on ne quitte plus le salon d'attente à l'appariement : on y reste
+//      jusqu'à ce que la partie ait réellement démarré (mpTryStart), ce qui
+//      laisse à l'autre camp le temps de voir la paire se former.
 const MP_LOBBY='epichess-lobby-v1';
 
 function mpLeaveLobby(){
   if(MP.lobby){MP.lobby.unsubscribe();MP.lobby=null;}
+}
+
+// Entrée effective dans le salon de partie, appelée soit par notre propre
+// décision d'appariement, soit à la réception du 'pair' de l'autre camp.
+function mpEnterPair(hostId){
+  if(MP.matched||MP.started)return;
+  MP.matched=true;
+  mpStatus('Adversaire trouvé, préparation de la partie','wait');
+  // Le nom du salon dérive de l'id de l'hôte : les deux camps le calculent
+  // à l'identique.
+  mpConnect('q-'+hostId.slice(0,12),MP.myId===hostId);
 }
 
 function mpQuickPlay(){
@@ -474,13 +531,22 @@ function mpQuickPlay(){
   const joinedAt=Date.now();
   MP.lobby=client.channel(MP_LOBBY,{config:{presence:{key:MP.myId}}});
 
+  // Annonce d'appariement : le message porte les deux identifiants, chacun
+  // sait donc s'il est concerné et lequel des deux est l'hôte.
+  MP.lobby.on('broadcast',{event:'pair'},({payload})=>{
+    if(!payload||MP.matched||MP.started)return;
+    if(payload.host!==MP.myId&&payload.guest!==MP.myId)return;
+    mpEnterPair(payload.host);
+  });
+
   MP.lobby.on('presence',{event:'sync'},()=>{
     if(MP.matched||MP.started||!MP.lobby)return;
     const state=MP.lobby.presenceState();
     const waiting=Object.keys(state).map(k=>{
       const meta=(state[k]&&state[k][0])||{};
-      return{id:k,joinedAt:meta.joinedAt||0};
-    }).sort((a,b)=>(a.joinedAt-b.joinedAt)||a.id.localeCompare(b.id));
+      return{id:k,joinedAt:meta.joinedAt||0,busy:!!meta.busy};
+    }).filter(w=>!w.busy)
+      .sort((a,b)=>(a.joinedAt-b.joinedAt)||a.id.localeCompare(b.id));
 
     if(waiting.length<2){mpStatus('Recherche d\'un adversaire','wait');return;}
     // Seuls les deux plus anciens s'apparient ; les suivants patientent
@@ -488,18 +554,21 @@ function mpQuickPlay(){
     const idx=waiting.findIndex(w=>w.id===MP.myId);
     if(idx<0||idx>1)return;
 
-    MP.matched=true;
-    const host=waiting[0];
-    mpStatus('Adversaire trouvé, préparation de la partie','wait');
-    mpLeaveLobby();
-    // Le nom du salon dérive de l'id de l'hôte : les deux camps le calculent
-    // à l'identique.
-    mpConnect('q-'+host.id.slice(0,12),MP.myId===host.id);
+    const host=waiting[0],guest=waiting[1];
+    // Un seul des deux annonce, pour ne pas émettre deux fois la même paire ;
+    // mais les deux agissent, celui qui annonce sans attendre son propre
+    // message (un broadcast n'est pas renvoyé à son émetteur).
+    if(MP.myId===host.id)
+      MP.lobby.send({type:'broadcast',event:'pair',payload:{host:host.id,guest:guest.id}});
+    // On se déclare occupé : un troisième joueur qui arrive ne comptera pas
+    // cette paire parmi les gens encore disponibles.
+    MP.lobby.track({joinedAt,busy:true});
+    mpEnterPair(host.id);
   });
 
   MP.lobby.subscribe(async(status,err)=>{
     if(status==='SUBSCRIBED'){
-      await MP.lobby.track({joinedAt});
+      await MP.lobby.track({joinedAt,busy:false});
       mpStatus('Recherche d\'un adversaire','wait');
     }else if(status==='CHANNEL_ERROR'||status==='TIMED_OUT'||status==='CLOSED'){
       if(MP.matched||MP.started)return;   // paire formée : le salon se ferme normalement

@@ -33,7 +33,32 @@ let VV_UNLOCKED=new Set();
 // ADMIN : le mode admin ne touche plus à VV_UNLOCKED (il ne fait qu'ouvrir
 // des coffres illimités et sortir les parties du classement), il n'y a donc
 // plus d'instantané de progression à restaurer en le désactivant.
-let ADMIN_MODE=false;
+//
+// Il n'est plus un interrupteur posé sur le jeu normal : c'est une ADRESSE.
+// /test EST la version admin, tout le reste y est identique. On y entre et on
+// en sort par les réglages, et l'adresse affichée dit toujours dans laquelle
+// des deux on se trouve — impossible d'oublier qu'on est en admin et de
+// s'étonner ensuite que l'ELO ne bouge pas.
+let ADMIN_MODE=(typeof location!=='undefined')&&/^\/test\/?$/.test(location.pathname);
+
+// ----------------------------------------------------------------
+// ADRESSES DU JEU : /, /combat, /test
+// ----------------------------------------------------------------
+// Le jeu est une page unique, mais trois adresses ont un sens pour le joueur :
+//   /        le jeu normal
+//   /combat  une partie en cours contre un autre joueur (adresse partageable,
+//            et surtout : l'onglet dit ce qu'on est en train de faire)
+//   /test    le mode admin (coffres illimités, parties non classées)
+// vercel.json réécrit ces trois chemins vers index.html : il n'y a jamais de
+// rechargement, on ne fait que changer ce qui est affiché dans la barre.
+const ADMIN_PATH='/test';
+const COMBAT_PATH='/combat';
+function appHomePath(){return ADMIN_MODE?ADMIN_PATH:'/';}
+function setAppPath(path){
+  if(typeof history==='undefined'||!history.replaceState)return;
+  if(location.pathname===path)return;
+  try{history.replaceState(null,'',path+location.search);}catch(e){}
+}
 
 // ----------------------------------------------------------------
 // UTILITAIRES PARTAGÉS

@@ -81,6 +81,14 @@ window.startArmySelection=mode=>{
     showNotif('Composez d\'abord une armée pour pouvoir combattre.','err');
     return;
   }
+  // Une seule armée = aucun choix à faire. Afficher un écran de sélection
+  // avec une seule carte, c'est demander de confirmer la seule réponse
+  // possible : on part directement au combat avec elle.
+  if(savedArmies.length===1){
+    armySelectMode=mode;
+    pickArmyForBattle(savedArmies[0].id);
+    return;
+  }
   armySelectMode=mode;
   renderArmiesPage();showPage('page-armies');
 };
@@ -100,6 +108,10 @@ window.pickArmyForBattle=id=>{
   if(a&&typeof armyStock==='function'){
     const stock=armyStock(a);
     if(!stock.ok){
+      // On sort du mode sélection et on montre l'armurerie : le joueur doit
+      // pouvoir agir (modifier l'armée, aller à la Réserve), pas rester sur
+      // un écran de choix qui refuse le seul choix disponible.
+      armySelectMode=null;renderArmiesPage();showPage('page-armies');
       showConfirmModal('Réserve insuffisante : '+stock.missing.map(m=>m.name+' ('+m.have+'/'+m.need+')').join(', ')+
         '. Récupérez le coffre de réapprovisionnement dans la Réserve, ou composez une autre armée.',()=>{},
         {okLabel:'Compris',cancelLabel:'Fermer',okClass:'btn-primary'});

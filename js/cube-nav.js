@@ -188,6 +188,9 @@
   function unlock(){ locked=false; refresh(); }
 
   function goToMainMenu(){
+    // Retour au menu = retour à l'adresse d'origine (/ ou /test) : /combat ne
+    // désigne qu'une partie en ligne effectivement en cours.
+    if(typeof setAppPath==='function'&&typeof appHomePath==='function')setAppPath(appHomePath());
     document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
     document.body.classList.remove('nav-overlay');
     document.body.classList.add('cube-active');

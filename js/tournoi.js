@@ -226,14 +226,19 @@ function launchTournoiRound(roundIdx){
   const _aiColor2=_playerColor==='w'?'b':'w';
   const whiteSideArmy2=_playerColor==='w'?currentArmyData:aiArmyData;
   const blackSideArmy2=_playerColor==='w'?aiArmyData:currentArmyData;
+  // Même cadence que le reste du jeu : 10 min + 5 s par coup (js/ai-level-modal.js).
   const clockMs2=(typeof selectedTimeControl==='number'&&selectedTimeControl>0)?selectedTimeControl*60000:0;
+  const incrementMs2=(typeof selectedTimeIncrement==='number'&&selectedTimeIncrement>0)?selectedTimeIncrement*1000:0;
   GS={board:[],turn:'w',selected:null,legalMoves:[],history:[],enPassant:null,halfmoveClock:0,gameOver:false,
     playerArmy:currentArmyData,aiArmy:aiArmyData,playerColor:_playerColor,aiColor:_aiColor2,movePairs:[],capturedW:[],capturedB:[],pendingPromo:null,
     medusaParalyzed:new Set(),lastMove:null,anchored:new Set(),pretreProtected:new Set(),
     amazonePostCapture:null,grandMaitreAlive:{w:false,b:false},
     gardePierreUsed:{w:false,b:false},
-    turnCount:0,historyView:null,lastMoveHistory:[],clockMs:clockMs2,timeWhite:clockMs2,timeBlack:clockMs2};
+    turnCount:0,historyView:null,lastMoveHistory:[],clockMs:clockMs2,incrementMs:incrementMs2,timeWhite:clockMs2,timeBlack:clockMs2};
   GS.board=buildGameBoard(whiteSideArmy2,blackSideArmy2);
+  // Le journal des coups garde sinon ceux du round précédent jusqu'au premier
+  // coup joué (voir la même remise à zéro dans js/game-flow.js::startGame).
+  if(typeof renderMoveLog==='function')renderMoveLog(GS);
   updateMedusaParalysis(GS.board,GS);updatePretreProtection(GS.board,GS);updateGrandMaitre(GS.board,GS);
   // Un round de tournoi engage les pièces comme n'importe quelle partie.
   if(typeof economyCommit==='function')economyCommit(currentArmyData);

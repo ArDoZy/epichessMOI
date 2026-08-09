@@ -51,11 +51,14 @@ function vvCalcNewElo(playerElo,aiElo,result){
 //     pleine puissance et joue autant de fois qu'on veut : un ELO gagné là
 //     ne mesure rien. Seuls les combats contre de vrais joueurs (et les
 //     rounds de tournoi, qui ont leurs propres paliers) sont classés.
+// VV_NO_ELO_TRAINING est une valeur reconnaissable, et pas seulement une
+// phrase : le modal de fin de partie s'en sert pour masquer la mention sans
+// masquer celle du mode admin (voir showResultModal dans js/game-flow.js).
+const VV_NO_ELO_TRAINING='Entraînement contre l\'Instructeur : aucun ELO en jeu.';
 function vvNoEloReason(gs){
   if(typeof ADMIN_MODE!=='undefined'&&ADMIN_MODE)return 'Mode admin : partie non classée, aucun ELO en jeu.';
   const inTournoi=(typeof tournamentState!=='undefined')&&tournamentState&&tournamentState.active;
-  if(!inTournoi&&!(gs&&gs.multiplayer))
-    return 'Entraînement contre l\'Instructeur : aucun ELO en jeu.';
+  if(!inTournoi&&!(gs&&gs.multiplayer))return VV_NO_ELO_TRAINING;
   return null;
 }
 function vvCheckNewUnlocks(oldElo,newElo){

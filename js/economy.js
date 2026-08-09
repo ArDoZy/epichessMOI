@@ -249,14 +249,50 @@ function weightedPick(ids,bias){
 }
 function randInt(a,b){return a+Math.floor(Math.random()*(b-a+1));}
 
+// ----------------------------------------------------------------
+// PERLES : la monnaie qui sort des coffres et qui rachète des coffres
+// ----------------------------------------------------------------
+// Un coffre pouvait ne rien apporter d'utile : trois lots d'une pièce déjà
+// en surnombre, et la série de victoires n'avait servi à rien. Chaque coffre
+// contient désormais aussi des PERLES, et les perles s'échangent contre les
+// coffres de son choix (boutique de la Réserve, voir js/economy-ui.js). Une
+// mauvaise ouverture fait donc toujours avancer vers le Coffre Roi.
+function pearlBalance(){const n=accGet('pearls',0);return typeof n==='number'?Math.max(0,n):0;}
+function pearlAdd(n){
+  if(!n)return pearlBalance();
+  const v=Math.max(0,pearlBalance()+n);
+  accSet('pearls',v);
+  return v;
+}
+function pearlSpend(n){
+  if(n<0)return false;
+  if(pearlBalance()<n)return false;
+  pearlAdd(-n);
+  return true;
+}
+// Achat d'un coffre à la boutique : le coffre rejoint la file d'attente de la
+// Réserve, il n'est pas ouvert d'office. On l'ouvre quand on veut, avec la
+// même cérémonie qu'un coffre gagné en jouant.
+function pearlBuyChest(chestId){
+  const chest=chestById(chestId);
+  const price=chestPearlPrice(chest.id);
+  if(!pearlSpend(price))return false;
+  chestGrant(chest.id);
+  return true;
+}
+
 // Tire le contenu d'un coffre SANS l'appliquer : l'animation d'ouverture
 // révèle les lots un par un, l'inventaire n'est crédité qu'ensuite
 // (chestApply), pour que ce qui est affiché soit exactement ce qui est reçu.
+// Le lot de perles suit le même chemin que les pièces : il est tiré ici,
+// affiché par la cérémonie, et crédité par chestApply().
 function chestRoll(chestId){
   const chest=chestById(chestId);
   const owned=invOwnedIds();
   const locked=PIECES.map(p=>p.id).filter(id=>isOwnablePiece(id)&&!(VV_UNLOCKED&&VV_UNLOCKED.has(id)));
   const lots=[];
+  const pr=chestPearlRange(chest.id);
+  lots.push({pearls:randInt(pr[0],pr[1])});
 
   if(locked.length&&Math.random()<chest.newChance){
     const pick=weightedPick(locked,chest.bias);
@@ -268,9 +304,11 @@ function chestRoll(chestId){
     if(!pick)continue;
     lots.push({pieceId:pick,qty:randInt(chest.qty[0],chest.qty[1]),isNew:false});
   }
-  // Fusion des doublons : deux lots de Méduse s'affichent en un seul.
+  // Fusion des doublons : deux lots de Méduse s'affichent en un seul. Le lot
+  // de perles n'a pas de pieceId, il traverse sans être fusionné.
   const merged=[];
   lots.forEach(l=>{
+    if(!l.pieceId){merged.push({...l});return;}
     const ex=merged.find(m=>m.pieceId===l.pieceId);
     if(ex){ex.qty+=l.qty;ex.isNew=ex.isNew||l.isNew;}else merged.push({...l});
   });
@@ -279,7 +317,10 @@ function chestRoll(chestId){
 
 function chestApply(lots){
   const add={};
+  let pearls=0;
   (lots||[]).forEach(l=>{
+    if(l.pearls){pearls+=l.pearls;return;}
+    if(!l.pieceId)return;
     add[l.pieceId]=(add[l.pieceId]||0)+l.qty;
     if(l.isNew&&VV_UNLOCKED&&!VV_UNLOCKED.has(l.pieceId)){
       VV_UNLOCKED.add(l.pieceId);
@@ -287,6 +328,7 @@ function chestApply(lots){
     }
   });
   invAddMany(add);
+  if(pearls)pearlAdd(pearls);
 }
 
 // ----------------------------------------------------------------
