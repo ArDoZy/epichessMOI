@@ -170,26 +170,25 @@ function enterAccount(username,isNewAccount){
   if(typeof goToMainMenu==='function')goToMainMenu();else showPage('page-builder');
   // Parchemin d'accueil : uniquement à la création d'un nouveau compte (pas
   // à chaque connexion d'un compte existant) : voir showIntroModal() dans
-  // main.js. Au-dessus du modal Primordiale (z-index plus faible) : celui-ci
-  // reste visible dès la fermeture du parchemin, sans double délai perçu.
+  // main.js. Le tutoriel prend le relais à sa fermeture.
   if(isNewAccount && typeof showIntroModal==='function')showIntroModal();
-  if(!accGet('primordiale_choisie',null))setTimeout(showPrimordialeChoiceModal,300);
+  else if(typeof tutoMaybeStart==='function')tutoMaybeStart();
 }
 
 function loadAccountGlobals(){
   savedArmies=accGet('armies',[]);
   savedAiArmies=accGet('ai_armies',[]);
-  const defs=UNLOCK_TABLE.filter(u=>u.eloRequired===0&&!u.primordialeChoix&&!u.coffre&&u.pieceId).map(u=>u.pieceId);
-  const chosen=accGet('primordiale_choisie',null);
-  if(chosen)defs.push(chosen);
+  // Dotation de départ : le Monarque et le Général, rien de plus. Les
+  // créatures s'obtiennent dans les coffres (les trois premières pendant le
+  // tutoriel), les paliers d'ELO ouvrant le reste.
+  const defs=UNLOCK_TABLE.filter(u=>u.eloRequired===0&&!u.coffre&&u.pieceId).map(u=>u.pieceId);
   const stored=accGet('unlocked_pieces',null);
   VV_UNLOCKED=new Set(stored||defs);
   const elo=accGet('elo',0);
   UNLOCK_MILESTONES.forEach(u=>{
-    if(!u.pieceId||u.primordialeChoix||u.coffre)return;
+    if(!u.pieceId||u.coffre)return;
     if(u.eloRequired<=elo)VV_UNLOCKED.add(u.pieceId);
   });
-  if(chosen)VV_UNLOCKED.add(chosen);
 }
 
 function saveArmies(){accSet('armies',savedArmies);}
@@ -230,8 +229,6 @@ function vvSaveRankMax(v){accSet('rank_max',v);}
 function vvSaveUnlocked(s){accSet('unlocked_pieces',[...s]);}
 function vvLoadHistory(){return accGet('match_history',[]);}
 function vvSaveHistory(arr){accSet('match_history',arr.slice(-30));}
-function vvLoadPrimordialeChoisie(){return accGet('primordiale_choisie',null);}
-function vvSavePrimordialeChoisie(id){accSet('primordiale_choisie',id);}
 
 // ----------------------------------------------------------------
 // REGISTRATION LISTENER

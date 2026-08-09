@@ -7,24 +7,41 @@
 // d'armée, la possession des pièces, les coffres), et une navigation par cube
 // qu'il faut avoir vu tourner une fois.
 //
-// Le tutoriel remplace ce parchemin par une visite guidée : le savant parle,
-// et le joueur AGIT. Les étapes marquées `click` attendent un vrai clic sur
-// le vrai bouton, pas sur une reproduction : à la fin, le joueur a réellement
-// tourné le cube, composé une armée et ouvert sa Réserve.
+// Le tutoriel est donc une visite guidée où le savant parle et le joueur
+// AGIT. Il se déroule en deux temps :
+//
+//   1. QUATRE BATAILLES SCRIPTÉES, contre quatre instructeurs volontairement
+//      faibles (TUTO_INSTRUCTORS dans data-pieces.js). Les deux camps ont
+//      exactement la même armée, posée en dur : personne ne perd parce qu'il
+//      a mal composé. Chaque victoire ouvre un coffre qui débloque UNE
+//      créature (Alpha, puis Fourmi, puis Garde de Pierre), suivie de son
+//      exercice de déplacement (js/tuto-drill.js). Une défaite ne fait pas
+//      avancer : le savant propose la revanche, autant de fois qu'il faut.
+//      C'est ainsi que le joueur se retrouve, à la fin, avec une armée
+//      complète (Roi, Dame, Alpha, Fourmi, Garde de Pierre) qu'il a gagnée.
+//   2. LA VISITE DU LABORATOIRE (étapes marquées `click`) : le joueur tourne
+//      réellement le cube, compose réellement une armée, ouvre réellement sa
+//      Réserve.
 //
 // PRINCIPES DE ROBUSTESSE, parce qu'un tutoriel cassé est pire que pas de
 // tutoriel :
 //   - une étape dont la cible est absente devient une simple étape « Suivant »
 //     au lieu de bloquer ;
-//   - « Quitter » est disponible en permanence, et une étape en attente de
-//     clic finit toujours par proposer de passer ;
+//   - une étape en attente de clic finit toujours par proposer de passer ;
 //   - le projecteur ne capte aucun clic (pointer-events:none), le joueur peut
-//     donc toujours cliquer ailleurs et sortir du chemin prévu.
+//     donc toujours cliquer ailleurs ;
+//   - la progression est sauvegardée à chaque étape (`tuto_step`) : recharger
+//     la page en pleine visite reprend là où on en était, ce qui compte
+//     d'autant plus qu'il n'y a plus de bouton « quitter » et que les
+//     premières créatures s'obtiennent ici.
 //
 // Dépendances : main.js (escH), accounts.js (accGet/accSet), piece-art.js
-// (pieceIcon) pour illustrer certaines répliques.
-// Lancé par : voie.js (après le choix de la Primordiale, pour un compte
-// neuf) et settings-admin.js (bouton « Revoir le tutoriel »).
+// (pieceIcon), data-pieces.js (TUTO_INSTRUCTORS, tutoInstructorLevel),
+// game-flow.js (startGame en mode tutoCfg), economy-ui.js
+// (showChestCeremony), tuto-drill.js (drillStart).
+// Lancé par : main.js (fermeture du parchemin d'accueil, compte neuf),
+// accounts.js (reprise à la connexion) et settings-admin.js (bouton
+// « Revoir le tutoriel »).
 // ================================================================
 
 // ----------------------------------------------------------------
@@ -50,20 +67,187 @@ const SAVANT_SVG=
   '</svg>';
 
 // ----------------------------------------------------------------
+// LES QUATRE BATAILLES DU TUTORIEL
+// ----------------------------------------------------------------
+// Les deux camps reçoivent la MÊME armée, aux MÊMES colonnes : le joueur ne
+// peut pas perdre pour une raison qu'il ne comprend pas encore. Elle grossit
+// d'une créature par bataille, dans l'ordre où le joueur les débloque, et
+// chaque créature se place vers l'extérieur en partant du Monarque.
+//
+//   colonnes :  0            1        2       3      4     5       6        7
+//               garde-pierre fourmi   alpha   dame   roi   alpha   fourmi   garde-pierre
+//
+// L'adversaire monte en force à chaque fois (index dans AI_INSTRUCTORS via
+// tutoInstructorLevel), la couleur du joueur alterne pour qu'il joue une fois
+// en second et une fois en premier, et seule la dernière bataille a une
+// pendule : le savant l'annonce, et c'est ce qui fait la différence entre
+// s'entraîner et jouer.
+const TUTO_EXTRA_COLS={'alpha':[2,5],'fourmi':[1,6],'garde-pierre':[0,7]};
+const TUTO_BATTLES=[
+  {playerColor:'b',extras:[],                              clockMin:0},
+  {playerColor:'w',extras:['alpha'],                       clockMin:0},
+  {playerColor:'b',extras:['alpha','fourmi'],              clockMin:0},
+  {playerColor:'w',extras:['alpha','fourmi','garde-pierre'],clockMin:5},
+];
+
+let _tutoUid=0;
+function tutoMakePiece(pieceId,color,type,isKing){
+  const def=PIECES.find(p=>p.id===pieceId);
+  // Les pions standard ne sont pas au catalogue (ils ne se possèdent pas,
+  // voir FREE_PIECE_IDS dans economy.js) : leur emoji est écrit ici.
+  const emoji=def?def.emoji:(pieceId==='std-pawn'?(color==='w'?'♙':'♟'):'');
+  return{type:type||def?.pieceType||'p',color,pieceId,emoji,
+    hasMoved:false,isKing:!!isKing,id:'t'+(_tutoUid++)};
+}
+
+// Plateau symétrique : ce que reçoit un camp, l'autre le reçoit à
+// l'identique. Aucune pièce standard de remplissage en dehors des huit pions
+// (« il n'y a pas d'autres pièces »).
+function tutoBuildBoard(battleIdx){
+  const cfg=TUTO_BATTLES[battleIdx]||TUTO_BATTLES[0];
+  const b=Array.from({length:8},()=>Array(8).fill(null));
+  [['w',7,6],['b',0,1]].forEach(([color,back,pawnRow])=>{
+    b[back][4]=tutoMakePiece('roi',color,'k',true);
+    b[back][3]=tutoMakePiece('dame',color,'q',false);
+    cfg.extras.forEach(id=>{
+      (TUTO_EXTRA_COLS[id]||[]).forEach(col=>{
+        if(!b[back][col])b[back][col]=tutoMakePiece(id,color);
+      });
+    });
+    for(let c=0;c<8;c++)b[pawnRow][c]=tutoMakePiece('std-pawn',color,'p');
+  });
+  return b;
+}
+
+// Armée « pour l'affichage » : elle alimente les bandeaux joueurs et les
+// choix de promotion. Elle n'est jamais prélevée sur la Réserve.
+function tutoBattleArmy(battleIdx){
+  const cfg=TUTO_BATTLES[battleIdx]||TUTO_BATTLES[0];
+  return{mon:{id:'roi'},gen:{id:'dame'},extras:[...cfg.extras],placements:{},totalValue:0,_tuto:true};
+}
+
+// Lance (ou relance) la bataille n. La bulle du savant s'efface le temps du
+// combat : elle occupe le bas de l'écran, exactement là où se trouve le
+// plateau.
+function tutoStartBattle(battleIdx){
+  const cfg=TUTO_BATTLES[battleIdx];
+  if(!cfg||typeof startGame!=='function')return;
+  _tutoBattle=battleIdx;
+  _tutoAwaitCombat=null;
+  tutoClearStep();
+  tutoHideBox(true);
+  if(typeof selectedAILevel!=='undefined')selectedAILevel=tutoInstructorLevel(battleIdx);
+  const inst=TUTO_INSTRUCTORS[Math.min(battleIdx,TUTO_INSTRUCTORS.length-1)];
+  startGame(true,false,{
+    battle:battleIdx,
+    name:inst.name,
+    playerColor:cfg.playerColor,
+    clockMin:cfg.clockMin,
+    army:tutoBattleArmy(battleIdx),
+    board:()=>tutoBuildBoard(battleIdx),
+  });
+}
+
+// Fin d'une bataille du tutoriel : appelée par triggerEndOfGame()
+// (js/game-flow.js), qui n'a rien réglé du tout — ni ELO, ni coffre de série,
+// ni Réserve. Tout se décide ici.
+function tutoOnBattleEnd(result){
+  const battleIdx=_tutoBattle;
+  _tutoBattle=null;
+  if(typeof selectedAILevel!=='undefined')selectedAILevel=0;
+  const back=()=>{
+    if(typeof goToMainMenu==='function')goToMainMenu();
+    if(typeof updAll==='function')updAll();
+  };
+  if(result!=='win'){
+    // Ni défaite ni nulle ne font avancer le tutoriel : on rejoue la même
+    // bataille, contre le même instructeur, autant de fois qu'il le faudra.
+    setTimeout(()=>{
+      back();
+      tutoShowMessage(
+        'Tu t\'es courageusement battu, mais la bataille a été perdue. '+
+        '<strong>Lance un nouvel assaut&nbsp;!</strong>',
+        'Revanche',()=>tutoStartBattle(battleIdx));
+    },900);
+    return;
+  }
+  setTimeout(()=>{back();tutoNext();},900);
+}
+
+// ----------------------------------------------------------------
 // ÉTAPES
 // ----------------------------------------------------------------
 // Chaque étape :
 //   text     réplique du savant (HTML autorisé, écrit ici, jamais saisi)
 //   at       sélecteur de l'élément à mettre en lumière (facultatif)
 //   click    sélecteur à cliquer pour avancer ; sinon bouton « Suivant »
+//   btn      libellé du bouton quand l'étape n'attend pas de clic
 //   wait     ms d'attente après le clic, le temps qu'une animation finisse
 //   before   fonction exécutée à l'entrée dans l'étape
 //   skipIf   fonction : si elle renvoie vrai, l'étape est sautée
+//   battle   n° de bataille lancée par le bouton de l'étape
+//   combat   n° de bataille lancée par le bouton COMBAT du menu (le clic est
+//            intercepté par tutoInterceptCombat, appelé depuis cube-nav.js)
+//   combatStep  le bouton COMBAT fait simplement avancer d'une étape (la
+//            flèche désigne COMBAT, mais le savant a encore quelque chose à
+//            dire avant que le combat ne commence)
+//   reward   {chest,piece,qty} : cérémonie de coffre qui débloque une créature
+//   drill    id de pièce : exercice de déplacement (js/tuto-drill.js)
+// Les étapes `reward` et `drill` n'ont pas de bulle : elles s'exécutent et
+// enchaînent d'elles-mêmes.
 const TUTO_STEPS=[
   {
-    text:'Ah&nbsp;! Vous voilà enfin. Ne touchez à rien, tout ici est instable.<br>'+
-         'Je suis celui qui a mélangé un jeu d\'échecs avec des créatures. Ça a… fonctionné.',
+    text:'Bien le bonjour, jeune apprenti. Comme tu le sais sans doute déjà, je suis '+
+         'l\'honorable savant qui a créé cet endroit. Je vais t\'apprendre la subtile '+
+         'science et l\'art exact de l\'alchimie. Je ne m\'attends pas à ce que tu '+
+         'comprennes vraiment la beauté des vapeurs discrètes s\'échappant du chaudron, '+
+         'ni l\'explosion accompagnant la fusion.',
   },
+  {
+    text:'Les plus persévérants pourront même admirer la vie être insufflée dans de '+
+         'simples objets. Ne sous-estime pas l\'immense pouvoir de ces fragments de bois '+
+         'rudement sculptés.',
+  },
+  // La flèche désigne COMBAT pendant cette réplique : le joueur enchaîne du
+  // discours à l'action sans étape intermédiaire.
+  {
+    text:'Pour un grand stratège, comprendre ses soldats est primordial, mais savoir les '+
+         'manœuvrer est tout aussi important.',
+    at:'#cube-jouer-btn',combatStep:true,
+  },
+  {
+    text:'Ta première bataille est sur le point de commencer. Croise le fer avec ton '+
+         'adversaire et lance la charge vaillamment.',
+    battle:0,btn:'Au combat !',
+  },
+  {reward:{chest:'pion',piece:'alpha'}},
+  {drill:'alpha'},
+  {
+    text:'Merveilleux&nbsp;! Tu es visiblement un élève prometteur. Défie un nouvel '+
+         'adversaire, et utilise ton <strong>Alpha</strong> fraîchement débloqué.',
+    at:'#cube-jouer-btn',combat:1,
+  },
+  {reward:{chest:'cavalier',piece:'fourmi'}},
+  {drill:'fourmi'},
+  {
+    text:'Bravo&nbsp;! Avec la <strong>Fourmi</strong> en soutien, ton armée sera bien '+
+         'plus puissante. Attaque encore, et prends par surprise ton adversaire.',
+    at:'#cube-jouer-btn',combat:2,
+  },
+  {reward:{chest:'fou',piece:'garde-pierre'}},
+  {drill:'garde-pierre'},
+  {
+    text:'Ton armée est maintenant complète&nbsp;! Lance un dernier combat contre un '+
+         'instructeur, tu affronteras ensuite des joueurs du monde entier. Attention, '+
+         'pour cet ultime combat, <strong>le temps est compté</strong>&nbsp;! Prends '+
+         'garde à ne pas perdre tout ton temps à la pendule, la partie serait alors '+
+         'perdue.',
+    at:'#cube-jouer-btn',combat:3,
+  },
+  {
+    text:'Tu es venu. Tu as vu. <strong>Tu as vaincu&nbsp;!</strong>',
+  },
+  // ---- La visite du laboratoire, inchangée ----------------------
   {
     text:'La règle qui change tout&nbsp;: personne ne reçoit la même armée. '+
          'Vous allez composer la vôtre, pièce par pièce. Suivez-moi.',
@@ -140,8 +324,10 @@ const TUTO_STEPS=[
     at:'#cube-arrow-right',click:'#cube-arrow-right',wait:700,
   },
   {
-    text:'La Voie des Victoires. Chaque partie fait bouger votre classement, et chaque '+
-         'palier franchi <strong>libère une nouvelle créature</strong> de mes bocaux.',
+    text:'La Voie des Victoires. Chaque partie <strong>classée</strong> fait bouger votre '+
+         'classement, et chaque palier franchi <strong>libère une nouvelle créature</strong> '+
+         'de mes bocaux. Les combats contre l\'Instructeur, eux, ne coûtent rien&nbsp;: '+
+         'entraînez-vous autant que vous voulez.',
     at:'.voie-elo-banner',
   },
   {
@@ -170,9 +356,21 @@ let _tutoCleanup=null;      // retire le guetteur de clic de l'étape en cours
 let _tutoTypeTimer=null;
 let _tutoReposition=null;
 let _tutoEscapeTimer=null;
+let _tutoBattle=null;       // n° de la bataille en cours, null hors combat
+let _tutoAwaitCombat=null;  // n° de bataille que le bouton COMBAT doit lancer
+let _tutoMsgAction=null;    // action du bouton d'un message hors script
 
 function tutoDone(){return !!accGet('tuto_done',false);}
-function tutoMarkDone(){accSet('tuto_done',true);}
+function tutoMarkDone(){accSet('tuto_done',true);accSet('tuto_step',null);}
+// Progression sauvegardée à chaque étape : le tutoriel n'a pas de bouton
+// « quitter » et c'est lui qui donne les premières créatures, il doit donc
+// survivre à un rechargement de page.
+function tutoSaveStep(){accSet('tuto_step',_tutoIdx);}
+function tutoLoadStep(){const v=accGet('tuto_step',null);return (typeof v==='number'&&v>=0)?v:0;}
+
+// Le tutoriel est en cours (utilisé par cube-nav.js pour savoir s'il doit lui
+// laisser la main sur le bouton COMBAT).
+function tutoActive(){return document.body.classList.contains('tuto-on');}
 
 function tutoEls(){
   return{
@@ -185,16 +383,21 @@ function tutoEls(){
   };
 }
 
-function tutoStart(){
+// startAt : index de départ (reprise). tutoStart() sans argument recommence
+// depuis le début, c'est ce que fait « Revoir le tutoriel » dans les réglages.
+function tutoStart(startAt){
   const{root}=tutoEls();
   if(!root)return;
   root.classList.add('show');
+  tutoHideBox(false);
   document.body.classList.add('tuto-on');
-  _tutoIdx=-1;
+  _tutoIdx=(typeof startAt==='number'?startAt:0)-1;
   tutoNext();
 }
 
-function tutoQuit(){
+// Fin du tutoriel : il n'y a plus de bouton « quitter », on n'arrive donc ici
+// qu'après la dernière étape.
+function tutoFinish(){
   tutoClearStep();
   const{root,spot}=tutoEls();
   if(root)root.classList.remove('show');
@@ -202,6 +405,33 @@ function tutoQuit(){
   document.body.classList.remove('tuto-on');
   tutoMarkDone();
   _tutoIdx=-1;
+  _tutoBattle=null;_tutoAwaitCombat=null;
+}
+
+// La bulle disparaît pendant un combat ou un exercice (elle occupe le bas de
+// l'écran, là où se trouve le plateau) ; le voile et le projecteur avec elle.
+function tutoHideBox(hidden){
+  const{box,spot}=tutoEls();
+  if(box)box.style.display=hidden?'none':'';
+  if(hidden&&spot)spot.classList.remove('on');
+}
+
+// Message hors script (fin de bataille perdue) : même bulle, un seul bouton
+// dont l'action est fournie par l'appelant.
+function tutoShowMessage(html,btnLabel,action){
+  const{root,box,text,next,hint}=tutoEls();
+  if(!root||!box)return;
+  root.classList.add('show');
+  document.body.classList.add('tuto-on');
+  tutoClearStep();
+  tutoHideBox(false);
+  tutoSpotlight(null);
+  tutoPlaceBox(null);
+  tutoType(text,html);
+  hint.style.display='none';
+  next.style.display='';
+  next.textContent=btnLabel||'Suivant';
+  _tutoMsgAction=action||null;
 }
 
 function tutoClearStep(){
@@ -217,16 +447,77 @@ function tutoClearStep(){
 
 function tutoNext(){
   tutoClearStep();
+  _tutoMsgAction=null;
+  _tutoAwaitCombat=null;
   _tutoIdx++;
-  // Étapes sautées : leur condition n'est plus remplie (par exemple le joueur
-  // possédait déjà une armée avant de lancer le tutoriel).
-  while(TUTO_STEPS[_tutoIdx]&&TUTO_STEPS[_tutoIdx].skipIf&&TUTO_STEPS[_tutoIdx].skipIf())_tutoIdx++;
+  // Étapes sautées : leur condition n'est plus remplie (par exemple la
+  // créature offerte par un coffre est déjà débloquée, cas d'un tutoriel
+  // revu depuis les réglages).
+  while(TUTO_STEPS[_tutoIdx]&&tutoStepSkipped(TUTO_STEPS[_tutoIdx]))_tutoIdx++;
   const step=TUTO_STEPS[_tutoIdx];
-  if(!step){tutoQuit();return;}
+  if(!step){tutoFinish();return;}
+  tutoSaveStep();
   if(step.before)try{step.before();}catch(e){}
+  // Étapes sans bulle : elles s'exécutent et enchaînent d'elles-mêmes.
+  if(step.reward){tutoRunReward(step.reward);return;}
+  if(step.drill){tutoRunDrill(step.drill);return;}
   // Le DOM de l'étape précédente peut encore être en train de se mettre en
   // place (rotation du cube, rendu d'une page) : on laisse passer une frame.
+  tutoHideBox(false);
   requestAnimationFrame(()=>tutoRender(step));
+}
+
+function tutoStepSkipped(step){
+  if(step.skipIf&&step.skipIf())return true;
+  // Un coffre du tutoriel ne redonne pas une créature déjà débloquée.
+  if(step.reward&&typeof VV_UNLOCKED!=='undefined'&&VV_UNLOCKED.has(step.reward.piece))return true;
+  return false;
+}
+
+// ----------------------------------------------------------------
+// ÉTAPES SANS BULLE : coffre scripté, puis exercice de déplacement
+// ----------------------------------------------------------------
+// Le coffre du tutoriel n'est PAS tiré au sort : le savant sait ce qu'il y a
+// dedans. Il passe malgré tout par la cérémonie habituelle (economy-ui.js) et
+// par chestApply(), donc la créature est réellement débloquée et les
+// exemplaires réellement crédités.
+function tutoRunReward(reward){
+  tutoHideBox(true);
+  const chest=(typeof chestById==='function')?chestById(reward.chest):null;
+  const lots=[{pieceId:reward.piece,qty:reward.qty||10,isNew:true}];
+  const after=()=>{
+    if(typeof updAll==='function')updAll();
+    if(typeof renderReservePage==='function'&&CUR_ACC)renderReservePage();
+    tutoNext();
+  };
+  if(chest&&typeof showChestCeremony==='function')showChestCeremony(chest,lots,true,after);
+  else{if(typeof chestApply==='function')chestApply(lots);after();}
+}
+
+function tutoRunDrill(pieceId){
+  tutoHideBox(true);
+  const after=()=>{
+    if(typeof goToMainMenu==='function')goToMainMenu();
+    tutoNext();
+  };
+  if(typeof drillStart==='function')drillStart(pieceId,after);
+  else after();
+}
+
+// ----------------------------------------------------------------
+// BOUTON COMBAT PENDANT LE TUTORIEL
+// ----------------------------------------------------------------
+// Appelé par cube-nav.js AVANT son propre traitement : pendant le tutoriel, le
+// bouton COMBAT ne mène pas à la sélection d'armée (le joueur n'en a pas
+// encore), il lance la bataille scriptée de l'étape en cours. Rend true quand
+// il a pris la main.
+function tutoInterceptCombat(){
+  if(!tutoActive())return false;
+  const step=TUTO_STEPS[_tutoIdx];
+  if(step&&step.combatStep){tutoNext();return true;}
+  if(_tutoAwaitCombat===null)return false;
+  tutoStartBattle(_tutoAwaitCombat);
+  return true;
 }
 
 function tutoRender(step){
@@ -240,29 +531,44 @@ function tutoRender(step){
   // Une étape qui attend un clic sur une cible absente deviendrait un
   // cul-de-sac : elle retombe sur un simple « Suivant ».
   const clickTarget=step.click?document.querySelector(step.click):null;
-  const waitsClick=!!clickTarget;
+  // Étape `combat` : c'est le bouton COMBAT du menu qui fait avancer, mais le
+  // clic n'est pas guetté ici — il passe par tutoInterceptCombat(), appelé
+  // depuis cube-nav.js, sinon la navigation normale partirait en parallèle.
+  const waitsCombat=(typeof step.combat==='number')||!!step.combatStep;
+  const waitsClick=!!clickTarget||waitsCombat;
+  if(typeof step.combat==='number')_tutoAwaitCombat=step.combat;
 
   tutoType(text,step.text);
 
   next.style.display=waitsClick?'none':'';
-  hint.textContent=waitsClick?'À vous de jouer : cliquez l\'élément mis en lumière.':'';
+  hint.textContent=waitsClick
+    ?(waitsCombat?'À vous de jouer : lancez le COMBAT.':'À vous de jouer : cliquez l\'élément mis en lumière.')
+    :'';
   hint.style.display=waitsClick?'':'none';
 
-  if(waitsClick){
+  if(clickTarget){
     const onClick=()=>{
       clickTarget.removeEventListener('click',onClick,true);
       setTimeout(tutoNext,step.wait||300);
     };
     clickTarget.addEventListener('click',onClick,true);
     _tutoCleanup=()=>clickTarget.removeEventListener('click',onClick,true);
+  }
+  if(waitsClick){
     // Filet : après 12 s sans clic, on propose explicitement de continuer,
-    // pour ne jamais enfermer quelqu'un qui n'a pas compris quoi cliquer.
-    _tutoEscapeTimer=setTimeout(()=>{
+    // pour ne jamais enfermer quelqu'un qui n'a pas compris quoi cliquer. Une
+    // étape `combat` fait exception : « continuer » sauterait la bataille, et
+    // avec elle la créature qu'elle rapporte.
+    if(!waitsCombat)_tutoEscapeTimer=setTimeout(()=>{
       next.textContent='Continuer sans cliquer';
       next.style.display='';
     },12000);
+  }else if(typeof step.battle==='number'){
+    // Le bouton de la bulle lance lui-même la bataille.
+    next.textContent=step.btn||'Au combat !';
+    next.style.display='';
   }else{
-    next.textContent='Suivant';
+    next.textContent=step.btn||'Suivant';
   }
 }
 
@@ -349,13 +655,27 @@ function tutoPlaceBox(target){
 // après coup serait une punition.
 function tutoMaybeStart(){
   if(tutoDone())return;
-  setTimeout(tutoStart,450);
+  // Reprise : un tutoriel interrompu par un rechargement repart de son
+  // étape, pas du début (voir tutoSaveStep).
+  const at=tutoLoadStep();
+  setTimeout(()=>tutoStart(at),450);
+}
+
+// Un seul bouton dans la bulle, mais trois rôles selon le moment : rejouer
+// une bataille perdue, lancer la bataille de l'étape, ou simplement avancer.
+function tutoOnNextClick(){
+  if(_tutoMsgAction){
+    const fn=_tutoMsgAction;_tutoMsgAction=null;
+    fn();return;
+  }
+  const step=TUTO_STEPS[_tutoIdx];
+  if(step&&typeof step.battle==='number'){tutoStartBattle(step.battle);return;}
+  tutoNext();
 }
 
 document.addEventListener('DOMContentLoaded',()=>{
   const{next,box,root}=tutoEls();
-  if(next)next.addEventListener('click',tutoNext);
-  document.getElementById('tuto-quit')?.addEventListener('click',tutoQuit);
+  if(next)next.addEventListener('click',tutoOnNextClick);
   // Cliquer la bulle pendant la frappe affiche la réplique d'un coup.
   if(box)box.addEventListener('click',e=>{
     if(e.target.closest('button'))return;

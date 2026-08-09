@@ -83,6 +83,14 @@ function updateGamePlayerBars(){
     if(aae)aae.textContent=oppElo+' · '+sideLbl(pc==='w'?'b':'w');
     return;
   }
+  // Instructeur du tutoriel : son nom, et « entraînement » à la place d'un
+  // ELO qui n'est pas en jeu.
+  if(GS&&GS.tuto){
+    if(aav)aav.textContent='I';
+    if(aan)aan.textContent=GS.tuto.name||'Instructeur';
+    if(aae)aae.textContent='Entraînement · '+sideLbl(pc==='w'?'b':'w');
+    return;
+  }
   if(aav)aav.textContent='I';
   if(aan)aan.textContent=INSTRUCTOR.name;
   if(aae)aae.textContent=INSTRUCTOR.elo+' ELO · '+sideLbl(pc==='w'?'b':'w');
@@ -94,23 +102,37 @@ function updateGamePlayerBars(){
 // ----------------------------------------------------------------
 // startGame accepte un paramètre colorAlreadyChosen. Quand cb-play a déjà
 // tiré _playerColor (voir combat-intro.js), on n'écrase pas ce choix ici.
-function startGame(colorAlreadyChosen,multiplayer){
+// tutoCfg (facultatif) : bataille scriptée du tutoriel, voir tutoStartBattle()
+// dans js/tutorial.js. Elle impose le plateau, la couleur et la pendule, ne
+// touche PAS à la Réserve (les pièces du tutoriel sont prêtées, pas engagées)
+// et court-circuite la cinématique d'entrée : à ce stade le joueur n'a pas
+// encore d'armée, il n'y a rien à présenter.
+//   {battle, name, level, playerColor, board(), clockMin, armyIds:{mon,gen,extras}}
+function startGame(colorAlreadyChosen,multiplayer,tutoCfg){
   _endGameTriggered=false;
   stopCombatMusicImmediate();
-  if(!currentArmyData||!aiArmyData){showNotif('Aucune armée sélectionnée.');return;}
-  if(!colorAlreadyChosen)_playerColor=Math.random()<0.5?'w':'b';
+  if(!tutoCfg&&(!currentArmyData||!aiArmyData)){showNotif('Aucune armée sélectionnée.');return;}
+  if(tutoCfg)_playerColor=tutoCfg.playerColor||'w';
+  else if(!colorAlreadyChosen)_playerColor=Math.random()<0.5?'w':'b';
   const _aiColor=_playerColor==='w'?'b':'w';
   const playerIsWhite=_playerColor==='w';
   const whiteSideArmy=playerIsWhite?currentArmyData:aiArmyData;
   const blackSideArmy=playerIsWhite?aiArmyData:currentArmyData;
-  const clockMs=(typeof selectedTimeControl==='number'&&selectedTimeControl>0)?selectedTimeControl*60000:0;
-  GS={board:[],turn:'w',selected:null,legalMoves:[],history:[],enPassant:null,halfmoveClock:0,gameOver:false,playerArmy:currentArmyData,aiArmy:aiArmyData,playerColor:_playerColor,aiColor:_aiColor,multiplayer:!!multiplayer,movePairs:[],capturedW:[],capturedB:[],pendingPromo:null,medusaParalyzed:new Set(),lastMove:null,anchored:new Set(),pretreProtected:new Set(),amazonePostCapture:null,grandMaitreAlive:{w:false,b:false},gardePierreUsed:{w:false,b:false},turnCount:0,historyView:null,lastMoveHistory:[],clockMs,timeWhite:clockMs,timeBlack:clockMs};
-  GS.board=buildGameBoard(whiteSideArmy,blackSideArmy);
+  const clockMs=tutoCfg
+    ?((tutoCfg.clockMin>0)?tutoCfg.clockMin*60000:0)
+    :((typeof selectedTimeControl==='number'&&selectedTimeControl>0)?selectedTimeControl*60000:0);
+  // En tutoriel, playerArmy sert uniquement à l'affichage et aux choix de
+  // promotion : l'armée n'est pas prélevée sur la Réserve.
+  const playerArmy=tutoCfg?tutoCfg.army:currentArmyData;
+  const aiArmy=tutoCfg?tutoCfg.army:aiArmyData;
+  GS={board:[],turn:'w',selected:null,legalMoves:[],history:[],enPassant:null,halfmoveClock:0,gameOver:false,playerArmy,aiArmy,playerColor:_playerColor,aiColor:_aiColor,multiplayer:!!multiplayer,tuto:tutoCfg||null,movePairs:[],capturedW:[],capturedB:[],pendingPromo:null,medusaParalyzed:new Set(),lastMove:null,anchored:new Set(),pretreProtected:new Set(),amazonePostCapture:null,grandMaitreAlive:{w:false,b:false},gardePierreUsed:{w:false,b:false},turnCount:0,historyView:null,lastMoveHistory:[],clockMs,timeWhite:clockMs,timeBlack:clockMs};
+  GS.board=tutoCfg?tutoCfg.board():buildGameBoard(whiteSideArmy,blackSideArmy);
   updateMedusaParalysis(GS.board,GS);updatePretreProtection(GS.board,GS);updateGrandMaitre(GS.board,GS);
   // Les exemplaires quittent la Réserve MAINTENANT : ils sont sur le terrain
-  // et donc en jeu (voir js/economy.js, en-tête).
-  if(typeof economyCommit==='function')economyCommit(currentArmyData);
-  if(typeof renderGameStake==='function')renderGameStake(GS);
+  // et donc en jeu (voir js/economy.js, en-tête). Rien de tel en tutoriel :
+  // ces pièces sont prêtées par le savant, les perdre ne coûte rien.
+  if(!tutoCfg&&typeof economyCommit==='function')economyCommit(currentArmyData);
+  if(typeof renderGameStake==='function')renderGameStake(tutoCfg?{}:GS);
   showPage('page-game');
   // "Annuler coup" est retiré en ligne : l'annulation serait unilatérale et
   // désynchroniserait les deux plateaux.
@@ -123,7 +145,22 @@ function startGame(colorAlreadyChosen,multiplayer){
   // cinématique d'entrée (showArmyIntro), en même temps que l'horloge. Sinon
   // l'IA jouerait derrière le rideau, sur un plateau que le joueur n'a pas
   // encore vu, et le joueur découvrirait la partie déjà entamée.
-  showArmyIntro(currentArmyData,aiArmyData);
+  // En tutoriel, pas de cinématique : les deux camps ont la même armée, il n'y
+  // a rien à révéler, et le savant vient de parler juste avant.
+  if(tutoCfg)startGameClockAndAI();
+  else showArmyIntro(currentArmyData,aiArmyData);
+}
+
+// ----------------------------------------------------------------
+// LEVER DE RIDEAU : pendule, musique, et premier coup de l'IA
+// ----------------------------------------------------------------
+// Point unique appelé à la fin de la cinématique d'entrée (ou tout de suite
+// en tutoriel, qui n'en a pas) : si c'est à l'IA de jouer, elle s'y met
+// maintenant. Sinon elle jouerait derrière le rideau et le joueur
+// découvrirait la partie déjà entamée.
+function startGameClockAndAI(){
+  startClockTick(GS);renderClocks(GS);startCombatMusic();
+  if(!GS.multiplayer&&!GS.gameOver&&GS.turn===(GS.aiColor||'b'))setTimeout(()=>doAIMove(GS),450);
 }
 
 // ----------------------------------------------------------------
@@ -141,12 +178,7 @@ function showArmyIntro(playerArmy,aiArmy){
   const oppName=(GS&&GS.multiplayer)
     ?((typeof MP!=='undefined'&&MP.oppName)?MP.oppName:'Votre adversaire')
     :INSTRUCTOR.name;
-  const start=()=>{
-    startClockTick(GS);renderClocks(GS);startCombatMusic();
-    // Rideau levé : si c'est à l'IA de jouer, elle s'y met maintenant. Ce
-    // point unique couvre la partie normale ET les rounds de tournoi.
-    if(!GS.multiplayer&&!GS.gameOver&&GS.turn===(GS.aiColor||'b'))setTimeout(()=>doAIMove(GS),450);
-  };
+  const start=startGameClockAndAI;
   if(typeof playCombatCinematic==='function')
     playCombatCinematic(playerArmy,aiArmy,oppName,(GS&&GS.playerColor)||_playerColor||'w',start);
   else start();
@@ -251,6 +283,13 @@ function triggerEndOfGame(result){
   if(_endGameTriggered)return;_endGameTriggered=true;
   stopClockTick(GS);
   endCombatMusic();
+  // Bataille du tutoriel : ni ELO, ni coffre de série, ni règlement de la
+  // Réserve. C'est le savant qui commente et enchaîne (revanche jusqu'à la
+  // victoire, puis coffre et exercice de déplacement).
+  if(GS&&GS.tuto){
+    if(typeof tutoOnBattleEnd==='function')tutoOnBattleEnd(result);
+    return;
+  }
   const oldElo=vvLoadElo();const aiElo=vvEstimateAiElo();
   // Partie non classée (entraînement contre l'Instructeur, mode admin) :
   // l'ELO ne bouge pas d'un point, donc aucun déblocage par palier non plus.

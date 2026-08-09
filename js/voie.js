@@ -61,7 +61,7 @@ function vvNoEloReason(gs){
 function vvCheckNewUnlocks(oldElo,newElo){
   const newUnlocks=[];
   UNLOCK_MILESTONES.forEach(u=>{
-    if(!u.pieceId)return;if(u.primordialeChoix||u.coffre)return;
+    if(!u.pieceId)return;if(u.coffre)return;
     if(u.eloRequired>oldElo&&u.eloRequired<=newElo&&!VV_UNLOCKED.has(u.pieceId)){VV_UNLOCKED.add(u.pieceId);newUnlocks.push(u.pieceId);}
   });
   if(newUnlocks.length)vvSaveUnlocked(VV_UNLOCKED);return newUnlocks;
@@ -78,17 +78,14 @@ function renderVoiePage(){
   const elo=vvLoadElo();
   const rank=vvGetRank(elo);
   const nextRank=RANKS[vvGetRankIdx(elo)+1]||null;
-  const playableMilestones=UNLOCK_MILESTONES.filter(u=>u.pieceId&&!u.primordialeChoix&&!u.coffre);
+  const playableMilestones=UNLOCK_MILESTONES.filter(u=>u.pieceId&&!u.coffre);
   const unlockedCount=playableMilestones.filter(u=>VV_UNLOCKED.has(u.pieceId)).length;
   const progress=nextRank?Math.min(100,Math.round((elo-rank.min)/(nextRank.min-rank.min)*100)):100;
   const banner=document.getElementById('voie-elo-banner');
   banner.innerHTML='<div class="veb-info"><div class="veb-rank-name" style="color:'+rank.color+'">'+rank.name+'</div><div class="veb-elo">'+elo+' <span>ELO</span></div><div class="veb-progress-wrap"><div class="veb-progress-bar" style="width:'+progress+'%;background:linear-gradient(90deg,'+rank.color+',var(--gold))"></div></div><div class="veb-progress-label">'+(nextRank?'Vers '+nextRank.name+' ('+nextRank.min+' ELO) · '+progress+'%':'Rang maximum atteint !')+'</div></div><div class="veb-stats"><div class="veb-stat"><div class="veb-stat-label">Parties</div><div class="veb-stat-val" style="color:var(--text)">'+vvLoadHistory().length+'</div></div><div class="veb-stat"><div class="veb-stat-label">Victoires</div><div class="veb-stat-val" style="color:var(--success)">'+vvLoadHistory().filter(h=>h.result==='win').length+'</div></div><div class="veb-stat"><div class="veb-stat-label">Pièces</div><div class="veb-stat-val" style="color:var(--gold)">'+unlockedCount+'/'+playableMilestones.length+'</div></div></div>';
   const route=document.getElementById('voie-route');let html='';
-  const chosen=vvLoadPrimordialeChoisie();
-  if(chosen){const pd=PIECES.find(p=>p.id===chosen);if(pd)html+='<div class="vm-rank-section"><div class="vm-rank-bar" style="background:var(--primordiale-bg);border:1px solid var(--primordiale)"><span class="vm-rank-label" style="color:var(--primordiale)">Primordiale de départ</span></div></div><div class="voie-milestone"><div class="vm-card reached"><span class="vm-piece-emoji">'+pieceIcon(pd.id,'n')+'</span><div class="vm-piece-name">'+pd.name+'</div><div class="vm-piece-class pc-class Primordiale" style="color:var(--primordiale)">Primordiale · '+pd.value+' pts</div>'+(pd.ability?'<div class="vm-piece-ability">'+pd.ability.slice(0,80)+'…</div>':'')+'</div><div class="vm-center"><div class="vm-dot reached"></div><div class="vm-elo-badge">Départ</div></div><div style="flex:1;max-width:calc(50% - 40px)"></div></div>';}
   let lastRankId=null;
   UNLOCK_MILESTONES.forEach((milestone,idx)=>{
-    if(milestone.primordialeChoix)return;
     const mRank=vvGetRank(milestone.eloRequired);
     if(mRank.id!==lastRankId){lastRankId=mRank.id;html+='<div class="vm-rank-section"><div class="vm-rank-bar"><span class="vm-rank-label" style="color:'+mRank.color+'">'+mRank.name+'</span><span class="vm-rank-range">'+mRank.min+'–'+(mRank.max===9999?'∞':mRank.max)+' ELO</span></div></div>';}
     if(!milestone.pieceId){const reached2=elo>=milestone.eloRequired;html+='<div class="voie-milestone"><div class="vm-card '+(reached2?'reached':'locked-milestone')+'" style="text-align:center"><div class="vm-piece-name">'+milestone.label+'</div></div><div class="vm-center"><div class="vm-dot'+(reached2?' reached':'')+'"></div><div class="vm-elo-badge">'+milestone.eloRequired+' ELO</div></div><div style="flex:1;max-width:calc(50% - 40px)"></div></div>';return;}
@@ -173,24 +170,3 @@ document.getElementById('voie-scroll-top').addEventListener('click',voieSmoothTo
   host.addEventListener('scroll',sync,{passive:true});
   sync();
 })();
-
-// ----------------------------------------------------------------
-// CHOIX DE LA PRIMORDIALE DE DÉPART (premier lancement du compte)
-// ----------------------------------------------------------------
-function showPrimordialeChoiceModal(){
-  const modal=document.getElementById('primordiale-modal');modal.style.display='flex';
-  const cont=document.getElementById('primordiale-choices');
-  const primordiaux=PRIMORDIAUX_CHOIX.map(id=>PIECES.find(p=>p.id===id)).filter(Boolean);
-  cont.innerHTML=primordiaux.map(p=>'<div class="primordiale-choice-card" data-id="'+p.id+'"><span class="pc-big-emoji">'+pieceIcon(p.id,'n')+'</span><div class="pc-big-name">'+p.name+'</div><div class="pc-big-mvt">'+p.movement+'</div></div>').join('');
-  cont.querySelectorAll('.primordiale-choice-card').forEach(el=>{
-    el.addEventListener('click',()=>{
-      const id=el.dataset.id;vvSavePrimordialeChoisie(id);VV_UNLOCKED.add(id);vvSaveUnlocked(VV_UNLOCKED);
-      if(typeof invEnsureStarter==='function')invEnsureStarter();
-      modal.style.display='none';updAll();
-      // Le compte est prêt : le savant peut entrer en scène. C'est le seul
-      // moment où toutes les données du joueur existent (armée vide,
-      // inventaire de départ, Primordiale choisie).
-      if(typeof tutoMaybeStart==='function')tutoMaybeStart();
-    });
-  });
-}

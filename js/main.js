@@ -147,6 +147,9 @@ function showIntroModal(){
 document.getElementById('intro-close')?.addEventListener('click',()=>{
   const modal=document.getElementById('intro-modal');
   if(modal)modal.style.display='none';
+  // Le savant entre en scène à la fermeture du parchemin : c'est le premier
+  // moment où le compte existe vraiment (armée vide, dotation de départ).
+  if(typeof tutoMaybeStart==='function')tutoMaybeStart();
 });
 
 // ----------------------------------------------------------------

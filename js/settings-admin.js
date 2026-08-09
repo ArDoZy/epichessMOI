@@ -36,7 +36,9 @@ let _sfxVol=1,_musicVol=0.5;
   document.getElementById('sp-tuto')?.addEventListener('click',()=>{
     panel.classList.remove('open');
     if(typeof goToMainMenu==='function')goToMainMenu();
-    if(typeof tutoStart==='function')setTimeout(tutoStart,350);
+    // Revoir le tutoriel = le reprendre depuis le début (tutoStart(0)), pas
+    // depuis l'étape sauvegardée.
+    if(typeof tutoStart==='function')setTimeout(()=>tutoStart(0),350);
   });
 })();
 

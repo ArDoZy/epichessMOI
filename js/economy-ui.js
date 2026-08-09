@@ -280,6 +280,26 @@ function chestCeremonyClose(){
   _chestState=null;
   if(st.applyOnClose)chestApply(st.lots);
   document.getElementById('chest-modal').classList.remove('show','opening');
+  // Une créature inédite sort du coffre : on ouvre son exercice de
+  // déplacement (js/tuto-drill.js) avant de rendre la main. Une pièce dont on
+  // ignore le déplacement n'est pas vraiment débloquée.
+  // Exception : pendant le tutoriel, c'est le script qui enchaîne coffre et
+  // exercice (voir tutoRunReward), on ne le double pas ici.
+  const fresh=(st.lots||[]).filter(l=>l.isNew).map(l=>l.pieceId);
+  const inTuto=(typeof tutoActive==='function')&&tutoActive();
+  if(fresh.length&&!inTuto&&typeof drillStart==='function'){
+    const runNext=()=>{
+      const id=fresh.shift();
+      if(!id){
+        showPage('page-reserve');
+        if(st.onClose)st.onClose();
+        return;
+      }
+      drillStart(id,runNext);
+    };
+    runNext();
+    return;
+  }
   if(st.onClose)st.onClose();
 }
 

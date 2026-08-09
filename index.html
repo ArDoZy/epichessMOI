@@ -385,6 +385,24 @@
   </div>
 </div>
 
+<!-- PAGE EXERCICE DE DÉPLACEMENT (js/tuto-drill.js) : ouverte au déblocage
+     d'une créature. La pièce est seule sur le plateau, il n'y a ni adversaire
+     ni tour par tour : juste cinq repères à ramasser. -->
+<div id="page-drill" class="page">
+  <div class="drill-wrap">
+    <div class="drill-hdr">
+      <div class="drill-title" id="drill-title"></div>
+      <div class="drill-sub" id="drill-sub"></div>
+    </div>
+    <div class="drill-board" id="drill-board"></div>
+    <div class="drill-foot">
+      <div class="drill-count" id="drill-count"></div>
+      <div class="drill-warn" id="drill-warn" style="display:none"></div>
+      <button class="btn btn-ghost" id="drill-restart">Recommencer</button>
+    </div>
+  </div>
+</div>
+
 <!-- PAGE VOIE : déplacée dans la face "voie" du cube au démarrage. -->
 <div id="page-voie" class="page">
 <div class="voie-inner">
@@ -597,7 +615,6 @@
 
 <!-- MODALS -->
 <div class="promo-modal" id="promo-modal"><div class="promo-box"><div class="promo-title">Choisir la promotion</div><div class="promo-pieces-row" id="promo-box"></div></div></div>
-<div class="primordiale-modal" id="primordiale-modal" style="display:none"><div class="primordiale-box"><h2>Choisissez votre Primordiale</h2><p>Votre premier mélange réussi. Choisissez la créature qui survit à l'expérience : les deux autres formules attendront dans des coffres scellés.</p><div class="primordiale-choices" id="primordiale-choices"></div></div></div>
 <button class="admin-badge" id="admin-badge" title="Mode Administrateur">Admin</button>
 <div class="result-modal" id="result-modal"><div class="result-box" id="result-box"><button id="result-close-btn" style="position:absolute;top:12px;right:14px;background:transparent;border:none;cursor:pointer;color:var(--muted);font-size:22px;line-height:1;font-family:inherit;transition:color .15s;z-index:1" title="Fermer et analyser la partie">✕</button><span class="result-icon" id="result-icon"></span><div class="result-title" id="result-title"></div><div class="result-elo-row"><span class="result-elo-before" id="result-elo-before"></span><span class="result-elo-arrow">→</span><span class="result-elo-after" id="result-elo-after"></span><span class="result-elo-delta" id="result-elo-delta"></span></div><div class="result-elo-note" id="result-elo-note" style="display:none"></div><div class="result-rank-row"><span class="result-rank-icon" id="result-rank-icon"></span><span class="result-rank-name" id="result-rank-name"></span></div><div class="result-chest" id="result-chest" style="display:none"></div><div class="unlock-section" id="unlock-section" style="display:none"><div class="unlock-title">Nouvelle pièce débloquée !</div><span class="unlock-piece-emoji" id="unlock-piece-emoji"></span><div class="unlock-piece-name" id="unlock-piece-name"></div><div class="unlock-piece-class" id="unlock-piece-class"></div><div class="unlock-piece-ability" id="unlock-piece-ability"></div></div><div style="display:flex;flex-direction:column;gap:8px;margin-top:20px"><button class="btn btn-gold" style="width:100%" id="result-continue">Continuer</button><div style="display:flex;gap:8px"><button class="btn btn-primary" style="flex:1" id="result-rejouer">↺ Rejouer</button><button class="btn btn-ghost" style="flex:1;border-color:var(--accent2);color:var(--accent2)" id="result-revanche">Revanche</button></div></div></div></div>
 <!-- CÉRÉMONIE D'OUVERTURE DE COFFRE (js/economy-ui.js) -->
@@ -630,7 +647,6 @@
     </div>
     <div class="tuto-actions">
       <button class="btn btn-primary" id="tuto-next">Suivant</button>
-      <button class="tuto-quit" id="tuto-quit">Quitter le tutoriel</button>
     </div>
   </div>
 </div>
@@ -711,6 +727,7 @@
 <script src="js/game-flow.js"></script>
 <script src="js/voie.js"></script>
 <script src="js/economy-ui.js"></script>
+<script src="js/tuto-drill.js"></script>
 <script src="js/tutorial.js"></script>
 <script src="js/tournoi.js"></script>
 <script src="js/settings-admin.js"></script>

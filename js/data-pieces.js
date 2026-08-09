@@ -2,15 +2,17 @@
 // DATA-PIECES.JS : Données statiques du jeu (aucune logique de rendu ici)
 // ================================================================
 // Contient : RANKS (rangs ELO), PIECES (catalogue complet des pièces),
-// AI_INSTRUCTORS (les 7 niveaux d'IA), UNLOCK_TABLE / UNLOCK_MILESTONES
-// (progression des déblocages), et quelques constantes de classes partagées.
+// AI_INSTRUCTORS (l'Instructeur du jeu + les 4 paliers du tutoriel),
+// UNLOCK_TABLE / UNLOCK_MILESTONES (progression des déblocages), et quelques
+// constantes de classes partagées.
 //
 // Dépendances : aucune (chargé en tout premier après les libs).
 // Utilisé par : à peu près tous les autres modules (builder, rules-engine,
 // ai-engine, voie, tournoi, game-flow...).
 //
 // Si vous ajoutez une nouvelle pièce : l'ajouter dans PIECES, puis dans
-// UNLOCK_TABLE si elle doit être débloquée par ELO (ou coffre/primordiale).
+// UNLOCK_TABLE si elle doit être débloquée par ELO (ou marquée coffre:true
+// pour n'exister que dans les coffres).
 // Si vous ajoutez un rang ELO : l'ajouter dans RANKS (ordre croissant, min/max
 // contigus), tout le reste (vvGetRank, badges, filtres IA) s'adapte seul.
 // ================================================================
@@ -52,9 +54,32 @@ const INSTRUCTOR={
   elo:2000,
   desc:'Recherche complète, consciente des pouvoirs de chaque créature.',
 };
-// Conservé sous forme de tableau à un élément : tout le code existant lit
-// AI_INSTRUCTORS[selectedAILevel], qui vaut toujours 0 désormais.
-const AI_INSTRUCTORS=[INSTRUCTOR];
+// ----------------------------------------------------------------
+// LES INSTRUCTEURS DU TUTORIEL : quatre paliers volontairement faibles
+// ----------------------------------------------------------------
+// L'Instructeur à pleine puissance est un mur pour un débutant : le tutoriel
+// a besoin d'adversaires qu'on peut battre au premier essai. Ces quatre-là ne
+// servent QUE pendant le tutoriel (js/tutorial.js), jamais dans le jeu
+// normal, et aucune partie du tutoriel ne compte au classement.
+//
+// noise = probabilité de jouer un coup complètement au hasard ; le reste du
+// temps l'IA joue son meilleur coup à l'évaluation immédiate (timeMs:0, donc
+// aucune recherche en profondeur : elle voit la pièce à prendre, pas le mat
+// en deux). C'est le mélange qui produit un adversaire « nul » crédible
+// plutôt qu'un générateur de coups aléatoires.
+const TUTO_INSTRUCTORS=[
+  {id:'tuto-nul',      name:'Instructeur Novice',   timeMs:0,noise:0.85,elo:0,desc:'Joue presque au hasard.'},
+  {id:'tuto-nul-plus', name:'Instructeur Apprenti', timeMs:0,noise:0.55,elo:0,desc:'Commence à voir les prises.'},
+  {id:'tuto-moyen-nul',name:'Instructeur Assistant',timeMs:0,noise:0.25,elo:0,desc:'Prend ce qui traîne.'},
+  {id:'tuto-moyen',    name:'Instructeur Confirmé', timeMs:0,noise:0.05,elo:0,desc:'Ne laisse plus rien passer gratuitement.'},
+];
+// Index 0 = l'Instructeur du jeu normal (selectedAILevel vaut 0 partout
+// ailleurs), puis les quatre paliers du tutoriel. Le Worker IA reçoit ce
+// tableau sérialisé et lit AI_INSTRUCTORS[instructorIdx] : ajouter une entrée
+// ici suffit, il n'y a rien à modifier dans js/ai-engine.js.
+const AI_INSTRUCTORS=[INSTRUCTOR,...TUTO_INSTRUCTORS];
+// Index dans AI_INSTRUCTORS du palier de tutoriel n° i (0 à 3).
+function tutoInstructorLevel(i){return 1+Math.max(0,Math.min(TUTO_INSTRUCTORS.length-1,i));}
 
 // ----------------------------------------------------------------
 // ÉCHIQUIERS : matières débloquées le long de la Voie
@@ -131,11 +156,21 @@ const CLASS_COLOR_VARS={Monarque:'var(--monarque)',Général:'var(--general)',Pr
 // ----------------------------------------------------------------
 // TABLE DE DÉBLOCAGE : pièces débloquées par palier d'ELO
 // ----------------------------------------------------------------
+// Un compte neuf ne possède que son Monarque et son Général : tout le reste
+// s'obtient en jouant. L'Alpha, la Fourmi et le Garde de Pierre arrivent dans
+// les coffres du tutoriel (js/tutorial.js) ; les trois Primordiales ne
+// s'obtiennent QUE dans les coffres (il n'y a plus de « choix de la
+// Primordiale » à la création du compte : on ne choisit pas ce qu'on ne
+// connaît pas encore).
+// `coffre:true` = la pièce n'est ni donnée au départ, ni débloquée par un
+// palier d'ELO : elle n'existe que comme contenu de coffre, et n'apparaît
+// donc pas comme jalon sur la Voie.
 const UNLOCK_TABLE=[
-  {pieceId:'roi',eloRequired:0},{pieceId:'dame',eloRequired:0},{pieceId:'alpha',eloRequired:0},{pieceId:'fourmi',eloRequired:0},
-  {pieceId:'cavalier-primordial',eloRequired:0,primordialeChoix:true},
-  {pieceId:'fou-primordial',eloRequired:0,primordialeChoix:true},
-  {pieceId:'tour-primordiale',eloRequired:0,primordialeChoix:true},
+  {pieceId:'roi',eloRequired:0},{pieceId:'dame',eloRequired:0},
+  {pieceId:'alpha',eloRequired:0,coffre:true},{pieceId:'fourmi',eloRequired:0,coffre:true},
+  {pieceId:'cavalier-primordial',eloRequired:0,coffre:true},
+  {pieceId:'fou-primordial',eloRequired:0,coffre:true},
+  {pieceId:'tour-primordiale',eloRequired:0,coffre:true},
   {pieceId:'garde-pierre',eloRequired:30},{pieceId:'preux-chevalier',eloRequired:50},
   {pieceId:'dresseur-elephant',eloRequired:90},{pieceId:'chevaucheur-rhinoceros',eloRequired:150},
   {pieceId:'meduse',eloRequired:210},{pieceId:'amazone',eloRequired:260},
@@ -154,5 +189,3 @@ const UNLOCK_MILESTONES=(()=>{
     if(u.pieceId)seen.add(u.pieceId);return true;
   }).sort((a,b)=>a.eloRequired-b.eloRequired);
 })();
-
-const PRIMORDIAUX_CHOIX=['cavalier-primordial','fou-primordial','tour-primordiale'];

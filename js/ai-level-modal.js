@@ -12,8 +12,10 @@
 // (selectedAILevel), game-flow.js/tournoi.js (selectedTimeControl).
 // ================================================================
 
-// Un seul instructeur : l'index ne varie plus, mais il reste lu à plusieurs
-// endroits (AI_INSTRUCTORS[selectedAILevel]), on le garde donc défini.
+// Un seul instructeur dans le jeu normal : l'index vaut donc toujours 0, sauf
+// pendant les batailles du tutoriel, qui le pointent sur l'un des quatre
+// paliers faibles (voir TUTO_INSTRUCTORS dans data-pieces.js et
+// tutoStartBattle() dans tutorial.js) puis le remettent à 0.
 let selectedAILevel=0;
 
 // Cadence fixe : 10 minutes par joueur.

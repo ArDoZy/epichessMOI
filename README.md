@@ -72,13 +72,14 @@ epic-chess/
     ├── game-flow.js          # Démarrage partie, fin de partie, résultat
     ├── voie.js                # Page "Voie des Victoires" (ELO, rangs, jalons)
     ├── economy-ui.js         # Page "Réserve" : inventaire, coffres, échiquiers
-    ├── tutorial.js           # Visite guidée interactive par le savant fou
+    ├── tuto-drill.js         # Exercice de déplacement d'une créature débloquée
+    ├── tutorial.js           # Tutoriel : 4 batailles scriptées + visite guidée
     ├── tournoi.js             # Mode Tournoi + modal d'analyse replay
     ├── settings-admin.js     # Panneau réglages + mode Administrateur
     └── multiplayer.js        # Parties en ligne (Supabase Realtime)
 ```
 
-## Les trois systèmes à comprendre avant d'éditer
+## Les systèmes à comprendre avant d'éditer
 
 ### 1. L'économie des pièces (`js/economy.js`)
 
@@ -140,17 +141,55 @@ principal (jouable, mais l'interface se figera pendant sa réflexion).
 
 ### 5. Le tutoriel (`js/tutorial.js`)
 
-Une visite guidée où le savant parle et où le joueur AGIT : les étapes qui
-portent un `click` attendent un vrai clic sur le vrai bouton. À la fin, le
-joueur a réellement tourné le cube, composé une armée et ouvert sa Réserve.
+Le savant parle, et le joueur AGIT. Le tutoriel se déroule en deux temps.
 
-Il se déclenche une seule fois, après le choix de la Primordiale d'un compte
-neuf (voir `tutoMaybeStart` appelé depuis `voie.js`), et se rejoue depuis les
-réglages. Le drapeau est `accGet('tuto_done')`.
+**Les quatre batailles scriptées.** Un compte neuf ne possède que son Roi et
+sa Dame : les créatures s'obtiennent en jouant, et les trois premières
+s'obtiennent ici. Chaque bataille oppose le joueur à un instructeur
+volontairement faible (`TUTO_INSTRUCTORS` dans `data-pieces.js`, ajoutés à
+`AI_INSTRUCTORS` après l'Instructeur normal), avec **la même armée des deux
+côtés, posée en dur** (`tutoBuildBoard`) : personne ne perd parce qu'il a mal
+composé. Une victoire ouvre un coffre au contenu **imposé** qui débloque une
+créature (Alpha, Fourmi, Garde de Pierre), suivie de son exercice de
+déplacement. Une défaite ne fait pas avancer : le savant propose la revanche,
+autant de fois qu'il le faut.
+
+Ces batailles passent par `startGame(true,false,tutoCfg)` : le troisième
+argument impose le plateau, la couleur et la pendule, **saute l'économie**
+(rien n'est prélevé sur la Réserve, une promotion ne crédite rien) et
+court-circuite la cinématique d'entrée. `triggerEndOfGame` les détourne vers
+`tutoOnBattleEnd` : ni ELO, ni coffre de série, ni règlement de Réserve.
+
+**La visite du laboratoire.** Les étapes qui portent un `click` attendent un
+vrai clic sur le vrai bouton : à la fin, le joueur a réellement tourné le
+cube, composé une armée et ouvert sa Réserve.
+
+Il se déclenche une seule fois, à la fermeture du parchemin d'accueil d'un
+compte neuf (`tutoMaybeStart`), et se rejoue depuis les réglages
+(`tutoStart(0)`). Deux drapeaux par compte : `tuto_done` (terminé) et
+`tuto_step` (étape courante). **Il n'y a plus de bouton « quitter »** : le
+tutoriel distribue les premières créatures, en sortir laisserait un compte
+sans armée jouable. C'est aussi pourquoi la progression est sauvegardée à
+chaque étape et reprise à la connexion suivante.
 
 **Si vous déplacez ou renommez un élément d'interface**, vérifiez les
 sélecteurs `at` et `click` de `TUTO_STEPS`. Une cible absente ne casse rien
-(l'étape devient un simple « Suivant »), mais elle perd son intérêt.
+(l'étape devient un simple « Suivant »), mais elle perd son intérêt. Le
+bouton COMBAT est un cas à part : il n'est pas guetté par un listener, c'est
+`cube-nav.js` qui appelle `tutoInterceptCombat()` avant sa propre navigation.
+
+### 6. L'exercice de déplacement (`js/tuto-drill.js`)
+
+À l'ouverture d'une créature inédite (dans le tutoriel comme dans n'importe
+quel coffre, voir `chestCeremonyClose`), une page s'ouvre avec la pièce seule
+sur l'échiquier et cinq repères à ramasser. Ni tour par tour, ni adversaire.
+
+Le point délicat : **tous les déplacements ne vont pas partout** (la Fourmi ne
+recule pas, l'Alpha ne quitte ni la couleur ni la parité de sa case). Cinq
+repères tirés au hasard seraient souvent impossibles à prendre. Ils sont donc
+posés le long d'une **promenade de la pièce** (`drillLayDots`) : un chemin qui
+les ramasse tous existe par construction. Si le joueur s'écarte et se coince,
+`drillAllReachable` le détecte et l'invite à recommencer.
 
 Le projecteur est un rectangle avec une `box-shadow` de 9999px qui assombrit
 tout le reste ; il porte `pointer-events:none`, ce qui est **la condition**
@@ -223,7 +262,8 @@ chaque fichier suppose que les globals des fichiers précédents existent déjà
 data-pieces.js → piece-art.js → main.js → cube-nav.js → accounts.js
 → economy.js → ai-level-modal.js → builder.js → armies.js → combat-intro.js
 → rules-engine.js → combat-music.js → cinematics.js → game-render.js
-→ ai-engine.js → game-flow.js → voie.js → economy-ui.js → tutorial.js
+→ ai-engine.js → game-flow.js → voie.js → economy-ui.js → tuto-drill.js
+→ tutorial.js
 → tournoi.js → settings-admin.js → multiplayer.js → (script inline) initApp()
 ```
 
@@ -260,6 +300,9 @@ explicitement ses dépendances et qui l'utilise).
 | Modifier le dessin d'une pièce | `js/piece-art.js` (`PIECE_ART`) |
 | Modifier les cinématiques de combat | `js/cinematics.js` + section `[CINEMATIC]` de `css/style.css` |
 | Modifier le tutoriel (textes, étapes, cibles) | `js/tutorial.js` (`TUTO_STEPS`) |
+| Modifier les batailles du tutoriel (armées, couleurs, pendule) | `js/tutorial.js` (`TUTO_BATTLES`, `TUTO_EXTRA_COLS`) + `js/data-pieces.js` (`TUTO_INSTRUCTORS`) |
+| Modifier l'exercice de déplacement (nombre de repères, règles) | `js/tuto-drill.js` (`DRILL_DOTS`, `drillLayDots`) |
+| Changer les pièces d'un compte neuf | `js/data-pieces.js` (`UNLOCK_TABLE`, drapeau `coffre:true`) |
 | Changer ce que lance le bouton COMBAT | `js/cube-nav.js` (`onCombat`/`onVsIa`) + `js/combat-intro.js` |
 | Régler la vitesse de rotation du cube | `js/cube-nav.js` (`ROTATE_MS`) **et** la transition de `#cube` dans `css/style.css` |
 | Modifier le mode tournoi (nombre de rounds, bonus ELO) | `js/tournoi.js` |

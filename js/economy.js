@@ -169,6 +169,10 @@ function countSurvivors(gs){
 // uniquement pour la promotion du JOUEUR LOCAL : celles de l'IA et celles
 // d'un adversaire en ligne suivent d'autres branches et ne créditent rien.
 function economyOnPromotion(pieceId,gs){
+  // Bataille du tutoriel : les pièces sont prêtées, promouvoir un pion ne
+  // crédite donc rien (sinon on remplirait sa Réserve avant même d'avoir
+  // débloqué la pièce).
+  if(gs&&gs.tuto)return;
   if(!isOwnablePiece(pieceId))return;
   invAdd(pieceId,1);
   if(gs){gs.promoGains=gs.promoGains||{};gs.promoGains[pieceId]=(gs.promoGains[pieceId]||0)+1;}
