@@ -155,10 +155,12 @@ déplacement. Une défaite ne fait pas avancer : le savant propose la revanche,
 autant de fois qu'il le faut.
 
 Ces batailles passent par `startGame(true,false,tutoCfg)` : le troisième
-argument impose le plateau, la couleur et la pendule, **saute l'économie**
-(rien n'est prélevé sur la Réserve, une promotion ne crédite rien) et
-court-circuite la cinématique d'entrée. `triggerEndOfGame` les détourne vers
-`tutoOnBattleEnd` : ni ELO, ni coffre de série, ni règlement de Réserve.
+argument impose le plateau et la couleur, **saute l'économie** (rien n'est
+prélevé sur la Réserve, une promotion ne crédite rien) et court-circuite la
+cinématique d'entrée. `triggerEndOfGame` les détourne vers `tutoOnBattleEnd` :
+ni ELO, ni coffre de série, ni règlement de Réserve. **Aucune des quatre
+batailles n'a de pendule** (`clockMin:0` partout) : le chronomètre arrive avec
+les vraies parties.
 
 **La visite du laboratoire.** Les étapes qui portent un `click` attendent un
 vrai clic sur le vrai bouton : à la fin, le joueur a réellement tourné le
@@ -167,10 +169,16 @@ cube, composé une armée et ouvert sa Réserve.
 Il se déclenche une seule fois, à la fermeture du parchemin d'accueil d'un
 compte neuf (`tutoMaybeStart`), et se rejoue depuis les réglages
 (`tutoStart(0)`). Deux drapeaux par compte : `tuto_done` (terminé) et
-`tuto_step` (étape courante). **Il n'y a plus de bouton « quitter »** : le
-tutoriel distribue les premières créatures, en sortir laisserait un compte
-sans armée jouable. C'est aussi pourquoi la progression est sauvegardée à
-chaque étape et reprise à la connexion suivante.
+`tuto_step` (étape courante). La progression est sauvegardée à chaque étape et
+reprise à la connexion suivante.
+
+**Passer le tutoriel** (`tutoSkip`, bouton `#tuto-skip` à côté des répliques du
+savant) donne exactement ce que le tutoriel aurait donné : les trois créatures
+avec leurs exemplaires, plus une première armée tirée au hasard **parmi les
+pièces réellement possédées** (`tutoBuildRandomArmy` — surtout pas
+`generateAIArmy`, qui ignore l'économie et produirait une armée injouable).
+Sans cette armée, on sortirait du tutoriel dans une armurerie vide, incapable
+de lancer un combat.
 
 **Si vous déplacez ou renommez un élément d'interface**, vérifiez les
 sélecteurs `at` et `click` de `TUTO_STEPS`. Une cible absente ne casse rien
@@ -295,6 +303,8 @@ explicitement ses dépendances et qui l'utilise).
 | Changer le calcul d'ELO, les rangs, les paliers de déblocage | `js/voie.js` (calcul) + `js/data-pieces.js` (table `UNLOCK_TABLE`/`RANKS`) |
 | Modifier le comportement de l'IA (force, style de jeu) | `js/ai-engine.js` (`evalBoard`, `evalPowers`, `minimax`) + `js/data-pieces.js` (`INSTRUCTOR`) |
 | Changer le contenu ou la rareté des coffres | `js/data-pieces.js` (`CHESTS`, `DAILY_CHEST`) + `js/economy.js` (`chestRoll`) |
+| Changer les perles (gains en coffre, prix en boutique) | `js/data-pieces.js` (`CHEST_PEARLS`) + `js/economy.js` (`chestRoll`, `pearlBuyChest`) + `renderPearlShop()` dans `js/economy-ui.js` |
+| Changer la cadence des parties (temps, incrément) | `js/ai-level-modal.js` (`selectedTimeControl`, `selectedTimeIncrement`) ; l'incrément est crédité par `recordMove()` dans `js/rules-engine.js` |
 | Changer ce qu'une partie fait risquer ou rapporter | `js/economy.js` (`economyCommit` / `economySettle`) |
 | Ajouter un échiquier | `tools/gen-boards.js` (relancer `node tools/gen-boards.js`) + `BOARD_SKINS` dans `js/data-pieces.js` |
 | Modifier le dessin d'une pièce | `js/piece-art.js` (`PIECE_ART`) |
@@ -311,6 +321,7 @@ explicitement ses dépendances et qui l'utilise).
 | Modifier la présentation ou la FAQ publiques | `info.html` (texte visible **et** JSON-LD `FAQPage`) |
 | Changer les modes qui rapportent de l'ELO | `js/voie.js` (`vvNoEloReason`) |
 | Changer ce que fait le mode admin | `js/settings-admin.js` + `renderAdminChests()` dans `js/economy-ui.js` |
+| Ajouter une adresse au jeu (comme `/combat` ou `/test`) | `vercel.json` (`rewrites`) + `setAppPath`/`appHomePath` dans `js/main.js` |
 | Changer le HTML d'une page (structure, nouveaux boutons) | `index.html` (cherche `<!-- PAGE ... -->`) + le module JS de la page concernée pour les listeners |
 
 ## Conventions à connaître avant d'éditer un seul fichier

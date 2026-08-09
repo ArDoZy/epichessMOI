@@ -67,11 +67,16 @@ const INSTRUCTOR={
 // aucune recherche en profondeur : elle voit la pièce à prendre, pas le mat
 // en deux). C'est le mélange qui produit un adversaire « nul » crédible
 // plutôt qu'un générateur de coups aléatoires.
+//
+// Ces quatre-là ont été REVUS À LA BAISSE : ce sont les toutes premières
+// parties du joueur, personne ne doit rester bloqué sur le tutoriel. Même le
+// dernier palier laisse passer un coup sur trois, et l'ancien « Confirmé »
+// (noise 0.05, qui ne laissait rien passer) n'existe plus.
 const TUTO_INSTRUCTORS=[
-  {id:'tuto-nul',      name:'Instructeur Novice',   timeMs:0,noise:0.85,elo:0,desc:'Joue presque au hasard.'},
-  {id:'tuto-nul-plus', name:'Instructeur Apprenti', timeMs:0,noise:0.55,elo:0,desc:'Commence à voir les prises.'},
-  {id:'tuto-moyen-nul',name:'Instructeur Assistant',timeMs:0,noise:0.25,elo:0,desc:'Prend ce qui traîne.'},
-  {id:'tuto-moyen',    name:'Instructeur Confirmé', timeMs:0,noise:0.05,elo:0,desc:'Ne laisse plus rien passer gratuitement.'},
+  {id:'tuto-nul',      name:'Instructeur Novice',   timeMs:0,noise:0.95,elo:0,desc:'Joue au hasard, ou presque.'},
+  {id:'tuto-nul-plus', name:'Instructeur Apprenti', timeMs:0,noise:0.80,elo:0,desc:'Commence à voir les prises.'},
+  {id:'tuto-moyen-nul',name:'Instructeur Assistant',timeMs:0,noise:0.60,elo:0,desc:'Prend ce qui traîne.'},
+  {id:'tuto-moyen',    name:'Instructeur Confirmé', timeMs:0,noise:0.40,elo:0,desc:'Se laisse encore surprendre.'},
 ];
 // Index 0 = l'Instructeur du jeu normal (selectedAILevel vaut 0 partout
 // ailleurs), puis les quatre paliers du tutoriel. Le Worker IA reçoit ce
@@ -118,6 +123,27 @@ const CHESTS=[
 function chestById(id){return CHESTS.find(c=>c.id===id)||CHESTS[0];}
 // Une série de n victoires donne le coffre de rang n-1, plafonné au Roi.
 function chestForStreak(streak){return CHESTS[Math.min(Math.max(streak,1)-1,CHESTS.length-1)];}
+
+// ----------------------------------------------------------------
+// PERLES : la monnaie des coffres
+// ----------------------------------------------------------------
+// Les coffres ne contiennent plus seulement des pièces : ils contiennent
+// aussi des PERLES, et les perles rachètent des coffres. C'est ce qui donne
+// une sortie à une série de coffres médiocres : même sans pièce inédite, on
+// avance vers le coffre qu'on vise.
+//
+// pearls : fourchette de perles contenues dans le coffre.
+// price  : coût du coffre à la boutique de la Réserve.
+const CHEST_PEARLS={
+  pion:    {pearls:[5,15],   price:30},
+  cavalier:{pearls:[12,30],  price:120},
+  fou:     {pearls:[20,45],  price:150},
+  tour:    {pearls:[35,80],  price:250},
+  dame:    {pearls:[60,140], price:500},
+  roi:     {pearls:[100,220],price:750},
+};
+function chestPearlRange(id){return (CHEST_PEARLS[id]||CHEST_PEARLS.pion).pearls;}
+function chestPearlPrice(id){return (CHEST_PEARLS[id]||CHEST_PEARLS.pion).price;}
 
 // Coffre de réapprovisionnement quotidien : +4 exemplaires de CHAQUE pièce
 // possédée. C'est le filet de sécurité du système : sans lui, un joueur qui

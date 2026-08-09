@@ -90,7 +90,10 @@ function renderGameStake(gs){
   if(!gs||!gs.playerArmy){el.innerHTML='';return;}
   el.innerHTML='<div class="gsb-title" style="margin-bottom:4px">Engagé dans cette partie</div>'+
     '<div class="gs-stake-row">'+stakeListHTML(gs.playerArmy,gs.playerColor||'w')+'</div>'+
-    '<div class="gs-streak">Défaite : tout est perdu. Victoire : seules les pièces capturées le sont.</div>';
+    // Deux lignes séparées : en une seule phrase, les deux issues se lisaient
+    // comme une seule règle et personne ne voyait où l'une finissait.
+    '<div class="gs-streak">Défaite : toutes les pièces sont perdues.</div>'+
+    '<div class="gs-streak">Victoire : seules les pièces capturées sont perdues.</div>';
 }
 // Bandeau de la page Combat, avant de s'engager.
 function renderCombatStake(armyData){
@@ -111,13 +114,85 @@ function chestVisual(chest,extraCls){
     '<div class="chest-lid"></div><div class="chest-body"></div><div class="chest-lock"></div></div>';
 }
 
+// ----------------------------------------------------------------
+// PERLES
+// ----------------------------------------------------------------
+// Dessinée et non écrite en emoji : l'emoji perle n'existe pas partout et
+// change de forme d'un système à l'autre, alors que cette monnaie doit être
+// reconnaissable instantanément dans un coffre comme dans la boutique.
+function pearlIcon(em){
+  const s=(em||1.2)+'em';
+  return '<svg class="pearl-icon" style="width:'+s+';height:'+s+'" viewBox="0 0 24 24" aria-hidden="true">'+
+    '<defs><radialGradient id="pearlG" cx="35%" cy="30%">'+
+      '<stop offset="0%" stop-color="#ffffff"/><stop offset="45%" stop-color="#dfeaf2"/>'+
+      '<stop offset="100%" stop-color="#8fa6b8"/></radialGradient></defs>'+
+    '<circle cx="12" cy="12" r="9" fill="url(#pearlG)"/>'+
+    '<circle cx="9" cy="9" r="2.4" fill="#fff" opacity=".85"/>'+
+  '</svg>';
+}
+function pearlAmountHTML(n,em){
+  return '<span class="pearl-amt">'+pearlIcon(em)+'<span>'+n+'</span></span>';
+}
+
 function renderReservePage(){
   if(!CUR_ACC)return;
+  renderPearls();
   renderDailyChest();
   renderAdminChests();
   renderPendingChests();
+  renderPearlShop();
   renderBoardSkins();
   renderInventory();
+}
+
+// Solde de perles, en haut de la Réserve : c'est le chiffre qu'on vient
+// vérifier avant d'aller voir la boutique.
+function renderPearls(){
+  const el=document.getElementById('rs-pearls');
+  if(!el)return;
+  el.innerHTML='<div class="pearl-bank">'+pearlIcon(2.2)+
+    '<div class="pearl-bank-info">'+
+      '<div class="pearl-bank-n">'+pearlBalance()+'</div>'+
+      '<div class="pearl-bank-lbl">perles · elles sortent des coffres et rachètent des coffres</div>'+
+    '</div></div>';
+}
+
+// ----------------------------------------------------------------
+// BOUTIQUE : des coffres contre des perles
+// ----------------------------------------------------------------
+// Les six mêmes coffres que ceux gagnés en enchaînant les victoires, au même
+// contenu : la boutique ne fabrique pas une seconde économie, elle donne
+// simplement un second chemin vers la première. Un coffre acheté rejoint la
+// file d'attente, il ne s'ouvre pas tout seul.
+function renderPearlShop(){
+  const el=document.getElementById('rs-shop');
+  if(!el)return;
+  const bal=pearlBalance();
+  el.innerHTML='<div class="rs-shop-note">Les perles se trouvent dans tous les coffres. Un coffre acheté rejoint votre file d\'attente ci-dessus.</div>'+
+    '<div class="chest-grid">'+CHESTS.map(ch=>{
+      const price=chestPearlPrice(ch.id);
+      const ok=bal>=price;
+      return '<div class="chest-card chest-shop'+(ok?'':' chest-shop-off')+'" data-chest="'+ch.id+'" style="--chest-c:'+ch.color+'">'+
+        chestVisual(ch,ok?'chest-ready':'')+
+        '<div class="chest-name">'+ch.name+'</div>'+
+        '<div class="chest-price">'+pearlAmountHTML(price)+'</div>'+
+        '<div class="chest-rar">'+ch.rolls+' lots · '+Math.round(ch.newChance*100)+'% pièce inédite</div>'+
+      '</div>';
+    }).join('')+'</div>';
+  el.querySelectorAll('.chest-card:not(.chest-shop-off)').forEach(card=>{
+    card.addEventListener('click',()=>buyChestWithPearls(card.dataset.chest));
+  });
+}
+
+function buyChestWithPearls(chestId){
+  const chest=chestById(chestId);
+  const price=chestPearlPrice(chest.id);
+  if(pearlBalance()<price)return;
+  showConfirmModal('Acheter un '+chest.name+' pour '+price+' perles ?',()=>{
+    if(!pearlBuyChest(chest.id))return;
+    if(typeof playSound==='function')playSound('promo');
+    renderReservePage();
+  },{okLabel:'Acheter',cancelLabel:'Annuler',okClass:'btn-gold'});
 }
 
 // ----------------------------------------------------------------
@@ -260,8 +335,18 @@ function chestCeremonyOpen(){
   // Les lots apparaissent un par un : c'est ce décalage qui fait la
   // révélation, tout afficher d'un coup rendrait l'animation inutile.
   loot.innerHTML=_chestState.lots.map((l,i)=>{
+    const delay='style="animation-delay:'+(0.55+i*0.22)+'s"';
+    // Lot de perles : même carte que les pièces, pour qu'il se lise comme une
+    // récompense et non comme une note de bas de page.
+    if(l.pearls){
+      return '<div class="loot loot-pearl" '+delay+'>'+
+        pearlIcon(3)+
+        '<div class="loot-name">Perles</div>'+
+        '<div class="loot-qty">+'+l.pearls+'</div>'+
+      '</div>';
+    }
     const p=PIECES.find(x=>x.id===l.pieceId);
-    return '<div class="loot'+(l.isNew?' loot-new':'')+'" style="animation-delay:'+(0.55+i*0.22)+'s">'+
+    return '<div class="loot'+(l.isNew?' loot-new':'')+'" '+delay+'>'+
       pieceIcon(l.pieceId,'n',3)+
       '<div class="loot-name">'+escH(p?p.name:l.pieceId)+'</div>'+
       '<div class="loot-qty">+'+l.qty+'</div>'+

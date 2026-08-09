@@ -32,7 +32,7 @@ const FILES=['A','B','C','D','E','F','G','H'];
 
 // État de partie global : reconstruit par startGame()/launchTournoiRound()
 // dans game-flow.js / tournoi.js. Voir la structure complète dans ces fichiers.
-let GS={board:[],turn:'w',selected:null,legalMoves:[],history:[],enPassant:null,halfmoveClock:0,gameOver:false,playerArmy:null,aiArmy:null,movePairs:[],capturedW:[],capturedB:[],pendingPromo:null,medusaParalyzed:new Set(),lastMove:null,anchored:new Set(),pretreProtected:new Set(),amazonePostCapture:null,grandMaitreAlive:{w:false,b:false},gardePierreUsed:{w:false,b:false},turnCount:0,historyView:null,lastMoveHistory:[],clockMs:0,timeWhite:0,timeBlack:0};
+let GS={board:[],turn:'w',selected:null,legalMoves:[],history:[],enPassant:null,halfmoveClock:0,gameOver:false,playerArmy:null,aiArmy:null,movePairs:[],capturedW:[],capturedB:[],pendingPromo:null,medusaParalyzed:new Set(),lastMove:null,anchored:new Set(),pretreProtected:new Set(),amazonePostCapture:null,grandMaitreAlive:{w:false,b:false},gardePierreUsed:{w:false,b:false},turnCount:0,historyView:null,lastMoveHistory:[],clockMs:0,incrementMs:0,timeWhite:0,timeBlack:0};
 
 function inB(r,c){return r>=0&&r<8&&c>=0&&c<8;}
 // Les listes de pièces capturées portent l'id et la couleur (et non un
@@ -47,8 +47,11 @@ function cloneBoard(b){return b.map(r=>r.map(p=>p?{...p}:null));}
 function getPieceEmoji(cell){if(!cell)return '';return cell.emoji||'?';}
 
 // ================================================================
-// HORLOGE DE PARTIE : décompte simple par joueur (pas d'incrément).
+// HORLOGE DE PARTIE : décompte par joueur, avec incrément Fischer.
 // gs.clockMs = temps de départ par joueur en ms (0 = illimité, pas d'horloge).
+// gs.incrementMs = temps rendu à celui qui vient de jouer (0 = cadence sèche).
+// L'incrément est crédité dans recordMove(), c'est-à-dire au moment exact où
+// un coup est inscrit au journal, juste avant que le trait ne change.
 // Démarrée par showArmyIntro() à la fermeture de l'overlay (game-flow.js),
 // arrêtée dans triggerEndOfGame()/triggerTournoiEndOfGame(). Le rendu des
 // badges (#human-player-clock/#ai-player-clock) est fait par renderClocks()
@@ -74,7 +77,7 @@ function tickClock(gs){
     const playerCol=gs.playerColor||'w';
     const result=gs.turn===playerCol?'loss':'win';
     const bar=document.getElementById('game-status');
-    if(bar){bar.textContent='Temps écoulé ! '+(result==='win'?'Vous gagnez !':'L\'IA gagne !');bar.className='status-bar mate';}
+    if(bar){bar.textContent='Temps écoulé ! '+(result==='win'?'Vous gagnez !':'Votre adversaire gagne !');bar.className='status-bar mate';}
     if(typeof playSound==='function')playSound(result==='win'?'win':'loss');
     if(!_endGameTriggered)triggerEndOfGame(result);
   }
@@ -568,6 +571,15 @@ function showPromoModal(gs){
 // JOURNAL DES COUPS (notation textuelle simple, PAS la notation FIDE)
 // ================================================================
 function recordMove(p,to,isCapture,gs){
+  // Incrément Fischer : le joueur qui vient de jouer récupère son bonus. Ici
+  // et pas ailleurs, parce que recordMove est le seul point par lequel passe
+  // TOUT coup effectivement joué (y compris l'ancrage du Garde de Pierre, qui
+  // ne passe pas par executeGameMove).
+  if(gs&&gs.clockMs&&gs.incrementMs&&!gs.gameOver){
+    const k=p.color==='w'?'timeWhite':'timeBlack';
+    gs[k]=(gs[k]||0)+gs.incrementMs;
+    if(typeof renderClocks==='function')renderClocks(gs);
+  }
   // Le journal affiche le LOGO de la pièce jouée : sur un jeu où les pièces
   // sont des créatures, « 🪼xD4 » ne disait rien à personne.
   const col=FILES[to.c],row=8-to.r;

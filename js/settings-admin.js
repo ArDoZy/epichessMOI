@@ -3,7 +3,7 @@
 // ================================================================
 // Contient : le bouton et panneau flottant de réglages (#settings-btn /
 // #settings-panel) qui contrôle le thème clair/sombre et les volumes
-// bruitages/musique, et le mode Administrateur (bouton #admin-badge) qui
+// bruitages/musique, et l'entree du mode Administrateur (bouton #sp-admin) qui
 // ouvre des coffres illimités dans la Réserve et met les parties hors
 // classement, pour tester/démontrer le jeu sans fausser la progression.
 //
@@ -43,7 +43,7 @@ let _sfxVol=1,_musicVol=0.5;
 })();
 
 // ----------------------------------------------------------------
-// MODE ADMINISTRATEUR : récompenses illimitées, rien d'offert
+// MODE ADMINISTRATEUR : une ADRESSE, pas un interrupteur
 // ----------------------------------------------------------------
 // Le mode admin donnait auparavant TOUTES les pièces d'un coup
 // (VV_UNLOCKED = tout le catalogue) : il ne restait plus rien à tester, la
@@ -54,22 +54,28 @@ let _sfxVol=1,_musicVol=0.5;
 // Cavalier, Fou, Tour, Dame, Roi) en quantité illimitée dans la Réserve. Les
 // pièces s'obtiennent donc par le chemin normal du jeu — en ouvrant des
 // coffres — et non par décret. Les gains, eux, sont bien réels : ce sont de
-// vrais coffres, ouverts par la vraie cérémonie.
+// vrais coffres, ouverts par la vraie cérémonie. Second effet : aucune partie
+// jouée en mode admin ne compte au classement (voir vvNoEloReason, voie.js).
 //
-// Second effet : aucune partie jouée en mode admin ne compte au classement
-// (voir vvNoEloReason dans js/voie.js).
-document.getElementById('admin-badge').addEventListener('click',()=>{
-  ADMIN_MODE=!ADMIN_MODE;
-  const btn=document.getElementById('admin-badge');
+// Il vivait derrière un badge flottant qu'on activait par mégarde et qui ne
+// se voyait plus une fois activé. C'est maintenant /test : une adresse à
+// part, identique au jeu normal en tout point sauf les coffres illimités, et
+// qu'on quitte en revenant sur /. L'entrée est dans les réglages, et la barre
+// d'adresse dit en permanence où l'on se trouve.
+//
+// Le passage recharge volontairement la page : ADMIN_MODE est lu au
+// démarrage à partir du chemin (js/main.js), une bascule à chaud laisserait
+// l'adresse et l'état se contredire.
+(function(){
+  const btn=document.getElementById('sp-admin');
+  const note=document.getElementById('sp-admin-note');
+  if(!btn)return;
   if(ADMIN_MODE){
-    btn.classList.add('active-admin');btn.textContent='Admin ON';
-    showNotif('Mode Admin : coffres illimités dans la Réserve, aucun ELO en jeu','ok');
-  }else{
-    btn.classList.remove('active-admin');btn.textContent='Admin';
-    showNotif('Mode Admin désactivé','ok');
+    btn.textContent='Quitter /test';
+    btn.classList.add('btn-gold');
+    if(note)note.textContent='Vous êtes sur /test : coffres illimités, parties non classées.';
   }
-  updateCab();
-  updAll();
-  // La Réserve affiche/retire la section des coffres illimités.
-  if(typeof renderReservePage==='function'&&CUR_ACC)renderReservePage();
-});
+  btn.addEventListener('click',()=>{
+    location.href=ADMIN_MODE?'/':ADMIN_PATH;
+  });
+})();

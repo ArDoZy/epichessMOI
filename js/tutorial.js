@@ -78,16 +78,19 @@ const SAVANT_SVG=
 //               garde-pierre fourmi   alpha   dame   roi   alpha   fourmi   garde-pierre
 //
 // L'adversaire monte en force à chaque fois (index dans AI_INSTRUCTORS via
-// tutoInstructorLevel), la couleur du joueur alterne pour qu'il joue une fois
-// en second et une fois en premier, et seule la dernière bataille a une
-// pendule : le savant l'annonce, et c'est ce qui fait la différence entre
-// s'entraîner et jouer.
+// tutoInstructorLevel) et la couleur du joueur alterne pour qu'il joue une
+// fois en second et une fois en premier.
+//
+// AUCUNE des quatre batailles n'a de pendule (clockMin:0). La dernière en
+// avait une : on apprenait à jouer avec un chronomètre au-dessus de l'épaule,
+// et une première partie perdue au temps ne se comprend pas. La pendule
+// arrive avec les vraies parties, où elle a un sens.
 const TUTO_EXTRA_COLS={'alpha':[2,5],'fourmi':[1,6],'garde-pierre':[0,7]};
 const TUTO_BATTLES=[
   {playerColor:'b',extras:[],                              clockMin:0},
   {playerColor:'w',extras:['alpha'],                       clockMin:0},
   {playerColor:'b',extras:['alpha','fourmi'],              clockMin:0},
-  {playerColor:'w',extras:['alpha','fourmi','garde-pierre'],clockMin:5},
+  {playerColor:'w',extras:['alpha','fourmi','garde-pierre'],clockMin:0},
 ];
 
 let _tutoUid=0;
@@ -238,10 +241,9 @@ const TUTO_STEPS=[
   {drill:'garde-pierre'},
   {
     text:'Ton armée est maintenant complète&nbsp;! Lance un dernier combat contre un '+
-         'instructeur, tu affronteras ensuite des joueurs du monde entier. Attention, '+
-         'pour cet ultime combat, <strong>le temps est compté</strong>&nbsp;! Prends '+
-         'garde à ne pas perdre tout ton temps à la pendule, la partie serait alors '+
-         'perdue.',
+         'instructeur, tu affronteras ensuite des joueurs du monde entier. Montre-moi '+
+         'ce que ton armée a dans le ventre&nbsp;: <strong>tout ton arsenal en une '+
+         'seule bataille</strong>.',
     at:'#cube-jouer-btn',combat:3,
   },
   {
@@ -505,6 +507,93 @@ function tutoRunDrill(pieceId){
 }
 
 // ----------------------------------------------------------------
+// PASSER LE TUTORIEL
+// ----------------------------------------------------------------
+// Le tutoriel n'avait aucune sortie : il fallait gagner quatre batailles et
+// faire trois exercices avant de pouvoir jouer, y compris pour quelqu'un qui
+// connaît déjà le jeu (un ami à qui on le montre, un compte recréé).
+//
+// Le bouton donne EXACTEMENT ce que le tutoriel aurait donné, ni plus ni
+// moins : les trois créatures (Alpha, Fourmi, Garde de Pierre) avec leurs
+// exemplaires, plus une première armée composée au hasard — sans quoi on
+// sortirait du tutoriel dans une armurerie vide, incapable de lancer un
+// combat, c'est-à-dire exactement là où le tutoriel sert à ne pas être.
+const TUTO_SKIP_PIECES=['alpha','fourmi','garde-pierre'];
+const TUTO_SKIP_QTY=10;
+
+// Armée aléatoire légale : mêmes règles que le builder (1 Monarque, 1
+// Général, 3 créatures, 24 points, 1 Primordiale au plus), mais restreinte
+// aux pièces que le joueur POSSÈDE RÉELLEMENT en assez d'exemplaires.
+//
+// On n'utilise surtout pas generateAIArmy() : l'IA n'est pas soumise à
+// l'économie et pioche dans tout le catalogue. L'armée offerte serait alors
+// composée de créatures que le joueur ne possède pas, donc injouable — et il
+// sortirait du tutoriel sur un refus de la Réserve.
+function tutoBuildRandomArmy(){
+  const has=p=>(typeof VV_UNLOCKED==='undefined'||VV_UNLOCKED.has(p.id))&&
+    (typeof invCount!=='function'||invCount(p.id)>=pieceDeployCount(p.id));
+  const mons=PIECES.filter(p=>p.class==='Monarque'&&has(p));
+  const gens=PIECES.filter(p=>p.class==='Général'&&has(p));
+  const others=PIECES.filter(p=>p.class!=='Monarque'&&p.class!=='Général'&&has(p));
+  if(!mons.length||!gens.length||others.length<3)return null;
+  const rnd=a=>a[Math.floor(Math.random()*a.length)];
+  for(let tries=0;tries<600;tries++){
+    const mon=rnd(mons),gen=rnd(gens);
+    if(mon.value+gen.value>22)continue;
+    const budget=24-mon.value-gen.value;
+    const pool=[...others].sort(()=>Math.random()-0.5);
+    const chosen=[];let val=0,prim=0;
+    for(const p of pool){
+      if(chosen.length>=3)break;
+      if(chosen.some(x=>x.id===p.id))continue;
+      if(p.class==='Primordiale'&&prim>=1)continue;
+      if(val+p.value>budget)continue;
+      chosen.push(p);val+=p.value;if(p.class==='Primordiale')prim++;
+    }
+    if(chosen.length!==3)continue;
+    // derivePlacements (js/builder.js) : l'ordre des trois pièces définit
+    // leur disposition sur la rangée, exactement comme une armée composée
+    // à la main.
+    const placements=(typeof derivePlacements==='function')
+      ?derivePlacements(chosen)
+      :chosen.reduce((o,p,i)=>{o[p.id]=[2,1,0][i];return o;},{});
+    return{
+      id:Date.now().toString(),
+      createdAt:Date.now(),updatedAt:Date.now(),
+      name:'Première armée',
+      mon:{id:mon.id},gen:{id:gen.id},
+      extras:chosen.map(p=>p.id),placements,
+      totalValue:mon.value+gen.value+val,
+    };
+  }
+  return null;
+}
+
+function tutoSkip(){
+  // Les créatures passent par chestApply : c'est le même chemin que les
+  // coffres du tutoriel, donc le déblocage et les exemplaires sont crédités
+  // exactement pareil. Une créature déjà débloquée n'est pas re-marquée.
+  const lots=TUTO_SKIP_PIECES
+    .filter(id=>typeof VV_UNLOCKED==='undefined'||!VV_UNLOCKED.has(id))
+    .map(id=>({pieceId:id,qty:TUTO_SKIP_QTY,isNew:true}));
+  if(lots.length&&typeof chestApply==='function')chestApply(lots);
+
+  // Une seule armée suffit : si le joueur en a déjà une (tutoriel repris
+  // après coup), on ne lui en ajoute pas une seconde dont il n'a rien à faire.
+  if(typeof savedArmies!=='undefined'&&!savedArmies.length){
+    const ad=tutoBuildRandomArmy();
+    if(ad){savedArmies.push(ad);if(typeof saveArmies==='function')saveArmies();}
+  }
+
+  tutoFinish();
+  if(typeof goToMainMenu==='function')goToMainMenu();
+  if(typeof updAll==='function')updAll();
+  if(typeof renderArmiesPage==='function')renderArmiesPage();
+  if(typeof renderReservePage==='function'&&CUR_ACC)renderReservePage();
+  if(typeof renderStreakBadge==='function')renderStreakBadge();
+}
+
+// ----------------------------------------------------------------
 // BOUTON COMBAT PENDANT LE TUTORIEL
 // ----------------------------------------------------------------
 // Appelé par cube-nav.js AVANT son propre traitement : pendant le tutoriel, le
@@ -676,6 +765,17 @@ function tutoOnNextClick(){
 document.addEventListener('DOMContentLoaded',()=>{
   const{next,box,root}=tutoEls();
   if(next)next.addEventListener('click',tutoOnNextClick);
+  // « Passer le tutoriel » : toujours à portée, à côté des répliques du
+  // savant, à toutes les étapes. On confirme quand même — on saute des
+  // batailles et trois exercices, ce n'est pas un clic anodin.
+  document.getElementById('tuto-skip')?.addEventListener('click',()=>{
+    if(typeof showConfirmModal==='function'){
+      showConfirmModal(
+        'Passer le tutoriel ? Vous recevrez directement l\'Alpha, la Fourmi et le '+
+        'Garde de Pierre, ainsi qu\'une première armée composée au hasard.',
+        tutoSkip,{okLabel:'Passer',cancelLabel:'Continuer le tutoriel',okClass:'btn-primary'});
+    }else tutoSkip();
+  });
   // Cliquer la bulle pendant la frappe affiche la réplique d'un coup.
   if(box)box.addEventListener('click',e=>{
     if(e.target.closest('button'))return;

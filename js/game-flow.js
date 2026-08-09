@@ -59,17 +59,18 @@ function buildGameBoard(playerArmyData,aiArmyData){
 // ----------------------------------------------------------------
 // BARRES JOUEUR / IA (avatar, nom, ELO) en haut/bas du plateau
 // ----------------------------------------------------------------
+// Le camp (Blancs/Noirs) n'est PLUS affiché : le plateau est déjà orienté du
+// côté du joueur, ses pièces sont en bas, et la couleur ne change rien à ce
+// qu'il a à faire. Ne restent que l'identité et le classement.
 function updateGamePlayerBars(){
   const playerElo=vvLoadElo();
   const playerName=CUR_ACC||'Joueur';
-  const pc=(GS&&GS.playerColor)||_playerColor||'w';
-  const sideLbl=col=>col==='w'?'Blancs':'Noirs';
   const hav=document.getElementById('human-player-avatar');
   const han=document.getElementById('human-player-name');
   const hae=document.getElementById('human-player-elo');
   if(hav)hav.textContent=playerName.charAt(0).toUpperCase();
   if(han)han.textContent=playerName;
-  if(hae)hae.textContent=playerElo+' ELO · '+sideLbl(pc);
+  if(hae)hae.textContent=playerElo+' ELO';
   const aav=document.getElementById('ai-player-avatar');
   const aan=document.getElementById('ai-player-name');
   const aae=document.getElementById('ai-player-elo');
@@ -80,7 +81,7 @@ function updateGamePlayerBars(){
     const oppElo=(typeof MP!=='undefined'&&typeof MP.oppElo==='number')?MP.oppElo+' ELO':'En ligne';
     if(aav)aav.textContent=oppName.charAt(0).toUpperCase();
     if(aan)aan.textContent=oppName;
-    if(aae)aae.textContent=oppElo+' · '+sideLbl(pc==='w'?'b':'w');
+    if(aae)aae.textContent=oppElo;
     return;
   }
   // Instructeur du tutoriel : son nom, et « entraînement » à la place d'un
@@ -88,12 +89,12 @@ function updateGamePlayerBars(){
   if(GS&&GS.tuto){
     if(aav)aav.textContent='I';
     if(aan)aan.textContent=GS.tuto.name||'Instructeur';
-    if(aae)aae.textContent='Entraînement · '+sideLbl(pc==='w'?'b':'w');
+    if(aae)aae.textContent='Entraînement';
     return;
   }
   if(aav)aav.textContent='I';
   if(aan)aan.textContent=INSTRUCTOR.name;
-  if(aae)aae.textContent=INSTRUCTOR.elo+' ELO · '+sideLbl(pc==='w'?'b':'w');
+  if(aae)aae.textContent=INSTRUCTOR.elo+' ELO';
 }
 
 // ----------------------------------------------------------------
@@ -118,21 +119,34 @@ function startGame(colorAlreadyChosen,multiplayer,tutoCfg){
   const playerIsWhite=_playerColor==='w';
   const whiteSideArmy=playerIsWhite?currentArmyData:aiArmyData;
   const blackSideArmy=playerIsWhite?aiArmyData:currentArmyData;
+  // Cadence : 10 min + 5 s par coup pour toute vraie partie (joueur en ligne
+  // comme Instructeur à 2000 ELO). Les batailles du tutoriel n'ont PAS de
+  // pendule du tout : on n'apprend pas à jouer avec un chronomètre au-dessus
+  // de l'épaule (tutoCfg.clockMin vaut 0 partout, voir js/tutorial.js).
   const clockMs=tutoCfg
     ?((tutoCfg.clockMin>0)?tutoCfg.clockMin*60000:0)
     :((typeof selectedTimeControl==='number'&&selectedTimeControl>0)?selectedTimeControl*60000:0);
+  const incrementMs=(!tutoCfg&&typeof selectedTimeIncrement==='number'&&selectedTimeIncrement>0)
+    ?selectedTimeIncrement*1000:0;
   // En tutoriel, playerArmy sert uniquement à l'affichage et aux choix de
   // promotion : l'armée n'est pas prélevée sur la Réserve.
   const playerArmy=tutoCfg?tutoCfg.army:currentArmyData;
   const aiArmy=tutoCfg?tutoCfg.army:aiArmyData;
-  GS={board:[],turn:'w',selected:null,legalMoves:[],history:[],enPassant:null,halfmoveClock:0,gameOver:false,playerArmy,aiArmy,playerColor:_playerColor,aiColor:_aiColor,multiplayer:!!multiplayer,tuto:tutoCfg||null,movePairs:[],capturedW:[],capturedB:[],pendingPromo:null,medusaParalyzed:new Set(),lastMove:null,anchored:new Set(),pretreProtected:new Set(),amazonePostCapture:null,grandMaitreAlive:{w:false,b:false},gardePierreUsed:{w:false,b:false},turnCount:0,historyView:null,lastMoveHistory:[],clockMs,timeWhite:clockMs,timeBlack:clockMs};
+  GS={board:[],turn:'w',selected:null,legalMoves:[],history:[],enPassant:null,halfmoveClock:0,gameOver:false,playerArmy,aiArmy,playerColor:_playerColor,aiColor:_aiColor,multiplayer:!!multiplayer,tuto:tutoCfg||null,movePairs:[],capturedW:[],capturedB:[],pendingPromo:null,medusaParalyzed:new Set(),lastMove:null,anchored:new Set(),pretreProtected:new Set(),amazonePostCapture:null,grandMaitreAlive:{w:false,b:false},gardePierreUsed:{w:false,b:false},turnCount:0,historyView:null,lastMoveHistory:[],clockMs,incrementMs,timeWhite:clockMs,timeBlack:clockMs};
   GS.board=tutoCfg?tutoCfg.board():buildGameBoard(whiteSideArmy,blackSideArmy);
+  // Le journal des coups garde le contenu de la partie PRÉCÉDENTE tant qu'un
+  // premier coup n'a pas été joué : on le vide ici, en même temps que GS.
+  if(typeof renderMoveLog==='function')renderMoveLog(GS);
   updateMedusaParalysis(GS.board,GS);updatePretreProtection(GS.board,GS);updateGrandMaitre(GS.board,GS);
   // Les exemplaires quittent la Réserve MAINTENANT : ils sont sur le terrain
   // et donc en jeu (voir js/economy.js, en-tête). Rien de tel en tutoriel :
   // ces pièces sont prêtées par le savant, les perdre ne coûte rien.
   if(!tutoCfg&&typeof economyCommit==='function')economyCommit(currentArmyData);
   if(typeof renderGameStake==='function')renderGameStake(tutoCfg?{}:GS);
+  // Une partie contre un autre joueur a sa propre adresse (voir setAppPath
+  // dans js/main.js) : /combat. Elle revient à l'adresse d'origine dès qu'on
+  // quitte la partie.
+  if(typeof setAppPath==='function')setAppPath(multiplayer?COMBAT_PATH:appHomePath());
   showPage('page-game');
   // "Annuler coup" est retiré en ligne : l'annulation serait unilatérale et
   // désynchroniserait les deux plateaux.
@@ -195,8 +209,13 @@ function showResultModal(result,oldElo,newElo,delta,newUnlockIds,noEloReason){
   const modal=document.getElementById('result-modal');const box=document.getElementById('result-box');
   const rank=vvGetRank(newElo);
   box.className='result-box '+(result==='win'?'win-result':result==='loss'?'loss-result':'draw-result');
-  const icons={win:'▲',loss:'▼',draw:'◆'};const titles={win:'Victoire !',loss:'Défaite',draw:'Nulle'};
-  document.getElementById('result-icon').textContent=icons[result];
+  // Plus de chevron au-dessus du titre pour une victoire ou une défaite : le
+  // mot et sa couleur disent déjà tout, le triangle n'ajoutait qu'un symbole
+  // à décoder. La nulle garde son losange, qui la distingue d'un coup d'œil.
+  const icons={win:'',loss:'',draw:'◆'};const titles={win:'Victoire !',loss:'Défaite',draw:'Nulle'};
+  const iconEl=document.getElementById('result-icon');
+  iconEl.textContent=icons[result];
+  iconEl.style.display=icons[result]?'':'none';
   const titleEl=document.getElementById('result-title');titleEl.textContent=titles[result];
   titleEl.className='result-title '+(result==='win'?'win-text':result==='loss'?'loss-text':'draw-text');
   document.getElementById('result-elo-before').textContent=oldElo;
@@ -206,7 +225,12 @@ function showResultModal(result,oldElo,newElo,delta,newUnlockIds,noEloReason){
   const eloRow=box.querySelector('.result-elo-row');
   const noteEl=document.getElementById('result-elo-note');
   if(eloRow)eloRow.style.display=noEloReason?'none':'';
-  if(noteEl){noteEl.style.display=noEloReason?'':'none';noteEl.textContent=noEloReason||'';}
+  // L'entraînement contre l'Instructeur n'a pas besoin d'être justifié à
+  // chaque fin de partie : le joueur a choisi l'Instructeur, il sait que ce
+  // n'est pas classé. La ligne d'ELO disparaît, la phrase aussi. Le mode
+  // admin, lui, garde sa mention : elle rappelle où l'on se trouve.
+  const showNote=!!noEloReason&&noEloReason!==VV_NO_ELO_TRAINING;
+  if(noteEl){noteEl.style.display=showNote?'':'none';noteEl.textContent=showNote?noEloReason:'';}
   document.getElementById('result-rank-name').textContent=rank.name+' · '+newElo+' ELO';
   const unlockSec=document.getElementById('unlock-section');
   if(newUnlockIds&&newUnlockIds.length>0){
