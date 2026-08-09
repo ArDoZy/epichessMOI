@@ -388,6 +388,11 @@ function startNewTournoi(){
   else{renderTournoiPage();showPage('page-tournoi');}
 }
 document.getElementById('b-tournoi').addEventListener('click',()=>{
+  // Pendant le tutoriel, le tournoi n'a pas de sens : il demande une armée
+  // composée, que le joueur n'a pas encore. Le clic est renvoyé vers la
+  // bataille scriptée en cours (voir tutoInterceptCombat).
+  if(typeof tutoInterceptCombat==='function'&&tutoInterceptCombat())return;
+  if(typeof tutoActive==='function'&&tutoActive())return;
   if(hasAbandonedTournoi()){
     const saved=loadTournoiProgress();
     showConfirmModal('Continuer le tournoi précédent ?',()=>resumeTournoi(saved),

@@ -46,7 +46,7 @@ Le catalogue compte **18 créatures** réparties en **5 classes** :
   est vivant).
 - **Primordiale** : les pièces d'échecs classiques. Cavalier Primordial,
   Fou Primordial, Tour Primordiale. Une seule primordiale est autorisée
-  par armée.
+  par armée, et elles ne s'obtiennent que dans les coffres.
 - **Brute** : les pièces ayant un déplacement puissant, mais un pouvoir
   faible. Exemples : Alpha (2 pts, saute exactement 2 cases en diagonale),
   Fourmi, Preux Chevalier, Garde de Pierre.
@@ -84,8 +84,16 @@ C'est la mécanique qui distingue le plus Epic Chess des autres variantes :
   appariement automatique, ou partie privée avec un code d'invitation à
   quatre caractères. S'entraîner contre **l'Instructeur**, l'adversaire IA du
   jeu, est un mode secondaire.
+- Un compte neuf ne possède que son **Monarque et son Général** : toutes les
+  créatures s'obtiennent en jouant.
 - Un **tutoriel interactif** guide le nouveau joueur : le savant fou lui fait
-  visiter le laboratoire et lui fait composer sa première armée.
+  livrer quatre batailles contre des instructeurs faibles, où les deux camps
+  ont exactement la même armée. Chaque victoire ouvre un coffre qui débloque
+  une créature (Alpha, puis Fourmi, puis Garde de Pierre), suivie d'un petit
+  exercice où l'on apprend son déplacement en ramassant cinq repères avec
+  elle. Le savant fait ensuite visiter le laboratoire et composer une armée.
+- Cet exercice de déplacement revient à chaque créature inédite sortie d'un
+  coffre, tutoriel ou pas.
 - L'Instructeur est **unique** et joue toujours à pleine puissance :
   recherche alpha-bêta avec table de transposition, et une évaluation qui
   tient compte des **pouvoirs** des créatures (paralysie de la Méduse,

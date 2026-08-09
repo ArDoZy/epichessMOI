@@ -24,9 +24,11 @@
 // à son nouvel emplacement. Résultat : au repos, la face avant est TOUJOURS
 // à l'angle 0 → clics/drag fiables.
 //
-// Dépendances : main.js (showPage y délègue) et armies.js
+// Dépendances : main.js (showPage y délègue), armies.js
 // (startArmySelection / clearArmySelection : le bouton COMBAT ouvre "Mes
-// armées" en mode sélection au lieu de lancer la partie lui-même).
+// armées" en mode sélection au lieu de lancer la partie lui-même) et
+// tutorial.js (tutoInterceptCombat : pendant le tutoriel, COMBAT lance la
+// bataille scriptée de l'étape en cours).
 // ================================================================
 
 (function(){
@@ -176,6 +178,9 @@
   // mais la sélection d'armée débouche sur le duel contre l'IA.
   function onVsIa(){
     if(locked||animating)return;
+    // Pendant le tutoriel, tout départ au combat mène à la bataille scriptée
+    // de l'étape en cours : le joueur n'a pas encore d'armée à sélectionner.
+    if(typeof tutoInterceptCombat==='function'&&tutoInterceptCombat())return;
     if(typeof startArmySelection==='function')startArmySelection('ia');
   }
 
@@ -234,6 +239,7 @@
   // sélection (voir armies.js), puis sur la page d'engagement en ligne.
   function onCombat(){
     if(locked||animating)return;
+    if(typeof tutoInterceptCombat==='function'&&tutoInterceptCombat())return;
     if(typeof startArmySelection==='function')startArmySelection('online');
   }
 
