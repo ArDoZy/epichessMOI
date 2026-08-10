@@ -34,30 +34,46 @@ let VV_UNLOCKED=new Set();
 // des coffres illimités et sortir les parties du classement), il n'y a donc
 // plus d'instantané de progression à restaurer en le désactivant.
 //
-// Il n'est plus un interrupteur posé sur le jeu normal : c'est une ADRESSE.
-// /test EST la version admin, tout le reste y est identique. On y entre et on
-// en sort par les réglages, et l'adresse affichée dit toujours dans laquelle
-// des deux on se trouve — impossible d'oublier qu'on est en admin et de
-// s'étonner ensuite que l'ELO ne bouge pas.
-let ADMIN_MODE=(typeof location!=='undefined')&&/^\/test\/?$/.test(location.pathname);
+// Il n'est plus un interrupteur posé sur le jeu normal : c'est une ADRESSE
+// (voir juste en dessous). On y entre et on en sort par les réglages, et
+// l'adresse affichée dit toujours de quel côté on se trouve — impossible
+// d'oublier qu'on est en admin et de s'étonner ensuite que l'ELO ne bouge pas.
 
 // ----------------------------------------------------------------
-// ADRESSES DU JEU : /, /combat, /test
+// ADRESSES DU JEU : /, /combat, et le mode admin en ?test
 // ----------------------------------------------------------------
-// Le jeu est une page unique, mais trois adresses ont un sens pour le joueur :
+// Le jeu est une page unique, mais deux adresses ont un sens pour le joueur :
 //   /        le jeu normal
 //   /combat  une partie en cours contre un autre joueur (adresse partageable,
 //            et surtout : l'onglet dit ce qu'on est en train de faire)
-//   /test    le mode admin (coffres illimités, parties non classées)
-// vercel.json réécrit ces trois chemins vers index.html : il n'y a jamais de
-// rechargement, on ne fait que changer ce qui est affiché dans la barre.
-const ADMIN_PATH='/test';
+// et le mode admin s'ajoute à l'une comme à l'autre sous forme de PARAMÈTRE
+// (`/?test`, `/combat?test`).
+//
+// POURQUOI UN PARAMÈTRE ET NON UN CHEMIN /test ?
+// Parce que /test répondait 404 en production. Un chemin qui ne correspond à
+// aucun fichier n'existe que si l'hébergeur accepte de le réécrire vers
+// index.html, ce qui dépend d'une configuration (`rewrites` dans vercel.json)
+// que le déploiement peut ne pas appliquer — et quand elle ne l'est pas, le
+// bouton des réglages emmène droit sur une page d'erreur. Un paramètre de
+// requête, lui, laisse le chemin à `/` : il ne peut PAS produire de 404, quel
+// que soit l'hébergeur. L'adresse dit toujours aussi clairement où l'on est.
+// L'ancien chemin /test reste reconnu (les rewrites sont toujours là) pour ne
+// pas casser un signet.
+const ADMIN_QUERY='test';
 const COMBAT_PATH='/combat';
-function appHomePath(){return ADMIN_MODE?ADMIN_PATH:'/';}
-function setAppPath(path){
+function pathHasAdmin(){
+  if(typeof location==='undefined')return false;
+  if(/^\/test\/?$/.test(location.pathname))return true;
+  try{return new URLSearchParams(location.search).has(ADMIN_QUERY);}catch(e){return false;}
+}
+let ADMIN_MODE=pathHasAdmin();
+// Adresse complète (chemin + paramètre admin s'il y a lieu).
+function appPath(path){return (path||'/')+(ADMIN_MODE?'?'+ADMIN_QUERY:'');}
+function appHomePath(){return appPath('/');}
+function setAppPath(url){
   if(typeof history==='undefined'||!history.replaceState)return;
-  if(location.pathname===path)return;
-  try{history.replaceState(null,'',path+location.search);}catch(e){}
+  if(location.pathname+location.search===url)return;
+  try{history.replaceState(null,'',url);}catch(e){}
 }
 
 // ----------------------------------------------------------------
@@ -69,30 +85,45 @@ function escH(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').rep
 // EMBLÈME DU JEU
 // ----------------------------------------------------------------
 // Le jeu n'avait pour identité qu'un mot en lettres dorées, « EPIC CHESS »,
-// et une fiole en favicon qui ne parlait que d'alchimie. L'emblème dit les
-// deux moitiés du jeu d'un seul dessin : un ballon d'alchimiste surmonté
-// d'une COURONNE, c'est-à-dire le Monarque posé sur le laboratoire.
+// et une fiole en favicon qui ne parlait que d'alchimie. L'emblème dit tout
+// le jeu d'un seul dessin : un ballon d'alchimiste couronné (le Monarque
+// posé sur le laboratoire) d'où monte une pièce EN TRAIN DE FUSIONNER —
+// moitié pion ordinaire, moitié créature, fendue par une fêlure lumineuse.
+// Deux pièces d'échecs flottent autour du ballon : sans elles, à petite
+// taille, il ne resterait qu'une fiole.
 //
-// Il est écrit ici une seule fois et injecté à deux endroits (page de
-// connexion, menu principal) ; favicon.svg en reprend le tracé pour que
-// l'onglet et l'écran d'accueil montrent la même chose. Les couleurs
-// viennent des variables de thème (voir [EMBLEM] dans css/style.css), donc
-// il suit le mode clair comme le mode sombre.
+// Il est écrit ici une seule fois et injecté sur la page de connexion — et
+// nulle part ailleurs : le menu principal porte désormais le pseudo et l'ELO
+// du joueur à sa place, l'emblème n'y est plus que dans l'onglet.
+// favicon.svg reprend EXACTEMENT les mêmes
+// tracés (mis à l'échelle 0.64) pour que l'onglet et l'écran d'accueil
+// montrent la même chose. Les couleurs viennent des variables de thème
+// (voir [EMBLEM] dans css/style.css), donc il suit le mode clair comme le
+// mode sombre.
 const EMBLEM_SVG=
   '<svg class="emblem" viewBox="0 0 100 100" aria-hidden="true" focusable="false">'+
+    // Pièces satellites : un pion (gauche) et un cavalier (droite). Mêmes
+    // silhouettes que le fond d'attente (tools/gen-duel-bg.js).
+    '<path class="em-mini" transform="translate(3 31) scale(.21)" d="M50 8c-9 0-16 7-16 16 0 5 2 9 6 12-8 6-13 16-15 28h50c-2-12-7-22-15-28 4-3 6-7 6-12 0-9-7-16-16-16zM22 66h56l6 12H16zM12 80h76c5 0 8 4 8 9v11H4V89c0-5 3-9 8-9z"/>'+
+    '<path class="em-mini" transform="translate(77 30) scale(.22)" d="M34 100c0-17 2-29 8-40l-11 8c-9 6-19 3-21-6-3-11 3-22 12-31C30 24 39 18 46 11c6-6 9-11 11-19l9 9 8-8c15 12 26 30 30 49 4 19 5 39 5 58z"/>'+
     '<path class="em-crown" d="M34 24 30 7l10 7 10-11 10 11 10-7-4 17z"/>'+
     '<path class="em-glass" d="M42 28v12M58 28v12"/>'+
     '<circle class="em-glass" cx="50" cy="64" r="26"/>'+
+    // LA FUSION : les deux moitiés se rejoignent sur l'axe x=50, pieds posés
+    // sur le niveau du liquide (y=68), d'où la pièce a l'air d'en sortir.
+    '<g transform="translate(50 68) scale(1.2) translate(-50 -68)">'+
+      '<path class="em-piece-a" d="M50 46c-4 0-7 2.6-7 6 0 1.8.9 3.4 2.3 4.4-3.5 2.6-6 6.6-7.3 11.6H50z"/>'+
+      '<path class="em-piece-b" d="M50 46c4.6 0 7.6 3.2 6.8 7.2 2 1.2 3.6 3 4.6 5.2l3.4-6.4 1.4 8.6c.4 3 .2 5.6-.6 7.4H50z"/>'+
+      '<path class="em-seam" d="M50 44l-3.2 11h5.4L49 68"/>'+
+    '</g>'+
     // Segment circulaire : le niveau du liquide est la corde à y=68, le reste
     // suit l'arc inférieur du ballon (centre 50,64 · rayon 26).
     '<path class="em-liquid" d="M24.3 68A26 26 0 0 0 75.7 68Z"/>'+
-    '<circle class="em-bubble" cx="43" cy="80" r="3"/>'+
-    '<circle class="em-bubble" cx="58" cy="76" r="2.2"/>'+
-    '<path class="em-spark" d="M16 30l2.4 5.6L24 38l-5.6 2.4L16 46l-2.4-5.6L8 38l5.6-2.4z"/>'+
-    '<path class="em-spark" d="M85 22l1.8 4.2L91 28l-4.2 1.8L85 34l-1.8-4.2L79 28l4.2-1.8z"/>'+
+    '<circle class="em-bubble" cx="41" cy="80" r="3"/>'+
+    '<circle class="em-bubble" cx="60" cy="76" r="2.2"/>'+
   '</svg>';
 function mountEmblems(){
-  document.querySelectorAll('.login-emblem,.jouer-emblem').forEach(el=>{
+  document.querySelectorAll('.login-emblem').forEach(el=>{
     if(!el.firstElementChild)el.innerHTML=EMBLEM_SVG;
   });
 }

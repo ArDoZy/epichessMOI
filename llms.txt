@@ -68,12 +68,13 @@ C'est la mécanique qui distingue le plus Epic Chess des autres variantes :
   reviennent en Réserve.
 - Une **promotion** de pion crée un exemplaire supplémentaire de la pièce
   choisie.
-- Chaque victoire donne un **coffre**, dont la rareté suit la **série de
-  victoires consécutives** : Coffre Pion, puis Cavalier, Fou, Tour, Dame et
-  enfin Roi à partir de six victoires d'affilée. Une défaite remet la série
-  à zéro. Les coffres contiennent des exemplaires de pièces et, avec une
-  probabilité croissante selon leur rareté, une créature encore jamais
-  débloquée.
+- Chaque victoire donne un **coffre**, qui **s'ouvre aussitôt la partie
+  terminée**, et dont la rareté suit la **série de victoires consécutives** :
+  Coffre Pion, puis Cavalier, Fou, Tour, Dame et enfin Roi à partir de six
+  victoires d'affilée. Une défaite remet la série à zéro. Les coffres
+  contiennent des exemplaires de pièces, des perles, et — rarement, avec une
+  probabilité croissante selon leur rareté (de 1 % au Coffre Pion à 25 % au
+  Coffre Roi) — une créature encore jamais débloquée.
 - Un **coffre de réapprovisionnement quotidien** rend 4 exemplaires de
   chaque pièce possédée : il est donc impossible de rester définitivement
   bloqué sans armée jouable.

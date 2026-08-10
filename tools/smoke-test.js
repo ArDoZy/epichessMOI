@@ -44,7 +44,7 @@ const MIME={'.html':'text/html','.js':'text/javascript','.css':'text/css','.svg'
 function serve(){
   return http.createServer((req,res)=>{
     let p=decodeURIComponent(req.url.split('?')[0]);
-    if(p==='/'||p==='/combat'||p==='/test')p='/index.html';
+    if(p==='/'||p==='/combat'||p==='/test')p='/index.html';   // cf. vercel.json
     else if(p==='/info')p='/info.html';
     const f=path.join(ROOT,p);
     if(!f.startsWith(ROOT)||!fs.existsSync(f)||fs.statSync(f).isDirectory()){res.writeHead(404);res.end('404');return;}
@@ -82,13 +82,14 @@ async function launchChromium(){
   }
 }
 
-// Les portraits d'adversaires (assets/adversaires/<id>.png) et le fond
-// d'atelier (assets/lab-bg.jpg) sont FACULTATIFS par construction : le jeu
-// dessine un sceau SVG de repli quand ils manquent. Leur 404 est donc un
-// comportement voulu et non une panne, au même titre que les polices Google
-// ou le CDN Supabase quand le réseau est coupé.
+// Les portraits d'adversaires (assets/adversaires/<id>.png), le fond
+// d'atelier (assets/lab-bg.jpg) et la toile peinte de l'écran d'attente
+// (assets/backgrounds/duel-wait.png, empilée par-dessus le SVG procédural)
+// sont FACULTATIFS par construction : le jeu dessine un repli quand ils
+// manquent. Leur 404 est donc un comportement voulu et non une panne, au même
+// titre que les polices Google ou le CDN Supabase quand le réseau est coupé.
 const IGNORED_CONSOLE=/ERR_TUNNEL_CONNECTION_FAILED|ERR_CONNECTION_RESET|ERR_NAME_NOT_RESOLVED|fonts\.googleapis|fonts\.gstatic|jsdelivr|supabase/;
-const OPTIONAL_ASSET=/adversaires\/[a-z-]+\.png|lab-bg\.jpg/;
+const OPTIONAL_ASSET=/adversaires\/[a-z-]+\.png|lab-bg\.jpg|duel-wait\.png/;
 
 (async()=>{
   const server=serve();
@@ -249,6 +250,42 @@ const OPTIONAL_ASSET=/adversaires\/[a-z-]+\.png|lab-bg\.jpg/;
 
   await step('la Réserve, la Voie et l\'armurerie se rendent',async()=>{
     await page.evaluate(()=>{GS.gameOver=true;stopClockTick(GS);renderReservePage();renderVoiePage();renderArmiesPage();});
+  });
+
+  // Le contenu d'un coffre est la mécanique la plus facile à casser sans
+  // s'en apercevoir : elle ne se voit qu'après une victoire, et un tirage
+  // vide ou négatif passerait pour de la malchance.
+  await step('les six coffres tirent un contenu coherent',async()=>{
+    const bad=await page.evaluate(()=>{
+      const out=[];
+      CHESTS.forEach(ch=>{
+        const hi=chestRollRange(ch)[1];
+        for(let i=0;i<200;i++){
+          const lots=chestRoll(ch.id);
+          const pieces=lots.filter(l=>l.pieceId);
+          if(!lots.some(l=>l.pearls>0))out.push(ch.id+' : aucun lot de perles');
+          // Borne HAUTE seulement : chestRoll fusionne les doublons (deux
+          // tirages de Méduse ne font qu'une carte), le nombre de lots
+          // affichés peut donc descendre bien en dessous du nombre tiré. Le
+          // +1 tient compte de la pièce inédite, qui s'ajoute à la fourchette.
+          if(pieces.length<1||pieces.length>hi+1)out.push(ch.id+' : '+pieces.length+' lots hors de [1,'+(hi+1)+']');
+          if(pieces.some(l=>!(l.qty>0)))out.push(ch.id+' : lot de quantite nulle');
+        }
+        const lucky=chestLuckyChance(ch);
+        if(!(lucky>0&&lucky<1))out.push(ch.id+' : proba de bon lot aberrante ('+lucky+')');
+      });
+      return [...new Set(out)];
+    });
+    if(bad.length)throw new Error(bad.join(' · '));
+  });
+
+  // Le mode admin est une ADRESSE : s'il cessait d'être reconnu, il
+  // s'ouvrirait sur le jeu normal sans que rien ne le dise.
+  await step('le mode test est reconnu a son adresse',async()=>{
+    await page.goto('http://localhost:'+PORT+'/?test',{waitUntil:'domcontentloaded'});
+    await page.waitForSelector('#page-login.active',{timeout:8000});
+    if(!await page.evaluate(()=>ADMIN_MODE))throw new Error('/?test n active pas le mode admin');
+    if(!/Mode admin/.test(await page.evaluate(()=>vvNoEloReason({}))||''))throw new Error('les parties y sont encore classees');
   });
 
   await browser.close();

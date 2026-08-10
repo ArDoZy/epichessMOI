@@ -181,17 +181,29 @@ function boardSkinById(id){return BOARD_SKINS.find(b=>b.id===id)||BOARD_SKINS[0]
 // 2e d'affilée = Cavalier, puis Fou, Tour, Dame et Roi. Une défaite remet la
 // série à zéro (voir economy.js::economySettle).
 //
-// rolls   : nombre de lots de pièces tirés
+// rolls   : nombre de lots de pièces tirés EN MOYENNE (le tirage réel varie
+//           de ±1, voir chestRollCount dans js/economy.js)
 // qty     : fourchette de quantité par lot
 // newChance : probabilité de contenir une pièce ENCORE JAMAIS DÉBLOQUÉE
 // bias    : plus il est élevé, plus les pièces chères sont probables
+//
+// LA PIÈCE INÉDITE EST DEVENUE RARE. Elle sortait d'un coffre sur trente au
+// Pion et d'un sur deux au Roi : débloquer tout le catalogue ne demandait
+// qu'une poignée de bonnes séries, et le Coffre Roi n'avait plus rien à
+// donner. Les six probabilités sont maintenant 1 %, 2,8 %, 3 %, 5 %, 10 % et
+// 25 % : une pièce inédite est un événement, y compris tout en haut.
+//
+// Ce qui a été retiré d'un côté est rendu de l'autre : les lots ordinaires
+// sont plus gros, plus nombreux, et la probabilité qu'un lot soit un BON lot
+// est calculée à partir de newChance (chestLuckyChance, js/economy.js). Un
+// coffre sans pièce inédite reste donc un bon coffre.
 const CHESTS=[
-  {id:'pion',    tier:0,name:'Coffre Pion',    rolls:2,qty:[1,3], newChance:0.03,bias:0.55,color:'#7f8b94'},
-  {id:'cavalier',tier:1,name:'Coffre Cavalier',rolls:3,qty:[2,4], newChance:0.07,bias:0.85,color:'#7d9c6a'},
-  {id:'fou',     tier:2,name:'Coffre Fou',     rolls:3,qty:[3,6], newChance:0.13,bias:1.20,color:'#5f93b8'},
-  {id:'tour',    tier:3,name:'Coffre Tour',    rolls:4,qty:[4,8], newChance:0.22,bias:1.70,color:'#9a6fc4'},
-  {id:'dame',    tier:4,name:'Coffre Dame',    rolls:5,qty:[6,12],newChance:0.34,bias:2.30,color:'#d0742e'},
-  {id:'roi',     tier:5,name:'Coffre Roi',     rolls:6,qty:[8,16],newChance:0.52,bias:3.20,color:'#d9b64e'},
+  {id:'pion',    tier:0,name:'Coffre Pion',    rolls:2,qty:[1,4],  newChance:0.010,bias:0.60,color:'#7f8b94'},
+  {id:'cavalier',tier:1,name:'Coffre Cavalier',rolls:3,qty:[2,5],  newChance:0.028,bias:0.90,color:'#7d9c6a'},
+  {id:'fou',     tier:2,name:'Coffre Fou',     rolls:4,qty:[3,7],  newChance:0.030,bias:1.25,color:'#5f93b8'},
+  {id:'tour',    tier:3,name:'Coffre Tour',    rolls:4,qty:[5,10], newChance:0.050,bias:1.80,color:'#9a6fc4'},
+  {id:'dame',    tier:4,name:'Coffre Dame',    rolls:5,qty:[7,14], newChance:0.100,bias:2.40,color:'#d0742e'},
+  {id:'roi',     tier:5,name:'Coffre Roi',     rolls:6,qty:[10,20],newChance:0.250,bias:3.30,color:'#d9b64e'},
 ];
 function chestById(id){return CHESTS.find(c=>c.id===id)||CHESTS[0];}
 // Une série de n victoires donne le coffre de rang n-1, plafonné au Roi.
@@ -205,15 +217,18 @@ function chestForStreak(streak){return CHESTS[Math.min(Math.max(streak,1)-1,CHES
 // une sortie à une série de coffres médiocres : même sans pièce inédite, on
 // avance vers le coffre qu'on vise.
 //
-// pearls : fourchette de perles contenues dans le coffre.
+// pearls : fourchette de perles contenues dans le coffre. Relevée en même
+//          temps que les lots de pièces, pour la même raison : une pièce
+//          inédite étant devenue rare, un coffre doit valoir quelque chose
+//          même quand il n'en contient pas.
 // price  : coût du coffre à la boutique de la Réserve.
 const CHEST_PEARLS={
-  pion:    {pearls:[5,15],   price:30},
-  cavalier:{pearls:[12,30],  price:120},
-  fou:     {pearls:[20,45],  price:150},
-  tour:    {pearls:[35,80],  price:250},
-  dame:    {pearls:[60,140], price:500},
-  roi:     {pearls:[100,220],price:750},
+  pion:    {pearls:[6,18],   price:30},
+  cavalier:{pearls:[15,36],  price:120},
+  fou:     {pearls:[26,58],  price:150},
+  tour:    {pearls:[45,100], price:250},
+  dame:    {pearls:[80,175], price:500},
+  roi:     {pearls:[130,280],price:750},
 };
 function chestPearlRange(id){return (CHEST_PEARLS[id]||CHEST_PEARLS.pion).pearls;}
 function chestPearlPrice(id){return (CHEST_PEARLS[id]||CHEST_PEARLS.pion).price;}

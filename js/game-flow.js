@@ -152,7 +152,7 @@ function startGame(colorAlreadyChosen,multiplayer,tutoCfg){
   // Une partie contre un autre joueur a sa propre adresse (voir setAppPath
   // dans js/main.js) : /combat. Elle revient à l'adresse d'origine dès qu'on
   // quitte la partie.
-  if(typeof setAppPath==='function')setAppPath(multiplayer?COMBAT_PATH:appHomePath());
+  if(typeof setAppPath==='function')setAppPath(multiplayer?appPath(COMBAT_PATH):appHomePath());
   showPage('page-game');
   // "Annuler coup" est retiré en ligne : l'annulation serait unilatérale et
   // désynchroniserait les deux plateaux.
@@ -257,16 +257,17 @@ function showResultModal(result,oldElo,newElo,delta,newUnlockIds,noEloReason){
     if(pd){unlockSec.style.display='';document.getElementById('unlock-piece-emoji').innerHTML=pieceIcon(pd.id,'n');document.getElementById('unlock-piece-name').textContent=pd.name;const clsEl=document.getElementById('unlock-piece-class');clsEl.textContent=pd.class;clsEl.className='unlock-piece-class pc-class '+pd.class;document.getElementById('unlock-piece-ability').textContent=pd.ability||'Aucun pouvoir spécial.';}
     else unlockSec.style.display='none';
   }else unlockSec.style.display='none';
-  // Coffre obtenu : le modal l'annonce, la Réserve l'ouvre. Ouvrir un coffre
-  // ici, par-dessus le modal de fin, empilerait deux célébrations.
+  // Coffre obtenu : il vient d'être ouvert, juste avant ce modal (voir
+  // settleAndCelebrate dans js/economy-ui.js). Le rappel sert de récapitulatif
+  // — quelle série, quel palier — pas d'invitation à aller le chercher.
   const chestSec=document.getElementById('result-chest');
   if(chestSec){
     const st=_lastSettlement;
     if(st&&st.chest){
       chestSec.style.display='';
       chestSec.innerHTML='<div class="rc-lbl">Série de '+st.streak+' victoire'+(st.streak>1?'s':'')+'</div>'+
-        '<div class="rc-name">'+st.chest.name+' obtenu</div>'+
-        '<div class="rc-hint">Ouvrez-le dans la Réserve.</div>';
+        '<div class="rc-name">'+st.chest.name+' ouvert</div>'+
+        '<div class="rc-hint">Prochaine victoire : '+chestForStreak(st.streak+1).name+'.</div>';
     }else chestSec.style.display='none';
   }
   modal.classList.add('active');
@@ -352,14 +353,13 @@ function triggerEndOfGame(result){
   if(foeId&&typeof advNoteResult==='function')advNoteResult(foeId,result);
   const history=vvLoadHistory();history.push({result,oldElo,newElo,delta,date:Date.now(),aiElo,ranked:!noEloReason,opp:foeId});vvSaveHistory(history);
   // Règlement des pièces engagées AVANT l'affichage : la cinématique montre
-  // le décompte réel, pas une estimation.
-  _lastSettlement=(typeof economySettle==='function')?economySettle(result,GS):null;
-  if(typeof renderStreakBadge==='function')renderStreakBadge();
-  // La cinématique d'issue passe en premier, le modal de résultat (ELO,
-  // déblocages) prend le relais à sa fermeture.
+  // le décompte réel, pas une estimation. settleAndCelebrate (economy-ui.js)
+  // enchaîne ensuite cinématique d'issue → ouverture du coffre gagné → modal.
   const showModal=()=>showResultModal(result,oldElo,newElo,delta,newUnlocks,noEloReason);
-  if(typeof playOutcomeCinematic==='function')playOutcomeCinematic(result,_lastSettlement,showModal);
-  else setTimeout(showModal,400);
+  _lastSettlement=(typeof settleAndCelebrate==='function')
+    ?settleAndCelebrate(result,GS,showModal)
+    :(setTimeout(showModal,400),null);
+  if(typeof renderStreakBadge==='function')renderStreakBadge();
 }
 
 // ----------------------------------------------------------------

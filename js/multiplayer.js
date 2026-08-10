@@ -47,6 +47,7 @@ const MP={
   lobby:null,        // salon d'attente du matchmaking (null hors recherche)
   lobbyTickId:null,  // battement de ré-évaluation de l'appariement
   searchStartedAt:0, // début de la recherche : pilote la fenêtre d'ELO
+  waitStartedAt:0,   // début de l'attente : pilote le chronomètre affiché
   pairPending:null,  // id du joueur à qui l'on vient de proposer une partie
   pairTimerId:null,  // abandon de cette proposition faute de confirmation
   matched:false,     // paire déjà formée : ignore les sync de presence suivants
@@ -476,10 +477,11 @@ function mpNotifyResign(){
 function mpLeave(){
   if(MP.joinTimeoutId){clearTimeout(MP.joinTimeoutId);MP.joinTimeoutId=null;}
   mpStopArmyRetry();
+  if(typeof mpWaitStop==='function')mpWaitStop();
   if(MP.channel){MP.channel.unsubscribe();MP.channel=null;}
   mpLeaveLobby();
   MP.started=false;MP.matched=false;MP.oppArmy=null;MP.roomCode=null;
-  MP.searchStartedAt=0;
+  MP.searchStartedAt=0;MP.waitStartedAt=0;
   MP.oppName=null;MP.oppElo=null;MP.oppId=null;
   MP.rematchMine=false;MP.rematchTheirs=false;
   // On repasse sur l'ELO de l'IA pour les prochaines parties hors ligne.
@@ -583,16 +585,46 @@ function mpEnterPair(hostId){
 }
 
 // ----------------------------------------------------------------
-// ÉCRAN DE RECHERCHE
+// ÉCRAN D'ATTENTE : la toile et le chronomètre
 // ----------------------------------------------------------------
+// Attendre un adversaire est le seul moment du jeu où le joueur ne fait rien
+// et ne peut rien faire. La fenêtre de salon s'efface donc derrière une toile
+// plein écran (assets/backgrounds/duel-wait.svg, voir [MP-WAIT] dans
+// css/style.css) et un CHRONOMÈTRE s'installe en bas au milieu : il est le
+// seul élément qui bouge, donc la seule preuve que quelque chose tourne
+// encore. Il vaut pour les deux attentes — la recherche automatique et
+// l'attente d'un ami sur une partie privée, qui n'avait jusqu'ici aucun
+// compteur du tout.
+const MP_WAIT_SCREENS=new Set(['quick','host']);
+let _mpWaitTimer=null;
+
+function mpFmtClock(sec){
+  const m=Math.floor(sec/60),s=Math.floor(sec%60);
+  return m+':'+(s<10?'0':'')+s;
+}
+function mpWaitTick(){
+  const el=document.getElementById('mp-wait-time');
+  if(!el)return;
+  el.textContent=mpFmtClock((Date.now()-(MP.waitStartedAt||Date.now()))/1000);
+}
+function mpWaitStart(){
+  mpWaitStop();
+  MP.waitStartedAt=Date.now();
+  document.getElementById('mp-modal')?.classList.add('mp-wait');
+  mpWaitTick();
+  _mpWaitTimer=setInterval(mpWaitTick,1000);
+}
+function mpWaitStop(){
+  if(_mpWaitTimer){clearInterval(_mpWaitTimer);_mpWaitTimer=null;}
+  document.getElementById('mp-modal')?.classList.remove('mp-wait');
+}
+
 // Chercher sans rien voir bouger donne l'impression que le jeu est en panne.
-// Trois chiffres suffisent à dire le contraire : depuis combien de temps on
-// cherche, combien de joueurs attendent, et jusqu'où on accepte de descendre
+// Le chronomètre le dit d'un coup d'œil ; ces deux chiffres-ci disent le
+// reste : combien de joueurs attendent, et jusqu'où on accepte de descendre
 // ou de monter en niveau.
 function mpRenderSearch(waitS,peerCount,win){
   const set=(id,txt)=>{const e=document.getElementById(id);if(e)e.textContent=txt;};
-  const m=Math.floor(waitS/60),s=waitS%60;
-  set('mp-search-elapsed',m+':'+(s<10?'0':'')+s);
   set('mp-search-peers',peerCount);
   set('mp-search-window',win===Infinity?'tous':'±'+win);
   const note=document.getElementById('mp-search-note');
@@ -709,12 +741,10 @@ document.getElementById('mp-fallback-btn')?.addEventListener('click',()=>{
   mpLeave();
   mpCloseModal();
   if(!currentArmyData)return;
-  if(typeof aiSetOpponent==='function'&&typeof AI_OPPONENTS!=='undefined'){
-    const myElo=(typeof vvLoadElo==='function')?vvLoadElo():0;
-    let best=AI_OPPONENTS[0];
-    AI_OPPONENTS.forEach(o=>{if(Math.abs(o.elo-myElo)<Math.abs(best.elo-myElo))best=o;});
-    aiSetOpponent(best.id);
-  }
+  // advNextFoe() (js/adversaires.js) : l'adversaire du laboratoire le plus
+  // proche de notre niveau, exactement le critère qu'on vient d'échouer à
+  // satisfaire côté humain.
+  if(typeof aiSetOpponent==='function'&&typeof advNextFoe==='function')aiSetOpponent(advNextFoe().id);
   aiArmyData=(typeof aiArmyForOpponent==='function')?aiArmyForOpponent()
     :((typeof generateAIArmy==='function')?generateAIArmy():null);
   if(typeof vvSetOpponentElo==='function')vvSetOpponentElo(null);
@@ -731,9 +761,11 @@ function mpShowScreen(name){
     const el=document.getElementById('mp-screen-'+s);
     if(el)el.style.display=(s===name)?'':'none';
   });
+  if(MP_WAIT_SCREENS.has(name))mpWaitStart();else mpWaitStop();
 }
 
 function mpCloseModal(){
+  mpWaitStop();
   document.getElementById('mp-modal')?.classList.remove('show');
 }
 
