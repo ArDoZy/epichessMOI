@@ -255,9 +255,6 @@ body{
 .pw-box{background:var(--surface2);border:1px solid var(--border2);border-radius:14px;padding:28px;min-width:300px;max-width:380px;text-align:center}
 .cab{position:fixed;top:0;left:0;right:0;height:50px;background:linear-gradient(180deg,var(--surface2),var(--surface));border-bottom:2px solid var(--accent2);box-shadow:0 2px 12px rgba(0,0,0,.4);display:flex;align-items:center;padding:0 58px 0 18px;gap:14px;z-index:500;font-family:'Cinzel',serif;font-size:13px}
 .cab-av{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;color:#fff;flex-shrink:0;box-shadow:0 0 0 2px var(--gold),0 2px 6px rgba(0,0,0,.5)}
-#cab-name{font-size:15px;font-weight:800;letter-spacing:.5px}
-#cab-elo{font-size:13px!important;font-weight:800;padding:5px 14px;border-radius:8px;background:rgba(193,154,69,.12);border:1px solid var(--gold);color:var(--gold2)!important;letter-spacing:.5px}
-#cab-elo.admin-elo{background:rgba(201,162,39,.24);border-color:var(--gold2)}
 .cab-sw{padding:8px 18px;font-size:12px;font-weight:700;border:1px solid rgba(230,90,100,.65)!important;border-radius:8px;background:rgba(230,90,100,.2);color:#f2b8bd!important;cursor:pointer;font-family:'Cinzel',serif;transition:all .15s;text-transform:uppercase;letter-spacing:.6px;white-space:nowrap}
 .cab-sw:hover{border-color:#f2b8bd!important;background:rgba(230,90,100,.35);color:#fff!important;transform:translateY(-1px)}
 /* Pas de logo/titre sur la page builder (retiré) : juste la clearance de la
@@ -940,11 +937,6 @@ body.light .cube-face[data-face="jouer"]{background:
   linear-gradient(165deg,#f4f3ee,#dcdbd3)}
 .jouer-menu{position:absolute;inset:0;display:flex;flex-direction:column;
   align-items:center;justify-content:center;gap:34px;text-align:center;padding:24px}
-.jouer-logo{font-family:'Cinzel Decorative','Cinzel',serif;font-weight:900;
-  font-size:clamp(34px,7vw,72px);letter-spacing:2px;
-  background:linear-gradient(180deg,var(--gold2),var(--gold) 55%,#8a6a1a);
-  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
-  filter:drop-shadow(0 4px 24px rgba(201,162,39,.35))}
 .jouer-btn{position:relative;cursor:pointer;border:none;
   font-family:'Cinzel',serif;font-weight:900;letter-spacing:6px;
   font-size:clamp(18px,3.4vw,34px);color:#1a1206;
@@ -960,19 +952,19 @@ body.light .cube-face[data-face="jouer"]{background:
 .jouer-tournoi-btn{font-size:12px;padding:10px 26px}
 
 /* --- Faces placeholder (Magasin / Missions / Variantes) --- */
-/* Réserve et Voie : mêmes matières que le menu, un ton plus neutre pour que
-   le contenu (cartes, coffres, jalons) ressorte. */
+/* Réserve et face libre : mêmes matières que le menu, un ton plus neutre pour
+   que le contenu (cartes, coffres) ressorte. */
 .cube-face[data-face="reserve"],
-.cube-face[data-face="voie"]{background:
+.cube-face[data-face="libre"]{background:
   radial-gradient(ellipse at 50% 8%,rgba(47,177,151,.09),transparent 58%),
   linear-gradient(165deg,#141b20,#0c1114)}
 body.light .cube-face[data-face="reserve"],
-body.light .cube-face[data-face="voie"]{background:
+body.light .cube-face[data-face="libre"]{background:
   radial-gradient(ellipse at 50% 8%,rgba(18,120,106,.10),transparent 58%),
   linear-gradient(165deg,#f2f1ec,#e2e1da)}
-/* Les deux faces embarquent des pages longues : elles doivent défiler. */
-#face-viewport-reserve,#face-viewport-voie{overflow-y:auto}
-#page-reserve.cube-embedded,#page-voie.cube-embedded{background:transparent}
+/* La Réserve embarque une page longue : elle doit défiler. */
+#face-viewport-reserve{overflow-y:auto}
+#page-reserve.cube-embedded{background:transparent}
 .face-placeholder{position:absolute;inset:0;display:flex;flex-direction:column;
   align-items:center;justify-content:center;gap:14px;text-align:center;padding:24px}
 .fp-title{font-family:'Cinzel',serif;font-weight:900;letter-spacing:3px;
@@ -1018,8 +1010,6 @@ body.light .cube-face[data-face="voie"]{background:
 @media(max-width:640px){
   .cab{padding:0 42px 0 10px;gap:8px;height:46px;font-size:11px}
   .cab-av{width:28px;height:28px;font-size:13px}
-  #cab-name{font-size:12px}
-  #cab-elo{font-size:10px!important;padding:4px 8px}
   .cab-sw{padding:6px 10px;font-size:10px}
   #settings-btn{width:28px;height:28px;top:6px;right:8px}
   body.has-acc #page-builder{padding-top:calc(46px + 10px)}
@@ -1247,7 +1237,6 @@ body.light .pc-n{--pc-fill:#f6f5f1;--pc-line:#20282a}
 .pearl-bank-info{min-width:0}
 .pearl-bank-n{font-family:'Cinzel',serif;font-size:24px;font-weight:900;color:var(--text);line-height:1.1}
 .pearl-bank-lbl{font-size:11.5px;color:var(--muted);letter-spacing:.4px;line-height:1.4}
-.rs-shop-note{color:var(--muted);font-size:12.5px;font-style:italic;margin-bottom:12px;line-height:1.5}
 .chest-price{margin-top:8px;font-size:13px;color:var(--text)}
 /* Coffre hors de portée : visible (c'est l'objectif vers lequel on épargne),
    mais inerte — ni curseur, ni survol, ni clic. */
@@ -1311,6 +1300,12 @@ body.light .pc-n{--pc-fill:#f6f5f1;--pc-line:#20282a}
 .loot-name{font-family:'Cinzel',serif;font-size:10.5px;margin-top:5px;color:var(--muted);line-height:1.25}
 .loot-qty{font-family:'Cinzel',serif;font-size:19px;font-weight:900;color:var(--accent2);margin-top:3px}
 .loot.loot-new{border-color:var(--gold);box-shadow:0 0 26px rgba(193,154,69,.35);background:linear-gradient(180deg,rgba(193,154,69,.12),var(--surface))}
+/* BON LOT : double quantité et tirage favorable (chestLuckyChance dans
+   js/economy.js). Marqué en vert-de-gris et non en or, pour ne pas se
+   confondre avec une pièce inédite, qui reste l'événement rare. */
+.loot.loot-lucky{border-color:var(--accent2);box-shadow:0 0 20px rgba(47,177,151,.28)}
+.loot-lucky-tag{background:rgba(47,177,151,.2)!important;color:var(--accent2)!important;
+  border-color:rgba(47,177,151,.5)!important}
 .loot-new-tag{font-family:'Cinzel',serif;font-size:9px;text-transform:uppercase;letter-spacing:1.2px;
   color:#1a1206;background:var(--gold2);border-radius:5px;padding:1px 7px;display:inline-block;margin-top:5px}
 @keyframes lootIn{to{opacity:1;transform:translateY(0) scale(1)}}
@@ -1426,6 +1421,34 @@ body.light .pc-n{--pc-fill:#f6f5f1;--pc-line:#20282a}
 .jouer-second{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
 .jouer-tournoi-btn{font-size:12px;padding:10px 24px}
 #jouer-streak{min-height:24px}
+
+/* IDENTITÉ DU JOUEUR, en haut au milieu — à la place du titre du jeu et de
+   l'emblème, qui disaient tous les deux quelque chose qu'on savait déjà.
+   Positionnée en absolu et non dans la colonne centrale : le gros bouton
+   COMBAT doit rester au milieu de l'écran, pas être poussé vers le bas par
+   ce bloc. Le décalage du haut dégage la barre de compte (50 px, fixe). */
+.jouer-player{position:absolute;left:50%;transform:translateX(-50%);
+  top:clamp(62px,11vh,120px);display:flex;flex-direction:column;align-items:center;gap:8px;
+  width:min(92%,540px);pointer-events:none}
+.jouer-player .btn{pointer-events:auto}
+.jouer-name{font-family:'Cinzel Decorative','Cinzel',serif;font-weight:900;
+  font-size:clamp(24px,4.4vw,46px);letter-spacing:1.5px;line-height:1.1;
+  background:linear-gradient(180deg,var(--gold2),var(--gold) 55%,#8a6a1a);
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+  filter:drop-shadow(0 4px 20px rgba(201,162,39,.3));
+  max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.jouer-elo-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:center}
+.jouer-rank{font-family:'Cinzel',serif;font-size:11px;font-weight:700;
+  text-transform:uppercase;letter-spacing:1.4px}
+.jouer-elo{font-family:'Cinzel',serif;font-size:13px;font-weight:800;letter-spacing:.5px;
+  padding:5px 14px;border-radius:8px;background:rgba(193,154,69,.12);
+  border:1px solid var(--gold);color:var(--gold2);font-variant-numeric:tabular-nums}
+.jouer-elo.admin-elo{background:rgba(201,162,39,.24);border-color:var(--gold2)}
+.jouer-voie-btn{font-size:10px;padding:6px 16px}
+@media(max-width:760px){
+  .jouer-player{top:58px;gap:5px}
+  .jouer-name{font-size:clamp(20px,6vw,28px)}
+}
 /* Boussole du cube : nomme la face affichée. */
 /* Promotion : le libellé sous le logo, sinon deux créatures inconnues se
    ressemblent au moment où il faut choisir vite. */
@@ -1494,7 +1517,7 @@ body.light .cab-sw:hover{background:rgba(178,53,48,.2);color:#5e1a17!important}
 body.light .jouer-btn{background:var(--accent2);color:#fff;box-shadow:0 3px 0 #0d4c42}
 body.light .jouer-btn:hover{box-shadow:0 5px 0 #0d4c42}
 body.light .jouer-btn:active{box-shadow:0 2px 0 #0d4c42}
-body.light .jouer-logo{background:linear-gradient(180deg,#3b3428,#7b6320 55%,#4a3a12);
+body.light .jouer-name{background:linear-gradient(180deg,#3b3428,#7b6320 55%,#4a3a12);
   -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
 body.light .gp-clock{background:#fff}
 body.light .intro-close{color:#241a10}
@@ -1537,8 +1560,6 @@ body.light .intro-close{color:#241a10}
 @keyframes unknownPulse{0%,100%{opacity:.65;transform:scale(1)}50%{opacity:1;transform:scale(1.05)}}
 /* Sous-titre du gros bouton : dire ce que COMBAT lance, sans l'écrire dans
    le bouton lui-même (qui doit rester un seul mot lisible de loin). */
-.jouer-btn-sub{font-family:'Cinzel',serif;font-size:11px;letter-spacing:1.6px;
-  text-transform:uppercase;color:var(--muted);margin-top:-6px}
 
 /* [TUTORIEL] ====================================================
    Visite guidée par le savant (js/tutorial.js). Deux couches :
@@ -1650,14 +1671,16 @@ body.cube-active:not(.nav-overlay) .notif-host{bottom:92px}
 .emblem .em-glass{fill:none;stroke:var(--gold);stroke-width:3.2;stroke-linejoin:round;stroke-linecap:round}
 .emblem .em-liquid{fill:var(--accent2);opacity:.9}
 .emblem .em-crown{fill:var(--gold2);stroke:var(--gold);stroke-width:2;stroke-linejoin:round}
-.emblem .em-spark{fill:var(--gold2)}
+/* La pièce en fusion : la moitié « échecs » garde l'or du Monarque, la moitié
+   « créature » prend le vert-de-gris de la potion, et la fêlure qui les sépare
+   est le seul trait clair du dessin — c'est elle qu'on voit en premier. */
+.emblem .em-piece-a{fill:var(--gold2)}
+/* Menthe claire, et non la couleur du bouillon : à teinte égale, la moitié
+   créature disparaissait dans le liquide au lieu d en sortir. */
+.emblem .em-piece-b{fill:#5fe0c6}
+.emblem .em-seam{fill:none;stroke:#fff;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;opacity:.85}
+.emblem .em-mini{fill:var(--gold);opacity:.72}
 .login-emblem{width:74px;height:74px;margin:0 auto 10px}
-.jouer-emblem{width:clamp(54px,8vw,84px);height:clamp(54px,8vw,84px);margin:0 auto;
-  filter:drop-shadow(0 6px 22px rgba(201,162,39,.35));animation:emblemFloat 6s ease-in-out infinite}
-/* L'emblème et le titre forment un seul bloc : sans cette reprise, le gap de
-   34 px de .jouer-menu les séparait comme deux éléments sans rapport. */
-.jouer-emblem+.jouer-logo{margin-top:-20px}
-@keyframes emblemFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
 /* La bulle du liquide monte en continu : l'emblème est vivant, comme les
    fioles du reste de l'interface. */
 .emblem .em-bubble{fill:#fff;opacity:0;animation:emBubble 3.4s ease-in infinite}
@@ -1712,13 +1735,49 @@ body.cube-active:not(.nav-overlay) .notif-host{bottom:92px}
   box-shadow:0 0 16px var(--potion-glow)}
 @keyframes mpPing{0%{opacity:.85;transform:scale(.22)}100%{opacity:0;transform:scale(1)}}
 
-.mp-search-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.mp-search-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:12px}
 .mp-search-cell{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:8px 6px}
 .mp-search-lbl{font-family:'Cinzel',serif;font-size:8.5px;text-transform:uppercase;
   letter-spacing:1.1px;color:var(--muted);margin-bottom:3px}
 .mp-search-val{font-family:'Cinzel',serif;font-size:17px;font-weight:800;color:var(--text);
   font-variant-numeric:tabular-nums}
 .mp-search-note{font-size:12px;color:var(--muted);line-height:1.5;min-height:36px}
+
+/* [MP-WAIT] =====================================================
+   L'ATTENTE D'UN ADVERSAIRE. C'est le seul moment du jeu où le joueur n'a
+   rien à faire : la fenêtre de salon s'efface derrière une toile plein écran
+   et il ne reste qu'un chronomètre, en bas au milieu.
+
+   Le fond est REMPLAÇABLE sans toucher au code : `duel-wait.png` est empilé
+   AU-DESSUS du SVG procédural (tools/gen-duel-bg.js). Le fichier n'existe pas
+   par défaut — une couche d'image absente ne peint rien et laisse voir celle
+   du dessous —, il suffit donc de le déposer pour qu'il prenne la place, sans
+   rien changer ici. Même convention que les portraits d'adversaires.
+   ============================================================== */
+#mp-modal.mp-wait{
+  background:
+    linear-gradient(180deg,rgba(7,10,13,.35),rgba(7,10,13,.2) 45%,rgba(7,10,13,.88)),
+    url('../assets/backgrounds/duel-wait.png'),
+    url('../assets/backgrounds/duel-wait.svg'),
+    #070a0d;
+  background-size:cover,cover,cover,auto;
+  background-position:center;
+  background-repeat:no-repeat}
+/* La boîte devient une simple inscription posée sur la toile : plus de
+   panneau opaque au milieu d'une image plein écran. */
+#mp-modal.mp-wait .ai-lvl-box{
+  background:rgba(7,10,13,.5);backdrop-filter:blur(3px);
+  border-color:rgba(193,154,69,.35);box-shadow:0 18px 60px rgba(0,0,0,.6)}
+
+.mp-wait-clock{display:none}
+#mp-modal.mp-wait .mp-wait-clock{
+  display:block;position:absolute;left:50%;bottom:clamp(18px,5vh,54px);
+  transform:translateX(-50%);
+  font-family:'Cinzel',serif;font-weight:900;letter-spacing:4px;
+  font-size:clamp(38px,7vw,74px);line-height:1;
+  color:var(--gold2);font-variant-numeric:tabular-nums;
+  text-shadow:0 0 34px rgba(0,0,0,.9),0 4px 18px rgba(0,0,0,.9);
+  pointer-events:none}
 
 /* [ICON-BUTTONS] ================================================
    Les boutons d'action des cartes portent maintenant des icônes SVG
@@ -1770,8 +1829,10 @@ body.cube-active:not(.nav-overlay) .notif-host{bottom:92px}
 .adv-seal .as-ring{fill:none;stroke:var(--seal);stroke-width:1.6;opacity:.5}
 .adv-seal .as-ring2{opacity:.28}
 .adv-seal .as-fig{fill:color-mix(in srgb,var(--seal) 16%,transparent);stroke:var(--seal);stroke-width:2.4;stroke-linejoin:round}
+.adv-seal .as-fig2{fill:none;stroke-width:1.5;opacity:.6}
 .adv-seal .as-chord line{stroke:var(--seal);stroke-width:1.3;opacity:.55}
 .adv-seal .as-mark line{stroke:var(--seal);stroke-width:2;opacity:.75;stroke-linecap:round}
+.adv-seal .as-orbit{fill:var(--seal);opacity:.7}
 .adv-seal .as-core{fill:var(--seal)}
 
 .adv-body{flex:1;min-width:0}
@@ -1880,8 +1941,3 @@ body.light .adv-advised{color:#f6f5f1}
 .result-foe{font-family:'Cinzel',serif;font-size:11px;letter-spacing:.8px;
   color:var(--muted);margin:-4px 0 12px;font-variant-numeric:tabular-nums}
 
-/* Adversaire conseillé, sous les boutons secondaires du menu principal. */
-.jouer-foe-hint{margin-top:12px;font-family:'Cinzel',serif;font-size:10.5px;
-  letter-spacing:.9px;color:var(--muted);text-align:center;min-height:14px}
-.jouer-foe-hint b{font-weight:800}
-.jfh-beaten{color:var(--gold);opacity:.8}

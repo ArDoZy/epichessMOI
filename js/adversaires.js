@@ -46,43 +46,96 @@ function advHash(id){
   return()=>{h^=h<<13;h^=h>>>17;h^=h<<5;h|=0;return((h>>>0)%1000)/1000;};
 }
 
-// Sceau d'alchimiste : un anneau, une figure inscrite, des marques réparties
+// ----------------------------------------------------------------
+// PUISSANCE DU SCEAU
+// ----------------------------------------------------------------
+// Le sceau ne disait rien de la force de celui qu'il représente : Cendre
+// (150 ELO, qui joue presque au hasard) et l'Athanor (2300, recherche
+// complète) portaient deux figures de complexité équivalente, tirées du seul
+// hasard de leur identifiant. On ne pouvait donc pas VOIR à quoi on s'attaque.
+//
+// La complexité du dessin suit maintenant le RANG de l'adversaire dans le
+// roster : un anneau nu et un triangle en bas de l'échelle, une figure à huit
+// sommets, un double polygone, des satellites et une couronne de marques tout
+// en haut. Le hasard de l'identifiant décide encore de la FORME (rotation,
+// pas des cordes, position des marques) — deux adversaires de même force ne se
+// ressemblent pas — mais plus de la QUANTITÉ.
+//
+// Renvoie 0 (le plus faible) à 1 (le plus fort). Les instructeurs du tutoriel,
+// absents du roster, retombent sur 0 : ce sont bien les plus faibles du jeu.
+function advSealTier(opp){
+  const n=(typeof AI_OPPONENTS!=='undefined')?AI_OPPONENTS.length:1;
+  if(n<2)return 0;
+  const i=(typeof aiOpponentIndex==='function'&&AI_OPPONENTS.some(o=>o.id===opp.id))
+    ?aiOpponentIndex(opp.id):0;
+  return i/(n-1);
+}
+
+// Sceau d'alchimiste : des anneaux, une figure inscrite, des marques réparties
 // sur le pourtour. Même vocabulaire graphique que l'emblème du jeu et que les
 // logos de pièces (trait plein, deux couleurs, aucun dégradé).
 function advSealSVG(opp){
   const rnd=advHash(opp.id);
-  const sides=3+Math.floor(rnd()*4);          // triangle à hexagone
+  const t=advSealTier(opp);
+  const pt=(r,a)=>(50+r*Math.cos(a)).toFixed(1)+','+(50+r*Math.sin(a)).toFixed(1);
+  const line=(r1,r2,a1,a2)=>'<line x1="'+(50+r1*Math.cos(a1)).toFixed(1)+'" y1="'+(50+r1*Math.sin(a1)).toFixed(1)+
+    '" x2="'+(50+r2*Math.cos(a2===undefined?a1:a2)).toFixed(1)+'" y2="'+(50+r2*Math.sin(a2===undefined?a1:a2)).toFixed(1)+'"/>';
+  const poly=(sides,R,rot)=>{
+    const pts=[];
+    for(let i=0;i<sides;i++)pts.push(pt(R,rot+i*2*Math.PI/sides));
+    return pts.join(' ');
+  };
+
+  const sides=3+Math.round(t*5);              // triangle (150 ELO) → octogone (2300)
   const rot=rnd()*Math.PI*2;
   const R=30;
-  const pts=[];
-  for(let i=0;i<sides;i++){
-    const a=rot+i*2*Math.PI/sides;
-    pts.push((50+R*Math.cos(a)).toFixed(1)+','+(50+R*Math.sin(a)).toFixed(1));
-  }
-  // Cordes internes : elles relient un sommet sur deux, ce qui donne l'étoile
-  // quand le nombre de côtés est impair et un simple entrelacs sinon.
+
+  // Cordes internes : elles relient un sommet sur n, ce qui donne l'étoile
+  // quand le pas et le nombre de côtés sont premiers entre eux. Les deux plus
+  // faibles n'en ont aucune : leur figure reste nue.
   let chords='';
-  const step=1+Math.floor(rnd()*Math.max(1,Math.floor(sides/2)));
-  for(let i=0;i<sides;i++){
-    const a=rot+i*2*Math.PI/sides,b=rot+((i+step)%sides)*2*Math.PI/sides;
-    chords+='<line x1="'+(50+R*Math.cos(a)).toFixed(1)+'" y1="'+(50+R*Math.sin(a)).toFixed(1)+
-            '" x2="'+(50+R*Math.cos(b)).toFixed(1)+'" y2="'+(50+R*Math.sin(b)).toFixed(1)+'"/>';
+  if(t>=0.15){
+    const step=1+Math.floor(rnd()*Math.max(1,Math.floor(sides/2)));
+    for(let i=0;i<sides;i++)
+      chords+=line(R,R,rot+i*2*Math.PI/sides,rot+((i+step)%sides)*2*Math.PI/sides);
   }
+
+  // Second polygone, décalé d'un demi-pas : l'entrelacs n'apparaît qu'à
+  // partir du milieu de l'échelle.
+  const fig2=(t>=0.45)
+    ?'<polygon class="as-fig as-fig2" points="'+poly(sides,R*0.62,rot+Math.PI/sides)+'"/>'
+    :'';
+
+  // Marques de pourtour : de quatre traits épars à une vraie couronne.
   let marks='';
-  const nm=4+Math.floor(rnd()*5);
+  const nm=4+Math.round(t*14);
+  const mrot=rnd()*Math.PI*2;
   for(let i=0;i<nm;i++){
-    const a=rnd()*Math.PI*2,r1=38,r2=38+2+rnd()*5;
-    marks+='<line x1="'+(50+r1*Math.cos(a)).toFixed(1)+'" y1="'+(50+r1*Math.sin(a)).toFixed(1)+
-           '" x2="'+(50+r2*Math.cos(a)).toFixed(1)+'" y2="'+(50+r2*Math.sin(a)).toFixed(1)+'"/>';
+    const a=mrot+i*2*Math.PI/nm+(rnd()-0.5)*0.12;
+    marks+=line(38,40+rnd()*5,a);
   }
+
+  // Satellites : des sceaux en orbite, réservés au haut du classement.
+  let orbit='';
+  const no=Math.round(t*t*4);
+  for(let i=0;i<no;i++){
+    const a=rot+i*2*Math.PI/Math.max(1,no)+0.4;
+    orbit+='<circle class="as-orbit" cx="'+(50+42*Math.cos(a)).toFixed(1)+
+           '" cy="'+(50+42*Math.sin(a)).toFixed(1)+'" r="'+(2+t*1.6).toFixed(1)+'"/>';
+  }
+
   return '<svg class="adv-seal" viewBox="0 0 100 100" aria-hidden="true" focusable="false" '+
     'style="--seal:'+opp.accent+'">'+
     '<circle class="as-ring" cx="50" cy="50" r="46"/>'+
+    (t>=0.3?'<circle class="as-ring as-ring2" cx="50" cy="50" r="41"/>':'')+
     '<circle class="as-ring as-ring2" cx="50" cy="50" r="36"/>'+
-    '<polygon class="as-fig" points="'+pts.join(' ')+'"/>'+
+    '<polygon class="as-fig" points="'+poly(sides,R,rot)+'"/>'+
+    fig2+
     '<g class="as-chord">'+chords+'</g>'+
     '<g class="as-mark">'+marks+'</g>'+
-    '<circle class="as-core" cx="50" cy="50" r="5"/>'+
+    '<g class="as-mark">'+orbit+'</g>'+
+    (t>=0.75?'<circle class="as-ring" cx="50" cy="50" r="11"/>':'')+
+    '<circle class="as-core" cx="50" cy="50" r="'+(4+t*2).toFixed(1)+'"/>'+
     '</svg>';
 }
 
@@ -144,8 +197,7 @@ function renderAdversairesPage(){
   // de vous », et la colonne d'écarts ne dit plus rien d'utile. On désigne
   // donc toujours celui dont on est le plus proche — il y a toujours un
   // prochain adversaire à viser, quel que soit son niveau.
-  let advised=AI_OPPONENTS[0].id,bestGap=Infinity;
-  AI_OPPONENTS.forEach(o=>{const g=Math.abs(o.elo-myElo);if(g<bestGap){bestGap=g;advised=o.id;}});
+  const advised=advNextFoe().id;
   const sub=document.getElementById('adv-sub');
   if(sub)sub.textContent='Vous êtes à '+myElo+' ELO. Chaque duel compte au classement : '+
     'battre plus fort que soi rapporte, perdre contre plus faible coûte.';
@@ -197,26 +249,18 @@ function showAdversairesPage(){
 }
 
 // ----------------------------------------------------------------
-// RAPPEL SUR LE MENU PRINCIPAL
+// L'ADVERSAIRE LE PLUS PROCHE DE SON NIVEAU
 // ----------------------------------------------------------------
-// « Adversaires » n'est qu'un bouton parmi trois, alors que c'est par là que
-// passe toute la progression d'un joueur seul. Le menu nomme donc celui qui
-// est à sa mesure : il y a toujours un prochain adversaire à viser, et une
-// raison d'y aller.
+// Il était aussi annoncé sur le menu principal (« À votre mesure : Cendre ·
+// 150 ELO »), une ligne de plus sous les boutons alors que la galerie le dit
+// déjà, en le désignant « Conseillé ». La fonction reste : c'est elle que le
+// multijoueur utilise pour proposer un remplaçant quand aucun humain ne se
+// présente (voir #mp-fallback-btn dans js/multiplayer.js).
 function advNextFoe(){
   const myElo=(typeof vvLoadElo==='function')?vvLoadElo():0;
   let best=AI_OPPONENTS[0];
   AI_OPPONENTS.forEach(o=>{if(Math.abs(o.elo-myElo)<Math.abs(best.elo-myElo))best=o;});
   return best;
-}
-function renderNextFoeHint(){
-  const el=document.getElementById('jouer-foe-hint');
-  if(!el)return;
-  if(!CUR_ACC){el.innerHTML='';return;}
-  const o=advNextFoe();
-  const beaten=advDefeated(o.id);
-  el.innerHTML='À votre mesure : <b style="color:'+o.accent+'">'+escH(o.name)+'</b> · '+o.elo+' ELO'+
-    (beaten?' <span class="jfh-beaten">déjà vaincu</span>':'');
 }
 
 document.getElementById('adv-back')?.addEventListener('click',()=>{

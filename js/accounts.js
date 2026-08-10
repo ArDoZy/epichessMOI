@@ -40,15 +40,16 @@ function renderLoginPage(){
     lbl.style.display='none';
   }else{
     lbl.style.display='';
-    const gradColors=[['#7a7590','#555'],['#9a8c7a','#665'],['#cd7f32','#8b5e20'],['#8fa8b8','#607080'],['#5a3f8a','#3a1f60'],['#c0c0c0','#888'],['#c9a84c','#8a6020']];
     list.innerHTML=names.map(n=>{
       const elo=JSON.parse(localStorage.getItem(accKey(n,'elo'))||'0');
       const streak=JSON.parse(localStorage.getItem(accKey(n,'win_streak'))||'0');
-      const rank=vvGetRank(elo);const ri=vvGetRankIdx(elo);
-      const [c1,c2]=gradColors[ri]||gradColors[0];
+      const rank=vvGetRank(elo);
+      // Même dégradé que l'avatar de la barre de compte (updateCab) : une
+      // seule table de couleurs de rang, pas deux qui divergent.
+      const c1=RANK_AV_COLORS[vvGetRankIdx(elo)]||RANK_AV_COLORS[0];
       const streakTxt=streak>0?` · ${streak} victoire${streak>1?'s':''} d'affilée`:'';
       return `<div class="acc-item" data-n="${escH(n)}">
-        <div class="acc-av" style="background:linear-gradient(135deg,${c1},${c2})">${n.charAt(0).toUpperCase()}</div>
+        <div class="acc-av" style="background:linear-gradient(135deg,${c1},#333)">${n.charAt(0).toUpperCase()}</div>
         <div class="acc-info"><div class="acc-name">${escH(n)}</div><div class="acc-meta">${rank.name} · ${elo} ELO${streakTxt}</div></div>
         <button class="acc-del" title="Supprimer ce compte" onclick="deleteAcc('${escH(n)}',event)">${TRASH_ICON}</button>
       </div>`;
@@ -198,17 +199,41 @@ function loadAccountGlobals(){
 function saveArmies(){accSet('armies',savedArmies);}
 function saveAiArmies(){accSet('ai_armies',savedAiArmies);}
 
+// Couleur d'avatar/bandeau par rang, alignée sur RANKS (data-pieces.js).
+const RANK_AV_COLORS=['#7a7590','#9a8c7a','#cd7f32','#8fa8b8','#5a3f8a','#c0c0c0','#c9a84c'];
+
+// Le bandeau du haut ne porte plus que l'avatar et la déconnexion : le pseudo
+// et l'ELO ont déménagé sur le menu principal (renderMenuIdentity), là où on
+// les regarde vraiment.
 function updateCab(){
   if(!CUR_ACC)return;
-  const elo=accGet('elo',0);const rank=vvGetRank(elo);const ri=vvGetRankIdx(elo);
-  const cols=['#7a7590','#9a8c7a','#cd7f32','#8fa8b8','#5a3f8a','#c0c0c0','#c9a84c'];
-  document.getElementById('cab-av').textContent=CUR_ACC.charAt(0).toUpperCase();
-  document.getElementById('cab-av').style.background='linear-gradient(135deg,'+(cols[ri]||'#7c3aed')+',#333)';
-  document.getElementById('cab-name').textContent=CUR_ACC;
+  const av=document.getElementById('cab-av');
+  av.textContent=CUR_ACC.charAt(0).toUpperCase();
+  av.style.background='linear-gradient(135deg,'+(RANK_AV_COLORS[vvGetRankIdx(accGet('elo',0))]||'#7c3aed')+',#333)';
+  av.title=CUR_ACC;
+  renderMenuIdentity();
+}
+
+// ----------------------------------------------------------------
+// IDENTITÉ SUR LE MENU PRINCIPAL
+// ----------------------------------------------------------------
+// Pseudo en haut au milieu, rang et ELO juste dessous, et le bouton qui ouvre
+// la Voie des Victoires à côté du chiffre — c'est là qu'on va quand on se
+// demande ce que cet ELO débloque. Appelée à la connexion, à chaque
+// changement d'ELO (vvSaveElo) et à l'arrivée sur la face JOUER.
+function renderMenuIdentity(){
+  const nameEl=document.getElementById('jouer-name');
+  const rankEl=document.getElementById('jouer-rank');
+  const eloEl=document.getElementById('jouer-elo');
+  if(!nameEl||!rankEl||!eloEl)return;
+  if(!CUR_ACC){nameEl.textContent='';rankEl.textContent='';eloEl.textContent='';return;}
+  const elo=accGet('elo',0),rank=vvGetRank(elo);
+  nameEl.textContent=CUR_ACC;
+  rankEl.textContent=rank.name;
+  rankEl.style.color=rank.color;
   // L'ELO réel reste affiché en mode admin : il ne bouge plus d'un point
   // là-dedans, il n'y a donc rien à masquer. Le suffixe rappelle simplement
   // que les parties en cours ne sont pas classées.
-  const eloEl=document.getElementById('cab-elo');
   eloEl.textContent=elo+' ELO'+(ADMIN_MODE?' · ADMIN':'');
   eloEl.classList.toggle('admin-elo',!!ADMIN_MODE);
 }

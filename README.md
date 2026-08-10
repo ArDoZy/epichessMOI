@@ -30,13 +30,16 @@ epic-chess/
 ├── sitemap.xml              # Une seule URL (le jeu est une SPA)
 ├── llms.txt                 # Résumé factuel du jeu pour les moteurs IA
 ├── site.webmanifest         # Métadonnées d'installation (icône, couleurs)
-├── favicon.svg              # Icône d'onglet (fiole d'alchimiste)
-├── apple-touch-icon.png     # 180×180, écran d'accueil iOS
-├── og-image.png             # 1200×630, aperçu de partage (Discord, X...)
+├── favicon.svg              # Icône d'onglet et d'écran d'accueil : la
+│                            #  pièce en fusion dans le ballon couronné
 ├── assets/
 │   ├── lab-bg.jpg           # FACULTATIF : fond d'atelier du menu principal
 │   ├── adversaires/         # FACULTATIF : <id>.png, un portrait par
 │   │                        #  adversaire. Absent = sceau SVG procédural.
+│   ├── backgrounds/
+│   │   └── duel-wait.svg    # Toile de l'écran d'attente d'un duel en ligne
+│   │                        #  (générée par tools/gen-duel-bg.js). Déposer un
+│   │                        #  duel-wait.png à côté le remplace, sans code.
 │   └── boards/              # Textures d'échiquier en SVG procédural
 │       ├── bois.svg          # (générées par tools/gen-boards.js, ne pas
 │       ├── pierre.svg        #  éditer à la main : relancer le script)
@@ -51,7 +54,7 @@ epic-chess/
 │                                   # Supabase gratuit de se mettre en veille
 ├── tools/
 │   ├── gen-boards.js        # Générateur des textures d'échiquier (node)
-│   ├── gen-social.js        # Régénère og-image.png et apple-touch-icon.png
+│   ├── gen-duel-bg.js       # Générateur de la toile d'attente (node)
 │   ├── ai-bench.js          # Autopartie entre adversaires : vérifie que
 │   │                        #  l'échelle de force tient (voir plus bas)
 │   └── smoke-test.js        # `npm test` : rejoue tout le parcours du jeu
@@ -64,7 +67,8 @@ epic-chess/
     ├── piece-art.js         # Logos de pièces dessinés en SVG (remplace les emojis)
     ├── main.js               # État global partagé + helpers (showPage, showNotif...)
     ├── cube-nav.js           # Navigation principale par cube 3D (CSS). Déplace
-    │                          # armées/partie/réserve/voie dans les faces.
+    │                          # armées/partie/réserve dans les faces (la face
+    │                          # de gauche est libre, en attente de contenu).
     ├── accounts.js           # Comptes locaux (localStorage), connexion
     ├── economy.js            # Possession des pièces, mise en jeu, coffres, séries
     ├── ai-level-modal.js     # Réduit à selectedAILevel/selectedTimeControl
@@ -409,12 +413,15 @@ Le domaine `https://epichess.app/` est codé en dur dans le `canonical`, les
 balises Open Graph, le JSON-LD, `robots.txt` et `sitemap.xml`. Un
 changement de domaine impose donc un `grep epichess.app` global.
 
-`og-image.png` (1200×630) et `apple-touch-icon.png` (180×180) sont générés
-à partir de rendus HTML, aux couleurs du thème. Piège si vous les
-régénérez au navigateur headless : **une fenêtre de moins de ~500 px est
-silencieusement élargie**, et la capture ressort tronquée. Rendre en grand
-puis réduire via le facteur d'échelle (par exemple une fenêtre de 360 px
-avec un facteur 0,5 pour obtenir 180 px).
+Il n'y a **aucune image de partage** (`og:image`) ni d'`apple-touch-icon` :
+c'étaient deux rendus figés à régénérer à chaque retouche de l'identité, pour
+une vignette que le jeu n'utilisait nulle part. `favicon.svg` sert seul
+d'icône d'onglet, d'écran d'accueil et de manifeste, et la carte Twitter est
+en `summary` (la variante `summary_large_image` exige une image).
+
+Le tracé de `favicon.svg` est **le même** que celui de `EMBLEM_SVG`
+(`js/main.js`), à l'échelle 0,64 près : retoucher l'un sans l'autre fait
+diverger l'onglet et l'écran d'accueil.
 
 ## Ordre de chargement (`index.html`, en bas de page)
 
@@ -438,7 +445,8 @@ venir juste après `data-pieces.js` : à peu près tous les rendus l'utilisent.
 `cube-nav.js` est chargé juste après `main.js` : il étend `showPage()` (la
 navigation devient un cube 3D en CSS) et déplace à l'exécution les pages
 `#page-armies` / `#page-game` dans les faces du cube (face de droite = "Mes
-armées", face du haut = la partie). Il ne connaît QUE la face courante, les
+armées", face du haut = la partie, face de gauche **libre**). Il ne connaît
+QUE la face courante, les
 rotations et le verrouillage, aucune logique de jeu. Le builder (composition
 d'armée, `#page-builder`) n'est PAS une face du cube : c'est une page
 secondaire (overlay) ouverte depuis "Mes armées" via "Nouvelle armée" ou
@@ -501,6 +509,7 @@ mais dans une version que Playwright refuse, le script le retrouve tout seul
 | Changer ce que lance le bouton COMBAT | `js/cube-nav.js` (`onCombat`/`onVsIa`) + `js/combat-intro.js` |
 | Modifier la galerie des adversaires (cartes, sceaux, palmarès) | `js/adversaires.js` + section `[ADVERSAIRES]` de `css/style.css` |
 | Changer le fond du menu principal | `assets/lab-bg.jpg` + section `[LAB-BG]` de `css/style.css` |
+| Modifier le bloc pseudo/rang/ELO du menu principal | `renderMenuIdentity()` dans `js/accounts.js` + `[MENU]` de `css/style.css` |
 | Régler la vitesse de rotation du cube | `js/cube-nav.js` (`ROTATE_MS`) **et** la transition de `#cube` dans `css/style.css` |
 | Modifier le mode tournoi (adversaires, nombre de rounds) | `TOURNOI_OPPONENT_IDS` dans `js/tournoi.js` |
 | Modifier le système de comptes/sauvegarde | `js/accounts.js` |
@@ -509,7 +518,10 @@ mais dans une version que Playwright refuse, le script le retrouve tout seul
 | Changer les modes qui rapportent de l'ELO | `js/voie.js` (`vvNoEloReason`) |
 | Changer le plafond de coffre par adversaire | `tier` dans `AI_OPPONENTS` + `economyChestCap` dans `js/economy.js` |
 | Changer ce que fait le mode admin | `js/settings-admin.js` + `renderAdminChests()` dans `js/economy-ui.js` |
-| Ajouter une adresse au jeu (comme `/combat` ou `/test`) | `vercel.json` (`rewrites`) + `setAppPath`/`appHomePath` dans `js/main.js` |
+| Ajouter une adresse au jeu (comme `/combat`) | `vercel.json` (`rewrites`) + `appPath`/`setAppPath`/`appHomePath` dans `js/main.js` |
+| Changer l'adresse du mode admin | `ADMIN_QUERY` + `pathHasAdmin()` dans `js/main.js` (paramètre `?test`, pas un chemin : un chemin inexistant dépend d'une réécriture d'hébergeur et répondait 404) |
+| Changer ce que contient un coffre | `CHESTS`/`CHEST_PEARLS` dans `js/data-pieces.js` + `chestRoll`/`chestLuckyChance` dans `js/economy.js` |
+| Changer le fond de l'écran d'attente en ligne | déposer `assets/backgrounds/duel-wait.png` (rien à coder), ou retoucher `tools/gen-duel-bg.js` et le relancer |
 | Changer un message de refus / d'information | l'appel `showNotif()` concerné ; l'apparence est dans `[NOTIF]` de `css/style.css` |
 | Modifier l'emblème (logo) du jeu | `EMBLEM_SVG` dans `js/main.js` + `favicon.svg` (même tracé) + `[EMBLEM]` de `css/style.css` |
 | Changer les règles d'appariement en ligne | `mpEloWindow` / `mpLobbyTick` dans `js/multiplayer.js` |

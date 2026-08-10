@@ -22,24 +22,25 @@
 <meta name="author" content="Epic Chess"/>
 <meta name="theme-color" content="#0e1216"/>
 
-<!-- Open Graph / Twitter : aperçus de partage (Discord, X, WhatsApp, iMessage) -->
+<!-- Open Graph / Twitter : aperçus de partage (Discord, X, WhatsApp, iMessage).
+     SANS IMAGE : og-image.png et apple-touch-icon.png étaient deux rendus
+     figés à régénérer à chaque retouche de l'identité, pour une vignette que
+     le jeu n'utilise nulle part ailleurs. La carte « summary » (et non
+     « summary_large_image », qui exige une image) affiche titre et
+     description seuls, ce qui est exact plutôt que cassé. -->
 <meta property="og:site_name" content="Epic Chess"/>
 <meta property="og:title" content="Epic Chess, variante d'échecs alchimique"/>
 <meta property="og:description" content="Un savant fou, dans un laboratoire d'échecs oublié, a fait naître des créatures de l'alchimie. Composez votre armée et affrontez d'autres esprits dérangés."/>
 <meta property="og:type" content="website"/>
 <meta property="og:url" content="https://epichess.app/"/>
 <meta property="og:locale" content="fr_FR"/>
-<meta property="og:image" content="https://epichess.app/og-image.png"/>
-<meta property="og:image:width" content="1200"/>
-<meta property="og:image:height" content="630"/>
-<meta property="og:image:alt" content="Epic Chess, un échiquier alchimique dans un laboratoire abandonné"/>
-<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:card" content="summary"/>
 <meta name="twitter:title" content="Epic Chess, variante d'échecs alchimique"/>
 <meta name="twitter:description" content="Un savant fou, dans un laboratoire d'échecs oublié, a fait naître des créatures de l'alchimie. Composez votre armée et affrontez d'autres esprits dérangés."/>
-<meta name="twitter:image" content="https://epichess.app/og-image.png"/>
 
+<!-- Une seule icône, vectorielle : elle sert d'onglet, d'icône d'écran
+     d'accueil et de vignette de manifeste (voir site.webmanifest). -->
 <link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
-<link rel="apple-touch-icon" href="/apple-touch-icon.png"/>
 <link rel="manifest" href="/site.webmanifest"/>
 
 <!-- preconnect : les polices viennent d'un autre domaine ; ouvrir la
@@ -65,7 +66,6 @@
       "url": "https://epichess.app/",
       "description": "Epic Chess est une variante d'échecs gratuite jouable dans le navigateur. Dans un laboratoire d'alchimie abandonné, un savant fou a mêlé les pièces d'un jeu d'échecs à des créatures alchimiques. Avant chaque partie, le joueur compose son armée de 5 pièces (1 Monarque, 1 Général et 3 créatures) dans une limite de 24 points, puis affronte un autre joueur en ligne ou l'un des douze adversaires du laboratoire, une galerie d'IA nommées allant de 150 à 2300 ELO, sur un échiquier classique 8×8. Tous les duels sont classés. Les pièces se possèdent en exemplaires et se risquent à chaque partie.",
       "inLanguage": "fr",
-      "image": "https://epichess.app/og-image.png",
       "genre": ["Jeu de stratégie", "Variante d'échecs", "Jeu de réflexion"],
       "gamePlatform": "Navigateur web",
       "playMode": ["SinglePlayer", "MultiPlayer"],
@@ -128,11 +128,16 @@
   </div>
 </div>
 
-<!-- ACCOUNT BAR -->
+<!-- ACCOUNT BAR
+     Le pseudo et l'ELO ont quitté ce bandeau : ils étaient rangés dans la
+     décoration de l'interface alors que ce sont les deux chiffres qu'on vient
+     regarder. Ils sont maintenant en haut du MENU PRINCIPAL, à la place du
+     titre du jeu (voir .jouer-player plus bas). Il ne reste ici que
+     l'avatar — qui dit sur quel compte on est, y compris depuis une page
+     secondaire — et la déconnexion. -->
 <div class="cab" id="cab" style="display:none">
   <div class="cab-av" id="cab-av"></div>
-  <span style="flex:1" id="cab-name"></span>
-  <span id="cab-elo"></span>
+  <span style="flex:1"></span>
   <button class="cab-sw" onclick="switchAccount()">Déconnexion</button>
 </div>
 
@@ -211,13 +216,13 @@
     <!-- ÉCRAN DE RECHERCHE : il ne disait rien d'autre que « ⚔ ». On ne
          savait ni depuis combien de temps on cherchait, ni s'il y avait
          seulement quelqu'un d'autre en ligne, ni pourquoi ça durait. Les
-         trois chiffres et la fenêtre de niveau sont remplis en continu par
-         mpRenderSearch() dans js/multiplayer.js. -->
+         deux chiffres et la fenêtre de niveau sont remplis en continu par
+         mpRenderSearch() dans js/multiplayer.js ; le CHRONOMÈTRE, lui, a
+         quitté cette grille pour le bas de l'écran (voir #mp-wait-clock). -->
     <div id="mp-screen-quick" style="display:none">
       <div style="font-family:'Cinzel',serif;font-size:15px;margin-bottom:12px">Recherche d'un adversaire</div>
       <div class="mp-radar"><span></span><span></span><span></span></div>
       <div class="mp-search-grid">
-        <div class="mp-search-cell"><div class="mp-search-lbl">Recherche</div><div class="mp-search-val" id="mp-search-elapsed">0:00</div></div>
         <div class="mp-search-cell"><div class="mp-search-lbl">En attente</div><div class="mp-search-val" id="mp-search-peers">1</div></div>
         <div class="mp-search-cell"><div class="mp-search-lbl">Niveau visé</div><div class="mp-search-val" id="mp-search-window">±120</div></div>
       </div>
@@ -241,6 +246,15 @@
     <div class="mp-status" id="mp-status"></div>
     <button class="btn btn-ghost" id="mp-cancel" style="margin-top:14px">Annuler</button>
   </div>
+
+  <!-- CHRONOMÈTRE D'ATTENTE : hors de la boîte, épinglé en bas au centre.
+       Attendre un adversaire est le seul moment du jeu où l'on ne fait rien :
+       la fenêtre s'efface alors derrière une toile plein écran (voir
+       [MP-WAIT] dans css/style.css) et il ne reste que ce compteur, qui dit
+       que quelque chose tourne encore. Piloté par mpWaitTick()
+       (js/multiplayer.js), pour la recherche rapide comme pour l'attente
+       d'un ami sur une partie privée. -->
+  <div class="mp-wait-clock" id="mp-wait-clock"><span id="mp-wait-time">0:00</span></div>
 </div>
 
 <!-- CONFIRM MODAL : remplace window.confirm() par une boîte de dialogue
@@ -270,8 +284,19 @@
       <div class="face-viewport">
         <div class="jouer-menu">
           <div class="ambient-bubbles"><span></span><span></span><span></span><span></span><span></span><span></span></div>
-          <div class="jouer-emblem"></div>
-          <div class="jouer-logo">EPIC CHESS</div>
+          <!-- IDENTITÉ DU JOUEUR, en haut au milieu, à la place du titre du
+               jeu et de l'emblème : on sait déjà où l'on est, ce qu'on ne
+               savait pas c'est où l'on en est. Rempli par renderMenuIdentity()
+               (js/accounts.js). Le bouton « Voie » ouvre la Voie des
+               Victoires, qui n'est plus une face du cube. -->
+          <div class="jouer-player">
+            <div class="jouer-name" id="jouer-name"></div>
+            <div class="jouer-elo-row">
+              <span class="jouer-rank" id="jouer-rank"></span>
+              <span class="jouer-elo" id="jouer-elo"></span>
+              <button class="btn btn-ghost jouer-voie-btn" id="jouer-voie">Voie</button>
+            </div>
+          </div>
           <!-- Série de victoires en cours : c'est elle qui détermine la rareté
                du prochain coffre, elle doit être visible avant de lancer. -->
           <div id="jouer-streak"></div>
@@ -280,15 +305,10 @@
                contre l'IA est une action secondaire, pas l'inverse. -->
           <div class="jouer-actions">
             <button class="jouer-btn" id="cube-jouer-btn"><span>COMBAT</span></button>
-            <div class="jouer-btn-sub">Affrontez un autre joueur en ligne</div>
             <div class="jouer-second">
               <button class="btn btn-ghost" id="b-vs-ia">Adversaires</button>
               <button class="btn btn-ghost jouer-tournoi-btn" id="b-tournoi">Tournoi</button>
             </div>
-            <!-- Prochain adversaire conseillé, rempli par renderNextFoeHint()
-                 (js/adversaires.js) : sans lui, « Adversaires » n'est qu'un
-                 bouton, alors que c'est là qu'est la progression solo. -->
-            <div class="jouer-foe-hint" id="jouer-foe-hint"></div>
           </div>
         </div>
       </div>
@@ -305,12 +325,13 @@
     <div class="cube-face" data-face="reserve">
       <div class="face-viewport" id="face-viewport-reserve"></div>
     </div>
-    <!-- Face 4 (gauche) : la Voie des Victoires (page-voie déplacée ici).
-         Remplace l'ancien placeholder « Missions » : la Voie était une page
-         cachée derrière un bouton de "Mes armées", elle est maintenant une
-         destination à part entière. -->
-    <div class="cube-face" data-face="voie">
-      <div class="face-viewport" id="face-viewport-voie"></div>
+    <!-- Face 4 (gauche) : LIBRE. Elle a porté la Voie des Victoires, qui est
+         repartie en page à part entière (bouton « Voie » du menu principal,
+         à côté de l'ELO). La face reste dans le cube — le cycle de rotation
+         compte quatre côtés — mais elle est volontairement vide en attendant
+         ce qu'on y mettra. -->
+    <div class="cube-face" data-face="libre">
+      <div class="face-viewport" id="face-viewport-libre"></div>
     </div>
     <!-- Face supérieure : la partie (page-game déplacée ici) -->
     <div class="cube-face" data-face="game">
@@ -416,7 +437,10 @@
         <div class="rs-sec-title">Récompenses illimitées (mode admin)</div>
         <div id="rs-admin-chests"></div>
       </div>
-      <div class="rs-sec"><div class="rs-sec-title">Coffres à ouvrir</div><div id="rs-chests"></div></div>
+      <!-- Il n'y a plus de section « Coffres à ouvrir » : un coffre gagné ou
+           acheté s'ouvre IMMÉDIATEMENT (chestOpenNow, js/economy-ui.js).
+           La file d'attente n'ajoutait qu'un aller-retour entre la fin de
+           partie et la Réserve avant de voir sa récompense. -->
       <!-- BOUTIQUE : les mêmes coffres, achetés avec des perles
            (js/economy-ui.js::renderPearlShop). -->
       <div class="rs-sec"><div class="rs-sec-title">Boutique · coffres contre perles</div><div id="rs-shop"></div></div>
@@ -444,10 +468,11 @@
   </div>
 </div>
 
-<!-- PAGE VOIE : déplacée dans la face "voie" du cube au démarrage. -->
+<!-- PAGE VOIE : page à part entière, ouverte par le bouton « Voie » posé à
+     côté de l'ELO sur le menu principal. -->
 <div id="page-voie" class="page">
 <div class="voie-inner">
-  <div class="voie-hdr"><div class="voie-title">Voie des Victoires</div></div>
+  <div class="voie-hdr"><div class="voie-title">Voie des Victoires</div><button class="btn btn-ghost" id="voie-back">← Retour</button></div>
   <div class="voie-elo-banner" id="voie-elo-banner"></div>
   <div class="voie-route" id="voie-route"></div>
   <div class="voie-history" id="voie-history"></div>
@@ -719,26 +744,23 @@
     <button class="sp-toggle on" id="sp-theme"></button>
   </div>
   <hr class="sp-divider">
+  <!-- UN SEUL curseur de son. Deux réglages séparés obligeaient à couper le
+       jeu en deux fois, et « musique à 0 / bruitages à 1 » n'est pas une
+       demande qu'on nous a jamais faite : celui-ci commande les deux, la
+       musique restant simplement plus discrète que les bruitages (voir
+       MUSIC_RATIO dans js/settings-admin.js). -->
   <div class="sp-row">
     <span class="sp-label">Bruitages</span>
     <input type="range" class="sp-slider" id="sp-sfx-vol" min="0" max="1" step="0.05" value="1">
   </div>
-  <div class="sp-row">
-    <span class="sp-label">Musique</span>
-    <input type="range" class="sp-slider" id="sp-music-vol" min="0" max="1" step="0.05" value="0.5">
-  </div>
-  <hr class="sp-divider">
-  <div class="sp-row">
-    <span class="sp-label">Tutoriel</span>
-    <button class="btn btn-ghost" id="sp-tuto" style="font-size:10px;padding:5px 12px">Revoir</button>
-  </div>
   <hr class="sp-divider">
   <!-- MODE ADMIN : ce n'est plus un interrupteur, c'est une adresse. Le
-       bouton emmène sur /test (mêmes fonctionnalités, coffres illimités,
-       parties non classées) et en ramène. Voir js/settings-admin.js. -->
+       bouton emmène sur /?test (mêmes fonctionnalités, coffres illimités,
+       parties non classées) et en ramène. Le libellé est posé par
+       js/settings-admin.js selon le côté où l'on se trouve. -->
   <div class="sp-row">
     <span class="sp-label">Mode admin</span>
-    <button class="btn btn-ghost" id="sp-admin" style="font-size:10px;padding:5px 12px">Ouvrir /test</button>
+    <button class="btn btn-ghost" id="sp-admin" style="font-size:10px;padding:5px 12px">Ouvrir le mode test</button>
   </div>
   <div class="sp-admin-note" id="sp-admin-note">Coffres illimités, parties non classées.</div>
 </div>

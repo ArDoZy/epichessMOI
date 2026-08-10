@@ -372,14 +372,14 @@ function triggerTournoiEndOfGame(result){
   tournamentState.rounds[roundIdx].boardHistory=boardSnapshots;
   saveTournoiProgress();
 
-  const settlement=(typeof economySettle==='function')?economySettle(result,GS):null;
-  if(typeof renderStreakBadge==='function')renderStreakBadge();
-
   setTimeout(()=>playSound(result==='win'?'win':result==='loss'?'loss':'draw'),200);
 
+  // Même enchaînement qu'une partie normale (js/economy-ui.js) : règlement de
+  // la Réserve, cinématique d'issue, ouverture du coffre gagné, puis verdict.
   const showOverlay=()=>showRoundOverlay(roundIdx,result,oldElo,newElo,delta,noEloReason);
-  if(typeof playOutcomeCinematic==='function')playOutcomeCinematic(result,settlement,showOverlay);
+  if(typeof settleAndCelebrate==='function')settleAndCelebrate(result,GS,showOverlay);
   else setTimeout(showOverlay,400);
+  if(typeof renderStreakBadge==='function')renderStreakBadge();
 }
 
 // ----------------------------------------------------------------

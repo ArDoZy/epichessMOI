@@ -220,7 +220,9 @@ function economySettle(result,gs){
     chest=chestForStreak(streak);
     const cap=economyChestCap(gs);
     if(cap!==null&&chest.tier>cap)chest=CHESTS[cap];
-    chestGrant(chest.id);
+    // Le coffre n'est pas crédité ici : c'est settleAndCelebrate()
+    // (js/economy-ui.js) qui l'ouvre, une fois la cinématique d'issue passée
+    // et avant l'écran de résultat.
   }else if(result==='loss'){
     streak=0;
   }
@@ -232,23 +234,13 @@ function economySettle(result,gs){
 // ----------------------------------------------------------------
 // COFFRES
 // ----------------------------------------------------------------
-// Les coffres gagnés sont mis en attente : le joueur les ouvre quand il veut
-// depuis la Réserve, ce qui permet une vraie petite cérémonie d'ouverture
-// plutôt qu'une ligne de texte au milieu du modal de fin de partie.
-function chestsPending(){return accGet('chests_pending',[])||[];}
-function chestGrant(chestId){
-  const list=chestsPending();
-  list.push({id:chestId,at:Date.now()});
-  accSet('chests_pending',list.slice(-60));
-}
-function chestConsume(index){
-  const list=chestsPending();
-  if(index<0||index>=list.length)return null;
-  const [c]=list.splice(index,1);
-  accSet('chests_pending',list);
-  return c;
-}
-
+// IL N'Y A PLUS DE FILE D'ATTENTE. Un coffre gagné — ou acheté — s'ouvre
+// SUR-LE-CHAMP (chestOpenNow, js/economy-ui.js). L'ancienne file mettait un
+// aller-retour par la Réserve entre la victoire et sa récompense, et laissait
+// s'accumuler des piles de « ×14 Coffre Pion » qu'il fallait cliquer une par
+// une. Le seul argument en sa faveur — « ouvrir quand on veut » — ne pesait
+// pas lourd contre ça.
+//
 // Poids de tirage : l'inverse de la valeur de la pièce, tempéré par le biais
 // du coffre. Un Coffre Pion (bias 0.55) tire presque toujours des pièces à
 // 2-3 points ; un Coffre Roi (bias 3.2) sort régulièrement du Grand Maître.
@@ -288,15 +280,34 @@ function pearlSpend(n){
   pearlAdd(-n);
   return true;
 }
-// Achat d'un coffre à la boutique : le coffre rejoint la file d'attente de la
-// Réserve, il n'est pas ouvert d'office. On l'ouvre quand on veut, avec la
-// même cérémonie qu'un coffre gagné en jouant.
+// Achat d'un coffre à la boutique : on paie, il s'ouvre. Même cérémonie qu'un
+// coffre gagné en jouant (l'ouverture elle-même est dans economy-ui.js, qui
+// est le seul à connaître l'interface).
 function pearlBuyChest(chestId){
-  const chest=chestById(chestId);
-  const price=chestPearlPrice(chest.id);
-  if(!pearlSpend(price))return false;
-  chestGrant(chest.id);
-  return true;
+  return pearlSpend(chestPearlPrice(chestById(chestId).id));
+}
+
+// ----------------------------------------------------------------
+// CE QU'IL Y A DANS UN COFFRE
+// ----------------------------------------------------------------
+// Deux coffres du même palier ne doivent pas donner deux fois la même chose :
+// le NOMBRE de lots varie de ±1 autour de la valeur du coffre, la quantité de
+// chaque lot tire dans sa fourchette, et les perles aussi.
+function chestRollCount(chest){return Math.max(1,chest.rolls+randInt(-1,1));}
+function chestRollRange(chest){return[Math.max(1,chest.rolls-1),chest.rolls+1];}
+
+// Probabilité qu'un lot donné soit un BON lot : double quantité, et tirage
+// nettement plus favorable aux pièces chères.
+//
+// Elle se DÉDUIT de la probabilité de pièce inédite, et c'est tout l'intérêt :
+// la pièce inédite et les bons lots sont les deux façons dont un coffre peut
+// être bon, et la seconde compense la première. En abaissant newChance à 1 %
+// pour le Coffre Pion, on a mécaniquement relevé sa proportion de bons lots ;
+// si un jour newChance remonte, elle redescendra toute seule.
+// Le terme de palier garde l'échelle croissante : un Coffre Roi reste
+// meilleur qu'un Coffre Pion sur les deux tableaux à la fois.
+function chestLuckyChance(chest){
+  return Math.max(0.1,Math.min(0.75,0.22+chest.tier*0.09-chest.newChance*0.5));
 }
 
 // Tire le contenu d'un coffre SANS l'appliquer : l'animation d'ouverture
@@ -308,19 +319,27 @@ function chestRoll(chestId){
   const chest=chestById(chestId);
   const owned=invOwnedIds();
   const locked=PIECES.map(p=>p.id).filter(id=>isOwnablePiece(id)&&!(VV_UNLOCKED&&VV_UNLOCKED.has(id)));
+  const lucky=chestLuckyChance(chest);
   const lots=[];
-  const pr=chestPearlRange(chest.id);
-  lots.push({pearls:randInt(pr[0],pr[1])});
 
+  const pr=chestPearlRange(chest.id);
+  const pearlLucky=Math.random()<lucky;
+  lots.push({pearls:Math.round(randInt(pr[0],pr[1])*(pearlLucky?1.8:1)),lucky:pearlLucky});
+
+  // La pièce inédite est rare (1 % à 25 %) : quand elle tombe, elle tombe en
+  // nombre, sinon on débloquerait une créature sans pouvoir l'aligner.
   if(locked.length&&Math.random()<chest.newChance){
     const pick=weightedPick(locked,chest.bias);
-    if(pick)lots.push({pieceId:pick,qty:Math.max(2,Math.round(chest.qty[0])),isNew:true});
+    if(pick)lots.push({pieceId:pick,qty:Math.max(4,chest.qty[1]),isNew:true});
   }
   const pool=owned.length?owned:PIECES.filter(p=>p.value<=3).map(p=>p.id);
-  for(let i=0;i<chest.rolls;i++){
-    const pick=weightedPick(pool,chest.bias);
+  const rolls=chestRollCount(chest);
+  for(let i=0;i<rolls;i++){
+    const good=Math.random()<lucky;
+    const pick=weightedPick(pool,chest.bias*(good?2.2:1));
     if(!pick)continue;
-    lots.push({pieceId:pick,qty:randInt(chest.qty[0],chest.qty[1]),isNew:false});
+    const qty=randInt(chest.qty[0],chest.qty[1]);
+    lots.push({pieceId:pick,qty:good?qty*2:qty,isNew:false,lucky:good});
   }
   // Fusion des doublons : deux lots de Méduse s'affichent en un seul. Le lot
   // de perles n'a pas de pieceId, il traverse sans être fusionné.
@@ -328,7 +347,7 @@ function chestRoll(chestId){
   lots.forEach(l=>{
     if(!l.pieceId){merged.push({...l});return;}
     const ex=merged.find(m=>m.pieceId===l.pieceId);
-    if(ex){ex.qty+=l.qty;ex.isNew=ex.isNew||l.isNew;}else merged.push({...l});
+    if(ex){ex.qty+=l.qty;ex.isNew=ex.isNew||l.isNew;ex.lucky=ex.lucky||l.lucky;}else merged.push({...l});
   });
   return merged;
 }

@@ -97,8 +97,9 @@ function renderVoiePage(){
   const playableMilestones=UNLOCK_MILESTONES.filter(u=>u.pieceId&&!u.coffre);
   const unlockedCount=playableMilestones.filter(u=>VV_UNLOCKED.has(u.pieceId)).length;
   const progress=nextRank?Math.min(100,Math.round((elo-rank.min)/(nextRank.min-rank.min)*100)):100;
+  const history=vvLoadHistory();
   const banner=document.getElementById('voie-elo-banner');
-  banner.innerHTML='<div class="veb-info"><div class="veb-rank-name" style="color:'+rank.color+'">'+rank.name+'</div><div class="veb-elo">'+elo+' <span>ELO</span></div><div class="veb-progress-wrap"><div class="veb-progress-bar" style="width:'+progress+'%;background:linear-gradient(90deg,'+rank.color+',var(--gold))"></div></div><div class="veb-progress-label">'+(nextRank?'Vers '+nextRank.name+' ('+nextRank.min+' ELO) · '+progress+'%':'Rang maximum atteint !')+'</div></div><div class="veb-stats"><div class="veb-stat"><div class="veb-stat-label">Parties</div><div class="veb-stat-val" style="color:var(--text)">'+vvLoadHistory().length+'</div></div><div class="veb-stat"><div class="veb-stat-label">Victoires</div><div class="veb-stat-val" style="color:var(--success)">'+vvLoadHistory().filter(h=>h.result==='win').length+'</div></div><div class="veb-stat"><div class="veb-stat-label">Pièces</div><div class="veb-stat-val" style="color:var(--gold)">'+unlockedCount+'/'+playableMilestones.length+'</div></div></div>';
+  banner.innerHTML='<div class="veb-info"><div class="veb-rank-name" style="color:'+rank.color+'">'+rank.name+'</div><div class="veb-elo">'+elo+' <span>ELO</span></div><div class="veb-progress-wrap"><div class="veb-progress-bar" style="width:'+progress+'%;background:linear-gradient(90deg,'+rank.color+',var(--gold))"></div></div><div class="veb-progress-label">'+(nextRank?'Vers '+nextRank.name+' ('+nextRank.min+' ELO) · '+progress+'%':'Rang maximum atteint !')+'</div></div><div class="veb-stats"><div class="veb-stat"><div class="veb-stat-label">Parties</div><div class="veb-stat-val" style="color:var(--text)">'+history.length+'</div></div><div class="veb-stat"><div class="veb-stat-label">Victoires</div><div class="veb-stat-val" style="color:var(--success)">'+history.filter(h=>h.result==='win').length+'</div></div><div class="veb-stat"><div class="veb-stat-label">Pièces</div><div class="veb-stat-val" style="color:var(--gold)">'+unlockedCount+'/'+playableMilestones.length+'</div></div></div>';
   const route=document.getElementById('voie-route');let html='';
   let lastRankId=null;
   UNLOCK_MILESTONES.forEach((milestone,idx)=>{
@@ -115,10 +116,10 @@ function renderVoiePage(){
     html+='<div class="voie-milestone"><div class="'+cardCls+'"><span class="vm-piece-emoji">'+pieceIcon(pd.id,'n')+'</span><div class="vm-piece-name">'+pd.name+bigBadge+'</div><div class="vm-piece-class pc-class '+pd.class+'" style="color:'+cc+'">'+pd.class+' · '+pd.value+' pts</div>'+(pd.ability?'<div class="vm-piece-ability">'+(pd.ability.length>80?pd.ability.slice(0,80)+'…':pd.ability)+'</div>':'')+'</div><div class="vm-center"><div class="'+dotCls+'"></div><div class="vm-elo-badge">'+(milestone.eloRequired===0?'Départ':milestone.eloRequired+' ELO')+'</div></div><div style="flex:1;max-width:calc(50% - 40px)"></div></div>';
   });
   route.innerHTML=html;
-  const history=vvLoadHistory().slice().reverse();const histDiv=document.getElementById('voie-history');
+  const histDiv=document.getElementById('voie-history');
   if(!history.length){histDiv.innerHTML='';return;}
   let hhtml='<div class="vh-title">Dernières parties</div>';
-  history.forEach(h=>{
+  history.slice().reverse().forEach(h=>{
     const rLbl=h.result==='win'?'Victoire':h.result==='loss'?'Défaite':'Nulle';
     const rCls=h.result==='win'?'win':h.result==='loss'?'loss':'draw';
     const dCls=h.delta>0?'pos':h.delta<0?'neg':'zero';
@@ -139,13 +140,20 @@ function renderVoiePage(){
   histDiv.innerHTML=hhtml;
 }
 
-// La Voie est devenue une face du cube (js/cube-nav.js) : elle n'a plus ni
-// bouton d'entrée dans « Mes armées », ni bouton de retour.
+// La Voie a été une face du cube ; c'est de nouveau une page à part entière,
+// ouverte par le bouton « Voie » posé à côté de l'ELO sur le menu principal
+// (js/cube-nav.js). D'où le retour explicite ci-dessous : une page en
+// surimpression n'a pas de flèche de cube pour en sortir.
+document.getElementById('voie-back')?.addEventListener('click',()=>{
+  if(typeof goToMainMenu==='function')goToMainMenu();else showPage('page-armies');
+});
+
 // ----------------------------------------------------------------
 // REMONTÉE DE LA VOIE
 // ----------------------------------------------------------------
-// La Voie est embarquée dans une face du cube : c'est le conteneur de la
-// face qui défile, pas le document. Remonter window ne faisait donc rien.
+// C'est le conteneur de la page qui défile (.page.active est en
+// position:fixed avec son propre overflow), pas le document. Remonter window
+// ne faisait donc rien.
 //
 // Le bouton téléportait en haut de page, ce qui faisait perdre le fil : on ne
 // voyait pas les rangs défiler et on ne savait plus où on avait atterri. Il
@@ -153,9 +161,7 @@ function renderVoiePage(){
 // dévale la pente à l'envers : le regard suit le mouvement et comprend la
 // distance parcourue.
 function voieScrollHost(){
-  return document.getElementById('face-viewport-voie')||
-         document.getElementById('page-voie')||
-         document.scrollingElement;
+  return document.getElementById('page-voie')||document.scrollingElement;
 }
 
 let _voieScrollRaf=null;

@@ -72,9 +72,9 @@ function renderStreakBadge(){
   const el=document.getElementById('jouer-streak');
   if(el)el.innerHTML=CUR_ACC?streakBadgeHTML():'';
   // Le menu principal se rafraîchit ici (connexion, fin de partie) : c'est
-  // aussi le moment de remettre à jour l'adversaire conseillé, dont l'ELO de
-  // référence est celui du joueur et vient peut-être de bouger.
-  if(typeof renderNextFoeHint==='function')renderNextFoeHint();
+  // aussi le moment de remettre à jour le pseudo et l'ELO affichés au-dessus,
+  // qui viennent peut-être de bouger.
+  if(typeof renderMenuIdentity==='function')renderMenuIdentity();
 }
 
 // ----------------------------------------------------------------
@@ -143,10 +143,63 @@ function renderReservePage(){
   renderPearls();
   renderDailyChest();
   renderAdminChests();
-  renderPendingChests();
   renderPearlShop();
   renderBoardSkins();
   renderInventory();
+}
+
+// Ce que promet une carte de coffre, en une ligne : les deux nombres qui
+// décident si on le vise ou non. Le nombre de lots est une FOURCHETTE, le
+// tirage variant de ±1 (chestRollCount, js/economy.js).
+function chestPromiseHTML(chest){
+  const [a,b]=chestRollRange(chest);
+  const pct=chest.newChance*100;
+  return '<div class="chest-rar">'+a+'–'+b+' lots · '+
+    (pct<10?pct.toFixed(1).replace('.',','):Math.round(pct))+'% pièce inédite</div>';
+}
+
+// ----------------------------------------------------------------
+// OUVERTURE IMMÉDIATE
+// ----------------------------------------------------------------
+// Un coffre ne se met plus en attente : gagné, acheté ou ouvert en mode
+// admin, il passe directement par ici. Le contenu est tiré MAINTENANT, donc
+// fermer la fenêtre en cours de route ne permet pas de relancer le tirage
+// jusqu'à obtenir mieux.
+function chestOpenNow(chestId,onClose){
+  const chest=chestById(chestId);
+  showChestCeremony(chest,chestRoll(chest.id),true,onClose||function(){});
+}
+
+// Retour à la Réserve après une ouverture lancée depuis la Réserve.
+function chestBackToReserve(){
+  showPage('page-reserve');
+  renderReservePage();
+  if(typeof updAll==='function')updAll();
+  if(typeof renderArmiesPage==='function')renderArmiesPage();
+}
+
+// ----------------------------------------------------------------
+// FIN DE PARTIE : règlement, cinématique, coffre, verdict
+// ----------------------------------------------------------------
+// game-flow.js et tournoi.js faisaient cet enchaînement chacun de son côté,
+// à trois lignes près identiques — et aucun des deux n'ouvrait le coffre, qui
+// partait dans une file d'attente. Il est écrit ici une fois : le coffre
+// gagné s'ouvre entre la cinématique d'issue et l'écran de résultat, à sa
+// place, sans empiler deux célébrations.
+// Renvoie le rapport de economySettle() (synchrone), l'affichage suivant.
+//
+// Les deux appelants la protègent d'un `typeof` : si ce module venait à ne pas
+// se charger, une partie doit encore pouvoir se terminer et afficher son
+// verdict, quitte à sauter le règlement et la cérémonie.
+function settleAndCelebrate(result,gs,onDone){
+  const report=(typeof economySettle==='function')?economySettle(result,gs):null;
+  const finish=()=>{
+    if(report&&report.chest)chestOpenNow(report.chest.id,onDone);
+    else onDone();
+  };
+  if(typeof playOutcomeCinematic==='function')playOutcomeCinematic(result,report,finish);
+  else setTimeout(finish,400);
+  return report;
 }
 
 // Solde de perles, en haut de la Réserve : c'est le chiffre qu'on vient
@@ -166,21 +219,20 @@ function renderPearls(){
 // ----------------------------------------------------------------
 // Les six mêmes coffres que ceux gagnés en enchaînant les victoires, au même
 // contenu : la boutique ne fabrique pas une seconde économie, elle donne
-// simplement un second chemin vers la première. Un coffre acheté rejoint la
-// file d'attente, il ne s'ouvre pas tout seul.
+// simplement un second chemin vers la première. Un coffre acheté s'ouvre
+// immédiatement.
 function renderPearlShop(){
   const el=document.getElementById('rs-shop');
   if(!el)return;
   const bal=pearlBalance();
-  el.innerHTML='<div class="rs-shop-note">Les perles se trouvent dans tous les coffres. Un coffre acheté rejoint votre file d\'attente ci-dessus.</div>'+
-    '<div class="chest-grid">'+CHESTS.map(ch=>{
+  el.innerHTML='<div class="chest-grid">'+CHESTS.map(ch=>{
       const price=chestPearlPrice(ch.id);
       const ok=bal>=price;
       return '<div class="chest-card chest-shop'+(ok?'':' chest-shop-off')+'" data-chest="'+ch.id+'" style="--chest-c:'+ch.color+'">'+
         chestVisual(ch,ok?'chest-ready':'')+
         '<div class="chest-name">'+ch.name+'</div>'+
         '<div class="chest-price">'+pearlAmountHTML(price)+'</div>'+
-        '<div class="chest-rar">'+ch.rolls+' lots · '+Math.round(ch.newChance*100)+'% pièce inédite</div>'+
+        chestPromiseHTML(ch)+
       '</div>';
     }).join('')+'</div>';
   el.querySelectorAll('.chest-card:not(.chest-shop-off)').forEach(card=>{
@@ -195,7 +247,7 @@ function buyChestWithPearls(chestId){
   showConfirmModal('Acheter un '+chest.name+' pour '+price+' perles ?',()=>{
     if(!pearlBuyChest(chest.id))return;
     if(typeof playSound==='function')playSound('promo');
-    renderReservePage();
+    chestOpenNow(chest.id,chestBackToReserve);
   },{okLabel:'Acheter',cancelLabel:'Annuler',okClass:'btn-gold'});
 }
 
@@ -221,23 +273,12 @@ function renderAdminChests(){
         '<span class="chest-count">∞</span>'+
         chestVisual(ch,'chest-ready')+
         '<div class="chest-name">'+ch.name+'</div>'+
-        '<div class="chest-rar">'+ch.rolls+' lots · '+Math.round(ch.newChance*100)+'% pièce inédite</div>'+
+        chestPromiseHTML(ch)+
       '</div>').join('')+'</div>';
   el.querySelectorAll('.chest-card').forEach(card=>{
-    card.addEventListener('click',()=>openAdminChest(card.dataset.chest));
-  });
-}
-
-// Ouvre un coffre admin : rien n'est retiré d'une file d'attente, il n'y en a
-// pas. Le tirage et l'application restent ceux du jeu normal.
-function openAdminChest(chestId){
-  if(typeof ADMIN_MODE==='undefined'||!ADMIN_MODE)return;
-  const chest=chestById(chestId);
-  const lots=chestRoll(chest.id);
-  showChestCeremony(chest,lots,true,()=>{
-    renderReservePage();
-    if(typeof updAll==='function')updAll();
-    if(typeof renderArmiesPage==='function')renderArmiesPage();
+    card.addEventListener('click',()=>{
+      if(typeof ADMIN_MODE!=='undefined'&&ADMIN_MODE)chestOpenNow(card.dataset.chest,chestBackToReserve);
+    });
   });
 }
 
@@ -262,50 +303,7 @@ function renderDailyChest(){
     const lots=Object.entries(gains).map(([pieceId,qty])=>({pieceId,qty,isNew:false}));
     // Réutilise la cérémonie des coffres, mais le gain est DÉJÀ appliqué :
     // applyOnClose reste à false pour ne pas créditer deux fois.
-    showChestCeremony({name:DAILY_CHEST.name,color:'#c19a45'},lots,false,()=>{
-      renderReservePage();updAll();
-    });
-  });
-}
-
-function renderPendingChests(){
-  const el=document.getElementById('rs-chests');if(!el)return;
-  const pending=chestsPending();
-  if(!pending.length){
-    el.innerHTML='<div class="rs-empty">Aucun coffre en attente. Gagnez une partie pour en obtenir un : chaque victoire consécutive donne un coffre plus rare (Pion, Cavalier, Fou, Tour, Dame, Roi).</div>';
-    return;
-  }
-  // Regroupés par type : dix Coffres Pion se lisent mieux en une carte « ×10 »
-  // qu'en dix cartes identiques.
-  const groups={};
-  pending.forEach((c,i)=>{(groups[c.id]=groups[c.id]||[]).push(i);});
-  el.innerHTML='<div class="chest-grid">'+Object.entries(groups).map(([id,idxs])=>{
-    const ch=chestById(id);
-    return '<div class="chest-card" data-idx="'+idxs[0]+'" style="--chest-c:'+ch.color+'">'+
-      (idxs.length>1?'<span class="chest-count">×'+idxs.length+'</span>':'')+
-      chestVisual(ch,'chest-ready')+
-      '<div class="chest-name">'+ch.name+'</div>'+
-      '<div class="chest-rar">'+ch.rolls+' lots · '+Math.round(ch.newChance*100)+'% pièce inédite</div>'+
-    '</div>';
-  }).join('')+'</div>';
-  el.querySelectorAll('.chest-card').forEach(card=>{
-    card.addEventListener('click',()=>openPendingChest(+card.dataset.idx));
-  });
-}
-
-function openPendingChest(index){
-  const pending=chestsPending();
-  const entry=pending[index];if(!entry)return;
-  const chest=chestById(entry.id);
-  // Le contenu est tiré MAINTENANT et le coffre retiré de la file tout de
-  // suite : fermer la fenêtre en cours de route ne permet pas de relancer le
-  // tirage jusqu'à obtenir mieux.
-  const lots=chestRoll(chest.id);
-  chestConsume(index);
-  showChestCeremony(chest,lots,true,()=>{
-    renderReservePage();
-    if(typeof updAll==='function')updAll();
-    if(typeof renderArmiesPage==='function')renderArmiesPage();
+    showChestCeremony({name:DAILY_CHEST.name,color:'#c19a45'},lots,false,chestBackToReserve);
   });
 }
 
@@ -342,19 +340,23 @@ function chestCeremonyOpen(){
     const delay='style="animation-delay:'+(0.55+i*0.22)+'s"';
     // Lot de perles : même carte que les pièces, pour qu'il se lise comme une
     // récompense et non comme une note de bas de page.
+    // Un BON lot (double quantité, tirage favorable — voir chestLuckyChance
+    // dans js/economy.js) se signale : sans marque, on ne distingue pas un
+    // coup de chance d'un tirage moyen, et la moitié du plaisir passe à côté.
+    const tag=l.isNew?'<div class="loot-new-tag">Inédite</div>'
+      :(l.lucky?'<div class="loot-new-tag loot-lucky-tag">Bon lot</div>':'');
     if(l.pearls){
-      return '<div class="loot loot-pearl" '+delay+'>'+
+      return '<div class="loot loot-pearl'+(l.lucky?' loot-lucky':'')+'" '+delay+'>'+
         pearlIcon(3)+
         '<div class="loot-name">Perles</div>'+
-        '<div class="loot-qty">+'+l.pearls+'</div>'+
+        '<div class="loot-qty">+'+l.pearls+'</div>'+tag+
       '</div>';
     }
     const p=PIECES.find(x=>x.id===l.pieceId);
-    return '<div class="loot'+(l.isNew?' loot-new':'')+'" '+delay+'>'+
+    return '<div class="loot'+(l.isNew?' loot-new':l.lucky?' loot-lucky':'')+'" '+delay+'>'+
       pieceIcon(l.pieceId,'n',3)+
       '<div class="loot-name">'+escH(p?p.name:l.pieceId)+'</div>'+
-      '<div class="loot-qty">+'+l.qty+'</div>'+
-      (l.isNew?'<div class="loot-new-tag">Inédite</div>':'')+
+      '<div class="loot-qty">+'+l.qty+'</div>'+tag+
     '</div>';
   }).join('');
   const delay=700+_chestState.lots.length*220;
@@ -377,13 +379,12 @@ function chestCeremonyClose(){
   const fresh=(st.lots||[]).filter(l=>l.isNew).map(l=>l.pieceId);
   const inTuto=(typeof tutoActive==='function')&&tutoActive();
   if(fresh.length&&!inTuto&&typeof drillStart==='function'){
+    // Les exercices s'enchaînent, PUIS on rend la main à l'appelant. C'est
+    // lui qui sait où l'on doit atterrir : la Réserve si le coffre venait de
+    // la boutique, l'écran de résultat si le coffre venait d'une victoire.
     const runNext=()=>{
       const id=fresh.shift();
-      if(!id){
-        showPage('page-reserve');
-        if(st.onClose)st.onClose();
-        return;
-      }
+      if(!id){if(st.onClose)st.onClose();return;}
       drillStart(id,runNext);
     };
     runNext();

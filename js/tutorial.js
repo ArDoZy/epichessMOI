@@ -317,8 +317,13 @@ const TUTO_STEPS=[
   {
     text:'Et voici la récompense. Une victoire&nbsp;: un Coffre Pion. Deux d\'affilée&nbsp;: '+
          'un Coffre Cavalier. Puis Fou, Tour, Dame, et <strong>Roi</strong> à partir de six.<br>'+
-         'Une seule défaite et la série repart de zéro. C\'est cruel, je sais. C\'est le but.',
-    at:'#rs-chests',
+         'Il s\'ouvre <strong>tout de suite</strong>, sitôt la partie finie. Une seule '+
+         'défaite et la série repart de zéro. C\'est cruel, je sais. C\'est le but.',
+  },
+  {
+    text:'Les <strong>perles</strong> tombent de tous les coffres, et rachètent le coffre '+
+         'de votre choix. Une mauvaise ouverture vous rapproche quand même du Coffre Roi.',
+    at:'#rs-shop',
   },
   {
     text:'Les plateaux aussi se méritent&nbsp;: bois, puis pierre, acier, argent, et or '+
@@ -326,15 +331,11 @@ const TUTO_STEPS=[
     at:'#rs-skins',
   },
   {
-    text:'Justement, les rangs. <strong>Encore une face à droite.</strong>',
+    text:'Il reste une salle. <strong>Encore une face à droite.</strong>',
     at:'#cube-arrow-right',click:'#cube-arrow-right',wait:700,
   },
   {
-    text:'La Voie des Victoires. Chaque partie <strong>classée</strong> fait bouger votre '+
-         'classement, et chaque palier franchi <strong>libère une nouvelle créature</strong> '+
-         'de mes bocaux. Les combats contre l\'Instructeur, eux, ne coûtent rien&nbsp;: '+
-         'entraînez-vous autant que vous voulez.',
-    at:'.voie-elo-banner',
+    text:'Celle-ci est vide. J\'y prépare quelque chose, et je ne vous dirai pas quoi.',
   },
   {
     text:'Dernier tour, et nous serons revenus au point de départ.',
@@ -343,9 +344,16 @@ const TUTO_STEPS=[
   {
     text:'<strong>COMBAT</strong> vous envoie contre un autre joueur, quelque part dans le '+
          'monde. C\'est pour ça que le jeu existe.<br>'+
-         'Si vous préférez vous échauffer, <strong>l\'Instructeur</strong> est en dessous&nbsp;: '+
-         'il ne se retient pas, mais il ne vous en voudra pas.',
+         'Si vous préférez vous échauffer, les <strong>Adversaires</strong> du laboratoire '+
+         'sont en dessous&nbsp;: douze, de la balayeuse au four qui n\'oublie rien.',
     at:'.jouer-actions',
+  },
+  {
+    text:'Votre nom, votre rang et votre classement sont là-haut. Le bouton '+
+         '<strong>Voie</strong> ouvre la Voie des Victoires&nbsp;: chaque partie classée '+
+         'fait bouger ce chiffre, et chaque palier franchi <strong>libère une nouvelle '+
+         'créature</strong> de mes bocaux.',
+    at:'.jouer-player',
   },
   {
     text:'Une dernière chose, et je vous laisse&nbsp;: en pleine partie, <strong>clic droit '+

@@ -56,14 +56,15 @@
   // Disposition canonique (au menu principal). La face de droite est
   // "armees" (Mes armées) : le builder (composition) n'est plus une face du
   // cube, c'est un overlay ouvert depuis "Mes armées" (bouton "Nouvelle armée").
-  // Les deux faces « bientôt disponible » (Magasin, Missions) portent
-  // maintenant du vrai contenu : la Réserve (inventaire et coffres) et la
-  // Voie des Victoires. La face du bas (Variantes) a été retirée, elle ne
-  // menait qu'à un écran vide ; son emplacement 3D reste déclaré parce que
-  // les permutations de rotation le référencent, mais aucune face ne l'occupe.
-  const CANON={front:'jouer',right:'armees',back:'reserve',left:'voie',top:'game',bottom:null};
-  const SIDE=new Set(['jouer','armees','reserve','voie']);
-  const EMBED={'page-armies':'armees','page-game':'game','page-reserve':'reserve','page-voie':'voie'};
+  // La face de gauche s'appelle « libre » : elle a porté la Voie des
+  // Victoires, repartie en page à part entière (bouton « Voie » du menu
+  // principal). Elle reste dans le cycle de rotation — quatre côtés — mais
+  // n'a pas encore de contenu. La face du bas (Variantes) a été retirée ; son
+  // emplacement 3D reste déclaré parce que les permutations de rotation le
+  // référencent, mais aucune face ne l'occupe.
+  const CANON={front:'jouer',right:'armees',back:'reserve',left:'libre',top:'game',bottom:null};
+  const SIDE=new Set(['jouer','armees','reserve','libre']);
+  const EMBED={'page-armies':'armees','page-game':'game','page-reserve':'reserve'};
 
 
   // Permutations des emplacements selon la rotation demandée. « right »
@@ -101,9 +102,11 @@
   // afficherait des données périmées.
   function refreshFaceContent(name){
     if(name==='reserve'&&typeof renderReservePage==='function')renderReservePage();
-    else if(name==='voie'&&typeof renderVoiePage==='function')renderVoiePage();
     else if(name==='armees'&&typeof renderArmiesPage==='function')renderArmiesPage();
-    else if(name==='jouer'&&typeof renderStreakBadge==='function')renderStreakBadge();
+    else if(name==='jouer'){
+      if(typeof renderStreakBadge==='function')renderStreakBadge();
+      if(typeof renderMenuIdentity==='function')renderMenuIdentity();
+    }
   }
   // Les flèches restent visibles/cliquables PENDANT une rotation (elles ne
   // dépendent plus de `animating`) : c'est ce qui permet d'enchaîner deux
@@ -210,7 +213,7 @@
     if(id==='page-login'){ document.body.classList.remove('cube-active','nav-overlay'); locked=false; return; }
     if(id==='face-jouer'){ goToMainMenu(); return; }
     const face=EMBED[id];
-    if(face==='armees'||face==='reserve'||face==='voie'){
+    if(face==='armees'||face==='reserve'){
       document.body.classList.remove('nav-overlay');
       document.body.classList.add('cube-active');
       locked=false; setFrontInstant(face);
@@ -261,13 +264,18 @@
     moveInto('page-armies','face-viewport-armees');
     moveInto('page-game','face-viewport-game');
     moveInto('page-reserve','face-viewport-reserve');
-    moveInto('page-voie','face-viewport-voie');
 
     // Flèches : DROITE = voir la face de droite (cube tourne à gauche), etc.
     document.getElementById('cube-arrow-right')?.addEventListener('click',()=>nav('right'));
     document.getElementById('cube-arrow-left') ?.addEventListener('click',()=>nav('left'));
     document.getElementById('cube-jouer-btn')  ?.addEventListener('click',onCombat);
     document.getElementById('b-vs-ia')         ?.addEventListener('click',onVsIa);
+    // « Voie » : la Voie des Victoires n'est plus une face du cube, elle
+    // s'ouvre en page à part entière depuis le bloc d'identité du menu.
+    document.getElementById('jouer-voie')      ?.addEventListener('click',()=>{
+      if(typeof renderVoiePage==='function')renderVoiePage();
+      showPage('page-voie');
+    });
 
     document.addEventListener('keydown',e=>{
       if(locked||!document.body.classList.contains('cube-active')||document.body.classList.contains('nav-overlay'))return;
