@@ -4,7 +4,7 @@
 // Contient : le bouton et panneau flottant de réglages (#settings-btn /
 // #settings-panel) qui contrôle le thème clair/sombre et LE volume (un seul,
 // voir plus bas), et l'entree du mode Administrateur (bouton #sp-admin) qui
-// ouvre des coffres illimités dans la Réserve et met les parties hors
+// ouvre des coffres illimités dans l'Armurerie et met les parties hors
 // classement, pour tester/démontrer le jeu sans fausser la progression.
 //
 // Dépendances : main.js (toggleTheme, ADMIN_MODE, updAll),
@@ -76,7 +76,7 @@ function applySfxVol(v){
 // progression réelle pour ne pas l'abîmer en sortant.
 //
 // Il ne fait plus qu'une chose : ouvrir l'accès aux six coffres (Pion,
-// Cavalier, Fou, Tour, Dame, Roi) en quantité illimitée dans la Réserve. Les
+// Cavalier, Fou, Tour, Dame, Roi) en quantité illimitée dans l'Armurerie. Les
 // pièces s'obtiennent donc par le chemin normal du jeu — en ouvrant des
 // coffres — et non par décret. Les gains, eux, sont bien réels : ce sont de
 // vrais coffres, ouverts par la vraie cérémonie. Second effet : aucune partie

@@ -10,7 +10,7 @@
 //
 // Ce script ouvre le vrai jeu dans un vrai navigateur et refait le parcours :
 // création de compte, tutoriel, composition, partie contre l'Instructeur,
-// Réserve, Voie. Il échoue au premier message d'erreur de la console.
+// Armurerie, Voie. Il échoue au premier message d'erreur de la console.
 //
 // Il ne fait PAS partie du jeu : rien dans index.html ne le charge, et le jeu
 // continue de s'ouvrir en double-cliquant sur index.html.
@@ -82,14 +82,12 @@ async function launchChromium(){
   }
 }
 
-// Les portraits d'adversaires (assets/adversaires/<id>.png), le fond
-// d'atelier (assets/lab-bg.jpg) et la toile peinte de l'écran d'attente
-// (assets/backgrounds/duel-wait.png, empilée par-dessus le SVG procédural)
-// sont FACULTATIFS par construction : le jeu dessine un repli quand ils
-// manquent. Leur 404 est donc un comportement voulu et non une panne, au même
+// Les portraits d'adversaires (assets/adversaires/<id>.png) et le fond
+// d'atelier (assets/lab-bg.jpg) sont FACULTATIFS par construction : le jeu
+// dessine un repli quand ils manquent. Leur 404 est donc un comportement voulu et non une panne, au même
 // titre que les polices Google ou le CDN Supabase quand le réseau est coupé.
 const IGNORED_CONSOLE=/ERR_TUNNEL_CONNECTION_FAILED|ERR_CONNECTION_RESET|ERR_NAME_NOT_RESOLVED|fonts\.googleapis|fonts\.gstatic|jsdelivr|supabase/;
-const OPTIONAL_ASSET=/adversaires\/[a-z-]+\.png|lab-bg\.jpg|duel-wait\.png/;
+const OPTIONAL_ASSET=/adversaires\/[a-z-]+\.png|lab-bg\.jpg/;
 
 (async()=>{
   const server=serve();
@@ -248,8 +246,39 @@ const OPTIONAL_ASSET=/adversaires\/[a-z-]+\.png|lab-bg\.jpg|duel-wait\.png/;
     if(n!==3)throw new Error('pièces effacées : '+n);
   });
 
-  await step('la Réserve, la Voie et l\'armurerie se rendent',async()=>{
+  await step('l\'Armurerie, la Voie et les armées se rendent',async()=>{
     await page.evaluate(()=>{GS.gameOver=true;stopClockTick(GS);renderReservePage();renderVoiePage();renderArmiesPage();});
+  });
+
+  // Les six coffres du menu principal portent DEUX informations à la fois
+  // (où en est la série, combien coûte chaque coffre) : un état de série mal
+  // calculé se verrait sur un écran que tout le monde regarde avant de jouer.
+  await step('les six coffres du menu montrent la série en cours',async()=>{
+    const r=await page.evaluate(()=>{
+      accSet('win_streak',2);accSet('pearls',300);
+      showPage('face-jouer');renderMenuChests();
+      const cards=[...document.querySelectorAll('#jouer-chests .jc-chest')];
+      return{n:cards.length,
+        etats:cards.map(c=>c.className.match(/chest-(won|next|far)/)[1]),
+        ordre:cards.map(c=>c.dataset.chest),
+        prix:!!document.querySelector('#jouer-chests .jc-price')};
+    });
+    if(r.n!==6)throw new Error(r.n+' coffres au lieu de 6');
+    if(r.ordre.join(',')!=='pion,cavalier,fou,tour,dame,roi')throw new Error('ordre : '+r.ordre.join(','));
+    if(r.etats.join(',')!=='won,won,next,far,far,far')throw new Error('états : '+r.etats.join(','));
+    if(!r.prix)throw new Error('aucun prix en perles affiché');
+  });
+
+  // Les schémas de déplacement sont DÉDUITS du moteur (js/piece-moves.js) :
+  // une pièce qui n'aurait plus aucune case atteignable serait le signe que
+  // generateMovesRaw a changé sous leurs pieds.
+  await step('chaque pièce a un schéma de déplacement non vide',async()=>{
+    const bad=await page.evaluate(()=>PIECES.filter(p=>
+      !pieceMoveMap(p.id).some(row=>row.some(c=>c&&c!=='self'))).map(p=>p.name));
+    if(bad.length)throw new Error('sans déplacement : '+bad.join(', '));
+    // Le pion standard est le seul à exercer les quatre pictogrammes.
+    const pion=await page.evaluate(()=>pieceMoveMap('std-pawn').flat());
+    if(!pion.includes('kill')||!pion.includes('peace'))throw new Error('pion : '+[...new Set(pion)].join(','));
   });
 
   // Le contenu d'un coffre est la mécanique la plus facile à casser sans

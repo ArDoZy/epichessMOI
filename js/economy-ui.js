@@ -1,11 +1,12 @@
 // ================================================================
-// ECONOMY-UI.JS : la Réserve (inventaire, coffres, échiquiers) et les
+// ECONOMY-UI.JS : l'Armurerie (inventaire, coffres, échiquiers) et les
 // affichages liés à l'économie ailleurs dans le jeu
 // ================================================================
-// Contient : le rendu de la face « Réserve » du cube (#page-reserve), la
+// Contient : le rendu de la face « Armurerie » du cube (#page-reserve), la
 // cérémonie d'ouverture d'un coffre, les coffres illimités du mode admin
-// (renderAdminChests), le badge de série de victoires, le rappel de la mise
-// pendant la partie, et le choix de l'échiquier.
+// (renderAdminChests), les six coffres du menu principal (renderMenuChests,
+// qui portent aussi la série de victoires), le rappel de la mise pendant la
+// partie, et le choix de l'échiquier.
 //
 // Dépendances : economy.js (inventaire, coffres, quotidien), data-pieces.js
 // (PIECES, CHESTS, BOARD_SKINS), piece-art.js (pieceIcon/pieceSVG),
@@ -55,22 +56,54 @@ function applyBoardSkin(){
 }
 
 // ----------------------------------------------------------------
-// BADGE DE SÉRIE
+// LES SIX COFFRES DU MENU PRINCIPAL
 // ----------------------------------------------------------------
-// Six pastilles, une par palier de coffre : le joueur voit immédiatement
-// combien de victoires le séparent du Coffre Roi.
-function streakBadgeHTML(){
-  const s=accGet('win_streak',0);
-  const next=chestForStreak(s+1);
-  let dots='';
-  for(let i=0;i<CHESTS.length;i++)dots+='<span class="streak-dot'+(i<s?' on':'')+'"></span>';
-  return '<span class="streak-badge"><span class="streak-dots">'+dots+'</span>'+
-    (s>0?s+' victoire'+(s>1?'s':'')+' d\'affilée · ':'')+
-    'prochaine victoire : '+next.name+'</span>';
+// Ils remplacent à la fois l'ancien badge « prochaine victoire : Coffre Fou »
+// et l'ancienne boutique de l'Armurerie, et disent les deux choses d'un seul
+// coup d'œil, dans l'ordre Pion → Roi :
+//
+//   allumé      coffre déjà décroché dans la série en cours
+//   éclatant    celui que la PROCHAINE victoire donnerait
+//   éteint      encore à plusieurs victoires de là
+//
+// Deux victoires d'affilée : Pion et Cavalier allumés, Fou éclatant, Tour,
+// Dame et Roi en retrait. Il n'y a plus rien à lire, il n'y a qu'à regarder.
+//
+// Le prix en perles reste sous CHAQUE coffre, éclatant ou éteint : la série
+// ne verrouille rien, on achète celui qu'on veut quand on en a les moyens.
+function menuChestState(i,streak){
+  // Série ≥ 6 : le Coffre Roi est à la fois acquis et reconduit à chaque
+  // victoire suivante — il reste donc l'éclatant.
+  const next=Math.min(streak,CHESTS.length-1);
+  if(i===next)return 'chest-next';
+  return i<streak?'chest-won':'chest-far';
 }
-function renderStreakBadge(){
-  const el=document.getElementById('jouer-streak');
-  if(el)el.innerHTML=CUR_ACC?streakBadgeHTML():'';
+function menuChestsHTML(){
+  const streak=accGet('win_streak',0);
+  const bal=pearlBalance();
+  return '<div class="jc-rail">'+CHESTS.map((ch,i)=>{
+    const price=chestPearlPrice(ch.id);
+    const state=menuChestState(i,streak);
+    const afford=bal>=price;
+    return '<button class="jc-chest '+state+(afford?'':' jc-poor')+'" data-chest="'+ch.id+'"'+
+      ' style="--chest-c:'+ch.color+'" title="'+escH(ch.name)+' · '+price+' perles">'+
+      chestVisual(ch,state==='chest-next'?'chest-ready':'')+
+      '<span class="jc-name">'+escH(ch.name.replace(/^Coffre /,''))+'</span>'+
+      '<span class="jc-price">'+pearlAmountHTML(price,1)+'</span>'+
+    '</button>';
+  }).join('')+'</div>'+
+  '<div class="jc-foot"><span class="jc-bank">'+pearlAmountHTML(bal,1.1)+' perles</span>'+
+    (streak>0?'<span class="jc-streak">'+streak+' victoire'+(streak>1?'s':'')+' d\'affilée</span>':'')+
+  '</div>';
+}
+function renderMenuChests(){
+  const el=document.getElementById('jouer-chests');
+  if(el){
+    el.innerHTML=CUR_ACC?menuChestsHTML():'';
+    el.querySelectorAll('.jc-chest').forEach(b=>{
+      b.addEventListener('click',()=>buyChestWithPearls(b.dataset.chest,renderMenuChests));
+    });
+  }
   // Le menu principal se rafraîchit ici (connexion, fin de partie) : c'est
   // aussi le moment de remettre à jour le pseudo et l'ELO affichés au-dessus,
   // qui viennent peut-être de bouger.
@@ -111,7 +144,7 @@ function renderCombatStake(armyData){
 }
 
 // ----------------------------------------------------------------
-// PAGE RÉSERVE
+// PAGE ARMURERIE
 // ----------------------------------------------------------------
 function chestVisual(chest,extraCls){
   return '<div class="chest '+(extraCls||'')+'" style="--chest-c:'+chest.color+'">'+
@@ -123,7 +156,7 @@ function chestVisual(chest,extraCls){
 // ----------------------------------------------------------------
 // Dessinée et non écrite en emoji : l'emoji perle n'existe pas partout et
 // change de forme d'un système à l'autre, alors que cette monnaie doit être
-// reconnaissable instantanément dans un coffre comme dans la boutique.
+// reconnaissable instantanément dans un coffre comme sous un prix.
 function pearlIcon(em){
   const s=(em||1.2)+'em';
   return '<svg class="pearl-icon" style="width:'+s+';height:'+s+'" viewBox="0 0 24 24" aria-hidden="true">'+
@@ -143,7 +176,6 @@ function renderReservePage(){
   renderPearls();
   renderDailyChest();
   renderAdminChests();
-  renderPearlShop();
   renderBoardSkins();
   renderInventory();
 }
@@ -170,7 +202,7 @@ function chestOpenNow(chestId,onClose){
   showChestCeremony(chest,chestRoll(chest.id),true,onClose||function(){});
 }
 
-// Retour à la Réserve après une ouverture lancée depuis la Réserve.
+// Retour à l'Armurerie après une ouverture lancée depuis l'Armurerie.
 function chestBackToReserve(){
   showPage('page-reserve');
   renderReservePage();
@@ -202,52 +234,49 @@ function settleAndCelebrate(result,gs,onDone){
   return report;
 }
 
-// Solde de perles, en haut de la Réserve : c'est le chiffre qu'on vient
-// vérifier avant d'aller voir la boutique.
+// Solde de perles, en haut de l'Armurerie.
 function renderPearls(){
   const el=document.getElementById('rs-pearls');
   if(!el)return;
   el.innerHTML='<div class="pearl-bank">'+pearlIcon(2.2)+
     '<div class="pearl-bank-info">'+
       '<div class="pearl-bank-n">'+pearlBalance()+'</div>'+
-      '<div class="pearl-bank-lbl">perles · elles sortent des coffres et rachètent des coffres</div>'+
+      '<div class="pearl-bank-lbl">perles</div>'+
     '</div></div>';
 }
 
 // ----------------------------------------------------------------
-// BOUTIQUE : des coffres contre des perles
+// ACHAT D'UN COFFRE CONTRE DES PERLES
 // ----------------------------------------------------------------
 // Les six mêmes coffres que ceux gagnés en enchaînant les victoires, au même
-// contenu : la boutique ne fabrique pas une seconde économie, elle donne
-// simplement un second chemin vers la première. Un coffre acheté s'ouvre
-// immédiatement.
-function renderPearlShop(){
-  const el=document.getElementById('rs-shop');
-  if(!el)return;
-  const bal=pearlBalance();
-  el.innerHTML='<div class="chest-grid">'+CHESTS.map(ch=>{
-      const price=chestPearlPrice(ch.id);
-      const ok=bal>=price;
-      return '<div class="chest-card chest-shop'+(ok?'':' chest-shop-off')+'" data-chest="'+ch.id+'" style="--chest-c:'+ch.color+'">'+
-        chestVisual(ch,ok?'chest-ready':'')+
-        '<div class="chest-name">'+ch.name+'</div>'+
-        '<div class="chest-price">'+pearlAmountHTML(price)+'</div>'+
-        chestPromiseHTML(ch)+
-      '</div>';
-    }).join('')+'</div>';
-  el.querySelectorAll('.chest-card:not(.chest-shop-off)').forEach(card=>{
-    card.addEventListener('click',()=>buyChestWithPearls(card.dataset.chest));
-  });
-}
-
-function buyChestWithPearls(chestId){
+// contenu : l'achat ne fabrique pas une seconde économie, il donne simplement
+// un second chemin vers la première. Un coffre acheté s'ouvre immédiatement.
+// Il s'achète depuis le menu principal (renderMenuChests), quelle que soit la
+// série en cours : la série éclaire les coffres, elle n'en interdit aucun.
+//
+// onDone : ce qu'il faut redessiner une fois le coffre empoché. Par défaut on
+// revient au menu, c'est-à-dire là d'où l'achat est parti.
+function buyChestWithPearls(chestId,onDone){
   const chest=chestById(chestId);
   const price=chestPearlPrice(chest.id);
-  if(pearlBalance()<price)return;
+  const back=()=>{
+    // 'face-jouer' = le menu principal (cube-nav.js) : l'exercice de
+    // déplacement d'une créature inédite a pu nous emmener ailleurs.
+    if(typeof showPage==='function')showPage('face-jouer');
+    if(typeof onDone==='function')onDone();
+    else renderMenuChests();
+    if(typeof updAll==='function')updAll();
+    if(typeof renderArmiesPage==='function')renderArmiesPage();
+  };
+  if(pearlBalance()<price){
+    if(typeof showNotif==='function')
+      showNotif('Il vous manque '+(price-pearlBalance())+' perles pour ce coffre.','err');
+    return;
+  }
   showConfirmModal('Acheter un '+chest.name+' pour '+price+' perles ?',()=>{
     if(!pearlBuyChest(chest.id))return;
     if(typeof playSound==='function')playSound('promo');
-    chestOpenNow(chest.id,chestBackToReserve);
+    chestOpenNow(chest.id,back);
   },{okLabel:'Acheter',cancelLabel:'Annuler',okClass:'btn-gold'});
 }
 
@@ -380,8 +409,8 @@ function chestCeremonyClose(){
   const inTuto=(typeof tutoActive==='function')&&tutoActive();
   if(fresh.length&&!inTuto&&typeof drillStart==='function'){
     // Les exercices s'enchaînent, PUIS on rend la main à l'appelant. C'est
-    // lui qui sait où l'on doit atterrir : la Réserve si le coffre venait de
-    // la boutique, l'écran de résultat si le coffre venait d'une victoire.
+    // lui qui sait où l'on doit atterrir : le menu si le coffre venait d'un achat,
+    // le menu, l'écran de résultat si le coffre venait d'une victoire.
     const runNext=()=>{
       const id=fresh.shift();
       if(!id){if(st.onClose)st.onClose();return;}

@@ -115,15 +115,15 @@ const launchParticles=()=>{
 // ----------------------------------------------------------------
 // GARDE-FOU D'ÉCONOMIE
 // ----------------------------------------------------------------
-// Partagé par les deux modes : lancer une partie avec une réserve
-// insuffisante produirait un plateau incomplet et une perte incompréhensible.
+// Partagé par les deux modes : lancer une partie avec un stock insuffisant
+// produirait un plateau incomplet et une perte incompréhensible.
 function combatStockOk(){
   if(typeof armyStock!=='function')return true;
   const stock=armyStock(currentArmyData);
   if(stock.ok)return true;
-  showConfirmModal('Réserve insuffisante pour cette armée : '+
+  showConfirmModal('Stock insuffisant pour cette armée : '+
     stock.missing.map(m=>m.name+' ('+m.have+'/'+m.need+')').join(', ')+
-    '. Récupérez le coffre de réapprovisionnement dans la Réserve.',()=>{},
+    '. Récupérez le coffre de réapprovisionnement dans l\'Armurerie.',()=>{},
     {okLabel:'Compris',cancelLabel:'Fermer',okClass:'btn-primary'});
   return false;
 }

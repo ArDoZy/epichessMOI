@@ -1,9 +1,10 @@
 // ================================================================
 // TUTO-DRILL.JS : l'exercice de déplacement d'une nouvelle créature
 // ================================================================
-// À quoi ça sert : une fiche de pièce explique un déplacement en mots
-// (« exactement 2 cases en diagonale, en sautant »). Personne ne retient un
-// déplacement en le lisant : on le retient en le faisant. Cet exercice
+// À quoi ça sert : une fiche de pièce MONTRE un déplacement (le schéma 9×9 de
+// js/piece-moves.js, qui a remplacé les phrases du genre « exactement 2 cases
+// en diagonale, en sautant »). Mais même en image, un déplacement se retient
+// surtout en le faisant, pas en le regardant. Cet exercice
 // s'ouvre donc juste après le déblocage d'une créature (pendant le tutoriel
 // comme en dehors, voir drillMaybeForPiece) et ne demande qu'une chose :
 // ramasser cinq repères avec la pièce, seule sur le plateau.
@@ -143,8 +144,12 @@ function drillRender(){
 
   const title=document.getElementById('drill-title');
   if(title)title.innerHTML='Apprivoiser '+escH(def.name);
+  // Le rappel du déplacement : le schéma de la pièce (js/piece-moves.js), pas
+  // la phrase qui décrivait ses cases — c'est justement cette traduction-là
+  // que l'exercice remplace.
   const sub=document.getElementById('drill-sub');
-  if(sub)sub.textContent=def.movement||'';
+  if(sub)sub.innerHTML=(typeof pieceMoveDiagramHTML==='function')
+    ?pieceMoveDiagramHTML(_drill.pieceId,{legend:true,cls:'pmv-sm'}):'';
   const count=document.getElementById('drill-count');
   if(count)count.textContent=_drill.dots.size?('Repères restants : '+_drill.dots.size):'Tous les repères sont pris !';
   const warn=document.getElementById('drill-warn');

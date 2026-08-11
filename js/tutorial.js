@@ -21,7 +21,7 @@
 //      complète (Roi, Dame, Alpha, Fourmi, Garde de Pierre) qu'il a gagnée.
 //   2. LA VISITE DU LABORATOIRE (étapes marquées `click`) : le joueur tourne
 //      réellement le cube, compose réellement une armée, ouvre réellement sa
-//      Réserve.
+//      Armurerie.
 //
 // PRINCIPES DE ROBUSTESSE, parce qu'un tutoriel cassé est pire que pas de
 // tutoriel :
@@ -123,7 +123,7 @@ function tutoBuildBoard(battleIdx){
 }
 
 // Armée « pour l'affichage » : elle alimente les bandeaux joueurs et les
-// choix de promotion. Elle n'est jamais prélevée sur la Réserve.
+// choix de promotion. Elle n'est jamais prélevée sur l'Armurerie.
 function tutoBattleArmy(battleIdx){
   const cfg=TUTO_BATTLES[battleIdx]||TUTO_BATTLES[0];
   return{mon:{id:'roi'},gen:{id:'dame'},extras:[...cfg.extras],placements:{},totalValue:0,_tuto:true};
@@ -153,7 +153,7 @@ function tutoStartBattle(battleIdx){
 
 // Fin d'une bataille du tutoriel : appelée par triggerEndOfGame()
 // (js/game-flow.js), qui n'a rien réglé du tout — ni ELO, ni coffre de série,
-// ni Réserve. Tout se décide ici.
+// ni Armurerie. Tout se décide ici.
 function tutoOnBattleEnd(result){
   const battleIdx=_tutoBattle;
   _tutoBattle=null;
@@ -263,7 +263,7 @@ const TUTO_STEPS=[
     at:'#cube-arrow-right',click:'#cube-arrow-right',wait:700,
   },
   {
-    text:'Voici votre armurerie. Elle est vide, forcément, vous venez d\'arriver.<br>'+
+    text:'Voici vos armées. Il n\'y en a aucune, forcément, vous venez d\'arriver.<br>'+
          '<strong>Créez votre première armée.</strong>',
     at:'#ar-new',click:'#ar-new',wait:700,
   },
@@ -275,10 +275,11 @@ const TUTO_STEPS=[
     at:'.army-box',
   },
   {
-    text:'Chaque créature a son déplacement ET son pouvoir. La Méduse paralyse ses '+
-         'voisines en diagonale, le Typhon rase tout autour de lui en arrivant…<br>'+
-         '<strong>Clic droit sur n\'importe quelle carte</strong> — ou un appui long sur '+
-         'écran tactile — pour lire sa fiche complète.',
+    text:'Chaque créature a son déplacement ET son pouvoir. Le petit échiquier sur sa '+
+         'carte montre où elle va&nbsp;: <strong>patte</strong> pour y aller à pied, '+
+         '<strong>ailes</strong> pour y sauter par-dessus tout le monde.<br>'+
+         'Le pouvoir, lui, s\'écrit&nbsp;: <strong>clic droit sur une carte</strong> — ou un '+
+         'appui long au doigt — pour la fiche complète.',
     at:'#cards-container .class-sec',
   },
   {
@@ -302,7 +303,7 @@ const TUTO_STEPS=[
     at:'#cube-arrow-right',click:'#cube-arrow-right',wait:700,
   },
   {
-    text:'La Réserve. Tout ce que vous possédez est là, en exemplaires comptés.<br>'+
+    text:'L\'Armurerie. Tout ce que vous possédez est là, en exemplaires comptés.<br>'+
          'Engager une créature dans une partie, c\'est la <strong>risquer</strong>. '+
          'Vous perdez&nbsp;? Toute l\'armée engagée y reste. Vous gagnez&nbsp;? '+
          'Vous ne perdez que ce qui a été mangé.',
@@ -323,7 +324,7 @@ const TUTO_STEPS=[
   {
     text:'Les <strong>perles</strong> tombent de tous les coffres, et rachètent le coffre '+
          'de votre choix. Une mauvaise ouverture vous rapproche quand même du Coffre Roi.',
-    at:'#rs-shop',
+    at:'#rs-pearls',
   },
   {
     text:'Les plateaux aussi se méritent&nbsp;: bois, puis pierre, acier, argent, et or '+
@@ -354,6 +355,15 @@ const TUTO_STEPS=[
          'fait bouger ce chiffre, et chaque palier franchi <strong>libère une nouvelle '+
          'créature</strong> de mes bocaux.',
     at:'.jouer-player',
+  },
+  {
+    text:'Et tout en bas, mes six coffres, du Pion au Roi. Celui qui <strong>brille</strong> '+
+         'est celui que votre prochaine victoire vous donnera&nbsp;; ceux qui sont allumés '+
+         'à sa gauche, vous les avez déjà eus dans cette série. Vous n\'avez rien à lire&nbsp;: '+
+         'regardez-les avant de cliquer COMBAT.<br>'+
+         'Et si vous êtes pressé, <strong>n\'importe lequel s\'achète en perles</strong>, '+
+         'quelle que soit votre série.',
+    at:'#jouer-chests',
   },
   {
     text:'Une dernière chose, et je vous laisse&nbsp;: en pleine partie, <strong>clic droit '+
@@ -545,7 +555,7 @@ const TUTO_SKIP_QTY=10;
 // On n'utilise surtout pas generateAIArmy() : l'IA n'est pas soumise à
 // l'économie et pioche dans tout le catalogue. L'armée offerte serait alors
 // composée de créatures que le joueur ne possède pas, donc injouable — et il
-// sortirait du tutoriel sur un refus de la Réserve.
+// sortirait du tutoriel sur un refus de l'Armurerie.
 function tutoBuildRandomArmy(){
   const has=p=>(typeof VV_UNLOCKED==='undefined'||VV_UNLOCKED.has(p.id))&&
     (typeof invCount!=='function'||invCount(p.id)>=pieceDeployCount(p.id));
@@ -607,7 +617,7 @@ function tutoSkip(){
   if(typeof updAll==='function')updAll();
   if(typeof renderArmiesPage==='function')renderArmiesPage();
   if(typeof renderReservePage==='function'&&CUR_ACC)renderReservePage();
-  if(typeof renderStreakBadge==='function')renderStreakBadge();
+  if(typeof renderMenuChests==='function')renderMenuChests();
 }
 
 // ----------------------------------------------------------------

@@ -101,17 +101,17 @@ window.cancelArmySelection=()=>{
 window.pickArmyForBattle=id=>{
   const mode=armySelectMode;if(!mode)return;
   const a=savedArmies.find(x=>x.id===id);
-  // Dernier filet : une armée dont la réserve est insuffisante ne part pas
+  // Dernier filet : une armée dont le stock est insuffisant ne part pas
   // au combat, quel que soit le mode.
   if(a&&typeof armyStock==='function'){
     const stock=armyStock(a);
     if(!stock.ok){
       // On sort du mode sélection et on montre l'armurerie : le joueur doit
-      // pouvoir agir (modifier l'armée, aller à la Réserve), pas rester sur
+      // pouvoir agir (modifier l'armée, aller à l'Armurerie), pas rester sur
       // un écran de choix qui refuse le seul choix disponible.
       armySelectMode=null;renderArmiesPage();showPage('page-armies');
-      showConfirmModal('Réserve insuffisante : '+stock.missing.map(m=>m.name+' ('+m.have+'/'+m.need+')').join(', ')+
-        '. Récupérez le coffre de réapprovisionnement dans la Réserve, ou composez une autre armée.',()=>{},
+      showConfirmModal('Stock insuffisant : '+stock.missing.map(m=>m.name+' ('+m.have+'/'+m.need+')').join(', ')+
+        '. Récupérez le coffre de réapprovisionnement dans l\'Armurerie, ou composez une autre armée.',()=>{},
         {okLabel:'Compris',cancelLabel:'Fermer',okClass:'btn-primary'});
       return;
     }
@@ -156,7 +156,7 @@ const renderArmiesPage=()=>{
       : '<div class="army-card'+(stock.ok?'':' army-card-nostock')+'">';
     const stockLine=stock.ok
       ? ''
-      : '<div class="ac-nostock">Réserve insuffisante : '+stock.missing.map(m=>escH(m.name)+' '+m.have+'/'+m.need).join(', ')+'</div>';
+      : '<div class="ac-nostock">Stock insuffisant : '+stock.missing.map(m=>escH(m.name)+' '+m.have+'/'+m.need).join(', ')+'</div>';
     return open+head+'<div class="ac-pieces">'+all.map(p=>'<span title="'+escH(p.name)+'">'+pieceIcon(p.id,'n',1.7)+'</span>').join('')+'</div><div class="ac-names">'+( mon?.name||'?')+' (Monarque) · '+(gen?.name||'?')+' (Général)<br>'+extras.map(p=>p.name).join(' · ')+'</div><div class="ac-val">'+a.totalValue+' pts</div>'+stockLine+btns+'</div>';
   }).join('');
 };

@@ -221,7 +221,7 @@ function chestForStreak(streak){return CHESTS[Math.min(Math.max(streak,1)-1,CHES
 //          temps que les lots de pièces, pour la même raison : une pièce
 //          inédite étant devenue rare, un coffre doit valoir quelque chose
 //          même quand il n'en contient pas.
-// price  : coût du coffre à la boutique de la Réserve.
+// price  : prix du coffre, payable en perles depuis le menu principal.
 const CHEST_PEARLS={
   pion:    {pearls:[6,18],   price:30},
   cavalier:{pearls:[15,36],  price:120},
@@ -241,25 +241,37 @@ const DAILY_CHEST={id:'reappro',name:'Coffre de réapprovisionnement',perPiece:4
 // ----------------------------------------------------------------
 // CATALOGUE COMPLET DES PIÈCES (version light)
 // ----------------------------------------------------------------
+// IL N'Y A PLUS DE CHAMP `movement`. Une pièce ne décrit plus son déplacement
+// en mots (« Exactement 2 cases orthogonales (sans sauter) OU 1 case
+// diagonale ») : elle le MONTRE, sur un schéma 9×9 déduit du moteur de règles
+// lui-même (js/piece-moves.js). Une phrase pouvait mentir en silence le jour
+// où generateMovesRaw changeait ; le schéma, lui, suit.
+//
+// `ability` ne garde donc que les vrais POUVOIRS — ce qu'une créature fait EN
+// PLUS de bouger, et qui ne se dessine pas sur une grille de cases (paralysie
+// de la Méduse, Cuirasse du Preux Chevalier, Charge du Dresseur…). Les
+// anciennes « capacités » qui ne faisaient que redire le déplacement
+// (« Cavalier standard. », « Ne peut pas reculer. ») sont parties avec le
+// champ `movement`.
 const PIECES=[
-  {id:'roi',name:'Roi',emoji:'👑',class:'Monarque',movement:'1 case dans toutes les directions',value:3,qty:1,pieceType:'k',ability:null},
-  {id:'empereur',name:'Empereur',emoji:'⚜️',class:'Monarque',movement:'1 case toutes directions OU cavalier (2+1)',value:7,qty:1,pieceType:'k',ability:'Se déplace comme un roi ou un cavalier.'},
-  {id:'amazone',name:'Amazone',emoji:'🏹',class:'Général',movement:'Cavalier + Fou (diagonal illimité)',value:7,qty:1,pieceType:'q',ability:null},
-  {id:'chevaucheur-rhinoceros',name:'Chevaucheur de Rhinocéros',emoji:'🦏',class:'Général',movement:'Tour + Cavalier',value:8,qty:1,pieceType:'r',ability:null},
-  {id:'dame',name:'Dame',emoji:'♛',class:'Général',movement:'Tour + Fou (dame standard)',value:10,qty:1,pieceType:'q',ability:null},
-  {id:'grand-maitre',name:'Grand Maître',emoji:'🔮',class:'Général',movement:'Dame + Cavalier',value:13,qty:1,pieceType:'q',ability:'Domination royale : tant que vivant, les pions ennemis ne peuvent avancer de 2 cases.'},
-  {id:'cavalier-primordial',name:'Cavalier Primordial',emoji:'♞',class:'Primordiale',movement:'Cavalier standard (2+1, saute)',value:3,qty:2,pieceType:'n',ability:'Cavalier standard.'},
-  {id:'fou-primordial',name:'Fou Primordial',emoji:'♝',class:'Primordiale',movement:'Diagonal illimité',value:3,qty:2,pieceType:'b',ability:'Fou standard.'},
-  {id:'tour-primordiale',name:'Tour Primordiale',emoji:'♜',class:'Primordiale',movement:'Orthogonal illimité',value:5,qty:2,pieceType:'r',ability:'Tour standard.'},
-  {id:'alpha',name:'Alpha',emoji:'🐺',class:'Brute',movement:'Exactement 2 cases en diagonale (saute)',value:2,qty:2,pieceType:'b',ability:'Saute. Se déplace EXACTEMENT à 2 cases en diagonale (jamais sur une case adjacente).'},
-  {id:'fourmi',name:'Fourmi',emoji:'🐜',class:'Brute',movement:'1 case en avant (orthogonal ou diagonal, déplacement et capture)',value:2,qty:2,pieceType:'p',ability:'Ne peut pas reculer.'},
-  {id:'preux-chevalier',name:'Preux Chevalier',emoji:'🛡️',class:'Brute',movement:'Exactement 2 cases orthogonales (sans sauter) OU 1 case diagonale',value:3,qty:2,pieceType:'r',ability:'Cuirasse : ne peut être capturé par des pions (ni par la Fourmi).'},
-  {id:'dresseur-elephant',name:"Dresseur d'Éléphant",emoji:'🐘',class:'Brute',movement:'1 ou 2 cases orthogonalement (sans sauter)',value:3,qty:2,pieceType:'r',ability:'Charge : en avançant de 2 cases, détruit les pièces ennemies sur son passage.'},
-  {id:'garde-pierre',name:'Garde de Pierre',emoji:'🪨',class:'Brute',movement:'1 case dans toutes les directions',value:3,qty:2,pieceType:'p',ability:'Roc de pierre (1×/partie) : s\'ancre sur place, imprenable et inamovible.',hasPower:true,powerLabel:'Ancrer (Roc de Pierre)'},
-  {id:'meduse',name:'Méduse',emoji:'🪼',class:'Sorcier',movement:'1 case orthogonale',value:2,qty:2,pieceType:'p',ability:'Paralyse les pièces ennemies diagonalement adjacentes.'},
-  {id:'typhon',name:'Typhon',emoji:'🌪️',class:'Sorcier',movement:'1 case en diagonale maximum',value:6,qty:2,pieceType:'b',ability:'Détruit toutes les pièces adjacentes à sa case d\'arrivée. Ne peut pas détruire le roi.'},
-  {id:'banshee',name:'Banshee',emoji:'👻',class:'Sorcier',movement:'1 ou 2 cases en diagonale (sans sauter)',value:4,qty:2,pieceType:'b',ability:'Hurle : les pions adverses à 1 case reculent d\'une case si possible.'},
-  {id:'pretre',name:'Prêtre',emoji:'✝️',class:'Sorcier',movement:'1 à 2 cases orthogonalement',value:4,qty:2,pieceType:'r',ability:'Empêche les captures dans les cases DIAGONALEMENT adjacentes au Prêtre.'},
+  {id:'roi',name:'Roi',emoji:'👑',class:'Monarque',value:3,qty:1,pieceType:'k',ability:null},
+  {id:'empereur',name:'Empereur',emoji:'⚜️',class:'Monarque',value:7,qty:1,pieceType:'k',ability:null},
+  {id:'amazone',name:'Amazone',emoji:'🏹',class:'Général',value:7,qty:1,pieceType:'q',ability:null},
+  {id:'chevaucheur-rhinoceros',name:'Chevaucheur de Rhinocéros',emoji:'🦏',class:'Général',value:8,qty:1,pieceType:'r',ability:null},
+  {id:'dame',name:'Dame',emoji:'♛',class:'Général',value:10,qty:1,pieceType:'q',ability:null},
+  {id:'grand-maitre',name:'Grand Maître',emoji:'🔮',class:'Général',value:13,qty:1,pieceType:'q',ability:'Domination royale : tant que vivant, les pions ennemis ne peuvent avancer de 2 cases.'},
+  {id:'cavalier-primordial',name:'Cavalier Primordial',emoji:'♞',class:'Primordiale',value:3,qty:2,pieceType:'n',ability:null},
+  {id:'fou-primordial',name:'Fou Primordial',emoji:'♝',class:'Primordiale',value:3,qty:2,pieceType:'b',ability:null},
+  {id:'tour-primordiale',name:'Tour Primordiale',emoji:'♜',class:'Primordiale',value:5,qty:2,pieceType:'r',ability:null},
+  {id:'alpha',name:'Alpha',emoji:'🐺',class:'Brute',value:2,qty:2,pieceType:'b',ability:null},
+  {id:'fourmi',name:'Fourmi',emoji:'🐜',class:'Brute',value:2,qty:2,pieceType:'p',ability:null},
+  {id:'preux-chevalier',name:'Preux Chevalier',emoji:'🛡️',class:'Brute',value:3,qty:2,pieceType:'r',ability:'Cuirasse : ne peut être capturé par des pions (ni par la Fourmi).'},
+  {id:'dresseur-elephant',name:"Dresseur d'Éléphant",emoji:'🐘',class:'Brute',value:3,qty:2,pieceType:'r',ability:'Charge : en avançant de 2 cases, détruit les pièces ennemies sur son passage.'},
+  {id:'garde-pierre',name:'Garde de Pierre',emoji:'🪨',class:'Brute',value:3,qty:2,pieceType:'p',ability:'Roc de pierre (1×/partie) : s\'ancre sur place, imprenable et inamovible.',hasPower:true,powerLabel:'Ancrer (Roc de Pierre)'},
+  {id:'meduse',name:'Méduse',emoji:'🪼',class:'Sorcier',value:2,qty:2,pieceType:'p',ability:'Paralyse les pièces ennemies diagonalement adjacentes.'},
+  {id:'typhon',name:'Typhon',emoji:'🌪️',class:'Sorcier',value:6,qty:2,pieceType:'b',ability:'Détruit toutes les pièces adjacentes à sa case d\'arrivée. Ne peut pas détruire le roi.'},
+  {id:'banshee',name:'Banshee',emoji:'👻',class:'Sorcier',value:4,qty:2,pieceType:'b',ability:'Hurle : les pions adverses à 1 case reculent d\'une case si possible.'},
+  {id:'pretre',name:'Prêtre',emoji:'✝️',class:'Sorcier',value:4,qty:2,pieceType:'r',ability:'Empêche les captures dans les cases DIAGONALEMENT adjacentes au Prêtre.'},
 ];
 
 const TRUE_PAWN_IDS=new Set(['std-pawn']);

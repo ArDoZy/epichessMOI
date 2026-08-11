@@ -170,7 +170,7 @@ function countSurvivors(gs){
 // d'un adversaire en ligne suivent d'autres branches et ne créditent rien.
 function economyOnPromotion(pieceId,gs){
   // Bataille du tutoriel : les pièces sont prêtées, promouvoir un pion ne
-  // crédite donc rien (sinon on remplirait sa Réserve avant même d'avoir
+  // crédite donc rien (sinon on remplirait son Armurerie avant même d'avoir
   // débloqué la pièce).
   if(gs&&gs.tuto)return;
   if(!isOwnablePiece(pieceId))return;
@@ -236,7 +236,7 @@ function economySettle(result,gs){
 // ----------------------------------------------------------------
 // IL N'Y A PLUS DE FILE D'ATTENTE. Un coffre gagné — ou acheté — s'ouvre
 // SUR-LE-CHAMP (chestOpenNow, js/economy-ui.js). L'ancienne file mettait un
-// aller-retour par la Réserve entre la victoire et sa récompense, et laissait
+// aller-retour par l'Armurerie entre la victoire et sa récompense, et laissait
 // s'accumuler des piles de « ×14 Coffre Pion » qu'il fallait cliquer une par
 // une. Le seul argument en sa faveur — « ouvrir quand on veut » — ne pesait
 // pas lourd contre ça.
@@ -265,7 +265,8 @@ function randInt(a,b){return a+Math.floor(Math.random()*(b-a+1));}
 // Un coffre pouvait ne rien apporter d'utile : trois lots d'une pièce déjà
 // en surnombre, et la série de victoires n'avait servi à rien. Chaque coffre
 // contient désormais aussi des PERLES, et les perles s'échangent contre les
-// coffres de son choix (boutique de la Réserve, voir js/economy-ui.js). Une
+// coffres de son choix (les six coffres du menu principal, voir
+// js/economy-ui.js). Une
 // mauvaise ouverture fait donc toujours avancer vers le Coffre Roi.
 function pearlBalance(){const n=accGet('pearls',0);return typeof n==='number'?Math.max(0,n):0;}
 function pearlAdd(n){
@@ -280,7 +281,7 @@ function pearlSpend(n){
   pearlAdd(-n);
   return true;
 }
-// Achat d'un coffre à la boutique : on paie, il s'ouvre. Même cérémonie qu'un
+// Achat d'un coffre : on paie, il s'ouvre. Même cérémonie qu'un
 // coffre gagné en jouant (l'ouverture elle-même est dans economy-ui.js, qui
 // est le seul à connaître l'interface).
 function pearlBuyChest(chestId){
@@ -391,7 +392,7 @@ function claimDailyChest(){
   return gains;
 }
 
-// Heures restantes avant le prochain coffre quotidien (affichage Réserve).
+// Heures restantes avant le prochain coffre quotidien (affichage Armurerie).
 function dailyChestCountdown(){
   const now=new Date();
   const next=new Date(now.getFullYear(),now.getMonth(),now.getDate()+1,0,0,0,0);

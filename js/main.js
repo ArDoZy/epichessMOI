@@ -299,12 +299,24 @@ function showPieceCtxMenu(e,pieceDef,opts){
   document.getElementById('ctx-class-lbl').textContent=pieceDef.class||'';
   document.getElementById('ctx-class-lbl').style.color=CLASS_COLOR_VARS[pieceDef.class]||'var(--muted)';
   document.getElementById('ctx-val').textContent=(pieceDef.value!==undefined&&pieceDef.value!==null)?pieceDef.value:'?';
-  document.getElementById('ctx-mvt').textContent=pieceDef.movement||'Standard';
+  // Le déplacement est MONTRÉ, jamais raconté : la pièce au centre d'un
+  // échiquier 9×9, un pictogramme par case atteignable, et la légende de
+  // ceux qui servent (voir js/piece-moves.js). Le pouvoir, lui, reste écrit
+  // plus bas : il ne se dessine pas sur une grille.
+  const mvt=document.getElementById('ctx-mvt');
+  const canDraw=typeof pieceMoveDiagramHTML==='function'&&
+    typeof pieceHasMoveDiagram==='function'&&pieceHasMoveDiagram(pid);
+  mvt.innerHTML=canDraw?pieceMoveDiagramHTML(pid,{legend:true}):'';
+  mvt.style.display=canDraw?'':'none';
   const stockRow=document.getElementById('ctx-stock-row');
   if(stockRow){
     const own=pieceDef.id&&typeof invCount==='function'&&typeof isOwnablePiece==='function'&&isOwnablePiece(pieceDef.id);
     stockRow.style.display=own?'':'none';
-    if(own)document.getElementById('ctx-stock').textContent=invCount(pieceDef.id)+' en réserve (se déploie par '+pieceDeployCount(pieceDef.id)+')';
+    if(own){
+      const n=invCount(pieceDef.id);
+      document.getElementById('ctx-stock').textContent=
+        n+' exemplaire'+(n>1?'s':'')+' (se déploie par '+pieceDeployCount(pieceDef.id)+')';
+    }
   }
   const abRow=document.getElementById('ctx-ability-row');
   if(pieceDef.ability){abRow.style.display='';document.getElementById('ctx-ability').textContent=pieceDef.ability;}

@@ -375,11 +375,11 @@ function triggerTournoiEndOfGame(result){
   setTimeout(()=>playSound(result==='win'?'win':result==='loss'?'loss':'draw'),200);
 
   // Même enchaînement qu'une partie normale (js/economy-ui.js) : règlement de
-  // la Réserve, cinématique d'issue, ouverture du coffre gagné, puis verdict.
+  // l'Armurerie, cinématique d'issue, ouverture du coffre gagné, puis verdict.
   const showOverlay=()=>showRoundOverlay(roundIdx,result,oldElo,newElo,delta,noEloReason);
   if(typeof settleAndCelebrate==='function')settleAndCelebrate(result,GS,showOverlay);
   else setTimeout(showOverlay,400);
-  if(typeof renderStreakBadge==='function')renderStreakBadge();
+  if(typeof renderMenuChests==='function')renderMenuChests();
 }
 
 // ----------------------------------------------------------------

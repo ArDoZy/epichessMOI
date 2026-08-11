@@ -131,6 +131,16 @@ const toggle=p=>{
   updAll();
 };
 
+// Le déplacement, en schéma et non en phrase (js/piece-moves.js) : sur une
+// carte, « Exactement 2 cases orthogonales (sans sauter) OU 1 case diagonale »
+// occupait trois lignes que personne ne convertissait en cases. La légende des
+// pictogrammes est réservée à la fiche complète (clic droit) : ici, la place
+// va au dessin.
+function pcMoveHTML(p){
+  if(typeof pieceMoveDiagramHTML!=='function')return '';
+  return '<div class="pc-mvt">'+pieceMoveDiagramHTML(p.id,{cls:'pmv-sm'})+'</div>';
+}
+
 // ----------------------------------------------------------------
 // RENDU DES CARTES : toujours triées par classe puis par valeur croissante
 // (plus de tri/filtre manuel : voir le bandeau de raccourcis par catégorie,
@@ -151,15 +161,15 @@ const renderCards=()=>{
         const m=UNLOCK_MILESTONES.find(u=>u.pieceId===p.id);
         const isCoffre=m?.coffre;
         const rankLabel=isCoffre?'Coffre':(m&&m.eloRequired<999999?vvGetRank(m.eloRequired).name+' ('+m.eloRequired+' ELO)':'');
-        html+='<div class="piece-card '+p.class+' locked" data-id="'+p.id+'"><span class="pc-emoji">'+pieceIcon(p.id,'n')+'</span><div class="pc-head"><div class="pc-name">'+p.name+'</div><div class="pc-val '+p.class+'">'+p.value+'</div></div>'+(p.movement?'<div class="pc-mvt">'+p.movement+'</div>':'')+'<div class="locked-overlay"><span class="lock-icon"></span><span class="lock-rank">'+rankLabel+'</span></div></div>';
+        html+='<div class="piece-card '+p.class+' locked" data-id="'+p.id+'"><span class="pc-emoji">'+pieceIcon(p.id,'n')+'</span><div class="pc-head"><div class="pc-name">'+p.name+'</div><div class="pc-val '+p.class+'">'+p.value+'</div></div>'+pcMoveHTML(p)+'<div class="locked-overlay"><span class="lock-icon"></span><span class="lock-rank">'+rankLabel+'</span></div></div>';
       }else{
         const have=(typeof invCount==='function')?invCount(p.id):0;
         const need=pieceDeployCount(p.id);
         html+='<div class="piece-card '+p.class+(isSel(p)?' sel':'')+(have<need?' pc-nostock':'')+'" data-id="'+p.id+'">'+
-          '<span class="pc-stock'+(have<need?' pc-stock-out':'')+'" title="Exemplaires en réserve">'+have+'</span>'+
+          '<span class="pc-stock'+(have<need?' pc-stock-out':'')+'" title="Exemplaires en stock">'+have+'</span>'+
           '<span class="pc-emoji">'+pieceIcon(p.id,'n')+'</span>'+
           '<div class="pc-head"><div class="pc-name">'+p.name+'</div><div class="pc-val '+p.class+'">'+p.value+'</div></div>'+
-          (p.movement?'<div class="pc-mvt">'+p.movement+'</div>':'')+
+          pcMoveHTML(p)+
           (p.ability?'<div class="pc-ability">'+p.ability+'</div>':'')+'</div>';
       }
     });
