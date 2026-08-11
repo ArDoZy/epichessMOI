@@ -108,7 +108,7 @@ function playOutcomeCinematic(result,report,onDone){
   const verdict={win:'VICTOIRE',loss:'DÉFAITE',draw:'NULLE'}[result]||'FIN';
   const cls={win:'v-win',loss:'v-loss',draw:'v-draw'}[result]||'v-draw';
   const sub={
-    win:'Les survivants rentrent à la Réserve.',
+    win:'Les survivants rentrent à l\'Armurerie.',
     loss:'Toute l\'armée engagée est perdue.',
     draw:'Chacun repart avec ses survivants.',
   }[result]||'';

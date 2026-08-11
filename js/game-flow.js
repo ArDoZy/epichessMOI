@@ -111,7 +111,7 @@ function updateGamePlayerBars(){
 // tiré _playerColor (voir combat-intro.js), on n'écrase pas ce choix ici.
 // tutoCfg (facultatif) : bataille scriptée du tutoriel, voir tutoStartBattle()
 // dans js/tutorial.js. Elle impose le plateau, la couleur et la pendule, ne
-// touche PAS à la Réserve (les pièces du tutoriel sont prêtées, pas engagées)
+// touche PAS à l'Armurerie (les pièces du tutoriel sont prêtées, pas engagées)
 // et court-circuite la cinématique d'entrée : à ce stade le joueur n'a pas
 // encore d'armée, il n'y a rien à présenter.
 //   {battle, name, level, playerColor, board(), clockMin, armyIds:{mon,gen,extras}}
@@ -135,7 +135,7 @@ function startGame(colorAlreadyChosen,multiplayer,tutoCfg){
   const incrementMs=(!tutoCfg&&typeof selectedTimeIncrement==='number'&&selectedTimeIncrement>0)
     ?selectedTimeIncrement*1000:0;
   // En tutoriel, playerArmy sert uniquement à l'affichage et aux choix de
-  // promotion : l'armée n'est pas prélevée sur la Réserve.
+  // promotion : l'armée n'est pas prélevée sur l'Armurerie.
   const playerArmy=tutoCfg?tutoCfg.army:currentArmyData;
   const aiArmy=tutoCfg?tutoCfg.army:aiArmyData;
   GS={board:[],turn:'w',selected:null,legalMoves:[],history:[],enPassant:null,halfmoveClock:0,gameOver:false,playerArmy,aiArmy,playerColor:_playerColor,aiColor:_aiColor,multiplayer:!!multiplayer,tuto:tutoCfg||null,movePairs:[],capturedW:[],capturedB:[],pendingPromo:null,medusaParalyzed:new Set(),lastMove:null,anchored:new Set(),pretreProtected:new Set(),amazonePostCapture:null,grandMaitreAlive:{w:false,b:false},gardePierreUsed:{w:false,b:false},turnCount:0,historyView:null,lastMoveHistory:[],clockMs,incrementMs,timeWhite:clockMs,timeBlack:clockMs};
@@ -144,7 +144,7 @@ function startGame(colorAlreadyChosen,multiplayer,tutoCfg){
   // premier coup n'a pas été joué : on le vide ici, en même temps que GS.
   if(typeof renderMoveLog==='function')renderMoveLog(GS);
   updateMedusaParalysis(GS.board,GS);updatePretreProtection(GS.board,GS);updateGrandMaitre(GS.board,GS);
-  // Les exemplaires quittent la Réserve MAINTENANT : ils sont sur le terrain
+  // Les exemplaires quittent l'Armurerie MAINTENANT : ils sont sur le terrain
   // et donc en jeu (voir js/economy.js, en-tête). Rien de tel en tutoriel :
   // ces pièces sont prêtées par le savant, les perdre ne coûte rien.
   if(!tutoCfg&&typeof economyCommit==='function')economyCommit(currentArmyData);
@@ -289,7 +289,7 @@ document.getElementById('result-rejouer').addEventListener('click',()=>{
   document.getElementById('result-modal').classList.remove('active');
   if(!GS||!GS.playerArmy){renderArmiesPage();showPage('page-armies');return;}
   if(typeof armyStock==='function'&&!armyStock(GS.playerArmy).ok){
-    showConfirmModal('Votre réserve ne permet plus d\'aligner cette armée. Passez par la Réserve ou composez-en une autre.',()=>{
+    showConfirmModal('Votre stock ne permet plus d\'aligner cette armée. Passez par l\'Armurerie ou composez-en une autre.',()=>{
       renderArmiesPage();showPage('page-armies');
     },{okLabel:'Mes armées',cancelLabel:'Fermer',okClass:'btn-primary'});
     return;
@@ -327,8 +327,8 @@ function triggerEndOfGame(result){
   if(_endGameTriggered)return;_endGameTriggered=true;
   stopClockTick(GS);
   endCombatMusic();
-  // Bataille du tutoriel : ni ELO, ni coffre de série, ni règlement de la
-  // Réserve. C'est le savant qui commente et enchaîne (revanche jusqu'à la
+  // Bataille du tutoriel : ni ELO, ni coffre de série, ni règlement
+  // d'Armurerie. C'est le savant qui commente et enchaîne (revanche jusqu'à la
   // victoire, puis coffre et exercice de déplacement).
   if(GS&&GS.tuto){
     if(typeof tutoOnBattleEnd==='function')tutoOnBattleEnd(result);
@@ -359,7 +359,7 @@ function triggerEndOfGame(result){
   _lastSettlement=(typeof settleAndCelebrate==='function')
     ?settleAndCelebrate(result,GS,showModal)
     :(setTimeout(showModal,400),null);
-  if(typeof renderStreakBadge==='function')renderStreakBadge();
+  if(typeof renderMenuChests==='function')renderMenuChests();
 }
 
 // ----------------------------------------------------------------

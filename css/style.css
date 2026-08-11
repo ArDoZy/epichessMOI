@@ -387,7 +387,9 @@ body.has-acc #page-game{min-height:0}
 .pc-class.Primordiale{background:var(--primordiale-bg);color:var(--primordiale);border:1px solid rgba(16,185,129,.25)}
 .pc-class.Sorcier{background:var(--sorcier-bg);color:var(--sorcier);border:1px solid rgba(236,72,153,.25)}
 .pc-class.Brute{background:var(--brute-bg);color:var(--brute);border:1px solid rgba(239,68,68,.25)}
-.pc-mvt{font-size:11.5px;margin-bottom:6px;display:flex;align-items:center;gap:5px;color:var(--muted);background:rgba(255,255,255,.04);padding:5px 8px;border-radius:6px;font-family:'Cinzel',serif;line-height:1.4}
+/* Le déplacement sur une carte de pièce : c'est désormais le schéma 9×9
+   (voir [PMV]), pas une phrase. */
+.pc-mvt{margin-bottom:8px;display:flex;justify-content:center}
 .pc-ability{font-size:12px;color:var(--text);line-height:1.5;padding:8px;background:var(--bg);border-radius:8px;border-left:2px solid var(--accent);margin-top:6px}
 .piece-card.locked{cursor:not-allowed;position:relative;opacity:.5;filter:grayscale(.85) brightness(.5);background:rgba(0,0,0,.35);border-color:rgba(0,0,0,.4)}
 .piece-card.locked .pc-emoji,.piece-card.locked .pc-name,.piece-card.locked .pc-ability,.piece-card.locked .pc-mvt,.piece-card.locked .pc-val{filter:blur(7px);pointer-events:none;user-select:none}
@@ -623,12 +625,16 @@ body.has-acc #page-game{min-height:0}
 .drag-ghost{position:fixed;pointer-events:none;z-index:9999;width:64px;height:64px;
   transform:translate(-50%,-50%);opacity:.9;display:none;filter:drop-shadow(0 6px 8px rgba(0,0,0,.6))}
 .ctx-menu{position:fixed;background:var(--surface2);border:1px solid var(--border2);border-radius:13px;
-  padding:16px;z-index:2000;min-width:250px;max-width:330px;box-shadow:0 16px 44px rgba(0,0,0,.7);display:none}
+  padding:16px;z-index:2000;min-width:250px;max-width:340px;box-shadow:0 16px 44px rgba(0,0,0,.7);display:none}
 .ctx-menu.show{display:block;animation:nIn .18s ease}
 .ctx-title{font-family:'Cinzel',serif;font-size:15px;font-weight:700;margin-bottom:4px;display:flex;align-items:center;gap:8px}
 .ctx-title .pc-icon{width:1.6em;height:1.6em}
 .ctx-class{font-size:10px;text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px;font-family:'Cinzel',serif}
 .ctx-row{font-size:12px;margin-bottom:5px;line-height:1.5}.ctx-label{color:var(--muted);font-weight:600}
+/* Le déplacement, sur la fiche : c'est un schéma, il lui faut de l'air et
+   toute la largeur de la fiche (voir [PMV] plus bas). */
+.ctx-mvt{margin:10px 0 12px;display:flex;justify-content:center}
+.ctx-mvt .pmv-wrap{--pmv-cell:19px}
 .ctx-power-btn{margin-top:10px;width:100%}
 .ctx-close{position:absolute;top:8px;right:10px;cursor:pointer;color:var(--muted);font-size:16px;line-height:1}
 .ctx-close:hover{color:var(--danger)}
@@ -935,8 +941,14 @@ body.light .cube-face[data-face="jouer"]{background:
   radial-gradient(ellipse at 50% 34%,rgba(18,120,106,.13),transparent 62%),
   radial-gradient(ellipse at 50% 118%,rgba(40,60,58,.10),transparent 58%),
   linear-gradient(165deg,#f4f3ee,#dcdbd3)}
+/* La face est une seule colonne centrée : le bouton COMBAT, ses deux boutons
+   secondaires, puis le rail des six coffres (voir [MENU-CHESTS]). Le rail a
+   d'abord été épinglé au bas de l'écran, ce qui l'isolait au bout d'un grand
+   vide ; il fait partie de la pile, à un intervalle qui le distingue sans
+   l'exiler. */
 .jouer-menu{position:absolute;inset:0;display:flex;flex-direction:column;
-  align-items:center;justify-content:center;gap:34px;text-align:center;padding:24px}
+  align-items:center;justify-content:center;gap:clamp(20px,4vh,34px);
+  text-align:center;padding:24px;overflow:hidden}
 .jouer-btn{position:relative;cursor:pointer;border:none;
   font-family:'Cinzel',serif;font-weight:900;letter-spacing:6px;
   font-size:clamp(18px,3.4vw,34px);color:#1a1206;
@@ -952,7 +964,7 @@ body.light .cube-face[data-face="jouer"]{background:
 .jouer-tournoi-btn{font-size:12px;padding:10px 26px}
 
 /* --- Faces placeholder (Magasin / Missions / Variantes) --- */
-/* Réserve et face libre : mêmes matières que le menu, un ton plus neutre pour
+/* Armurerie et face libre : mêmes matières que le menu, un ton plus neutre pour
    que le contenu (cartes, coffres) ressorte. */
 .cube-face[data-face="reserve"],
 .cube-face[data-face="libre"]{background:
@@ -962,7 +974,7 @@ body.light .cube-face[data-face="reserve"],
 body.light .cube-face[data-face="libre"]{background:
   radial-gradient(ellipse at 50% 8%,rgba(18,120,106,.10),transparent 58%),
   linear-gradient(165deg,#f2f1ec,#e2e1da)}
-/* La Réserve embarque une page longue : elle doit défiler. */
+/* L'Armurerie embarque une page longue : elle doit défiler. */
 #face-viewport-reserve{overflow-y:auto}
 #page-reserve.cube-embedded{background:transparent}
 .face-placeholder{position:absolute;inset:0;display:flex;flex-direction:column;
@@ -1058,9 +1070,15 @@ body.light .cube-face[data-face="libre"]{background:
 .drill-hdr{text-align:center;margin-bottom:12px}
 .drill-title{font-family:'Cinzel Decorative','Cinzel',serif;font-size:clamp(20px,4.5vw,28px);
   font-weight:900;color:var(--gold2)}
-.drill-sub{font-size:13px;color:var(--muted);font-style:italic;margin-top:6px}
+/* Le rappel du déplacement : le schéma 9×9 (voir [PMV]) a remplacé la phrase
+   qui tenait ici. Il occupe forcément plus de place qu'une ligne de texte, et
+   la page ne défile pas : le plateau de l'exercice se calcule donc sur une
+   hauteur disponible d'autant réduite (voir .drill-board juste dessous). */
+.drill-sub{margin-top:8px;display:flex;justify-content:center}
+.drill-sub .pmv-wrap{--pmv-cell:clamp(9px,1.5vh,13px)}
+.drill-sub .pmv-legend{align-items:center}
 .drill-board{display:grid;grid-template-columns:repeat(8,1fr);aspect-ratio:1;
-  width:min(100%,calc(100vh - 240px));
+  width:min(100%,calc(100vh - 380px));
   border:2px solid var(--border2);border-radius:8px;overflow:hidden;
   box-shadow:0 18px 50px rgba(0,0,0,.55)}
 .drill-cell{position:relative;display:flex;align-items:center;justify-content:center;
@@ -1091,8 +1109,7 @@ body.light .drill-cell.dark{background:#8a5f38}
 .drill-warn{font-size:12.5px;color:var(--gold2);font-style:italic;text-align:center}
 @media(max-width:640px){
   #page-drill{padding:52px 10px 16px}
-  .drill-sub{font-size:12px}
-  .drill-board{width:min(100%,calc(100vh - 210px))}
+  .drill-board{width:min(100%,calc(100vh - 350px))}
 }
 
 /* [SEO] ========================================================= */
@@ -1134,6 +1151,12 @@ body.light .drill-cell.dark{background:#8a5f38}
 @media(prefers-reduced-motion:reduce){.lore-faq summary::before{transition:none}}
 
 /* [MULTIJOUEUR] : modal de création/rejointe de partie en ligne ==== */
+.mp-hdr-title{font-family:'Cinzel',serif;font-size:18px;font-weight:900;margin-bottom:6px}
+.mp-hdr-sub{font-size:12px;color:var(--muted);margin-bottom:16px;font-style:italic}
+.mp-wait-title{font-family:'Cinzel',serif;font-size:15px;font-weight:700;margin-bottom:12px;
+  letter-spacing:.5px}
+.mp-lbl{font-size:11px;color:var(--muted);font-family:'Cinzel',serif;text-transform:uppercase;
+  letter-spacing:1px;margin-bottom:6px}
 .mp-code{font-family:'Cinzel',serif;font-size:38px;font-weight:900;letter-spacing:8px;color:var(--gold);background:var(--bg);border:2px solid var(--border2);border-radius:12px;padding:14px 10px;margin-bottom:12px;user-select:all}
 .mp-code-input{width:100%;box-sizing:border-box;font-family:'Cinzel',serif;font-size:26px;font-weight:900;letter-spacing:6px;text-align:center;text-transform:uppercase;color:var(--gold);background:var(--bg);border:2px solid var(--border2);border-radius:12px;padding:12px 10px;margin-bottom:12px;outline:none}
 .mp-code-input:focus{border-color:var(--gold)}
@@ -1165,9 +1188,60 @@ body.light .pc-n{--pc-fill:#f6f5f1;--pc-line:#20282a}
 .pc-icon{display:inline-block;vertical-align:middle;width:1.5em;height:1.5em;flex-shrink:0}
 .pc-icon .pc-svg{width:100%;height:100%}
 
+/* [PMV] =========================================================
+   LE DÉPLACEMENT D'UNE PIÈCE, EN SCHÉMA (js/piece-moves.js). La pièce au
+   centre d'un échiquier 9×9 ; sur chaque case atteignable, un pictogramme :
+   patte (elle y va à pied), ailes (elle y saute), couteau (seulement pour
+   capturer), couteau barré (seulement sans capturer).
+
+   Une seule mesure commande toute la taille : --pmv-cell, le côté d'une case.
+   Les trois emplacements n'ont pas la même place — la carte du builder est
+   étroite, la fiche (clic droit) est large, l'exercice de déplacement doit
+   laisser la vedette au vrai plateau — d'où .pmv-sm / .pmv-lg.
+
+   La couleur est portée par la CASE (et la ligne de légende) ; le tracé
+   suit en currentColor. Une case atteignable se teinte donc d'elle-même de
+   la couleur de son pictogramme, ce qui dessine la portée d'un coup d'œil,
+   même trop petit pour distinguer une patte d'une aile.
+   ============================================================== */
+.pmv-wrap{--pmv-cell:15px;display:flex;flex-direction:column;align-items:center;gap:9px;max-width:100%}
+.pmv-sm{--pmv-cell:11px;gap:6px}
+.pmv-lg{--pmv-cell:clamp(13px,1.9vh,20px)}
+.pmv{display:flex;flex-direction:column;align-items:center;gap:3px}
+.pmv-grid{display:grid;grid-template-columns:repeat(9,var(--pmv-cell));
+  grid-auto-rows:var(--pmv-cell);border:1px solid var(--border2);border-radius:5px;
+  overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,.25)}
+.pmv-c{display:flex;align-items:center;justify-content:center;position:relative}
+.pmv-light{background:#39434a}
+.pmv-dark{background:#283136}
+body.light .pmv-light{background:#ddd8cb}
+body.light .pmv-dark{background:#c3bdae}
+/* La teinte de portée est posée PAR-DESSUS la case (voile en box-shadow) et
+   ne la remplace pas : le damier reste lisible sous la couleur. */
+.pmv-c.pmv-on{box-shadow:inset 0 0 0 99px color-mix(in srgb,currentColor 30%,transparent)}
+.pmv-i{width:76%;height:76%;fill:currentColor;display:block}
+.pmv-piece{width:100%;height:100%;display:block;
+  filter:drop-shadow(0 1px 2px rgba(0,0,0,.55))}
+.pmv-piece .pc-svg{width:100%;height:100%}
+/* Les quatre couleurs. Elles ne sont pas décoratives : c'est par elles qu'on
+   distingue deux pictogrammes de 11 px de côté. */
+.pmv-walk{color:var(--accent2)}
+.pmv-fly{color:var(--gold2)}
+.pmv-kill{color:var(--danger)}
+.pmv-peace{color:#6fa8dc}
+.pmv-bar{stroke:currentColor}
+.pmv-fwd{font-family:'Cinzel',serif;font-size:8.5px;letter-spacing:1px;
+  text-transform:uppercase;color:var(--muted)}
+.pmv-legend{display:flex;flex-direction:column;gap:4px;align-items:flex-start}
+.pmv-l{display:flex;align-items:center;gap:7px;font-size:10.5px;line-height:1.3;
+  font-family:'Cinzel',serif}
+.pmv-l .pmv-i{width:14px;height:14px;flex-shrink:0}
+.pmv-l-txt{color:var(--muted)}
+
 /* [RESERVE] =====================================================
-   Face « Réserve » du cube : inventaire des pièces possédées, coffres en
-   attente d'ouverture, coffre de réapprovisionnement quotidien.
+   Face « Armurerie » du cube : inventaire des pièces possédées et coffre de
+   réapprovisionnement quotidien. Les six coffres, eux, sont en bas du menu
+   principal (voir [MENU-CHESTS]).
    ============================================================== */
 .reserve-wrap{position:absolute;inset:0;overflow-y:auto;padding:70px 22px 40px}
 .reserve-inner{max-width:1000px;margin:0 auto}
@@ -1227,7 +1301,7 @@ body.light .pc-n{--pc-fill:#f6f5f1;--pc-line:#20282a}
 .chest-admin .chest-count{background:var(--gold);color:#1a1206;font-size:13px}
 .rs-admin-note{color:var(--muted);font-size:12.5px;font-style:italic;margin-bottom:12px;line-height:1.5}
 
-/* --- PERLES : solde et boutique (js/economy-ui.js) ---
+/* --- PERLES : solde et prix (js/economy-ui.js) ---
    La perle est dessinée (pearlIcon), jamais écrite en emoji : c'est une
    monnaie, elle doit avoir exactement la même tête partout. */
 .pearl-icon{display:inline-block;vertical-align:-.18em;flex-shrink:0}
@@ -1237,11 +1311,6 @@ body.light .pc-n{--pc-fill:#f6f5f1;--pc-line:#20282a}
 .pearl-bank-info{min-width:0}
 .pearl-bank-n{font-family:'Cinzel',serif;font-size:24px;font-weight:900;color:var(--text);line-height:1.1}
 .pearl-bank-lbl{font-size:11.5px;color:var(--muted);letter-spacing:.4px;line-height:1.4}
-.chest-price{margin-top:8px;font-size:13px;color:var(--text)}
-/* Coffre hors de portée : visible (c'est l'objectif vers lequel on épargne),
-   mais inerte — ni curseur, ni survol, ni clic. */
-.chest-card.chest-shop-off{opacity:.45;cursor:default}
-.chest-card.chest-shop-off:hover{transform:none;border-color:var(--border);box-shadow:none}
 .loot.loot-pearl{border-color:rgba(143,166,184,.55);
   background:linear-gradient(180deg,rgba(223,234,242,.10),var(--surface))}
 
@@ -1374,17 +1443,68 @@ body.light .pc-n{--pc-fill:#f6f5f1;--pc-line:#20282a}
 .tally-box.tally-loss{border-color:rgba(212,69,63,.45)}
 .tally-box.tally-gain{border-color:rgba(193,154,69,.45)}
 
-/* [SERIE] : compteur de victoires consécutives ================== */
-.streak-badge{display:inline-flex;align-items:center;gap:7px;font-family:'Cinzel',serif;font-size:11px;
-  font-weight:700;color:var(--gold2);background:rgba(193,154,69,.1);border:1px solid rgba(193,154,69,.3);
-  border-radius:9px;padding:4px 11px;letter-spacing:.5px}
-.streak-dots{display:flex;gap:3px}
-.streak-dot{width:7px;height:7px;border-radius:50%;background:var(--border2)}
-.streak-dot.on{background:var(--gold2);box-shadow:0 0 7px rgba(230,197,118,.7)}
+/* [MENU-CHESTS] : les six coffres, en bas du menu principal =======
+   Ils ont remplacé DEUX choses : le badge « prochaine victoire : Coffre
+   Fou » (une phrase à lire pour une information qui est une position dans
+   une file) et la boutique de l'Armurerie (des coffres rangés dans une
+   pièce où l'on ne passait pas avant de jouer).
+
+   Trois états, et ils se lisent sans légende :
+     .chest-won   déjà décroché dans la série en cours — allumé
+     .chest-next  ce que la prochaine victoire donne — éclatant, il respire
+     .chest-far   encore loin — en retrait, mais lisible : c'est l'objectif
+   Le prix en perles est sous chacun, éteint ou non : la série éclaire les
+   coffres, elle n'en verrouille aucun.
+   ============================================================== */
+.jouer-chests{width:min(96%,760px);margin-top:clamp(2px,2.5vh,22px);
+  display:flex;flex-direction:column;align-items:center;gap:7px}
+.jouer-chests:empty{display:none}
+.jc-rail{display:flex;align-items:flex-end;justify-content:center;gap:clamp(4px,1.4vw,16px);
+  width:100%}
+.jc-chest{flex:0 1 auto;background:none;border:none;padding:2px 0;cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;gap:4px;
+  transition:transform .18s ease,opacity .18s ease}
+.jc-chest:hover{transform:translateY(-4px)}
+.jc-chest .chest{width:clamp(50px,8vw,76px);height:clamp(43px,7vw,66px)}
+.jc-chest .chest-lid{width:100%;height:43%;border-radius:22% 22% 3px 3px}
+.jc-chest .chest-body{width:100%;height:61%;top:39%}
+.jc-chest .chest-lock{width:23%;height:31%;margin-left:-11.5%;top:28%}
+.jc-chest .chest-lock::after{width:4px;height:6px;margin-left:-2px;top:4px}
+.jc-name{font-family:'Cinzel',serif;font-size:clamp(8px,1.1vw,10.5px);font-weight:700;
+  letter-spacing:.8px;text-transform:uppercase;color:var(--muted)}
+.jc-price{font-family:'Cinzel',serif;font-size:clamp(9px,1.15vw,11.5px);color:var(--muted);
+  display:flex;align-items:center;gap:3px}
+.jc-price .pearl-icon{width:1em;height:1em}
+/* Déjà décroché dans la série : allumé, mais calme. */
+.jc-chest.chest-won .chest{filter:drop-shadow(0 0 9px color-mix(in srgb,var(--chest-c) 65%,transparent))}
+.jc-chest.chest-won .jc-name{color:var(--text)}
+/* Le prochain : c'est LUI qu'on joue. Halo, pulsation, nom doré. */
+.jc-chest.chest-next{transform:translateY(-6px)}
+.jc-chest.chest-next:hover{transform:translateY(-10px)}
+.jc-chest.chest-next .chest{filter:drop-shadow(0 0 16px var(--chest-c)) drop-shadow(0 0 34px color-mix(in srgb,var(--chest-c) 70%,transparent));
+  animation:jcBreathe 2.4s ease-in-out infinite}
+.jc-chest.chest-next .jc-name{color:var(--gold2);text-shadow:0 0 12px rgba(230,197,118,.5)}
+@keyframes jcBreathe{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}
+/* Encore loin : éteint, sans disparaître. */
+.jc-chest.chest-far{opacity:.4;filter:saturate(.3) brightness(.78)}
+.jc-chest.chest-far:hover{opacity:.9;filter:saturate(.85) brightness(1)}
+/* Prix hors de portée : le coffre reste cliquable (le refus est expliqué),
+   mais le chiffre dit tout de suite qu'il manque des perles. */
+.jc-chest.jc-poor .jc-price{color:var(--danger);opacity:.85}
+.jc-foot{display:flex;align-items:center;gap:14px;flex-wrap:wrap;justify-content:center;
+  font-family:'Cinzel',serif;font-size:11px;color:var(--muted)}
+.jc-bank{display:inline-flex;align-items:center;gap:5px;color:var(--text)}
+.jc-streak{color:var(--gold2);letter-spacing:.5px}
+/* Écrans courts : le rail passe avant les noms de coffres, qu'on peut lire
+   sur le survol (title) et qui reviennent dès qu'il y a la place. */
+@media(max-height:620px),(max-width:520px){
+  .jc-name{display:none}
+  .jouer-chests{gap:4px}
+}
 
 /* [ECONOMY-INLINE] : rappels d'économie dans les écrans existants ====
    Le stock possédé doit être visible LÀ OÙ on compose et LÀ OÙ on engage,
-   pas seulement dans la Réserve : sinon on découvre qu'on ne peut pas jouer
+   pas seulement dans l'Armurerie : sinon on découvre qu'on ne peut pas jouer
    au moment de cliquer « Combattre ».
    ============================================================== */
 .pc-stock{position:absolute;top:9px;right:10px;font-family:'Cinzel',serif;font-size:11px;font-weight:800;
@@ -1420,7 +1540,6 @@ body.light .pc-n{--pc-fill:#f6f5f1;--pc-line:#20282a}
 /* [MENU] : face JOUER ============================================ */
 .jouer-second{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
 .jouer-tournoi-btn{font-size:12px;padding:10px 24px}
-#jouer-streak{min-height:24px}
 
 /* IDENTITÉ DU JOUEUR, en haut au milieu — à la place du titre du jeu et de
    l'emblème, qui disaient tous les deux quelque chose qu'on savait déjà.
@@ -1745,38 +1864,48 @@ body.cube-active:not(.nav-overlay) .notif-host{bottom:92px}
 
 /* [MP-WAIT] =====================================================
    L'ATTENTE D'UN ADVERSAIRE. C'est le seul moment du jeu où le joueur n'a
-   rien à faire : la fenêtre de salon s'efface derrière une toile plein écran
-   et il ne reste qu'un chronomètre, en bas au milieu.
+   rien à faire : la fenêtre de salon s'efface derrière la toile plein écran
+   `assets/backgrounds/duel-wait.png`, et il ne reste qu'une inscription et
+   un chronomètre.
 
-   Le fond est REMPLAÇABLE sans toucher au code : `duel-wait.png` est empilé
-   AU-DESSUS du SVG procédural (tools/gen-duel-bg.js). Le fichier n'existe pas
-   par défaut — une couche d'image absente ne peint rien et laisse voir celle
-   du dessous —, il suffit donc de le déposer pour qu'il prenne la place, sans
-   rien changer ici. Même convention que les portraits d'adversaires.
+   TOUT EST EMPILÉ EN COLONNE, au centre : l'inscription, puis le compteur
+   juste dessous. Le chronomètre était auparavant épinglé au bas de l'écran,
+   à 74 px de haut : il n'appartenait à rien, écrasait le bas de l'image, et
+   sur un écran bas il chevauchait la boîte. Il fait maintenant partie du
+   même bloc, à la taille d'une indication et non d'un titre.
+
+   Changer la toile : remplacer le fichier PNG, il n'y a rien à coder.
    ============================================================== */
 #mp-modal.mp-wait{
+  flex-direction:column;gap:clamp(12px,2.4vh,26px);
   background:
-    linear-gradient(180deg,rgba(7,10,13,.35),rgba(7,10,13,.2) 45%,rgba(7,10,13,.88)),
-    url('../assets/backgrounds/duel-wait.png'),
-    url('../assets/backgrounds/duel-wait.svg'),
-    #070a0d;
-  background-size:cover,cover,cover,auto;
-  background-position:center;
-  background-repeat:no-repeat}
+    radial-gradient(ellipse at 50% 42%,rgba(7,10,13,.28),rgba(7,10,13,.74) 78%),
+    url('../assets/backgrounds/duel-wait.png') center/cover no-repeat,
+    #070a0d}
 /* La boîte devient une simple inscription posée sur la toile : plus de
-   panneau opaque au milieu d'une image plein écran. */
+   panneau opaque au milieu d'une image plein écran, et rien de plus large
+   que ce que les deux ou trois lignes affichées demandent. */
 #mp-modal.mp-wait .ai-lvl-box{
-  background:rgba(7,10,13,.5);backdrop-filter:blur(3px);
+  max-width:min(94vw,370px);padding:20px 22px 18px;
+  background:rgba(7,10,13,.52);backdrop-filter:blur(4px);
   border-color:rgba(193,154,69,.35);box-shadow:0 18px 60px rgba(0,0,0,.6)}
+/* L'en-tête du salon (« Affronter un joueur / Invitez un ami… ») décrit des
+   choix déjà faits : il n'a plus rien à dire une fois la recherche lancée. */
+#mp-modal.mp-wait .mp-hdr-title,
+#mp-modal.mp-wait .mp-hdr-sub{display:none}
+#mp-modal.mp-wait .mp-radar{width:64px;height:64px;margin-bottom:12px}
+/* Une ligne de statut vide réservait sa hauteur au milieu de la boîte, ce qui
+   creusait un trou entre le texte et le bouton. */
+#mp-modal.mp-wait .mp-status:empty{display:none;margin:0;min-height:0}
+#mp-modal.mp-wait #mp-cancel{margin-top:10px}
 
 .mp-wait-clock{display:none}
 #mp-modal.mp-wait .mp-wait-clock{
-  display:block;position:absolute;left:50%;bottom:clamp(18px,5vh,54px);
-  transform:translateX(-50%);
-  font-family:'Cinzel',serif;font-weight:900;letter-spacing:4px;
-  font-size:clamp(38px,7vw,74px);line-height:1;
+  display:block;position:static;transform:none;
+  font-family:'Cinzel',serif;font-weight:900;letter-spacing:3px;
+  font-size:clamp(24px,3.4vw,38px);line-height:1;
   color:var(--gold2);font-variant-numeric:tabular-nums;
-  text-shadow:0 0 34px rgba(0,0,0,.9),0 4px 18px rgba(0,0,0,.9);
+  text-shadow:0 0 24px rgba(0,0,0,.9),0 3px 14px rgba(0,0,0,.9);
   pointer-events:none}
 
 /* [ICON-BUTTONS] ================================================

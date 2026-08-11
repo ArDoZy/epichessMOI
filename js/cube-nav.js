@@ -104,7 +104,7 @@
     if(name==='reserve'&&typeof renderReservePage==='function')renderReservePage();
     else if(name==='armees'&&typeof renderArmiesPage==='function')renderArmiesPage();
     else if(name==='jouer'){
-      if(typeof renderStreakBadge==='function')renderStreakBadge();
+      if(typeof renderMenuChests==='function')renderMenuChests();
       if(typeof renderMenuIdentity==='function')renderMenuIdentity();
     }
   }

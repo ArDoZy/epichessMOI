@@ -171,7 +171,7 @@ function enterAccount(username,isNewAccount){
   // affiche le MENU PRINCIPAL du cube (face JOUER), pas directement le
   // builder, la face builder est atteinte en tournant le cube.
   updateBuilderBanner();updAll();
-  if(typeof renderStreakBadge==='function')renderStreakBadge();
+  if(typeof renderMenuChests==='function')renderMenuChests();
   if(typeof goToMainMenu==='function')goToMainMenu();else showPage('page-builder');
   // Parchemin d'accueil : uniquement à la création d'un nouveau compte (pas
   // à chaque connexion d'un compte existant) : voir showIntroModal() dans

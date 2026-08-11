@@ -37,9 +37,8 @@ epic-chess/
 │   ├── adversaires/         # FACULTATIF : <id>.png, un portrait par
 │   │                        #  adversaire. Absent = sceau SVG procédural.
 │   ├── backgrounds/
-│   │   └── duel-wait.svg    # Toile de l'écran d'attente d'un duel en ligne
-│   │                        #  (générée par tools/gen-duel-bg.js). Déposer un
-│   │                        #  duel-wait.png à côté le remplace, sans code.
+│   │   └── duel-wait.png    # Toile de l'écran d'attente d'un duel en ligne.
+│   │                        #  La remplacer suffit : rien à coder.
 │   └── boards/              # Textures d'échiquier en SVG procédural
 │       ├── bois.svg          # (générées par tools/gen-boards.js, ne pas
 │       ├── pierre.svg        #  éditer à la main : relancer le script)
@@ -54,7 +53,6 @@ epic-chess/
 │                                   # Supabase gratuit de se mettre en veille
 ├── tools/
 │   ├── gen-boards.js        # Générateur des textures d'échiquier (node)
-│   ├── gen-duel-bg.js       # Générateur de la toile d'attente (node)
 │   ├── ai-bench.js          # Autopartie entre adversaires : vérifie que
 │   │                        #  l'échelle de force tient (voir plus bas)
 │   └── smoke-test.js        # `npm test` : rejoue tout le parcours du jeu
@@ -67,7 +65,7 @@ epic-chess/
     ├── piece-art.js         # Logos de pièces dessinés en SVG (remplace les emojis)
     ├── main.js               # État global partagé + helpers (showPage, showNotif...)
     ├── cube-nav.js           # Navigation principale par cube 3D (CSS). Déplace
-    │                          # armées/partie/réserve dans les faces (la face
+    │                          # armées/partie/armurerie dans les faces (la face
     │                          # de gauche est libre, en attente de contenu).
     ├── accounts.js           # Comptes locaux (localStorage), connexion
     ├── economy.js            # Possession des pièces, mise en jeu, coffres, séries
@@ -77,13 +75,17 @@ epic-chess/
     ├── adversaires.js        # Galerie des douze adversaires (portraits/sceaux)
     ├── combat-intro.js       # Page d'intro combat (VS)
     ├── rules-engine.js       # Moteur de règles pur (coups, échecs, exécution)
+    ├── piece-moves.js        # Schéma 9×9 du déplacement d'une pièce, déduit
+    │                          # du moteur (il a remplacé les phrases de
+    │                          # déplacement, supprimées de data-pieces.js)
     ├── combat-music.js       # Musique de combat en boucle
     ├── cinematics.js         # Cinématiques d'entrée en combat et d'issue
     ├── game-render.js        # Rendu plateau, drag&drop, clics, historique
     ├── ai-engine.js          # Évaluation (dont les POUVOIRS), minimax, Worker IA
     ├── game-flow.js          # Démarrage partie, fin de partie, résultat
     ├── voie.js                # Page "Voie des Victoires" (ELO, rangs, jalons)
-    ├── economy-ui.js         # Page "Réserve" : inventaire, coffres, échiquiers
+    ├── economy-ui.js         # Page "Armurerie" (inventaire, coffre quotidien,
+    │                          # échiquiers) + les six coffres du menu principal
     ├── tuto-drill.js         # Exercice de déplacement d'une créature débloquée
     ├── tutorial.js           # Tutoriel : 4 batailles scriptées + visite guidée
     ├── tournoi.js             # Mode Tournoi + modal d'analyse replay
@@ -274,15 +276,15 @@ autant de fois qu'il le faut.
 
 Ces batailles passent par `startGame(true,false,tutoCfg)` : le troisième
 argument impose le plateau et la couleur, **saute l'économie** (rien n'est
-prélevé sur la Réserve, une promotion ne crédite rien) et court-circuite la
+prélevé sur l'Armurerie, une promotion ne crédite rien) et court-circuite la
 cinématique d'entrée. `triggerEndOfGame` les détourne vers `tutoOnBattleEnd` :
-ni ELO, ni coffre de série, ni règlement de Réserve. **Aucune des quatre
+ni ELO, ni coffre de série, ni règlement d'Armurerie. **Aucune des quatre
 batailles n'a de pendule** (`clockMin:0` partout) : le chronomètre arrive avec
 les vraies parties.
 
 **La visite du laboratoire.** Les étapes qui portent un `click` attendent un
 vrai clic sur le vrai bouton : à la fin, le joueur a réellement tourné le
-cube, composé une armée et ouvert sa Réserve.
+cube, composé une armée et ouvert son Armurerie.
 
 Il se déclenche une seule fois, à la fermeture du parchemin d'accueil d'un
 compte neuf (`tutoMaybeStart`), et se rejoue depuis les réglages
@@ -295,7 +297,7 @@ savant) donne exactement ce que le tutoriel aurait donné : les trois créatures
 avec leurs exemplaires, plus une première armée tirée au hasard **parmi les
 pièces réellement possédées** (`tutoBuildRandomArmy` — surtout pas
 `generateAIArmy`, qui ignore l'économie et produirait une armée injouable).
-Sans cette armée, on sortirait du tutoriel dans une armurerie vide, incapable
+Sans cette armée, on sortirait du tutoriel sans une seule armée jouable, incapable
 de lancer un combat.
 
 **Si vous déplacez ou renommez un élément d'interface**, vérifiez les
@@ -432,7 +434,8 @@ chaque fichier suppose que les globals des fichiers précédents existent déjà
 data-pieces.js → piece-art.js → main.js → cube-nav.js → accounts.js
 → economy.js → ai-level-modal.js → builder.js → armies.js → adversaires.js
 → combat-intro.js
-→ rules-engine.js → combat-music.js → cinematics.js → game-render.js
+→ rules-engine.js → piece-moves.js → combat-music.js → cinematics.js
+→ game-render.js
 → ai-engine.js → game-flow.js → voie.js → economy-ui.js → tuto-drill.js
 → tutorial.js
 → tournoi.js → settings-admin.js → multiplayer.js → (script inline) initApp()
@@ -441,6 +444,8 @@ data-pieces.js → piece-art.js → main.js → cube-nav.js → accounts.js
 `economy.js` doit venir après `accounts.js` (il utilise `accGet`/`accSet`) et
 avant tous les modules de page qui affichent des stocks. `piece-art.js` doit
 venir juste après `data-pieces.js` : à peu près tous les rendus l'utilisent.
+`piece-moves.js` doit venir après `rules-engine.js` : il fabrique ses schémas
+en interrogeant `generateMovesRaw()`.
 
 `cube-nav.js` est chargé juste après `main.js` : il étend `showPage()` (la
 navigation devient un cube 3D en CSS) et déplace à l'exécution les pages
@@ -468,7 +473,7 @@ les suivants, et on ne le découvre qu'en ouvrant la page à la main.
 parcours : création de compte, refus expliqué, tutoriel, réglages conservés,
 galerie des douze adversaires, partie CLASSÉE contre l'un d'eux (avec un coup
 joué et la réponse de l'IA), pendule, orientation des tables position-carrés,
-destruction du Typhon dans la simulation de coup, rendu de la Réserve et de
+destruction du Typhon dans la simulation de coup, rendu de l'Armurerie et de
 la Voie. Il échoue au
 premier message d'erreur de la console.
 
@@ -488,19 +493,20 @@ mais dans une version que Playwright refuse, le script le retrouve tout seul
 | Demande | Fichier(s) à éditer |
 |---|---|
 | Changer une couleur, un style, l'apparence d'une page | `css/style.css` (cherche le tag `[NOM-DE-PAGE]` en commentaire) |
-| Ajouter/modifier une pièce (valeur, emoji, description) | `js/data-pieces.js` (tableau `PIECES`) |
-| Changer les règles de mouvement d'une pièce existante ou en ajouter une | `js/rules-engine.js` (fonction `generateMovesRaw`, + `isSquareAttackedSimple` si elle peut mettre en échec) |
+| Ajouter/modifier une pièce (valeur, emoji, pouvoir) | `js/data-pieces.js` (tableau `PIECES`) — le déplacement, lui, ne s'y écrit plus : il est dessiné par `js/piece-moves.js` à partir du moteur |
+| Changer les règles de mouvement d'une pièce existante ou en ajouter une | `js/rules-engine.js` (fonction `generateMovesRaw`, + `isSquareAttackedSimple` si elle peut mettre en échec). Le schéma affiché sur les cartes et les fiches suit tout seul |
 | Changer le calcul d'ELO, les rangs, les paliers de déblocage | `js/voie.js` (calcul) + `js/data-pieces.js` (table `UNLOCK_TABLE`/`RANKS`) |
 | Ajouter / régler un adversaire (niveau, style, lore) | `js/data-pieces.js` (`AI_OPPONENTS`), puis `node tools/ai-bench.js` pour vérifier l'échelle |
 | Modifier le moteur lui-même (évaluation, recherche) | `js/ai-engine.js` (`evalBoard`, `evalPowers`, `minimax`, `aiSearchRoot`, `aiPickMove`) |
 | Changer la façon dont un style se joue | `STYLE_W` dans `js/ai-engine.js` (évaluation) + `ARMY_STYLE_CLASS` dans `js/armies.js` (composition) |
 | Ajouter un portrait d'adversaire | déposer `assets/adversaires/<id>.png` — rien à déclarer |
 | Changer le contenu ou la rareté des coffres | `js/data-pieces.js` (`CHESTS`, `DAILY_CHEST`) + `js/economy.js` (`chestRoll`) |
-| Changer les perles (gains en coffre, prix en boutique) | `js/data-pieces.js` (`CHEST_PEARLS`) + `js/economy.js` (`chestRoll`, `pearlBuyChest`) + `renderPearlShop()` dans `js/economy-ui.js` |
+| Changer les perles (gains en coffre, prix d'achat) | `js/data-pieces.js` (`CHEST_PEARLS`) + `js/economy.js` (`chestRoll`, `pearlBuyChest`) + `renderMenuChests()` dans `js/economy-ui.js` |
 | Changer la cadence des parties (temps, incrément) | `js/ai-level-modal.js` (`selectedTimeControl`, `selectedTimeIncrement`) ; l'incrément est crédité par `recordMove()` dans `js/rules-engine.js` |
 | Changer ce qu'une partie fait risquer ou rapporter | `js/economy.js` (`economyCommit` / `economySettle`) |
 | Ajouter un échiquier | `tools/gen-boards.js` (relancer `node tools/gen-boards.js`) + `BOARD_SKINS` dans `js/data-pieces.js` |
 | Modifier le dessin d'une pièce | `js/piece-art.js` (`PIECE_ART`) |
+| Modifier les pictogrammes du schéma de déplacement (patte, ailes, couteau…) | `PMV_ICONS` / `PMV_LABELS` dans `js/piece-moves.js` + section `[PMV]` de `css/style.css` |
 | Modifier les cinématiques de combat | `js/cinematics.js` + section `[CINEMATIC]` de `css/style.css` |
 | Modifier le tutoriel (textes, étapes, cibles) | `js/tutorial.js` (`TUTO_STEPS`) |
 | Modifier les batailles du tutoriel (armées, couleurs, pendule) | `js/tutorial.js` (`TUTO_BATTLES`, `TUTO_EXTRA_COLS`) + `js/data-pieces.js` (`TUTO_INSTRUCTORS`) |
@@ -521,7 +527,7 @@ mais dans une version que Playwright refuse, le script le retrouve tout seul
 | Ajouter une adresse au jeu (comme `/combat`) | `vercel.json` (`rewrites`) + `appPath`/`setAppPath`/`appHomePath` dans `js/main.js` |
 | Changer l'adresse du mode admin | `ADMIN_QUERY` + `pathHasAdmin()` dans `js/main.js` (paramètre `?test`, pas un chemin : un chemin inexistant dépend d'une réécriture d'hébergeur et répondait 404) |
 | Changer ce que contient un coffre | `CHESTS`/`CHEST_PEARLS` dans `js/data-pieces.js` + `chestRoll`/`chestLuckyChance` dans `js/economy.js` |
-| Changer le fond de l'écran d'attente en ligne | déposer `assets/backgrounds/duel-wait.png` (rien à coder), ou retoucher `tools/gen-duel-bg.js` et le relancer |
+| Changer le fond de l'écran d'attente en ligne | remplacer `assets/backgrounds/duel-wait.png` (rien à coder) |
 | Changer un message de refus / d'information | l'appel `showNotif()` concerné ; l'apparence est dans `[NOTIF]` de `css/style.css` |
 | Modifier l'emblème (logo) du jeu | `EMBLEM_SVG` dans `js/main.js` + `favicon.svg` (même tracé) + `[EMBLEM]` de `css/style.css` |
 | Changer les règles d'appariement en ligne | `mpEloWindow` / `mpLobbyTick` dans `js/multiplayer.js` |

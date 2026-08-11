@@ -88,7 +88,7 @@ function vvCheckNewUnlocks(oldElo,newElo){
 // ----------------------------------------------------------------
 // La Voie affiche TOUJOURS la progression réelle, mode admin compris : le
 // mode admin ne débloque plus les pièces, il ne fait qu'ouvrir l'accès à des
-// coffres illimités dans la Réserve. Une Voie affichée comme terminée alors
+// coffres illimités dans l'Armurerie. Une Voie affichée comme terminée alors
 // que les pièces ne le sont pas serait un mensonge à l'écran.
 function renderVoiePage(){
   const elo=vvLoadElo();

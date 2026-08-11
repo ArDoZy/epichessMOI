@@ -53,8 +53,13 @@ Le catalogue compte **18 créatures** réparties en **5 classes** :
 - **Sorcier** : les pièces possédant des capacités spéciales avancées, mais
   à la mobilité réduite. Exemples : Méduse, Typhon, Banshee, Prêtre.
 
-Chaque pièce possède son propre schéma de déplacement, et beaucoup ont une
-capacité spéciale affichée directement sur leur carte dans le jeu.
+Chaque pièce possède son propre schéma de déplacement. Le jeu ne le décrit
+pas en mots : la carte de la créature montre un petit échiquier 9×9 où elle
+occupe le centre, chaque case atteignable portant un pictogramme — une patte
+de chien (elle y va à pied, le passage doit être libre), une paire d'ailes
+(elle y saute par-dessus les pièces), un couteau (elle n'y va que pour
+capturer), un couteau barré (elle n'y va que sans capturer). Les pouvoirs,
+eux, restent écrits sur la carte.
 
 ## Possession des pièces, mise et coffres
 
@@ -65,7 +70,7 @@ C'est la mécanique qui distingue le plus Epic Chess des autres variantes :
 - Engager une armée, c'est la **risquer**. En cas de **défaite**, tous les
   exemplaires engagés sont perdus. En cas de **victoire** ou de nulle, seuls
   les exemplaires réellement **capturés** sont perdus, les survivants
-  reviennent en Réserve.
+  reviennent à l'Armurerie.
 - Une **promotion** de pion crée un exemplaire supplémentaire de la pièce
   choisie.
 - Chaque victoire donne un **coffre**, qui **s'ouvre aussitôt la partie
@@ -75,6 +80,14 @@ C'est la mécanique qui distingue le plus Epic Chess des autres variantes :
   contiennent des exemplaires de pièces, des perles, et — rarement, avec une
   probabilité croissante selon leur rareté (de 1 % au Coffre Pion à 25 % au
   Coffre Roi) — une créature encore jamais débloquée.
+- Les six coffres sont affichés en bas du menu principal, du Pion au Roi :
+  ceux déjà décrochés dans la série en cours sont allumés, celui que la
+  prochaine victoire donnerait brille, les suivants sont en retrait. Chacun
+  porte son prix en **perles** et peut être acheté à tout moment, quelle que
+  soit la série.
+- L'**Armurerie** rassemble ce que le joueur possède : ses exemplaires de
+  pièces, le coffre de réapprovisionnement quotidien et le choix de
+  l'échiquier.
 - Un **coffre de réapprovisionnement quotidien** rend 4 exemplaires de
   chaque pièce possédée : il est donc impossible de rester définitivement
   bloqué sans armée jouable.
