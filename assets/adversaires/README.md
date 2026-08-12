@@ -49,7 +49,7 @@ SUJET : …
 
 ## Autres images facultatives
 
-- `../lab-bg.jpg` — fond du menu principal, 2560×1440, JPG. Le **centre doit
-  rester vide et sombre** : l'emblème, le titre et le bouton COMBAT s'y
-  posent, et un masque radial éteint l'image au milieu (voir `[LAB-BG]` dans
-  css/style.css).
+- `../backgrounds/main-page.png` — fond du menu principal, 2560×1440, PNG. Le
+  **centre doit rester vide et sombre** : l'emblème, le titre et le bouton
+  COMBAT s'y posent, et un masque radial éteint l'image au milieu (voir
+  `[LAB-BG]` dans css/style.css).

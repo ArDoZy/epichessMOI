@@ -32,6 +32,12 @@
 // pendant qu'on retouche sa composition.
 let pArmy={mon:null,gen:null,extras:[]};
 let pEditId=null;
+// pLoaded : une composition en cours (vide ou à moitié faite) ne doit pas
+// être écrasée quand on quitte la page puis qu'on y revient — seule la
+// PREMIÈRE arrivée (par compte) doit recharger pArmy depuis savedArmies.
+// Les arrivées suivantes ne font que redessiner l'état déjà en mémoire.
+// Remis à false par accounts.js à la connexion/déconnexion d'un compte.
+let pLoaded=false;
 
 const pIsSel=p=>{
   if(p.class==='Monarque')return pArmy.mon?.id===p.id;
@@ -91,7 +97,7 @@ function pUpdSlots(){
        ' role="button" tabindex="0" aria-label="Retirer '+escH(p.name)+'">'+
        '<span class="cs-emoji">'+pieceIcon(p.id,'n')+'</span>'+
        '<div class="cs-name">'+escH(p.name)+'</div>'+
-       '<div class="cs-val">'+p.value+' pts</div>'+slotStockHTML(p)+
+       '<div class="cs-val">'+p.value+' pts</div>'+
      '</div>'
     :'<div class="comp-slot'+(req?' cs-req '+cls:' cs-free')+'"><div class="cs-label">'+lbl+'</div><div class="cs-ph">'+(req?'':'+')+'</div></div>';
   let h=mk('Monarque','Monarque',pArmy.mon,'mon',null,true)
@@ -227,7 +233,7 @@ document.getElementById('ar-reset')?.addEventListener('click',pReset);
 // de coffre, fin de tutoriel...) : dans tous les cas, savedArmies[0] est la
 // seule source de vérité, donc la recharger est toujours sûr.
 const renderArmiesPage=()=>{
-  pLoad();
+  if(!pLoaded){pLoad();pLoaded=true;}
   pUpdateAll();
 };
 
@@ -240,7 +246,7 @@ const renderArmiesPage=()=>{
 window.startArmySelection=mode=>{
   if(!savedArmies.length){
     renderArmiesPage();showPage('page-armies');
-    showNotif('Composez d\'abord une armée pour pouvoir combattre.','err');
+    showNotif('Votre armée est incomplète','err');
     return;
   }
   const a=savedArmies[0];

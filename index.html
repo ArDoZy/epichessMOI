@@ -353,12 +353,6 @@
   <button class="cube-arrow cube-arrow-side" id="cube-arrow-right" title="Tourner à droite" style="display:none">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 5, 16 12, 9 19"/></svg>
   </button>
-<!-- PAGINATION DU CUBE : quatre points qui disent sur quelle face on se
-     trouve et combien il y en a. Les flèches ne le disaient pas, et rien à
-     l'écran ne l'indiquait : on tournait sans savoir où l'on était. C'est du
-     RETOUR D'ÉTAT, pas une navigation de plus — les points ne sont pas
-     cliquables, ils ne créent aucune route. Piloté par js/cube-nav.js. -->
-<div class="cube-dots" id="cube-dots" aria-hidden="true"></div>
 </div>
 
 <!-- PAGE 1: BUILDER — réservée à la composition des armées de l'IA
@@ -424,7 +418,7 @@
 <div class="armies-inner">
   <div class="army-box" id="ar-army-box">
     <div class="bd-top">
-      <div class="armies-title cinzel glow-text" style="margin:0">Mes Armées</div>
+      <div class="armies-title cinzel glow-text" style="margin:0">Composition d'armées</div>
       <details class="bd-more" id="ar-more">
         <summary aria-label="Plus d'actions" title="Plus d'actions"><span></span><span></span><span></span></summary>
         <div class="bd-more-menu">

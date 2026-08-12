@@ -1111,16 +1111,6 @@ body.light .cube-face[data-face="libre"]{background:
 #cube-arrow-left{left:22px}
 #cube-arrow-right{right:22px}
 .cube-arrow-vert{left:50%;transform:translateX(-50%);width:64px;height:40px;border-radius:12px}
-/* PAGINATION DU CUBE : la seule chose à l'écran qui dise où l'on est dans la
-   série des faces. Non cliquable — du retour d'état, pas une navigation. */
-.cube-dots{position:fixed;left:50%;transform:translateX(-50%);z-index:400;
-  bottom:calc(30px + var(--safe-b));display:flex;gap:7px;align-items:center;
-  pointer-events:none}
-.cube-dot{width:5px;height:5px;border-radius:999px;background:var(--border2);
-  transition:width .2s cubic-bezier(.2,.8,.2,1),background-color .2s ease}
-.cube-dot.is-on{width:18px;background:var(--gold)}
-@media(max-width:640px){.cube-dots{bottom:calc(21px + var(--safe-b))}}
-@media(prefers-reduced-motion:reduce){.cube-dot{transition:none}}
 #cube-arrow-down{bottom:calc(22px + var(--safe-b))}
 #cube-arrow-up{top:calc(var(--chrome-h) + var(--safe-t) + 10px)}
 
@@ -2291,7 +2281,7 @@ body.cube-active:not(.nav-overlay) .notif-host{bottom:92px}
 }
 
 /* [LAB-BG] ======================================================
-   Fond d'atelier du menu principal : assets/lab-bg.jpg.
+   Fond du menu principal : assets/backgrounds/main-page.png.
    Le fichier est FACULTATIF. Une image absente ne produit qu'un 404
    silencieux et la face garde son dégradé : rien à conditionner en JS, et le
    jeu reste complet sans un seul octet d'image (voir aussi les portraits
@@ -2301,7 +2291,7 @@ body.cube-active:not(.nav-overlay) .notif-host{bottom:92px}
    ============================================================== */
 .cube-face[data-face="jouer"] .face-viewport::before{
   content:'';position:absolute;inset:0;z-index:0;pointer-events:none;
-  background-image:url('../assets/lab-bg.jpg');
+  background-image:url('../assets/backgrounds/main-page.png');
   background-size:cover;background-position:center 60%;
   opacity:.30;filter:saturate(.7) contrast(1.05);
   /* Le centre reste dégagé : c'est là que vivent l'emblème, le titre et le

@@ -130,7 +130,14 @@ function renderGame(gs){
       // doigt ne doit pas, en plus, la sélectionner et refermer la fiche.
       if(typeof longPressJustFired==='function'&&longPressJustFired())return;
       if(gs.gameOver||gs.turn!==playerCol)return;
-      if(dragState&&dragState.moved)return; // drag actif, géré par endDrag
+      // Le relâchement du doigt sur une pièce qu'on vient de toucher (le
+      // touchstart a déjà appelé startDrag, qui l'a sélectionnée) ne doit PAS
+      // repasser par handleGameClick : celui-ci verrait la pièce déjà
+      // sélectionnée et la désélectionnerait aussitôt — c'était le bug qui
+      // désélectionnait systématiquement une pièce dès qu'on levait le doigt
+      // sur mobile. C'est endDrag (document, plus bas) qui conclut ce geste,
+      // qu'il s'agisse d'un simple appui ou d'un vrai glissement.
+      if(dragState){e.preventDefault();return;}
       if(gs.historyView!==null){gs.historyView=null;renderGame(gs);updateStatus(gs);updateHistoryNav();return;}
       e.preventDefault();
       handleGameClick(r,c,gs);
@@ -273,7 +280,7 @@ function startDrag(r,c,gs,clientX,clientY){
   const alreadySelected=gs.selected&&gs.selected.r===r&&gs.selected.c===c;
   const moves=getLegalMoves(b,r,c,gs);
   gs.selected={r,c};gs.legalMoves=moves;
-  dragState={fromR:r,fromC:c,gs,moved:false,startX:clientX,startY:clientY};
+  dragState={fromR:r,fromC:c,gs,moved:false,startX:clientX,startY:clientY,alreadySelected};
   dragGhost.innerHTML=pieceSVG(cell.pieceId,cell.color);
   dragGhost.style.left=clientX+'px';dragGhost.style.top=clientY+'px';
   if(!alreadySelected)renderGame(gs);
@@ -294,6 +301,7 @@ function endDrag(clientX,clientY){
   dragGhost.style.display='none';
   const gs=dragState.gs;
   const wasDrag=dragState.moved;
+  const wasAlreadySelected=dragState.alreadySelected;
   const prevSelected={r:dragState.fromR,c:dragState.fromC};
   dragState=null;
 
@@ -306,6 +314,12 @@ function endDrag(clientX,clientY){
       const from={...prevSelected};gs.selected=null;gs.legalMoves=[];
       executeGameMove(from,move,gs);
     }else{gs.selected=null;gs.legalMoves=[];renderGame(gs);}
+  }else if(wasAlreadySelected){
+    // Un simple appui sur la pièce déjà sélectionnée la désélectionne (comme
+    // un clic sur la pièce sélectionnée). Sinon (appui sur une pièce qui
+    // vient tout juste d'être sélectionnée par ce même geste), rien à faire
+    // de plus : startDrag l'a déjà sélectionnée et affichée.
+    gs.selected=null;gs.legalMoves=[];renderGame(gs);
   }
 }
 
