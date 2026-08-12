@@ -70,6 +70,9 @@ epic-chess/
     ├── accounts.js           # Comptes locaux (localStorage), connexion
     ├── economy.js            # Possession des pièces, mise en jeu, coffres, séries
     ├── ai-level-modal.js     # Réduit à selectedAILevel/selectedTimeControl
+    ├── piece-card.js         # LA carte de pièce (format portrait : logo, nom,
+    │                          # valeur, stock) + sa fiche en bottom sheet
+    │                          # (déplacement, pouvoir). Composant partagé.
     ├── builder.js            # Page de composition d'armée
     ├── armies.js             # Pages "Mes armées" / "Armées IA" + génération IA
     ├── adversaires.js        # Galerie des douze adversaires (portraits/sceaux)
@@ -84,8 +87,9 @@ epic-chess/
     ├── ai-engine.js          # Évaluation (dont les POUVOIRS), minimax, Worker IA
     ├── game-flow.js          # Démarrage partie, fin de partie, résultat
     ├── voie.js                # Page "Voie des Victoires" (ELO, rangs, jalons)
-    ├── economy-ui.js         # Page "Armurerie" (perles, échiquiers) + les six
-    │                          # coffres et le coffre quotidien du menu principal
+    ├── economy-ui.js         # Page "Armurerie" (échiquiers) + les six coffres
+    │                          # du menu principal + le coffre quotidien, qui
+    │                          # s'ouvre tout seul (dailyChestMaybeOpen)
     ├── tuto-drill.js         # Exercice de déplacement d'une créature débloquée
     ├── tutorial.js           # Tutoriel : 4 batailles scriptées + visite guidée
     ├── settings-admin.js     # Panneau réglages + mode test (/?test)
@@ -431,7 +435,8 @@ chaque fichier suppose que les globals des fichiers précédents existent déjà
 
 ```
 data-pieces.js → piece-art.js → main.js → cube-nav.js → accounts.js
-→ economy.js → ai-level-modal.js → builder.js → armies.js → adversaires.js
+→ economy.js → ai-level-modal.js → piece-card.js → builder.js → armies.js
+→ adversaires.js
 → combat-intro.js
 → rules-engine.js → piece-moves.js → combat-music.js → cinematics.js
 → game-render.js
@@ -443,6 +448,10 @@ data-pieces.js → piece-art.js → main.js → cube-nav.js → accounts.js
 `economy.js` doit venir après `accounts.js` (il utilise `accGet`/`accSet`) et
 avant tous les modules de page qui affichent des stocks. `piece-art.js` doit
 venir juste après `data-pieces.js` : à peu près tous les rendus l'utilisent.
+`piece-card.js` doit venir avant `builder.js`, qui appelle `pieceCardHTML()` /
+`wirePieceCards()`. Il référence `pieceMoveDiagramHTML` (`piece-moves.js`,
+chargé plus loin), mais seulement à l'ouverture d'une fiche : jamais au
+chargement.
 `piece-moves.js` doit venir après `rules-engine.js` : il fabrique ses schémas
 en interrogeant `generateMovesRaw()`.
 
@@ -505,6 +514,11 @@ mais dans une version que Playwright refuse, le script le retrouve tout seul
 | Changer ce qu'une partie fait risquer ou rapporter | `js/economy.js` (`economyCommit` / `economySettle`) |
 | Ajouter un échiquier | `tools/gen-boards.js` (relancer `node tools/gen-boards.js`) + `BOARD_SKINS` dans `js/data-pieces.js` |
 | Modifier le dessin d'une pièce | `js/piece-art.js` (`PIECE_ART`) |
+| Modifier la carte d'une pièce (ce qui s'y affiche, les deux boutons) | `pieceCardHTML()` / `wirePieceCards()` dans `js/piece-card.js` + section `[PCARD]` de `css/style.css` |
+| Modifier la fiche d'une pièce (bottom sheet : déplacement, pouvoir) | `openPieceSheet()` / `piecePowerHTML()` dans `js/piece-card.js` + le balisage `#piece-sheet` dans `index.html` + section `[PSHEET]` de `css/style.css` |
+| Ajouter l'icône d'un nouveau pouvoir | `POWER_ICONS` dans `js/piece-card.js` (clé = id de la pièce) |
+| Changer quand le coffre de réapprovisionnement s'ouvre | `dailyChestMaybeOpen()` / `dailyChestBusy()` dans `js/economy-ui.js` |
+| Ajuster la mise en page téléphone d'un écran | section `[MOBILE-APP]` de `css/style.css` (en dernier dans le fichier, elle l'emporte sur les sections d'origine) |
 | Modifier les pictogrammes du schéma de déplacement (patte, ailes, couteau…) | `PMV_ICONS` / `PMV_LABELS` dans `js/piece-moves.js` + section `[PMV]` de `css/style.css` |
 | Modifier les cinématiques de combat | `js/cinematics.js` + section `[CINEMATIC]` de `css/style.css` |
 | Modifier le tutoriel (textes, étapes, cibles) | `js/tutorial.js` (`TUTO_STEPS`) |

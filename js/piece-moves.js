@@ -176,14 +176,6 @@ function pieceMoveMap(pieceId){
   return grid;
 }
 
-// Un déplacement qui n'est pas le même vers l'avant et vers l'arrière (la
-// Fourmi, un pion) : il faut alors dire de quel côté est l'adversaire.
-function pmvDirectional(grid){
-  for(let i=0;i<PMV_SIZE;i++)for(let j=0;j<PMV_SIZE;j++)
-    if(grid[i][j]!==grid[PMV_SIZE-1-i][j])return true;
-  return false;
-}
-
 // ----------------------------------------------------------------
 // LES PICTOGRAMMES
 // ----------------------------------------------------------------
@@ -248,8 +240,12 @@ function pieceMoveDiagramHTML(pieceId,opts){
           :(cat?pmvIcon(cat):''))+
       '</div>';
     }
-    html='<div class="pmv"><div class="pmv-grid">'+cells+'</div>'+
-      (pmvDirectional(grid)?'<div class="pmv-fwd">↑ camp adverse</div>':'')+'</div>';
+    // Le schéma ne porte plus la mention « ↑ camp adverse » sous la grille.
+    // Elle n'apparaissait que sous les pièces au déplacement orienté (Fourmi,
+    // Peureux, Méduse…), ajoutait une ligne sous un dessin déjà serré, et
+    // n'apprenait rien : le haut d'un échiquier est le camp d'en face, c'est
+    // vrai de toutes les cases du jeu.
+    html='<div class="pmv"><div class="pmv-grid">'+cells+'</div></div>';
     if(o.legend)html+=pieceMoveLegendHTML(pieceId);
     _pmvHtml.set(key,html);
   }

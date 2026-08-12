@@ -49,7 +49,11 @@ window.removePiece=(type,idx)=>{
 function slotStockHTML(p){
   if(typeof invCount!=='function'||typeof isOwnablePiece!=='function'||!isOwnablePiece(p.id))return '';
   const need=pieceDeployCount(p.id),have=invCount(p.id);
-  return '<div class="cs-stock'+(have<need?' cs-stock-out':'')+'">'+have+' / '+need+' requis</div>';
+  // « 999 / 2 » plutôt que « 999 / 2 requis » : dans un emplacement large d'un
+  // cinquième d'écran de téléphone, le mot passait à la ligne et débordait du
+  // cadre. Le rapport se lit sans lui, et l'infobulle le dit en toutes lettres.
+  return '<div class="cs-stock'+(have<need?' cs-stock-out':'')+'" title="'+have+
+    ' en stock, '+need+' requis pour cette armée">'+have+' / '+need+'</div>';
 }
 
 const updSlots=()=>{
@@ -91,16 +95,13 @@ function wireSlotDragSwap(g){
     });
   });
 }
+// La pastille « Armurerie : — / Prête / Manque » a été retirée de la topbar :
+// chaque carte de pièce porte déjà son stock, et chaque slot de composition
+// répète le compte exact sous la pièce posée (.cs-stock). Trois fois la même
+// information sur un écran de téléphone, c'était deux de trop.
 const updStats=()=>{
   document.getElementById('s-val').textContent=getVal()+'/24';
   document.getElementById('b-validate').disabled=!armyValid();
-  const st=document.getElementById('s-stock');
-  if(st){
-    if(!armyValid()){st.textContent='—';st.className='sp-val';return;}
-    const stock=armyStock({mon:army.mon,gen:army.gen,extras:army.extras.map(p=>p.id)});
-    st.textContent=stock.ok?'Prête':'Manque';
-    st.className='sp-val '+(stock.ok?'sp-ok':'sp-bad');
-  }
 };
 const updAll=()=>{updSlots();renderCards();updStats();};
 
@@ -131,22 +132,27 @@ const toggle=p=>{
   updAll();
 };
 
-// Le déplacement, en schéma et non en phrase (js/piece-moves.js) : sur une
-// carte, « Exactement 2 cases orthogonales (sans sauter) OU 1 case diagonale »
-// occupait trois lignes que personne ne convertissait en cases. La légende des
-// pictogrammes est réservée à la fiche complète (clic droit) : ici, la place
-// va au dessin.
-function pcMoveHTML(p){
-  if(typeof pieceMoveDiagramHTML!=='function')return '';
-  return '<div class="pc-mvt">'+pieceMoveDiagramHTML(p.id,{cls:'pmv-sm'})+'</div>';
-}
-
 // ----------------------------------------------------------------
 // RENDU DES CARTES : toujours triées par classe puis par valeur croissante
 // (plus de tri/filtre manuel : voir le bandeau de raccourcis par catégorie,
 // géré plus bas par wireClassJumpRail()).
 // ----------------------------------------------------------------
+// LE BALISAGE DES CARTES N'EST PLUS ÉCRIT ICI. Il vient de pieceCardHTML()
+// (js/piece-card.js), le composant partagé : logo, nom, valeur, stock, et
+// rien d'autre. Le déplacement et le pouvoir, qui remplissaient chaque carte
+// de trois blocs illisibles à cette taille, sont dans la fiche — le bottom
+// sheet ouvert par le bouton « Infos ». Résultat : des cartes au format
+// portrait, huit visibles à l'écran d'un téléphone, et un catalogue qu'on
+// parcourt au pouce.
 const getSorted=()=>[...PIECES].sort((a,b)=>{const d=CLASS_ORDER[a.class]-CLASS_ORDER[b.class];return d||a.value-b.value;});
+
+// Ce qu'il faut pour débloquer une pièce, dit en trois mots sous le cadenas.
+function pieceLockLabel(p){
+  const m=UNLOCK_MILESTONES.find(u=>u.pieceId===p.id);
+  if(!m)return 'Coffre';
+  if(m.coffre)return 'Coffre';
+  return m.eloRequired<999999?vvGetRank(m.eloRequired).name+' · '+m.eloRequired+' ELO':'';
+}
 
 const renderCards=()=>{
   const ps=getSorted();const byClass={};
@@ -157,60 +163,20 @@ const renderCards=()=>{
     html+='<div class="class-sec '+cls+'" id="cls-sec-'+cls+'"><div class="class-hdr"><span class="class-hdr-name '+cls+'">'+cls+'</span></div><div class="cards-grid">';
     byClass[cls].forEach(p=>{
       const unlocked=VV_UNLOCKED.has(p.id);
-      if(!unlocked){
-        const m=UNLOCK_MILESTONES.find(u=>u.pieceId===p.id);
-        const isCoffre=m?.coffre;
-        const rankLabel=isCoffre?'Coffre':(m&&m.eloRequired<999999?vvGetRank(m.eloRequired).name+' ('+m.eloRequired+' ELO)':'');
-        html+='<div class="piece-card '+p.class+' locked" data-id="'+p.id+'"><span class="pc-emoji">'+pieceIcon(p.id,'n')+'</span><div class="pc-head"><div class="pc-name">'+p.name+'</div><div class="pc-val '+p.class+'">'+p.value+'</div></div>'+pcMoveHTML(p)+'<div class="locked-overlay"><span class="lock-icon"></span><span class="lock-rank">'+rankLabel+'</span></div></div>';
-      }else{
-        const have=(typeof invCount==='function')?invCount(p.id):0;
-        const need=pieceDeployCount(p.id);
-        html+='<div class="piece-card '+p.class+(isSel(p)?' sel':'')+(have<need?' pc-nostock':'')+'" data-id="'+p.id+'">'+
-          '<span class="pc-stock'+(have<need?' pc-stock-out':'')+'" title="Exemplaires en stock">'+have+'</span>'+
-          '<span class="pc-emoji">'+pieceIcon(p.id,'n')+'</span>'+
-          '<div class="pc-head"><div class="pc-name">'+p.name+'</div><div class="pc-val '+p.class+'">'+p.value+'</div></div>'+
-          pcMoveHTML(p)+
-          (p.ability?'<div class="pc-ability">'+p.ability+'</div>':'')+'</div>';
-      }
+      html+=pieceCardHTML(p,{
+        locked:!unlocked,
+        lockLabel:unlocked?'':pieceLockLabel(p),
+        selected:isSel(p),
+      });
     });
     html+='</div></div>';
   });
   document.getElementById('cards-container').innerHTML=html;
-  document.querySelectorAll('.piece-card:not(.locked)').forEach(el=>{
-    const p=PIECES.find(x=>x.id===el.dataset.id);
-    el.addEventListener('click',()=>{
-      // L'appui long a ouvert la fiche : ce clic-là n'est que le doigt qui se
-      // relève, il ne doit pas engager la pièce dans l'armée.
-      if(typeof longPressJustFired==='function'&&longPressJustFired())return;
-      if(!el.classList.contains('sel')||isSel(p))toggle(p);
-    });
-    el.addEventListener('contextmenu',e=>showPieceCtxMenu(e,p));
-    if(typeof bindLongPress==='function')bindLongPress(el,e=>showPieceCtxMenu(e,p));
-  });
-  document.querySelectorAll('.piece-card.locked').forEach(el=>{
-    const p=PIECES.find(x=>x.id===el.dataset.id);
-    if(!p)return;
-    el.addEventListener('contextmenu',e=>showPieceCtxMenu(e,p));
-    if(typeof bindLongPress==='function')bindLongPress(el,e=>showPieceCtxMenu(e,p));
-  });
-  equalizeCardHeights();
+  // « Utiliser » applique les règles de composition (budget, 3 pièces, une
+  // seule Primordiale) exactement comme le clic d'avant : c'est toggle() qui
+  // décide, le composant ne fait que transmettre l'intention.
+  wirePieceCards(document.getElementById('cards-container'),{onUse:toggle});
 };
-
-// Uniformise la hauteur de toutes les cartes de pièces sur celle de la plus
-// grande (le contenu, mouvement/pouvoir, varie beaucoup en longueur).
-function equalizeCardHeights(){
-  const cards=document.querySelectorAll('.piece-card');
-  if(!cards.length)return;
-  // Si la page est encore cachée (display:none), toute mesure vaut 0 :
-  // on abandonne plutôt que de figer les cartes à une hauteur nulle.
-  // #page-builder est un overlay en position:fixed une fois actif : son
-  // offsetParent reste null même visible, donc on teste .active plutôt.
-  if(!document.getElementById('page-builder').classList.contains('active'))return;
-  cards.forEach(el=>{el.style.height='auto';});
-  let max=0;
-  cards.forEach(el=>{if(el.offsetHeight>max)max=el.offsetHeight;});
-  cards.forEach(el=>{el.style.height=max+'px';});
-}
 
 function updateBuilderBanner(){
   const banner=document.getElementById('builder-mode-banner');

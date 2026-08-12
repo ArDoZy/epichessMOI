@@ -277,18 +277,18 @@ const TUTO_STEPS=[
     at:'.army-box',
   },
   {
-    text:'Chaque créature a son déplacement ET son pouvoir. Le petit échiquier sur sa '+
-         'carte montre où elle va&nbsp;: <strong>patte</strong> pour y aller à pied, '+
-         '<strong>ailes</strong> pour y sauter par-dessus tout le monde.<br>'+
-         'Le pouvoir, lui, s\'écrit&nbsp;: <strong>clic droit sur une carte</strong> — ou un '+
-         'appui long au doigt — pour la fiche complète.',
+    text:'Chaque créature a son déplacement ET son pouvoir. La carte ne montre que '+
+         'l\'essentiel&nbsp;: son logo, son nom, sa valeur et votre stock.<br>'+
+         '<strong>Appuyez sur une carte</strong>&nbsp;: deux boutons apparaissent. '+
+         '« Utiliser » la met dans l\'armée, <strong>« Infos »</strong> ouvre sa fiche — '+
+         'l\'échiquier de son déplacement et son pouvoir en détail.',
     at:'#cards-container .class-sec',
   },
   {
-    text:'Ce petit nombre en haut de chaque carte, c\'est le plus important de tout&nbsp;: '+
+    text:'Ce petit nombre en bas de chaque carte, c\'est le plus important de tout&nbsp;: '+
          'le nombre d\'<strong>exemplaires que vous possédez</strong>. On ne joue que ce '+
          'qu\'on possède. J\'y reviens, c\'est mon invention préférée.',
-    at:'.piece-card .pc-stock',
+    at:'.pcard .pcard-stock',
   },
   {
     text:'Je suis pressé et vous aussi. <strong>Prenez une armée au hasard</strong>, '+
@@ -363,10 +363,15 @@ const TUTO_STEPS=[
     at:'#jouer-chests',
   },
   {
-    text:'Rassurez-vous, je ne suis pas un monstre. Chaque jour, ce coffre-ci vous rend '+
-         '<strong>4 exemplaires de chacune</strong> de vos pièces. Il est ici, sur le '+
-         'chemin&nbsp;: vous ne pourrez jamais vous retrouver bloqué sans armée.',
-    at:'#menu-daily',
+    // Le coffre de réapprovisionnement n'a plus de carte à montrer du doigt :
+    // il s'ouvre TOUT SEUL quand son délai est écoulé (voir
+    // dailyChestMaybeOpen, js/economy-ui.js). L'étape reste — c'est une règle
+    // du jeu qu'il faut connaître — mais sans cible à surligner.
+    text:'Rassurez-vous, je ne suis pas un monstre. Chaque jour, un coffre vous rend '+
+         '<strong>4 exemplaires de chacune</strong> de vos pièces. Vous n\'avez rien à '+
+         'faire&nbsp;: il <strong>s\'ouvre tout seul</strong> dès qu\'il est prêt, à votre '+
+         'arrivée ou en sortant d\'une partie. Vous ne pourrez jamais vous retrouver '+
+         'bloqué sans armée.',
   },
   {
     text:'Une dernière chose, et je vous laisse&nbsp;: en pleine partie, <strong>clic droit '+

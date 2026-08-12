@@ -147,6 +147,23 @@ const OPTIONAL_ASSET=/adversaires\/[a-z-]+\.png|lab-bg\.jpg/;
     if(await page.evaluate(()=>savedArmies.length)<1)throw new Error('aucune armée offerte');
   });
 
+  // LE COFFRE DE RÉAPPROVISIONNEMENT S'OUVRE TOUT SEUL. Il n'a plus de carte
+  // ni de bouton « Récupérer » sur le menu : dès que son délai est écoulé et
+  // que le joueur est disponible — ici, à la sortie du tutoriel — la cérémonie
+  // s'ouvre d'elle-même (voir dailyChestMaybeOpen, js/economy-ui.js). Le
+  // joueur ouvre le coffre lui-même, comme n'importe quel autre.
+  await step('le coffre de réapprovisionnement s\'ouvre de lui-même',async()=>{
+    await page.waitForSelector('#chest-modal.show',{timeout:8000});
+    const titre=await page.textContent('#chest-title');
+    if(!/réapprovisionnement/i.test(titre))throw new Error('coffre inattendu : '+titre);
+    await page.click('#chest-visual');
+    await page.waitForSelector('#chest-close:visible',{timeout:8000});
+    await page.click('#chest-close');
+    await page.waitForSelector('#chest-modal.show',{state:'hidden',timeout:8000});
+    if(await page.evaluate(()=>dailyChestAvailable()))
+      throw new Error('le coffre du jour est encore dû après son ouverture');
+  });
+
   await step('les réglages sont conservés',async()=>{
     await page.click('#settings-btn');
     await page.click('#sp-theme');

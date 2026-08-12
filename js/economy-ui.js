@@ -174,9 +174,11 @@ function pearlAmountHTML(n,em){
   return '<span class="pearl-amt">'+pearlIcon(em)+'<span>'+n+'</span></span>';
 }
 
+// L'Armurerie ne montre plus le solde de perles : on n'y achète rien. Les
+// perles servent aux coffres, et leur solde est écrit sous les coffres, au
+// menu principal, là où on décide de dépenser (voir .jc-bank).
 function renderReservePage(){
   if(!CUR_ACC)return;
-  renderPearls();
   renderAdminChests();
   renderBoardSkins();
 }
@@ -233,20 +235,6 @@ function settleAndCelebrate(result,gs,onDone){
   if(typeof playOutcomeCinematic==='function')playOutcomeCinematic(result,report,finish);
   else setTimeout(finish,400);
   return report;
-}
-
-// Solde de perles, en haut de l'Armurerie. En mode test la bourse est sans
-// fond : on écrit « ∞ » plutôt qu'un nombre à six chiffres qui ferait croire
-// à un solde ordinaire (voir pearlInfinite, js/economy.js).
-function renderPearls(){
-  const el=document.getElementById('rs-pearls');
-  if(!el)return;
-  const inf=(typeof pearlInfinite==='function')&&pearlInfinite();
-  el.innerHTML='<div class="pearl-bank">'+pearlIcon(2.2)+
-    '<div class="pearl-bank-info">'+
-      '<div class="pearl-bank-n">'+(inf?'∞':pearlBalance())+'</div>'+
-      '<div class="pearl-bank-lbl">perles</div>'+
-    '</div></div>';
 }
 
 // ----------------------------------------------------------------
@@ -325,34 +313,75 @@ function chestBackToMenu(){
   if(typeof renderArmiesPage==='function')renderArmiesPage();
 }
 
-// LE COFFRE DE RÉAPPROVISIONNEMENT vit sur le MENU PRINCIPAL (#menu-daily) et
-// non plus au fond de l'Armurerie : c'est le filet de sécurité du jeu — celui
-// qui garantit qu'on ne reste jamais bloqué sans armée jouable — et il ne
-// remplissait ce rôle que pour qui pensait à aller le chercher.
+// ----------------------------------------------------------------
+// COFFRE DE RÉAPPROVISIONNEMENT : IL S'OUVRE TOUT SEUL
+// ----------------------------------------------------------------
+// Il avait une carte sur le menu principal, avec son bouton « Récupérer ».
+// Cette carte prenait un tiers de l'écran d'un téléphone pour un geste que
+// personne n'a jamais hésité à faire : il n'y a rien à décider, le coffre est
+// gratuit, quotidien, et toujours bon à prendre. Un bouton dont la réponse est
+// toujours « oui » n'est pas un choix, c'est une corvée.
+//
+// Le coffre s'ouvre donc DE LUI-MÊME dès que son délai est écoulé — mais
+// seulement quand le joueur est disponible pour le regarder :
+//   · pas connecté      → à sa prochaine connexion (voir enterAccount)
+//   · en pleine partie  → à la fin de la partie, une fois qu'il l'a quittée
+//                         (goToMainMenu, js/cube-nav.js)
+//   · déjà devant une   → on laisse passer et on retentera au prochain retour
+//     fenêtre ouverte      au menu
+//
+// La cérémonie reste EXACTEMENT la même que pour un coffre gagné : le joueur
+// l'ouvre lui-même d'un appui, et voit son contenu se révéler lot par lot.
+// C'est l'attente et le bouton qui disparaissent, pas le plaisir.
+
+// Le joueur est-il en train de faire autre chose ? On ne s'invite pas
+// par-dessus une partie, une cinématique, un tutoriel ou un autre coffre.
+function dailyChestBusy(){
+  // Le plateau est à l'écran : la face « partie » du cube est au front, ou une
+  // page en surimpression (composition, engagement, exercice…) est ouverte.
+  // On ne se fie pas à GS.gameOver seul : cet objet existe dès le chargement,
+  // avec gameOver à false, alors qu'aucune partie n'a commencé.
+  if(document.querySelector('.cube-face[data-face="game"].is-front'))return true;
+  if(document.querySelector('.page.active:not(#page-login)'))return true;
+  if(_chestState)return true;                                      // coffre déjà ouvert
+  if(typeof tutoActive==='function'&&tutoActive())return true;      // le savant parle
+  // Tutoriel pas encore terminé : le savant distribue déjà ses propres
+  // coffres et enchaîne les exercices, un septième coffre surgissant au
+  // milieu de sa visite couperait son fil. Le quotidien attendra la sortie.
+  if(typeof tutoDone==='function'&&!tutoDone())return true;
+  const shown=id=>{const el=document.getElementById(id);return !!el&&
+    (el.classList.contains('show')||el.classList.contains('active')||
+     el.style.display==='flex');};
+  if(shown('result-modal')||shown('chest-modal')||shown('confirm-modal')||
+     shown('mp-modal')||shown('intro-modal'))return true;
+  return false;
+}
+
+// Appelée à la connexion et à chaque retour au menu principal. Sans effet si
+// le coffre a déjà été pris aujourd'hui : c'est dailyChestAvailable() qui
+// décide, exactement comme avant.
+function dailyChestMaybeOpen(){
+  if(!CUR_ACC)return false;
+  if(typeof dailyChestAvailable!=='function'||!dailyChestAvailable())return false;
+  if(dailyChestBusy())return false;
+  const gains=claimDailyChest();
+  if(!gains)return false;
+  const lots=Object.entries(gains).map(([pieceId,qty])=>({pieceId,qty,isNew:false}));
+  // Un joueur sans une seule pièce en stock ne reçoit rien : inutile de lui
+  // ouvrir un coffre vide (le cas ne se produit qu'en toute fin de partie de
+  // dépouillement, mais il se produit).
+  if(!lots.length)return false;
+  // Réutilise la cérémonie des coffres, mais le gain est DÉJÀ appliqué :
+  // applyOnClose reste à false pour ne pas créditer deux fois.
+  showChestCeremony({name:DAILY_CHEST.name,color:'#c19a45'},lots,false,chestBackToMenu);
+  return true;
+}
+
+// Conservée sous son ancien nom : renderMenuChests() l'appelle, et le menu
+// n'a plus de carte quotidienne à dessiner. C'est le moment idéal pour
+// vérifier si le coffre du jour est dû.
 function renderDailyChest(){
-  const el=document.getElementById('menu-daily');if(!el)return;
-  if(!CUR_ACC){el.innerHTML='';return;}
-  const ready=dailyChestAvailable();
-  const owned=invOwnedIds().length;
-  el.innerHTML='<div class="daily-card'+(ready?' daily-ready':'')+'">'+
-    chestVisual({color:'#c19a45'},ready?'chest-ready':'')+
-    '<div class="daily-info">'+
-      '<div class="daily-name">'+DAILY_CHEST.name+'</div>'+
-      '<div class="daily-desc">'+(ready
-        ? '+'+DAILY_CHEST.perPiece+' exemplaires de chacune de vos '+owned+' pièces. Il revient chaque jour : perdre tout son stock n\'est jamais définitif.'
-        : 'Déjà récupéré aujourd\'hui. Prochain coffre dans '+dailyChestCountdown()+'.')+'</div>'+
-    '</div>'+
-    (ready?'<button class="btn btn-gold" id="menu-daily-btn">Récupérer</button>':'')+
-  '</div>';
-  const btn=document.getElementById('menu-daily-btn');
-  if(btn)btn.addEventListener('click',()=>{
-    const gains=claimDailyChest();
-    if(!gains)return;
-    const lots=Object.entries(gains).map(([pieceId,qty])=>({pieceId,qty,isNew:false}));
-    // Réutilise la cérémonie des coffres, mais le gain est DÉJÀ appliqué :
-    // applyOnClose reste à false pour ne pas créditer deux fois.
-    showChestCeremony({name:DAILY_CHEST.name,color:'#c19a45'},lots,false,chestBackToMenu);
-  });
+  dailyChestMaybeOpen();
 }
 
 // ----------------------------------------------------------------

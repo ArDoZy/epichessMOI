@@ -252,6 +252,59 @@
     if(typeof startArmySelection==='function')startArmySelection('online');
   }
 
+  // ---- GLISSEMENT DU DOIGT ---------------------------------------
+  // Sur téléphone, c'est LE geste de navigation : les deux flèches sont un
+  // secours, pas le moyen principal.
+  //
+  // Le sens est celui d'une pile de cartes qu'on pousse, pas celui d'une
+  // manette : le doigt qui va vers la DROITE tire le contenu vers la droite,
+  // et découvre donc ce qui était à GAUCHE. Un doigt vers la GAUCHE amène la
+  // face de droite. C'est exactement ce que fait un carrousel de photos, et
+  // c'est l'inverse de ce que font les flèches (qui, elles, DÉSIGNENT la face
+  // à faire venir).
+  //
+  // Trois garde-fous, sinon le geste se déclenche tout le temps :
+  //   · le glissement doit être franchement HORIZONTAL (sinon c'est un
+  //     défilement de la page : l'Armurerie et « Mes armées » défilent) ;
+  //   · il doit couvrir au moins 12 % de la largeur de l'écran — un seuil en
+  //     pourcentage, pas en pixels, pour se comporter pareil sur un petit
+  //     téléphone et sur une tablette ;
+  //   · il ne compte que s'il part d'une zone neutre : ni un bouton, ni un
+  //     champ, ni le plateau de jeu, ni un curseur de réglage.
+  const SWIPE_RATIO=0.12;      // fraction de la largeur d'écran à parcourir
+  const SWIPE_MAX_MS=700;      // au-delà, c'est un déplacement, pas un geste
+  function swipeBlocked(target){
+    return !!(target&&target.closest&&target.closest(
+      'button,a,input,textarea,select,.game-board,.pmv,.psheet,.jc-chest,'+
+      '.pcard,.comp-slot,.skin-card,.move-log,[data-noswipe]'));
+  }
+  function wireSwipe(){
+    const stage=document.getElementById('cube-stage');
+    if(!stage)return;
+    let x0=0,y0=0,t0=0,live=false;
+    stage.addEventListener('touchstart',e=>{
+      live=false;
+      if(e.touches.length!==1)return;
+      if(locked||!document.body.classList.contains('cube-active')||
+         document.body.classList.contains('nav-overlay'))return;
+      if(swipeBlocked(e.target))return;
+      const t=e.touches[0];
+      x0=t.clientX;y0=t.clientY;t0=Date.now();live=true;
+    },{passive:true});
+    stage.addEventListener('touchend',e=>{
+      if(!live)return;
+      live=false;
+      const t=e.changedTouches&&e.changedTouches[0];
+      if(!t)return;
+      if(Date.now()-t0>SWIPE_MAX_MS)return;
+      const dx=t.clientX-x0,dy=t.clientY-y0;
+      if(Math.abs(dx)<window.innerWidth*SWIPE_RATIO)return;
+      if(Math.abs(dx)<Math.abs(dy)*1.4)return;   // geste trop vertical
+      nav(dx>0?'left':'right');
+    },{passive:true});
+    stage.addEventListener('touchcancel',()=>{live=false;},{passive:true});
+  }
+
   // ---- Init ------------------------------------------------------
   function init(){
     cube=document.getElementById('cube');
@@ -283,6 +336,8 @@
       if(e.key==='ArrowRight')nav('right');
       else if(e.key==='ArrowLeft')nav('left');
     });
+
+    wireSwipe();
 
     settle();     // positionne les faces + cube à l'angle 0
     refresh();
