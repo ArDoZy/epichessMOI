@@ -8,7 +8,7 @@
 //
 // Dépendances : aucune (chargé en tout premier après les libs).
 // Utilisé par : à peu près tous les autres modules (builder, rules-engine,
-// ai-engine, voie, tournoi, game-flow...).
+// ai-engine, voie, game-flow...).
 //
 // Si vous ajoutez une nouvelle pièce : l'ajouter dans PIECES, puis dans
 // UNLOCK_TABLE si elle doit être débloquée par ELO (ou marquée coffre:true
@@ -40,8 +40,8 @@ function vvGetRankIdx(elo){for(let i=RANKS.length-1;i>=0;i--)if(elo>=RANKS[i].mi
 // puissance. Or le tutoriel se termine contre un instructeur qui laisse passer
 // un coup sur trois : le joueur sortait donc de l'apprentissage face à un mur.
 // Et comme l'entraînement contre l'IA n'était pas classé, un joueur seul ne
-// pouvait gagner un seul point d'ELO — c'est-à-dire ne débloquer ni le Garde
-// de Pierre (30 ELO), ni la Méduse (210), ni le Typhon (1000), ni un seul
+// pouvait gagner un seul point d'ELO — c'est-à-dire ne débloquer ni le Preux
+// Chevalier (50 ELO), ni la Méduse (210), ni le Typhon (1000), ni un seul
 // échiquier. Toute la progression du jeu lui était fermée.
 //
 // Il y a maintenant une PENDERIE d'adversaires, chacun avec son niveau, son
@@ -253,28 +253,42 @@ const DAILY_CHEST={id:'reappro',name:'Coffre de réapprovisionnement',perPiece:4
 // anciennes « capacités » qui ne faisaient que redire le déplacement
 // (« Cavalier standard. », « Ne peut pas reculer. ») sont parties avec le
 // champ `movement`.
+// Les libellés de `ability` sont la RÉFÉRENCE du jeu : ce sont eux qu'affichent
+// la carte du builder, la fiche (clic droit) et l'écran de déblocage. Ils
+// doivent donc dire le pouvoir tel qu'il est codé, mot pour mot — une pièce
+// sans pouvoir porte `null` et n'affiche rien, plutôt qu'une phrase qui
+// paraphrase son déplacement.
 const PIECES=[
   {id:'roi',name:'Roi',emoji:'👑',class:'Monarque',value:3,qty:1,pieceType:'k',ability:null},
-  {id:'empereur',name:'Empereur',emoji:'⚜️',class:'Monarque',value:7,qty:1,pieceType:'k',ability:null},
+  {id:'empereur',name:'Empereur',emoji:'⚜️',class:'Monarque',value:7,qty:1,pieceType:'k',ability:'Espadon : Met en échecs le roi adverse en l\'attaquant en cavalier'},
   {id:'amazone',name:'Amazone',emoji:'🏹',class:'Général',value:7,qty:1,pieceType:'q',ability:null},
-  {id:'chevaucheur-rhinoceros',name:'Chevaucheur de Rhinocéros',emoji:'🦏',class:'Général',value:8,qty:1,pieceType:'r',ability:null},
+  // Le Chevaucheur de Rhinocéros s'appelle désormais le Centaure. L'IDENTIFIANT
+  // reste 'chevaucheur-rhinoceros' : c'est la clé sous laquelle les armées, les
+  // inventaires et les déblocages sont déjà enregistrés dans les comptes
+  // existants ; la renommer viderait l'armurerie de tout le monde.
+  {id:'chevaucheur-rhinoceros',name:'Centaure',emoji:'🐴',class:'Général',value:8,qty:1,pieceType:'r',ability:null},
   {id:'dame',name:'Dame',emoji:'♛',class:'Général',value:10,qty:1,pieceType:'q',ability:null},
-  {id:'grand-maitre',name:'Grand Maître',emoji:'🔮',class:'Général',value:13,qty:1,pieceType:'q',ability:'Domination royale : tant que vivant, les pions ennemis ne peuvent avancer de 2 cases.'},
+  {id:'grand-maitre',name:'Grand Maître',emoji:'🔮',class:'Général',value:13,qty:1,pieceType:'q',ability:'Domination : Tant qu\'il est vivant, les pions adverses ne peuvent pas avancer de 2 cases'},
   {id:'cavalier-primordial',name:'Cavalier Primordial',emoji:'♞',class:'Primordiale',value:3,qty:2,pieceType:'n',ability:null},
   {id:'fou-primordial',name:'Fou Primordial',emoji:'♝',class:'Primordiale',value:3,qty:2,pieceType:'b',ability:null},
   {id:'tour-primordiale',name:'Tour Primordiale',emoji:'♜',class:'Primordiale',value:5,qty:2,pieceType:'r',ability:null},
-  {id:'alpha',name:'Alpha',emoji:'🐺',class:'Brute',value:2,qty:2,pieceType:'b',ability:null},
-  {id:'fourmi',name:'Fourmi',emoji:'🐜',class:'Brute',value:2,qty:2,pieceType:'p',ability:null},
-  {id:'preux-chevalier',name:'Preux Chevalier',emoji:'🛡️',class:'Brute',value:3,qty:2,pieceType:'r',ability:'Cuirasse : ne peut être capturé par des pions (ni par la Fourmi).'},
-  {id:'dresseur-elephant',name:"Dresseur d'Éléphant",emoji:'🐘',class:'Brute',value:3,qty:2,pieceType:'r',ability:'Charge : en avançant de 2 cases, détruit les pièces ennemies sur son passage.'},
-  {id:'garde-pierre',name:'Garde de Pierre',emoji:'🪨',class:'Brute',value:3,qty:2,pieceType:'p',ability:'Roc de pierre (1×/partie) : s\'ancre sur place, imprenable et inamovible.',hasPower:true,powerLabel:'Ancrer (Roc de Pierre)'},
-  {id:'meduse',name:'Méduse',emoji:'🪼',class:'Sorcier',value:2,qty:2,pieceType:'p',ability:'Paralyse les pièces ennemies diagonalement adjacentes.'},
-  {id:'typhon',name:'Typhon',emoji:'🌪️',class:'Sorcier',value:6,qty:2,pieceType:'b',ability:'Détruit toutes les pièces adjacentes à sa case d\'arrivée. Ne peut pas détruire le roi.'},
-  {id:'banshee',name:'Banshee',emoji:'👻',class:'Sorcier',value:4,qty:2,pieceType:'b',ability:'Hurle : les pions adverses à 1 case reculent d\'une case si possible.'},
-  {id:'pretre',name:'Prêtre',emoji:'✝️',class:'Sorcier',value:4,qty:2,pieceType:'r',ability:'Empêche les captures dans les cases DIAGONALEMENT adjacentes au Prêtre.'},
+  {id:'peureux',name:'Peureux',emoji:'🫣',class:'Brute',value:2,qty:2,pieceType:'p',ability:'Retraite Prudente : Il est contraint de rester dans son camp (4 premières lignes)'},
+  {id:'fourmi',name:'Fourmi',emoji:'🐜',class:'Brute',value:2,qty:2,pieceType:'p',ability:'Obstination : Ne peut pas reculer, même si elle atteint l\'autre côté de l\'échiquier'},
+  {id:'preux-chevalier',name:'Preux Chevalier',emoji:'🛡️',class:'Brute',value:3,qty:2,pieceType:'r',ability:'Cuirasse : Les pions adverses ne peuvent pas le capturer'},
+  {id:'dresseur-elephant',name:'Éléphant de guerre',emoji:'🐘',class:'Brute',value:3,qty:2,pieceType:'r',ability:'Charge : Détruit toutes les pièces ennemies sur son passage'},
+  {id:'garde-pierre',name:'Garde de Pierre',emoji:'🪨',class:'Brute',value:3,qty:2,pieceType:'p',ability:'Retour à l\'Etat Fondamental : S\'ancre sur place, devenant imprenable mais inamovible',hasPower:true,powerLabel:'Retour à l\'Etat Fondamental'},
+  {id:'meduse',name:'Méduse',emoji:'🪼',class:'Sorcier',value:2,qty:2,pieceType:'p',ability:'Pétrification : Paralyse les pièces ennemies diagonalement adjacentes'},
+  {id:'typhon',name:'Typhon',emoji:'🌪️',class:'Sorcier',value:6,qty:2,pieceType:'b',ability:'Orage Sanguinaire : Les pièces ennemies adjacentes sont détruites après son déplacement'},
+  {id:'banshee',name:'Banshee',emoji:'👻',class:'Sorcier',value:4,qty:2,pieceType:'b',ability:'Hurlement : Les pions ennemis adjacents reculent d\'une case s\'ils le peuvent après son déplacement'},
+  {id:'pretre',name:'Prêtre',emoji:'✝️',class:'Sorcier',value:4,qty:2,pieceType:'r',ability:'Foi Inébranlable : Les ennemis ne peuvent pas capturer les pièces alliées (sauf Monarque) dans les cases diagonalement adjacentes'},
 ];
 
+// LE SEUL VRAI PION du jeu. La Fourmi, la Méduse et le Garde de Pierre portent
+// `pieceType:'p'` pour le moteur, mais ce ne sont PAS des pions : ni la
+// Cuirasse du Preux Chevalier, ni le Hurlement de la Banshee, ni la Domination
+// du Grand Maître ne les concernent.
 const TRUE_PAWN_IDS=new Set(['std-pawn']);
+function isTruePawn(cell){return !!cell&&TRUE_PAWN_IDS.has(cell.pieceId);}
 const CLASS_ORDER={Monarque:1,Général:2,Primordiale:3,Brute:4,Sorcier:5};
 // Couleurs partagées par classe de pièce : utilisées par le menu contextuel factorisé
 const CLASS_COLOR_VARS={Monarque:'var(--monarque)',Général:'var(--general)',Primordiale:'var(--primordiale)',Brute:'var(--brute)',Sorcier:'var(--sorcier)'};
@@ -283,8 +297,8 @@ const CLASS_COLOR_VARS={Monarque:'var(--monarque)',Général:'var(--general)',Pr
 // TABLE DE DÉBLOCAGE : pièces débloquées par palier d'ELO
 // ----------------------------------------------------------------
 // Un compte neuf ne possède que son Monarque et son Général : tout le reste
-// s'obtient en jouant. L'Alpha, la Fourmi et le Garde de Pierre arrivent dans
-// les coffres du tutoriel (js/tutorial.js) ; les trois Primordiales ne
+// s'obtient en jouant. Le Peureux, la Fourmi et l'Éléphant de guerre arrivent
+// dans les coffres du tutoriel (js/tutorial.js) ; les trois Primordiales ne
 // s'obtiennent QUE dans les coffres (il n'y a plus de « choix de la
 // Primordiale » à la création du compte : on ne choisit pas ce qu'on ne
 // connaît pas encore).
@@ -293,14 +307,16 @@ const CLASS_COLOR_VARS={Monarque:'var(--monarque)',Général:'var(--general)',Pr
 // donc pas comme jalon sur la Voie.
 const UNLOCK_TABLE=[
   {pieceId:'roi',eloRequired:0},{pieceId:'dame',eloRequired:0},
-  {pieceId:'alpha',eloRequired:0,coffre:true},{pieceId:'fourmi',eloRequired:0,coffre:true},
+  {pieceId:'peureux',eloRequired:0,coffre:true},{pieceId:'fourmi',eloRequired:0,coffre:true},
+  {pieceId:'dresseur-elephant',eloRequired:0,coffre:true},
   {pieceId:'cavalier-primordial',eloRequired:0,coffre:true},
   {pieceId:'fou-primordial',eloRequired:0,coffre:true},
   {pieceId:'tour-primordiale',eloRequired:0,coffre:true},
-  {pieceId:'garde-pierre',eloRequired:30},{pieceId:'preux-chevalier',eloRequired:50},
-  {pieceId:'dresseur-elephant',eloRequired:90},{pieceId:'chevaucheur-rhinoceros',eloRequired:150},
+  {pieceId:'preux-chevalier',eloRequired:50},
+  {pieceId:'chevaucheur-rhinoceros',eloRequired:150},
   {pieceId:'meduse',eloRequired:210},{pieceId:'amazone',eloRequired:260},
   {pieceId:'empereur',eloRequired:480},
+  {pieceId:'garde-pierre',eloRequired:600},
   {pieceId:'pretre',eloRequired:800},{pieceId:'typhon',eloRequired:1000,bigReward:true},
   {pieceId:'banshee',eloRequired:1150},
   {pieceId:'grand-maitre',eloRequired:1700},

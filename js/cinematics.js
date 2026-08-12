@@ -15,7 +15,7 @@
 // la séquence aille au bout ou qu'elle soit passée.
 //
 // Dépendances : piece-art.js (pieceIcon), data-pieces.js (PIECES),
-// rules-engine.js (playSound). Utilisé par game-flow.js et tournoi.js.
+// rules-engine.js (playSound). Utilisé par game-flow.js.
 // ================================================================
 
 let _cineActive=null;

@@ -10,7 +10,7 @@
 //
 // Dépendances : data-pieces.js (AI_OPPONENTS, AI_INSTRUCTORS,
 // aiOpponentIndex, DEFAULT_AI_LEVEL).
-// Utilisé par : ai-engine.js et tournoi.js (selectedAILevel), adversaires.js
+// Utilisé par : ai-engine.js (selectedAILevel), adversaires.js
 // (aiSetOpponent), combat-intro.js / game-flow.js / game-render.js
 // (aiCurrentOpponent, pour nommer l'adversaire à l'écran).
 // ================================================================
@@ -22,7 +22,7 @@ let selectedAILevel=DEFAULT_AI_LEVEL;
 
 // Adversaire choisi par le joueur dans la galerie. Distinct de
 // selectedAILevel : celui-ci survit aux batailles du tutoriel et aux rounds
-// de tournoi, qui n'ont pas à faire oublier le choix du joueur.
+// scriptées, qui n'ont pas à faire oublier le choix du joueur.
 let chosenOpponentId='instructeur';
 
 // L'adversaire actuellement engagé. Retombe toujours sur une entrée valide :
@@ -33,7 +33,7 @@ function aiCurrentOpponent(){
   return o||AI_OPPONENTS[DEFAULT_AI_LEVEL]||AI_OPPONENTS[0];
 }
 // L'adversaire CHOISI, indépendamment de ce qui joue à l'instant (tutoriel,
-// round de tournoi) : c'est lui qu'affichent la galerie et le menu.
+// bataille du tutoriel) : c'est lui qu'affichent la galerie et le menu.
 function aiChosenOpponent(){return aiOpponentById(chosenOpponentId);}
 
 function aiSetOpponent(id){

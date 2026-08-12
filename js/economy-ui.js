@@ -1,12 +1,13 @@
 // ================================================================
-// ECONOMY-UI.JS : l'Armurerie (inventaire, coffres, échiquiers) et les
-// affichages liés à l'économie ailleurs dans le jeu
+// ECONOMY-UI.JS : l'Armurerie (perles, échiquiers), les coffres du menu
+// principal, et les affichages liés à l'économie ailleurs dans le jeu
 // ================================================================
-// Contient : le rendu de la face « Armurerie » du cube (#page-reserve), la
-// cérémonie d'ouverture d'un coffre, les coffres illimités du mode admin
-// (renderAdminChests), les six coffres du menu principal (renderMenuChests,
-// qui portent aussi la série de victoires), le rappel de la mise pendant la
-// partie, et le choix de l'échiquier.
+// Contient : le rendu de la face « Armurerie » du cube (#page-reserve : les
+// perles et le choix de l'échiquier), la cérémonie d'ouverture d'un coffre,
+// les coffres illimités du mode test (renderAdminChests), les six coffres du
+// menu principal (renderMenuChests, qui portent aussi la série de victoires),
+// le coffre de réapprovisionnement quotidien — lui aussi sur le menu
+// principal (renderDailyChest) — et le rappel de la mise pendant la partie.
 //
 // Dépendances : economy.js (inventaire, coffres, quotidien), data-pieces.js
 // (PIECES, CHESTS, BOARD_SKINS), piece-art.js (pieceIcon/pieceSVG),
@@ -21,9 +22,9 @@
 // Le plateau est une récompense de progression : on ne peut sélectionner que
 // les matières dont le seuil d'ELO est atteint. Par défaut, la meilleure
 // débloquée, pour que franchir un rang se voie tout de suite.
-// Le mode admin ne débloque plus les échiquiers : il ne donne rien
-// directement, il ne fait qu'ouvrir des coffres illimités (voir
-// renderAdminChests plus bas).
+// En mode test, vvLoadElo() renvoie 10 000 : tous les échiquiers sont donc
+// ouverts, sans qu'aucune règle ait à connaître le mode test (voir
+// js/accounts.js).
 function boardSkinUnlocked(skin){
   return (typeof vvLoadElo==='function'?vvLoadElo():0)>=skin.eloRequired;
 }
@@ -81,6 +82,7 @@ function menuChestState(i,streak){
 function menuChestsHTML(){
   const streak=accGet('win_streak',0);
   const bal=pearlBalance();
+  const balTxt=(typeof pearlInfinite==='function'&&pearlInfinite())?'∞':bal;
   return '<div class="jc-rail">'+CHESTS.map((ch,i)=>{
     const price=chestPearlPrice(ch.id);
     const state=menuChestState(i,streak);
@@ -92,11 +94,12 @@ function menuChestsHTML(){
       '<span class="jc-price">'+pearlAmountHTML(price,1)+'</span>'+
     '</button>';
   }).join('')+'</div>'+
-  '<div class="jc-foot"><span class="jc-bank">'+pearlAmountHTML(bal,1.1)+' perles</span>'+
+  '<div class="jc-foot"><span class="jc-bank">'+pearlAmountHTML(balTxt,1.1)+' perles</span>'+
     (streak>0?'<span class="jc-streak">'+streak+' victoire'+(streak>1?'s':'')+' d\'affilée</span>':'')+
   '</div>';
 }
 function renderMenuChests(){
+  renderDailyChest();
   const el=document.getElementById('jouer-chests');
   if(el){
     el.innerHTML=CUR_ACC?menuChestsHTML():'';
@@ -174,10 +177,8 @@ function pearlAmountHTML(n,em){
 function renderReservePage(){
   if(!CUR_ACC)return;
   renderPearls();
-  renderDailyChest();
   renderAdminChests();
   renderBoardSkins();
-  renderInventory();
 }
 
 // Ce que promet une carte de coffre, en une ligne : les deux nombres qui
@@ -213,9 +214,9 @@ function chestBackToReserve(){
 // ----------------------------------------------------------------
 // FIN DE PARTIE : règlement, cinématique, coffre, verdict
 // ----------------------------------------------------------------
-// game-flow.js et tournoi.js faisaient cet enchaînement chacun de son côté,
-// à trois lignes près identiques — et aucun des deux n'ouvrait le coffre, qui
-// partait dans une file d'attente. Il est écrit ici une fois : le coffre
+// La fin de partie enchaînait règlement, cinématique et verdict sans jamais
+// ouvrir le coffre, qui partait dans une file d'attente. C'est écrit ici une
+// fois : le coffre
 // gagné s'ouvre entre la cinématique d'issue et l'écran de résultat, à sa
 // place, sans empiler deux célébrations.
 // Renvoie le rapport de economySettle() (synchrone), l'affichage suivant.
@@ -234,13 +235,16 @@ function settleAndCelebrate(result,gs,onDone){
   return report;
 }
 
-// Solde de perles, en haut de l'Armurerie.
+// Solde de perles, en haut de l'Armurerie. En mode test la bourse est sans
+// fond : on écrit « ∞ » plutôt qu'un nombre à six chiffres qui ferait croire
+// à un solde ordinaire (voir pearlInfinite, js/economy.js).
 function renderPearls(){
   const el=document.getElementById('rs-pearls');
   if(!el)return;
+  const inf=(typeof pearlInfinite==='function')&&pearlInfinite();
   el.innerHTML='<div class="pearl-bank">'+pearlIcon(2.2)+
     '<div class="pearl-bank-info">'+
-      '<div class="pearl-bank-n">'+pearlBalance()+'</div>'+
+      '<div class="pearl-bank-n">'+(inf?'∞':pearlBalance())+'</div>'+
       '<div class="pearl-bank-lbl">perles</div>'+
     '</div></div>';
 }
@@ -262,11 +266,12 @@ function buyChestWithPearls(chestId,onDone){
   const back=()=>{
     // 'face-jouer' = le menu principal (cube-nav.js) : l'exercice de
     // déplacement d'une créature inédite a pu nous emmener ailleurs.
-    if(typeof showPage==='function')showPage('face-jouer');
-    if(typeof onDone==='function')onDone();
-    else renderMenuChests();
-    if(typeof updAll==='function')updAll();
-    if(typeof renderArmiesPage==='function')renderArmiesPage();
+    if(typeof onDone==='function'){
+      if(typeof showPage==='function')showPage('face-jouer');
+      onDone();
+      if(typeof updAll==='function')updAll();
+      if(typeof renderArmiesPage==='function')renderArmiesPage();
+    }else chestBackToMenu();
   };
   if(pearlBalance()<price){
     if(typeof showNotif==='function')
@@ -281,14 +286,14 @@ function buyChestWithPearls(chestId,onDone){
 }
 
 // ----------------------------------------------------------------
-// COFFRES ILLIMITÉS DU MODE ADMIN
+// COFFRES ILLIMITÉS DU MODE TEST
 // ----------------------------------------------------------------
-// C'est TOUT ce que fait le mode admin côté récompenses : les six coffres
-// (Pion, Cavalier, Fou, Tour, Dame, Roi) deviennent ouvrables autant de fois
-// qu'on veut. Il ne donne aucune pièce directement : le contenu est tiré par
-// le même chestRoll() et crédité par le même chestApply() qu'un coffre gagné
-// en jouant, et une pièce inédite s'y débloque comme partout ailleurs.
-// La section est masquée (et vide) hors mode admin.
+// Les six coffres (Pion, Cavalier, Fou, Tour, Dame, Roi) sont ouvrables
+// autant de fois qu'on veut, avec la vraie cérémonie et le vrai tirage : c'est
+// de quoi VOIR ce que donne un coffre sans jouer trente parties. Le contenu
+// n'est pas crédité — en mode test l'inventaire est déjà illimité et rien ne
+// s'écrit sur le compte (voir js/economy.js).
+// La section est masquée (et vide) hors mode test.
 function renderAdminChests(){
   const sec=document.getElementById('rs-admin-sec');
   const el=document.getElementById('rs-admin-chests');
@@ -296,7 +301,7 @@ function renderAdminChests(){
   const on=(typeof ADMIN_MODE!=='undefined')&&ADMIN_MODE;
   sec.style.display=on?'':'none';
   if(!on){el.innerHTML='';return;}
-  el.innerHTML='<div class="rs-admin-note">Coffres de test, ouvrables sans limite. Aucune pièce n\'est offerte : le contenu est tiré au sort comme pour un coffre gagné en jouant.</div>'+
+  el.innerHTML='<div class="rs-admin-note">Coffres de test, ouvrables sans limite. Le contenu est tiré au sort comme pour un coffre gagné en jouant, mais rien n\'est crédité : en mode test, tout est déjà illimité.</div>'+
     '<div class="chest-grid">'+CHESTS.map(ch=>
       '<div class="chest-card chest-admin" data-chest="'+ch.id+'" style="--chest-c:'+ch.color+'">'+
         '<span class="chest-count">∞</span>'+
@@ -311,8 +316,22 @@ function renderAdminChests(){
   });
 }
 
+// Retour au MENU PRINCIPAL après une ouverture lancée depuis le menu (coffre
+// quotidien, coffre acheté en perles).
+function chestBackToMenu(){
+  if(typeof showPage==='function')showPage('face-jouer');
+  renderMenuChests();
+  if(typeof updAll==='function')updAll();
+  if(typeof renderArmiesPage==='function')renderArmiesPage();
+}
+
+// LE COFFRE DE RÉAPPROVISIONNEMENT vit sur le MENU PRINCIPAL (#menu-daily) et
+// non plus au fond de l'Armurerie : c'est le filet de sécurité du jeu — celui
+// qui garantit qu'on ne reste jamais bloqué sans armée jouable — et il ne
+// remplissait ce rôle que pour qui pensait à aller le chercher.
 function renderDailyChest(){
-  const el=document.getElementById('rs-daily');if(!el)return;
+  const el=document.getElementById('menu-daily');if(!el)return;
+  if(!CUR_ACC){el.innerHTML='';return;}
   const ready=dailyChestAvailable();
   const owned=invOwnedIds().length;
   el.innerHTML='<div class="daily-card'+(ready?' daily-ready':'')+'">'+
@@ -323,16 +342,16 @@ function renderDailyChest(){
         ? '+'+DAILY_CHEST.perPiece+' exemplaires de chacune de vos '+owned+' pièces. Il revient chaque jour : perdre tout son stock n\'est jamais définitif.'
         : 'Déjà récupéré aujourd\'hui. Prochain coffre dans '+dailyChestCountdown()+'.')+'</div>'+
     '</div>'+
-    (ready?'<button class="btn btn-gold" id="rs-daily-btn">Récupérer</button>':'')+
+    (ready?'<button class="btn btn-gold" id="menu-daily-btn">Récupérer</button>':'')+
   '</div>';
-  const btn=document.getElementById('rs-daily-btn');
+  const btn=document.getElementById('menu-daily-btn');
   if(btn)btn.addEventListener('click',()=>{
     const gains=claimDailyChest();
     if(!gains)return;
     const lots=Object.entries(gains).map(([pieceId,qty])=>({pieceId,qty,isNew:false}));
     // Réutilise la cérémonie des coffres, mais le gain est DÉJÀ appliqué :
     // applyOnClose reste à false pour ne pas créditer deux fois.
-    showChestCeremony({name:DAILY_CHEST.name,color:'#c19a45'},lots,false,chestBackToReserve);
+    showChestCeremony({name:DAILY_CHEST.name,color:'#c19a45'},lots,false,chestBackToMenu);
   });
 }
 
@@ -433,7 +452,7 @@ document.getElementById('chest-modal')?.addEventListener('click',e=>{
 });
 
 // ----------------------------------------------------------------
-// ÉCHIQUIERS ET INVENTAIRE
+// ÉCHIQUIERS
 // ----------------------------------------------------------------
 function renderBoardSkins(){
   const el=document.getElementById('rs-skins');if(!el)return;
@@ -451,21 +470,3 @@ function renderBoardSkins(){
   });
 }
 
-function renderInventory(){
-  const el=document.getElementById('rs-inv');if(!el)return;
-  const ids=invOwnedIds().sort((a,b)=>{
-    const pa=PIECES.find(p=>p.id===a),pb=PIECES.find(p=>p.id===b);
-    return (CLASS_ORDER[pa?.class]||9)-(CLASS_ORDER[pb?.class]||9)||(pa?.value||0)-(pb?.value||0);
-  });
-  if(!ids.length){el.innerHTML='<div class="rs-empty">Aucune pièce. Récupérez le coffre de réapprovisionnement.</div>';return;}
-  el.innerHTML=ids.map(id=>{
-    const p=PIECES.find(x=>x.id===id);const n=invCount(id);
-    const need=pieceDeployCount(id);
-    return '<div class="inv-cell'+(n<need?' inv-out':'')+'">'+
-      pieceIcon(id,'n',2.8)+
-      '<div class="inv-name">'+escH(p?p.name:id)+'</div>'+
-      '<div class="inv-qty">'+n+'</div>'+
-      '<div class="inv-tag">'+(n<need?'Stock épuisé':'se déploie par '+need)+'</div>'+
-    '</div>';
-  }).join('');
-}

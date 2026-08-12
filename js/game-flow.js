@@ -4,21 +4,19 @@
 // ================================================================
 // Contient : buildGameBoard() (place les pièces des deux armées sur
 // l'échiquier 8x8 initial), startGame() (point d'entrée normal, hors
-// tournoi), showArmyIntro() (overlay de présentation des deux armées avant
-// la partie), triggerEndOfGame() (calcule le nouvel ELO et affiche le modal
-// de résultat, mode normal, PAS tournoi), showResultModal(), et le bouton
-// "Annuler coup".
+// showArmyIntro() (overlay de présentation des deux armées avant la partie),
+// triggerEndOfGame() (calcule le nouvel ELO et affiche le modal de résultat),
+// showResultModal(), et le bouton "Annuler coup".
 //
 // Dépendances : rules-engine.js (GS, cloneBoard, updateMedusaParalysis...),
 // ai-engine.js (evalBoard indirectement), game-render.js (renderGame,
 // updateStatus, buildGameLabels), accounts.js (vvLoadElo, vvSaveElo...),
 // voie.js (vvCalcNewElo, vvCheckNewUnlocks, vvEstimateAiElo),
 // ai-level-modal.js (selectedAILevel, AI_INSTRUCTORS), data-pieces.js
-// (PIECES), tournoi.js (tournamentState, pour distinguer partie normale
-// vs round de tournoi dans triggerEndOfGame/game-quit).
+// (PIECES).
 //
 // _playerColor (couleur assignée au joueur pour LA partie en cours) est une
-// variable partagée avec tournoi.js et combat-intro.js.
+// variable partagée avec combat-intro.js.
 // ================================================================
 
 let _playerColor='w';
@@ -104,8 +102,7 @@ function updateGamePlayerBars(){
 }
 
 // ----------------------------------------------------------------
-// DÉMARRAGE DE PARTIE (hors tournoi, voir tournoi.js::launchTournoiRound
-// pour l'équivalent en mode tournoi)
+// DÉMARRAGE DE PARTIE
 // ----------------------------------------------------------------
 // startGame accepte un paramètre colorAlreadyChosen. Quand cb-play a déjà
 // tiré _playerColor (voir combat-intro.js), on n'écrase pas ce choix ici.
@@ -317,13 +314,10 @@ document.getElementById('result-revanche').addEventListener('click',()=>{
 
 // ----------------------------------------------------------------
 // FIN DE PARTIE : calcule le nouvel ELO et déclenche le modal de résultat.
-// Délègue à tournoi.js::triggerTournoiEndOfGame si un tournoi est actif.
 // ----------------------------------------------------------------
 let _endGameTriggered=false;
 let _lastSettlement=null;   // rapport d'économie de la dernière partie
 function triggerEndOfGame(result){
-  // En mode tournoi, déléguer au gestionnaire tournoi
-  if(tournamentState.active){triggerTournoiEndOfGame(result);return;}
   if(_endGameTriggered)return;_endGameTriggered=true;
   stopClockTick(GS);
   endCombatMusic();
@@ -394,8 +388,7 @@ document.getElementById('game-undo').addEventListener('click',()=>{
 });
 
 // ----------------------------------------------------------------
-// BOUTON "ABANDONNER / QUITTER" : gère aussi bien une partie normale
-// qu'un round de tournoi
+// BOUTON "ABANDONNER / QUITTER"
 // ----------------------------------------------------------------
 document.getElementById('game-quit').addEventListener('click',()=>{
   // En ligne : prévenir l'adversaire de l'abandon avant de fermer le salon.
@@ -417,9 +410,5 @@ document.getElementById('game-quit').addEventListener('click',()=>{
   stopClockTick(GS);
   if(_aiWorker&&_aiWorkerBusy){_aiWorker.terminate();_aiWorker=null;_aiWorkerBusy=false;}
   document.getElementById('promo-modal').classList.remove('active');
-  if(tournamentState.active){
-    triggerTournoiEndOfGame('loss');
-  }else{
-    triggerEndOfGame('loss');
-  }
+  triggerEndOfGame('loss');
 },{once:false});

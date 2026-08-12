@@ -9,7 +9,7 @@
 // Il déplace à l'exécution le DOM existant #page-armies et #page-game dans
 // les faces correspondantes (IDs + listeners préservés → aucune logique
 // réécrite), pilote la rotation quand showPage() cible une face, et laisse
-// les pages secondaires (builder, voie, tournoi, combat, login) s'afficher en
+// les pages secondaires (builder, voie, combat, login) s'afficher en
 // overlay plein écran au-dessus du cube. Le builder (composition d'armée)
 // n'est PAS une face du cube : on y accède depuis "Mes armées" (bouton
 // "Nouvelle armée" / "Modifier"), comme n'importe quelle page secondaire.

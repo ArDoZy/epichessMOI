@@ -5,7 +5,7 @@
 // libres, budget 24 points), le rendu des cartes de pièces (triées par
 // classe puis valeur croissante, sans tri/filtre manuel) et des slots de
 // composition, l'armée aléatoire, et les boutons de la topbar
-// (tout effacer / aléatoire / valider / mes armées / tournoi). Le bouton
+// (tout effacer / aléatoire / valider / mes armées). Le bouton
 // "Voie" est désormais dans #page-armies (voir voie.js), plus ici.
 //
 // Dépendances : data-pieces.js (PIECES, CLASS_ORDER),

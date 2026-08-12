@@ -11,7 +11,7 @@
 // Dépendances : data-pieces.js (RANKS, vvGetRank, vvGetRankIdx, UNLOCK_TABLE,
 // UNLOCK_MILESTONES), main.js (army, showPage, showNotif, escH).
 // Utilisé par : tous les modules qui persistent des données de jeu
-// (armies.js, voie.js, tournoi.js, game-flow.js...) via accGet/accSet.
+// (armies.js, voie.js, game-flow.js...) via accGet/accSet.
 //
 // Pour ajouter un nouveau champ de sauvegarde par compte : utiliser
 // accGet('ma_cle', valeurParDefaut) / accSet('ma_cle', valeur), inutile de
@@ -186,10 +186,17 @@ function loadAccountGlobals(){
   // Dotation de départ : le Monarque et le Général, rien de plus. Les
   // créatures s'obtiennent dans les coffres (les trois premières pendant le
   // tutoriel), les paliers d'ELO ouvrant le reste.
+  // Mode test (/?test) : tout le catalogue est débloqué, et RIEN n'est écrit
+  // (vvSaveUnlocked ne fait rien là-dedans) — la progression réelle du compte
+  // reste intacte quand on en ressort.
+  if(typeof ADMIN_MODE!=='undefined'&&ADMIN_MODE){
+    VV_UNLOCKED=new Set(PIECES.map(p=>p.id));
+    return;
+  }
   const defs=UNLOCK_TABLE.filter(u=>u.eloRequired===0&&!u.coffre&&u.pieceId).map(u=>u.pieceId);
   const stored=accGet('unlocked_pieces',null);
   VV_UNLOCKED=new Set(stored||defs);
-  const elo=accGet('elo',0);
+  const elo=vvLoadElo();
   UNLOCK_MILESTONES.forEach(u=>{
     if(!u.pieceId||u.coffre)return;
     if(u.eloRequired<=elo)VV_UNLOCKED.add(u.pieceId);
@@ -209,7 +216,7 @@ function updateCab(){
   if(!CUR_ACC)return;
   const av=document.getElementById('cab-av');
   av.textContent=CUR_ACC.charAt(0).toUpperCase();
-  av.style.background='linear-gradient(135deg,'+(RANK_AV_COLORS[vvGetRankIdx(accGet('elo',0))]||'#7c3aed')+',#333)';
+  av.style.background='linear-gradient(135deg,'+(RANK_AV_COLORS[vvGetRankIdx(vvLoadElo())]||'#7c3aed')+',#333)';
   av.title=CUR_ACC;
   renderMenuIdentity();
 }
@@ -227,7 +234,7 @@ function renderMenuIdentity(){
   const eloEl=document.getElementById('jouer-elo');
   if(!nameEl||!rankEl||!eloEl)return;
   if(!CUR_ACC){nameEl.textContent='';rankEl.textContent='';eloEl.textContent='';return;}
-  const elo=accGet('elo',0),rank=vvGetRank(elo);
+  const elo=vvLoadElo(),rank=vvGetRank(elo);
   nameEl.textContent=CUR_ACC;
   rankEl.textContent=rank.name;
   rankEl.style.color=rank.color;
@@ -249,13 +256,19 @@ function switchAccount(){
 
 // ----------------------------------------------------------------
 // PROGRESSION ELO / DÉBLOCAGES / HISTORIQUE : wrappers accGet/accSet
-// (utilisés par voie.js, tournoi.js, game-flow.js)
+// (utilisés par voie.js, game-flow.js)
 // ----------------------------------------------------------------
-function vvLoadElo(){return accGet('elo',0);}
-function vvSaveElo(v){accSet('elo',v);updateCab();}
+// MODE TEST (/?test) : l'ELO affiché est 10 000 — tout est donc débloqué, y
+// compris les échiquiers — et rien ne s'écrit sur le compte. On y entre et on
+// en sort sans laisser de trace (voir js/economy.js pour l'inventaire et les
+// perles, et loadAccountGlobals ci-dessus pour les pièces).
+const ADMIN_ELO=10000;
+function vvAdmin(){return typeof ADMIN_MODE!=='undefined'&&ADMIN_MODE;}
+function vvLoadElo(){return vvAdmin()?ADMIN_ELO:accGet('elo',0);}
+function vvSaveElo(v){if(vvAdmin())return;accSet('elo',v);updateCab();}
 function vvLoadRankMax(){return accGet('rank_max',0);}
-function vvSaveRankMax(v){accSet('rank_max',v);}
-function vvSaveUnlocked(s){accSet('unlocked_pieces',[...s]);}
+function vvSaveRankMax(v){if(vvAdmin())return;accSet('rank_max',v);}
+function vvSaveUnlocked(s){if(vvAdmin())return;accSet('unlocked_pieces',[...s]);}
 function vvLoadHistory(){return accGet('match_history',[]);}
 function vvSaveHistory(arr){accSet('match_history',arr.slice(-30));}
 

@@ -4,25 +4,25 @@
 // Contient : le calcul d'ELO après une partie (vvCalcNewElo, formule Elo
 // standard avec K-factor variable), la détection de nouveaux déblocages
 // (vvCheckNewUnlocks), l'estimation de l'ELO d'un instructeur IA
-// (vvEstimateAiElo), et le rendu complet de la page Voie (bannière de rang,
-// timeline des jalons de déblocage, historique des dernières parties).
+// (vvEstimateAiElo), et le rendu de la page Voie (bannière de rang + file des
+// jalons de déblocage — et RIEN d'autre : aucune statistique, aucun
+// historique, voir renderVoiePage).
 //
 // Dépendances : data-pieces.js (RANKS, UNLOCK_MILESTONES, PIECES,
 // CLASS_COLOR_VARS, vvGetRank, vvGetRankIdx, vvGetRankFloor),
-// accounts.js (vvLoadElo, vvSaveUnlocked, vvLoadHistory), main.js
+// accounts.js (vvLoadElo, vvSaveUnlocked), main.js
 // (VV_UNLOCKED, ADMIN_MODE, showPage), armies.js (renderArmiesPage,
 // pour le retour vers "Mes armées").
 // Utilisé par : game-flow.js (triggerEndOfGame appelle vvCalcNewElo/
-// vvCheckNewUnlocks), tournoi.js (idem pour chaque round), page "Mes
-// armées" (bouton "Voie").
+// vvCheckNewUnlocks), menu principal (bouton "Voie").
 // ================================================================
 
 // ----------------------------------------------------------------
 // CALCULS ELO
 // ----------------------------------------------------------------
-// ELO attribué à l'adversaire pour le calcul du gain/perte. Il n'y a plus
-// qu'un instructeur, donc une seule valeur par défaut ; le tournoi et le jeu
-// en ligne la remplacent par celle de l'adversaire réel via cette surcharge.
+// ELO attribué à l'adversaire pour le calcul du gain/perte : celui de
+// l'adversaire du laboratoire en cours, ou celui transmis par l'adversaire
+// réel en ligne via cette surcharge.
 let _opponentEloOverride=null;
 function vvSetOpponentElo(v){_opponentEloOverride=(typeof v==='number'&&v>0)?v:null;}
 function vvEstimateAiElo(){
@@ -50,11 +50,11 @@ function vvCalcNewElo(playerElo,aiElo,result){
 // Une partie est-elle CLASSÉE, c'est-à-dire fait-elle bouger l'ELO ?
 // Renvoie null si oui, sinon la raison (affichée dans le modal de résultat).
 //
-// AVANT, seuls le jeu en ligne et le tournoi comptaient : affronter l'IA était
+// AVANT, seul le jeu en ligne comptait : affronter l'IA était
 // « un entraînement ». C'était défendable avec un adversaire unique à pleine
 // puissance, mais cela fermait tout le jeu à qui joue seul. Le classement
-// n'avançait pas d'un point, donc aucune pièce à palier d'ELO (Garde de
-// Pierre à 30, Méduse à 210, Typhon à 1000, Grand Maître à 1700) et aucun
+// n'avançait pas d'un point, donc aucune pièce à palier d'ELO (Preux
+// Chevalier à 50, Méduse à 210, Typhon à 1000, Grand Maître à 1700) et aucun
 // échiquier n'était atteignable sans trouver un adversaire humain.
 //
 // Il y a maintenant douze adversaires d'ELO connu et espacé (AI_OPPONENTS) :
@@ -64,13 +64,13 @@ function vvCalcNewElo(playerElo,aiElo,result){
 // son propre niveau ne rapporte quasiment rien (formule Elo), et la rareté du
 // coffre gagné est plafonnée par le palier de l'adversaire (economySettle).
 //
-// Restent non classés : le mode admin (une démonstration ne doit pas polluer
-// la progression réelle) et les batailles du tutoriel, qui ne passent de toute
-// façon pas par ici (voir triggerEndOfGame).
+// Restent non classées : les parties du mode test (une démonstration ne doit
+// pas polluer la progression réelle) et les batailles du tutoriel, qui ne
+// passent de toute façon pas par ici (voir triggerEndOfGame).
 // VV_NO_ELO_TRAINING est conservée pour les sauvegardes et le modal de fin.
 const VV_NO_ELO_TRAINING='Entraînement : aucun ELO en jeu.';
 function vvNoEloReason(gs){
-  if(typeof ADMIN_MODE!=='undefined'&&ADMIN_MODE)return 'Mode admin : partie non classée, aucun ELO en jeu.';
+  if(typeof ADMIN_MODE!=='undefined'&&ADMIN_MODE)return 'Mode test : partie non classée, aucun ELO en jeu.';
   if(gs&&gs.tuto)return VV_NO_ELO_TRAINING;
   return null;
 }
@@ -86,20 +86,22 @@ function vvCheckNewUnlocks(oldElo,newElo){
 // ----------------------------------------------------------------
 // RENDU DE LA PAGE VOIE
 // ----------------------------------------------------------------
-// La Voie affiche TOUJOURS la progression réelle, mode admin compris : le
-// mode admin ne débloque plus les pièces, il ne fait qu'ouvrir l'accès à des
-// coffres illimités dans l'Armurerie. Une Voie affichée comme terminée alors
-// que les pièces ne le sont pas serait un mensonge à l'écran.
+// La Voie affiche la progression telle qu'elle est. En mode test (/?test),
+// elle se lit donc terminée — c'est exact : là-dedans, l'ELO vaut 10 000 et
+// tout le catalogue est débloqué (voir js/accounts.js et js/economy.js).
+// Rien n'en est écrit sur le compte, on retrouve sa vraie Voie en revenant.
 function renderVoiePage(){
   const elo=vvLoadElo();
   const rank=vvGetRank(elo);
   const nextRank=RANKS[vvGetRankIdx(elo)+1]||null;
-  const playableMilestones=UNLOCK_MILESTONES.filter(u=>u.pieceId&&!u.coffre);
-  const unlockedCount=playableMilestones.filter(u=>VV_UNLOCKED.has(u.pieceId)).length;
   const progress=nextRank?Math.min(100,Math.round((elo-rank.min)/(nextRank.min-rank.min)*100)):100;
-  const history=vvLoadHistory();
+  // LA VOIE NE COMPTE PLUS RIEN. Elle portait quatre statistiques — parties
+  // jouées, victoires, pièces débloquées, et la liste des dernières parties —
+  // qui répondaient toutes à une question que personne ne vient poser ici. On
+  // vient y voir CE QUI RESTE À DÉBLOQUER : le rang, la distance jusqu'au
+  // suivant, et la file des créatures. Rien d'autre.
   const banner=document.getElementById('voie-elo-banner');
-  banner.innerHTML='<div class="veb-info"><div class="veb-rank-name" style="color:'+rank.color+'">'+rank.name+'</div><div class="veb-elo">'+elo+' <span>ELO</span></div><div class="veb-progress-wrap"><div class="veb-progress-bar" style="width:'+progress+'%;background:linear-gradient(90deg,'+rank.color+',var(--gold))"></div></div><div class="veb-progress-label">'+(nextRank?'Vers '+nextRank.name+' ('+nextRank.min+' ELO) · '+progress+'%':'Rang maximum atteint !')+'</div></div><div class="veb-stats"><div class="veb-stat"><div class="veb-stat-label">Parties</div><div class="veb-stat-val" style="color:var(--text)">'+history.length+'</div></div><div class="veb-stat"><div class="veb-stat-label">Victoires</div><div class="veb-stat-val" style="color:var(--success)">'+history.filter(h=>h.result==='win').length+'</div></div><div class="veb-stat"><div class="veb-stat-label">Pièces</div><div class="veb-stat-val" style="color:var(--gold)">'+unlockedCount+'/'+playableMilestones.length+'</div></div></div>';
+  banner.innerHTML='<div class="veb-info"><div class="veb-rank-name" style="color:'+rank.color+'">'+rank.name+'</div><div class="veb-elo">'+elo+' <span>ELO</span></div><div class="veb-progress-wrap"><div class="veb-progress-bar" style="width:'+progress+'%;background:linear-gradient(90deg,'+rank.color+',var(--gold))"></div></div><div class="veb-progress-label">'+(nextRank?'Vers '+nextRank.name+' ('+nextRank.min+' ELO) · '+progress+'%':'Rang maximum atteint !')+'</div></div>';
   const route=document.getElementById('voie-route');let html='';
   let lastRankId=null;
   UNLOCK_MILESTONES.forEach((milestone,idx)=>{
@@ -116,28 +118,6 @@ function renderVoiePage(){
     html+='<div class="voie-milestone"><div class="'+cardCls+'"><span class="vm-piece-emoji">'+pieceIcon(pd.id,'n')+'</span><div class="vm-piece-name">'+pd.name+bigBadge+'</div><div class="vm-piece-class pc-class '+pd.class+'" style="color:'+cc+'">'+pd.class+' · '+pd.value+' pts</div>'+(pd.ability?'<div class="vm-piece-ability">'+(pd.ability.length>80?pd.ability.slice(0,80)+'…':pd.ability)+'</div>':'')+'</div><div class="vm-center"><div class="'+dotCls+'"></div><div class="vm-elo-badge">'+(milestone.eloRequired===0?'Départ':milestone.eloRequired+' ELO')+'</div></div><div style="flex:1;max-width:calc(50% - 40px)"></div></div>';
   });
   route.innerHTML=html;
-  const histDiv=document.getElementById('voie-history');
-  if(!history.length){histDiv.innerHTML='';return;}
-  let hhtml='<div class="vh-title">Dernières parties</div>';
-  history.slice().reverse().forEach(h=>{
-    const rLbl=h.result==='win'?'Victoire':h.result==='loss'?'Défaite':'Nulle';
-    const rCls=h.result==='win'?'win':h.result==='loss'?'loss':'draw';
-    const dCls=h.delta>0?'pos':h.delta<0?'neg':'zero';
-    const d=new Date(h.date);
-    // Les parties non classées (entraînement, mode admin) sont bien listées,
-    // mais sans flèche d'ELO : elles n'en ont pas fait bouger.
-    const eloCell=(h.ranked===false)
-      ?'<span class="vh-delta zero">—</span><span class="vh-elo">Non classée</span>'
-      :'<span class="vh-delta '+dCls+'">'+(h.delta>0?'+':'')+h.delta+'</span><span class="vh-elo">'+h.oldElo+' → '+h.newElo+'</span>';
-    // Contre QUI : « Victoire +18 » ne dit rien sans le nom de l'adversaire,
-    // maintenant qu'il y en a douze. Les parties antérieures au roster n'ont
-    // pas le champ, la colonne reste alors vide plutôt que d'inventer un nom.
-    const foe=h.opp?escH(aiOpponentById(h.opp).name):(h.tournoi?'Tournoi':h.opp===null?'En ligne':'');
-    hhtml+='<div class="vh-row"><span class="vh-result '+rCls+'">'+rLbl+'</span>'+
-      '<span class="vh-opp">'+foe+'</span>'+eloCell+
-      '<span class="vh-date">'+d.toLocaleDateString('fr-FR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})+'</span></div>';
-  });
-  histDiv.innerHTML=hhtml;
 }
 
 // La Voie a été une face du cube ; c'est de nouveau une page à part entière,

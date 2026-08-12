@@ -68,19 +68,19 @@ function applySfxVol(v){
 })();
 
 // ----------------------------------------------------------------
-// MODE ADMINISTRATEUR : une ADRESSE, pas un interrupteur
+// MODE TEST : une ADRESSE, pas un interrupteur
 // ----------------------------------------------------------------
-// Le mode admin donnait auparavant TOUTES les pièces d'un coup
-// (VV_UNLOCKED = tout le catalogue) : il ne restait plus rien à tester, la
-// Voie s'affichait comme terminée, et il fallait un instantané de la
-// progression réelle pour ne pas l'abîmer en sortant.
+// C'est un BAC À SABLE : tout le catalogue est débloqué, chaque pièce est en
+// stock sans limite, l'ELO vaut 10 000 (donc tous les échiquiers sont ouverts)
+// et la bourse de perles est sans fond. On peut donc essayer n'importe quelle
+// composition d'armée sans avoir à la mériter d'abord.
 //
-// Il ne fait plus qu'une chose : ouvrir l'accès aux six coffres (Pion,
-// Cavalier, Fou, Tour, Dame, Roi) en quantité illimitée dans l'Armurerie. Les
-// pièces s'obtiennent donc par le chemin normal du jeu — en ouvrant des
-// coffres — et non par décret. Les gains, eux, sont bien réels : ce sont de
-// vrais coffres, ouverts par la vraie cérémonie. Second effet : aucune partie
-// jouée en mode admin ne compte au classement (voir vvNoEloReason, voie.js).
+// Et RIEN N'Y EST ÉCRIT. Ni inventaire, ni perles, ni déblocages, ni ELO : les
+// lectures sont détournées (invAll/pearlBalance dans js/economy.js,
+// vvLoadElo/loadAccountGlobals dans js/accounts.js) et les écritures sont
+// ignorées. On retrouve sa progression exacte en revenant sur `/`. C'est aussi
+// pour cela qu'aucune partie jouée ici ne compte au classement (voir
+// vvNoEloReason, js/voie.js).
 //
 // Il vivait derrière un badge flottant qu'on activait par mégarde et qui ne
 // se voyait plus une fois activé. C'est maintenant une ADRESSE : `/?test`,
@@ -103,7 +103,7 @@ function applySfxVol(v){
   btn.textContent=ADMIN_MODE?'Quitter le mode test':'Ouvrir le mode test';
   if(ADMIN_MODE){
     btn.classList.add('btn-gold');
-    if(note)note.textContent='Vous êtes en mode test : coffres illimités, parties non classées.';
+    if(note)note.textContent='Vous êtes en mode test : toutes les pièces, 10 000 ELO, perles illimitées. Rien n\'est enregistré sur votre compte.';
   }
   btn.addEventListener('click',()=>{location.href=ADMIN_MODE?'/':'/?'+ADMIN_QUERY;});
 })();

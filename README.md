@@ -10,7 +10,7 @@ n'est nécessaire.
 Le fichier était à l'origine un unique `.html` de ~3000 lignes. Il a été
 découpé en modules **par domaine fonctionnel** pour qu'on puisse te donner
 (ou que tu puisses éditer) un seul fichier à la fois (par exemple
-`css/style.css` ou `js/tournoi.js`) sans avoir besoin de relire tout le
+`css/style.css` ou `js/voie.js`) sans avoir besoin de relire tout le
 reste, du moment que la structure ci-dessous est connue.
 
 Tous les scripts sont chargés via des balises `<script src="...">`
@@ -84,12 +84,11 @@ epic-chess/
     ├── ai-engine.js          # Évaluation (dont les POUVOIRS), minimax, Worker IA
     ├── game-flow.js          # Démarrage partie, fin de partie, résultat
     ├── voie.js                # Page "Voie des Victoires" (ELO, rangs, jalons)
-    ├── economy-ui.js         # Page "Armurerie" (inventaire, coffre quotidien,
-    │                          # échiquiers) + les six coffres du menu principal
+    ├── economy-ui.js         # Page "Armurerie" (perles, échiquiers) + les six
+    │                          # coffres et le coffre quotidien du menu principal
     ├── tuto-drill.js         # Exercice de déplacement d'une créature débloquée
     ├── tutorial.js           # Tutoriel : 4 batailles scriptées + visite guidée
-    ├── tournoi.js             # Mode Tournoi + modal d'analyse replay
-    ├── settings-admin.js     # Panneau réglages + mode Administrateur
+    ├── settings-admin.js     # Panneau réglages + mode test (/?test)
     └── multiplayer.js        # Parties en ligne (Supabase Realtime)
 ```
 
@@ -147,13 +146,13 @@ existent dans le HTML et s'excluent (`#cactions-online` / `#cactions-ia`).
 l'Instructeur, à 2000 ELO et à pleine puissance — et l'affronter n'était pas
 classé. Un joueur seul sortait donc du tutoriel (dont le dernier instructeur
 laisse passer un coup sur trois) face à un mur, et ne pouvait gagner **aucun
-point d'ELO** : ni le Garde de Pierre (30), ni la Méduse (210), ni le Typhon
+point d'ELO** : ni le Preux Chevalier (50), ni la Méduse (210), ni le Typhon
 (1000), ni le Grand Maître (1700), ni un seul échiquier ne lui étaient
 accessibles. La moitié du contenu était injouable sans trouver un humain.
 
 `AI_OPPONENTS` (data-pieces.js) décrit maintenant **douze adversaires**, de
 Cendre (150 ELO) à l'Athanor (2300). Aucun n'est verrouillé, et **tous les
-duels sont classés** (`vvNoEloReason`, js/voie.js) : seuls le mode admin et le
+duels sont classés** (`vvNoEloReason`, js/voie.js) : seuls le mode test et le
 tutoriel restent hors classement.
 
 Quatre champs font la force d'un adversaire, et il faut les distinguer :
@@ -210,7 +209,7 @@ apparaître — il n'y a aucune liste à tenir à jour. Même principe pour
 `evalBoard()` combine l'évaluation classique (matériel, tables
 position-carrés, mobilité, structure de pions) et `evalPowers()`, qui note
 les **capacités spéciales** : paralysie de la Méduse, protection du Prêtre,
-zone de destruction du Typhon, charge du Dresseur, domination du Grand
+zone de destruction du Typhon, charge de l'Éléphant de guerre, domination du Grand
 Maître, ancrage du Garde de Pierre.
 
 `aiSearchRoot()` et `aiPickMove()` sont partagées **mot pour mot** par le
@@ -227,8 +226,8 @@ entre eux et fausseraient le tirage de `aiPickMove`.
 que les coups violents, pour ne pas s'arrêter au milieu d'un échange — et elle
 ne retenait que les prises « classiques », celles qui atterrissent sur une
 pièce ennemie. Or les coups les plus violents de ce jeu n'en sont pas : un
-Typhon posé sur une case VIDE efface jusqu'à huit voisines, et la charge du
-Dresseur écrase ce qu'elle traverse. La recherche évaluait donc tranquillement
+Typhon posé sur une case VIDE efface jusqu'à huit voisines, et la charge de
+l'Éléphant de guerre écrase ce qu'elle traverse. La recherche évaluait donc tranquillement
 une position à un demi-coup d'être balayée, ce qui est exactement l'effet
 d'horizon que la quiescence existe pour supprimer. Toute nouvelle pièce
 capable de détruire sans capturer doit rejoindre ce filtre.
@@ -270,7 +269,7 @@ volontairement faible (`TUTO_INSTRUCTORS` dans `data-pieces.js`, ajoutés à
 `tutoInstructorLevel(i) = AI_OPPONENTS.length + i`), avec **la même armée des deux
 côtés, posée en dur** (`tutoBuildBoard`) : personne ne perd parce qu'il a mal
 composé. Une victoire ouvre un coffre au contenu **imposé** qui débloque une
-créature (Alpha, Fourmi, Garde de Pierre), suivie de son exercice de
+créature (Peureux, Fourmi, Éléphant de guerre), suivie de son exercice de
 déplacement. Une défaite ne fait pas avancer : le savant propose la revanche,
 autant de fois qu'il le faut.
 
@@ -313,7 +312,7 @@ quel coffre, voir `chestCeremonyClose`), une page s'ouvre avec la pièce seule
 sur l'échiquier et cinq repères à ramasser. Ni tour par tour, ni adversaire.
 
 Le point délicat : **tous les déplacements ne vont pas partout** (la Fourmi ne
-recule pas, l'Alpha ne quitte ni la couleur ni la parité de sa case). Cinq
+recule pas, le Peureux ne sort jamais de son camp). Cinq
 repères tirés au hasard seraient souvent impossibles à prendre. Ils sont donc
 posés le long d'une **promenade de la pièce** (`drillLayDots`) : un chemin qui
 les ramasse tous existe par construction. Si le joueur s'écarte et se coince,
@@ -438,7 +437,7 @@ data-pieces.js → piece-art.js → main.js → cube-nav.js → accounts.js
 → game-render.js
 → ai-engine.js → game-flow.js → voie.js → economy-ui.js → tuto-drill.js
 → tutorial.js
-→ tournoi.js → settings-admin.js → multiplayer.js → (script inline) initApp()
+→ settings-admin.js → multiplayer.js → (script inline) initApp()
 ```
 
 `economy.js` doit venir après `accounts.js` (il utilise `accGet`/`accSet`) et
@@ -455,7 +454,7 @@ QUE la face courante, les
 rotations et le verrouillage, aucune logique de jeu. Le builder (composition
 d'armée, `#page-builder`) n'est PAS une face du cube : c'est une page
 secondaire (overlay) ouverte depuis "Mes armées" via "Nouvelle armée" ou
-"Modifier". Les autres pages secondaires (voie, tournoi, combat, login)
+"Modifier". Les autres pages secondaires (voie, combat, login)
 restent aussi des overlays plein écran classiques affichés au-dessus du cube.
 
 Si tu ajoutes un nouveau fichier JS, insère-le dans cette chaîne à l'endroit
@@ -517,15 +516,15 @@ mais dans une version que Playwright refuse, le script le retrouve tout seul
 | Changer le fond du menu principal | `assets/lab-bg.jpg` + section `[LAB-BG]` de `css/style.css` |
 | Modifier le bloc pseudo/rang/ELO du menu principal | `renderMenuIdentity()` dans `js/accounts.js` + `[MENU]` de `css/style.css` |
 | Régler la vitesse de rotation du cube | `js/cube-nav.js` (`ROTATE_MS`) **et** la transition de `#cube` dans `css/style.css` |
-| Modifier le mode tournoi (adversaires, nombre de rounds) | `TOURNOI_OPPONENT_IDS` dans `js/tournoi.js` |
 | Modifier le système de comptes/sauvegarde | `js/accounts.js` |
 | Ajouter un nouveau réglage utilisateur | `index.html` (bloc `#settings-panel`) + `js/settings-admin.js` |
 | Modifier la présentation ou la FAQ publiques | `info.html` (texte visible **et** JSON-LD `FAQPage`) |
 | Changer les modes qui rapportent de l'ELO | `js/voie.js` (`vvNoEloReason`) |
 | Changer le plafond de coffre par adversaire | `tier` dans `AI_OPPONENTS` + `economyChestCap` dans `js/economy.js` |
-| Changer ce que fait le mode admin | `js/settings-admin.js` + `renderAdminChests()` dans `js/economy-ui.js` |
+| Changer ce que donne le mode test | `economyAdmin`/`invAll`/`pearlBalance` dans `js/economy.js` + `vvLoadElo`/`loadAccountGlobals` dans `js/accounts.js` |
+| Ajouter un tips d'attente en ligne | `MP_TIPS` dans `js/multiplayer.js` (une ligne de plus dans le tableau) |
 | Ajouter une adresse au jeu (comme `/combat`) | `vercel.json` (`rewrites`) + `appPath`/`setAppPath`/`appHomePath` dans `js/main.js` |
-| Changer l'adresse du mode admin | `ADMIN_QUERY` + `pathHasAdmin()` dans `js/main.js` (paramètre `?test`, pas un chemin : un chemin inexistant dépend d'une réécriture d'hébergeur et répondait 404) |
+| Changer l'adresse du mode test | `ADMIN_QUERY` + `pathHasAdmin()` dans `js/main.js` (paramètre `?test`, pas un chemin : un chemin inexistant dépend d'une réécriture d'hébergeur et répondait 404) |
 | Changer ce que contient un coffre | `CHESTS`/`CHEST_PEARLS` dans `js/data-pieces.js` + `chestRoll`/`chestLuckyChance` dans `js/economy.js` |
 | Changer le fond de l'écran d'attente en ligne | remplacer `assets/backgrounds/duel-wait.png` (rien à coder) |
 | Changer un message de refus / d'information | l'appel `showNotif()` concerné ; l'apparence est dans `[NOTIF]` de `css/style.css` |
@@ -547,7 +546,6 @@ mais dans une version que Playwright refuse, le script le retrouve tout seul
   - `currentArmyData` / `aiArmyData` : armées sélectionnées pour le combat
   - `VV_UNLOCKED` : `Set` des ids de pièces débloquées pour le compte courant
   - `CUR_ACC` : pseudo du compte actuellement connecté
-  - `tournamentState` : état du tournoi en cours (dans `tournoi.js`)
 - **Persistance** : tout passe par `accGet(clé, défaut)` / `accSet(clé,
   valeur)` (définis dans `accounts.js`), qui préfixent automatiquement la clé
   localStorage avec le pseudo du compte connecté. Ne jamais utiliser
@@ -584,7 +582,7 @@ mais dans une version que Playwright refuse, le script le retrouve tout seul
 ## Pour me redonner un seul fichier dans une future conversation
 
 Il suffit de me coller le contenu du fichier concerné (ex: juste
-`js/tournoi.js` ou juste `css/style.css`) et de me dire ce que tu veux
+`js/voie.js` ou juste `css/style.css`) et de me dire ce que tu veux
 changer. Grâce à ce README et aux en-têtes de dépendances en haut de chaque
 fichier, je peux éditer ce fichier isolément sans avoir besoin du reste du
 code, sauf si ta demande touche une interaction entre modules (auquel cas
