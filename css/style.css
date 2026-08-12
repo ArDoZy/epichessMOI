@@ -450,6 +450,20 @@ body.has-acc .builder-inner{padding-top:var(--page-top)}
 .comp-slot.Sorcier.filled{background:var(--sorcier-bg);border-color:var(--sorcier)}.comp-slot.Sorcier .cs-val{color:var(--sorcier)}
 .comp-slot.Brute.filled{background:var(--brute-bg);border-color:var(--brute)}.comp-slot.Brute .cs-val{color:var(--brute)}
 
+/* Les cinq emplacements de "Mes armées" (page fusionnée, voir js/armies.js)
+   prennent le format PORTRAIT des cartes de pièces — aspect-ratio 3/4,
+   comme .pcard (voir [PCARD]) — pour qu'une pièce posée remplisse tout
+   l'emplacement, exactement comme sur sa carte dans le catalogue juste en
+   dessous. Pas de croix de retrait ici : l'emplacement entier est le
+   bouton (voir pUpdSlots, js/armies.js). */
+.comp-grid-cards .comp-slot{aspect-ratio:3/4;min-height:0;padding:9% 6% 6%}
+.comp-grid-cards .comp-slot.filled{cursor:pointer}
+.comp-grid-cards .comp-slot .cs-emoji{font-size:0;line-height:0;margin-bottom:6%;width:56%;aspect-ratio:1}
+.comp-grid-cards .comp-slot .cs-emoji .pc-icon,
+.comp-grid-cards .comp-slot .cs-emoji .pc-svg{width:100%;height:100%}
+.comp-grid-cards .comp-slot .cs-name{font-size:clamp(9px,2.7vw,12.5px)}
+.comp-grid-cards .comp-slot .cs-val{font-size:clamp(10px,3vw,13px)}
+
 /* Le "slot" de catégorie englobe TOUTE la section (titre + toutes ses
    cartes), pas seulement le bandeau de titre. Accent de couleur à gauche ET
    fond LÉGÈREMENT teinté de la couleur de la catégorie autour des cartes :
@@ -551,9 +565,6 @@ body.has-acc .builder-inner{padding-top:var(--page-top)}
 #page-armies{padding:clamp(16px,3vw,32px) clamp(12px,3vw,20px);min-height:100vh;background:var(--bg)}
 .armies-inner{max-width:980px;margin:0 auto}
 .armies-hdr{display:flex;align-items:baseline;gap:10px;margin-bottom:18px;flex-wrap:wrap}
-/* Le bouton d'origine ne sert plus qu'à porter son gestionnaire de clic. */
-.armies-new-hidden{position:absolute;width:1px;height:1px;padding:0;overflow:hidden;
-  clip-path:inset(50%);white-space:nowrap;border:0}
 .armies-title{font-family:var(--f-display);font-size:clamp(20px,4.5vw,26px);font-weight:900;flex:1}
 .armies-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:16px}
 .army-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;transition:all .22s;position:relative;overflow:hidden}
@@ -593,21 +604,6 @@ body.has-acc .builder-inner{padding-top:var(--page-top)}
   transition:color .16s ease,background .16s ease,border-color .16s ease}
 .ac-del-btn svg{width:16px;height:16px}
 .ac-del-btn:hover{color:var(--danger);border-color:rgba(212,69,63,.45);background:rgba(212,69,63,.12)}
-/* La création, en fin de liste, au gabarit d'une carte. */
-.army-new-card{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
-  min-height:150px;background:none;border:1px dashed var(--border2);cursor:pointer;
-  color:var(--muted);font-family:var(--f-ui);
-  transition:color .16s ease,border-color .16s ease,background .16s ease}
-.army-new-card:hover{color:var(--accent2);border-color:var(--accent2);background:var(--accent-bg)}
-.anc-plus{font-size:26px;font-weight:300;line-height:1}
-.anc-txt{font-size:14px;font-weight:600}
-/* Mode sélection d'armée (lancement d'un combat depuis le menu) */
-.armies-select-banner{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:-10px 0 22px;padding:12px 16px;border:1px solid rgba(201,162,39,.35);border-radius:12px;background:rgba(201,162,39,.07)}
-.armies-select-banner .asb-txt{flex:1;font-family:var(--f-ui);font-size:13px;color:var(--gold)}
-.army-card-selectable{cursor:pointer}
-.army-card-selectable:hover{border-color:var(--gold);box-shadow:0 6px 28px rgba(201,162,39,.22);transform:translateY(-2px)}
-.army-card-selectable::before{opacity:1}
-.ac-name-none{opacity:.6}
 .empty-armies{grid-column:1/-1;text-align:center;padding:50px 20px;color:var(--muted);font-size:15px;font-style:italic}
 .empty-armies .vial{margin-bottom:14px;opacity:.4}
 #page-ai-armies{padding:clamp(16px,3vw,32px) clamp(12px,3vw,20px);min-height:100vh;background:var(--bg)}
@@ -2115,7 +2111,7 @@ body.cube-active:not(.nav-overlay) .notif-host{bottom:92px}
    ============================================================== */
 .btn:focus-visible,.cube-arrow:focus-visible,.jouer-btn:focus-visible,
 .linput:focus-visible,.acc-item:focus-visible,.history-nav button:focus-visible,
-.chest-card:focus-visible,.skin-card:focus-visible,.army-card-selectable:focus-visible{
+.chest-card:focus-visible,.skin-card:focus-visible{
   outline:2px solid var(--accent2);outline-offset:3px}
 /* Les pièces sont redessinées 32 fois par plateau : la transition universelle
    de couleur du reset s'appliquait à chaque tracé SVG, pour rien. */
@@ -2622,6 +2618,13 @@ body.light .adv-advised{color:#f6f5f1}
   .comp-slot .cs-rm{width:15px;height:15px;top:0;right:0}
   .comp-slot .cs-rm svg{width:9px;height:9px}
   .comp-slot.draggable-slot::before{display:none}
+  /* "Mes armées" (page fusionnée) garde le rapport 3/4 des cartes même sur
+     petit écran : les cinq emplacements n'ont plus de nom de classe à
+     afficher une fois remplis (pieceIcon + nom + valeur seulement), donc
+     rien n'y déborde du cadre. */
+  .comp-grid-cards .comp-slot{aspect-ratio:3/4;min-height:0;justify-content:center}
+  .comp-grid-cards .comp-slot .cs-emoji{width:56%}
+  .comp-grid-cards .comp-slot .cs-emoji .pc-icon{width:100%;height:100%}
   .army-box{padding:6px 3vw 3vw;border-radius:12px}
   .bd-budget-num{font-size:17px}
   .bd-back{font-size:14px}

@@ -265,15 +265,10 @@ const TUTO_STEPS=[
     at:'#cube-arrow-right',click:'#cube-arrow-right',wait:700,
   },
   {
-    text:'Voici vos armées. Il n\'y en a aucune, forcément, vous venez d\'arriver.<br>'+
-         '<strong>Créez votre première armée.</strong>',
-    // Le bouton #ar-new ne porte plus que son gestionnaire (il est réduit à
-    // un pixel) : la création est devenue la dernière CARTE de la grille.
-    at:'.army-new-card',click:'.army-new-card',wait:700,
-  },
-  {
-    text:'Cinq pièces, pas une de plus&nbsp;: un <strong>Monarque</strong> (perdez-le, '+
-         'vous perdez la partie), un <strong>Général</strong>, et trois créatures.<br>'+
+    text:'Voici votre armée. Vous n\'en avez aucune, forcément, vous venez d\'arriver&nbsp;: '+
+         'composez-la ici même. Cinq pièces, pas une de plus&nbsp;: un '+
+         '<strong>Monarque</strong> (perdez-le, vous perdez la partie), un '+
+         '<strong>Général</strong>, et trois créatures.<br>'+
          'Le tout dans <strong>24 points</strong>. Une créature puissante vous en laisse '+
          'peu pour les autres&nbsp;: c\'est là qu\'est le vrai jeu.',
     at:'.army-box',
@@ -282,9 +277,10 @@ const TUTO_STEPS=[
     text:'Chaque créature a son déplacement ET son pouvoir. La carte ne montre que '+
          'l\'essentiel&nbsp;: son logo, son nom, sa valeur et votre stock.<br>'+
          '<strong>Appuyez sur une carte</strong>&nbsp;: deux boutons apparaissent. '+
-         '« Utiliser » la met dans l\'armée, <strong>« Infos »</strong> ouvre sa fiche — '+
-         'l\'échiquier de son déplacement et son pouvoir en détail.',
-    at:'#cards-container .class-sec',
+         '« Utiliser » la pose dans son emplacement en haut, <strong>« Infos »</strong> '+
+         'ouvre sa fiche — l\'échiquier de son déplacement et son pouvoir en détail. '+
+         'Pour la retirer, appuyez sur la pièce posée&nbsp: elle rejoint le catalogue.',
+    at:'#ar-cards-container .cards-grid',
   },
   {
     text:'Ce petit nombre en bas de chaque carte, c\'est le plus important de tout&nbsp;: '+
@@ -293,13 +289,9 @@ const TUTO_STEPS=[
     at:'.pcard .pcard-stock',
   },
   {
-    text:'Je suis pressé et vous aussi. <strong>Prenez une armée au hasard</strong>, '+
-         'vous l\'affinerez plus tard.',
-    at:'#b-random',click:'#b-random',wait:450,
-  },
-  {
-    text:'Parfait. <strong>Validez</strong>, et elle rejoint votre armurerie.',
-    at:'#b-validate',click:'#b-validate',wait:750,
+    text:'Je suis pressé et vous aussi. <strong>Prenez une armée au hasard</strong>&nbsp;: '+
+         'elle s\'enregistre toute seule, vous l\'affinerez plus tard.',
+    at:'#ar-random',click:'#ar-random',wait:450,
   },
   {
     text:'Elle est à vous. Maintenant, la partie que les gens comprennent toujours '+

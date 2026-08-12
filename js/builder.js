@@ -1,20 +1,27 @@
 // ================================================================
-// BUILDER.JS : Page de composition d'armée (#page-builder)
+// BUILDER.JS : Page de composition d'armée de l'IA (#page-builder)
 // ================================================================
+// Depuis la fusion de "Mes armées" et de la composition (voir js/armies.js),
+// cette page ne sert plus qu'à composer les armées personnalisées de l'IA
+// (page-ai-armies → "Modifier"/"Nouvelle armée IA") : l'armée DU JOUEUR se
+// compose directement sur #page-armies, avec sa propre logique (pToggle,
+// pUpdSlots... dans js/armies.js), qui réutilise seulement deux fonctions
+// pures d'ici (derivePlacements, slotStockHTML).
+//
 // Contient : la logique de sélection des pièces (Monarque/Général/3 pièces
 // libres, budget 24 points), le rendu des cartes de pièces (triées par
 // classe puis valeur croissante, sans tri/filtre manuel) et des slots de
 // composition, l'armée aléatoire, et les boutons de la topbar
-// (tout effacer / aléatoire / valider / mes armées). Le bouton
-// "Voie" est désormais dans #page-armies (voir voie.js), plus ici.
+// (tout effacer / aléatoire / valider / armées IA).
 //
 // Dépendances : data-pieces.js (PIECES, CLASS_ORDER),
 // main.js (army, editingArmyId, builderMode, showPieceCtxMenu,
 // showNotif, updateBuilderBanner), accounts.js (VV_UNLOCKED),
-// armies.js (renderArmiesPage/renderAiArmiesPage), accounts.js (saveArmies).
+// armies.js (renderAiArmiesPage, saveAiArmies).
 //
 // Si vous changez les règles de composition d'armée (budget, nombre de
-// pièces), c'est ici. Le rendu visuel des cartes suit les classes CSS
+// pièces), c'est ici ET dans js/armies.js (pToggle) — les deux doivent
+// rester en miroir. Le rendu visuel des cartes suit les classes CSS
 // .piece-card / .comp-slot définies dans css/style.css section [BUILDER].
 // ================================================================
 
@@ -285,4 +292,6 @@ function randomizeArmy(){
 document.getElementById('b-reset').addEventListener('click',()=>{army={mon:null,gen:null,extras:[]};editingArmyId=null;updAll();});
 document.getElementById('b-random').addEventListener('click',randomizeArmy);
 document.getElementById('b-validate').addEventListener('click',()=>{if(armyValid())saveArmyFromBuilder();});
-document.getElementById('b-armies').addEventListener('click',()=>{if(builderMode==='ai'){renderAiArmiesPage();showPage('page-ai-armies');}else{renderArmiesPage();showPage('page-armies');}});
+// #page-builder ne sert plus qu'à composer les armées de l'IA (voir
+// js/armies.js) : le retour va toujours vers "Armées IA".
+document.getElementById('b-armies').addEventListener('click',()=>{renderAiArmiesPage();showPage('page-ai-armies');});

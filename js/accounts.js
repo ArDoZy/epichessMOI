@@ -181,6 +181,11 @@ function enterAccount(username,isNewAccount){
 
 function loadAccountGlobals(){
   savedArmies=accGet('armies',[]);
+  // UNE SEULE ARMÉE : un compte créé avant la fusion de "Mes armées" et de
+  // la composition (voir js/armies.js) peut avoir plusieurs armées
+  // enregistrées. On ne garde que la première et on écrit tout de suite la
+  // troncature, pour ne pas la refaire à chaque connexion.
+  if(savedArmies.length>1){savedArmies=[savedArmies[0]];saveArmies();}
   savedAiArmies=accGet('ai_armies',[]);
   // Dotation de départ : le Monarque et le Général, rien de plus. Les
   // créatures s'obtiennent dans les coffres (les trois premières pendant le

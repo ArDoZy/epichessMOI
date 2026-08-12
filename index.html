@@ -314,9 +314,12 @@
         </div>
       </div>
     </div>
-    <!-- Face 2 (droite) : Mes armées (page-armies déplacée ici). Le builder
-         (composition d'armée) n'est plus une face du cube : on y accède
-         depuis cette page via "Nouvelle armée" / "Modifier" (overlay). -->
+    <!-- Face 2 (droite) : Mes armées (page-armies déplacée ici). Cette page
+         EST la composition d'armée du joueur — les deux ont fusionné, il
+         n'y a plus d'overlay séparé pour le joueur (voir js/armies.js). Le
+         builder (#page-builder) reste une page à part, mais uniquement pour
+         composer les armées de l'IA (page-ai-armies → "Modifier"/"Nouvelle
+         armée IA"). -->
     <div class="cube-face" data-face="armees">
       <div class="face-viewport" id="face-viewport-armees"></div>
     </div>
@@ -358,7 +361,10 @@
 <div class="cube-dots" id="cube-dots" aria-hidden="true"></div>
 </div>
 
-<!-- PAGE 1: BUILDER -->
+<!-- PAGE 1: BUILDER — réservée à la composition des armées de l'IA
+     (page-ai-armies → "Modifier" / "Nouvelle armée IA"). La composition de
+     l'armée du JOUEUR a fusionné dans #page-armies (voir js/armies.js) ;
+     cette page-ci ne s'ouvre donc plus jamais en mode "player". -->
 <div id="page-builder" class="page">
 <div class="builder-inner">
   <div class="builder-topbar"></div>
@@ -368,7 +374,7 @@
        vers le catalogue : on composait à l'aveugle. Il reste maintenant sous
        les yeux du premier au dernier appui, avec les cinq emplacements.
        Quatre boutons accueillaient l'utilisateur avant tout contenu, dont
-       DEUX primaires pleins (« Mes armées » en laiton, une navigation, et
+       DEUX primaires pleins (« Armées IA » en laiton, une navigation, et
        « Valider » en vert) et une action destructive. Ils sont répartis selon
        ce qu'ils font : la navigation redevient un retour, les deux actions
        d'appoint passent dans un menu, et la validation descend en bas
@@ -377,7 +383,7 @@
     <div class="bd-top">
       <button class="bd-back" id="b-armies">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 5, 8 12, 15 19"/></svg>
-        <span>Mes armées</span>
+        <span>Armées IA</span>
       </button>
       <details class="bd-more" id="bd-more">
         <summary aria-label="Plus d'actions" title="Plus d'actions"><span></span><span></span><span></span></summary>
@@ -402,20 +408,38 @@
 </div>
 </div>
 
-<!-- PAGE 3: PLAYER ARMIES -->
+<!-- PAGE : MES ARMÉES = composition + armée du joueur, fusionnées. UNE
+     SEULE armée peut être enregistrée : composer, c'est l'enregistrer (voir
+     js/armies.js::pUpdateAll/pAutosave). Les cinq emplacements (Monarque,
+     Général, 3 pièces libres) sont tout en haut, au format carte ; le
+     catalogue des pièces déjà débloquées suit juste en dessous, en vrac
+     (pas de slots par catégorie, pas d'étiquette de classe — seule la
+     couleur en tête de carte le dit), trié du Monarque le moins cher au
+     Sorcier le plus cher. Il n'y a plus de bouton "Valider" ni de liste
+     d'armées à choisir : toucher une pièce du catalogue la pose dans son
+     emplacement, toucher une pièce posée la retire. Un combat lancé depuis
+     le menu principal (COMBAT / Adversaires) prend directement cette
+     armée. -->
 <div id="page-armies" class="page">
 <div class="armies-inner">
-  <!-- Le bouton de création est devenu la dernière carte de la grille (voir
-       renderArmiesPage) ; celui-ci reste dans le DOM, masqué, parce qu'il
-       porte le gestionnaire de clic et que le tutoriel le vise. -->
-  <div class="armies-hdr">
-    <div class="armies-title cinzel glow-text">Mes Armées</div>
-    <button class="btn btn-primary armies-new-hidden" id="ar-new">+ Nouvelle armée</button>
+  <div class="army-box" id="ar-army-box">
+    <div class="bd-top">
+      <div class="armies-title cinzel glow-text" style="margin:0">Mes Armées</div>
+      <details class="bd-more" id="ar-more">
+        <summary aria-label="Plus d'actions" title="Plus d'actions"><span></span><span></span><span></span></summary>
+        <div class="bd-more-menu">
+          <button type="button" class="bd-more-item" id="ar-random">Armée aléatoire</button>
+          <button type="button" class="bd-more-item bd-more-danger" id="ar-reset">Tout effacer</button>
+        </div>
+      </details>
+    </div>
+    <div class="bd-budget">
+      <span class="bd-budget-lbl">Valeur</span>
+      <span class="bd-budget-num" id="ar-s-val">0 / 24</span>
+    </div>
+    <div class="comp-grid comp-grid-cards" id="ar-comp-grid"></div>
   </div>
-  <!-- Bandeau du mode sélection (combat lancé depuis le menu principal) :
-       rempli et affiché par renderArmiesPage(). -->
-  <div class="armies-select-banner" id="armies-select-banner" style="display:none"></div>
-  <div class="armies-grid" id="armies-grid"></div>
+  <div id="ar-cards-container"></div>
 </div>
 </div>
 

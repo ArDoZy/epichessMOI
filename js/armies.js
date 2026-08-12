@@ -1,27 +1,274 @@
 // ================================================================
-// ARMIES.JS : Pages "Mes armées" / "Armées IA" + générateur d'armée IA
+// ARMIES.JS : Page "Mes armées" fusionnée avec la composition + "Armées IA"
+// + générateur d'armée IA
 // ================================================================
-// Contient : le rendu des listes d'armées sauvegardées (#page-armies et
-// #page-ai-armies), les actions modifier/supprimer, le mode SÉLECTION
-// (déclenché par "COMBAT" du menu principal : un clic sur une carte lance la
-// partie), le chargement d'une armée sauvegardée dans le builder pour
-// édition, et generateAIArmy() qui compose une armée aléatoire légale pour
-// l'adversaire IA quand aucune armée IA personnalisée n'est choisie.
+// Contient : la page "Mes armées" (#page-armies), qui EST désormais la page
+// de composition du joueur — il n'y a plus de liste séparée, une seule
+// armée peut être enregistrée, composée ou modifiée, et elle s'enregistre
+// TOUTE SEULE dès qu'elle est complète (plus de bouton "Valider"). Contient
+// aussi le rendu de la page "Armées IA" (#page-ai-armies, restée une
+// liste : l'Instructeur peut recevoir plusieurs armées personnalisées), et
+// generateAIArmy() qui compose une armée aléatoire légale pour l'adversaire
+// IA quand aucune armée IA personnalisée n'est choisie.
 //
-// Dépendances : data-pieces.js (PIECES), accounts.js (savedArmies,
-// savedAiArmies, saveArmies, saveAiArmies, VV_UNLOCKED), main.js (army,
-// editingArmyId, builderMode, updateBuilderBanner, updAll, showPage,
-// showNotif), combat-intro.js (renderCombatPage, launchParticles).
+// Dépendances : data-pieces.js (PIECES, CLASS_ORDER), accounts.js
+// (savedArmies, savedAiArmies, saveArmies, saveAiArmies, VV_UNLOCKED),
+// main.js (showPage, showNotif, showPieceCtxMenu, showConfirmModal, escH),
+// piece-card.js (pieceCardHTML, wirePieceCards), builder.js
+// (derivePlacements, slotStockHTML — la fabrication de l'armée du joueur
+// réutilise ces deux fonctions pures, partagées avec la composition de
+// l'armée IA), combat-intro.js (launchCombat, launchOnline).
 // ================================================================
 
 // ----------------------------------------------------------------
-// PAGE ARMÉES JOUEUR
+// COMPOSITION DE L'ARMÉE DU JOUEUR — LA PAGE "MES ARMÉES" ELLE-MÊME
 // ----------------------------------------------------------------
+// UNE SEULE ARMÉE. pArmy est l'état de travail (peut être incomplet en
+// cours de composition) ; savedArmies[0] est l'unique armée enregistrée
+// (toujours complète). Chaque changement qui laisse pArmy complet
+// (Monarque + Général + 3 pièces) s'enregistre immédiatement : composer,
+// c'est enregistrer. Un changement qui laisse pArmy incomplet ne touche
+// pas à l'armée déjà enregistrée — elle reste utilisable pour un combat
+// pendant qu'on retouche sa composition.
+let pArmy={mon:null,gen:null,extras:[]};
+let pEditId=null;
+
+const pIsSel=p=>{
+  if(p.class==='Monarque')return pArmy.mon?.id===p.id;
+  if(p.class==='Général')return pArmy.gen?.id===p.id;
+  return pArmy.extras.some(x=>x?.id===p.id);
+};
+const pGetVal=()=>(pArmy.mon?.value||0)+(pArmy.gen?.value||0)+pArmy.extras.reduce((s,p)=>s+(p?.value||0),0);
+const pArmyValid=()=>pArmy.mon&&pArmy.gen&&pArmy.extras.length===3;
+const pExtraPieces=()=>pArmy.extras.slice();
+
+// Recharge pArmy depuis la seule armée enregistrée (ou la vide si aucune).
+// Robuste aux anciennes sauvegardes qui contenaient plusieurs armées : on ne
+// reprend que la première, les autres sont perdues (voir aussi
+// loadAccountGlobals, js/accounts.js, qui tronque déjà savedArmies à 1).
+function pLoad(){
+  const fp=id=>PIECES.find(p=>p.id===id);
+  const a=savedArmies[0];
+  if(a){
+    pArmy.mon=fp(a.mon.id)||null;pArmy.gen=fp(a.gen.id)||null;
+    const dist=c=>Math.abs((c==null?0:c)-3.5);
+    let ids=(a.extras||[]).slice();
+    if(a.placements)ids.sort((x,y)=>dist(a.placements[x])-dist(a.placements[y]));
+    pArmy.extras=ids.map(fp).filter(Boolean).slice(0,3);
+    pEditId=a.id;
+  }else{
+    pArmy={mon:null,gen:null,extras:[]};pEditId=null;
+  }
+}
+
+// Enregistre pArmy si (et seulement si) elle est complète.
+function pAutosave(){
+  if(!pArmyValid())return;
+  const ordered=pExtraPieces();
+  const placements=derivePlacements(ordered); // js/builder.js, fonction pure
+  const prev=savedArmies[0];
+  const id=pEditId||(prev&&prev.id)||Date.now().toString();
+  const ad={
+    id,createdAt:(prev&&prev.id===id)?prev.createdAt:Date.now(),updatedAt:Date.now(),
+    mon:{id:pArmy.mon.id},gen:{id:pArmy.gen.id},
+    extras:ordered.map(p=>p.id),placements,totalValue:pGetVal()
+  };
+  savedArmies=[ad];pEditId=id;saveArmies();
+}
+
+// ----------------------------------------------------------------
+// LES CINQ EMPLACEMENTS, TOUT EN HAUT — format carte (aspect-ratio 3/4,
+// voir .comp-grid-cards dans css/style.css [ARMIES]). Une pièce posée
+// remplit tout l'emplacement, comme sur sa carte dans le catalogue.
+// PAS DE CROIX : on retire une pièce en appuyant sur son emplacement.
+// ----------------------------------------------------------------
+function pUpdSlots(){
+  const g=document.getElementById('ar-comp-grid');if(!g)return;
+  const all=pExtraPieces();
+  const mk=(cls,lbl,p,type,eidx,req)=>p
+    ?'<div class="comp-slot filled '+cls+(eidx!=null?' draggable-slot':'')+'" data-pid="'+p.id+
+       '" data-type="'+type+'"'+(eidx!=null?' draggable="true" data-eidx="'+eidx+'"':'')+
+       ' role="button" tabindex="0" aria-label="Retirer '+escH(p.name)+'">'+
+       '<span class="cs-emoji">'+pieceIcon(p.id,'n')+'</span>'+
+       '<div class="cs-name">'+escH(p.name)+'</div>'+
+       '<div class="cs-val">'+p.value+' pts</div>'+slotStockHTML(p)+
+     '</div>'
+    :'<div class="comp-slot'+(req?' cs-req '+cls:' cs-free')+'"><div class="cs-label">'+lbl+'</div><div class="cs-ph">'+(req?'':'+')+'</div></div>';
+  let h=mk('Monarque','Monarque',pArmy.mon,'mon',null,true)
+       +mk('Général','Général',pArmy.gen,'gen',null,true);
+  for(let i=0;i<3;i++)h+=mk(all[i]?.class||'','Libre',all[i],'pc',all[i]?i:null,false);
+  g.innerHTML=h;
+  g.querySelectorAll('.comp-slot.filled[data-pid]').forEach(el=>{
+    el.addEventListener('click',()=>{
+      const eidxAttr=el.dataset.eidx;
+      const eidx=(eidxAttr!=null&&eidxAttr!=='')?parseInt(eidxAttr,10):-1;
+      pRemove(el.dataset.type,eidx);
+    });
+    el.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();el.click();}});
+    const open=e=>{const p=PIECES.find(x=>x.id===el.dataset.pid);if(!p)return;showPieceCtxMenu(e,p);};
+    el.addEventListener('contextmenu',e=>{e.preventDefault();open(e);});
+  });
+  pWireSlotDragSwap(g);
+}
+function pRemove(type,idx){
+  if(type==='mon')pArmy.mon=null;
+  else if(type==='gen')pArmy.gen=null;
+  else if(idx>=0&&idx<pArmy.extras.length)pArmy.extras.splice(idx,1);
+  pUpdateAll();
+}
+// Glisser-déposer entre les 3 pièces libres pour réordonner (= changer la
+// disposition en partie, voir derivePlacements dans js/builder.js).
+function pWireSlotDragSwap(g){
+  g.querySelectorAll('.comp-slot.draggable-slot').forEach(el=>{
+    el.addEventListener('dragstart',e=>{e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',el.dataset.eidx);el.classList.add('slot-dragging');});
+    el.addEventListener('dragend',()=>{el.classList.remove('slot-dragging');g.querySelectorAll('.slot-over').forEach(x=>x.classList.remove('slot-over'));});
+    el.addEventListener('dragover',e=>{e.preventDefault();e.dataTransfer.dropEffect='move';el.classList.add('slot-over');});
+    el.addEventListener('dragleave',()=>el.classList.remove('slot-over'));
+    el.addEventListener('drop',e=>{
+      e.preventDefault();el.classList.remove('slot-over');
+      const from=parseInt(e.dataTransfer.getData('text/plain'),10);
+      const to=parseInt(el.dataset.eidx,10);
+      if(isNaN(from)||isNaN(to)||from===to)return;
+      const tmp=pArmy.extras[from];pArmy.extras[from]=pArmy.extras[to];pArmy.extras[to]=tmp;
+      pUpdateAll();
+    });
+  });
+}
+
+// ----------------------------------------------------------------
+// LE CATALOGUE, EN DESSOUS — en vrac : pas de slots par catégorie, pas
+// d'étiquette "Monarque"/"Général"/etc. Seule reste la couleur en tête de
+// carte (voir .pcard::before, [PCARD]). Uniquement les pièces déjà
+// débloquées, triées du Monarque le moins cher au Sorcier le plus cher.
+// ----------------------------------------------------------------
+function pToggle(p){
+  if(!VV_UNLOCKED.has(p.id))return;
+  const sel=pIsSel(p);
+  if(p.class==='Monarque'){
+    if(sel)pArmy.mon=null;
+    else{if(pArmy.mon){showNotif('Vous avez déjà un monarque.');return;}if(pGetVal()+p.value>24){showNotif('Dépasse 24 points.');return;}pArmy.mon=p;}
+  }else if(p.class==='Général'){
+    if(sel)pArmy.gen=null;
+    else{if(pArmy.gen){showNotif('Vous avez déjà un général.');return;}if(pGetVal()+p.value>24){showNotif('Dépasse 24 points.');return;}pArmy.gen=p;}
+  }else if(p.class==='Primordiale'){
+    if(sel){const i=pArmy.extras.findIndex(x=>x?.id===p.id);if(i!==-1)pArmy.extras.splice(i,1);}
+    else{if(pArmy.extras.some(x=>x.class==='Primordiale')){showNotif('1 primordiale maximum.');return;}if(pGetVal()+p.value>24){showNotif('Dépasse 24 points.');return;}if(pArmy.extras.length>=3){showNotif('3 pièces max.');return;}pArmy.extras.push(p);}
+  }else{
+    if(sel){const i=pArmy.extras.findIndex(x=>x?.id===p.id);if(i!==-1)pArmy.extras.splice(i,1);}
+    else{if(pArmy.extras.length>=3){showNotif('3 pièces max.');return;}if(pGetVal()+p.value>24){showNotif('Dépasse 24 points.');return;}pArmy.extras.push(p);}
+  }
+  pUpdateAll();
+}
+function pRenderCards(){
+  const cont=document.getElementById('ar-cards-container');if(!cont)return;
+  const list=PIECES.filter(p=>VV_UNLOCKED.has(p.id))
+    .sort((a,b)=>{const d=CLASS_ORDER[a.class]-CLASS_ORDER[b.class];return d||a.value-b.value;});
+  if(!list.length){
+    cont.innerHTML='<div class="empty-armies"><span class="vial"><span class="vial-bubble"></span></span><p>Débloquez vos premières pièces pour composer une armée.</p></div>';
+    return;
+  }
+  cont.innerHTML='<div class="cards-grid">'+list.map(p=>pieceCardHTML(p,{locked:false,selected:pIsSel(p)})).join('')+'</div>';
+  wirePieceCards(cont,{onUse:pToggle});
+}
+
+// ----------------------------------------------------------------
+// BUDGET + ENREGISTREMENT
+// ----------------------------------------------------------------
+function pUpdStats(){
+  const v=pGetVal(),over=v>24;
+  const val=document.getElementById('ar-s-val');if(val)val.textContent=v+' / 24';
+  const box=document.getElementById('ar-army-box');if(box)box.classList.toggle('bd-over',over);
+}
+function pUpdateAll(){
+  pUpdSlots();pRenderCards();pUpdStats();
+  pAutosave();
+}
+
+// Armée aléatoire : 1 monarque, 1 général, 3 pièces parmi les débloquées
+// (budget 24 pts, 1 primordiale max). Enregistrée aussitôt (toujours
+// complète par construction).
+function pRandomize(){
+  const unlocked=VV_UNLOCKED;
+  const monarques=PIECES.filter(p=>p.class==='Monarque'&&unlocked.has(p.id));
+  const generaux=PIECES.filter(p=>p.class==='Général'&&unlocked.has(p.id));
+  const others=PIECES.filter(p=>p.class!=='Monarque'&&p.class!=='Général'&&unlocked.has(p.id));
+  if(!monarques.length||!generaux.length||others.length<3){showNotif('Débloquez plus de pièces pour une armée aléatoire complète.','err');return;}
+  const rnd=arr=>arr[Math.floor(Math.random()*arr.length)];
+  let tries=0;
+  while(tries++<2000){
+    const mon=rnd(monarques);const gen=rnd(generaux);
+    if(mon.value+gen.value>22)continue;
+    const budget=24-mon.value-gen.value;
+    const pool=[...others].sort(()=>Math.random()-0.5);
+    let chosen=[];let val=0;let primCount=0;const usedIds=new Set();
+    for(const p of pool){
+      if(chosen.length>=3)break;
+      if(usedIds.has(p.id))continue;
+      if(p.class==='Primordiale'&&primCount>=1)continue;
+      if(val+p.value>budget)continue;
+      chosen.push(p);val+=p.value;usedIds.add(p.id);
+      if(p.class==='Primordiale')primCount++;
+    }
+    if(chosen.length===3){pArmy.mon=mon;pArmy.gen=gen;pArmy.extras=chosen;pUpdateAll();return;}
+  }
+  showNotif('Impossible de générer une armée aléatoire avec vos pièces actuelles.','err');
+}
+function pReset(){
+  pArmy={mon:null,gen:null,extras:[]};pEditId=null;
+  savedArmies=[];saveArmies();
+  pUpdateAll();
+}
+document.getElementById('ar-random')?.addEventListener('click',pRandomize);
+document.getElementById('ar-reset')?.addEventListener('click',pReset);
+
+// Point d'entrée de la page "Mes armées" : recharge depuis la seule armée
+// enregistrée et (re)dessine. Appelée à chaque arrivée sur la face "armées"
+// du cube (cube-nav.js) et à chaque rafraîchissement externe (achat/ouverture
+// de coffre, fin de tutoriel...) : dans tous les cas, savedArmies[0] est la
+// seule source de vérité, donc la recharger est toujours sûr.
+const renderArmiesPage=()=>{
+  pLoad();
+  pUpdateAll();
+};
+
+// ----------------------------------------------------------------
+// LANCEMENT D'UN COMBAT DEPUIS LE MENU PRINCIPAL
+// ----------------------------------------------------------------
+// Il n'y a plus d'écran de choix : une seule armée peut exister. "COMBAT" et
+// "Adversaires" partent donc directement au combat avec elle (ou, à défaut,
+// ramènent sur "Mes armées" pour en composer une).
+window.startArmySelection=mode=>{
+  if(!savedArmies.length){
+    renderArmiesPage();showPage('page-armies');
+    showNotif('Composez d\'abord une armée pour pouvoir combattre.','err');
+    return;
+  }
+  const a=savedArmies[0];
+  if(typeof armyStock==='function'){
+    const stock=armyStock(a);
+    if(!stock.ok){
+      renderArmiesPage();showPage('page-armies');
+      showConfirmModal('Stock insuffisant : '+stock.missing.map(m=>m.name+' ('+m.have+'/'+m.need+')').join(', ')+
+        '. Récupérez le coffre de réapprovisionnement dans l\'Armurerie, ou composez une autre armée.',()=>{},
+        {okLabel:'Compris',cancelLabel:'Fermer',okClass:'btn-primary'});
+      return;
+    }
+  }
+  if(mode==='online')launchOnline(a.id);
+  else launchCombat(a.id);
+};
+
+// Conservée pour compatibilité (cube-nav.js l'appelle au retour au menu) :
+// il n'y a plus d'état de sélection à effacer.
+window.clearArmySelection=()=>{};
+
+// loadArmyForEdit : utilisée par combat-intro.js (launchCombat/launchOnline)
+// pour renseigner l'état global `army`/`editingArmyId` de l'ancien builder
+// avant de lancer la partie. Conservée telle quelle : d'autres modules
+// peuvent encore la lire.
 const loadArmyForEdit=ad=>{
   const fp=id=>PIECES.find(p=>p.id===id);
   army.mon=fp(ad.mon.id)||null;army.gen=fp(ad.gen.id)||null;
-  // Reconstruit l'ordre (= disposition) : la pièce la plus proche du centre
-  // (colonnes 3/4) vient en premier. Robuste aux anciennes sauvegardes.
   const dist=c=>Math.abs((c==null?0:c)-3.5);
   let ids=(ad.extras||[]).slice();
   if(ad.placements)ids.sort((a,b)=>dist(ad.placements[a])-dist(ad.placements[b]));
@@ -30,8 +277,10 @@ const loadArmyForEdit=ad=>{
 };
 
 // ----------------------------------------------------------------
-// NOM DE L'ARMÉE : bouton "Nommer l'armée" (ou nom + petit stylo une fois
-// nommée) affiché au-dessus de la carte, à la place des dates.
+// NOM DE L'ARMÉE IA : bouton "Nommer l'armée" (ou nom + petit stylo une fois
+// nommée) affiché au-dessus de la carte, à la place des dates. L'armée du
+// joueur n'a plus de nom : il n'y en a qu'une, rien ne la distingue d'une
+// autre.
 // ----------------------------------------------------------------
 // PEN_ICON / TRASH_ICON sont définies dans js/main.js (icônes partagées).
 let _renamingArmyId=null;
@@ -46,7 +295,7 @@ const buildNameBlock=(a,isAi)=>{
 };
 window.startRenameArmy=(id,isAi)=>{
   _renamingArmyId=id;
-  if(isAi)renderAiArmiesPage();else renderArmiesPage();
+  if(isAi)renderAiArmiesPage();
   setTimeout(()=>{const inp=document.getElementById('ac-name-input-'+id);if(inp){inp.focus();inp.select();}},0);
 };
 window.confirmRenameArmy=(id,isAi)=>{
@@ -56,138 +305,12 @@ window.confirmRenameArmy=(id,isAi)=>{
   const a=list.find(x=>x.id===id);if(a)a.name=val||null;
   if(isAi)saveAiArmies();else saveArmies();
   _renamingArmyId=null;
-  if(isAi)renderAiArmiesPage();else renderArmiesPage();
+  if(isAi)renderAiArmiesPage();
 };
 
 // ----------------------------------------------------------------
-// MODE SÉLECTION D'ARMÉE
-// ----------------------------------------------------------------
-// Un combat ne se lance plus depuis la carte d'armée : on part du menu
-// principal (gros bouton "COMBAT", ou "Adversaires" pour un duel contre le
-// laboratoire), ce qui amène ICI en mode sélection. La page se réduit alors à
-// un choix : toutes les autres actions (Voie, Nouvelle armée, Modifier,
-// Renommer, Supprimer) sont masquées et un clic sur une carte lance
-// directement le combat avec cette armée.
-let armySelectMode=null;   // null | 'online' | 'ia'
-
-window.startArmySelection=mode=>{
-  // Sans armée sauvegardée il n'y a rien à sélectionner : on affiche la page
-  // normale (avec "+ Nouvelle armée") plutôt qu'un mode sélection vide.
-  if(!savedArmies.length){
-    armySelectMode=null;renderArmiesPage();showPage('page-armies');
-    showNotif('Composez d\'abord une armée pour pouvoir combattre.','err');
-    return;
-  }
-  // Une seule armée = aucun choix à faire. Afficher un écran de sélection
-  // avec une seule carte, c'est demander de confirmer la seule réponse
-  // possible : on part directement au combat avec elle.
-  if(savedArmies.length===1){
-    armySelectMode=mode;
-    pickArmyForBattle(savedArmies[0].id);
-    return;
-  }
-  armySelectMode=mode;
-  renderArmiesPage();showPage('page-armies');
-};
-window.clearArmySelection=()=>{
-  if(!armySelectMode)return;
-  armySelectMode=null;renderArmiesPage();
-};
-window.cancelArmySelection=()=>{
-  armySelectMode=null;renderArmiesPage();
-  if(typeof goToMainMenu==='function')goToMainMenu();
-};
-window.pickArmyForBattle=id=>{
-  const mode=armySelectMode;if(!mode)return;
-  const a=savedArmies.find(x=>x.id===id);
-  // Dernier filet : une armée dont le stock est insuffisant ne part pas
-  // au combat, quel que soit le mode.
-  if(a&&typeof armyStock==='function'){
-    const stock=armyStock(a);
-    if(!stock.ok){
-      // On sort du mode sélection et on montre l'armurerie : le joueur doit
-      // pouvoir agir (modifier l'armée, aller à l'Armurerie), pas rester sur
-      // un écran de choix qui refuse le seul choix disponible.
-      armySelectMode=null;renderArmiesPage();showPage('page-armies');
-      showConfirmModal('Stock insuffisant : '+stock.missing.map(m=>m.name+' ('+m.have+'/'+m.need+')').join(', ')+
-        '. Récupérez le coffre de réapprovisionnement dans l\'Armurerie, ou composez une autre armée.',()=>{},
-        {okLabel:'Compris',cancelLabel:'Fermer',okClass:'btn-primary'});
-      return;
-    }
-  }
-  armySelectMode=null;renderArmiesPage();
-  if(mode==='online')launchOnline(id);
-  else launchCombat(id);
-};
-
-
-
-const renderArmiesPage=()=>{
-  const grid=document.getElementById('armies-grid');
-  const sel=!!armySelectMode;
-  // Chrome de la page : masqué pendant la sélection. (Le bouton « Voie » a
-  // disparu de cette page — la Voie est une face du cube — d'où la liste à
-  // un seul élément.)
-  ['ar-new'].forEach(id=>{const e=document.getElementById(id);if(e)e.style.display=sel?'none':'';});
-  const banner=document.getElementById('armies-select-banner');
-  if(banner){
-    banner.style.display=sel?'':'none';
-    banner.innerHTML=sel?'<span class="asb-txt">'+(armySelectMode==='online'?'Sélectionnez l\'armée que vous engagez contre un autre joueur':'Sélectionnez l\'armée avec laquelle affronter votre adversaire')+'</span><button class="btn btn-ghost" style="font-size:11px;padding:6px 12px" onclick="cancelArmySelection()">Annuler</button>':'';
-  }
-  if(!savedArmies.length){
-    grid.innerHTML='<div class="empty-armies"><span class="vial"><span class="vial-bubble"></span></span><p>Aucune armée enregistrée.<br>Composez votre première armée !</p></div>';
-    return;
-  }
-  grid.innerHTML=savedArmies.map(a=>{
-    const mon=PIECES.find(p=>p.id===a.mon.id);const gen=PIECES.find(p=>p.id===a.gen.id);
-    const extras=a.extras.map(id=>PIECES.find(p=>p.id===id)).filter(Boolean);
-    const all=[mon,gen,...extras].filter(Boolean);
-    // En mode sélection : carte entièrement cliquable, nom en lecture seule,
-    // aucun bouton d'action.
-    const head=sel
-      ? '<div class="ac-name-row"><span class="ac-name'+(a.name?'':' ac-name-none')+'">'+escH(a.name||'Armée sans nom')+'</span></div>'
-      : buildNameBlock(a,false);
-    // « Modifier » prend la largeur, la corbeille redevient une icône neutre :
-    // une action destructive doit être atteignable, pas attirante. Elle ne se
-    // colore qu'au survol et à l'appui.
-    const btns=sel?''
-      : '<div class="ac-btns"><button class="btn btn-ghost ac-edit" onclick="editPlayerArmy(\''+a.id+'\')">Modifier</button>'+
-        '<button class="ac-del-btn" aria-label="Supprimer cette armée" title="Supprimer cette armée" onclick="deletePlayerArmy(\''+a.id+'\')">'+TRASH_ICON+'</button></div>';
-    // Une armée dont le stock est insuffisant reste visible et modifiable,
-    // mais ne peut pas être engagée : elle est marquée, pas cachée.
-    const stock=(typeof armyStock==='function')?armyStock(a):{ok:true,missing:[]};
-    const open=(sel&&stock.ok)
-      ? '<div class="army-card army-card-selectable" onclick="pickArmyForBattle(\''+a.id+'\')">'
-      : '<div class="army-card'+(stock.ok?'':' army-card-nostock')+'">';
-    const stockLine=stock.ok
-      ? ''
-      : '<div class="ac-nostock">Stock insuffisant : '+stock.missing.map(m=>escH(m.name)+' '+m.have+'/'+m.need).join(', ')+'</div>';
-    // UNE information, UNE représentation. La carte affichait la composition
-    // DEUX fois : une rangée de cinq logos, puis deux lignes de texte gris qui
-    // énuméraient exactement les mêmes cinq pièces. Elle faisait 190 px de
-    // haut pour cinq données. Les logos portent maintenant leur nom sous eux :
-    // une seule grille, qui dit l'image ET le mot.
-    const val='<span class="ac-val">'+a.totalValue+' pts</span>';
-    const roster='<div class="ac-roster">'+all.map(p=>
-      '<span class="ac-slot" title="'+escH(p.name)+'">'+pieceIcon(p.id,'n')+
-      '<span class="ac-slot-n">'+escH(p.name)+'</span></span>').join('')+'</div>';
-    return open+'<div class="ac-head">'+head+val+'</div>'+roster+stockLine+btns+'</div>';
-  }).join('')+(sel?'':
-    // Le bouton de création était un aplat vert-de-gris pleine largeur POSÉ
-    // AU-DESSUS de la liste : l'objet le plus lumineux, le plus large et le
-    // plus haut de l'écran était un bouton d'ajout, tandis que le contenu réel
-    // — les armées — restait en cartes sombres. La hiérarchie était inversée.
-    // Il devient la dernière carte de la grille : la liste redevient le sujet,
-    // et le vide de fin d'écran disparaît. Le geste reste à un appui.
-    '<button type="button" class="army-card army-new-card" onclick="document.getElementById(\'ar-new\').click()">'+
-      '<span class="anc-plus">+</span><span class="anc-txt">Nouvelle armée</span></button>');
-};
-window.editPlayerArmy=id=>{const a=savedArmies.find(x=>x.id===id);if(!a)return;builderMode='player';updateBuilderBanner();loadArmyForEdit(a);showPage('page-builder');updAll();};
-window.deletePlayerArmy=id=>{showConfirmModal('Supprimer cette armée ?',()=>{savedArmies=savedArmies.filter(a=>a.id!==id);saveArmies();renderArmiesPage();});};
-document.getElementById('ar-new').addEventListener('click',()=>{builderMode='player';updateBuilderBanner();army={mon:null,gen:null,extras:[]};editingArmyId=null;showPage('page-builder');updAll();});
-
-// ----------------------------------------------------------------
-// PAGE ARMÉES IA
+// PAGE ARMÉES IA — inchangée : l'Instructeur peut recevoir plusieurs
+// armées personnalisées, seule l'armée DU JOUEUR est limitée à une seule.
 // ----------------------------------------------------------------
 const renderAiArmiesPage=()=>{
   const grid=document.getElementById('ai-armies-grid');
