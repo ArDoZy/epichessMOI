@@ -113,9 +113,14 @@ function renderVoiePage(){
     const isCurrent=!reached&&elo<milestone.eloRequired&&(idx===0||(UNLOCK_MILESTONES[idx-1]&&elo>=UNLOCK_MILESTONES[idx-1].eloRequired));
     const dotCls=reached?'vm-dot reached':isCurrent?'vm-dot current-milestone':'vm-dot';
     const cardCls=reached?'vm-card reached':isCurrent?'vm-card current-milestone':'vm-card locked-milestone';
-    const cc=CLASS_COLOR_VARS[pd.class]||'var(--muted)';
-    const bigBadge=milestone.bigReward?'<span style="font-size:9px;background:rgba(201,168,76,.2);color:var(--gold);padding:2px 6px;border-radius:4px;font-family:Cinzel,serif;margin-left:4px">+ Récompenses</span>':'';
-    html+='<div class="voie-milestone"><div class="'+cardCls+'"><span class="vm-piece-emoji">'+pieceIcon(pd.id,'n')+'</span><div class="vm-piece-name">'+pd.name+bigBadge+'</div><div class="vm-piece-class pc-class '+pd.class+'" style="color:'+cc+'">'+pd.class+' · '+pd.value+' pts</div>'+(pd.ability?'<div class="vm-piece-ability">'+(pd.ability.length>80?pd.ability.slice(0,80)+'…':pd.ability)+'</div>':'')+'</div><div class="vm-center"><div class="'+dotCls+'"></div><div class="vm-elo-badge">'+(milestone.eloRequired===0?'Départ':milestone.eloRequired+' ELO')+'</div></div><div style="flex:1;max-width:calc(50% - 40px)"></div></div>';
+    // LE JALON NE DIT PLUS QUE DEUX CHOSES : quelle créature, et à quel ELO.
+    // Il portait aussi sa catégorie, sa valeur en points et les 80 premiers
+    // caractères de son pouvoir — trois lignes de plus par jalon, sur une
+    // page qui en aligne une quinzaine, pour des détails qui ne servent pas
+    // ici : on ne compose pas son armée sur la Voie, on regarde ce qui reste
+    // à décrocher. Le détail complet est dans la fiche de la pièce (bottom
+    // sheet du builder, js/piece-card.js).
+    html+='<div class="voie-milestone"><div class="'+cardCls+'"><span class="vm-piece-emoji">'+pieceIcon(pd.id,'n')+'</span><div class="vm-piece-name">'+pd.name+'</div></div><div class="vm-center"><div class="'+dotCls+'"></div><div class="vm-elo-badge">'+(milestone.eloRequired===0?'Départ':milestone.eloRequired+' ELO')+'</div></div><div style="flex:1;max-width:calc(50% - 40px)"></div></div>';
   });
   route.innerHTML=html;
 }

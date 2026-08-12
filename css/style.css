@@ -351,31 +351,13 @@ body.has-acc #page-game{min-height:0}
 .class-hdr{display:flex;align-items:center;gap:10px;margin-bottom:14px}
 .class-hdr-name{font-family:'Cinzel',serif;font-size:16px;font-weight:700}
 .class-hdr-name.Monarque{color:var(--monarque)}.class-hdr-name.Général{color:var(--general)}.class-hdr-name.Primordiale{color:var(--primordiale)}.class-hdr-name.Brute{color:var(--brute)}.class-hdr-name.Sorcier{color:var(--sorcier)}
-/* 3 cartes par rangée, toujours (voir equalizeCardHeights() dans builder.js
-   pour la mise à niveau des hauteurs) : colonnes fixes plutôt qu'auto-fill,
-   pour garantir la disposition même si le contenu des cartes est court. */
-.cards-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
-.piece-card{border:1px solid var(--border);border-radius:14px;padding:20px;cursor:pointer;transition:all .22s;position:relative;overflow:hidden;background:var(--surface)}
-.piece-card::after{content:'';position:absolute;top:0;left:0;right:0;height:3px;transform:scaleX(0);transition:transform .3s cubic-bezier(.34,1.56,.64,1);transform-origin:left}
-.piece-card.Monarque{background:var(--surface);border-color:var(--border)}.piece-card.Monarque::after{background:var(--monarque)}
-.piece-card.Général{background:var(--surface);border-color:var(--border)}.piece-card.Général::after{background:var(--general)}
-.piece-card.Primordiale{background:var(--surface);border-color:var(--border)}.piece-card.Primordiale::after{background:var(--primordiale)}
-.piece-card.Sorcier{background:var(--surface);border-color:var(--border)}.piece-card.Sorcier::after{background:var(--sorcier)}
-.piece-card.Brute{background:var(--surface);border-color:var(--border)}.piece-card.Brute::after{background:var(--brute)}
-
-.piece-card:hover{transform:translateY(-4px);box-shadow:0 8px 22px rgba(0,0,0,.4)}
-.piece-card:hover::after{transform:scaleX(1)}
-.piece-card.sel{opacity:.4;transform:scale(.94);filter:grayscale(.4);cursor:default}
-.pc-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;gap:6px}
-.pc-name{font-size:15px;font-weight:700;font-family:'Cinzel',serif;flex:1;line-height:1.25}
-.pc-val{padding:5px 11px;border-radius:8px;font-size:13px;font-weight:800;font-family:'Cinzel',serif;border:1px solid transparent}
-.pc-val.Monarque{background:var(--monarque-bg);color:var(--monarque);border-color:rgba(59,130,246,.3)}
-.pc-val.Général{background:var(--general-bg);color:var(--general);border-color:rgba(249,115,22,.3)}
-.pc-val.Primordiale{background:var(--primordiale-bg);color:var(--primordiale);border-color:rgba(16,185,129,.3)}
-
-.pc-val.Sorcier{background:var(--sorcier-bg);color:var(--sorcier);border-color:rgba(236,72,153,.3)}
-.pc-val.Brute{background:var(--brute-bg);color:var(--brute);border-color:rgba(239,68,68,.3)}
-
+/* LA GRILLE DES CARTES DE PIÈCES. Voir [PCARD] plus bas pour la carte
+   elle-même. Le nombre de colonnes n'est plus fixé : il découle d'une largeur
+   MINIMALE de carte exprimée en pourcentage de l'écran, donc trois colonnes
+   sur un téléphone, davantage sur grand écran, sans média-requête. */
+.cards-grid{display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(clamp(84px,24vw,132px),1fr));
+  gap:clamp(6px,1.8vw,12px)}
 .pc-emoji{font-size:36px;margin-bottom:10px;display:block;line-height:1}
 /* .pc-class : utilisé par voie.js (jalons) et game-flow.js (déblocage),
    pas seulement par les cartes de pièces du builder (qui n'affichent plus
@@ -386,21 +368,19 @@ body.has-acc #page-game{min-height:0}
 .pc-class.Primordiale{background:var(--primordiale-bg);color:var(--primordiale);border:1px solid rgba(16,185,129,.25)}
 .pc-class.Sorcier{background:var(--sorcier-bg);color:var(--sorcier);border:1px solid rgba(236,72,153,.25)}
 .pc-class.Brute{background:var(--brute-bg);color:var(--brute);border:1px solid rgba(239,68,68,.25)}
-/* Le déplacement sur une carte de pièce : c'est désormais le schéma 9×9
-   (voir [PMV]), pas une phrase. */
-.pc-mvt{margin-bottom:8px;display:flex;justify-content:center}
-.pc-ability{font-size:12px;color:var(--text);line-height:1.5;padding:8px;background:var(--bg);border-radius:8px;border-left:2px solid var(--accent);margin-top:6px}
-.piece-card.locked{cursor:not-allowed;position:relative;opacity:.5;filter:grayscale(.85) brightness(.5);background:rgba(0,0,0,.35);border-color:rgba(0,0,0,.4)}
-.piece-card.locked .pc-emoji,.piece-card.locked .pc-name,.piece-card.locked .pc-ability,.piece-card.locked .pc-mvt,.piece-card.locked .pc-val{filter:blur(7px);pointer-events:none;user-select:none}
-.locked-overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;z-index:3;border-radius:16px;background:rgba(0,0,0,.55)}
-/* Cadenas dessiné en CSS pur (pas d'émoji) : anse + corps. */
-.locked-overlay .lock-icon{position:relative;width:20px;height:24px;filter:drop-shadow(0 0 6px rgba(0,0,0,.9));opacity:.9}
-.locked-overlay .lock-icon::before{content:'';position:absolute;top:0;left:3px;width:14px;height:11px;box-sizing:border-box;border:3px solid var(--gold2);border-bottom:none;border-radius:8px 8px 0 0}
-.locked-overlay .lock-icon::after{content:'';position:absolute;top:8px;left:0;width:20px;height:16px;background:var(--gold2);border-radius:3px}
-.locked-overlay .lock-rank{font-family:'Cinzel',serif;font-size:10px;font-weight:700;color:var(--gold);background:rgba(0,0,0,.75);border-radius:6px;padding:3px 8px;letter-spacing:.5px}
+/* Cadenas dessiné en CSS pur (pas d'émoji) : anse + corps. Il sert au voile
+   des cartes verrouillées (.pcard-lock, voir [PCARD]). */
+.lock-icon{position:relative;width:clamp(14px,4.5vw,20px);height:clamp(17px,5.4vw,24px);
+  filter:drop-shadow(0 0 6px rgba(0,0,0,.9));opacity:.9}
+.lock-icon::before{content:'';position:absolute;top:0;left:15%;width:70%;height:46%;box-sizing:border-box;
+  border:2px solid var(--gold2);border-bottom:none;border-radius:8px 8px 0 0}
+.lock-icon::after{content:'';position:absolute;top:33%;left:0;width:100%;height:67%;
+  background:var(--gold2);border-radius:3px}
+.lock-rank{font-family:'Cinzel',serif;font-size:clamp(7px,2.1vw,10px);font-weight:700;color:var(--gold);
+  background:rgba(0,0,0,.75);border-radius:6px;padding:2px 6px;letter-spacing:.4px;text-align:center;
+  line-height:1.25;max-width:94%}
 .builder-mode-banner{background:rgba(139,92,246,.15);border:1px solid rgba(139,92,246,.4);border-radius:9px;padding:10px 16px;margin-bottom:14px;font-family:'Cinzel',serif;font-size:12px;color:var(--accent2);display:none}
 .builder-mode-banner.show{display:block}
-@media(max-width:760px){.comp-grid{grid-template-columns:repeat(3,1fr)}.cards-grid{grid-template-columns:repeat(2,1fr)}}
 
 /* [SETTINGS] ======================================================= */
 #settings-btn{position:fixed;top:8px;right:12px;z-index:8000;width:34px;height:34px;border-radius:8px;background:var(--surface);border:1px solid var(--border2);color:var(--text);cursor:pointer;padding:0;display:flex;align-items:center;justify-content:center;transition:all .2s}
@@ -742,8 +722,12 @@ body.has-acc #page-game{min-height:0}
 .vm-elo-badge{font-family:'Cinzel',serif;font-size:9px;font-weight:700;color:var(--gold);background:rgba(201,168,76,.1);border:1px solid rgba(201,168,76,.25);border-radius:5px;padding:2px 7px;white-space:nowrap}
 .vm-piece-emoji{font-size:28px;margin-bottom:5px;display:block;line-height:1}
 .vm-piece-name{font-family:'Cinzel',serif;font-size:13px;font-weight:700;margin-bottom:3px;line-height:1.3}
-.vm-piece-class{font-size:9px;text-transform:uppercase;font-family:'Cinzel',serif;letter-spacing:.8px;margin-bottom:5px;padding:2px 7px;border-radius:4px;display:inline-block}
-.vm-piece-ability{font-size:11px;color:var(--muted);line-height:1.5;margin-top:4px}
+/* Le jalon ne porte plus QUE le logo de la créature et son nom (voir
+   renderVoiePage, js/voie.js) : sa catégorie, sa valeur en points et le
+   début de son pouvoir tenaient trois lignes de plus par jalon, sur une
+   page qui en aligne une quinzaine. On ne compose pas son armée ici, on
+   regarde ce qui reste à décrocher. */
+.vm-card{text-align:center}
 .vm-rank-section{margin:12px 0 6px;text-align:center;position:relative;z-index:1}
 .vm-rank-bar{display:inline-flex;align-items:center;gap:10px;justify-content:center;background:var(--surface);border:1px solid var(--border2);border-radius:10px;padding:8px 18px}
 .vm-rank-label{font-family:'Cinzel',serif;font-size:13px;font-weight:700}
@@ -864,7 +848,7 @@ body.light .cube-face[data-face="jouer"]{background:
    centre trop haut et vient chevaucher le pseudo et l'ELO. */
 .jouer-menu{position:absolute;inset:0;display:flex;flex-direction:column;
   align-items:center;justify-content:center;gap:clamp(14px,3vh,30px);
-  text-align:center;padding:clamp(158px,25vh,215px) 24px clamp(18px,3vh,28px);
+  text-align:center;padding:clamp(120px,19vh,180px) 5% clamp(18px,3vh,28px);
   overflow:hidden}
 .jouer-btn{position:relative;cursor:pointer;border:none;
   font-family:'Cinzel',serif;font-weight:900;letter-spacing:6px;
@@ -944,10 +928,8 @@ body.light .cube-face[data-face="libre"]{background:
   body.has-acc #page-armies,body.has-acc #page-ai-armies,body.has-acc #page-voie,body.has-acc #page-adversaires{padding-top:calc(46px + 14px)}
   body.has-acc #page-combat{padding-top:46px}
 
-  #page-builder{padding:14px}
-  .cards-grid{grid-template-columns:repeat(2,1fr);gap:10px}
-  .comp-grid{grid-template-columns:repeat(2,1fr)}
-  .army-box{padding:16px}
+  #page-builder{padding:3.5vw}
+  .army-box{padding:3.5vw}
   .armies-hdr{flex-direction:column;align-items:stretch}
   .armies-hdr .btn{width:100%}
 
@@ -957,9 +939,6 @@ body.light .cube-face[data-face="libre"]{background:
   .cube-arrow-vert{width:52px;height:34px}
   #cube-arrow-down{bottom:12px}
   #cube-arrow-up{top:54px}
-}
-@media(max-width:420px){
-  .cards-grid{grid-template-columns:1fr}
 }
 @media(max-width:480px){
   .intro-parchment-inner{padding:24px 18px 22px}
@@ -1169,16 +1148,6 @@ body.light .pmv-dark{background:#c3bdae}
   letter-spacing:1.4px;color:var(--accent2);margin-bottom:12px;display:flex;align-items:center;gap:10px}
 .rs-sec-title::after{content:'';flex:1;height:1px;background:var(--border)}
 
-/* --- Coffre quotidien --- */
-.daily-card{display:flex;align-items:center;gap:18px;flex-wrap:wrap;background:var(--surface);
-  border:1px solid var(--border);border-radius:16px;padding:18px 20px;position:relative;overflow:hidden}
-.daily-card.daily-ready{border-color:var(--gold);box-shadow:0 0 30px rgba(193,154,69,.16)}
-.daily-card.daily-ready::before{content:'';position:absolute;inset:0;
-  background:radial-gradient(ellipse at 12% 50%,rgba(193,154,69,.16),transparent 55%);pointer-events:none}
-.daily-info{flex:1;min-width:200px;position:relative}
-.daily-name{font-family:'Cinzel',serif;font-size:16px;font-weight:800;color:var(--gold2);margin-bottom:4px}
-.daily-desc{font-size:13px;color:var(--muted);line-height:1.5}
-
 /* --- Coffres : un coffre dessiné en CSS, teinté par sa rareté --- */
 .chest{position:relative;width:64px;height:56px;flex-shrink:0}
 .chest-lid{position:absolute;left:0;top:0;width:64px;height:24px;border-radius:12px 12px 3px 3px;
@@ -1222,11 +1191,6 @@ body.light .pmv-dark{background:#c3bdae}
    monnaie, elle doit avoir exactement la même tête partout. */
 .pearl-icon{display:inline-block;vertical-align:-.18em;flex-shrink:0}
 .pearl-amt{display:inline-flex;align-items:center;gap:5px;font-family:'Cinzel',serif;font-weight:700}
-.pearl-bank{display:flex;align-items:center;gap:14px;background:var(--surface);
-  border:1px solid var(--border);border-radius:14px;padding:12px 16px;margin-bottom:14px}
-.pearl-bank-info{min-width:0}
-.pearl-bank-n{font-family:'Cinzel',serif;font-size:24px;font-weight:900;color:var(--text);line-height:1.1}
-.pearl-bank-lbl{font-size:11.5px;color:var(--muted);letter-spacing:.4px;line-height:1.4}
 .loot.loot-pearl{border-color:rgba(143,166,184,.55);
   background:linear-gradient(180deg,rgba(223,234,242,.10),var(--surface))}
 
@@ -1245,10 +1209,14 @@ body.light .pmv-dark{background:#c3bdae}
 .skin-req{font-size:10px;color:var(--muted);margin-top:2px}
 
 /* [CHEST-OPENING] : cérémonie d'ouverture ======================== */
+/* La cérémonie DÉFILE. Un coffre de réapprovisionnement rend quatre
+   exemplaires de chaque pièce possédée : passé une dizaine de créatures, la
+   pile de lots dépassait la hauteur d'un écran de téléphone et poussait le
+   coffre lui-même hors de l'écran — il devenait impossible de l'ouvrir. */
 .chest-modal{position:fixed;inset:0;background:rgba(4,7,9,.94);z-index:9200;display:none;
-  align-items:center;justify-content:center;padding:20px}
+  align-items:flex-start;justify-content:center;padding:clamp(12px,4vw,20px);overflow-y:auto}
 .chest-modal.show{display:flex}
-.chest-stage{text-align:center;max-width:560px;width:100%;position:relative}
+.chest-stage{text-align:center;max-width:560px;width:100%;position:relative;margin:auto 0}
 .chest-rays{position:absolute;left:50%;top:88px;width:520px;height:520px;margin-left:-260px;margin-top:-260px;
   background:conic-gradient(from 0deg,transparent 0 6deg,var(--chest-c,#c19a45) 6deg 9deg,transparent 9deg 18deg);
   opacity:0;pointer-events:none;filter:blur(1px)}
@@ -1408,10 +1376,16 @@ body.light .pmv-dark{background:#c3bdae}
 @media(max-height:620px),(max-width:520px){
   .jc-name{display:none}
   .jouer-chests{gap:4px}
-  /* Écran court : le coffre quotidien se réduit à sa ligne de titre et à son
-     bouton. Sa description est un rappel, pas une consigne. */
-  .jouer-daily .daily-desc{display:none}
-  .jouer-daily .daily-card{padding:9px 12px}
+}
+/* Sur téléphone, les six coffres doivent tenir sur UNE rangée sans jamais
+   déborder : leur taille est donc une fraction de la largeur d'écran (six
+   coffres + cinq écarts = 100 %), pas une valeur en pixels. */
+@media(max-width:820px){
+  .jouer-chests{width:96%;margin-top:clamp(2px,2vh,16px)}
+  .jc-rail{gap:1.4vw}
+  .jc-chest .chest{width:13.5vw;height:11.6vw}
+  .jc-price{font-size:clamp(8px,2.3vw,11px)}
+  .jc-foot{font-size:clamp(8.5px,2.4vw,11px);gap:3vw}
 }
 
 /* [ECONOMY-INLINE] : rappels d'économie dans les écrans existants ====
@@ -1419,15 +1393,11 @@ body.light .pmv-dark{background:#c3bdae}
    pas seulement dans l'Armurerie : sinon on découvre qu'on ne peut pas jouer
    au moment de cliquer « Combattre ».
    ============================================================== */
-.pc-stock{position:absolute;top:9px;right:10px;font-family:'Cinzel',serif;font-size:11px;font-weight:800;
-  color:var(--accent2);background:var(--accent-bg);border:1px solid rgba(47,177,151,.3);
-  border-radius:7px;padding:1px 8px;z-index:2}
-.pc-stock-out{color:var(--danger);background:rgba(212,69,63,.12);border-color:rgba(212,69,63,.35)}
-.piece-card.pc-nostock{opacity:.72}
+/* Le stock sur une carte de pièce se lit désormais dans son pied
+   (.pcard-stock, voir [PCARD]) : la pastille flottante en coin recouvrait le
+   logo dès que la carte passait au format portrait. */
 .cs-stock{font-family:'Cinzel',serif;font-size:9.5px;color:var(--muted);margin-top:6px;letter-spacing:.4px}
 .cs-stock-out{color:var(--danger)}
-.sp-val.sp-ok{color:var(--accent2)}
-.sp-val.sp-bad{color:var(--danger)}
 .ac-nostock{font-family:'Cinzel',serif;font-size:10.5px;color:var(--danger);
   background:rgba(212,69,63,.09);border:1px solid rgba(212,69,63,.25);border-radius:8px;
   padding:6px 9px;margin-top:10px;line-height:1.4}
@@ -1450,27 +1420,13 @@ body.light .pmv-dark{background:#c3bdae}
 .rc-hint{font-size:11.5px;color:var(--muted)}
 
 /* [MENU] : face JOUER ============================================ */
-/* COFFRE DE RÉAPPROVISIONNEMENT, posé entre les boutons et le rail des
-   coffres. Il réutilise la carte .daily-card de l'Armurerie d'où il vient,
-   à une largeur bornée : sur le menu, rien ne doit rivaliser en surface avec
-   le bouton COMBAT. */
-.jouer-daily{width:min(94%,520px)}
-.jouer-daily:empty{display:none}
-.jouer-daily .daily-card{padding:12px 16px;gap:12px}
-.jouer-daily .daily-name{font-size:14px}
-.jouer-daily .daily-desc{font-size:11.5px}
-.jouer-daily .chest{transform:scale(.8);transform-origin:left center}
-/* Étroit : le bloc d'identité remonte (voir .jouer-player), la réserve du
-   haut peut donc se resserrer d'autant. La carte du coffre garde sa ligne :
-   sans min-width, le bouton « Récupérer » repassait sous le titre et la
-   carte doublait de hauteur. */
+/* LE COFFRE DE RÉAPPROVISIONNEMENT N'A PLUS DE CARTE sur le menu : il
+   s'ouvre tout seul quand son délai est écoulé (dailyChestMaybeOpen,
+   js/economy-ui.js). Les styles .daily-* et .jouer-daily sont partis avec
+   lui : le menu n'a plus qu'un bloc d'identité, deux boutons et le rail des
+   coffres, ce qui tient enfin sur un écran de téléphone sans défilement. */
 @media(max-width:760px){
-  .jouer-menu{padding-top:clamp(118px,17vh,168px)}
-  .jouer-daily .daily-info{min-width:0}
-  .jouer-daily .daily-card{padding:10px 12px;gap:10px}
-  .jouer-daily .daily-name{font-size:12.5px}
-  .jouer-daily .daily-desc{font-size:11px}
-  .jouer-daily .btn{font-size:11px;padding:8px 14px}
+  .jouer-menu{padding-top:clamp(104px,15vh,150px)}
 }
 
 .jouer-second{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
@@ -1536,8 +1492,6 @@ body.light .pmv-dark{background:#c3bdae}
 .unlock-piece-emoji .pc-icon{width:72px;height:72px}
 .comp-slot .cs-emoji{font-size:0;line-height:0;margin-bottom:10px}
 .comp-slot .cs-emoji .pc-icon{width:78px;height:78px}
-.piece-card .pc-emoji{font-size:0;line-height:0;margin-bottom:10px}
-.piece-card .pc-emoji .pc-icon{width:62px;height:62px}
 .cside-pieces{font-size:0}
 .cside-pieces .pc-icon{width:52px;height:52px}
 .vm-piece-emoji{font-size:0;line-height:0}
@@ -2002,3 +1956,298 @@ body.light .adv-advised{color:#f6f5f1}
 .result-foe{font-family:'Cinzel',serif;font-size:11px;letter-spacing:.8px;
   color:var(--muted);margin:-4px 0 12px;font-variant-numeric:tabular-nums}
 
+
+/* [PCARD] : LA CARTE DE PIÈCE, VERSION TÉLÉPHONE ==================
+   Un seul composant pour toutes les cartes de pièces du jeu
+   (js/piece-card.js). Il remplace .piece-card, qui était un rectangle
+   PAYSAGE contenant tout : logo, nom, valeur, stock, l'échiquier 9×9 du
+   déplacement ET le pouvoir en toutes lettres. À la largeur d'un téléphone,
+   il n'en tenait que deux à l'écran, et le schéma comme le texte y étaient
+   trop petits pour être lus. On ne pouvait donc ni comparer les pièces
+   (trop peu visibles à la fois) ni les lire (trop petit) : la carte échouait
+   des deux côtés.
+
+   Le nouveau parti est celui-ci : LA CARTE IDENTIFIE, LA FICHE EXPLIQUE.
+   La carte est au format PORTRAIT et ne porte que quatre informations, dans
+   leur ordre de lecture — logo, nom, valeur, stock. On en voit huit d'un
+   coup d'œil, on parcourt le catalogue au pouce, et le détail s'ouvre en
+   bottom sheet (voir [PSHEET]).
+
+   TOUTES LES MESURES SONT RELATIVES : la carte est dimensionnée par la
+   grille (voir .cards-grid), sa hauteur découle de son aspect-ratio, et
+   chaque élément intérieur est exprimé en pourcentage de la carte ou en
+   clamp() sur la largeur d'écran. Aucune valeur en pixels fixes, donc aucun
+   débordement à aucune taille d'écran.
+   ============================================================== */
+.pcard{position:relative;display:flex;flex-direction:column;align-items:center;
+  aspect-ratio:3/4;padding:9% 5% 6%;border-radius:12px;background:var(--surface);
+  border:1px solid var(--border);cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent;
+  --pc:var(--muted);--pcbg:rgba(255,255,255,.06);
+  transition:transform .16s ease,border-color .2s ease,box-shadow .2s ease}
+/* Le liseré de classe, en haut de la carte : c'est lui qui dit d'un coup
+   d'œil à quelle famille appartient la créature, sans badge à lire. */
+.pcard::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;
+  background:var(--pc);border-radius:11px 11px 0 0}
+.pcard.Monarque{--pc:var(--monarque);--pcbg:var(--monarque-bg)}
+.pcard.Général{--pc:var(--general);--pcbg:var(--general-bg)}
+.pcard.Primordiale{--pc:var(--primordiale);--pcbg:var(--primordiale-bg)}
+.pcard.Brute{--pc:var(--brute);--pcbg:var(--brute-bg)}
+.pcard.Sorcier{--pc:var(--sorcier);--pcbg:var(--sorcier-bg)}
+.pcard:hover{transform:translateY(-3px);border-color:var(--pc);box-shadow:0 8px 20px rgba(0,0,0,.38)}
+.pcard:focus-visible{outline:2px solid var(--accent2);outline-offset:2px}
+
+/* 1. LE LOGO — l'élément le plus grand de la carte : c'est par lui qu'on
+      reconnaît une pièce avant même d'avoir lu son nom. */
+.pcard-logo{display:block;width:56%;aspect-ratio:1;line-height:0;font-size:0;flex:0 0 auto}
+.pcard-logo .pc-icon{width:100%;height:100%}
+.pcard-logo .pc-svg{width:100%;height:100%}
+/* 2. LE NOM — très visible, centré, sur deux lignes au besoin. Il occupe
+      l'espace restant pour que les pieds de toutes les cartes s'alignent. */
+.pcard-name{flex:1;display:flex;align-items:center;justify-content:center;text-align:center;
+  font-family:'Cinzel',serif;font-weight:700;line-height:1.15;
+  font-size:clamp(9px,2.7vw,12.5px);margin-top:4%;overflow:hidden}
+/* 3. LA VALEUR  ·  4. LE STOCK */
+.pcard-foot{display:flex;align-items:center;justify-content:center;gap:7%;width:100%;margin-top:5%}
+.pcard-val{font-family:'Cinzel',serif;font-weight:800;font-size:clamp(10px,3vw,13px);
+  color:var(--pc);background:var(--pcbg);border:1px solid color-mix(in srgb,var(--pc) 32%,transparent);
+  border-radius:6px;padding:1px 9%;line-height:1.5}
+.pcard-stock{font-family:'Cinzel',serif;font-weight:700;font-size:clamp(8.5px,2.4vw,11px);
+  color:var(--muted);font-variant-numeric:tabular-nums}
+.pcard-stock-out{color:var(--danger)}
+.pcard-out{opacity:.72}
+/* Déjà engagée dans l'armée : la carte reste lisible (on doit pouvoir la
+   retrouver pour la retirer), mais se met en retrait. */
+.pcard-sel{opacity:.62;border-color:var(--pc);box-shadow:inset 0 0 0 1px var(--pc)}
+
+/* VERROUILLÉE : le contenu est voilé, mais la carte reste CLIQUABLE — c'est
+   le seul moyen de lire le déplacement et le pouvoir d'une créature qu'on ne
+   possède pas encore, et donc de savoir si elle vaut d'être visée. */
+.pcard-locked{cursor:pointer;background:rgba(0,0,0,.3);border-color:rgba(0,0,0,.4)}
+.pcard-locked .pcard-logo,.pcard-locked .pcard-name,.pcard-locked .pcard-foot{
+  filter:blur(5px) grayscale(.8);opacity:.55;pointer-events:none}
+.pcard-lock{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:5%;border-radius:11px;background:rgba(0,0,0,.5);z-index:3;padding:0 6%}
+
+/* LES DEUX ACTIONS, révélées au premier appui.
+   Elles sont posées SOUS la carte, en position absolue et par-dessus les
+   cartes voisines : ouvrir une carte ne décale donc AUCUNE autre, ce qui
+   compte énormément sur une grille dense où le doigt vise petit. */
+.pcard-actions{position:absolute;left:-4%;right:-4%;top:calc(100% + 5px);z-index:30;
+  display:none;flex-direction:column;gap:4px;padding:4px;border-radius:11px;
+  background:var(--surface2);border:1px solid var(--border2);
+  box-shadow:0 12px 28px rgba(0,0,0,.55);animation:pcardActIn .16s ease both}
+@keyframes pcardActIn{from{opacity:0;transform:translateY(-5px)}to{opacity:1;transform:translateY(0)}}
+.pcard-open{z-index:31;border-color:var(--pc);box-shadow:0 6px 18px rgba(0,0,0,.45)}
+.pcard-open .pcard-actions{display:flex}
+.pcard-act{display:flex;align-items:center;gap:6px;width:100%;padding:7px 8px;border-radius:8px;
+  border:1px solid var(--border);background:var(--bg);color:var(--text);cursor:pointer;
+  font-family:'Cinzel',serif;font-weight:700;letter-spacing:.4px;
+  font-size:clamp(8.5px,2.5vw,11px);transition:border-color .15s,background .15s}
+.pcard-act svg{width:clamp(10px,3vw,13px);height:clamp(10px,3vw,13px);flex:0 0 auto}
+.pcard-act:hover{background:var(--surface)}
+.pcard-use{color:var(--pc);border-color:color-mix(in srgb,var(--pc) 45%,transparent)}
+.pcard-infos{color:var(--accent2);border-color:rgba(47,177,151,.4)}
+/* Les boutons de la dernière rangée débordent sous la grille : on lui réserve
+   la place, sinon ils tomberaient sous le pli ou seraient rognés. */
+#cards-container{padding-bottom:110px}
+
+/* [PSHEET] : LA FICHE DE PIÈCE (BOTTOM SHEET) =====================
+   Tout ce que la carte ne dit plus. Elle monte du bas de l'écran, à portée
+   de pouce, et se referme au glissement, au voile, à la croix ou à Échap.
+   Deux sections, dans cet ordre : DÉPLACEMENT puis POUVOIR.
+   ============================================================== */
+.psheet{position:fixed;inset:0;z-index:9600;display:none;--pcls:var(--accent2)}
+.psheet.show{display:block}
+.psheet-scrim{position:absolute;inset:0;background:rgba(4,7,9,.66);
+  backdrop-filter:blur(2px);animation:psheetFade .2s ease both}
+@keyframes psheetFade{from{opacity:0}to{opacity:1}}
+.psheet-panel{position:absolute;left:0;right:0;bottom:0;margin:0 auto;
+  width:min(560px,100%);max-height:88vh;display:flex;flex-direction:column;
+  background:var(--surface);border-top:3px solid var(--pcls);
+  border-radius:20px 20px 0 0;box-shadow:0 -14px 44px rgba(0,0,0,.6);
+  padding-bottom:env(safe-area-inset-bottom,0);
+  animation:psheetUp .26s cubic-bezier(.22,.61,.36,1) both;transition:transform .22s ease}
+@keyframes psheetUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+/* La poignée : elle dit que la feuille se tire vers le bas. */
+.psheet-grab{width:44px;height:4px;border-radius:2px;background:var(--border2);
+  margin:9px auto 0;flex:0 0 auto}
+.psheet-head{display:flex;align-items:center;gap:3.5%;padding:3.5% 5% 3%;flex:0 0 auto}
+.psheet-logo{flex:0 0 auto;width:clamp(46px,15vw,68px);aspect-ratio:1;line-height:0;font-size:0;
+  display:flex;align-items:center;justify-content:center;border-radius:14px;
+  background:color-mix(in srgb,var(--pcls) 12%,transparent);
+  border:1px solid color-mix(in srgb,var(--pcls) 34%,transparent)}
+.psheet-logo .pc-icon,.psheet-logo .pc-svg{width:76%;height:76%}
+.psheet-id{flex:1;min-width:0}
+.psheet-name{font-family:'Cinzel',serif;font-weight:800;line-height:1.15;
+  font-size:clamp(16px,5vw,22px);color:var(--text)}
+.psheet-meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:5px;
+  font-family:'Cinzel',serif;font-size:clamp(9px,2.7vw,11px);letter-spacing:.5px}
+.psheet-class{color:var(--pcls);background:color-mix(in srgb,var(--pcls) 14%,transparent);
+  border:1px solid color-mix(in srgb,var(--pcls) 35%,transparent);border-radius:6px;padding:2px 7px;
+  text-transform:uppercase}
+.psheet-val{color:var(--gold);background:rgba(193,154,69,.12);
+  border:1px solid rgba(193,154,69,.32);border-radius:6px;padding:2px 7px}
+.psheet-stock{color:var(--muted);border:1px solid var(--border);border-radius:6px;padding:2px 7px}
+.psheet-close{flex:0 0 auto;width:34px;height:34px;border-radius:10px;cursor:pointer;
+  background:var(--bg);border:1px solid var(--border);color:var(--muted);
+  display:flex;align-items:center;justify-content:center;padding:0}
+.psheet-close svg{width:15px;height:15px}
+.psheet-close:hover{color:var(--text);border-color:var(--border2)}
+.psheet-body{flex:1;min-height:0;overflow-y:auto;padding:0 5% 6%;
+  display:flex;flex-direction:column;gap:5%;-webkit-overflow-scrolling:touch}
+.psheet-sec-title{font-family:'Cinzel',serif;font-size:clamp(9.5px,2.8vw,11.5px);font-weight:700;
+  text-transform:uppercase;letter-spacing:1.4px;color:var(--accent2);margin-bottom:10px;
+  display:flex;align-items:center;gap:10px}
+.psheet-sec-title::after{content:'';flex:1;height:1px;background:var(--border)}
+.psheet-mvt{display:flex;justify-content:center;background:var(--bg);border:1px solid var(--border);
+  border-radius:14px;padding:4% 3%}
+/* Le schéma prend la largeur disponible : sa case est une fraction de
+   l'écran, jamais une taille fixe. */
+.psheet-mvt .pmv-wrap{--pmv-cell:clamp(15px,7vw,30px);gap:12px}
+.psheet-empty{color:var(--muted);font-style:italic;font-size:13px}
+
+/* LE POUVOIR — une carte, pas une ligne de texte ==================
+   Chaque pouvoir a désormais une identité visuelle : son encadré, sa couleur
+   d'accent (celle de la classe de la créature), son ICÔNE propre, et son nom
+   en titre. On reconnaît un pouvoir à l'image avant de le lire, et deux
+   pouvoirs ne se ressemblent plus. */
+.power-card{display:flex;align-items:flex-start;gap:4%;position:relative;overflow:hidden;
+  padding:4.5% 5%;border-radius:14px;
+  background:linear-gradient(135deg,color-mix(in srgb,var(--pw) 15%,transparent),transparent 62%),var(--bg);
+  border:1px solid color-mix(in srgb,var(--pw) 38%,transparent);
+  border-left:4px solid var(--pw)}
+.power-icon{flex:0 0 auto;width:clamp(38px,12vw,52px);aspect-ratio:1;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;color:var(--pw);
+  background:color-mix(in srgb,var(--pw) 16%,transparent);
+  border:1px solid color-mix(in srgb,var(--pw) 42%,transparent)}
+.power-i{width:56%;height:56%;display:block}
+.power-body{flex:1;min-width:0}
+.power-name{font-family:'Cinzel',serif;font-weight:800;letter-spacing:.5px;color:var(--pw);
+  font-size:clamp(13px,4vw,16px);line-height:1.2}
+.power-text{font-size:clamp(12px,3.5vw,14.5px);line-height:1.5;color:var(--text);opacity:.9;margin-top:4px}
+.power-card.power-none{border-style:dashed}
+.power-card.power-none .power-name{color:var(--muted)}
+
+/* [MOBILE-APP] : LA MISE EN PAGE TÉLÉPHONE ========================
+   Le jeu se conçoit maintenant comme une APPLICATION DE TÉLÉPHONE : c'est la
+   taille d'écran de référence, pas une adaptation faite après coup. Ce bloc
+   reprend, écran par écran, tout ce qui était mesuré en pixels fixes et le
+   réexprime en pourcentage de l'écran (vw, vh, %, clamp) pour que rien ne
+   déborde ni ne se rogne, d'un petit téléphone à une tablette.
+
+   Il est placé en DERNIER dans la feuille de style, et c'est volontaire :
+   ces règles doivent l'emporter sur celles des sections d'origine, à
+   spécificité égale.
+   ============================================================== */
+@media(max-width:820px){
+  /* --- Chrome global --- */
+  .cab{padding:0 44px 0 2.5vw;height:clamp(40px,7vh,46px)}
+  #settings-panel{right:2.5vw;left:auto;width:min(88vw,300px);min-width:0;
+    max-height:80vh;overflow-y:auto;padding:4vw}
+  .sp-row{flex-wrap:wrap}
+  .sp-slider{width:min(46vw,140px)}
+
+  /* --- Composition d'armée --- */
+  /* Les cinq emplacements restent sur UNE rangée : une armée se lit d'un
+     bloc, pas en deux moitiés. Ils rétrécissent au lieu de passer à la
+     ligne, et perdent leur libellé, que la position rend évident. */
+  .comp-grid{grid-template-columns:repeat(5,1fr);gap:1.5vw}
+  /* Pas d'aspect-ratio : la hauteur suit le contenu (un nom sur deux lignes,
+     le rappel de stock), sinon le pied du slot passe sous la bordure. La
+     grille égalise ensuite les cinq colonnes toute seule. */
+  .comp-slot{padding:2.5vw 1vw;min-height:0;border-radius:9px;justify-content:flex-start}
+  /* Le libellé s'écarte de la croix de retrait, posée dans le même coin. */
+  .comp-slot .cs-label{font-size:clamp(6px,1.75vw,9px);margin-bottom:4%;letter-spacing:0;
+    padding:0 20%;line-height:1.2}
+  .comp-slot .cs-emoji{margin-bottom:2%}
+  .comp-slot .cs-emoji .pc-icon{width:clamp(24px,9vw,44px);height:clamp(24px,9vw,44px)}
+  .comp-slot .cs-name{font-size:clamp(7.5px,2.2vw,11px);margin-bottom:2%;line-height:1.15}
+  .comp-slot .cs-val{font-size:clamp(7.5px,2.2vw,11px);padding:1px 6px}
+  .comp-slot .cs-stock{font-size:clamp(6.5px,1.9vw,9px);margin-top:2%}
+  .comp-slot .cs-rm{width:15px;height:15px;top:0;right:0}
+  .comp-slot .cs-rm svg{width:9px;height:9px}
+  .comp-slot.draggable-slot::before{display:none}
+  .army-box{padding:3.5vw;border-radius:10px}
+  .army-box-title{font-size:clamp(9.5px,2.8vw,12px)}
+  .builder-panel-top{gap:2vw;margin-bottom:3vw}
+  .topbar-btns{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:1.5vw}
+  .topbar-btns .btn{width:100%;font-size:clamp(9px,2.6vw,12px);padding:2.4vw 1vw}
+  .topbar-stats{margin-left:0;width:100%}
+  .stat-pill{flex:1;padding:1.6vw 2vw;min-width:0}
+  .class-sec{padding:3vw 2.5vw 3.5vw;margin-bottom:3.5vw}
+  .class-hdr{margin-bottom:2.5vw}
+  .class-hdr-name{font-size:clamp(11px,3.4vw,15px)}
+
+  /* --- Les adversaires : des cartes, pas des affiches ---
+     Chaque carte tenait la moitié d'un écran de téléphone à elle seule :
+     portrait de 72 px, titre, description de trois lignes, trois étiquettes,
+     puis l'écart de niveau et le palmarès. On en voyait UNE à la fois pour
+     douze adversaires. Tout est réduit à la ligne d'identité : portrait,
+     nom, ELO, style, écart et palmarès — la description, qui est de la
+     couleur locale et non une information de choix, part avec le reste. */
+  .adv-inner{padding:3vw 3.5vw 14vh}
+  .adv-hdr{gap:3vw;margin-bottom:3vw;align-items:center}
+  .adv-page-title{font-size:clamp(18px,5.6vw,26px)}
+  .adv-page-sub{font-size:clamp(10px,2.9vw,12px);margin-top:2px;line-height:1.35}
+  .adv-grid{grid-template-columns:1fr;gap:2vw}
+  .adv-card{padding:2.5vw;gap:3vw;border-radius:10px;align-items:center}
+  .adv-portrait{width:clamp(42px,14vw,60px);height:clamp(42px,14vw,60px);border-radius:8px}
+  .adv-name{font-size:clamp(12px,3.7vw,16px)}
+  .adv-elo{font-size:clamp(11px,3.4vw,15px)}
+  .adv-title{font-size:clamp(9px,2.7vw,11.5px)}
+  .adv-desc{display:none}
+  .adv-tags{gap:1vw;margin:1.5vw 0 0}
+  .adv-tag{font-size:clamp(6.5px,2vw,8.5px);padding:1px 5px}
+  .adv-tag-chest{display:none}
+  .adv-foot{padding-top:1.5vw;margin-top:1.5vw;gap:2vw}
+  .adv-gap{font-size:clamp(7px,2.1vw,9px)}
+  .adv-rec{font-size:clamp(7.5px,2.2vw,9.5px);gap:4px}
+  .adv-advised{font-size:clamp(6.5px,2vw,8.5px)}
+
+  /* --- Armurerie --- */
+  .reserve-wrap{padding:calc(46px + 4vh) 3.5vw 12vh}
+  .rs-sec{margin-top:5vw}
+  .skin-grid,.chest-grid{grid-template-columns:repeat(auto-fill,minmax(clamp(104px,30vw,150px),1fr));
+    gap:2.5vw}
+  .skin-name{font-size:clamp(9.5px,2.8vw,12px)}
+  .skin-req{font-size:clamp(8px,2.4vw,10px)}
+
+  /* --- Mes armées --- */
+  .armies-grid{grid-template-columns:1fr;gap:2.5vw}
+  .armies-inner,.voie-inner{padding-bottom:12vh}
+
+  /* --- La Voie : le jalon ne porte plus que le logo et le nom --- */
+  .vm-card{padding:2.5vw 2vw}
+  .vm-piece-emoji .pc-icon{width:clamp(30px,10vw,48px);height:clamp(30px,10vw,48px)}
+  .vm-piece-name{font-size:clamp(10px,3vw,13px)}
+  .vm-elo-badge{font-size:clamp(8px,2.4vw,10px)}
+
+  /* --- Fin de partie / coffres --- */
+  .chest-lg{width:clamp(88px,28vw,132px);height:clamp(78px,25vw,116px)}
+  .chest-lg .chest-lid{width:100%;height:43%}
+  .chest-lg .chest-body{width:100%;height:60%;top:40%}
+  .chest-lg .chest-lock{width:22%;height:29%;margin-left:-11%;top:28%}
+  .chest-stage .chest-lg{margin-bottom:3vh}
+  .chest-title{font-size:clamp(15px,5vw,22px)}
+  .chest-hint{font-size:clamp(10px,3vw,13px);margin-bottom:2.5vh}
+  /* Les lots en grille plutôt qu'en ligne libre : quatre par rangée sur un
+     téléphone, chacun dimensionné en fraction d'écran. */
+  .chest-loot{display:grid;grid-template-columns:repeat(auto-fill,minmax(clamp(66px,21vw,110px),1fr));
+    gap:2vw;min-height:0;margin-bottom:3vh}
+  .loot{min-width:0;padding:2.5vw 1.5vw;border-radius:10px}
+  .loot .pc-icon{width:clamp(28px,9vw,48px);height:clamp(28px,9vw,48px)}
+  .loot-name{font-size:clamp(8px,2.4vw,10.5px)}
+  .loot-qty{font-size:clamp(13px,4.2vw,19px)}
+  .loot-new-tag{font-size:clamp(6.5px,2vw,9px);padding:1px 5px}
+  .loot .pearl-icon{width:clamp(28px,9vw,48px)!important;height:clamp(28px,9vw,48px)!important}
+
+  /* --- Modal de fin de partie --- */
+  .result-box{padding:5vw 4vw;max-height:88vh;overflow-y:auto}
+}
+
+/* Très petits écrans : on gagne encore une colonne de cartes en réduisant
+   les marges des sections plutôt que la taille des cartes. */
+@media(max-width:380px){
+  .class-sec{padding:2.5vw 2vw 3vw;border-left-width:3px}
+  #page-builder{padding:2.5vw}
+}
