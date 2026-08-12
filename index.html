@@ -302,21 +302,36 @@
                savait pas c'est où l'on en est. Rempli par renderMenuIdentity()
                (js/accounts.js). Le bouton « Voie » ouvre la Voie des
                Victoires, qui n'est plus une face du cube. -->
+          <!-- UNE SEULE PASTILLE, et non trois objets. « POUSSIÈRE » (libellé
+               gris), « 23 ELO » (pastille laiton bordée) et « VOIE » (bouton
+               fantôme) occupaient la même ligne avec trois poids visuels,
+               trois hauteurs et trois familles de forme — pour dire une seule
+               chose : votre rang. Le bouton fantôme, en particulier, avait
+               exactement l'apparence d'un élément désactivé. Toute la pastille
+               ouvre la Voie : aucune fonction n'est perdue. -->
           <div class="jouer-player">
             <div class="jouer-name" id="jouer-name"></div>
-            <div class="jouer-elo-row">
+            <button class="jouer-idpill" id="jouer-voie" aria-label="Voir la Voie des Victoires">
+              <span class="jp-dot" id="jouer-rank-dot"></span>
               <span class="jouer-rank" id="jouer-rank"></span>
+              <span class="jp-sep" aria-hidden="true">·</span>
               <span class="jouer-elo" id="jouer-elo"></span>
-              <button class="btn btn-ghost jouer-voie-btn" id="jouer-voie">Voie</button>
-            </div>
+              <svg class="jp-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 5, 16 12, 9 19"/></svg>
+            </button>
           </div>
           <!-- COMBAT = affronter un autre joueur. C'est ce que les gens
                viennent chercher, donc c'est le gros bouton. S'entraîner
                contre l'IA est une action secondaire, pas l'inverse. -->
           <div class="jouer-actions">
             <button class="jouer-btn" id="cube-jouer-btn"><span>COMBAT</span></button>
+            <!-- CONTRE QUI ? Le gros bouton ne le disait pas : il fallait
+                 ouvrir la galerie des adversaires pour le savoir, puis
+                 revenir. Un aller-retour supprimé à chaque partie. -->
+            <div class="jouer-vs" id="jouer-vs"></div>
             <div class="jouer-second">
-              <button class="btn btn-ghost" id="b-vs-ia">Adversaires</button>
+              <button class="btn btn-text" id="b-vs-ia">Adversaires
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 5, 16 12, 9 19"/></svg>
+              </button>
             </div>
           </div>
           <!-- LES SIX COFFRES, en bas de l'écran, de gauche à droite du Pion
@@ -430,7 +445,14 @@
 <!-- PAGE 3: PLAYER ARMIES -->
 <div id="page-armies" class="page">
 <div class="armies-inner">
-  <div class="armies-hdr"><div class="armies-title cinzel glow-text">Mes Armées</div><button class="btn btn-primary" id="ar-new">+ Nouvelle armée</button></div>
+  <!-- Le bouton de création est devenu la dernière carte de la grille (voir
+       renderArmiesPage) ; celui-ci reste dans le DOM, masqué, parce qu'il
+       porte le gestionnaire de clic et que le tutoriel le vise. -->
+  <div class="armies-hdr">
+    <div class="armies-title cinzel glow-text">Mes Armées</div>
+    <div class="armies-count" id="armies-count"></div>
+    <button class="btn btn-primary armies-new-hidden" id="ar-new">+ Nouvelle armée</button>
+  </div>
   <!-- Bandeau du mode sélection (combat lancé depuis le menu principal) :
        rempli et affiché par renderArmiesPage(). -->
   <div class="armies-select-banner" id="armies-select-banner" style="display:none"></div>

@@ -83,7 +83,13 @@ function menuChestsHTML(){
   const streak=accGet('win_streak',0);
   const bal=pearlBalance();
   const balTxt=(typeof pearlInfinite==='function'&&pearlInfinite())?'∞':bal;
-  return '<div class="jc-rail">'+CHESTS.map((ch,i)=>{
+  // Le solde et la série sont deux faits de nature différente : ils étaient
+  // juxtaposés sur une même ligne de 11 px, séparés par un espace. Ils
+  // deviennent l'EN-TÊTE du rail, chacun sur son ancrage.
+  let head='<div class="jc-head"><span class="jc-bank">'+pearlAmountHTML(balTxt,1.1)+' perles</span>'+
+    (streak>0?'<span class="jc-streak">Série · '+streak+' victoire'+(streak>1?'s':'')+'</span>':'')+
+  '</div>';
+  let rail='<div class="jc-rail">'+CHESTS.map((ch,i)=>{
     const price=chestPearlPrice(ch.id);
     const state=menuChestState(i,streak);
     const afford=bal>=price;
@@ -93,10 +99,19 @@ function menuChestsHTML(){
       '<span class="jc-name">'+escH(ch.name.replace(/^Coffre /,''))+'</span>'+
       '<span class="jc-price">'+pearlAmountHTML(price,1)+'</span>'+
     '</button>';
-  }).join('')+'</div>'+
-  '<div class="jc-foot"><span class="jc-bank">'+pearlAmountHTML(balTxt,1.1)+' perles</span>'+
-    (streak>0?'<span class="jc-streak">'+streak+' victoire'+(streak>1?'s':'')+' d\'affilée</span>':'')+
-  '</div>';
+  }).join('')+'</div>';
+  // UN CHEMIN, PAS UN MUR. Les prix hors de portée s'affichaient en rouge
+  // d'alerte — or ne pas pouvoir s'offrir un coffre est l'état NORMAL du jeu,
+  // pas une erreur, et le premier écran de l'application affichait donc deux
+  // alarmes sans qu'il ne se soit rien passé. Les prix sont gris (voir
+  // .jc-poor), et l'écart jusqu'au premier coffre atteignable est écrit.
+  let foot='';
+  const cheapest=CHESTS.map(c=>chestPearlPrice(c.id)).sort((a,b)=>a-b)[0];
+  if(balTxt!=='∞'&&bal<cheapest){
+    const miss=cheapest-bal;
+    foot='<div class="jc-foot">'+miss+' perle'+(miss>1?'s':'')+' de plus pour le premier coffre</div>';
+  }
+  return head+rail+foot;
 }
 function renderMenuChests(){
   renderDailyChest();
@@ -111,6 +126,18 @@ function renderMenuChests(){
   // aussi le moment de remettre à jour le pseudo et l'ELO affichés au-dessus,
   // qui viennent peut-être de bouger.
   if(typeof renderMenuIdentity==='function')renderMenuIdentity();
+  renderMenuOpponent();
+}
+
+// CONTRE QUI PART-ON ? Le gros bouton COMBAT ne le disait pas : il fallait
+// ouvrir la galerie des adversaires pour le savoir, puis revenir. La ligne
+// vit sous le bouton, en retrait, et comble un vide qui n'était pas du calme
+// mais de l'information manquante.
+function renderMenuOpponent(){
+  const el=document.getElementById('jouer-vs');
+  if(!el)return;
+  const o=(typeof aiChosenOpponent==='function')?aiChosenOpponent():null;
+  el.textContent=o?o.name+' · '+o.elo+' ELO':'';
 }
 
 // ----------------------------------------------------------------
@@ -488,10 +515,30 @@ function renderBoardSkins(){
   const cur=getBoardSkin();
   el.innerHTML=BOARD_SKINS.map(s=>{
     const ok=boardSkinUnlocked(s);
-    return '<div class="skin-card'+(s.id===cur.id?' skin-on':'')+(ok?'':' skin-locked')+'" data-id="'+s.id+'">'+
-      '<div class="skin-prev" style="background-image:url(\''+s.file+'\')"></div>'+
-      '<div class="skin-meta"><div class="skin-name">'+s.name+'</div>'+
-      '<div class="skin-req">'+(ok?(s.id===cur.id?'En usage':s.desc):'Débloqué à '+s.eloRequired+' ELO')+'</div></div>'+
+    // MONTRER LA MARCHANDISE. Le filtre s'appliquait à la CARTE entière
+    // (opacity:.45 + grayscale) : quatre échiquiers verrouillés devenaient
+    // quatre damiers gris indiscernables, et « Débloqué à 850 ELO » tombait
+    // sous 2:1 de contraste. Une boutique dont on ne peut pas voir la
+    // marchandise ne vend rien. Le filtre passe sur l'APERÇU seul, la texture
+    // reste identifiable, et le pied de carte retrouve sa pleine opacité.
+    //
+    // UN MUR DEVIENT UNE ÉCHELLE. « Débloqué à 850 ELO » est un refus ;
+    // « 23 / 850 » avec sa piste est une progression.
+    const myElo=(typeof vvLoadElo==='function')?vvLoadElo():0;
+    let state,bar='';
+    if(!ok){
+      state='<span class="skin-goal">'+myElo+' / '+s.eloRequired+' ELO</span>';
+      const pct=Math.max(2,Math.min(100,myElo/s.eloRequired*100));
+      bar='<div class="skin-track"><span style="width:'+pct+'%"></span></div>';
+    }else state='<span class="skin-desc">'+escH(s.desc)+'</span>';
+    return '<div class="skin-card'+(s.id===cur.id?' skin-on':'')+(ok?'':' skin-locked')+'" data-id="'+s.id+'"'+
+      (ok?'':' title="Débloqué à '+s.eloRequired+' ELO"')+'>'+
+      '<div class="skin-prev" style="background-image:url(\''+s.file+'\')">'+
+        (ok?'':'<span class="skin-lock"><span class="lock-icon"></span></span>')+
+        (s.id===cur.id?'<span class="skin-chip">Actif</span>':'')+
+      '</div>'+
+      '<div class="skin-meta"><div class="skin-name">'+escH(s.name)+'</div>'+
+      '<div class="skin-req">'+state+'</div>'+bar+'</div>'+
     '</div>';
   }).join('');
   el.querySelectorAll('.skin-card:not(.skin-locked)').forEach(card=>{

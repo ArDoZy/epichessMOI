@@ -160,6 +160,14 @@ body{
 .btn-primary:hover{background:#3ec9ac}
 .btn-gold{background:var(--gold);color:#1a1206;font-weight:700;border:1px solid rgba(0,0,0,.28);box-shadow:0 2px 0 rgba(0,0,0,.28)}
 .btn-gold:hover{background:var(--gold2)}
+/* .btn-text : le troisième niveau. Deux rectangles bordés empilés se
+   concurrencent (un bouton fantôme sous un bouton plein a exactement
+   l'apparence d'un élément désactivé) ; un plein et un texte se hiérarchisent.
+   La zone tactile reste à 44 px, portée par la hauteur et non par la bordure. */
+.btn-text{background:none;border:none;color:var(--muted);height:44px;padding:0 14px;
+  display:inline-flex;align-items:center;gap:5px;border-radius:10px}
+.btn-text svg{width:15px;height:15px;opacity:.7}
+.btn-text:hover{color:var(--text);background:rgba(255,255,255,.05)}
 .btn-danger{background:rgba(212,69,63,.12);color:var(--danger);border:1px solid rgba(212,69,63,.3)}
 .btn-danger:hover{background:rgba(212,69,63,.22)}
 .btn:disabled{opacity:.34;cursor:not-allowed;transform:none!important;box-shadow:none!important}
@@ -547,24 +555,58 @@ body.has-acc .builder-inner{padding-top:var(--page-top)}
 /* [ARMIES] ======================================================= */
 #page-armies{padding:clamp(16px,3vw,32px) clamp(12px,3vw,20px);min-height:100vh;background:var(--bg)}
 .armies-inner{max-width:980px;margin:0 auto}
-.armies-hdr{display:flex;align-items:center;gap:12px;margin-bottom:28px;flex-wrap:wrap}
+.armies-hdr{display:flex;align-items:baseline;gap:10px;margin-bottom:18px;flex-wrap:wrap}
+.armies-count{font-family:var(--f-ui);font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+/* Le bouton d'origine ne sert plus qu'à porter son gestionnaire de clic. */
+.armies-new-hidden{position:absolute;width:1px;height:1px;padding:0;overflow:hidden;
+  clip-path:inset(50%);white-space:nowrap;border:0}
 .armies-title{font-family:var(--f-display);font-size:clamp(20px,4.5vw,26px);font-weight:900;flex:1}
 .armies-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:16px}
-.army-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px;transition:all .22s;position:relative;overflow:hidden}
-.army-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--gold);opacity:.4}
+.army-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;transition:all .22s;position:relative;overflow:hidden}
+/* Le filet laiton décoratif de 2 px ne codait AUCUNE information : c'était un
+   motif appliqué, identique sur .army-box et .login-card. Le laiton est la
+   couleur de ce qui se mérite ; une armée qu'on a soi-même composée n'entre
+   pas dans cette catégorie. */
 .army-card:hover{border-color:var(--border2);box-shadow:0 6px 28px rgba(0,0,0,.5)}
-.ac-name-row{display:flex;align-items:center;gap:6px;margin-bottom:10px}
-.ac-name{font-family:var(--f-ui);font-size:14px;font-weight:700;color:var(--gold);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* La ligne de titre : nom à gauche, valeur puis renommage à droite. */
+.ac-head{display:flex;align-items:center;gap:10px}
+.ac-head>:first-child{flex:1;min-width:0}
+.ac-name-row{display:flex;align-items:center;gap:6px}
+.ac-name{font-family:var(--f-ui);font-size:16px;font-weight:700;color:var(--text);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ac-name-edit-btn{width:22px;height:22px;flex-shrink:0;border:1px solid var(--border2);border-radius:6px;background:transparent;color:var(--muted);cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center;transition:all .15s}
 .ac-name-edit-btn:hover{color:var(--gold);border-color:var(--gold);background:rgba(201,162,39,.1)}
 .ac-name-btn{font-size:11px!important;padding:6px 12px!important;margin-bottom:10px;width:100%}
 .ac-name-edit-row{display:flex;gap:6px;margin-bottom:10px}
 .ac-name-input{flex:1;min-width:0;background:var(--bg);border:1px solid var(--border2);border-radius:7px;padding:6px 10px;color:var(--text);font-size:14px;font-family:var(--f-ui);outline:none}
 .ac-name-input:focus{border-color:var(--gold)}
-.ac-pieces{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px;font-size:24px}
-.ac-names{font-size:12px;color:var(--muted);line-height:1.6;margin-bottom:14px}
-.ac-val{display:inline-flex;align-items:center;gap:5px;font-family:var(--f-ui);font-size:10px;color:var(--gold);background:rgba(201,168,76,.07);border:1px solid rgba(201,168,76,.18);border-radius:5px;padding:3px 8px}
-.ac-btns{display:flex;gap:7px;margin-top:12px;flex-wrap:wrap}
+/* La composition, une seule fois : logo + nom, en cinq colonnes. */
+.ac-roster{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:14px 0}
+.ac-slot{display:flex;flex-direction:column;align-items:center;gap:5px;min-width:0}
+.ac-slot .pc-icon,.ac-slot .pc-svg{width:34px;height:34px}
+.ac-slot-n{font-family:var(--f-ui);font-size:10px;font-weight:500;color:var(--muted);
+  text-align:center;line-height:1.2;max-width:100%;overflow:hidden;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.ac-val{flex:0 0 auto;display:inline-flex;align-items:center;font-family:var(--f-ui);
+  font-size:11px;font-weight:700;color:var(--gold2);background:rgba(193,154,69,.12);
+  border:1px solid rgba(193,154,69,.28);border-radius:6px;padding:2px 8px;
+  font-variant-numeric:tabular-nums;white-space:nowrap}
+.ac-btns{display:flex;gap:8px;margin-top:14px;padding-top:12px;border-top:1px solid var(--border)}
+.ac-edit{flex:1;height:40px;font-size:14px;padding:0}
+/* La corbeille est NEUTRE au repos : elle ne doit pas attirer. */
+.ac-del-btn{flex:0 0 auto;width:40px;height:40px;border-radius:10px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  background:none;border:1px solid var(--border);color:var(--muted);
+  transition:color .16s ease,background .16s ease,border-color .16s ease}
+.ac-del-btn svg{width:16px;height:16px}
+.ac-del-btn:hover{color:var(--danger);border-color:rgba(212,69,63,.45);background:rgba(212,69,63,.12)}
+/* La création, en fin de liste, au gabarit d'une carte. */
+.army-new-card{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
+  min-height:150px;background:none;border:1px dashed var(--border2);cursor:pointer;
+  color:var(--muted);font-family:var(--f-ui);
+  transition:color .16s ease,border-color .16s ease,background .16s ease}
+.army-new-card:hover{color:var(--accent2);border-color:var(--accent2);background:var(--accent-bg)}
+.anc-plus{font-size:26px;font-weight:300;line-height:1}
+.anc-txt{font-size:14px;font-weight:600}
 /* Mode sélection d'armée (lancement d'un combat depuis le menu) */
 .armies-select-banner{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:-10px 0 22px;padding:12px 16px;border:1px solid rgba(201,162,39,.35);border-radius:12px;background:rgba(201,162,39,.07)}
 .armies-select-banner .asb-txt{flex:1;font-family:var(--f-ui);font-size:13px;color:var(--gold)}
@@ -1007,13 +1049,22 @@ body.light .cube-face[data-face="jouer"]{background:
   overflow:hidden}
 .jouer-btn{position:relative;cursor:pointer;border:none;
   font-family:var(--f-title);font-weight:900;letter-spacing:3px;
-  font-size:clamp(18px,3.4vw,34px);color:#1a1206;
-  padding:clamp(14px,3vw,22px) clamp(36px,10vw,76px);border-radius:10px;
+  font-size:clamp(18px,3.4vw,26px);color:#1a1206;
+  height:64px;padding:0 clamp(36px,10vw,64px);border-radius:14px;
+  width:min(100% - 24px,420px);
   background:var(--gold);
-  box-shadow:0 3px 0 #6b4f16;
-  transition:transform .15s ease,box-shadow .15s ease}
-.jouer-btn:hover{transform:translateY(-2px);box-shadow:0 5px 0 #6b4f16}
-.jouer-btn:active{transform:translateY(1px);box-shadow:0 2px 0 #6b4f16}
+  /* Une ombre sans flou n'est pas une ombre, c'est un biseau — le vocabulaire
+     de 2011. Le liseré interne clair rend l'épaisseur du métal ; l'ombre
+     portée reste une vraie ombre. */
+  box-shadow:0 4px 12px -2px rgba(0,0,0,.34),0 1px 3px rgba(0,0,0,.2),
+             inset 0 1px 0 rgba(255,255,255,.20);
+  transition:transform .12s ease,box-shadow .16s ease,background .16s ease}
+.jouer-btn:hover{background:var(--gold2);
+  box-shadow:0 8px 20px -4px rgba(0,0,0,.4),0 1px 3px rgba(0,0,0,.2),
+             inset 0 1px 0 rgba(255,255,255,.24)}
+/* Pas de translateY sous le doigt : le pouce couvre déjà le bouton, un
+   déplacement vertical se lit comme un raté de la cible. */
+.jouer-btn:active{transform:scale(.985)}
 /* Boutons secondaires sous COMBAT : même colonne, mais gap resserré pour
    rester visuellement en retrait du gros bouton doré. */
 .jouer-actions{display:flex;flex-direction:column;align-items:center;gap:14px}
@@ -1042,12 +1093,14 @@ body.light .cube-face[data-face="libre"]{background:
 /* --- Flèches de navigation (dans #cube-stage mais hors de #cube : pas
    soumises au transform 3D). Icônes en SVG (et non en glyphes unicode) pour
    un centrage pixel-parfait garanti, indépendant des métriques de police. --- */
+/* Les flèches venaient de la palette AMBRÉE abandonnée (un brun chaud) et se
+   posaient sur des pages ardoise froides. */
 .cube-arrow{position:fixed;z-index:400;cursor:pointer;border:1px solid var(--border2);
-  background:rgba(36,26,16,.72);backdrop-filter:blur(6px);color:var(--gold2);
+  background:rgba(255,255,255,.05);backdrop-filter:blur(14px);color:var(--muted);
   display:flex;align-items:center;justify-content:center;padding:0;
   transition:all .2s ease;box-shadow:0 6px 20px rgba(0,0,0,.4)}
-.cube-arrow:hover{background:var(--surface2);border-color:var(--gold);color:#fff;
-  box-shadow:0 8px 28px rgba(201,162,39,.35)}
+.cube-arrow:hover{background:var(--surface2);border-color:var(--accent2);color:var(--text);
+  box-shadow:0 8px 24px -6px rgba(0,0,0,.5)}
 .cube-arrow svg{display:block;width:55%;height:55%;pointer-events:none}
 /* Flèches horizontales dans les coins bas : jamais en collision avec la
    barre de compte (haut). Le badge Admin (bottom-right) est remonté
@@ -1294,8 +1347,8 @@ body.light .pmv-dark{background:#c3bdae}
 .rs-title{font-family:var(--f-display);font-size:clamp(22px,4vw,32px);font-weight:900;color:var(--gold2)}
 .rs-sub{font-size:13px;color:var(--muted)}
 .rs-sec{margin-top:24px}
-.rs-sec-title{font-family:var(--f-ui);font-size:11px;font-weight:700;text-transform:uppercase;
-  letter-spacing:1.4px;color:var(--accent2);margin-bottom:12px;display:flex;align-items:center;gap:10px}
+.rs-sec-title{font-family:var(--f-ui);font-size:11px;font-weight:650;text-transform:uppercase;
+  letter-spacing:.12em;color:var(--accent2);margin-bottom:12px;display:flex;align-items:center;gap:10px}
 .rs-sec-title::after{content:'';flex:1;height:1px;background:var(--border)}
 
 /* --- Coffres : un coffre dessiné en CSS, teinté par sa rareté --- */
@@ -1348,15 +1401,39 @@ body.light .pmv-dark{background:#c3bdae}
 
 /* --- Sélecteur d'échiquier --- */
 .skin-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
-.skin-card{border:2px solid var(--border);border-radius:14px;overflow:hidden;cursor:pointer;
-  background:var(--surface);transition:transform .18s,border-color .18s}
-.skin-card:hover{transform:translateY(-3px)}
-.skin-card.skin-on{border-color:var(--accent2);box-shadow:0 0 20px var(--potion-glow)}
-.skin-card.skin-locked{opacity:.45;cursor:not-allowed;filter:grayscale(.7)}
-.skin-prev{aspect-ratio:1;background-size:cover;background-position:center}
-.skin-meta{padding:9px 10px}
-.skin-name{font-family:var(--f-ui);font-size:12px;font-weight:700}
-.skin-req{font-size:10px;color:var(--muted);margin-top:2px}
+/* Bordure de 1 px au repos : à 2 px, TOUTES les cartes portaient un contour
+   épais et paraissaient toutes à demi sélectionnées, ce qui privait la
+   sélection de sa force. Elle se signale maintenant par la couleur ET un
+   anneau interne — jamais par un changement d'épaisseur, qui décalerait le
+   contenu d'un pixel. */
+.skin-card{border:1px solid var(--border);border-radius:14px;overflow:hidden;cursor:pointer;
+  background:var(--surface);transition:transform .18s ease,border-color .18s ease,box-shadow .2s ease}
+.skin-card:hover{transform:translateY(-3px);border-color:var(--border2)}
+.skin-card.skin-on{border-color:var(--accent2);box-shadow:inset 0 0 0 1px var(--accent2)}
+/* Le filtre est sur l'APERÇU, pas sur la carte : le pied reste lisible. */
+.skin-card.skin-locked{cursor:not-allowed}
+.skin-card.skin-locked .skin-prev{filter:grayscale(.55) brightness(.7)}
+.skin-card.skin-locked:hover{transform:none}
+.skin-prev{position:relative;aspect-ratio:1;background-size:cover;background-position:center}
+.skin-lock{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  background:rgba(0,0,0,.5);backdrop-filter:blur(6px);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.12)}
+.skin-lock .lock-icon{width:14px;height:17px}
+/* « En usage » était écrit en prose bas-de-casse au milieu d'une interface
+   dont tous les autres états sont des puces. C'est un état, il en prend la
+   forme — et il monte sur l'aperçu, où on le voit avant de lire. */
+.skin-chip{position:absolute;top:8px;right:8px;font-family:var(--f-ui);
+  font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+  color:#04120f;background:var(--accent2);border-radius:999px;padding:3px 9px}
+/* Le pied était à 9/10 px sous un aperçu de ~170 px : la carte paraissait
+   lestée du haut et coupée en bas. */
+.skin-meta{padding:12px 14px 14px}
+.skin-name{font-family:var(--f-ui);font-size:13px;font-weight:650}
+.skin-req{font-size:11.5px;color:var(--muted);margin-top:3px;font-variant-numeric:tabular-nums}
+.skin-track{height:2px;border-radius:1px;background:var(--bg);margin-top:7px;overflow:hidden}
+.skin-track span{display:block;height:100%;border-radius:1px;background:var(--gold);
+  transition:width .2s cubic-bezier(.2,.8,.2,1)}
 
 /* [CHEST-OPENING] : cérémonie d'ouverture ======================== */
 /* La cérémonie DÉFILE. Un coffre de réapprovisionnement rend quatre
@@ -1505,22 +1582,29 @@ body.light .pmv-dark{background:#c3bdae}
 .jc-chest.chest-won .chest{filter:drop-shadow(0 0 9px color-mix(in srgb,var(--chest-c) 65%,transparent))}
 .jc-chest.chest-won .jc-name{color:var(--text)}
 /* Le prochain : c'est LUI qu'on joue. Halo, pulsation, nom doré. */
-.jc-chest.chest-next{transform:translateY(-6px)}
-.jc-chest.chest-next:hover{transform:translateY(-10px)}
+/* LE RAIL RESTE ALIGNÉ. Le coffre courant flottait 6 px au-dessus des cinq
+   autres et respirait en scale(1.07) : le rail perdait sa ligne de base,
+   c'est-à-dire la seule chose qui faisait de ces six objets une SÉRIE.
+   L'emphase se fait sans déplacer la géométrie — un halo qui pulse en
+   opacité, et le nom en laiton. */
 .jc-chest.chest-next .chest{filter:drop-shadow(0 0 16px var(--chest-c)) drop-shadow(0 0 34px color-mix(in srgb,var(--chest-c) 70%,transparent));
-  animation:jcBreathe 2.4s ease-in-out infinite}
+  animation:jcBreathe 2.6s ease-in-out infinite}
 .jc-chest.chest-next .jc-name{color:var(--gold2);text-shadow:0 0 12px rgba(230,197,118,.5)}
-@keyframes jcBreathe{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}
+@keyframes jcBreathe{0%,100%{opacity:.62}50%{opacity:1}}
 /* Encore loin : éteint, sans disparaître. */
 .jc-chest.chest-far{opacity:.4;filter:saturate(.3) brightness(.78)}
 .jc-chest.chest-far:hover{opacity:.9;filter:saturate(.85) brightness(1)}
-/* Prix hors de portée : le coffre reste cliquable (le refus est expliqué),
-   mais le chiffre dit tout de suite qu'il manque des perles. */
-.jc-chest.jc-poor .jc-price{color:var(--danger);opacity:.85}
-.jc-foot{display:flex;align-items:center;gap:14px;flex-wrap:wrap;justify-content:center;
-  font-family:var(--f-ui);font-size:11px;color:var(--muted)}
-.jc-bank{display:inline-flex;align-items:center;gap:5px;color:var(--text)}
-.jc-streak{color:var(--gold2);letter-spacing:.5px}
+/* Prix hors de portée : GRIS, et non rouge d'alerte. Le coffre reste
+   cliquable, le refus reste expliqué au clic. */
+.jc-chest.jc-poor .jc-price{color:var(--muted);opacity:.72}
+/* L'en-tête du rail : le solde à gauche, la série à droite, un filet dessous.
+   Deux faits de nature différente, deux ancrages. */
+.jc-head{display:flex;align-items:center;justify-content:space-between;gap:12px;
+  width:100%;padding-bottom:7px;border-bottom:1px solid var(--border);
+  font-family:var(--f-ui);font-size:12px;color:var(--muted)}
+.jc-bank{display:inline-flex;align-items:center;gap:5px;color:var(--text);font-weight:650}
+.jc-streak{color:var(--gold2)}
+.jc-foot{font-family:var(--f-ui);font-size:11.5px;color:var(--muted);text-align:center}
 /* Écrans courts : le rail passe avant les noms de coffres, qu'on peut lire
    sur le survol (title) et qui reviennent dès qu'il y a la place. */
 @media(max-height:620px),(max-width:520px){
@@ -1596,14 +1680,23 @@ body.light .pmv-dark{background:#c3bdae}
   -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
   filter:drop-shadow(0 4px 20px rgba(201,162,39,.3));
   max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.jouer-elo-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:center}
-.jouer-rank{font-family:var(--f-ui);font-size:11px;font-weight:700;
-  text-transform:uppercase;letter-spacing:1.4px}
-.jouer-elo{font-family:var(--f-ui);font-size:13px;font-weight:800;letter-spacing:.5px;
-  padding:5px 14px;border-radius:8px;background:rgba(193,154,69,.12);
-  border:1px solid var(--gold);color:var(--gold2);font-variant-numeric:tabular-nums}
-.jouer-elo.admin-elo{background:rgba(201,162,39,.24);border-color:var(--gold2)}
-.jouer-voie-btn{font-size:10px;padding:6px 16px}
+/* UNE pastille tactile, et non trois objets de trois poids différents. */
+.jouer-idpill{display:inline-flex;align-items:center;gap:7px;height:34px;padding:0 10px 0 12px;
+  border-radius:999px;cursor:pointer;pointer-events:auto;
+  background:rgba(193,154,69,.11);border:1px solid rgba(193,154,69,.30);
+  color:var(--gold2);font-family:var(--f-ui);
+  transition:background .16s ease,border-color .16s ease}
+.jouer-idpill:hover{background:rgba(193,154,69,.18);border-color:var(--gold)}
+.jp-dot{width:6px;height:6px;border-radius:50%;background:currentColor;flex:0 0 auto}
+.jouer-rank{font-size:12.5px;font-weight:600;letter-spacing:.01em}
+.jp-sep{opacity:.45}
+.jouer-elo{font-size:13px;font-weight:700;color:var(--gold2);font-variant-numeric:tabular-nums}
+.jouer-elo.admin-elo{color:#fff}
+.jp-chev{width:15px;height:15px;opacity:.6;flex:0 0 auto;margin-left:1px}
+/* La destination du combat, sous le bouton. */
+.jouer-vs{font-family:var(--f-ui);font-size:12.5px;font-weight:500;color:var(--muted);
+  margin-top:-6px;font-variant-numeric:tabular-nums}
+.jouer-vs:empty{display:none}
 @media(max-width:760px){
   .jouer-player{gap:5px}
   .jouer-name{font-size:clamp(20px,6vw,28px)}
