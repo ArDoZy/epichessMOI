@@ -291,11 +291,12 @@ document.getElementById('result-rejouer').addEventListener('click',()=>{
     },{okLabel:'Mes armées',cancelLabel:'Fermer',okClass:'btn-primary'});
     return;
   }
+  // « Rejouer » repartait sur la page d'engagement, qui n'existe plus : une
+  // nouvelle partie se relance directement, contre une nouvelle armée d'IA
+  // hors ligne, ou par une nouvelle recherche en ligne.
   const prevPlayerArmy=GS.playerArmy;
-  currentArmyData=prevPlayerArmy;
-  aiArmyData=generateAIArmy();
-  renderCombatPage(prevPlayerArmy,GS.multiplayer?'online':'ia');
-  showPage('page-combat');launchParticles();
+  if(GS.multiplayer)startOnlineSearch(prevPlayerArmy);
+  else startAiBattle(prevPlayerArmy,generateAIArmy());
 });
 
 document.getElementById('result-revanche').addEventListener('click',()=>{
@@ -304,12 +305,11 @@ document.getElementById('result-revanche').addEventListener('click',()=>{
   if(GS&&GS.multiplayer&&typeof mpProposeRematch==='function'&&mpProposeRematch())return;
   document.getElementById('result-modal').classList.remove('active');
   if(!GS||!GS.playerArmy||!GS.aiArmy){renderArmiesPage();showPage('page-armies');return;}
+  // La revanche rejoue la MÊME affiche : même armée de part et d'autre.
   const prevPlayerArmy=GS.playerArmy;
   const prevAiArmy=GS.aiArmy;
-  currentArmyData=prevPlayerArmy;
-  aiArmyData=prevAiArmy;
-  renderCombatPage(prevPlayerArmy,GS.multiplayer?'online':'ia');
-  showPage('page-combat');launchParticles();
+  if(GS.multiplayer)startOnlineSearch(prevPlayerArmy);
+  else startAiBattle(prevPlayerArmy,prevAiArmy);
 });
 
 // ----------------------------------------------------------------

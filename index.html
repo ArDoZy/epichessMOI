@@ -134,20 +134,12 @@
   </div>
 </div>
 
-<!-- ACCOUNT BAR
-     Le pseudo et l'ELO ont quitté ce bandeau : ils étaient rangés dans la
-     décoration de l'interface alors que ce sont les deux chiffres qu'on vient
-     regarder. Ils sont maintenant en haut du MENU PRINCIPAL, à la place du
-     titre du jeu (voir .jouer-player plus bas). Il ne reste ici que
-     l'avatar — qui dit sur quel compte on est, y compris depuis une page
-     secondaire. La DÉCONNEXION a quitté ce bandeau pour le haut des réglages
-     (voir #sp-logout) : sur téléphone, chaque pixel de la barre du haut est
-     pris, et se déconnecter n'est pas une action qu'on fait dix fois par
-     partie. -->
-<div class="cab" id="cab" style="display:none">
-  <div class="cab-av" id="cab-av"></div>
-  <span style="flex:1"></span>
-</div>
+<!-- LE BANDEAU DE COMPTE A ÉTÉ SUPPRIMÉ. Il occupait une bande pleine
+     largeur en haut de CHAQUE écran pour n'y porter qu'un rond avec l'initiale
+     du pseudo — une information qu'on connaît déjà, et qui est de toute façon
+     répétée en toutes lettres sur le menu principal. Il rognait le haut de
+     toutes les pages. Seul le bouton de réglages reste épinglé en haut à
+     droite (voir #settings-btn). -->
 
 <!-- PAGE LOGIN -->
 <div id="page-login" class="page active">
@@ -210,63 +202,33 @@
 <!-- MODAL MULTIJOUEUR : create/join d'une partie en ligne -->
 <div class="ai-lvl-modal" id="mp-modal">
   <div class="ai-lvl-box" style="max-width:420px;text-align:center">
-    <!-- L'en-tête ne vaut que pour l'écran de CHOIX : une fois la recherche
-         lancée, « Invitez un ami, ou rejoignez sa partie » n'est plus une
-         option, c'est un contresens. Masqué en attente (voir [MP-WAIT]). -->
-    <div class="mp-hdr-title">Affronter un joueur</div>
-    <div class="mp-hdr-sub">Votre armée est prête. Invitez un ami, ou rejoignez sa partie.</div>
+    <!-- LE SALON N'A PLUS QU'UN SEUL ÉCRAN : la recherche.
+         Il en comptait quatre — un écran de CHOIX (« Partie rapide » /
+         « Créer une partie privée » / « Rejoindre avec un code »), puis un
+         écran par branche. Les parties privées par code demandaient de
+         transmettre six caractères à quelqu'un par un autre canal ; elles ont
+         été retirées, et avec elles l'écran de choix, qui n'avait plus qu'une
+         option à proposer. Appuyer sur COMBAT ouvre donc directement ceci. -->
+    <div class="mp-hdr-title">Recherche d'un adversaire</div>
 
-    <div id="mp-screen-choice">
-      <button class="btn btn-primary" id="mp-quick-btn" style="width:100%;margin-bottom:6px;padding:12px">Partie rapide</button>
-      <div style="font-size:11px;color:var(--muted);margin-bottom:14px">Appariement automatique avec un joueur en attente.</div>
-      <button class="btn btn-ghost" id="mp-create-btn" style="width:100%;margin-bottom:6px;padding:12px">Créer une partie privée</button>
-      <div style="font-size:11px;color:var(--muted);margin-bottom:14px">Pour jouer avec un ami, via un code à lui transmettre.</div>
-      <button class="btn btn-ghost" id="mp-join-screen-btn" style="width:100%;padding:12px">Rejoindre avec un code</button>
-    </div>
-
-    <!-- ÉCRAN DE RECHERCHE : il ne disait rien d'autre que « ⚔ ». On ne
-         savait ni depuis combien de temps on cherchait, ni s'il y avait
-         seulement quelqu'un d'autre en ligne, ni pourquoi ça durait. Les
-         deux chiffres et la fenêtre de niveau sont remplis en continu par
-         mpRenderSearch() dans js/multiplayer.js ; le CHRONOMÈTRE, lui, a
-         quitté cette grille pour le bas de l'écran (voir #mp-wait-clock). -->
-    <div id="mp-screen-quick" style="display:none">
-      <div class="mp-wait-title">Recherche d'un adversaire</div>
+    <div id="mp-screen-quick">
       <div class="mp-radar"><span></span><span></span><span></span></div>
+      <!-- La note ne dit plus que la FENÊTRE DE NIVEAU en cours d'ouverture.
+           Elle annonçait aussi « Personne d'autre en attente pour l'instant » :
+           apprendre qu'on est seul en ligne pendant qu'on attend n'aide en
+           rien et décourage d'attendre. Remplie par mpRenderSearch(). -->
       <div class="mp-search-note" id="mp-search-note">On cherche d'abord un adversaire de votre niveau, puis on élargit.</div>
-      <button class="btn btn-ghost" id="mp-fallback-btn" style="display:none;width:100%;margin-top:10px">Affronter un adversaire du laboratoire</button>
-    </div>
-
-    <div id="mp-screen-host" style="display:none">
-      <div class="mp-wait-title">En attente de votre ami</div>
-      <div class="mp-lbl">Code de la partie</div>
-      <div class="mp-code" id="mp-code-value">----</div>
-      <button class="btn btn-ghost" id="mp-copy-btn" style="margin-bottom:12px">Copier le code</button>
-      <div class="mp-search-note">Transmettez ce code à votre adversaire. La partie démarrera automatiquement.</div>
-    </div>
-
-    <div id="mp-screen-join" style="display:none">
-      <div class="mp-lbl">Code reçu</div>
-      <input id="mp-code-input" maxlength="6" placeholder="CODE" class="mp-code-input">
-      <button class="btn btn-primary" id="mp-join-confirm" style="width:100%;padding:12px">Rejoindre la partie</button>
     </div>
 
     <!-- TIPS D'ATTENTE : rempli par mpRenderTip() (js/multiplayer.js) et
-         visible uniquement pendant une attente (voir [MP-WAIT] dans la CSS),
-         recherche rapide comme partie privée. Le texte vient de MP_TIPS. -->
+         visible uniquement pendant une attente (voir [MP-WAIT] dans la CSS).
+         Le texte vient de MP_TIPS. -->
     <div class="mp-tip" id="mp-tip"></div>
 
     <div class="mp-status" id="mp-status"></div>
     <button class="btn btn-ghost" id="mp-cancel" style="margin-top:14px">Annuler</button>
   </div>
 
-  <!-- CHRONOMÈTRE D'ATTENTE : hors de la boîte, épinglé en bas au centre.
-       Attendre un adversaire est le seul moment du jeu où l'on ne fait rien :
-       la fenêtre s'efface alors derrière une toile plein écran (voir
-       [MP-WAIT] dans css/style.css) et il ne reste que ce compteur, qui dit
-       que quelque chose tourne encore. Piloté par mpWaitTick()
-       (js/multiplayer.js), pour la recherche rapide comme pour l'attente
-       d'un ami sur une partie privée. -->
   <div class="mp-wait-clock" id="mp-wait-clock"><span id="mp-wait-time">0:00</span></div>
 </div>
 
@@ -324,10 +286,6 @@
                contre l'IA est une action secondaire, pas l'inverse. -->
           <div class="jouer-actions">
             <button class="jouer-btn" id="cube-jouer-btn"><span>COMBAT</span></button>
-            <!-- CONTRE QUI ? Le gros bouton ne le disait pas : il fallait
-                 ouvrir la galerie des adversaires pour le savoir, puis
-                 revenir. Un aller-retour supprimé à chaque partie. -->
-            <div class="jouer-vs" id="jouer-vs"></div>
             <div class="jouer-second">
               <button class="btn btn-text" id="b-vs-ia">Adversaires
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 5, 16 12, 9 19"/></svg>
@@ -392,6 +350,12 @@
   <button class="cube-arrow cube-arrow-side" id="cube-arrow-right" title="Tourner à droite" style="display:none">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 5, 16 12, 9 19"/></svg>
   </button>
+<!-- PAGINATION DU CUBE : quatre points qui disent sur quelle face on se
+     trouve et combien il y en a. Les flèches ne le disaient pas, et rien à
+     l'écran ne l'indiquait : on tournait sans savoir où l'on était. C'est du
+     RETOUR D'ÉTAT, pas une navigation de plus — les points ne sont pas
+     cliquables, ils ne créent aucune route. Piloté par js/cube-nav.js. -->
+<div class="cube-dots" id="cube-dots" aria-hidden="true"></div>
 </div>
 
 <!-- PAGE 1: BUILDER -->
@@ -429,15 +393,11 @@
       <span class="bd-budget-lbl">Valeur</span>
       <span class="bd-budget-num" id="s-val">0 / 24</span>
     </div>
-    <div class="bd-gauge"><span class="bd-gauge-fill" id="s-gauge"></span></div>
     <div class="comp-grid" id="comp-grid"></div>
   </div>
   <div id="cards-container"></div>
-  <!-- Un bouton désactivé qui ne dit pas pourquoi est le premier générateur
-       d'abandon : la raison du blocage est écrite sous lui, en permanence. -->
   <div class="bd-action">
     <button class="btn btn-primary" id="b-validate" disabled>Valider l'armée</button>
-    <div class="bd-why" id="b-validate-why"></div>
   </div>
 </div>
 </div>
@@ -450,7 +410,6 @@
        porte le gestionnaire de clic et que le tutoriel le vise. -->
   <div class="armies-hdr">
     <div class="armies-title cinzel glow-text">Mes Armées</div>
-    <div class="armies-count" id="armies-count"></div>
     <button class="btn btn-primary armies-new-hidden" id="ar-new">+ Nouvelle armée</button>
   </div>
   <!-- Bandeau du mode sélection (combat lancé depuis le menu principal) :
@@ -562,40 +521,12 @@
 </div>
 </div>
 
-<!-- PAGE COMBAT -->
-<div id="page-combat" class="page">
-  <div class="cbg"></div><div class="cparts" id="cparts"></div>
-  <!-- Cette page a DEUX modes, pilotés par renderCombatPage() dans
-       js/combat-intro.js : « en ligne » (on cherche un adversaire humain) et
-       « ia » (on affronte l'Instructeur). Auparavant elle ne présentait que le
-       duel contre l'IA, et le jeu en ligne s'ouvrait dans une fenêtre posée
-       par-dessus, ce qui donnait un écran qui annonçait une chose et en
-       faisait une autre. -->
-  <div class="cinner">
-    <div class="ctitle rv" id="ctitle">COMBAT</div>
-    <div class="csubt rv rv1" id="csubt">Que la bataille commence…</div>
-    <div class="cvs rv rv2" id="cvs-display"></div>
-    <!-- Ce que la partie met en jeu (js/economy.js) : le joueur doit le voir
-         AVANT de s'engager, pas après avoir perdu ses pièces. -->
-    <div class="cstake rv rv3" id="cstake"></div>
-
-    <!-- Actions du mode EN LIGNE -->
-    <div class="rv rv5 cactions" id="cactions-online">
-      <button class="btn btn-ghost" id="cb-back">← Quitter</button>
-      <button class="btn btn-ghost" id="cb-private">Partie privée</button>
-      <button class="btn btn-ghost" id="cb-join">Rejoindre avec un code</button>
-      <button class="btn btn-primary" id="cb-quick" style="font-size:15px;padding:12px 30px">Chercher un adversaire →</button>
-    </div>
-
-    <!-- Actions du mode INSTRUCTEUR -->
-    <div class="rv rv5 cactions" id="cactions-ia" style="display:none">
-      <button class="btn btn-ghost" id="cb-back-ia">← Quitter</button>
-      <button class="btn btn-ghost" id="cb-choose-ai">Armée de l'Instructeur</button>
-      <button class="btn btn-ghost" id="cb-mirror-ai" style="border-color:var(--primordiale);color:var(--primordiale)">Armée miroir</button>
-      <button class="btn btn-primary" id="cb-play" style="font-size:15px;padding:12px 30px">Combattre →</button>
-    </div>
-  </div>
-</div>
+<!-- LA PAGE D'ENGAGEMENT A ÉTÉ SUPPRIMÉE. Elle s'intercalait entre « Combat »
+     et la partie pour y afficher, sur un écran entier, le titre COMBAT, un
+     duel d'armées, la mise, et une rangée de boutons dont l'un répétait
+     l'intention qu'on venait d'exprimer. Appuyer sur COMBAT lance désormais
+     directement la recherche d'un adversaire ; choisir un adversaire du
+     laboratoire lance directement la partie. -->
 
 <!-- PAGE 5: GAME
      Disposition : l'échiquier occupe SEUL la zone principale, aussi grand que
@@ -609,11 +540,13 @@
   <div class="game-wrap">
     <div class="game-main">
       <div class="board-frame">
+        <!-- Les repères de colonnes et de rangées sont DANS les cases de
+             bord du plateau (voir renderGame) : les deux bandes extérieures
+             qui les portaient prenaient ~40 px à un échiquier dont la
+             hauteur est justement la dimension contrainte. -->
         <div class="game-board-outer">
-          <div class="game-row-labels" id="game-row-labels"></div>
           <div class="game-board-col">
             <div class="game-board" id="game-board"></div>
-            <div class="game-col-labels" id="game-col-labels"></div>
           </div>
         </div>
       </div>

@@ -165,12 +165,17 @@ const DEFAULT_AI_LEVEL=aiOpponentIndex('instructeur');
 // Les fichiers sont générés par tools/gen-boards.js (SVG procédural).
 // eloRequired s'aligne sur les seuils de RANKS pour que le déblocage d'un
 // plateau coïncide avec un passage de rang.
+// sqLight / sqDark : les deux teintes de case de CHAQUE plateau. Elles servent
+// aux repères de coordonnées, qui vivent maintenant DANS les cases de bord
+// (voir renderGame) : un repère posé sur une case claire prend la teinte de la
+// case foncée, et réciproquement. Sans ces valeurs il faudrait un fond derrière
+// chaque lettre, ce qui salirait la matière du plateau.
 const BOARD_SKINS=[
-  {id:'bois',   name:'Bois',   file:'assets/boards/bois.svg',   eloRequired:0,    desc:'Chêne huilé, le plateau de l\'atelier.'},
-  {id:'pierre', name:'Pierre', file:'assets/boards/pierre.svg', eloRequired:200,  desc:'Dalle de marbre gris taillée au ciseau.'},
-  {id:'acier',  name:'Acier',  file:'assets/boards/acier.svg',  eloRequired:850,  desc:'Acier brossé, froid sous les doigts.'},
-  {id:'argent', name:'Argent', file:'assets/boards/argent.svg', eloRequired:1800, desc:'Argent poli miroir.'},
-  {id:'or',     name:'Or',     file:'assets/boards/or.svg',     eloRequired:2400, desc:'Or massif. Il n\'y a rien au-delà.'},
+  {id:'bois',   name:'Bois',   file:'assets/boards/bois.svg',   eloRequired:0,    sqLight:'#cdae86', sqDark:'#7d5a3e', desc:'Chêne huilé, le plateau de l\'atelier.'},
+  {id:'pierre', name:'Pierre', file:'assets/boards/pierre.svg', eloRequired:200,  sqLight:'#e2ddd3', sqDark:'#5d5b5a', desc:'Dalle de marbre gris taillée au ciseau.'},
+  {id:'acier',  name:'Acier',  file:'assets/boards/acier.svg',  eloRequired:850,  sqLight:'#d3d8dc', sqDark:'#4e5459', desc:'Acier brossé, froid sous les doigts.'},
+  {id:'argent', name:'Argent', file:'assets/boards/argent.svg', eloRequired:1800, sqLight:'#f5f7f9', sqDark:'#5e666d', desc:'Argent poli miroir.'},
+  {id:'or',     name:'Or',     file:'assets/boards/or.svg',     eloRequired:2400, sqLight:'#f6dc92', sqDark:'#6f4f0f', desc:'Or massif. Il n\'y a rien au-delà.'},
 ];
 function boardSkinById(id){return BOARD_SKINS.find(b=>b.id===id)||BOARD_SKINS[0];}
 

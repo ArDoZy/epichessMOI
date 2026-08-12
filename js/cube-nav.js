@@ -112,6 +112,11 @@
   // dépendent plus de `animating`) : c'est ce qui permet d'enchaîner deux
   // rotations sans temps mort : le clic pendant l'animation en cours est mis
   // en file par animate() et rejoué instantanément à la fin de celle-ci.
+  // L'ORDRE DES FACES LATÉRALES, tel qu'on les traverse en tournant à droite.
+  // Il sert à la pagination : sans lui, quatre points ne diraient pas laquelle
+  // est la nôtre.
+  const SIDE_ORDER=['jouer','armees','reserve','libre'];
+
   function updateArrows(){
     const active=document.body.classList.contains('cube-active') && !document.body.classList.contains('nav-overlay');
     const onSide=SIDE.has(slots.front);
@@ -119,6 +124,22 @@
     const set=(id,show)=>{const e=document.getElementById(id);if(e)e.style.display=show?'':'none';};
     set('cube-arrow-left', h);
     set('cube-arrow-right', h);
+    updateDots(h);
+  }
+
+  // PAGINATION : on tournait sans savoir sur quelle face on était, ni combien
+  // il y en avait. Quatre points le disent d'un coup d'œil. Ils ne sont pas
+  // cliquables : c'est du retour d'état, pas une navigation de plus.
+  function updateDots(show){
+    const el=document.getElementById('cube-dots');
+    if(!el)return;
+    el.style.display=show?'':'none';
+    if(!show)return;
+    const i=SIDE_ORDER.indexOf(slots.front);
+    if(el.childElementCount!==SIDE_ORDER.length){
+      el.innerHTML=SIDE_ORDER.map(()=>'<span class="cube-dot"></span>').join('');
+    }
+    [...el.children].forEach((d,k)=>d.classList.toggle('is-on',k===i));
   }
 
   // Réinitialise le cube à l'angle 0 avec les emplacements courants (sans

@@ -102,7 +102,17 @@ function renderGame(gs){
       inner='<div class="gc-piece'+(isAnchored?' gc-anchored':'')+(para?' pc-para':'')+
         '" data-r="'+r+'" data-c="'+c+'">'+pieceSVG(cell.pieceId,cell.color)+'</div>';
     }
-    html+='<div class="'+cls+'" data-r="'+r+'" data-c="'+c+'">'+inner+'</div>';
+    // LES REPÈRES SONT DANS LE PLATEAU (voir aussi renderHistoryPosition).
+    // Une colonne de chiffres à gauche et une ligne de lettres en bas
+    // consommaient ~40 px que le plateau — dont la dimension est bornée par la
+    // hauteur — peut prendre. Ils vont dans les cases de bord, comme le veut
+    // la convention : le chiffre dans l'angle supérieur gauche de la première
+    // colonne affichée, la lettre dans l'angle inférieur droit de la dernière
+    // rangée affichée.
+    let coord='';
+    if(vc===0)coord+='<span class="gc-rank">'+(8-r)+'</span>';
+    if(vi===7)coord+='<span class="gc-file">'+FILES[c]+'</span>';
+    html+='<div class="'+cls+'" data-r="'+r+'" data-c="'+c+'">'+coord+inner+'</div>';
   }
   boardEl.innerHTML=html;
   animateLastMove(gs,boardEl,flipped);
@@ -209,20 +219,11 @@ function renderClocks(gs){
 }
 
 function buildGameLabels(gs){
-  const rowLabels=document.getElementById('game-row-labels');const colLabels=document.getElementById('game-col-labels');
-  if(!rowLabels||!colLabels)return;
-  const board=document.getElementById('game-board');if(!board)return;
-  const flipped=(gs&&gs.playerColor==='b');
-  requestAnimationFrame(()=>{
-    const cellH=board.offsetHeight/8;
-    const rowNums=flipped?[1,2,3,4,5,6,7,8]:[8,7,6,5,4,3,2,1];
-    const colFiles=flipped?[...FILES].reverse():FILES;
-    if(cellH===0){requestAnimationFrame(()=>{const cH=board.offsetHeight/8;rowLabels.innerHTML='';colLabels.innerHTML='';for(let i=0;i<8;i++){const d=document.createElement('div');d.className='game-row-lbl';d.style.height=cH+'px';d.textContent=rowNums[i];rowLabels.appendChild(d);}colFiles.forEach(f=>{const d=document.createElement('div');d.className='game-col-lbl';d.textContent=f;colLabels.appendChild(d);});});return;}
-    rowLabels.innerHTML='';colLabels.innerHTML='';
-    for(let i=0;i<8;i++){const d=document.createElement('div');d.className='game-row-lbl';d.style.height=cellH+'px';d.textContent=rowNums[i];rowLabels.appendChild(d);}
-    colFiles.forEach(f=>{const d=document.createElement('div');d.className='game-col-lbl';d.textContent=f;colLabels.appendChild(d);});
-  });
+  // Les repères vivent maintenant DANS les cases de bord : il n'y a plus de
+  // bande extérieure à reconstruire. La fonction reste appelée par plusieurs
+  // modules et au redimensionnement ; elle n'a plus rien à faire.
 }
+
 // Chaque bandeau montre les pieces que CE joueur a prises, plus son avantage
 // materiel : c'est l'information utile, alors que deux listes « blanches » et
 // « noires » dans une colonne obligeaient a faire la soustraction de tete.
@@ -354,7 +355,7 @@ function updateHistoryNav(){
   const total=GS.history.length;const view=GS.historyView;
   const badge=document.getElementById('history-badge');
   if(view!==null)badge.textContent='Position '+view+'/'+total;
-  else badge.textContent=total>0?total+' coups joués':'';
+  else badge.textContent=total>0?total+' coup'+(total>1?'s joués':' joué'):'';
   document.getElementById('hist-first').disabled=(view===null&&total===0)||(view===0);
   document.getElementById('hist-prev').disabled=(view===null&&total===0)||(view===0);
   document.getElementById('hist-next').disabled=(view===null);
@@ -380,7 +381,17 @@ function renderBoardFromSnapshot(board,lastMove){
       else if(lastMove.to?.r===r&&lastMove.to?.c===c)cls+=' lm-to';
     }
     const inner=cell?'<div class="gc-piece">'+pieceSVG(cell.pieceId,cell.color)+'</div>':'';
-    html+='<div class="'+cls+'" data-r="'+r+'" data-c="'+c+'">'+inner+'</div>';
+    // LES REPÈRES SONT DANS LE PLATEAU (voir aussi renderHistoryPosition).
+    // Une colonne de chiffres à gauche et une ligne de lettres en bas
+    // consommaient ~40 px que le plateau — dont la dimension est bornée par la
+    // hauteur — peut prendre. Ils vont dans les cases de bord, comme le veut
+    // la convention : le chiffre dans l'angle supérieur gauche de la première
+    // colonne affichée, la lettre dans l'angle inférieur droit de la dernière
+    // rangée affichée.
+    let coord='';
+    if(vc===0)coord+='<span class="gc-rank">'+(8-r)+'</span>';
+    if(vi===7)coord+='<span class="gc-file">'+FILES[c]+'</span>';
+    html+='<div class="'+cls+'" data-r="'+r+'" data-c="'+c+'">'+coord+inner+'</div>';
   }
   boardEl.innerHTML=html;buildGameLabels(GS);
 }
@@ -473,3 +484,43 @@ function updateStatus(gs){
 
 // Rebuild des repères du plateau au redimensionnement de la fenêtre.
 window.addEventListener("resize",()=>{if(document.getElementById("page-game").classList.contains("active")&&typeof GS!=="undefined")buildGameLabels(GS);});
+
+// ----------------------------------------------------------------
+// LE JOURNAL EN FEUILLE GLISSANTE (téléphone)
+// ----------------------------------------------------------------
+// Sous 820 px, le bloc du journal est ancré en bas d'écran et ne montre au
+// repos que sa POIGNÉE : le nombre de coups, le dernier coup joué et les
+// quatre commandes de relecture — ce qu'on regarde entre deux coups. Il
+// empilait auparavant, sous le plateau, un titre, une rangée de commandes, un
+// compteur et la liste entière : environ 300 px de défilement pour une
+// information consultée par intermittence.
+//
+// Le déploiement est purement visuel (une classe) : aucune commande ne change
+// de comportement, et les quatre boutons de relecture restent cliquables
+// feuille repliée — c'est même leur place naturelle.
+(function wireMoveSheet(){
+  const sheet=document.querySelector('.gs-block.gs-grow');
+  if(!sheet)return;
+  let scrim=null;
+  const close=()=>{
+    sheet.classList.remove('sheet-open');
+    if(scrim){scrim.remove();scrim=null;}
+  };
+  const open=()=>{
+    sheet.classList.add('sheet-open');
+    if(!scrim){
+      scrim=document.createElement('div');
+      scrim.className='sheet-scrim';
+      scrim.addEventListener('click',close);
+      sheet.parentNode.insertBefore(scrim,sheet);
+    }
+  };
+  sheet.addEventListener('click',e=>{
+    // Les commandes de relecture et le journal lui-même gardent leur rôle :
+    // seul un appui sur le fond de la feuille la déploie ou la referme.
+    if(e.target.closest('button,.move-log'))return;
+    sheet.classList.contains('sheet-open')?close():open();
+  });
+  // Un nouveau coup pendant la consultation : on rend le plateau.
+  document.addEventListener('keydown',e=>{if(e.key==='Escape')close();});
+})();
