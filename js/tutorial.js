@@ -289,9 +289,9 @@ const TUTO_STEPS=[
     at:'.pcard .pcard-stock',
   },
   {
-    text:'Je suis pressé et vous aussi. <strong>Prenez une armée au hasard</strong>&nbsp;: '+
+    text:'Je suis pressé et vous aussi. Voici une <strong>armée tirée au hasard</strong>&nbsp;: '+
          'elle s\'enregistre toute seule, vous l\'affinerez plus tard.',
-    at:'#ar-random',click:'#ar-random',wait:450,
+    at:'.army-box',before:()=>{if(typeof pRandomize==='function')pRandomize();},
   },
   {
     text:'Elle est à vous. Maintenant, la partie que les gens comprennent toujours '+
@@ -707,39 +707,16 @@ function tutoRender(step){
   }
 }
 
-// Frappe caractère par caractère : le savant PARLE, il ne dépose pas un pavé.
-// Un clic sur la bulle termine la réplique immédiatement.
+// Le savant affiche sa réplique directement, plutôt que de la taper lettre
+// par lettre : sur une vingtaine d'étapes, l'animation ralentissait la
+// lecture plus qu'elle ne la rythmait. `dataset.typing`/`_tutoFinish`
+// restent posés (à leur état « terminé ») pour les quelques endroits qui les
+// lisent encore (voir tutoClearStep, et le clic sur la bulle plus bas).
 function tutoType(el,html){
   if(!el)return;
   el.innerHTML=html;
-  const full=el.innerHTML;
-  // On tape sur le texte visible en laissant les balises intactes : découper
-  // du HTML caractère par caractère produirait des balises à moitié écrites.
-  const nodes=[];
-  const walk=n=>{
-    if(n.nodeType===3)nodes.push(n);
-    else n.childNodes.forEach(walk);
-  };
-  walk(el);
-  const originals=nodes.map(n=>n.nodeValue);
-  nodes.forEach(n=>{n.nodeValue='';});
-  let ni=0,ci=0;
-  const finish=()=>{
-    clearInterval(_tutoTypeTimer);_tutoTypeTimer=null;
-    nodes.forEach((n,i)=>{n.nodeValue=originals[i];});
-    el.dataset.typing='0';
-  };
-  el.dataset.typing='1';
-  el._tutoFinish=finish;
-  _tutoTypeTimer=setInterval(()=>{
-    if(ni>=nodes.length){finish();return;}
-    const src=originals[ni];
-    if(ci>=src.length){ni++;ci=0;return;}
-    // Deux caractères par tic : assez vif pour ne pas tester la patience.
-    nodes[ni].nodeValue=src.slice(0,ci+2);
-    ci+=2;
-  },16);
-  if(!full)finish();
+  el.dataset.typing='0';
+  el._tutoFinish=null;
 }
 
 // ----------------------------------------------------------------

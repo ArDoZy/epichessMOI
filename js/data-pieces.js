@@ -21,13 +21,13 @@
 // RANGS ELO
 // ----------------------------------------------------------------
 const RANKS=[
-  {id:'poussiere',name:'Poussière',  color:'#7a7590',min:0,   max:199},
+  {id:'bois',     name:'Bois',       color:'#7a7590',min:0,   max:199},
   {id:'pierre',   name:'Pierre',     color:'#9a8c7a',min:200, max:499},
-  {id:'bronze',   name:'Bronze',     color:'#cd7f32',min:500, max:849},
-  {id:'acier',    name:'Acier',      color:'#8fa8b8',min:850, max:1299},
-  {id:'obsidienne',name:'Obsidienne',color:'#5a3f8a',min:1300,max:1799},
-  {id:'argent',   name:'Argent',     color:'#c0c0c0',min:1800,max:2399},
-  {id:'or',       name:'Or Légendaire',color:'#c9a84c',min:2400,max:9999},
+  {id:'bronze',   name:'Bronze',     color:'#cd7f32',min:500, max:799},
+  {id:'acier',    name:'Acier',      color:'#8fa8b8',min:800, max:1199},
+  {id:'obsidienne',name:'Obsidienne',color:'#5a3f8a',min:1200,max:1499},
+  {id:'argent',   name:'Argent',     color:'#c0c0c0',min:1500,max:1999},
+  {id:'or',       name:'Or Légendaire',color:'#c9a84c',min:2000,max:9999},
 ];
 function vvGetRank(elo){for(let i=RANKS.length-1;i>=0;i--)if(elo>=RANKS[i].min)return RANKS[i];return RANKS[0];}
 function vvGetRankFloor(elo){return vvGetRank(elo).min;}
@@ -308,12 +308,19 @@ const CLASS_COLOR_VARS={Monarque:'var(--monarque)',Général:'var(--general)',Pr
 // Primordiale » à la création du compte : on ne choisit pas ce qu'on ne
 // connaît pas encore).
 // `coffre:true` = la pièce n'est ni donnée au départ, ni débloquée par un
-// palier d'ELO : elle n'existe que comme contenu de coffre, et n'apparaît
-// donc pas comme jalon sur la Voie.
+// palier d'ELO : elle n'existe que comme contenu de coffre. `voieMilestone`
+// la fait quand même apparaître comme jalon sur la Voie (c'est le cas du
+// Peureux, de la Fourmi et de l'Éléphant de guerre : offerts par le tutoriel,
+// pas par l'ELO, mais on veut les VOIR sur la Voie). `starter` marque les
+// cinq jalons de départ (Roi, Dame, Fourmi, Peureux, Éléphant de guerre) :
+// tous à 0 ELO, ils sont rendus TOUT EN BAS de la Voie, sous l'arène Bois,
+// sans bandeau de rang — voir renderVoiePage (js/voie.js), qui saute leur
+// bandeau et ouvre celui de Bois juste après (au Preux Chevalier).
 const UNLOCK_TABLE=[
-  {pieceId:'roi',eloRequired:0},{pieceId:'dame',eloRequired:0},
-  {pieceId:'peureux',eloRequired:0,coffre:true},{pieceId:'fourmi',eloRequired:0,coffre:true},
-  {pieceId:'dresseur-elephant',eloRequired:0,coffre:true},
+  {pieceId:'roi',eloRequired:0,starter:true},{pieceId:'dame',eloRequired:0,starter:true},
+  {pieceId:'fourmi',eloRequired:0,coffre:true,voieMilestone:true,starter:true},
+  {pieceId:'peureux',eloRequired:0,coffre:true,voieMilestone:true,starter:true},
+  {pieceId:'dresseur-elephant',eloRequired:0,coffre:true,voieMilestone:true,starter:true},
   {pieceId:'cavalier-primordial',eloRequired:0,coffre:true},
   {pieceId:'fou-primordial',eloRequired:0,coffre:true},
   {pieceId:'tour-primordiale',eloRequired:0,coffre:true},
@@ -325,13 +332,13 @@ const UNLOCK_TABLE=[
   {pieceId:'pretre',eloRequired:800},{pieceId:'typhon',eloRequired:1000,bigReward:true},
   {pieceId:'banshee',eloRequired:1150},
   {pieceId:'grand-maitre',eloRequired:1700},
-  {pieceId:null,eloRequired:2400,bigReward:true,label:'Or Légendaire atteint !'},
+  {pieceId:null,eloRequired:2000,bigReward:true,label:'Or Légendaire atteint !'},
 ];
 
 const UNLOCK_MILESTONES=(()=>{
   const seen=new Set();
   return UNLOCK_TABLE.filter(u=>{
-    if(u.coffre)return false;
+    if(u.coffre&&!u.voieMilestone)return false;
     if(u.pieceId&&seen.has(u.pieceId))return false;
     if(u.pieceId)seen.add(u.pieceId);return true;
   }).sort((a,b)=>a.eloRequired-b.eloRequired);

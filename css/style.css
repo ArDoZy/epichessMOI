@@ -315,11 +315,16 @@ body{
 body.has-acc #page-armies,body.has-acc #page-ai-armies,body.has-acc #page-voie,body.has-acc #page-adversaires{padding-top:var(--page-top)}
 body.has-acc #page-reserve .reserve-wrap{padding-top:var(--page-top)}
 body.has-acc #page-combat{padding-top:calc(var(--chrome-h) + var(--safe-t))}
-/* La barre de compte occupe 50 px en haut : la partie prend ce qui reste.
-   #page-game garde par ailleurs un min-height:100vh (utile hors compte) qui,
-   ajouté à ces 50 px de marge, faisait dépasser la face de 50 px et rendait
-   l'échiquier défilable pour rien. */
-body.has-acc .game-wrap{height:calc(100vh - 50px);margin-top:50px}
+/* #page-game garde par ailleurs un min-height:100vh (utile hors compte, voir
+   [GAME] plus bas) qui, une fois connecté, faisait dépasser la face pour
+   rien et rendait l'échiquier défilable sans raison. La partie n'a plus de
+   bandeau de compte au-dessus d'elle depuis longtemps (voir js/accounts.js),
+   donc aucune marge de compensation n'est due à .game-wrap : c'était une
+   ANCIENNE règle réservant 50 px pour ce bandeau disparu qui, sur mobile,
+   entrait en conflit avec le calage par la zone sûre du haut (--safe-t,
+   section [MOBILE-GAME]) — la hauteur fixe qu'elle imposait à .game-wrap
+   l'empêchait de dépasser 100vh-50px, rognant le bandeau adverse en haut et
+   rendant « Annuler coup »/« Abandonner » inatteignables en bas. */
 body.has-acc #page-game{min-height:0}
 
 /* [AI-LEVEL] ======================================================= */
@@ -399,6 +404,12 @@ body.has-acc .builder-inner{padding-top:var(--page-top)}
    l'écran. Le nombre reste, la jauge le rend perceptible d'un coup d'œil. */
 .bd-budget{display:flex;align-items:baseline;justify-content:space-between;gap:10px;
   margin-top:2px;margin-bottom:6px}
+/* Composition d'armées (page-armies) : plus de bouton à droite de la barre
+   depuis le retrait d'« Armée aléatoire »/« Tout effacer », donc plus rien
+   pour justifier que « Valeur » reste collée à gauche, loin du nombre
+   qu'elle qualifie — les deux se rejoignent à droite, au-dessus des
+   emplacements de l'armée. */
+.bd-budget-end{justify-content:flex-end}
 .bd-budget-lbl{font-family:var(--f-ui);font-size:11px;font-weight:650;letter-spacing:.12em;
   text-transform:uppercase;color:var(--muted)}
 .bd-budget-num{font-family:var(--f-ui);font-size:18px;font-weight:700;color:var(--text);
@@ -893,8 +904,15 @@ body.has-acc .builder-inner{padding-top:var(--page-top)}
 .veb-progress-wrap{background:rgba(0,0,0,.25);border-radius:8px;height:10px;overflow:hidden;margin-bottom:4px}
 .veb-progress-bar{height:100%;border-radius:8px;transition:width .7s cubic-bezier(.34,1.56,.64,1)}
 .veb-progress-label{font-size:10px;color:var(--muted);font-family:var(--f-ui)}
-.voie-route{position:relative;padding:10px 0 30px}
-.voie-route::before{content:'';position:absolute;left:50%;top:0;bottom:0;width:3px;background:linear-gradient(to bottom,var(--accent),var(--gold),var(--accent2));transform:translateX(-50%);border-radius:2px;opacity:.35;z-index:0}
+/* La Voie se lit du bas (le départ) vers le haut (Or Légendaire) : on
+   grimpe, on ne descend pas. Le HTML reste construit en ELO croissant
+   (renderVoiePage, js/voie.js) — c'est `column-reverse` qui pose le premier
+   jalon généré (le plus bas en ELO) tout en bas de l'écran et le dernier
+   (le plus haut) tout en haut, sans toucher à l'ordre de génération ni à
+   l'alternance gauche/droite des cartes (nth-child suit l'ordre DOM, pas
+   l'ordre visuel). */
+.voie-route{position:relative;padding:10px 0 30px;display:flex;flex-direction:column-reverse}
+.voie-route::before{content:'';position:absolute;left:50%;top:0;bottom:0;width:3px;background:linear-gradient(to top,var(--accent),var(--gold),var(--accent2));transform:translateX(-50%);border-radius:2px;opacity:.35;z-index:0}
 .voie-milestone{display:flex;align-items:center;gap:18px;margin-bottom:20px;position:relative;z-index:1}
 .voie-milestone:nth-child(odd){flex-direction:row}.voie-milestone:nth-child(even){flex-direction:row-reverse}
 .vm-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 18px;flex:1;max-width:calc(50% - 40px);transition:all .25s;position:relative;overflow:hidden}

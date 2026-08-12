@@ -177,13 +177,13 @@ function pieceCardHTML(p,opts){
     // posées SOUS la carte et par-dessus ses voisines (position absolue) :
     // la grille ne bouge pas d'un pixel quand on ouvre une carte.
     '<div class="pcard-actions">'+
+      '<button type="button" class="pcard-act pcard-infos" data-act="info">'+
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6, 15 12, 9 18"/></svg>'+
+        '<span>Infos</span></button>'+
       (o.locked?''
         :'<button type="button" class="pcard-act pcard-use" data-act="use">'+
           '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6, 15 12, 9 18"/></svg>'+
           '<span>'+(o.selected?'Retirer':'Utiliser')+'</span></button>')+
-      '<button type="button" class="pcard-act pcard-infos" data-act="info">'+
-        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6, 15 12, 9 18"/></svg>'+
-        '<span>Infos</span></button>'+
     '</div>'+
   '</article>';
 }

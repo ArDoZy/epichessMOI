@@ -133,11 +133,28 @@ function renderGame(gs){
       // Le relâchement du doigt sur une pièce qu'on vient de toucher (le
       // touchstart a déjà appelé startDrag, qui l'a sélectionnée) ne doit PAS
       // repasser par handleGameClick : celui-ci verrait la pièce déjà
-      // sélectionnée et la désélectionnerait aussitôt — c'était le bug qui
-      // désélectionnait systématiquement une pièce dès qu'on levait le doigt
-      // sur mobile. C'est endDrag (document, plus bas) qui conclut ce geste,
-      // qu'il s'agisse d'un simple appui ou d'un vrai glissement.
-      if(dragState){e.preventDefault();return;}
+      // sélectionnée et la désélectionnerait aussitôt.
+      //
+      // On résout le geste ICI MÊME (endDrag), pas en comptant sur le
+      // `touchend` de `document` plus bas : startDrag a redessiné tout le
+      // plateau (innerHTML) au TOUCHSTART pour afficher la sélection tout de
+      // suite, ce qui détache l'élément touché (et sa case) de l'arbre AVANT
+      // que ce même doigt ne se relève. Un événement tactile garde sa cible
+      // fixée à l'élément d'origine pendant tout le geste (contrairement à un
+      // clic souris, qui se re-cible naturellement sur l'élément courant) :
+      // une fois cette case détachée, son `touchend` ne remonte plus jusqu'à
+      // `document`, et endDrag() n'y était donc jamais appelé pour CE geste —
+      // c'est le relâchement du doigt SUIVANT (sur la case d'arrivée) qui
+      // finissait par le déclencher en remontant, absorbant ce tap-là sans
+      // rien faire. Il fallait donc deux appuis sur la case d'arrivée pour
+      // qu'un coup parte. En résolvant ici, sur la case d'origine qui reçoit
+      // toujours son propre relâchement, un seul appui sur l'arrivée suffit.
+      if(dragState){
+        e.preventDefault();
+        const t=e.changedTouches[0];
+        if(t)endDrag(t.clientX,t.clientY);
+        return;
+      }
       if(gs.historyView!==null){gs.historyView=null;renderGame(gs);updateStatus(gs);updateHistoryNav();return;}
       e.preventDefault();
       handleGameClick(r,c,gs);
