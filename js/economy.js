@@ -27,7 +27,7 @@
 //
 // Dépendances : data-pieces.js (PIECES, CHESTS, DAILY_CHEST, chestForStreak),
 // accounts.js (accGet/accSet, VV_UNLOCKED, vvSaveUnlocked).
-// Utilisé par : game-flow.js et tournoi.js (engagement/règlement),
+// Utilisé par : game-flow.js (engagement/règlement),
 // armies.js et builder.js (armée jouable ou non), economy-ui.js (affichage).
 // ================================================================
 
@@ -45,10 +45,28 @@ function pieceDeployCount(pieceId){
 }
 
 // ----------------------------------------------------------------
+// MODE TEST (/?test) : un bac à sable, pas une avance sur la progression
+// ----------------------------------------------------------------
+// En mode test, le joueur a TOUT : chaque pièce en quantité illimitée, 10 000
+// ELO (voir vvLoadElo dans js/accounts.js) et des perles sans fond. Rien n'y
+// est écrit sur le compte : ni inventaire, ni perles, ni déblocages, ni ELO.
+// C'est la seule façon d'essayer une composition d'armée sans laisser de trace
+// sur la partie sérieuse — et c'est aussi pour ça que les parties jouées là
+// ne sont pas classées (voir vvNoEloReason, js/voie.js).
+function economyAdmin(){return typeof ADMIN_MODE!=='undefined'&&ADMIN_MODE;}
+const ADMIN_STOCK=999;
+const ADMIN_PEARLS=999999;
+
+// ----------------------------------------------------------------
 // INVENTAIRE
 // ----------------------------------------------------------------
-function invAll(){return accGet('inventory',{})||{};}
-function invSaveAll(o){accSet('inventory',o);}
+function invAll(){
+  if(economyAdmin()){
+    const o={};PIECES.forEach(p=>{if(isOwnablePiece(p.id))o[p.id]=ADMIN_STOCK;});return o;
+  }
+  return accGet('inventory',{})||{};
+}
+function invSaveAll(o){if(economyAdmin())return;accSet('inventory',o);}
 function invCount(id){const n=invAll()[id];return typeof n==='number'?n:0;}
 function invAdd(id,n){
   if(!isOwnablePiece(id)||!n)return;
@@ -79,6 +97,7 @@ function invOwnedIds(){
 // dépendre du hasard des coffres.
 const STARTER_STOCK=10;
 function invEnsureStarter(){
+  if(economyAdmin())return;   // tout est déjà à ADMIN_STOCK, et rien ne s'écrit
   const inv=invAll();
   let changed=false;
   (VV_UNLOCKED||new Set()).forEach(id=>{
@@ -179,10 +198,9 @@ function economyOnPromotion(pieceId,gs){
 }
 
 // Palier de coffre maximal pour la partie qui vient de finir, ou null quand
-// il n'y a pas de plafond (jeu en ligne, tournoi : l'adversaire vaut le sien).
+// il n'y a pas de plafond (jeu en ligne : l'adversaire vaut le sien).
 function economyChestCap(gs){
   if(gs&&gs.multiplayer)return null;
-  if(typeof tournamentState!=='undefined'&&tournamentState&&tournamentState.active)return null;
   const o=(typeof aiCurrentOpponent==='function')?aiCurrentOpponent():null;
   return(o&&typeof o.tier==='number')?o.tier:null;
 }
@@ -211,8 +229,8 @@ function economySettle(result,gs){
   // l'adversaire battu (champ `tier` de AI_OPPONENTS). Sans ce plafond, six
   // victoires d'affilée contre Cendre (150 ELO, qui joue presque au hasard)
   // donneraient un Coffre Roi : le moyen le plus rentable de progresser
-  // serait de ne jamais affronter personne à sa mesure. Le tournoi et le jeu
-  // en ligne n'ont pas de plafond, l'adversaire y vaut toujours le sien.
+  // serait de ne jamais affronter personne à sa mesure. Le jeu en ligne n'a
+  // pas de plafond, l'adversaire y vaut toujours le sien.
   let streak=accGet('win_streak',0);
   let chest=null;
   if(result==='win'){
@@ -268,14 +286,22 @@ function randInt(a,b){return a+Math.floor(Math.random()*(b-a+1));}
 // coffres de son choix (les six coffres du menu principal, voir
 // js/economy-ui.js). Une
 // mauvaise ouverture fait donc toujours avancer vers le Coffre Roi.
-function pearlBalance(){const n=accGet('pearls',0);return typeof n==='number'?Math.max(0,n):0;}
+// En mode test, la bourse est sans fond et ne se débite jamais (voir
+// economyAdmin plus haut). L'affichage montre « ∞ » plutôt que le nombre.
+function pearlInfinite(){return economyAdmin();}
+function pearlBalance(){
+  if(pearlInfinite())return ADMIN_PEARLS;
+  const n=accGet('pearls',0);return typeof n==='number'?Math.max(0,n):0;
+}
 function pearlAdd(n){
+  if(pearlInfinite())return ADMIN_PEARLS;
   if(!n)return pearlBalance();
   const v=Math.max(0,pearlBalance()+n);
   accSet('pearls',v);
   return v;
 }
 function pearlSpend(n){
+  if(pearlInfinite())return true;
   if(n<0)return false;
   if(pearlBalance()<n)return false;
   pearlAdd(-n);

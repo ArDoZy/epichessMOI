@@ -611,6 +611,7 @@ function mpWaitStart(){
   mpWaitStop();
   MP.waitStartedAt=Date.now();
   document.getElementById('mp-modal')?.classList.add('mp-wait');
+  mpRenderTip();
   mpWaitTick();
   _mpWaitTimer=setInterval(mpWaitTick,1000);
 }
@@ -619,14 +620,27 @@ function mpWaitStop(){
   document.getElementById('mp-modal')?.classList.remove('mp-wait');
 }
 
-// Chercher sans rien voir bouger donne l'impression que le jeu est en panne.
-// Le chronomètre le dit d'un coup d'œil ; ces deux chiffres-ci disent le
-// reste : combien de joueurs attendent, et jusqu'où on accepte de descendre
-// ou de monter en niveau.
+// ----------------------------------------------------------------
+// TIPS D'ATTENTE
+// ----------------------------------------------------------------
+// Ce qu'on lit pendant qu'un adversaire se cherche. POUR EN AJOUTER UN : une
+// ligne de plus dans ce tableau, il n'y a rien d'autre à toucher — un tips est
+// tiré au sort à chaque entrée en attente (mpRenderTip).
+const MP_TIPS=[
+  'Les pièces primordiales furent les premières expériences du savant, c\'est pour cela qu\'elles n\'ont pas de pouvoir.',
+];
+function mpRenderTip(){
+  const el=document.getElementById('mp-tip');
+  if(!el||!MP_TIPS.length){if(el)el.innerHTML='';return;}
+  const txt=MP_TIPS[Math.floor(Math.random()*MP_TIPS.length)];
+  el.innerHTML='<span class="mp-tip-lbl">Le savez-vous&nbsp;?</span>'+
+    '<span class="mp-tip-txt">'+(typeof escH==='function'?escH(txt):txt)+'</span>';
+}
+
+// Chercher sans rien voir bouger donne l'impression que le jeu est en panne :
+// le chronomètre dit d'un coup d'œil que quelque chose tourne encore, la note
+// ci-dessous dit où l'on en est de la recherche.
 function mpRenderSearch(waitS,peerCount,win){
-  const set=(id,txt)=>{const e=document.getElementById(id);if(e)e.textContent=txt;};
-  set('mp-search-peers',peerCount);
-  set('mp-search-window',win===Infinity?'tous':'±'+win);
   const note=document.getElementById('mp-search-note');
   if(note){
     note.textContent=peerCount<2

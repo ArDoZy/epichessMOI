@@ -308,13 +308,102 @@ const OPTIONAL_ASSET=/adversaires\/[a-z-]+\.png|lab-bg\.jpg/;
     if(bad.length)throw new Error(bad.join(' · '));
   });
 
-  // Le mode admin est une ADRESSE : s'il cessait d'être reconnu, il
-  // s'ouvrirait sur le jeu normal sans que rien ne le dise.
-  await step('le mode test est reconnu a son adresse',async()=>{
+  // LES POUVOIRS, un par un. Ils sont ce que le jeu a de particulier et ce
+  // qu'aucun autre test ne touche : une partie jouée par le robot ne croise
+  // presque jamais un Prêtre bien placé ou une Banshee au contact. Chaque
+  // assertion ci-dessous correspond à une phrase du catalogue (PIECES.ability).
+  await step('les pouvoirs font ce que leur fiche annonce',async()=>{
+    const bad=await page.evaluate(()=>{
+      const out=[];
+      const vide=()=>Array.from({length:8},()=>Array(8).fill(null));
+      const pose=(b,r,c,pieceId,color)=>{
+        const def=PIECES.find(p=>p.id===pieceId);
+        const type=def?(def.pieceType||'q'):(pieceId==='std-pawn'?'p':'q');
+        b[r][c]={type,color,pieceId,emoji:'',hasMoved:true,isKing:type==='k',id:pieceId+r+c};
+        return b[r][c];
+      };
+      const etat=b=>{
+        const gs={medusaParalyzed:new Set(),anchored:new Set(),pretreProtected:new Set(),
+          grandMaitreAlive:{w:false,b:false},enPassant:null,lastMoveHistory:[]};
+        updatePretreProtection(b,gs);updateGrandMaitre(b,gs);
+        return gs;
+      };
+      const va=(b,r,c,tr,tc)=>generateMovesRaw(b,r,c,etat(b)).some(m=>m.r===tr&&m.c===tc);
+
+      // PEUREUX — Retraite Prudente : jamais hors des 4 rangées de son camp.
+      let b=vide();pose(b,4,4,'peureux','w');
+      if(!va(b,4,4,5,4))out.push('peureux : ne recule pas dans son camp');
+      if(va(b,4,4,3,4))out.push('peureux : franchit la moitie du plateau');
+      b=vide();pose(b,3,4,'peureux','b');
+      if(va(b,3,4,4,4))out.push('peureux noir : franchit la moitie du plateau');
+
+      // CUIRASSE — les pions ne prennent pas le Preux Chevalier, la Fourmi si.
+      b=vide();pose(b,4,4,'std-pawn','w');pose(b,3,3,'preux-chevalier','b');
+      if(va(b,4,4,3,3))out.push('cuirasse : un pion capture le preux chevalier');
+      b=vide();pose(b,4,4,'fourmi','w');pose(b,3,3,'preux-chevalier','b');
+      if(!va(b,4,4,3,3))out.push('cuirasse : la fourmi ne peut pas capturer le preux chevalier');
+
+      // DOMINATION — le Grand Maître adverse interdit le bond de 2 cases, y
+      // compris quand les deux camps en alignent un.
+      b=vide();pose(b,6,4,'std-pawn','w');pose(b,0,0,'grand-maitre','b');
+      if(va(b,6,4,4,4))out.push('domination : le pion avance encore de 2 cases');
+      pose(b,7,7,'grand-maitre','w');
+      if(va(b,6,4,4,4))out.push('domination : deux grands maitres s annulent');
+      b=vide();pose(b,6,4,'std-pawn','w');
+      if(!va(b,6,4,4,4))out.push('domination : le bond de 2 cases a disparu sans grand maitre');
+
+      // FOI INÉBRANLABLE — le Prêtre couvre ses alliées en diagonale, pas les
+      // pièces adverses posées là, et jamais le Monarque.
+      b=vide();pose(b,4,4,'pretre','b');pose(b,3,3,'meduse','b');pose(b,3,7,'tour-primordiale','w');
+      if(va(b,3,7,3,3))out.push('pretre : une alliee protegee est quand meme capturee');
+      b=vide();pose(b,4,4,'pretre','b');pose(b,3,3,'meduse','w');pose(b,3,7,'tour-primordiale','b');
+      if(!va(b,3,7,3,3))out.push('pretre : il protege aussi les pieces adverses');
+      b=vide();pose(b,4,4,'pretre','b');pose(b,3,3,'roi','b');pose(b,3,7,'tour-primordiale','w');
+      if(!va(b,3,7,3,3))out.push('pretre : le monarque devient imprenable');
+
+      // HURLEMENT — après son déplacement, les PIONS ennemis adjacents (les
+      // huit cases) reculent. La Fourmi, elle, n'est pas un pion.
+      b=vide();const bans=pose(b,4,4,'banshee','w');pose(b,3,4,'std-pawn','b');pose(b,3,5,'fourmi','b');
+      applyBansheeEffect(4,4,b,bans);
+      if(b[3][4]!==null)out.push('hurlement : le pion adjacent n a pas recule');
+      if(!b[4][4]||b[4][4].pieceId!=='banshee')out.push('hurlement : la banshee a bouge');
+      if(!b[2][4]||b[2][4].pieceId!=='std-pawn')out.push('hurlement : le pion n est pas arrive derriere');
+      if(!b[3][5]||b[3][5].pieceId!=='fourmi')out.push('hurlement : la fourmi a ete traitee comme un pion');
+      return out;
+    });
+    if(bad.length)throw new Error(bad.join(' · '));
+  });
+
+  // Le mode test est une ADRESSE : s'il cessait d'être reconnu, il
+  // s'ouvrirait sur le jeu normal sans que rien ne le dise. Et ce qu'il
+  // promet — tout le catalogue, 10 000 ELO, des perles sans fond — se vérifie
+  // ici, parce que c'est exactement ce qui ne se voit pas quand ça casse.
+  await step('le mode test donne tout et ne classe rien',async()=>{
     await page.goto('http://localhost:'+PORT+'/?test',{waitUntil:'domcontentloaded'});
     await page.waitForSelector('#page-login.active',{timeout:8000});
-    if(!await page.evaluate(()=>ADMIN_MODE))throw new Error('/?test n active pas le mode admin');
-    if(!/Mode admin/.test(await page.evaluate(()=>vvNoEloReason({}))||''))throw new Error('les parties y sont encore classees');
+    if(!await page.evaluate(()=>ADMIN_MODE))throw new Error('/?test n active pas le mode test');
+    if(!/Mode test/.test(await page.evaluate(()=>vvNoEloReason({}))||''))throw new Error('les parties y sont encore classees');
+    const bad=await page.evaluate(()=>{
+      const out=[];
+      // Le compte créé plus haut est toujours dans localStorage : on s'y
+      // reconnecte pour lire l'économie telle que la voit un joueur.
+      CUR_ACC=Object.keys(loadAccs())[0]||null;
+      if(!CUR_ACC){out.push('aucun compte de test');return out;}
+      loadAccountGlobals();
+      if(vvLoadElo()!==10000)out.push('ELO '+vvLoadElo()+' au lieu de 10000');
+      const manquantes=PIECES.filter(p=>!VV_UNLOCKED.has(p.id)).map(p=>p.id);
+      if(manquantes.length)out.push('pieces verrouillees : '+manquantes.join(','));
+      const vides=PIECES.filter(p=>isOwnablePiece(p.id)&&invCount(p.id)<pieceDeployCount(p.id)).map(p=>p.id);
+      if(vides.length)out.push('sans stock : '+vides.join(','));
+      if(!pearlInfinite())out.push('perles non illimitees');
+      if(!pearlSpend(chestPearlPrice('roi')))out.push('achat de coffre refuse');
+      // Rien ne doit avoir été écrit sur le compte.
+      if(localStorage.getItem(accKey(CUR_ACC,'inventory'))&&
+         JSON.parse(localStorage.getItem(accKey(CUR_ACC,'inventory')))[PIECES[0].id]===999)
+        out.push('l inventaire du mode test a ete enregistre');
+      return out;
+    });
+    if(bad.length)throw new Error(bad.join(' · '));
   });
 
   await browser.close();

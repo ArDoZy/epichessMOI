@@ -14,7 +14,7 @@
 //
 // Dépendances : rules-engine.js (getAudioCtx), settings-admin.js (_musicVol,
 // window._musicGain). Appelé par game-flow.js (showArmyIntro/closeOverlay,
-// triggerEndOfGame) et tournoi.js (triggerTournoiEndOfGame).
+// triggerEndOfGame).
 // ================================================================
 
 const COMBAT_MUSIC_URL='audio/combat-music.mp3';

@@ -17,7 +17,7 @@
 
 // ----------------------------------------------------------------
 // ÉTAT GLOBAL PARTAGÉ (lu/écrit par builder.js, armies.js, combat-intro.js,
-// game-flow.js, voie.js, tournoi.js, settings-admin.js)
+// game-flow.js, voie.js, settings-admin.js)
 // ----------------------------------------------------------------
 // army.extras : liste ORDONNÉE des 3 pièces choisies (l'ordre définit la
 // disposition en partie, voir builder.js::derivePlacements).
@@ -30,14 +30,13 @@ let currentArmyData=null;
 let aiArmyData=null;
 let darkMode=true;
 let VV_UNLOCKED=new Set();
-// ADMIN : le mode admin ne touche plus à VV_UNLOCKED (il ne fait qu'ouvrir
-// des coffres illimités et sortir les parties du classement), il n'y a donc
-// plus d'instantané de progression à restaurer en le désactivant.
-//
-// Il n'est plus un interrupteur posé sur le jeu normal : c'est une ADRESSE
-// (voir juste en dessous). On y entre et on en sort par les réglages, et
-// l'adresse affichée dit toujours de quel côté on se trouve — impossible
-// d'oublier qu'on est en admin et de s'étonner ensuite que l'ELO ne bouge pas.
+// MODE TEST : ce n'est pas un interrupteur posé sur le jeu normal, c'est une
+// ADRESSE (voir juste en dessous). On y entre et on en sort par les réglages,
+// et l'adresse affichée dit toujours de quel côté on se trouve — impossible
+// d'oublier qu'on y est et de s'étonner ensuite que l'ELO ne bouge pas.
+// Dedans, tout est débloqué et illimité, et RIEN n'est enregistré : les
+// lectures d'inventaire, de perles, d'ELO et de déblocages sont détournées
+// (js/economy.js, js/accounts.js) et les écritures ignorées.
 
 // ----------------------------------------------------------------
 // ADRESSES DU JEU : /, /combat, et le mode admin en ?test
@@ -221,8 +220,7 @@ function showPage(id){
 // chaque appel via une fermeture (onYes courante).
 // ----------------------------------------------------------------
 // opts (facultatif) : {okLabel, cancelLabel, okClass, onNo}, permet une vraie
-// question « Oui / Non » où le refus déclenche lui aussi une action (utilisé
-// par la reprise de tournoi : « Non » supprime le tournoi abandonné).
+// question « Oui / Non » où le refus déclenche lui aussi une action.
 let _confirmOnYes=null,_confirmOnNo=null;
 function showConfirmModal(msg,onYes,opts){
   opts=opts||{};
@@ -314,8 +312,7 @@ function showPieceCtxMenu(e,pieceDef,opts){
     stockRow.style.display=own?'':'none';
     if(own){
       const n=invCount(pieceDef.id);
-      document.getElementById('ctx-stock').textContent=
-        n+' exemplaire'+(n>1?'s':'')+' (se déploie par '+pieceDeployCount(pieceDef.id)+')';
+      document.getElementById('ctx-stock').textContent=n+' exemplaire'+(n>1?'s':'');
     }
   }
   const abRow=document.getElementById('ctx-ability-row');
@@ -350,8 +347,6 @@ document.addEventListener('keydown',e=>{
   if(ctx&&ctx.classList.contains('show')){ctx.classList.remove('show');return;}
   const panel=document.getElementById('settings-panel');
   if(panel&&panel.classList.contains('open')){panel.classList.remove('open');return;}
-  const analyse=document.getElementById('tournoi-analyse-modal');
-  if(analyse&&analyse.style.visibility==='visible'){analyse.style.visibility='hidden';return;}
   const mp=document.getElementById('mp-modal');
   if(mp&&mp.classList.contains('show')){
     if(typeof mpLeave==='function')mpLeave();

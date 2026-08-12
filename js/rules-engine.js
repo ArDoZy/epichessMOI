@@ -30,8 +30,8 @@
 
 const FILES=['A','B','C','D','E','F','G','H'];
 
-// État de partie global : reconstruit par startGame()/launchTournoiRound()
-// dans game-flow.js / tournoi.js. Voir la structure complète dans ces fichiers.
+// État de partie global : reconstruit par startGame() dans game-flow.js.
+// Voir la structure complète dans ce fichier.
 let GS={board:[],turn:'w',selected:null,legalMoves:[],history:[],enPassant:null,halfmoveClock:0,gameOver:false,playerArmy:null,aiArmy:null,movePairs:[],capturedW:[],capturedB:[],pendingPromo:null,medusaParalyzed:new Set(),lastMove:null,anchored:new Set(),pretreProtected:new Set(),amazonePostCapture:null,grandMaitreAlive:{w:false,b:false},gardePierreUsed:{w:false,b:false},turnCount:0,historyView:null,lastMoveHistory:[],clockMs:0,incrementMs:0,timeWhite:0,timeBlack:0};
 
 function inB(r,c){return r>=0&&r<8&&c>=0&&c<8;}
@@ -53,7 +53,7 @@ function getPieceEmoji(cell){if(!cell)return '';return cell.emoji||'?';}
 // L'incrément est crédité dans recordMove(), c'est-à-dire au moment exact où
 // un coup est inscrit au journal, juste avant que le trait ne change.
 // Démarrée par showArmyIntro() à la fermeture de l'overlay (game-flow.js),
-// arrêtée dans triggerEndOfGame()/triggerTournoiEndOfGame(). Le rendu des
+// arrêtée dans triggerEndOfGame(). Le rendu des
 // badges (#human-player-clock/#ai-player-clock) est fait par renderClocks()
 // dans game-render.js, appelée à chaque tick et à chaque renderGame().
 // ================================================================
@@ -122,7 +122,11 @@ function kingMoves(board,r,c,p,gs){
 }
 function pawnMoves(board,r,c,p,gs){
   const moves=[];const dir=p.color==='w'?-1:1;const startRow=p.color==='w'?6:1;
-  const gmBlocks=gs.grandMaitreAlive[opp(p.color)]&&!gs.grandMaitreAlive[p.color];
+  // DOMINATION DU GRAND MAÎTRE : tant qu'il est vivant, les pions ADVERSES ne
+  // peuvent pas avancer de 2 cases. La condition s'annulait quand les deux
+  // camps en alignaient un — ce qui n'est pas la règle : chacun subit celui
+  // d'en face, y compris quand il a le sien.
+  const gmBlocks=!!gs.grandMaitreAlive[opp(p.color)];
   const fr=r+dir;
   if(inB(fr,c)&&!board[fr][c]){
     moves.push({r:fr,c});
@@ -159,18 +163,28 @@ function generateMovesRaw(board,r,c,gs){
     case 'cavalier-primordial':moves=knightMoves(board,r,c,p);break;
     case 'fou-primordial':moves=slidingMoves(board,r,c,p,[[1,1],[1,-1],[-1,1],[-1,-1]],gs);break;
     case 'tour-primordiale':moves=slidingMoves(board,r,c,p,[[1,0],[-1,0],[0,1],[0,-1]],gs);break;
-    // Alpha : EXACTEMENT 2 cases en diagonale, en sautant. Ne va JAMAIS sur
-    // une case diagonale adjacente (règle voulue par le jeu).
-    case 'alpha':moves=jumpMoves(board,r,c,p,[[2,2],[2,-2],[-2,2],[-2,-2]]);break;
+    // PEUREUX : une case dans les huit directions, MAIS jamais hors de son
+    // camp — les quatre premières rangées du sien (« Retraite Prudente »).
+    // Blanc démarre en bas (r=7) : son camp est r>=4. Noir en haut : r<=3.
+    case 'peureux':{
+      const inCamp=nr=>p.color==='w'?nr>=4:nr<=3;
+      for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++){
+        if(!dr&&!dc)continue;
+        const nr=r+dr,nc=c+dc;
+        if(!inB(nr,nc)||!inCamp(nr))continue;
+        if(!board[nr][nc]||board[nr][nc].color!==p.color)moves.push({r:nr,c:nc});
+      }
+      break;}
     case 'fourmi':{
-      // Comme un pion, la Fourmi ne peut ni se déplacer sur, ni capturer,
-      // un Preux Chevalier (ability "Cuirasse").
+      // La Fourmi N'EST PAS un pion (voir TRUE_PAWN_IDS, data-pieces.js) : la
+      // Cuirasse du Preux Chevalier, qui n'arrête que les pions, ne la
+      // concerne donc pas — elle peut le capturer.
       const fwd=p.color==='w'?-1:1;
       // Avant orthogonal (déplacement ET capture)
       const nrO=r+fwd,ncO=c;
-      if(inB(nrO,ncO)&&(!board[nrO][ncO]||(board[nrO][ncO].color!==p.color&&board[nrO][ncO].pieceId!=='preux-chevalier')))moves.push({r:nrO,c:ncO});
+      if(inB(nrO,ncO)&&(!board[nrO][ncO]||board[nrO][ncO].color!==p.color))moves.push({r:nrO,c:ncO});
       // Avant diagonal gauche et droit (déplacement ET capture)
-      for(const dc of[-1,1]){const nrD=r+fwd,ncD=c+dc;if(inB(nrD,ncD)&&(!board[nrD][ncD]||(board[nrD][ncD].color!==p.color&&board[nrD][ncD].pieceId!=='preux-chevalier')))moves.push({r:nrD,c:ncD});}
+      for(const dc of[-1,1]){const nrD=r+fwd,ncD=c+dc;if(inB(nrD,ncD)&&(!board[nrD][ncD]||board[nrD][ncD].color!==p.color))moves.push({r:nrD,c:ncD});}
       break;}
     // Preux Chevalier : exactement 2 ortho (pas de saut) OU 1 diag
     case 'preux-chevalier':
@@ -209,8 +223,13 @@ function generateMovesRaw(board,r,c,gs){
         case 'k':moves=kingMoves(board,r,c,p,gs);break;
       }
   }
+  // FOI INÉBRANLABLE DU PRÊTRE : on ne peut pas capturer une pièce ENNEMIE qui
+  // est protégée par SON Prêtre. La clé porte donc la couleur protégée (voir
+  // updatePretreProtection) : sans elle, un Prêtre noir rendait aussi
+  // intouchables les pièces blanches posées en diagonale de lui.
   moves=moves.filter(m=>{
-    if(board[m.r]?.[m.c]&&board[m.r][m.c].color!==p.color){if(gs.pretreProtected&&gs.pretreProtected.has(`${m.r},${m.c}`))return false;}
+    const t=board[m.r]?.[m.c];
+    if(t&&t.color!==p.color&&gs.pretreProtected&&gs.pretreProtected.has(t.color+':'+m.r+','+m.c))return false;
     return true;
   });
   return moves;
@@ -240,10 +259,9 @@ function isInCheckSimple(color,board){
 // CUSTOM_MOVE_IDS : pièces dont le déplacement/attaque N'EST PAS celui de
 // leur pieceType de base. Elles ont une détection d'échec DÉDIÉE plus bas,
 // donc le raccourci « attaque comme son pieceType » ne doit JAMAIS jouer
-// pour elles, sinon l'Alpha, la Banshee ou le Typhon (tous de pieceType
-// 'b' pour le rendu) donneraient échec comme un fou tout le long de la
-// diagonale, ce qui est faux.
-const CUSTOM_MOVE_IDS=new Set(['amazone','alpha','fourmi','preux-chevalier','dresseur-elephant','garde-pierre','meduse','typhon','banshee','pretre']);
+// pour elles, sinon le Peureux, la Banshee ou le Typhon donneraient échec
+// comme leur pieceType de base tout le long d'une ligne, ce qui est faux.
+const CUSTOM_MOVE_IDS=new Set(['amazone','peureux','fourmi','preux-chevalier','dresseur-elephant','garde-pierre','meduse','typhon','banshee','pretre']);
 // Pièces qui donnent échec en GLISSANT (portée illimitée). Le raccourci par
 // pieceType (b/r/q) couvre en plus les pièces standard et promues.
 const DIAG_SLIDER_IDS=new Set(['fou-primordial','amazone','dame','grand-maitre']);
@@ -293,9 +311,13 @@ function isSquareAttackedSimple(tr,tc,defColor,board){
   for(const dc of[-1,1]){const r=tr+atkFwdDir,c=tc+dc;if(inB(r,c)){const p=board[r][c];if(p&&p.color===atk&&p.pieceId==='fourmi')return true;}}}
   // --- Typhon : 1 case en diagonale ---
   for(const[dr,dc] of[[1,1],[1,-1],[-1,1],[-1,-1]]){const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;const p=board[r][c];if(p&&p.color===atk&&p.pieceId==='typhon')return true;}
-  // --- Alpha : EXACTEMENT 2 cases en diagonale (saut). PAS les cases
-  //     adjacentes en diagonale, c'est volontaire (voir data-pieces). ---
-  for(const[dr,dc] of[[2,2],[2,-2],[-2,2],[-2,-2]]){const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;const p=board[r][c];if(p&&p.color===atk&&p.pieceId==='alpha')return true;}
+  // --- Peureux : 1 case dans les 8 directions, mais uniquement vers une case
+  //     de SON camp (Retraite Prudente) : hors de son camp, il n'attaque rien. ---
+  for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++){
+    if(!dr&&!dc)continue;const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;
+    const p=board[r][c];if(!(p&&p.color===atk&&p.pieceId==='peureux'))continue;
+    if(p.color==='w'?tr>=4:tr<=3)return true;
+  }
   // --- Banshee : 1 OU 2 cases en diagonale (les 2 cases sans sauter) ---
   for(const[dr,dc] of[[1,1],[1,-1],[-1,1],[-1,-1]]){const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;const p=board[r][c];if(p&&p.color===atk&&p.pieceId==='banshee')return true;}
   for(const[dr,dc] of[[2,2],[2,-2],[-2,2],[-2,-2]]){const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;const midR=tr+dr/2,midC=tc+dc/2;if(!inB(midR,midC)||board[midR][midC])continue;const p=board[r][c];if(p&&p.color===atk&&p.pieceId==='banshee')return true;}
@@ -358,9 +380,23 @@ function updateMedusaParalysis(board,gs){
   gs.medusaParalyzed=new Set();
   for(let r=0;r<8;r++)for(let c=0;c<8;c++){const p=board[r][c];if(p&&p.pieceId==='meduse'){for(const[dr,dc] of[[1,1],[1,-1],[-1,1],[-1,-1]]){const nr=r+dr,nc=c+dc;if(inB(nr,nc)&&board[nr][nc]&&board[nr][nc].color!==p.color)gs.medusaParalyzed.add(`${nr},${nc}`);}}}
 }
+// Clés de la forme « <couleur protégée>:<r>,<c> » : le Prêtre couvre ses
+// ALLIÉES en diagonale, et elles seules. Le Monarque en est exclu — le rendre
+// imprenable rendrait le mat impossible, ce qui n'est pas un pouvoir mais une
+// fin de partie supprimée.
 function updatePretreProtection(board,gs){
   gs.pretreProtected=new Set();
-  for(let r=0;r<8;r++)for(let c=0;c<8;c++){const p=board[r][c];if(p&&p.pieceId==='pretre'){for(const[dr,dc] of[[1,1],[1,-1],[-1,1],[-1,-1]]){const nr=r+dr,nc=c+dc;if(inB(nr,nc))gs.pretreProtected.add(`${nr},${nc}`);}}}
+  for(let r=0;r<8;r++)for(let c=0;c<8;c++){
+    const p=board[r][c];
+    if(!p||p.pieceId!=='pretre')continue;
+    for(const[dr,dc] of[[1,1],[1,-1],[-1,1],[-1,-1]]){
+      const nr=r+dr,nc=c+dc;if(!inB(nr,nc))continue;
+      const t=board[nr][nc];
+      if(!t||t.color!==p.color)continue;
+      if(t.isKing||t.type==='k')continue;
+      gs.pretreProtected.add(t.color+':'+nr+','+nc);
+    }
+  }
 }
 function updateGrandMaitre(board,gs){
   gs.grandMaitreAlive={w:false,b:false};
@@ -373,10 +409,39 @@ function applyTyphonEffect(toR,toC,board,p,gs){
     if(t&&t.color!==p.color&&!gs.anchored?.has(`${nr},${nc}`)&&!(t.isKing||t.type==='k')){pushCaptured(gs,t);board[nr][nc]=null;}
   }
 }
+// ----------------------------------------------------------------
+// HURLEMENT DE LA BANSHEE
+// ----------------------------------------------------------------
+// Après son déplacement, chaque PION ennemi posé sur l'une des huit cases
+// adjacentes recule d'une case, si celle qui est derrière lui est libre.
+//
+// IL NE FONCTIONNAIT PAS, pour deux raisons. Il ne regardait qu'UNE rangée, et
+// c'était celle DERRIÈRE la Banshee : `oppDir` valait +1 pour les Blancs, qui
+// avancent pourtant vers r décroissant — donc la seule ligne où un pion adverse
+// ne se trouve jamais. Et il prenait pour des pions toutes les pièces de
+// pieceType 'p', c'est-à-dire aussi la Fourmi, la Méduse et le Garde de Pierre.
+//
+// Les reculs sont RELEVÉS D'ABORD, appliqués ensuite : une pièce repoussée
+// atterrit parfois sur une autre case voisine de la Banshee, et serait
+// repoussée une seconde fois par la même itération.
+function applyBansheePush(board,toR,toC,color){
+  const pushes=[];
+  for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++){
+    if(!dr&&!dc)continue;
+    const nr=toR+dr,nc=toC+dc;if(!inB(nr,nc))continue;
+    const t=board[nr][nc];
+    if(!t||t.color===color||!isTruePawn(t))continue;
+    const br=nr+(t.color==='w'?1:-1);
+    if(inB(br,nc)&&!board[br][nc])pushes.push({fr:nr,fc:nc,tr:br,tc:nc});
+  }
+  pushes.forEach(m=>{
+    if(!board[m.fr][m.fc]||board[m.tr][m.tc])return;
+    board[m.tr][m.tc]=board[m.fr][m.fc];board[m.fr][m.fc]=null;
+  });
+}
 function applyBansheeEffect(toR,toC,board,p){
   if(p.pieceId!=='banshee')return;
-  const oppDir=p.color==='w'?1:-1;
-  for(let dc=-1;dc<=1;dc++){const nr=toR+oppDir,nc=toC+dc;if(!inB(nr,nc))continue;const t=board[nr][nc];if(t&&(t.type==='p'||t.pieceId==='std-pawn')&&t.color!==p.color){const back=t.color==='w'?1:-1;const br=nr+back;if(inB(br,nc)&&!board[br][nc]){board[br][nc]=t;board[nr][nc]=null;}}}
+  applyBansheePush(board,toR,toC,p.color);
 }
 // ----------------------------------------------------------------
 // DÉGÂTS COLLATÉRAUX SUR UN PLATEAU SIMULÉ
@@ -413,17 +478,7 @@ function applyCollateralOnBoard(b,from,to,p,anchored){
       if(hits(b[nr][nc],nr,nc))b[nr][nc]=null;
     }
   }
-  if(p.pieceId==='banshee'){
-    const oppDir=p.color==='w'?1:-1;
-    for(let dc=-1;dc<=1;dc++){
-      const nr=to.r+oppDir,nc=to.c+dc;
-      if(!inB(nr,nc))continue;
-      const t=b[nr][nc];
-      if(!t||t.color===p.color||!(t.type==='p'||t.pieceId==='std-pawn'))continue;
-      const back=t.color==='w'?1:-1,br=nr+back;
-      if(inB(br,nc)&&!b[br][nc]){b[br][nc]=t;b[nr][nc]=null;}
-    }
-  }
+  if(p.pieceId==='banshee')applyBansheePush(b,to.r,to.c,p.color);
   return b;
 }
 
@@ -740,9 +795,9 @@ function isInsufficientMaterial(board){
   return false;
 }
 
-// updateStatus / triggerEndOfGame / triggerTournoiEndOfGame vivent dans
-// game-flow.js et tournoi.js respectivement (ils dépendent de l'ELO et
-// du contexte tournoi), mais updateStatus() est appelée par postMoveUpdate()
+// updateStatus et triggerEndOfGame vivent dans game-render.js et
+// game-flow.js (ils dépendent de l'ELO et du contexte de partie), mais
+// updateStatus() est appelée par postMoveUpdate()
 // ci-dessus : elle DOIT donc être chargée avant toute exécution de coup,
 // c'est-à-dire game-flow.js doit être chargé avant que la partie démarre
 // (ce qui est garanti par l'ordre de <script> dans index.html).

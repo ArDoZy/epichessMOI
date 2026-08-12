@@ -14,7 +14,6 @@
      [GAME]         page de jeu : plateau, sidebars, historique, drag&drop
      [MODALS-GAME]  promotion
      [VOIE]         page "Voie des Victoires" (ELO, rangs, jalons)
-     [TOURNOI]      page tournoi + modal d'analyse replay
      [ADMIN]        badge mode administrateur
      [DRILL]        exercice de déplacement d'une créature (tuto-drill.js)
      [SEO]          page /info (info.html) : présentation + FAQ indexables
@@ -260,7 +259,7 @@ body{
 /* Pas de logo/titre sur la page builder (retiré) : juste la clearance de la
    barre de compte + un petit espace de respiration, la page remonte. */
 body.has-acc #page-builder{padding-top:calc(50px + 14px)}
-body.has-acc #page-armies,body.has-acc #page-ai-armies,body.has-acc #page-voie,body.has-acc #page-tournoi,body.has-acc #page-adversaires{padding-top:calc(50px + 32px)}
+body.has-acc #page-armies,body.has-acc #page-ai-armies,body.has-acc #page-voie,body.has-acc #page-adversaires{padding-top:calc(50px + 32px)}
 body.has-acc #page-reserve .reserve-wrap{padding-top:calc(50px + 24px)}
 body.has-acc #page-combat{padding-top:50px}
 /* La barre de compte occupe 50 px en haut : la partie prend ce qui reste.
@@ -447,7 +446,7 @@ body.has-acc #page-game{min-height:0}
 .ac-names{font-size:12px;color:var(--muted);line-height:1.6;margin-bottom:14px}
 .ac-val{display:inline-flex;align-items:center;gap:5px;font-family:'Cinzel',serif;font-size:10px;color:var(--gold);background:rgba(201,168,76,.07);border:1px solid rgba(201,168,76,.18);border-radius:5px;padding:3px 8px}
 .ac-btns{display:flex;gap:7px;margin-top:12px;flex-wrap:wrap}
-/* Mode sélection d'armée (lancement d'un combat/tournoi depuis le menu) */
+/* Mode sélection d'armée (lancement d'un combat depuis le menu) */
 .armies-select-banner{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:-10px 0 22px;padding:12px 16px;border:1px solid rgba(201,162,39,.35);border-radius:12px;background:rgba(201,162,39,.07)}
 .armies-select-banner .asb-txt{flex:1;font-family:'Cinzel',serif;font-size:13px;color:var(--gold)}
 .army-card-selectable{cursor:pointer}
@@ -670,7 +669,6 @@ body.has-acc #page-game{min-height:0}
 .result-box.win-result::before{background:linear-gradient(90deg,var(--success),var(--gold))}.result-box.loss-result::before{background:linear-gradient(90deg,var(--danger),var(--accent))}.result-box.draw-result::before{background:linear-gradient(90deg,var(--muted),var(--border2))}
 .result-icon{font-size:54px;margin-bottom:10px;display:block;animation:resultBounce .6s cubic-bezier(.34,1.56,.64,1) both}
 .result-box.win-result .result-icon{color:var(--success)}.result-box.loss-result .result-icon{color:var(--danger)}.result-box.draw-result .result-icon{color:var(--muted)}
-.trb-icon{color:var(--gold2)}
 @keyframes resultBounce{from{transform:scale(.3);opacity:0}to{transform:scale(1);opacity:1}}
 .result-title{font-family:'Cinzel',serif;font-size:26px;font-weight:900;margin-bottom:6px}
 .result-title.win-text{color:var(--gold)}.result-title.loss-text{color:var(--danger)}.result-title.draw-text{color:var(--muted)}
@@ -726,10 +724,6 @@ body.has-acc #page-game{min-height:0}
 .veb-progress-wrap{background:rgba(0,0,0,.25);border-radius:8px;height:10px;overflow:hidden;margin-bottom:4px}
 .veb-progress-bar{height:100%;border-radius:8px;transition:width .7s cubic-bezier(.34,1.56,.64,1)}
 .veb-progress-label{font-size:10px;color:var(--muted);font-family:'Cinzel',serif}
-.veb-stats{display:flex;gap:14px;flex-wrap:wrap;margin-left:auto}
-.veb-stat{background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:8px 16px;text-align:center}
-.veb-stat-label{font-size:9px;color:var(--muted);text-transform:uppercase;font-family:'Cinzel',serif;letter-spacing:.8px;margin-bottom:2px}
-.veb-stat-val{font-size:18px;font-weight:700;font-family:'Cinzel',serif}
 .voie-route{position:relative;padding:10px 0 30px}
 .voie-route::before{content:'';position:absolute;left:50%;top:0;bottom:0;width:3px;background:linear-gradient(to bottom,var(--accent),var(--gold),var(--accent2));transform:translateX(-50%);border-radius:2px;opacity:.35;z-index:0}
 .voie-milestone{display:flex;align-items:center;gap:18px;margin-bottom:20px;position:relative;z-index:1}
@@ -754,89 +748,6 @@ body.has-acc #page-game{min-height:0}
 .vm-rank-bar{display:inline-flex;align-items:center;gap:10px;justify-content:center;background:var(--surface);border:1px solid var(--border2);border-radius:10px;padding:8px 18px}
 .vm-rank-label{font-family:'Cinzel',serif;font-size:13px;font-weight:700}
 .vm-rank-range{font-size:10px;color:var(--muted);margin-left:4px;font-family:'Cinzel',serif}
-.voie-history{margin-top:24px}
-.vh-title{font-family:'Cinzel',serif;font-size:12px;color:var(--gold);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px}
-.vh-row{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:8px;margin-bottom:5px;font-size:12px;background:var(--surface);border:1px solid var(--border)}
-.vh-result{font-family:'Cinzel',serif;font-weight:700;min-width:70px}
-.vh-result.win{color:var(--success)}.vh-result.loss{color:var(--danger)}.vh-result.draw{color:var(--muted)}
-.vh-delta{font-family:'Cinzel',serif;font-weight:700;min-width:50px}
-.vh-delta.pos{color:var(--success)}.vh-delta.neg{color:var(--danger)}.vh-delta.zero{color:var(--muted)}
-.vh-elo{color:var(--gold);font-family:'Cinzel',serif}.vh-date{color:var(--muted);margin-left:auto;font-size:10px}
-
-/* [TOURNOI] ======================================================= */
-#page-tournoi{padding:clamp(16px,3vw,32px) clamp(12px,3vw,20px);min-height:100vh}
-.tournoi-inner{max-width:700px;margin:0 auto}
-.tournoi-hdr{display:flex;align-items:center;gap:12px;margin-bottom:28px;flex-wrap:wrap}
-.tournoi-title{font-family:'Cinzel Decorative','Cinzel',serif;font-size:clamp(20px,5vw,32px);font-weight:900;color:var(--gold);flex:1}
-.tournoi-progress-wrap{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px 24px;margin-bottom:24px;position:relative;overflow:hidden}
-.tournoi-progress-wrap::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--gold)}
-.tournoi-prog-label{font-family:'Cinzel',serif;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px}
-.tournoi-prog-bar-outer{background:var(--bg);border-radius:8px;height:14px;overflow:hidden;border:1px solid var(--border)}
-.tournoi-prog-bar-inner{height:100%;border-radius:8px;background:linear-gradient(90deg,var(--accent),var(--gold));transition:width .6s cubic-bezier(.34,1.56,.64,1)}
-.tournoi-prog-count{font-family:'Cinzel',serif;font-size:13px;font-weight:700;color:var(--gold);margin-top:8px;text-align:right}
-.tournoi-rounds{display:flex;flex-direction:column;gap:12px;margin-bottom:24px}
-.tournoi-round{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 20px;display:flex;align-items:center;gap:14px;position:relative;overflow:hidden;transition:all .3s}
-.tournoi-round.round-active{border-color:var(--accent2);background:rgba(122,31,43,.07)}
-.tournoi-round.round-win{border-color:var(--success);background:rgba(16,185,129,.07)}
-.tournoi-round.round-loss{border-color:var(--danger);background:rgba(239,68,68,.07)}
-.tournoi-round.round-draw{border-color:var(--gold);background:rgba(201,168,76,.07)}
-.tr-num{font-family:'Cinzel',serif;font-size:11px;font-weight:700;color:var(--muted);min-width:54px}
-.tr-info{flex:1}
-.tr-name{font-family:'Cinzel',serif;font-size:13px;font-weight:700;color:var(--text);margin-bottom:2px}
-.tr-elo{font-size:11px;color:var(--gold)}
-.tr-status{font-family:'Cinzel',serif;font-size:13px;font-weight:700;min-width:90px;text-align:right}
-.tr-status.pending{color:var(--muted)}
-.tr-status.win{color:var(--success)}
-.tr-status.loss{color:var(--danger)}
-.tr-status.draw{color:var(--gold)}
-.tournoi-result-banner{background:var(--surface);border:2px solid var(--gold);border-radius:16px;padding:28px 24px;text-align:center;display:none}
-.tournoi-result-banner.show{display:block}
-.trb-icon{font-size:52px;margin-bottom:10px}
-.trb-title{font-family:'Cinzel',serif;font-size:22px;font-weight:900;color:var(--gold);margin-bottom:6px}
-.trb-sub{font-size:14px;color:var(--muted);margin-bottom:18px;line-height:1.6}
-.tournoi-history{margin-top:28px}
-.tournoi-history-title{font-family:'Cinzel',serif;font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px}
-.th-row{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 16px;margin-bottom:8px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-.th-date{font-size:11px;color:var(--muted);margin-left:auto}
-.th-wins{font-family:'Cinzel',serif;font-size:12px;font-weight:700}
-.th-wins.champion{color:var(--gold)}
-.th-wins.normal{color:var(--muted)}
-/* Mêmes couleurs de cases et même ombre portée que le plateau de jeu : sur
-   les cases claires d'origine (#f0d9b5), les glyphes d'échecs blancs (qui
-   sont des contours vides) devenaient tout bonnement invisibles. */
-.ta-cell{display:flex;align-items:center;justify-content:center;font-size:18px;cursor:default;aspect-ratio:1;filter:drop-shadow(0 1px 1px rgba(0,0,0,.45))}
-.ta-cell.light{background:#c8a96a}
-.ta-cell.dark{background:#7a5330}
-body.light .ta-cell.light{background:#eddab0}
-body.light .ta-cell.dark{background:#8a5f38}
-.ta-cell.highlight{outline:3px solid var(--gold);outline-offset:-3px}
-.ta-move-item{cursor:pointer;padding:2px 5px;border-radius:4px;transition:background .15s}
-.ta-move-item:hover{background:rgba(122,31,43,.18)}
-.ta-move-item.active{background:rgba(201,168,76,.22);color:var(--gold)}
-.round-overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;z-index:6000;visibility:hidden;opacity:0;transition:opacity .35s,visibility .35s}
-.round-overlay.show{visibility:visible;opacity:1}
-.round-box{background:var(--surface2);border:1px solid var(--border2);border-radius:20px;padding:36px 32px;max-width:420px;width:92%;text-align:center;position:relative;overflow:hidden}
-.round-box::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--gold)}
-/* Rangée d'actions de fin de round : « Round suivant » + « Quitter le
-   tournoi » (ce dernier masqué au dernier round, voir showRoundOverlay). */
-.rb-actions{display:flex;gap:10px;align-items:stretch;flex-wrap:wrap}
-.rb-actions .btn{white-space:nowrap}
-.rb-round-label{font-family:'Cinzel',serif;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:14px}
-.rb-result-icon{font-size:54px;margin-bottom:10px;display:block}
-.rb-result-text{font-family:'Cinzel',serif;font-size:22px;font-weight:900;margin-bottom:6px}
-.rb-result-text.win{color:var(--success)}
-.rb-result-text.loss{color:var(--danger)}
-.rb-result-text.draw{color:var(--gold)}
-.rb-elo-row{font-size:13px;color:var(--muted);margin-bottom:20px}
-.rb-elo-delta{font-weight:700}
-.rb-elo-delta.pos{color:var(--success)}
-.rb-elo-delta.neg{color:var(--danger)}
-.rb-elo-delta.zero{color:var(--muted)}
-.rb-next-label{font-family:'Cinzel',serif;font-size:11px;color:var(--muted);margin-bottom:8px}
-.rb-next-card{background:var(--bg);border:1px solid var(--border2);border-radius:10px;padding:12px 16px;margin-bottom:20px;display:flex;align-items:center;gap:12px}
-.rb-next-info{text-align:left}
-.rb-next-name{font-family:'Cinzel',serif;font-size:13px;font-weight:700}
-.rb-next-elo{font-size:11px;color:var(--gold)}
 
 /* [ADMIN] ======================================================= */
 /* Le badge Admin flottant a ete retire : le mode admin est l'adresse /test,
@@ -844,12 +755,12 @@ body.light .ta-cell.dark{background:#8a5f38}
 
 
 /* [ORNAMENTS & CINEMATICS] ======================================================= */
-.login-card,.ai-lvl-box,.army-box,.army-intro-box,.voie-elo-banner,.tournoi-progress-wrap,.round-box{
+.login-card,.ai-lvl-box,.army-box,.army-intro-box,.voie-elo-banner{
   position:relative;
 }
 /* Médaillon décoratif : une « perle d'alchimiste » dessinée en CSS pur (pas
    de glyphe/emoji) : un dégradé radial imitant une bille de verre/métal. */
-.login-card::after,.ai-lvl-box::after,.army-box::after,.army-intro-box::after,.voie-elo-banner::after,.tournoi-progress-wrap::after,.round-box::after{
+.login-card::after,.ai-lvl-box::after,.army-box::after,.army-intro-box::after,.voie-elo-banner::after{
   content:'';position:absolute;top:-1px;left:50%;transform:translate(-50%,-50%);
   background:radial-gradient(circle at 35% 30%,var(--gold2),var(--gold) 65%,#6b4f16 100%);
   width:16px;height:16px;border-radius:50%;
@@ -941,14 +852,20 @@ body.light .cube-face[data-face="jouer"]{background:
   radial-gradient(ellipse at 50% 34%,rgba(18,120,106,.13),transparent 62%),
   radial-gradient(ellipse at 50% 118%,rgba(40,60,58,.10),transparent 58%),
   linear-gradient(165deg,#f4f3ee,#dcdbd3)}
-/* La face est une seule colonne centrée : le bouton COMBAT, ses deux boutons
-   secondaires, puis le rail des six coffres (voir [MENU-CHESTS]). Le rail a
-   d'abord été épinglé au bas de l'écran, ce qui l'isolait au bout d'un grand
-   vide ; il fait partie de la pile, à un intervalle qui le distingue sans
-   l'exiler. */
+/* La face est une seule colonne centrée : le bouton COMBAT, son bouton
+   secondaire, le coffre de réapprovisionnement, puis le rail des six coffres
+   (voir [MENU-CHESTS]). Le rail a d'abord été épinglé au bas de l'écran, ce
+   qui l'isolait au bout d'un grand vide ; il fait partie de la pile, à un
+   intervalle qui le distingue sans l'exiler.
+
+   LE RETRAIT DU HAUT N'EST PAS DÉCORATIF : le bloc d'identité (.jouer-player)
+   est en position absolue, il ne pousse donc rien. Sans cette réserve, la
+   colonne — qui a grandi d'une carte en récupérant le coffre quotidien — se
+   centre trop haut et vient chevaucher le pseudo et l'ELO. */
 .jouer-menu{position:absolute;inset:0;display:flex;flex-direction:column;
-  align-items:center;justify-content:center;gap:clamp(20px,4vh,34px);
-  text-align:center;padding:24px;overflow:hidden}
+  align-items:center;justify-content:center;gap:clamp(14px,3vh,30px);
+  text-align:center;padding:clamp(158px,25vh,215px) 24px clamp(18px,3vh,28px);
+  overflow:hidden}
 .jouer-btn{position:relative;cursor:pointer;border:none;
   font-family:'Cinzel',serif;font-weight:900;letter-spacing:6px;
   font-size:clamp(18px,3.4vw,34px);color:#1a1206;
@@ -958,10 +875,9 @@ body.light .cube-face[data-face="jouer"]{background:
   transition:transform .15s ease,box-shadow .15s ease}
 .jouer-btn:hover{transform:translateY(-2px);box-shadow:0 5px 0 #6b4f16}
 .jouer-btn:active{transform:translateY(1px);box-shadow:0 2px 0 #6b4f16}
-/* Bouton "Tournoi" sous JOUER : même colonne, mais gap resserré pour rester
-   visuellement secondaire par rapport au gros bouton doré. */
+/* Boutons secondaires sous COMBAT : même colonne, mais gap resserré pour
+   rester visuellement en retrait du gros bouton doré. */
 .jouer-actions{display:flex;flex-direction:column;align-items:center;gap:14px}
-.jouer-tournoi-btn{font-size:12px;padding:10px 26px}
 
 /* --- Faces placeholder (Magasin / Missions / Variantes) --- */
 /* Armurerie et face libre : mêmes matières que le menu, un ton plus neutre pour
@@ -1005,7 +921,7 @@ body.light .cube-face[data-face="libre"]{background:
 #cube-arrow-up{top:62px}
 
 /* --- Pages secondaires : overlays plein écran AU-DESSUS du cube ---
-   (armées, voie, tournoi, combat, login). Restent pilotées par
+   (armées, voie, combat, login). Restent pilotées par
    .page/.active comme avant, mais deviennent des couches opaques qui
    masquent le cube quand elles sont actives. */
 .page.active{position:fixed;inset:0;z-index:200;overflow-y:auto;background:var(--bg)}
@@ -1025,7 +941,7 @@ body.light .cube-face[data-face="libre"]{background:
   .cab-sw{padding:6px 10px;font-size:10px}
   #settings-btn{width:28px;height:28px;top:6px;right:8px}
   body.has-acc #page-builder{padding-top:calc(46px + 10px)}
-  body.has-acc #page-armies,body.has-acc #page-ai-armies,body.has-acc #page-voie,body.has-acc #page-tournoi,body.has-acc #page-adversaires{padding-top:calc(46px + 14px)}
+  body.has-acc #page-armies,body.has-acc #page-ai-armies,body.has-acc #page-voie,body.has-acc #page-adversaires{padding-top:calc(46px + 14px)}
   body.has-acc #page-combat{padding-top:46px}
 
   #page-builder{padding:14px}
@@ -1315,14 +1231,6 @@ body.light .pmv-dark{background:#c3bdae}
   background:linear-gradient(180deg,rgba(223,234,242,.10),var(--surface))}
 
 /* --- Inventaire --- */
-.inv-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(126px,1fr));gap:10px}
-.inv-cell{background:var(--surface);border:1px solid var(--border);border-radius:13px;padding:12px 8px;text-align:center;position:relative}
-.inv-cell.inv-out{opacity:.5;border-style:dashed}
-.inv-cell .pc-icon{width:44px;height:44px}
-.inv-name{font-family:'Cinzel',serif;font-size:10.5px;font-weight:700;margin-top:6px;line-height:1.25}
-.inv-qty{font-family:'Cinzel',serif;font-size:17px;font-weight:900;color:var(--accent2);margin-top:3px}
-.inv-cell.inv-out .inv-qty{color:var(--danger)}
-.inv-tag{font-size:9px;text-transform:uppercase;letter-spacing:.7px;font-family:'Cinzel',serif;color:var(--muted);margin-top:2px}
 
 /* --- Sélecteur d'échiquier --- */
 .skin-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
@@ -1500,6 +1408,10 @@ body.light .pmv-dark{background:#c3bdae}
 @media(max-height:620px),(max-width:520px){
   .jc-name{display:none}
   .jouer-chests{gap:4px}
+  /* Écran court : le coffre quotidien se réduit à sa ligne de titre et à son
+     bouton. Sa description est un rappel, pas une consigne. */
+  .jouer-daily .daily-desc{display:none}
+  .jouer-daily .daily-card{padding:9px 12px}
 }
 
 /* [ECONOMY-INLINE] : rappels d'économie dans les écrans existants ====
@@ -1538,8 +1450,30 @@ body.light .pmv-dark{background:#c3bdae}
 .rc-hint{font-size:11.5px;color:var(--muted)}
 
 /* [MENU] : face JOUER ============================================ */
+/* COFFRE DE RÉAPPROVISIONNEMENT, posé entre les boutons et le rail des
+   coffres. Il réutilise la carte .daily-card de l'Armurerie d'où il vient,
+   à une largeur bornée : sur le menu, rien ne doit rivaliser en surface avec
+   le bouton COMBAT. */
+.jouer-daily{width:min(94%,520px)}
+.jouer-daily:empty{display:none}
+.jouer-daily .daily-card{padding:12px 16px;gap:12px}
+.jouer-daily .daily-name{font-size:14px}
+.jouer-daily .daily-desc{font-size:11.5px}
+.jouer-daily .chest{transform:scale(.8);transform-origin:left center}
+/* Étroit : le bloc d'identité remonte (voir .jouer-player), la réserve du
+   haut peut donc se resserrer d'autant. La carte du coffre garde sa ligne :
+   sans min-width, le bouton « Récupérer » repassait sous le titre et la
+   carte doublait de hauteur. */
+@media(max-width:760px){
+  .jouer-menu{padding-top:clamp(118px,17vh,168px)}
+  .jouer-daily .daily-info{min-width:0}
+  .jouer-daily .daily-card{padding:10px 12px;gap:10px}
+  .jouer-daily .daily-name{font-size:12.5px}
+  .jouer-daily .daily-desc{font-size:11px}
+  .jouer-daily .btn{font-size:11px;padding:8px 14px}
+}
+
 .jouer-second{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
-.jouer-tournoi-btn{font-size:12px;padding:10px 24px}
 
 /* IDENTITÉ DU JOUEUR, en haut au milieu — à la place du titre du jeu et de
    l'emblème, qui disaient tous les deux quelque chose qu'on savait déjà.
@@ -1608,8 +1542,6 @@ body.light .pmv-dark{background:#c3bdae}
 .cside-pieces .pc-icon{width:52px;height:52px}
 .vm-piece-emoji{font-size:0;line-height:0}
 .vm-piece-emoji .pc-icon{width:48px;height:48px}
-#tournoi-army-pieces,#ta-player-army,#ta-ai-army{font-size:0;display:flex;flex-wrap:wrap;gap:4px}
-#tournoi-army-pieces .pc-icon{width:34px;height:34px}
 #ta-player-army .pc-icon,#ta-ai-army .pc-icon{width:28px;height:28px}
 .ta-cell{font-size:0;padding:2px}
 .ta-cell .pc-svg{width:100%;height:100%}
@@ -1854,13 +1786,18 @@ body.cube-active:not(.nav-overlay) .notif-host{bottom:92px}
   box-shadow:0 0 16px var(--potion-glow)}
 @keyframes mpPing{0%{opacity:.85;transform:scale(.22)}100%{opacity:0;transform:scale(1)}}
 
-.mp-search-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:12px}
-.mp-search-cell{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:8px 6px}
-.mp-search-lbl{font-family:'Cinzel',serif;font-size:8.5px;text-transform:uppercase;
-  letter-spacing:1.1px;color:var(--muted);margin-bottom:3px}
-.mp-search-val{font-family:'Cinzel',serif;font-size:17px;font-weight:800;color:var(--text);
-  font-variant-numeric:tabular-nums}
 .mp-search-note{font-size:12px;color:var(--muted);line-height:1.5;min-height:36px}
+
+/* TIPS D'ATTENTE (mpRenderTip, js/multiplayer.js) : masqué tant qu'on choisit
+   comment jouer, visible dès qu'on attend — recherche rapide comme partie
+   privée. C'est la seule chose à lire à ce moment-là, d'où le cartouche. */
+.mp-tip{display:none}
+#mp-modal.mp-wait .mp-tip{
+  display:block;margin-top:14px;padding:11px 14px;border-radius:10px;
+  background:rgba(7,10,13,.45);border:1px solid rgba(193,154,69,.28);text-align:left}
+.mp-tip-lbl{display:block;font-family:'Cinzel',serif;font-size:8.5px;font-weight:700;
+  text-transform:uppercase;letter-spacing:1.2px;color:var(--gold2);margin-bottom:5px}
+.mp-tip-txt{display:block;font-size:12px;line-height:1.55;color:var(--text);font-style:italic}
 
 /* [MP-WAIT] =====================================================
    L'ATTENTE D'UN ADVERSAIRE. C'est le seul moment du jeu où le joueur n'a
@@ -2053,11 +1990,6 @@ body.light .cube-face[data-face="jouer"] .face-viewport::before{opacity:.14}
   letter-spacing:1px;text-transform:uppercase;background:var(--accent);color:#06100e;
   padding:2px 8px;border-radius:8px 0 10px 0}
 .adv-card-advised .adv-gap{color:var(--accent)}
-
-/* Nom de l'adversaire dans l'historique de la Voie. Vide pour les parties
-   antérieures au roster, la ligne ne doit alors pas se décaler. */
-.vh-opp{font-family:'Cinzel',serif;font-size:10.5px;color:var(--muted);
-  min-width:96px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
 /* En thème clair, --accent est un vert FONCÉ : le texte quasi noir du badge
    « Conseillé », lisible sur le vert clair du thème sombre, y devenait

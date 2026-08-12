@@ -390,8 +390,7 @@ document.addEventListener('keydown',e=>{
 
 // ----------------------------------------------------------------
 // STATUT DE PARTIE (échec/mat/pat/nulle) : appelée par postMoveUpdate()
-// dans rules-engine.js. Déclenche triggerEndOfGame() (game-flow.js) ou
-// triggerTournoiEndOfGame() (tournoi.js) selon le contexte.
+// dans rules-engine.js. Déclenche triggerEndOfGame() (game-flow.js).
 // ----------------------------------------------------------------
 function updateStatus(gs){
   const bar=document.getElementById('game-status');if(!bar)return;

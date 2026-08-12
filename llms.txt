@@ -27,7 +27,7 @@ d'apothicaire abandonné.
   **1 Monarque, 1 Général et 3 créatures**.
 - La composition est limitée à un **budget de 24 points**. Chaque pièce
   coûte un nombre de points proportionnel à sa puissance : la Dame vaut
-  10 points, le Grand Maître 13, le Cavalier Primordial 3, l'Alpha 2.
+  10 points, le Grand Maître 13, le Cavalier Primordial 3, le Peureux 2.
   Prendre une pièce forte en tête laisse donc moins de points pour le
   reste, ce qui constitue l'arbitrage central du jeu.
 - Perdre son Monarque fait perdre la partie.
@@ -40,16 +40,16 @@ Le catalogue compte **18 créatures** réparties en **5 classes** :
   (3 pts, 1 case dans toutes les directions), Empereur (7 pts, se déplace
   comme un roi ou un cavalier).
 - **Général** : l'équivalent de la dame, la pièce maîtresse. Exemples :
-  Amazone (7 pts, cavalier + fou), Chevaucheur de Rhinocéros (8 pts, tour +
-  cavalier), Dame (10 pts, dame standard), Grand Maître (13 pts, dame +
-  cavalier, et empêche les pions ennemis d'avancer de 2 cases tant qu'il
-  est vivant).
+  Amazone (7 pts, cavalier + fou), Centaure (8 pts, tour + cavalier),
+  Dame (10 pts, dame standard), Grand Maître (13 pts, dame + cavalier, et
+  empêche les pions adverses d'avancer de 2 cases tant qu'il est vivant).
 - **Primordiale** : les pièces d'échecs classiques. Cavalier Primordial,
   Fou Primordial, Tour Primordiale. Une seule primordiale est autorisée
   par armée, et elles ne s'obtiennent que dans les coffres.
 - **Brute** : les pièces ayant un déplacement puissant, mais un pouvoir
-  faible. Exemples : Alpha (2 pts, saute exactement 2 cases en diagonale),
-  Fourmi, Preux Chevalier, Garde de Pierre.
+  faible. Exemples : Peureux (2 pts, une case autour de lui, mais il ne
+  quitte jamais les quatre premières rangées de son camp), Fourmi, Preux
+  Chevalier, Éléphant de guerre, Garde de Pierre.
 - **Sorcier** : les pièces possédant des capacités spéciales avancées, mais
   à la mobilité réduite. Exemples : Méduse, Typhon, Banshee, Prêtre.
 
@@ -103,7 +103,7 @@ C'est la mécanique qui distingue le plus Epic Chess des autres variantes :
 - Un **tutoriel interactif** guide le nouveau joueur : le savant fou lui fait
   livrer quatre batailles contre des instructeurs faibles, où les deux camps
   ont exactement la même armée. Chaque victoire ouvre un coffre qui débloque
-  une créature (Alpha, puis Fourmi, puis Garde de Pierre), suivie d'un petit
+  une créature (Peureux, puis Fourmi, puis Éléphant de guerre), suivie d'un petit
   exercice où l'on apprend son déplacement en ramassant cinq repères avec
   elle. Le savant fait ensuite visiter le laboratoire et composer une armée.
 - Cet exercice de déplacement revient à chaque créature inédite sortie d'un
@@ -120,11 +120,12 @@ C'est la mécanique qui distingue le plus Epic Chess des autres variantes :
   leur **style d'armée** : force brute, sorcier, agressif, défensif, en nuée,
   mobile, positionnel.
 - Le moteur évalue les **pouvoirs** des créatures (paralysie de la Méduse,
-  protection du Prêtre, zone de destruction du Typhon, charge du Dresseur
-  d'Éléphant, domination du Grand Maître) et pas seulement leurs déplacements.
+  protection du Prêtre, zone de destruction du Typhon, charge de l'Éléphant
+  de guerre, domination du Grand Maître) et pas seulement leurs déplacements.
 - **Tous les duels sont classés**, contre l'IA comme en ligne : un joueur
-  seul progresse donc entièrement. Seul le mode administrateur et les
-  batailles du tutoriel sont hors classement.
+  seul progresse donc entièrement. Seuls le mode test (/?test, un bac à
+  sable où tout est débloqué et où rien n'est enregistré) et les batailles
+  du tutoriel sont hors classement.
 - La **Voie des Victoires** suit l'ELO du joueur à travers **7 rangs** :
   Poussière (0-199), Pierre (200-499), Bronze (500-849), Acier (850-1299),
   Obsidienne (1300-1799), Argent (1800-2399), Or Légendaire (2400+).
@@ -133,8 +134,6 @@ C'est la mécanique qui distingue le plus Epic Chess des autres variantes :
 - La rareté du coffre gagné suit la **série de victoires**, plafonnée par le
   niveau de l'adversaire battu : enchaîner les victoires contre le plus
   faible ne donne pas les meilleurs coffres.
-- Le **Mode Tournoi** enchaîne sept combats contre les sept adversaires les
-  plus forts, de Vitriol (800) à l'Athanor (2300).
 
 ## Confidentialité
 

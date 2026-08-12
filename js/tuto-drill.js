@@ -11,9 +11,8 @@
 //
 // LE POINT DÉLICAT, ET LA RAISON DE L'ALGORITHME CI-DESSOUS : tous les
 // déplacements ne vont pas partout. La Fourmi n'a pas le droit de reculer ni
-// d'aller sur le côté, l'Alpha ne bouge que de 2 cases en diagonale (il reste
-// donc sur une case de même couleur ET de même parité de colonne). Cinq
-// repères tirés au hasard seraient, pour ces pièces, souvent impossibles à
+// d'aller sur le côté, le Peureux ne sort jamais des quatre rangées de son
+// camp. Cinq repères tirés au hasard seraient, pour ces pièces, souvent impossibles à
 // ramasser. Les repères ne sont donc PAS tirés au hasard sur le plateau : ils
 // sont posés le long d'une PROMENADE de la pièce (on part de sa case, on tire
 // un de ses coups légaux, on pose un repère à l'arrivée, et on recommence

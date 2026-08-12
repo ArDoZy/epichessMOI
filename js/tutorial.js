@@ -14,11 +14,13 @@
 //      faibles (TUTO_INSTRUCTORS dans data-pieces.js). Les deux camps ont
 //      exactement la même armée, posée en dur : personne ne perd parce qu'il
 //      a mal composé. Chaque victoire ouvre un coffre qui débloque UNE
-//      créature (Alpha, puis Fourmi, puis Garde de Pierre), suivie de son
+//      créature (Peureux, puis Fourmi, puis Éléphant de guerre), suivie de
+//      son
 //      exercice de déplacement (js/tuto-drill.js). Une défaite ne fait pas
 //      avancer : le savant propose la revanche, autant de fois qu'il faut.
 //      C'est ainsi que le joueur se retrouve, à la fin, avec une armée
-//      complète (Roi, Dame, Alpha, Fourmi, Garde de Pierre) qu'il a gagnée.
+//      complète (Roi, Dame, Peureux, Fourmi, Éléphant de guerre) qu'il a
+//      gagnée.
 //   2. LA VISITE DU LABORATOIRE (étapes marquées `click`) : le joueur tourne
 //      réellement le cube, compose réellement une armée, ouvre réellement sa
 //      Armurerie.
@@ -75,7 +77,7 @@ const SAVANT_SVG=
 // chaque créature se place vers l'extérieur en partant du Monarque.
 //
 //   colonnes :  0            1        2       3      4     5       6        7
-//               garde-pierre fourmi   alpha   dame   roi   alpha   fourmi   garde-pierre
+//               éléphant     fourmi   peureux dame   roi   peureux fourmi   éléphant
 //
 // L'adversaire monte en force à chaque fois (index dans AI_INSTRUCTORS via
 // tutoInstructorLevel) et la couleur du joueur alterne pour qu'il joue une
@@ -85,12 +87,12 @@ const SAVANT_SVG=
 // avait une : on apprenait à jouer avec un chronomètre au-dessus de l'épaule,
 // et une première partie perdue au temps ne se comprend pas. La pendule
 // arrive avec les vraies parties, où elle a un sens.
-const TUTO_EXTRA_COLS={'alpha':[2,5],'fourmi':[1,6],'garde-pierre':[0,7]};
+const TUTO_EXTRA_COLS={'peureux':[2,5],'fourmi':[1,6],'dresseur-elephant':[0,7]};
 const TUTO_BATTLES=[
   {playerColor:'b',extras:[],                              clockMin:0},
-  {playerColor:'w',extras:['alpha'],                       clockMin:0},
-  {playerColor:'b',extras:['alpha','fourmi'],              clockMin:0},
-  {playerColor:'w',extras:['alpha','fourmi','garde-pierre'],clockMin:0},
+  {playerColor:'w',extras:['peureux'],                          clockMin:0},
+  {playerColor:'b',extras:['peureux','fourmi'],                 clockMin:0},
+  {playerColor:'w',extras:['peureux','fourmi','dresseur-elephant'],clockMin:0},
 ];
 
 let _tutoUid=0;
@@ -226,11 +228,11 @@ const TUTO_STEPS=[
          'adversaire et lance la charge vaillamment.',
     battle:0,btn:'Au combat !',
   },
-  {reward:{chest:'pion',piece:'alpha'}},
-  {drill:'alpha'},
+  {reward:{chest:'pion',piece:'peureux'}},
+  {drill:'peureux'},
   {
     text:'Merveilleux&nbsp;! Tu es visiblement un élève prometteur. Défie un nouvel '+
-         'adversaire, et utilise ton <strong>Alpha</strong> fraîchement débloqué.',
+         'adversaire, et utilise ton <strong>Peureux</strong> fraîchement débloqué.',
     at:'#cube-jouer-btn',combat:1,
   },
   {reward:{chest:'cavalier',piece:'fourmi'}},
@@ -240,8 +242,8 @@ const TUTO_STEPS=[
          'plus puissante. Attaque encore, et prends par surprise ton adversaire.',
     at:'#cube-jouer-btn',combat:2,
   },
-  {reward:{chest:'fou',piece:'garde-pierre'}},
-  {drill:'garde-pierre'},
+  {reward:{chest:'fou',piece:'dresseur-elephant'}},
+  {drill:'dresseur-elephant'},
   {
     text:'Ton armée est maintenant complète&nbsp;! Lance un dernier combat contre un '+
          'instructeur, tu affronteras ensuite des joueurs du monde entier. Montre-moi '+
@@ -303,17 +305,12 @@ const TUTO_STEPS=[
     at:'#cube-arrow-right',click:'#cube-arrow-right',wait:700,
   },
   {
-    text:'L\'Armurerie. Tout ce que vous possédez est là, en exemplaires comptés.<br>'+
+    text:'L\'Armurerie. Tout ce que vous possédez, vous le possédez en '+
+         '<strong>exemplaires comptés</strong> — le petit nombre en haut de chaque '+
+         'carte, dans la composition d\'armée.<br>'+
          'Engager une créature dans une partie, c\'est la <strong>risquer</strong>. '+
          'Vous perdez&nbsp;? Toute l\'armée engagée y reste. Vous gagnez&nbsp;? '+
          'Vous ne perdez que ce qui a été mangé.',
-    at:'#rs-inv',
-  },
-  {
-    text:'Rassurez-vous, je ne suis pas un monstre. Chaque jour, ce coffre vous rend '+
-         '<strong>4 exemplaires de chacune</strong> de vos pièces. Vous ne pourrez jamais '+
-         'vous retrouver bloqué sans armée.',
-    at:'#rs-daily',
   },
   {
     text:'Et voici la récompense. Une victoire&nbsp;: un Coffre Pion. Deux d\'affilée&nbsp;: '+
@@ -364,6 +361,12 @@ const TUTO_STEPS=[
          'Et si vous êtes pressé, <strong>n\'importe lequel s\'achète en perles</strong>, '+
          'quelle que soit votre série.',
     at:'#jouer-chests',
+  },
+  {
+    text:'Rassurez-vous, je ne suis pas un monstre. Chaque jour, ce coffre-ci vous rend '+
+         '<strong>4 exemplaires de chacune</strong> de vos pièces. Il est ici, sur le '+
+         'chemin&nbsp;: vous ne pourrez jamais vous retrouver bloqué sans armée.',
+    at:'#menu-daily',
   },
   {
     text:'Une dernière chose, et je vous laisse&nbsp;: en pleine partie, <strong>clic droit '+
@@ -541,11 +544,11 @@ function tutoRunDrill(pieceId){
 // connaît déjà le jeu (un ami à qui on le montre, un compte recréé).
 //
 // Le bouton donne EXACTEMENT ce que le tutoriel aurait donné, ni plus ni
-// moins : les trois créatures (Alpha, Fourmi, Garde de Pierre) avec leurs
+// moins : les trois créatures (Peureux, Fourmi, Éléphant de guerre) avec leurs
 // exemplaires, plus une première armée composée au hasard — sans quoi on
 // sortirait du tutoriel dans une armurerie vide, incapable de lancer un
 // combat, c'est-à-dire exactement là où le tutoriel sert à ne pas être.
-const TUTO_SKIP_PIECES=['alpha','fourmi','garde-pierre'];
+const TUTO_SKIP_PIECES=['peureux','fourmi','dresseur-elephant'];
 const TUTO_SKIP_QTY=10;
 
 // Armée aléatoire légale : mêmes règles que le builder (1 Monarque, 1
@@ -815,8 +818,8 @@ document.addEventListener('DOMContentLoaded',()=>{
   document.getElementById('tuto-skip')?.addEventListener('click',()=>{
     if(typeof showConfirmModal==='function'){
       showConfirmModal(
-        'Passer le tutoriel ? Vous recevrez directement l\'Alpha, la Fourmi et le '+
-        'Garde de Pierre, ainsi qu\'une première armée composée au hasard.',
+        'Passer le tutoriel ? Vous recevrez directement le Peureux, la Fourmi et '+
+        'l\'Éléphant de guerre, ainsi qu\'une première armée composée au hasard.',
         tutoSkip,{okLabel:'Passer',cancelLabel:'Continuer le tutoriel',okClass:'btn-primary'});
     }else tutoSkip();
   });

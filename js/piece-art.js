@@ -67,14 +67,18 @@ const PIECE_ART={
     '<circle class="b" cx="44" cy="37" r="12"/>'+
     '<path class="b" d="M33 46h21c2 10 6 15 10 20 4 6 5 11 5 16H18c0-5 1-10 5-16 4-5 8-10 10-20z"/>',
 
-  // Profil tourné vers la gauche : la corne est la seule chose qui distingue
-  // un rhinocéros d'une masse quelconque, elle sort donc franchement du crâne.
+  // LE CENTAURE (anciennement Chevaucheur de Rhinocéros : l'id n'a pas bougé,
+  // voir data-pieces.js). Ce qui le fait lire, c'est la JONCTION : un buste
+  // dressé planté à l'avant d'un corps équin. Les deux masses se chevauchent
+  // franchement, sinon on ne voit qu'un cavalier posé sur une bête.
   'chevaucheur-rhinoceros':
-    '<path class="b" d="M31 53C24 41 18 30 12 19c12 6 21 19 26 30z"/>'+
-    '<path class="b" d="M65 27l4-13 7 11z"/>'+
-    '<path class="b" d="M28 51c2-16 16-25 30-23 16 2 25 13 25 29v25H26c-3-11-1-22 2-31z"/>'+
-    '<path class="l" d="M29 68h22"/>'+
-    '<circle class="k" cx="52" cy="45" r="3.5"/>',
+    '<circle class="b" cx="62" cy="15" r="10"/>'+
+    '<path class="b" d="M62 27c9 0 15 6 16 15l2 13-9 2-3-12-1 9H51V42c0-9 4-15 11-15z"/>'+
+    '<path class="l" d="M66 33c5 2 9 6 11 11"/>'+
+    '<circle class="k" cx="66" cy="13" r="3.2"/>'+
+    '<path class="b" d="M24 46h30c10 0 17 8 17 18v9c0 5-3 8-8 8H26c-7 0-12-5-12-12V58c0-7 4-12 10-12z"/>'+
+    '<path class="l" d="M14 50c-6 1-10 7-10 15"/>'+
+    '<path class="l" d="M30 81V70M46 81V70M62 81V70"/>',
 
   // Le visage est un VIDE sombre (classe .k) et non un contour : c'est ce
   // creux d'ombre sous la capuche qui fait lire le personnage encapuchonné.
@@ -103,11 +107,19 @@ const PIECE_ART={
     '<path class="l" d="M33 42h34M32 69h36"/>',
 
   // ---- Brutes ----------------------------------------------------
-  'alpha':
-    '<path class="b" d="M29 45 21 11l19 15z"/><path class="b" d="M71 45 79 11 60 26z"/>'+
-    '<path class="b" d="M50 16c16 0 27 12 27 28 0 18-13 30-27 40-14-10-27-22-27-40 0-16 11-28 27-28z"/>'+
-    '<circle class="k" cx="40" cy="43" r="4"/><circle class="k" cx="60" cy="43" r="4"/>'+
-    '<path class="l" d="M43 62h14M50 62v9"/>',
+  // LE PEUREUX. Tout est dans la posture : deux mains levées de part et
+  // d'autre de la tête, des épaules remontées jusqu'aux oreilles, des yeux
+  // beaucoup trop grands et une bouche qui tremble. Aucune arme, aucune
+  // pointe : à la taille d'une case, c'est la seule silhouette du jeu qui
+  // recule au lieu d'avancer.
+  'peureux':
+    '<path class="b" d="M25 47c-6-6-10-14-12-22 5-1 10 2 13 7z"/>'+
+    '<path class="b" d="M75 47c6-6 10-14 12-22-5-1-10 2-13 7z"/>'+
+    '<path class="b" d="M50 18c-16 0-27 12-27 28 0 13 4 24 8 34h38c4-10 8-21 8-34 0-16-11-28-27-28z"/>'+
+    '<ellipse class="k" cx="40" cy="45" rx="6" ry="7.5"/>'+
+    '<ellipse class="k" cx="60" cy="45" rx="6" ry="7.5"/>'+
+    '<path class="l" d="M42 66c2.7-4 5.3 4 8 0s5.3 4 8 0"/>'+
+    '<path class="l" d="M13 32c-3-2-5-5-6-9M87 32c3-2 5-5 6-9"/>',
 
   'fourmi':
     '<path class="l" d="M43 14c-5-8-11-12-17-10M57 14c5-8 11-12 17-10"/>'+

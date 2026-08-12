@@ -79,9 +79,9 @@
       },
       "gameItem": [
         {"@type": "Thing", "name": "Monarque", "description": "L'équivalent du roi, la pièce à protéger. Roi ou Empereur."},
-        {"@type": "Thing", "name": "Général", "description": "L'équivalent de la dame, la pièce maîtresse. Dame, Amazone, Chevaucheur de Rhinocéros ou Grand Maître."},
+        {"@type": "Thing", "name": "Général", "description": "L'équivalent de la dame, la pièce maîtresse. Dame, Amazone, Centaure ou Grand Maître."},
         {"@type": "Thing", "name": "Primordiale", "description": "Les pièces d'échecs classiques : Cavalier, Fou et Tour."},
-        {"@type": "Thing", "name": "Brute", "description": "Les pièces ayant un déplacement puissant, mais un pouvoir faible, comme l'Alpha ou la Fourmi."},
+        {"@type": "Thing", "name": "Brute", "description": "Les pièces ayant un déplacement puissant, mais un pouvoir faible, comme le Peureux ou la Fourmi."},
         {"@type": "Thing", "name": "Sorcier", "description": "Les pièces possédant des capacités spéciales avancées, mais à la mobilité réduite, comme la Méduse, la Banshee ou le Prêtre."}
       ]
     },
@@ -225,10 +225,6 @@
     <div id="mp-screen-quick" style="display:none">
       <div class="mp-wait-title">Recherche d'un adversaire</div>
       <div class="mp-radar"><span></span><span></span><span></span></div>
-      <div class="mp-search-grid">
-        <div class="mp-search-cell"><div class="mp-search-lbl">En attente</div><div class="mp-search-val" id="mp-search-peers">1</div></div>
-        <div class="mp-search-cell"><div class="mp-search-lbl">Niveau visé</div><div class="mp-search-val" id="mp-search-window">±120</div></div>
-      </div>
       <div class="mp-search-note" id="mp-search-note">On cherche d'abord un adversaire de votre niveau, puis on élargit.</div>
       <button class="btn btn-ghost" id="mp-fallback-btn" style="display:none;width:100%;margin-top:10px">Affronter un adversaire du laboratoire</button>
     </div>
@@ -246,6 +242,11 @@
       <input id="mp-code-input" maxlength="6" placeholder="CODE" class="mp-code-input">
       <button class="btn btn-primary" id="mp-join-confirm" style="width:100%;padding:12px">Rejoindre la partie</button>
     </div>
+
+    <!-- TIPS D'ATTENTE : rempli par mpRenderTip() (js/multiplayer.js) et
+         visible uniquement pendant une attente (voir [MP-WAIT] dans la CSS),
+         recherche rapide comme partie privée. Le texte vient de MP_TIPS. -->
+    <div class="mp-tip" id="mp-tip"></div>
 
     <div class="mp-status" id="mp-status"></div>
     <button class="btn btn-ghost" id="mp-cancel" style="margin-top:14px">Annuler</button>
@@ -308,7 +309,6 @@
             <button class="jouer-btn" id="cube-jouer-btn"><span>COMBAT</span></button>
             <div class="jouer-second">
               <button class="btn btn-ghost" id="b-vs-ia">Adversaires</button>
-              <button class="btn btn-ghost jouer-tournoi-btn" id="b-tournoi">Tournoi</button>
             </div>
           </div>
           <!-- LES SIX COFFRES, en bas de l'écran, de gauche à droite du Pion
@@ -322,6 +322,13 @@
                    rien : elle est dans l'image.
                  · combien de perles coûte chacun — on peut toujours acheter
                    n'importe lequel, quelle que soit la série. -->
+          <!-- COFFRE DE RÉAPPROVISIONNEMENT QUOTIDIEN (renderDailyChest,
+               js/economy-ui.js). Il était au fond de l'Armurerie, c'est-à-dire
+               deux rotations de cube plus loin : le filet de sécurité du jeu —
+               celui qui garantit qu'on ne reste jamais bloqué sans armée — ne
+               se voyait que si on allait le chercher. Il est ici, sur l'écran
+               par lequel tout le monde passe. -->
+          <div class="jouer-daily" id="menu-daily"></div>
           <div class="jouer-chests" id="jouer-chests"></div>
         </div>
       </div>
@@ -393,8 +400,8 @@
 <div id="page-armies" class="page">
 <div class="armies-inner">
   <div class="armies-hdr"><div class="armies-title cinzel glow-text">Mes Armées</div><button class="btn btn-primary" id="ar-new">+ Nouvelle armée</button></div>
-  <!-- Bandeau du mode sélection (combat/tournoi lancé depuis le menu
-       principal) : rempli et affiché par renderArmiesPage(). -->
+  <!-- Bandeau du mode sélection (combat lancé depuis le menu principal) :
+       rempli et affiché par renderArmiesPage(). -->
   <div class="armies-select-banner" id="armies-select-banner" style="display:none"></div>
   <div class="armies-grid" id="armies-grid"></div>
 </div>
@@ -440,9 +447,11 @@
       <div class="rs-hdr">
         <div class="rs-title">L'Armurerie</div>
       </div>
-      <!-- Solde de perles (js/economy-ui.js::renderPearls). -->
+      <!-- Solde de perles (js/economy-ui.js::renderPearls). Le coffre de
+           réapprovisionnement quotidien a déménagé sur le menu principal
+           (#menu-daily) : c'est un filet de sécurité, il doit être sur le
+           chemin, pas au fond d'une salle. -->
       <div id="rs-pearls"></div>
-      <div id="rs-daily"></div>
       <!-- MODE ADMIN : les six récompenses en accès illimité. Vide (et
            masquée) hors mode admin, remplie par renderAdminChests()
            dans js/economy-ui.js. Le mode admin ne donne aucune pièce
@@ -458,8 +467,12 @@
            Il n'y a plus non plus de « Boutique » ici : les six coffres et
            leur prix en perles sont en bas du MENU PRINCIPAL (#jouer-chests),
            là où ils racontent en même temps la série de victoires en cours. -->
+      <!-- Il n'y a plus de liste « Vos pièces » ici : le nombre d'exemplaires
+           possédés se lit là où il sert à décider, c'est-à-dire sur la carte de
+           chaque créature dans le builder (.pc-stock) et sous chaque pièce
+           posée dans la composition (.cs-stock). Répété une troisième fois en
+           bas de l'Armurerie, il ne faisait plus que rallonger la page. -->
       <div class="rs-sec"><div class="rs-sec-title">Échiquiers</div><div class="skin-grid" id="rs-skins"></div></div>
-      <div class="rs-sec"><div class="rs-sec-title">Vos pièces</div><div class="inv-grid" id="rs-inv"></div></div>
     </div>
   </div>
 </div>
@@ -492,112 +505,8 @@
   <div class="voie-hdr"><div class="voie-title">Voie des Victoires</div><button class="btn btn-ghost" id="voie-back">← Retour</button></div>
   <div class="voie-elo-banner" id="voie-elo-banner"></div>
   <div class="voie-route" id="voie-route"></div>
-  <div class="voie-history" id="voie-history"></div>
   <div style="text-align:left;margin-top:16px;padding-bottom:20px"><button class="btn btn-ghost" id="voie-scroll-top" style="font-size:11px">↑ Retour au début</button></div>
 </div>
-</div>
-
-<!-- PAGE TOURNOI -->
-<div id="page-tournoi" class="page">
-<div class="tournoi-inner">
-  <div class="tournoi-hdr">
-    <div class="tournoi-title">Mode Tournoi</div>
-    <button class="btn btn-ghost" id="tournoi-back">← Retour</button>
-  </div>
-  <div id="tournoi-army-banner" style="background:var(--surface);border:1px solid var(--border2);border-radius:12px;padding:14px 18px;margin-bottom:20px;display:none">
-    <div style="font-family:'Cinzel',serif;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Votre armée pour ce tournoi</div>
-    <div id="tournoi-army-pieces" style="font-size:22px;margin-bottom:4px"></div>
-    <div id="tournoi-army-names" style="font-size:11px;color:var(--muted)"></div>
-  </div>
-  <div class="tournoi-progress-wrap">
-    <div class="tournoi-prog-label">Progression du tournoi</div>
-    <div class="tournoi-prog-bar-outer"><div class="tournoi-prog-bar-inner" id="tournoi-prog-bar" style="width:0%"></div></div>
-    <div class="tournoi-prog-count" id="tournoi-prog-count">0 / 7</div>
-  </div>
-  <div class="tournoi-rounds" id="tournoi-rounds"></div>
-  <div class="tournoi-result-banner" id="tournoi-result-banner">
-    <div class="trb-icon" id="trb-icon"></div>
-    <div class="trb-title" id="trb-title">Champion du tournoi !</div>
-    <div class="trb-sub" id="trb-sub"></div>
-    <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
-      <button class="btn btn-primary" id="tournoi-analyze">Analyser le tournoi</button>
-      <button class="btn btn-gold" id="tournoi-restart">Nouveau tournoi</button>
-      <button class="btn btn-ghost" id="tournoi-back2">← Retour au menu</button>
-    </div>
-  </div>
-  <div class="tournoi-history" id="tournoi-history-section">
-    <div class="tournoi-history-title">Historique des tournois</div>
-    <div id="tournoi-history-list"></div>
-  </div>
-</div>
-</div>
-
-<!-- TOURNOI ANALYSE MODAL -->
-<div id="tournoi-analyse-modal" style="position:fixed;inset:0;background:rgba(0,0,0,.92);display:flex;align-items:center;justify-content:center;z-index:6000;visibility:hidden;overflow-y:auto">
-  <div style="background:var(--surface2);border:1px solid var(--border2);border-radius:18px;padding:28px;max-width:860px;width:96%;position:relative;overflow:hidden;max-height:92vh;overflow-y:auto">
-    <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--accent),var(--gold),var(--accent2))"></div>
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px">
-      <div style="font-family:'Cinzel',serif;font-size:20px;font-weight:900">Analyse du tournoi</div>
-      <button class="btn btn-ghost" id="tournoi-analyse-close">✕ Fermer</button>
-    </div>
-    <div id="tournoi-analyse-rounds" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-bottom:20px"></div>
-    <div id="tournoi-analyse-replay" style="display:none">
-      <div style="font-family:'Cinzel',serif;font-size:13px;font-weight:700;color:var(--gold);margin-bottom:12px;border-top:1px solid var(--border);padding-top:14px" id="tournoi-analyse-replay-title"></div>
-      <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start">
-        <div style="flex:1;min-width:260px">
-          <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">
-            <div style="flex:1;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:10px 14px">
-              <div style="font-size:9px;font-family:'Cinzel',serif;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Votre armée</div>
-              <div id="ta-player-army" style="font-size:22px"></div>
-              <div id="ta-player-names" style="font-size:10px;color:var(--muted);margin-top:3px"></div>
-            </div>
-            <div style="flex:1;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:10px 14px">
-              <div style="font-size:9px;font-family:'Cinzel',serif;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px" id="ta-ai-label">Armée IA</div>
-              <div id="ta-ai-army" style="font-size:22px"></div>
-              <div id="ta-ai-names" style="font-size:10px;color:var(--muted);margin-top:3px"></div>
-            </div>
-          </div>
-          <div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:10px">
-            <div id="ta-board" style="display:grid;grid-template-columns:repeat(8,1fr);width:100%;max-width:320px;margin:0 auto;aspect-ratio:1;border:2px solid var(--border2);border-radius:6px;overflow:hidden"></div>
-            <div style="display:flex;gap:8px;justify-content:center;margin-top:10px">
-              <button class="btn btn-ghost" id="ta-first" style="padding:6px 10px;font-size:11px">⏮</button>
-              <button class="btn btn-ghost" id="ta-prev" style="padding:6px 10px;font-size:11px">◀</button>
-              <button class="btn btn-ghost" id="ta-next" style="padding:6px 10px;font-size:11px">▶</button>
-              <button class="btn btn-ghost" id="ta-last" style="padding:6px 10px;font-size:11px">⏭</button>
-            </div>
-            <div id="ta-move-idx" style="text-align:center;font-size:11px;color:var(--muted);margin-top:6px;font-family:'Cinzel',serif"></div>
-          </div>
-        </div>
-        <div style="width:180px;flex-shrink:0">
-          <div style="font-family:'Cinzel',serif;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Coups joués</div>
-          <div id="ta-movelog" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px;max-height:320px;overflow-y:auto;font-size:11px;font-family:'Cinzel',serif;line-height:1.9"></div>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Round overlay interstitiel -->
-<div class="round-overlay" id="round-overlay">
-  <div class="round-box">
-    <div class="rb-round-label" id="rb-round-label">Round 1 / 7</div>
-    <span class="rb-result-icon" id="rb-result-icon"></span>
-    <div class="rb-result-text" id="rb-result-text">Victoire !</div>
-    <div class="rb-elo-row">ELO : <span id="rb-elo-before">0</span> → <span id="rb-elo-after">0</span> <span class="rb-elo-delta" id="rb-elo-delta">+0</span></div>
-    <div id="rb-next-wrap">
-      <div class="rb-next-label">Prochain adversaire</div>
-      <div class="rb-next-card">
-        <div class="rb-next-info">
-          <div class="rb-next-name" id="rb-next-name"></div>
-          <div class="rb-next-elo" id="rb-next-elo"></div>
-        </div>
-      </div>
-    </div>
-    <div class="rb-actions">
-      <button class="btn btn-primary" id="rb-next-btn" style="flex:1;font-size:15px;padding:13px">Round suivant →</button>
-      <button class="btn btn-ghost" id="rb-quit-btn" style="font-size:13px;padding:13px 16px;border-color:var(--danger);color:var(--danger)">Quitter le tournoi</button>
-    </div>
-  </div>
 </div>
 
 <!-- PAGE COMBAT -->
@@ -779,7 +688,7 @@
     <span class="sp-label">Mode admin</span>
     <button class="btn btn-ghost" id="sp-admin" style="font-size:10px;padding:5px 12px">Ouvrir le mode test</button>
   </div>
-  <div class="sp-admin-note" id="sp-admin-note">Coffres illimités, parties non classées.</div>
+  <div class="sp-admin-note" id="sp-admin-note">Toutes les pièces, 10 000 ELO, perles illimitées. Parties non classées, rien n'est enregistré.</div>
 </div>
 
 <!-- ================================================================
@@ -804,10 +713,8 @@
       11. ai-engine.js      (dépend de rules-engine+data)
       12. game-flow.js      (dépend de tout ce qui précède)
       13. voie.js           (dépend de data+accounts+main)
-      14. tournoi.js        (dépend de tout ce qui précède, notamment
-                              game-flow pour buildGameBoard/updateGamePlayerBars)
-      15. settings-admin.js (dépend de main+accounts+data)
-      16. app-init.js       (dernier : lance renderLoginPage())
+      14. settings-admin.js (dépend de main+accounts+data)
+      15. app-init.js       (dernier : lance renderLoginPage())
    ================================================================ -->
 <script src="js/data-pieces.js"></script>
 <script src="js/piece-art.js"></script>
@@ -832,7 +739,6 @@
 <script src="js/economy-ui.js"></script>
 <script src="js/tuto-drill.js"></script>
 <script src="js/tutorial.js"></script>
-<script src="js/tournoi.js"></script>
 <script src="js/settings-admin.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/multiplayer.js"></script>

@@ -12,7 +12,7 @@
 // (generateMovesRaw, getLegalMoves, isInCheckSimple, updateMedusaParalysis,
 // updateGrandMaitre, executeGameMove, cloneBoard, inB, opp).
 // Utilisé par : rules-engine.js (postMoveUpdate appelle doAIMove),
-// game-flow.js / tournoi.js (le niveau choisi = selectedAILevel, défini
+// game-flow.js (le niveau choisi = selectedAILevel, défini
 // dans ai-level-modal.js).
 //
 // Le code du Worker est généré dynamiquement (getWorkerCode) en sérialisant
@@ -28,7 +28,7 @@ const CVAL={
   'dame':950,'amazone':800,'chevaucheur-rhinoceros':870,'grand-maitre':1200,
   'cavalier-primordial':360,'fou-primordial':360,'tour-primordiale':530,
   'dresseur-elephant':310,'meduse':240,'typhon':520,
-  'alpha':230,
+  'peureux':170,
   'fourmi':190,'banshee':430,'preux-chevalier':210,
   'garde-pierre':290,'pretre':420,'std-pawn':100,
 };
@@ -224,12 +224,12 @@ function evalPowers(board,fgs){
       }
     }
 
-    // ALPHA : saute exactement à 2 cases en diagonale, donc il ignore les
-    // blocages mais laisse les cases adjacentes libres. Utile au contact des
-    // lignes ennemies, faible à l'arrière.
-    else if(id==='alpha'){
-      const adv=p.color==='b'?r:(7-r);
-      s+=sg*adv*4;
+    // PEUREUX : il ne franchit jamais la moitié du plateau (Retraite
+    // Prudente). Il ne vaut donc rien en attaque et tout en couverture : on le
+    // récompense de garder une case du fond de son propre camp, pas d'avancer.
+    else if(id==='peureux'){
+      const home=p.color==='b'?(3-r):(r-4);   // 0 au milieu, 3 sur sa rangée de départ
+      s+=sg*(home>=0?home*5:-25);
     }
   }
   return s;
@@ -424,7 +424,7 @@ const ZK=(()=>{
   const rnd=()=>{seed=Math.imul(1664525,seed)+1013904223|0;return(seed>>>0);};
   const pieceIds=['roi','empereur','amazone','chevaucheur-rhinoceros',
     'dame','grand-maitre','cavalier-primordial','fou-primordial','tour-primordiale',
-    'alpha','fourmi','preux-chevalier','dresseur-elephant','garde-pierre',
+    'peureux','fourmi','preux-chevalier','dresseur-elephant','garde-pierre',
     'meduse','typhon','banshee','pretre',
     'std-pawn','std-r','std-n','std-b'];
   const pidx={};pieceIds.forEach((id,i)=>{pidx[id]=i;});
@@ -778,7 +778,7 @@ function getWorkerCode(){
   const fns=[
     inB,opp,cloneBoard,getPieceEmoji,
     slidingMoves,jumpMoves,knightMoves,kingMoves,pawnMoves,generateMovesRaw,
-    isInCheckSimple,isSquareAttackedSimple,getLegalMovesKingFiltered,applyCollateralOnBoard,moveLeavesKingInCheck,getLegalMoves,
+    isInCheckSimple,isSquareAttackedSimple,getLegalMovesKingFiltered,isTruePawn,applyBansheePush,applyCollateralOnBoard,moveLeavesKingInCheck,getLegalMoves,
     updateMedusaParalysis,updateGrandMaitre,
     applyMoveQuick,powerValueAt,evalPowers,evalBoard,getAllMovesColor,
     boardHash,ttStore,ttProbe,storeKiller,isKiller,destroysSomething,quiesce,minimax,
@@ -788,6 +788,7 @@ function getWorkerCode(){
 
   const consts=`
 const PIECES=${JSON.stringify(PIECES)};
+const TRUE_PAWN_IDS=new Set(${JSON.stringify([...TRUE_PAWN_IDS])});
 const CVAL=${JSON.stringify(CVAL)};
 const PVAL=${JSON.stringify(PVAL)};
 const PIECE_CLASS_BY_ID=${JSON.stringify(PIECE_CLASS_BY_ID)};

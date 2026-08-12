@@ -3,16 +3,15 @@
 // ================================================================
 // Contient : le rendu des listes d'armées sauvegardées (#page-armies et
 // #page-ai-armies), les actions modifier/supprimer, le mode SÉLECTION
-// (déclenché par "COMBAT"/"Tournoi" du menu principal : un clic sur une
-// carte lance la partie), le chargement d'une armée sauvegardée dans le builder pour
+// (déclenché par "COMBAT" du menu principal : un clic sur une carte lance la
+// partie), le chargement d'une armée sauvegardée dans le builder pour
 // édition, et generateAIArmy() qui compose une armée aléatoire légale pour
 // l'adversaire IA quand aucune armée IA personnalisée n'est choisie.
 //
 // Dépendances : data-pieces.js (PIECES), accounts.js (savedArmies,
 // savedAiArmies, saveArmies, saveAiArmies, VV_UNLOCKED), main.js (army,
 // editingArmyId, builderMode, updateBuilderBanner, updAll, showPage,
-// showNotif), tournoi.js (tournamentState, renderTournoiPage, startTournoi),
-// combat-intro.js (renderCombatPage, launchParticles).
+// showNotif), combat-intro.js (renderCombatPage, launchParticles).
 // ================================================================
 
 // ----------------------------------------------------------------
@@ -63,13 +62,13 @@ window.confirmRenameArmy=(id,isAi)=>{
 // ----------------------------------------------------------------
 // MODE SÉLECTION D'ARMÉE
 // ----------------------------------------------------------------
-// Un combat / un tournoi ne se lance plus depuis la carte d'armée : on part
-// du menu principal (gros bouton "COMBAT" ou bouton "Tournoi" de la face
-// JOUER), ce qui amène ICI en mode sélection. La page se réduit alors à un
-// choix : toutes les autres actions (Voie, Nouvelle armée, Modifier,
+// Un combat ne se lance plus depuis la carte d'armée : on part du menu
+// principal (gros bouton "COMBAT", ou "Adversaires" pour un duel contre le
+// laboratoire), ce qui amène ICI en mode sélection. La page se réduit alors à
+// un choix : toutes les autres actions (Voie, Nouvelle armée, Modifier,
 // Renommer, Supprimer) sont masquées et un clic sur une carte lance
-// directement le combat/le tournoi avec cette armée.
-let armySelectMode=null;   // null | 'online' | 'ia' | 'tournoi'
+// directement le combat avec cette armée.
+let armySelectMode=null;   // null | 'online' | 'ia'
 
 window.startArmySelection=mode=>{
   // Sans armée sauvegardée il n'y a rien à sélectionner : on affiche la page
@@ -117,8 +116,7 @@ window.pickArmyForBattle=id=>{
     }
   }
   armySelectMode=null;renderArmiesPage();
-  if(mode==='tournoi')launchTournoiFromArmy(id);
-  else if(mode==='online')launchOnline(id);
+  if(mode==='online')launchOnline(id);
   else launchCombat(id);
 };
 
@@ -134,7 +132,7 @@ const renderArmiesPage=()=>{
   const banner=document.getElementById('armies-select-banner');
   if(banner){
     banner.style.display=sel?'':'none';
-    banner.innerHTML=sel?'<span class="asb-txt">'+(armySelectMode==='tournoi'?'Sélectionnez l\'armée avec laquelle vous voulez disputer le tournoi':armySelectMode==='online'?'Sélectionnez l\'armée que vous engagez contre un autre joueur':'Sélectionnez l\'armée avec laquelle affronter l\'Instructeur')+'</span><button class="btn btn-ghost" style="font-size:11px;padding:6px 12px" onclick="cancelArmySelection()">Annuler</button>':'';
+    banner.innerHTML=sel?'<span class="asb-txt">'+(armySelectMode==='online'?'Sélectionnez l\'armée que vous engagez contre un autre joueur':'Sélectionnez l\'armée avec laquelle affronter votre adversaire')+'</span><button class="btn btn-ghost" style="font-size:11px;padding:6px 12px" onclick="cancelArmySelection()">Annuler</button>':'';
   }
   if(!savedArmies.length){grid.innerHTML='<div class="empty-armies"><span class="vial"><span class="vial-bubble"></span></span><p>Aucune armée enregistrée.<br>Composez votre première armée !</p></div>';return;}
   grid.innerHTML=savedArmies.map(a=>{
@@ -162,15 +160,6 @@ const renderArmiesPage=()=>{
 };
 window.editPlayerArmy=id=>{const a=savedArmies.find(x=>x.id===id);if(!a)return;builderMode='player';updateBuilderBanner();loadArmyForEdit(a);showPage('page-builder');updAll();};
 window.deletePlayerArmy=id=>{showConfirmModal('Supprimer cette armée ?',()=>{savedArmies=savedArmies.filter(a=>a.id!==id);saveArmies();renderArmiesPage();});};
-window.launchTournoiFromArmy=id=>{
-  const a=savedArmies.find(x=>x.id===id);if(!a)return;
-  loadArmyForEdit(a);currentArmyData=a;
-  tournamentState.active=false; // reset pour permettre nouveau tournoi
-  renderTournoiPage();showPage('page-tournoi');
-  // L'armée vient d'être choisie explicitement en mode sélection : plus de
-  // confirmation à demander, le tournoi démarre directement.
-  setTimeout(startTournoi,150);
-};
 document.getElementById('ar-new').addEventListener('click',()=>{builderMode='player';updateBuilderBanner();army={mon:null,gen:null,extras:[]};editingArmyId=null;showPage('page-builder');updAll();});
 
 // ----------------------------------------------------------------
@@ -209,8 +198,8 @@ document.getElementById('ai-ar-new').addEventListener('click',()=>{builderMode='
 // opts.full : puiser dans TOUT le catalogue au lieu des seules pièces
 //   débloquées par le joueur. Un adversaire à 1750 ELO doit pouvoir aligner
 //   un Typhon que le joueur n'a pas encore vu : c'est comme ça qu'on découvre
-//   qu'il existe. Les armées « miroir » et le tournoi gardent l'ancien
-//   comportement, qui garantit un duel à armes connues.
+//   qu'il existe. Les armées « miroir » gardent l'ancien comportement, qui
+//   garantit un duel à armes connues.
 const ARMY_STYLE_CLASS={
   brute:'Brute',sorcier:'Sorcier',nuee:'Brute',
   agressif:'Général',gourmand:'Général',positionnel:'Primordiale',

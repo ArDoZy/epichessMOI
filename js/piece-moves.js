@@ -113,6 +113,33 @@ function pmvRing(b,r0,c0,nr,nc,color){
 }
 
 // ----------------------------------------------------------------
+// D'OÙ L'ON POSE LA QUESTION
+// ----------------------------------------------------------------
+// Le schéma montre le RÉPERTOIRE d'une créature, pas ce qu'elle peut faire
+// depuis une case en particulier. Or certaines créatures ne se déplacent pas
+// pareil partout : le Peureux ne sort jamais des quatre rangées de son camp,
+// un pion ne fait son bond de deux cases que de sa rangée de départ.
+//
+// La question était posée d'UNE seule case, la rangée 4 — qui se trouve être,
+// pour les Blancs, la ligne de front du camp du Peureux. Son schéma le
+// montrait donc incapable d'avancer d'un pas, ce qui est faux partout ailleurs
+// dans son camp. On essaie maintenant les rangées dans l'ordre : celle qui a
+// toujours servi d'abord (rien ne change pour les créatures dont le
+// déplacement ne dépend pas de la case), puis les autres, jusqu'à en trouver
+// une d'où la case visée est atteignable.
+//
+// Les trois questions (peut-elle y aller, seulement pour manger, en volant)
+// sont ensuite posées depuis CETTE rangée-là et pas une autre : mélanger deux
+// origines produirait un pictogramme qui ne correspond à aucune position.
+function pmvRowCandidates(dr){
+  const def=(dr===PMV_MID)?PMV_MID-1:PMV_MID;
+  const ok=r=>r>=0&&r<=7&&r+dr>=0&&r+dr<=7;
+  const out=ok(def)?[def]:[];
+  for(let r=0;r<8;r++)if(ok(r)&&r!==def)out.push(r);
+  return out;
+}
+
+// ----------------------------------------------------------------
 // LA CARTE : 9×9 de catégories
 // ----------------------------------------------------------------
 // Valeurs : null (hors de portée), 'self', 'walk', 'fly', 'kill', 'peace'.
@@ -126,13 +153,17 @@ function pieceMoveMap(pieceId){
     for(let j=0;j<PMV_SIZE;j++){
       const dr=i-PMV_MID,dc=j-PMV_MID;
       if(!dr&&!dc){row.push('self');continue;}
-      // Origine choisie pour que la case visée tienne sur le plateau réel.
-      const r0=(dr===PMV_MID)?PMV_MID-1:PMV_MID;
+      // Colonne choisie pour que la case visée tienne sur le plateau réel.
+      // Aucune créature n'est restreinte en colonne : une seule suffit.
       const c0=(dc===PMV_MID)?PMV_MID-1:PMV_MID;
-      const canMove=pmvCanReach(pieceId,color,r0,c0,dr,dc,null);
-      const canTake=pmvCanReach(pieceId,color,r0,c0,dr,dc,pmvPutEnemy);
+      let r0=null,canMove=false,canTake=false;
+      for(const r of pmvRowCandidates(dr)){
+        const m=pmvCanReach(pieceId,color,r,c0,dr,dc,null);
+        const t=pmvCanReach(pieceId,color,r,c0,dr,dc,pmvPutEnemy);
+        if(m||t){r0=r;canMove=m;canTake=t;break;}
+      }
       let cat=null;
-      if(!canMove&&!canTake)cat=null;
+      if(r0===null)cat=null;
       else if(!canMove)cat='kill';
       else if(!canTake)cat='peace';
       else if(Math.abs(dr)<=1&&Math.abs(dc)<=1)cat='walk';  // pas de case à survoler
@@ -179,12 +210,15 @@ const PMV_ICONS={
         '<rect x="14.6" y="14.6" width="7.4" height="3.4" rx="1.7" transform="rotate(-38 14.6 14.6)"/></g>'+
         '<path class="pmv-bar" d="M3.4 20.6 20.6 3.4" fill="none" stroke-width="3.2" stroke-linecap="round"/>',
 };
+// La légende ne commente QUE les deux pictogrammes qui disent une RESTRICTION
+// (« seulement pour capturer », « seulement sans capturer »). La patte et les
+// ailes se comprennent d'elles-mêmes sur le schéma : les légender revenait à
+// écrire deux lignes de texte sous chaque carte pour ne rien apprendre.
 const PMV_LABELS={
-  walk:'y va à pied (passage dégagé)',
-  fly:'y va en volant (par-dessus les pièces)',
   kill:'y va seulement pour capturer',
   peace:'y va seulement sans capturer',
 };
+const PMV_LEGEND_CATS=['kill','peace'];
 
 // La couleur du pictogramme est portée par son CONTENEUR (case du schéma ou
 // ligne de légende), pas par le tracé : la case peut ainsi se teinter de la
@@ -222,15 +256,18 @@ function pieceMoveDiagramHTML(pieceId,opts){
   return '<div class="pmv-wrap '+(o.cls||'')+'">'+html+'</div>';
 }
 
-// Légende : seulement les pictogrammes que CE schéma utilise. En lister
-// quatre quand la pièce n'en montre qu'un revient à faire chercher.
+// Légende : seulement les pictogrammes de RESTRICTION que CE schéma utilise
+// (voir PMV_LEGEND_CATS). Une pièce ordinaire n'en montre aucun et n'a donc
+// pas de légende du tout.
 function pieceMoveLegendHTML(pieceId){
   const grid=pieceMoveMap(pieceId);
   const used=[];
-  ['walk','fly','kill','peace'].forEach(cat=>{
+  PMV_LEGEND_CATS.forEach(cat=>{
     if(grid.some(row=>row.includes(cat)))used.push(cat);
   });
-  if(!used.length)return '<div class="pmv-legend"><span class="pmv-l-txt">Cette pièce ne peut pas se déplacer.</span></div>';
+  const canMove=grid.some(row=>row.some(cat=>cat&&cat!=='self'));
+  if(!canMove)return '<div class="pmv-legend"><span class="pmv-l-txt">Cette pièce ne peut pas se déplacer.</span></div>';
+  if(!used.length)return '';
   return '<div class="pmv-legend">'+used.map(cat=>
     '<span class="pmv-l pmv-'+cat+'">'+pmvIcon(cat)+
     '<span class="pmv-l-txt">'+PMV_LABELS[cat]+'</span></span>').join('')+'</div>';
