@@ -40,17 +40,17 @@ function renderLoginPage(){
     lbl.style.display='none';
   }else{
     lbl.style.display='';
+    // Pas de statistiques ici (ELO, rang, série de victoires) : la page de
+    // connexion ne sert qu'à choisir un compte, pas à en exposer la
+    // progression avant même de s'y être connecté.
     list.innerHTML=names.map(n=>{
       const elo=JSON.parse(localStorage.getItem(accKey(n,'elo'))||'0');
-      const streak=JSON.parse(localStorage.getItem(accKey(n,'win_streak'))||'0');
-      const rank=vvGetRank(elo);
       // Même dégradé que l'avatar de la barre de compte (updateCab) : une
       // seule table de couleurs de rang, pas deux qui divergent.
       const c1=RANK_AV_COLORS[vvGetRankIdx(elo)]||RANK_AV_COLORS[0];
-      const streakTxt=streak>0?` · ${streak} victoire${streak>1?'s':''} d'affilée`:'';
       return `<div class="acc-item" data-n="${escH(n)}">
         <div class="acc-av" style="background:linear-gradient(135deg,${c1},#333)">${n.charAt(0).toUpperCase()}</div>
-        <div class="acc-info"><div class="acc-name">${escH(n)}</div><div class="acc-meta">${rank.name} · ${elo} ELO${streakTxt}</div></div>
+        <div class="acc-info"><div class="acc-name">${escH(n)}</div></div>
         <button class="acc-del" title="Supprimer ce compte" onclick="deleteAcc('${escH(n)}',event)">${TRASH_ICON}</button>
       </div>`;
     }).join('');
@@ -166,6 +166,7 @@ function enterAccount(username,isNewAccount){
   document.body.classList.add('has-acc');
   army={mon:null,gen:null,extras:[]};
   editingArmyId=null;builderMode='player';
+  if(typeof pLoaded!=='undefined')pLoaded=false;
   // Après connexion : on prépare le builder (bannière + rendu) puis on
   // affiche le MENU PRINCIPAL du cube (face JOUER), pas directement le
   // builder, la face builder est atteinte en tournant le cube.
@@ -251,6 +252,7 @@ function switchAccount(){
   document.body.classList.remove('has-acc');
   army={mon:null,gen:null,extras:[]};
   savedArmies=[];savedAiArmies=[];VV_UNLOCKED=new Set();
+  if(typeof pLoaded!=='undefined')pLoaded=false;
   renderLoginPage();showPage('page-login');
 }
 

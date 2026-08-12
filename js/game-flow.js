@@ -288,7 +288,7 @@ document.getElementById('result-rejouer').addEventListener('click',()=>{
   if(typeof armyStock==='function'&&!armyStock(GS.playerArmy).ok){
     showConfirmModal('Votre stock ne permet plus d\'aligner cette armée. Passez par l\'Armurerie ou composez-en une autre.',()=>{
       renderArmiesPage();showPage('page-armies');
-    },{okLabel:'Mes armées',cancelLabel:'Fermer',okClass:'btn-primary'});
+    },{okLabel:'Composition d\'armées',cancelLabel:'Fermer',okClass:'btn-primary'});
     return;
   }
   // « Rejouer » repartait sur la page d'engagement, qui n'existe plus : une

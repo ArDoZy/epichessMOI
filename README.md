@@ -33,10 +33,10 @@ epic-chess/
 ├── favicon.svg              # Icône d'onglet et d'écran d'accueil : la
 │                            #  pièce en fusion dans le ballon couronné
 ├── assets/
-│   ├── lab-bg.jpg           # FACULTATIF : fond d'atelier du menu principal
 │   ├── adversaires/         # FACULTATIF : <id>.png, un portrait par
 │   │                        #  adversaire. Absent = sceau SVG procédural.
 │   ├── backgrounds/
+│   │   ├── main-page.png    # FACULTATIF : fond du menu principal
 │   │   └── duel-wait.png    # Toile de l'écran d'attente d'un duel en ligne.
 │   │                        #  La remplacer suffit : rien à coder.
 │   └── boards/              # Textures d'échiquier en SVG procédural
@@ -205,7 +205,7 @@ il l'est (Orpiment 620 contre la Salamandre 1750 : 0–4).
 sceau d'alchimiste déterministe à partir de son id. Le jeu est donc complet
 sans un seul octet d'image, et déposer un portrait suffit à le faire
 apparaître — il n'y a aucune liste à tenir à jour. Même principe pour
-`assets/lab-bg.jpg`, le fond du menu. Leur 404 est un comportement voulu, et
+`assets/backgrounds/main-page.png`, le fond du menu. Leur 404 est un comportement voulu, et
 `tools/smoke-test.js` l'ignore explicitement (`OPTIONAL_ASSET`).
 
 ### 4 bis. Le moteur (`js/ai-engine.js`)
@@ -527,7 +527,7 @@ mais dans une version que Playwright refuse, le script le retrouve tout seul
 | Changer les pièces d'un compte neuf | `js/data-pieces.js` (`UNLOCK_TABLE`, drapeau `coffre:true`) |
 | Changer ce que lance le bouton COMBAT | `js/cube-nav.js` (`onCombat`/`onVsIa`) + `js/combat-intro.js` |
 | Modifier la galerie des adversaires (cartes, sceaux, palmarès) | `js/adversaires.js` + section `[ADVERSAIRES]` de `css/style.css` |
-| Changer le fond du menu principal | `assets/lab-bg.jpg` + section `[LAB-BG]` de `css/style.css` |
+| Changer le fond du menu principal | `assets/backgrounds/main-page.png` + section `[LAB-BG]` de `css/style.css` |
 | Modifier le bloc pseudo/rang/ELO du menu principal | `renderMenuIdentity()` dans `js/accounts.js` + `[MENU]` de `css/style.css` |
 | Régler la vitesse de rotation du cube | `js/cube-nav.js` (`ROTATE_MS`) **et** la transition de `#cube` dans `css/style.css` |
 | Modifier le système de comptes/sauvegarde | `js/accounts.js` |
