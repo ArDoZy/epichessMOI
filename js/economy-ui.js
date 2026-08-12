@@ -53,7 +53,13 @@ function setBoardSkin(id){
 function applyBoardSkin(){
   const el=document.getElementById('game-board');
   if(!el)return;
-  el.style.backgroundImage='url("'+getBoardSkin().file+'")';
+  const sk=getBoardSkin();
+  el.style.backgroundImage='url("'+sk.file+'")';
+  // Les repères de coordonnées, posés dans les cases de bord, prennent la
+  // teinte de la case opposée : ils se lisent sur les deux couleurs du damier
+  // sans réclamer de fond à eux.
+  el.style.setProperty('--sq-light',sk.sqLight||'#e2cba6');
+  el.style.setProperty('--sq-dark',sk.sqDark||'#5a4130');
 }
 
 // ----------------------------------------------------------------
@@ -100,18 +106,10 @@ function menuChestsHTML(){
       '<span class="jc-price">'+pearlAmountHTML(price,1)+'</span>'+
     '</button>';
   }).join('')+'</div>';
-  // UN CHEMIN, PAS UN MUR. Les prix hors de portée s'affichaient en rouge
-  // d'alerte — or ne pas pouvoir s'offrir un coffre est l'état NORMAL du jeu,
-  // pas une erreur, et le premier écran de l'application affichait donc deux
-  // alarmes sans qu'il ne se soit rien passé. Les prix sont gris (voir
-  // .jc-poor), et l'écart jusqu'au premier coffre atteignable est écrit.
-  let foot='';
-  const cheapest=CHESTS.map(c=>chestPearlPrice(c.id)).sort((a,b)=>a-b)[0];
-  if(balTxt!=='∞'&&bal<cheapest){
-    const miss=cheapest-bal;
-    foot='<div class="jc-foot">'+miss+' perle'+(miss>1?'s':'')+' de plus pour le premier coffre</div>';
-  }
-  return head+rail+foot;
+  // Les prix hors de portée sont GRIS et non rouge d'alerte (voir .jc-poor) :
+  // ne pas pouvoir s'offrir un coffre est l'état normal du jeu, pas une
+  // erreur. Le refus reste expliqué au clic.
+  return head+rail;
 }
 function renderMenuChests(){
   renderDailyChest();
@@ -126,18 +124,6 @@ function renderMenuChests(){
   // aussi le moment de remettre à jour le pseudo et l'ELO affichés au-dessus,
   // qui viennent peut-être de bouger.
   if(typeof renderMenuIdentity==='function')renderMenuIdentity();
-  renderMenuOpponent();
-}
-
-// CONTRE QUI PART-ON ? Le gros bouton COMBAT ne le disait pas : il fallait
-// ouvrir la galerie des adversaires pour le savoir, puis revenir. La ligne
-// vit sous le bouton, en retrait, et comble un vide qui n'était pas du calme
-// mais de l'information manquante.
-function renderMenuOpponent(){
-  const el=document.getElementById('jouer-vs');
-  if(!el)return;
-  const o=(typeof aiChosenOpponent==='function')?aiChosenOpponent():null;
-  el.textContent=o?o.name+' · '+o.elo+' ELO':'';
 }
 
 // ----------------------------------------------------------------

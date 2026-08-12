@@ -144,7 +144,7 @@ window.deleteAcc=(username,ev)=>{
     const accs=loadAccs();delete accs[username];saveAccs(accs);
     const dead=[];for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith('mc_p_'+username+'_'))dead.push(k);}
     dead.forEach(k=>localStorage.removeItem(k));
-    if(CUR_ACC===username){CUR_ACC=null;document.body.classList.remove('has-acc');document.getElementById('cab').style.display='none';}
+    if(CUR_ACC===username){CUR_ACC=null;document.body.classList.remove('has-acc');}
     renderLoginPage();
   });
 };
@@ -164,7 +164,6 @@ function enterAccount(username,isNewAccount){
   if(typeof aiLoadOpponent==='function')aiLoadOpponent();
   updateCab();
   document.body.classList.add('has-acc');
-  document.getElementById('cab').style.display='flex';
   army={mon:null,gen:null,extras:[]};
   editingArmyId=null;builderMode='player';
   // Après connexion : on prépare le builder (bannière + rendu) puis on
@@ -209,15 +208,12 @@ function saveAiArmies(){accSet('ai_armies',savedAiArmies);}
 // Couleur d'avatar/bandeau par rang, alignée sur RANKS (data-pieces.js).
 const RANK_AV_COLORS=['#7a7590','#9a8c7a','#cd7f32','#8fa8b8','#5a3f8a','#c0c0c0','#c9a84c'];
 
-// Le bandeau du haut ne porte plus que l'avatar et la déconnexion : le pseudo
-// et l'ELO ont déménagé sur le menu principal (renderMenuIdentity), là où on
-// les regarde vraiment.
+// Le bandeau du haut a disparu : il n'y portait qu'un rond avec l'initiale du
+// pseudo, pour rogner le haut de toutes les pages. Le pseudo et l'ELO sont sur
+// le menu principal, en toutes lettres. La fonction subsiste sous son nom
+// (une douzaine d'appels y mènent) et ne rafraîchit plus que ce menu.
 function updateCab(){
   if(!CUR_ACC)return;
-  const av=document.getElementById('cab-av');
-  av.textContent=CUR_ACC.charAt(0).toUpperCase();
-  av.style.background='linear-gradient(135deg,'+(RANK_AV_COLORS[vvGetRankIdx(vvLoadElo())]||'#7c3aed')+',#333)';
-  av.title=CUR_ACC;
   renderMenuIdentity();
 }
 
@@ -248,7 +244,6 @@ function renderMenuIdentity(){
 function switchAccount(){
   CUR_ACC=null;
   document.body.classList.remove('has-acc');
-  document.getElementById('cab').style.display='none';
   army={mon:null,gen:null,extras:[]};
   savedArmies=[];savedAiArmies=[];VV_UNLOCKED=new Set();
   renderLoginPage();showPage('page-login');

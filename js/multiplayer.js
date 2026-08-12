@@ -534,7 +534,6 @@ const MP_ELO_BASE=120;        // fenêtre de départ, en points d'ELO
 const MP_ELO_STEP=120;        // élargissement…
 const MP_ELO_EVERY=8;         // …toutes les 8 secondes
 const MP_ELO_OPEN=48;         // au-delà : plus aucune fenêtre
-const MP_FALLBACK_S=40;       // on propose un adversaire IA à partir d'ici
 
 // Fenêtre d'ELO acceptée après `waitS` secondes d'attente. Infinity = tout le
 // monde convient.
@@ -595,7 +594,7 @@ function mpEnterPair(hostId){
 // encore. Il vaut pour les deux attentes — la recherche automatique et
 // l'attente d'un ami sur une partie privée, qui n'avait jusqu'ici aucun
 // compteur du tout.
-const MP_WAIT_SCREENS=new Set(['quick','host']);
+const MP_WAIT_SCREENS=new Set(['quick']);
 let _mpWaitTimer=null;
 
 function mpFmtClock(sec){
@@ -641,16 +640,15 @@ function mpRenderTip(){
 // le chronomètre dit d'un coup d'œil que quelque chose tourne encore, la note
 // ci-dessous dit où l'on en est de la recherche.
 function mpRenderSearch(waitS,peerCount,win){
+  // La note ne dit plus QUE la fenêtre de niveau qui s'ouvre. Elle annonçait
+  // aussi « Personne d'autre en attente pour l'instant » : apprendre qu'on est
+  // seul en ligne pendant qu'on attend n'aide en rien et décourage d'attendre.
   const note=document.getElementById('mp-search-note');
   if(note){
-    note.textContent=peerCount<2
-      ? 'Personne d\'autre en attente pour l\'instant. Vous partirez au combat dès qu\'un joueur lancera une partie rapide.'
-      : (win===Infinity
-        ? 'Recherche ouverte à tous les niveaux.'
-        : 'Adversaire recherché entre '+Math.max(0,mpMyCard().elo-win)+' et '+(mpMyCard().elo+win)+' ELO.');
+    note.textContent=(win===Infinity)
+      ? 'Recherche ouverte à tous les niveaux.'
+      : 'Adversaire recherché entre '+Math.max(0,mpMyCard().elo-win)+' et '+(mpMyCard().elo+win)+' ELO.';
   }
-  const fb=document.getElementById('mp-fallback-btn');
-  if(fb)fb.style.display=(waitS>=MP_FALLBACK_S)?'':'none';
 }
 
 // ----------------------------------------------------------------
@@ -743,35 +741,11 @@ function mpQuickPlay(){
   });
 }
 
-// « Affronter un adversaire du laboratoire à la place » : proposé après 40 s
-// de recherche infructueuse. On sort proprement du salon d'attente et on
-// repart sur le parcours hors ligne avec la MÊME armée, déjà sélectionnée.
-//
-// L'adversaire retenu est celui dont l'ELO est le plus proche du joueur, et
-// non l'Instructeur à 2000 : on vient d'échouer à trouver quelqu'un à sa
-// mesure, le remplaçant doit précisément l'être. La partie est classée comme
-// n'importe quelle autre.
-document.getElementById('mp-fallback-btn')?.addEventListener('click',()=>{
-  mpLeave();
-  mpCloseModal();
-  if(!currentArmyData)return;
-  // advNextFoe() (js/adversaires.js) : l'adversaire du laboratoire le plus
-  // proche de notre niveau, exactement le critère qu'on vient d'échouer à
-  // satisfaire côté humain.
-  if(typeof aiSetOpponent==='function'&&typeof advNextFoe==='function')aiSetOpponent(advNextFoe().id);
-  aiArmyData=(typeof aiArmyForOpponent==='function')?aiArmyForOpponent()
-    :((typeof generateAIArmy==='function')?generateAIArmy():null);
-  if(typeof vvSetOpponentElo==='function')vvSetOpponentElo(null);
-  if(typeof renderCombatPage==='function')renderCombatPage(currentArmyData,'ia');
-  if(typeof showPage==='function')showPage('page-combat');
-  if(typeof launchParticles==='function')launchParticles();
-});
-
 // ----------------------------------------------------------------
 // MODAL : écran de choix → écran hôte (code) ou écran invité (saisie)
 // ----------------------------------------------------------------
 function mpShowScreen(name){
-  ['choice','quick','host','join'].forEach(s=>{
+  ['quick'].forEach(s=>{
     const el=document.getElementById('mp-screen-'+s);
     if(el)el.style.display=(s===name)?'':'none';
   });
@@ -786,49 +760,16 @@ function mpCloseModal(){
 function mpOpenModal(){
   if(!currentArmyData){showNotif('Choisissez d\'abord votre armée.','err');return;}
   mpLeave();
-  mpShowScreen('choice');
+  mpShowScreen('quick');
   mpStatus('');
   if(!mpIsConfigured())mpStatus('Multijoueur pas encore configuré : renseignez l\'URL de votre projet Supabase (Settings > API > Project URL) dans js/multiplayer.js.','err');
   document.getElementById('mp-modal').classList.add('show');
 }
 
-document.getElementById('mp-quick-btn')?.addEventListener('click',()=>{
-  if(!mpIsConfigured())return;
-  mpShowScreen('quick');
-  mpQuickPlay();
-});
-
-document.getElementById('mp-create-btn')?.addEventListener('click',()=>{
-  if(!mpIsConfigured())return;
-  const code=mpGenCode();
-  document.getElementById('mp-code-value').textContent=code;
-  mpShowScreen('host');
-  mpConnect(code,true);
-});
-
-document.getElementById('mp-join-screen-btn')?.addEventListener('click',()=>{
-  if(!mpIsConfigured())return;
-  mpShowScreen('join');
-  mpStatus('');
-  document.getElementById('mp-code-input').focus();
-});
-
-document.getElementById('mp-join-confirm')?.addEventListener('click',()=>{
-  const code=document.getElementById('mp-code-input').value.trim().toUpperCase();
-  if(code.length<4){mpStatus('Entrez le code à 4 caractères reçu de votre ami.','err');return;}
-  mpConnect(code,false);
-});
-
-document.getElementById('mp-code-input')?.addEventListener('keydown',e=>{
-  if(e.key==='Enter')document.getElementById('mp-join-confirm').click();
-});
-
-document.getElementById('mp-copy-btn')?.addEventListener('click',()=>{
-  const code=document.getElementById('mp-code-value').textContent;
-  navigator.clipboard?.writeText(code)
-    .then(()=>showNotif('Code copié : '+code,'ok'))
-    .catch(()=>showNotif('Copie impossible, notez le code : '+code,'err'));
-});
+// LES PARTIES PRIVÉES PAR CODE ONT ÉTÉ RETIRÉES. Elles demandaient de
+// transmettre six caractères à quelqu'un par un autre canal — un détour hors
+// du jeu — et faisaient vivre trois écrans de salon pour un usage marginal.
+// Il ne reste que l'appariement automatique, lancé directement par COMBAT.
 
 document.getElementById('mp-cancel')?.addEventListener('click',()=>{
   mpLeave();

@@ -136,7 +136,6 @@ const renderArmiesPage=()=>{
   }
   if(!savedArmies.length){
     grid.innerHTML='<div class="empty-armies"><span class="vial"><span class="vial-bubble"></span></span><p>Aucune armée enregistrée.<br>Composez votre première armée !</p></div>';
-    const c0=document.getElementById('armies-count');if(c0)c0.textContent='';
     return;
   }
   grid.innerHTML=savedArmies.map(a=>{
@@ -182,9 +181,6 @@ const renderArmiesPage=()=>{
     // et le vide de fin d'écran disparaît. Le geste reste à un appui.
     '<button type="button" class="army-card army-new-card" onclick="document.getElementById(\'ar-new\').click()">'+
       '<span class="anc-plus">+</span><span class="anc-txt">Nouvelle armée</span></button>');
-  // Le décompte, que la page ne donnait nulle part.
-  const cnt=document.getElementById('armies-count');
-  if(cnt)cnt.textContent=sel?'':savedArmies.length+' armée'+(savedArmies.length>1?'s':'');
 };
 window.editPlayerArmy=id=>{const a=savedArmies.find(x=>x.id===id);if(!a)return;builderMode='player';updateBuilderBanner();loadArmyForEdit(a);showPage('page-builder');updAll();};
 window.deletePlayerArmy=id=>{showConfirmModal('Supprimer cette armée ?',()=>{savedArmies=savedArmies.filter(a=>a.id!==id);saveArmies();renderArmiesPage();});};
@@ -209,10 +205,10 @@ window.selectAiArmy=id=>{
   const a=savedAiArmies.find(x=>x.id===id);if(!a)return;
   const fp=id=>PIECES.find(p=>p.id===id);
   aiArmyData={mon:fp(a.mon.id),gen:fp(a.gen.id),extras:a.extras,placements:a.placements,totalValue:a.totalValue};
-  if(currentArmyData){renderCombatPage(currentArmyData,'ia');showPage('page-combat');launchParticles();}
+  if(currentArmyData)startAiBattle(currentArmyData,aiArmyData);
   else{showNotif('Sélectionnez d\'abord votre armée.');renderArmiesPage();showPage('page-armies');}
 };
-document.getElementById('ai-ar-back').addEventListener('click',()=>{if(currentArmyData){renderCombatPage(currentArmyData,'ia');showPage('page-combat');launchParticles();}else showPage('page-builder');});
+document.getElementById('ai-ar-back').addEventListener('click',()=>{if(typeof goToMainMenu==='function')goToMainMenu();else showPage('page-builder');});
 document.getElementById('ai-ar-new').addEventListener('click',()=>{builderMode='ai';updateBuilderBanner();army={mon:null,gen:null,extras:[]};editingArmyId=null;showPage('page-builder');updAll();});
 
 // ----------------------------------------------------------------

@@ -267,7 +267,9 @@ const TUTO_STEPS=[
   {
     text:'Voici vos armées. Il n\'y en a aucune, forcément, vous venez d\'arriver.<br>'+
          '<strong>Créez votre première armée.</strong>',
-    at:'#ar-new',click:'#ar-new',wait:700,
+    // Le bouton #ar-new ne porte plus que son gestionnaire (il est réduit à
+    // un pixel) : la création est devenue la dernière CARTE de la grille.
+    at:'.army-new-card',click:'.army-new-card',wait:700,
   },
   {
     text:'Cinq pièces, pas une de plus&nbsp;: un <strong>Monarque</strong> (perdez-le, '+

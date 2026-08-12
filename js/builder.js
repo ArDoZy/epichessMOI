@@ -108,36 +108,14 @@ function wireSlotDragSwap(g){
 // chaque carte de pièce porte déjà son stock, et chaque slot de composition
 // répète le compte exact sous la pièce posée (.cs-stock). Trois fois la même
 // information sur un écran de téléphone, c'était deux de trop.
-// LA RAISON DU BLOCAGE, en toutes lettres. « Valider » restait grisé sans
-// jamais dire ce qui manquait : il fallait deviner la règle de composition
-// (un monarque, un général, exactement trois pièces, 24 points) en essayant.
-// Une seule raison à la fois, la plus proche de ce que le joueur vient de
-// faire — en énumérer trois n'aide personne.
-function armyBlockReason(){
-  const v=getVal();
-  if(v>24)return 'Dépassement de '+(v-24)+' point'+(v-24>1?'s':'');
-  if(!army.mon)return 'Il manque un Monarque';
-  if(!army.gen)return 'Il manque un Général';
-  const n=army.extras.length;
-  if(n<3)return 'Encore '+(3-n)+' pièce'+(3-n>1?'s':'')+' à choisir';
-  return '';
-}
-
 const updStats=()=>{
   const v=getVal(),over=v>24;
   document.getElementById('s-val').textContent=v+' / 24';
-  // La jauge : un état numérique devient un état perceptible. Elle se remplit
-  // sur la même durée que le nombre change, et sature à 100 % pour ne pas
-  // déborder de sa piste quand l'armée dépasse le budget — c'est la couleur
-  // qui dit le dépassement, pas la largeur.
-  const g=document.getElementById('s-gauge');
-  if(g)g.style.width=Math.min(100,v/24*100)+'%';
+  // Le dépassement se lit sur le nombre lui-même, qui vire à la couleur de
+  // tension : la jauge qui doublait cette information a été retirée.
   const box=document.getElementById('army-box');
   if(box)box.classList.toggle('bd-over',over);
-  const why=armyBlockReason();
   document.getElementById('b-validate').disabled=!armyValid()||over;
-  const w=document.getElementById('b-validate-why');
-  if(w)w.textContent=why;
 };
 const updAll=()=>{updSlots();renderCards();updStats();};
 
@@ -204,8 +182,7 @@ const renderCards=()=>{
     // qui court jusqu'au bord, decompte a droite). C'etait le troisieme style
     // d'en-tete de l'application ; il n'y en a plus qu'un.
     html+='<div class="class-sec '+cls+'" id="cls-sec-'+cls+'">'+
-      '<div class="class-hdr '+cls+'"><span class="class-hdr-name">'+cls+'</span>'+
-      '<span class="class-hdr-n">'+byClass[cls].length+'</span></div>'+
+      '<div class="class-hdr '+cls+'"><span class="class-hdr-name">'+cls+'</span></div>'+
       '<div class="cards-grid">';
     byClass[cls].forEach(p=>{
       const unlocked=VV_UNLOCKED.has(p.id);

@@ -111,8 +111,7 @@ function piecePowerHTML(p){
       '<span class="power-icon">'+powerIconSVG('_none')+'</span>'+
       '<div class="power-body">'+
         '<div class="power-name">Aucun pouvoir</div>'+
-        '<div class="power-text">Cette pièce ne compte que sur son déplacement : '+
-        'elle n\'ajoute aucun effet spécial à la partie.</div>'+
+        '<div class="power-text">Aucun pouvoir magique avéré.</div>'+
       '</div></div>';
   }
   return '<div class="power-card" style="--pw:'+accent+'">'+

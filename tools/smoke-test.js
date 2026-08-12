@@ -184,16 +184,16 @@ const OPTIONAL_ASSET=/adversaires\/[a-z-]+\.png|lab-bg\.jpg/;
     if(await page.locator('#adv-grid .adv-card[disabled]').count())throw new Error('un adversaire est verrouillé');
   });
 
+  // LA PAGE D'ENGAGEMENT A ÉTÉ SUPPRIMÉE : choisir un adversaire lance
+  // directement la partie, sans écran intermédiaire à valider.
   await step('une partie contre un adversaire choisi se lance',async()=>{
+    const engagedBefore=await page.evaluate(()=>vvNoEloReason({multiplayer:false}));
+    if(engagedBefore)throw new Error('partie non classée : '+engagedBefore);
     await page.click('#adv-grid .adv-card[data-id="vitriol"]');
-    await page.waitForSelector('#page-combat.active',{timeout:8000});
+    await page.waitForTimeout(900);
     const engaged=await page.evaluate(()=>aiCurrentOpponent().id);
     if(engaged!=='vitriol')throw new Error('adversaire engagé : '+engaged);
-    // La partie doit être CLASSÉE : c'est tout l'intérêt du roster.
-    const reason=await page.evaluate(()=>vvNoEloReason({multiplayer:false}));
-    if(reason)throw new Error('partie non classée : '+reason);
-    await page.click('#cb-play');
-    await page.waitForTimeout(700);
+    await page.waitForSelector('.cine-skip',{timeout:8000});
     await page.click('.cine-skip');
     await page.waitForSelector('#page-game .gc',{timeout:8000});
     if(await page.locator('#game-board .gc').count()!==64)throw new Error('le plateau n\'a pas 64 cases');
