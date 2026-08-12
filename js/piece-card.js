@@ -145,19 +145,35 @@ function pieceCardHTML(p,opts){
   if(o.locked)cls.push('pcard-locked');
   if(o.selected)cls.push('pcard-sel');
   if(out&&!o.locked)cls.push('pcard-out');
+  // UNE SEULE ANATOMIE, VERROUILLÉE OU NON — logo, nom, pied.
+  // Avant, une carte verrouillée n'avait plus rien de commun avec une carte
+  // débloquée : logo et nom passaient sous un `blur(5px)`, et un voile noir
+  // couvrait la carte entière pour y poser un cadenas et un pavé de texte.
+  // Sur une grille où sept cartes sur neuf sont verrouillées, la grille ne se
+  // lisait plus comme une grille — et surtout, ON NE PEUT PAS DÉSIRER CE
+  // QU'ON NE VOIT PAS : le voile supprimait précisément l'image qui donne
+  // envie de débloquer la créature.
+  // Désormais la structure ne bouge pas d'un pixel : le logo devient une
+  // SILHOUETTE (dégrisée, pas floutée), le nom reste parfaitement lisible, et
+  // seul le PIED change de contenu — la valeur et le stock, qui n'ont pas de
+  // sens pour une pièce qu'on ne possède pas, cèdent la place au palier à
+  // atteindre. Le cadenas se réduit à une pastille posée sur le logo.
   return '<article class="'+cls.join(' ')+'" data-id="'+p.id+'" tabindex="0" '+
-      'role="button" aria-label="'+escH(p.name)+'">'+
-    // 1. LOGO
-    '<span class="pcard-logo">'+pieceIcon(p.id,'n')+'</span>'+
-    // 2. NOM
+      'role="button" aria-label="'+escH(p.name)+
+      (o.locked?' — verrouillée'+(o.lockLabel?' : '+escH(o.lockLabel):''):'')+'">'+
+    // 1. LOGO (+ le cadenas, posé dessus et non sur toute la carte)
+    '<span class="pcard-logo">'+pieceIcon(p.id,'n')+
+      (o.locked?'<span class="pcard-lockbadge"><span class="lock-icon"></span></span>':'')+
+    '</span>'+
+    // 2. NOM — le VRAI nom, y compris verrouillé
     '<div class="pcard-name">'+escH(p.name)+'</div>'+
-    // 3. VALEUR  ·  4. STOCK
+    // 3. VALEUR · STOCK   —   ou, verrouillée, le palier à atteindre
     '<div class="pcard-foot">'+
-      '<span class="pcard-val">'+p.value+'</span>'+
-      (ownable?'<span class="pcard-stock'+(out?' pcard-stock-out':'')+'">×'+have+'</span>':'')+
+      (o.locked
+        ? (o.lockLabel?'<span class="pcard-req">'+escH(o.lockLabel)+'</span>':'')
+        : '<span class="pcard-val">'+p.value+'</span>'+
+          (ownable?'<span class="pcard-stock'+(out?' pcard-stock-out':'')+'">×'+have+'</span>':''))+
     '</div>'+
-    (o.locked?'<span class="pcard-lock"><span class="lock-icon"></span>'+
-      (o.lockLabel?'<span class="lock-rank">'+escH(o.lockLabel)+'</span>':'')+'</span>':'')+
     // Les deux actions, révélées au premier appui sur la carte. Elles sont
     // posées SOUS la carte et par-dessus ses voisines (position absolue) :
     // la grille ne bouge pas d'un pixel quand on ouvre une carte.

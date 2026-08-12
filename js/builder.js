@@ -59,12 +59,21 @@ function slotStockHTML(p){
 const updSlots=()=>{
   const g=document.getElementById('comp-grid');const all=extraPieces();
   // eidx = index dans army.extras (uniquement pour les 3 pièces déplaçables)
-  const mk=(cls,lbl,p,rm,eidx)=>p
+  // LA RÈGLE DE COMPOSITION SE LIT DANS LA FORME DE L'EMPLACEMENT.
+  // Les cinq emplacements étaient cinq rectangles pointillés gris identiques,
+  // étiquetés « Monarque · Général · Pièce 1 · Pièce 2 · Pièce 3 ». Rien ne
+  // disait que les deux premiers sont contraints à une classe et les trois
+  // derniers libres — la règle du jeu était invisible dans l'objet même qui
+  // la porte. Les deux obligatoires portent donc un trait PLEIN dans leur
+  // couleur de classe, dès qu'ils sont vides ; les trois libres gardent le
+  // pointillé. « Pièce 1/2/3 » suggérait par ailleurs un ordre qui n'existe
+  // pas : trois libellés à lire pour une seule notion, devenue « Libre ».
+  const mk=(cls,lbl,p,rm,eidx,req)=>p
     ?'<div class="comp-slot filled '+cls+(eidx!=null?' draggable-slot':'')+'" data-pid="'+p.id+'"'+(eidx!=null?' draggable="true" data-eidx="'+eidx+'"':'')+'><div class="cs-label">'+lbl+'</div><span class="cs-emoji">'+pieceIcon(p.id,'n')+'</span><div class="cs-name">'+p.name+'</div><div class="cs-val">'+p.value+' pts</div>'+slotStockHTML(p)+'<div class="cs-rm" onclick="'+rm+'">'+svgX+'</div></div>'
-    :'<div class="comp-slot"><div class="cs-label">'+lbl+'</div><div style="font-size:28px;opacity:.15;margin-top:8px">?</div></div>';
-  const ic=['Pièce 1','Pièce 2','Pièce 3'];
-  let h=mk('Monarque','Monarque',army.mon,"removePiece('mon')")+mk('Général','Général',army.gen,"removePiece('gen')");
-  for(let i=0;i<3;i++)h+=mk(all[i]?.class||'',ic[i],all[i],"removePiece('pc',"+i+")",all[i]?i:null);
+    :'<div class="comp-slot'+(req?' cs-req '+cls:' cs-free')+'"><div class="cs-label">'+lbl+'</div><div class="cs-ph">'+(req?'':'+')+'</div></div>';
+  let h=mk('Monarque','Monarque',army.mon,"removePiece('mon')",null,true)
+       +mk('Général','Général',army.gen,"removePiece('gen')",null,true);
+  for(let i=0;i<3;i++)h+=mk(all[i]?.class||'','Libre',all[i],"removePiece('pc',"+i+")",all[i]?i:null,false);
   g.innerHTML=h;
   g.querySelectorAll('.comp-slot.filled[data-pid]').forEach(el=>{
     const open=e=>{
@@ -99,9 +108,36 @@ function wireSlotDragSwap(g){
 // chaque carte de pièce porte déjà son stock, et chaque slot de composition
 // répète le compte exact sous la pièce posée (.cs-stock). Trois fois la même
 // information sur un écran de téléphone, c'était deux de trop.
+// LA RAISON DU BLOCAGE, en toutes lettres. « Valider » restait grisé sans
+// jamais dire ce qui manquait : il fallait deviner la règle de composition
+// (un monarque, un général, exactement trois pièces, 24 points) en essayant.
+// Une seule raison à la fois, la plus proche de ce que le joueur vient de
+// faire — en énumérer trois n'aide personne.
+function armyBlockReason(){
+  const v=getVal();
+  if(v>24)return 'Dépassement de '+(v-24)+' point'+(v-24>1?'s':'');
+  if(!army.mon)return 'Il manque un Monarque';
+  if(!army.gen)return 'Il manque un Général';
+  const n=army.extras.length;
+  if(n<3)return 'Encore '+(3-n)+' pièce'+(3-n>1?'s':'')+' à choisir';
+  return '';
+}
+
 const updStats=()=>{
-  document.getElementById('s-val').textContent=getVal()+'/24';
-  document.getElementById('b-validate').disabled=!armyValid();
+  const v=getVal(),over=v>24;
+  document.getElementById('s-val').textContent=v+' / 24';
+  // La jauge : un état numérique devient un état perceptible. Elle se remplit
+  // sur la même durée que le nombre change, et sature à 100 % pour ne pas
+  // déborder de sa piste quand l'armée dépasse le budget — c'est la couleur
+  // qui dit le dépassement, pas la largeur.
+  const g=document.getElementById('s-gauge');
+  if(g)g.style.width=Math.min(100,v/24*100)+'%';
+  const box=document.getElementById('army-box');
+  if(box)box.classList.toggle('bd-over',over);
+  const why=armyBlockReason();
+  document.getElementById('b-validate').disabled=!armyValid()||over;
+  const w=document.getElementById('b-validate-why');
+  if(w)w.textContent=why;
 };
 const updAll=()=>{updSlots();renderCards();updStats();};
 
@@ -147,11 +183,15 @@ const toggle=p=>{
 const getSorted=()=>[...PIECES].sort((a,b)=>{const d=CLASS_ORDER[a.class]-CLASS_ORDER[b.class];return d||a.value-b.value;});
 
 // Ce qu'il faut pour débloquer une pièce, dit en trois mots sous le cadenas.
+// Le palier à atteindre, tel qu'il s'écrit dans le PIED d'une carte : une
+// pastille de la largeur d'une carte, soit trois ou quatre caractères utiles.
+// Le nom du rang y était accolé (« Pierre · 480 ELO ») et faisait passer
+// l'étiquette sur deux lignes dans un espace prévu pour une ; il est de toute
+// façon déductible de l'ELO, et la fiche de la pièce le donne en entier.
 function pieceLockLabel(p){
   const m=UNLOCK_MILESTONES.find(u=>u.pieceId===p.id);
-  if(!m)return 'Coffre';
-  if(m.coffre)return 'Coffre';
-  return m.eloRequired<999999?vvGetRank(m.eloRequired).name+' · '+m.eloRequired+' ELO':'';
+  if(!m||m.coffre)return 'Coffre';
+  return m.eloRequired<999999?m.eloRequired+' ELO':'';
 }
 
 const renderCards=()=>{
@@ -160,7 +200,13 @@ const renderCards=()=>{
   let html='';
   ['Monarque','Général','Primordiale','Brute','Sorcier'].forEach(cls=>{
     if(!byClass[cls]?.length)return;
-    html+='<div class="class-sec '+cls+'" id="cls-sec-'+cls+'"><div class="class-hdr"><span class="class-hdr-name '+cls+'">'+cls+'</span></div><div class="cards-grid">';
+    // En-tete de section : le MEME motif que l'Armurerie (libelle court, filet
+    // qui court jusqu'au bord, decompte a droite). C'etait le troisieme style
+    // d'en-tete de l'application ; il n'y en a plus qu'un.
+    html+='<div class="class-sec '+cls+'" id="cls-sec-'+cls+'">'+
+      '<div class="class-hdr '+cls+'"><span class="class-hdr-name">'+cls+'</span>'+
+      '<span class="class-hdr-n">'+byClass[cls].length+'</span></div>'+
+      '<div class="cards-grid">';
     byClass[cls].forEach(p=>{
       const unlocked=VV_UNLOCKED.has(p.id);
       html+=pieceCardHTML(p,{
@@ -178,11 +224,16 @@ const renderCards=()=>{
   wirePieceCards(document.getElementById('cards-container'),{onUse:toggle});
 };
 
+// Le titre « Votre armée » a disparu du panneau : cinq emplacements étiquetés
+// Monarque / Général / Libre disent déjà ce qu'ils sont, et le titre était le
+// TROISIÈME style d'en-tête de section de l'écran. Le mode Instructeur reste
+// annoncé par le bandeau, qui l'écrit en toutes lettres.
 function updateBuilderBanner(){
   const banner=document.getElementById('builder-mode-banner');
-  const armyTitle=document.querySelector('.army-box-title');
-  if(builderMode==='ai'){banner.textContent='Mode Instructeur : Vous composez une armée pour l\'Instructeur adverse';banner.classList.add('show');if(armyTitle)armyTitle.textContent='Armée de l\'Instructeur';}
-  else{banner.classList.remove('show');if(armyTitle)armyTitle.textContent='Votre armée';}
+  if(builderMode==='ai'){
+    banner.textContent='Mode Instructeur : vous composez l\'armée de l\'Instructeur adverse';
+    banner.classList.add('show');
+  }else banner.classList.remove('show');
 }
 
 // ----------------------------------------------------------------

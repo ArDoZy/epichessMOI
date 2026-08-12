@@ -384,26 +384,46 @@
 <div class="builder-inner">
   <div class="builder-topbar"></div>
   <div class="builder-mode-banner" id="builder-mode-banner"></div>
+  <!-- LA BARRE DE COMPOSITION EST COLLANTE. Le budget est la contrainte
+       unique de cet écran, et il défilait hors du champ dès le premier geste
+       vers le catalogue : on composait à l'aveugle. Il reste maintenant sous
+       les yeux du premier au dernier appui, avec les cinq emplacements.
+       Quatre boutons accueillaient l'utilisateur avant tout contenu, dont
+       DEUX primaires pleins (« Mes armées » en laiton, une navigation, et
+       « Valider » en vert) et une action destructive. Ils sont répartis selon
+       ce qu'ils font : la navigation redevient un retour, les deux actions
+       d'appoint passent dans un menu, et la validation descend en bas
+       d'écran — dans le pouce, à la fin du parcours qu'elle conclut. -->
   <div class="army-box" id="army-box">
-    <div class="builder-panel-top">
-      <div class="topbar-btns">
-        <button class="btn btn-gold" id="b-armies">Mes armées</button>
-        <button class="btn btn-primary" id="b-validate" disabled>Valider l'armée →</button>
-        <button class="btn btn-ghost" id="b-random">Armée aléatoire</button>
-        <button class="btn btn-ghost" id="b-reset">Tout effacer</button>
-      </div>
-      <!-- Le budget, et RIEN d'autre. La pastille « Armurerie : — / PRÊTE »
-           qui l'accompagnait redisait ce que chaque carte de pièce dit déjà
-           avec son stock, et ce que le slot de composition dit une deuxième
-           fois sous chaque pièce posée (.cs-stock). -->
-      <div class="topbar-stats">
-        <div class="stat-pill"><div class="sp-label">Valeur</div><div class="sp-val" id="s-val">0/24</div></div>
-      </div>
+    <div class="bd-top">
+      <button class="bd-back" id="b-armies">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 5, 8 12, 15 19"/></svg>
+        <span>Mes armées</span>
+      </button>
+      <details class="bd-more" id="bd-more">
+        <summary aria-label="Plus d'actions" title="Plus d'actions"><span></span><span></span><span></span></summary>
+        <div class="bd-more-menu">
+          <button type="button" class="bd-more-item" id="b-random">Armée aléatoire</button>
+          <button type="button" class="bd-more-item bd-more-danger" id="b-reset">Tout effacer</button>
+        </div>
+      </details>
     </div>
-    <div class="army-box-title">Votre armée</div>
+    <!-- Le budget n'est plus une étiquette passive : un nombre ET une jauge.
+         Au-delà de 24 points, les deux virent à la couleur de tension. -->
+    <div class="bd-budget">
+      <span class="bd-budget-lbl">Valeur</span>
+      <span class="bd-budget-num" id="s-val">0 / 24</span>
+    </div>
+    <div class="bd-gauge"><span class="bd-gauge-fill" id="s-gauge"></span></div>
     <div class="comp-grid" id="comp-grid"></div>
   </div>
   <div id="cards-container"></div>
+  <!-- Un bouton désactivé qui ne dit pas pourquoi est le premier générateur
+       d'abandon : la raison du blocage est écrite sous lui, en permanence. -->
+  <div class="bd-action">
+    <button class="btn btn-primary" id="b-validate" disabled>Valider l'armée</button>
+    <div class="bd-why" id="b-validate-why"></div>
+  </div>
 </div>
 </div>
 
