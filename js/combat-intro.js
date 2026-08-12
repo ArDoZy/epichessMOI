@@ -27,7 +27,7 @@ let combatMode='ia';
 // ----------------------------------------------------------------
 // ENTRÉES DANS LA PAGE
 // ----------------------------------------------------------------
-// Depuis "Mes armées" en mode sélection (voir armies.js::pickArmyForBattle).
+// Depuis le menu principal, COMBAT / Adversaires (voir armies.js::startArmySelection).
 window.launchCombat=id=>{
   const a=savedArmies.find(x=>x.id===id);if(!a)return;
   loadArmyForEdit(a);
