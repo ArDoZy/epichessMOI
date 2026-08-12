@@ -85,7 +85,12 @@ function renderGame(gs){
     const hasEnemy=cell&&gs.legalMoves.some(m=>m.r===r&&m.c===c&&!m.stayPut)&&cell.color!==gs.turn;
     if(isAvail&&hasEnemy)cls+=' avail-cap';
     else if(isAvail)cls+=' avail';
-    if(gs.lastMove&&((gs.lastMove.from.r===r&&gs.lastMove.from.c===c)||(gs.lastMove.to.r===r&&gs.lastMove.to.c===c)))cls+=' last-move';
+    // Départ et arrivée reçoivent deux marques DIFFÉRENTES : teintées à
+    // l'identique, les deux cases ne disaient pas le sens du coup.
+    if(gs.lastMove){
+      if(gs.lastMove.from.r===r&&gs.lastMove.from.c===c)cls+=' lm-from';
+      else if(gs.lastMove.to.r===r&&gs.lastMove.to.c===c)cls+=' lm-to';
+    }
     if(gs.lastMove&&gs.lastMove.capture&&gs.lastMove.to.r===r&&gs.lastMove.to.c===c)cls+=' cap-flash';
     const isAnchored=gs.anchored?.has(key);
     // Le roi en echec est signale sur le plateau lui-meme : la barre de
@@ -370,7 +375,10 @@ function renderBoardFromSnapshot(board,lastMove){
     const c=flipped?7-vc:vc;
     const isLight=(r+c)%2===0;const cell=board[r][c];
     let cls='gc '+(isLight?'l':'d');
-    if(lastMove&&((lastMove.from?.r===r&&lastMove.from?.c===c)||(lastMove.to?.r===r&&lastMove.to?.c===c)))cls+=' last-move';
+    if(lastMove){
+      if(lastMove.from?.r===r&&lastMove.from?.c===c)cls+=' lm-from';
+      else if(lastMove.to?.r===r&&lastMove.to?.c===c)cls+=' lm-to';
+    }
     const inner=cell?'<div class="gc-piece">'+pieceSVG(cell.pieceId,cell.color)+'</div>':'';
     html+='<div class="'+cls+'" data-r="'+r+'" data-c="'+c+'">'+inner+'</div>';
   }

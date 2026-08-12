@@ -134,7 +134,11 @@ const renderArmiesPage=()=>{
     banner.style.display=sel?'':'none';
     banner.innerHTML=sel?'<span class="asb-txt">'+(armySelectMode==='online'?'Sélectionnez l\'armée que vous engagez contre un autre joueur':'Sélectionnez l\'armée avec laquelle affronter votre adversaire')+'</span><button class="btn btn-ghost" style="font-size:11px;padding:6px 12px" onclick="cancelArmySelection()">Annuler</button>':'';
   }
-  if(!savedArmies.length){grid.innerHTML='<div class="empty-armies"><span class="vial"><span class="vial-bubble"></span></span><p>Aucune armée enregistrée.<br>Composez votre première armée !</p></div>';return;}
+  if(!savedArmies.length){
+    grid.innerHTML='<div class="empty-armies"><span class="vial"><span class="vial-bubble"></span></span><p>Aucune armée enregistrée.<br>Composez votre première armée !</p></div>';
+    const c0=document.getElementById('armies-count');if(c0)c0.textContent='';
+    return;
+  }
   grid.innerHTML=savedArmies.map(a=>{
     const mon=PIECES.find(p=>p.id===a.mon.id);const gen=PIECES.find(p=>p.id===a.gen.id);
     const extras=a.extras.map(id=>PIECES.find(p=>p.id===id)).filter(Boolean);
@@ -144,8 +148,12 @@ const renderArmiesPage=()=>{
     const head=sel
       ? '<div class="ac-name-row"><span class="ac-name'+(a.name?'':' ac-name-none')+'">'+escH(a.name||'Armée sans nom')+'</span></div>'
       : buildNameBlock(a,false);
+    // « Modifier » prend la largeur, la corbeille redevient une icône neutre :
+    // une action destructive doit être atteignable, pas attirante. Elle ne se
+    // colore qu'au survol et à l'appui.
     const btns=sel?''
-      : '<div class="ac-btns"><button class="btn btn-ghost" style="font-size:11px;padding:6px 12px" onclick="editPlayerArmy(\''+a.id+'\')">Modifier</button><button class="btn btn-danger" style="font-size:14px;padding:6px 10px" title="Supprimer cette armée" onclick="deletePlayerArmy(\''+a.id+'\')">'+TRASH_ICON+'</button></div>';
+      : '<div class="ac-btns"><button class="btn btn-ghost ac-edit" onclick="editPlayerArmy(\''+a.id+'\')">Modifier</button>'+
+        '<button class="ac-del-btn" aria-label="Supprimer cette armée" title="Supprimer cette armée" onclick="deletePlayerArmy(\''+a.id+'\')">'+TRASH_ICON+'</button></div>';
     // Une armée dont le stock est insuffisant reste visible et modifiable,
     // mais ne peut pas être engagée : elle est marquée, pas cachée.
     const stock=(typeof armyStock==='function')?armyStock(a):{ok:true,missing:[]};
@@ -155,8 +163,28 @@ const renderArmiesPage=()=>{
     const stockLine=stock.ok
       ? ''
       : '<div class="ac-nostock">Stock insuffisant : '+stock.missing.map(m=>escH(m.name)+' '+m.have+'/'+m.need).join(', ')+'</div>';
-    return open+head+'<div class="ac-pieces">'+all.map(p=>'<span title="'+escH(p.name)+'">'+pieceIcon(p.id,'n',1.7)+'</span>').join('')+'</div><div class="ac-names">'+( mon?.name||'?')+' (Monarque) · '+(gen?.name||'?')+' (Général)<br>'+extras.map(p=>p.name).join(' · ')+'</div><div class="ac-val">'+a.totalValue+' pts</div>'+stockLine+btns+'</div>';
-  }).join('');
+    // UNE information, UNE représentation. La carte affichait la composition
+    // DEUX fois : une rangée de cinq logos, puis deux lignes de texte gris qui
+    // énuméraient exactement les mêmes cinq pièces. Elle faisait 190 px de
+    // haut pour cinq données. Les logos portent maintenant leur nom sous eux :
+    // une seule grille, qui dit l'image ET le mot.
+    const val='<span class="ac-val">'+a.totalValue+' pts</span>';
+    const roster='<div class="ac-roster">'+all.map(p=>
+      '<span class="ac-slot" title="'+escH(p.name)+'">'+pieceIcon(p.id,'n')+
+      '<span class="ac-slot-n">'+escH(p.name)+'</span></span>').join('')+'</div>';
+    return open+'<div class="ac-head">'+head+val+'</div>'+roster+stockLine+btns+'</div>';
+  }).join('')+(sel?'':
+    // Le bouton de création était un aplat vert-de-gris pleine largeur POSÉ
+    // AU-DESSUS de la liste : l'objet le plus lumineux, le plus large et le
+    // plus haut de l'écran était un bouton d'ajout, tandis que le contenu réel
+    // — les armées — restait en cartes sombres. La hiérarchie était inversée.
+    // Il devient la dernière carte de la grille : la liste redevient le sujet,
+    // et le vide de fin d'écran disparaît. Le geste reste à un appui.
+    '<button type="button" class="army-card army-new-card" onclick="document.getElementById(\'ar-new\').click()">'+
+      '<span class="anc-plus">+</span><span class="anc-txt">Nouvelle armée</span></button>');
+  // Le décompte, que la page ne donnait nulle part.
+  const cnt=document.getElementById('armies-count');
+  if(cnt)cnt.textContent=sel?'':savedArmies.length+' armée'+(savedArmies.length>1?'s':'');
 };
 window.editPlayerArmy=id=>{const a=savedArmies.find(x=>x.id===id);if(!a)return;builderMode='player';updateBuilderBanner();loadArmyForEdit(a);showPage('page-builder');updAll();};
 window.deletePlayerArmy=id=>{showConfirmModal('Supprimer cette armée ?',()=>{savedArmies=savedArmies.filter(a=>a.id!==id);saveArmies();renderArmiesPage();});};

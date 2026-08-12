@@ -54,7 +54,7 @@
      (le LCP compte dans le classement Google). -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Cinzel+Decorative:wght@400;700;900&family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,300;1,400&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Cinzel+Decorative:wght@400;700;900&family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/style.css">
 
 <!-- Données structurées Schema.org. Les faits (18 pièces, 5 classes,
@@ -189,7 +189,7 @@
 <!-- PASSWORD MODAL -->
 <div class="pw-modal" id="pw-modal">
   <div class="pw-box">
-    <div style="font-family:'Cinzel',serif;font-size:16px;font-weight:700;margin-bottom:6px;color:var(--text)">Connexion</div>
+    <div style="font-family:var(--f-ui);font-size:16px;font-weight:700;margin-bottom:6px;color:var(--text)">Connexion</div>
     <div style="font-size:13px;color:var(--muted);margin-bottom:16px">Compte : <strong id="pw-acc" style="color:var(--text)"></strong></div>
     <div class="pw-field" style="margin-bottom:12px">
       <input class="linput" id="pw-inp" type="password" placeholder="Mot de passe">
@@ -302,21 +302,36 @@
                savait pas c'est où l'on en est. Rempli par renderMenuIdentity()
                (js/accounts.js). Le bouton « Voie » ouvre la Voie des
                Victoires, qui n'est plus une face du cube. -->
+          <!-- UNE SEULE PASTILLE, et non trois objets. « POUSSIÈRE » (libellé
+               gris), « 23 ELO » (pastille laiton bordée) et « VOIE » (bouton
+               fantôme) occupaient la même ligne avec trois poids visuels,
+               trois hauteurs et trois familles de forme — pour dire une seule
+               chose : votre rang. Le bouton fantôme, en particulier, avait
+               exactement l'apparence d'un élément désactivé. Toute la pastille
+               ouvre la Voie : aucune fonction n'est perdue. -->
           <div class="jouer-player">
             <div class="jouer-name" id="jouer-name"></div>
-            <div class="jouer-elo-row">
+            <button class="jouer-idpill" id="jouer-voie" aria-label="Voir la Voie des Victoires">
+              <span class="jp-dot" id="jouer-rank-dot"></span>
               <span class="jouer-rank" id="jouer-rank"></span>
+              <span class="jp-sep" aria-hidden="true">·</span>
               <span class="jouer-elo" id="jouer-elo"></span>
-              <button class="btn btn-ghost jouer-voie-btn" id="jouer-voie">Voie</button>
-            </div>
+              <svg class="jp-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 5, 16 12, 9 19"/></svg>
+            </button>
           </div>
           <!-- COMBAT = affronter un autre joueur. C'est ce que les gens
                viennent chercher, donc c'est le gros bouton. S'entraîner
                contre l'IA est une action secondaire, pas l'inverse. -->
           <div class="jouer-actions">
             <button class="jouer-btn" id="cube-jouer-btn"><span>COMBAT</span></button>
+            <!-- CONTRE QUI ? Le gros bouton ne le disait pas : il fallait
+                 ouvrir la galerie des adversaires pour le savoir, puis
+                 revenir. Un aller-retour supprimé à chaque partie. -->
+            <div class="jouer-vs" id="jouer-vs"></div>
             <div class="jouer-second">
-              <button class="btn btn-ghost" id="b-vs-ia">Adversaires</button>
+              <button class="btn btn-text" id="b-vs-ia">Adversaires
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 5, 16 12, 9 19"/></svg>
+              </button>
             </div>
           </div>
           <!-- LES SIX COFFRES, en bas de l'écran, de gauche à droite du Pion
@@ -384,33 +399,60 @@
 <div class="builder-inner">
   <div class="builder-topbar"></div>
   <div class="builder-mode-banner" id="builder-mode-banner"></div>
+  <!-- LA BARRE DE COMPOSITION EST COLLANTE. Le budget est la contrainte
+       unique de cet écran, et il défilait hors du champ dès le premier geste
+       vers le catalogue : on composait à l'aveugle. Il reste maintenant sous
+       les yeux du premier au dernier appui, avec les cinq emplacements.
+       Quatre boutons accueillaient l'utilisateur avant tout contenu, dont
+       DEUX primaires pleins (« Mes armées » en laiton, une navigation, et
+       « Valider » en vert) et une action destructive. Ils sont répartis selon
+       ce qu'ils font : la navigation redevient un retour, les deux actions
+       d'appoint passent dans un menu, et la validation descend en bas
+       d'écran — dans le pouce, à la fin du parcours qu'elle conclut. -->
   <div class="army-box" id="army-box">
-    <div class="builder-panel-top">
-      <div class="topbar-btns">
-        <button class="btn btn-gold" id="b-armies">Mes armées</button>
-        <button class="btn btn-primary" id="b-validate" disabled>Valider l'armée →</button>
-        <button class="btn btn-ghost" id="b-random">Armée aléatoire</button>
-        <button class="btn btn-ghost" id="b-reset">Tout effacer</button>
-      </div>
-      <!-- Le budget, et RIEN d'autre. La pastille « Armurerie : — / PRÊTE »
-           qui l'accompagnait redisait ce que chaque carte de pièce dit déjà
-           avec son stock, et ce que le slot de composition dit une deuxième
-           fois sous chaque pièce posée (.cs-stock). -->
-      <div class="topbar-stats">
-        <div class="stat-pill"><div class="sp-label">Valeur</div><div class="sp-val" id="s-val">0/24</div></div>
-      </div>
+    <div class="bd-top">
+      <button class="bd-back" id="b-armies">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 5, 8 12, 15 19"/></svg>
+        <span>Mes armées</span>
+      </button>
+      <details class="bd-more" id="bd-more">
+        <summary aria-label="Plus d'actions" title="Plus d'actions"><span></span><span></span><span></span></summary>
+        <div class="bd-more-menu">
+          <button type="button" class="bd-more-item" id="b-random">Armée aléatoire</button>
+          <button type="button" class="bd-more-item bd-more-danger" id="b-reset">Tout effacer</button>
+        </div>
+      </details>
     </div>
-    <div class="army-box-title">Votre armée</div>
+    <!-- Le budget n'est plus une étiquette passive : un nombre ET une jauge.
+         Au-delà de 24 points, les deux virent à la couleur de tension. -->
+    <div class="bd-budget">
+      <span class="bd-budget-lbl">Valeur</span>
+      <span class="bd-budget-num" id="s-val">0 / 24</span>
+    </div>
+    <div class="bd-gauge"><span class="bd-gauge-fill" id="s-gauge"></span></div>
     <div class="comp-grid" id="comp-grid"></div>
   </div>
   <div id="cards-container"></div>
+  <!-- Un bouton désactivé qui ne dit pas pourquoi est le premier générateur
+       d'abandon : la raison du blocage est écrite sous lui, en permanence. -->
+  <div class="bd-action">
+    <button class="btn btn-primary" id="b-validate" disabled>Valider l'armée</button>
+    <div class="bd-why" id="b-validate-why"></div>
+  </div>
 </div>
 </div>
 
 <!-- PAGE 3: PLAYER ARMIES -->
 <div id="page-armies" class="page">
 <div class="armies-inner">
-  <div class="armies-hdr"><div class="armies-title cinzel glow-text">Mes Armées</div><button class="btn btn-primary" id="ar-new">+ Nouvelle armée</button></div>
+  <!-- Le bouton de création est devenu la dernière carte de la grille (voir
+       renderArmiesPage) ; celui-ci reste dans le DOM, masqué, parce qu'il
+       porte le gestionnaire de clic et que le tutoriel le vise. -->
+  <div class="armies-hdr">
+    <div class="armies-title cinzel glow-text">Mes Armées</div>
+    <div class="armies-count" id="armies-count"></div>
+    <button class="btn btn-primary armies-new-hidden" id="ar-new">+ Nouvelle armée</button>
+  </div>
   <!-- Bandeau du mode sélection (combat lancé depuis le menu principal) :
        rempli et affiché par renderArmiesPage(). -->
   <div class="armies-select-banner" id="armies-select-banner" style="display:none"></div>
