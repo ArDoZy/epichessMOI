@@ -657,9 +657,9 @@ body.has-acc .builder-inner{padding-top:var(--page-top)}
    ils étaient autour du plateau — et l'échiquier occupe seul toute la
    hauteur, sans jamais provoquer de défilement.
    ============================================================== */
-#page-game{padding:0;min-height:100vh;background:var(--bg)}
+#page-game{padding:0;min-height:100dvh;background:var(--bg)}
 #page-game.active{display:block}
-.game-wrap{display:flex;height:100vh;overflow:hidden;gap:0}
+.game-wrap{display:flex;height:100dvh;overflow:hidden;gap:0}
 /* Taille du plateau : la plus grande valeur compatible avec la hauteur
    disponible (le plateau plus ses repères de colonnes) et la largeur
    disponible (moins la colonne latérale et les repères de rangées). Plus de
@@ -1025,10 +1025,16 @@ body.nav-overlay #cube-stage{display:none}
 .cube-face[data-face="game"]     {transform:rotateX(90deg)   translateZ(50vmax)}
 .cube-face[data-face="variantes"]{transform:rotateX(-90deg)  translateZ(50vmax)}
 
-/* Zone utile réelle d'une face = un rectangle plein écran (100vw×100vh)
-   centré dans le grand carré (le reste du carré est masqué par #cube-stage). */
+/* Zone utile réelle d'une face = un rectangle plein écran (100vw×100dvh)
+   centré dans le grand carré (le reste du carré est masqué par #cube-stage).
+   100dvh (et non 100vh) : sur mobile, 100vh vaut la hauteur "grande" comme si
+   la barre d'adresse du navigateur était repliée. Comme la face est centrée
+   (top:50% + translate), un excédent de hauteur déborde à parts égales en
+   haut et en bas — et le débordement du haut, masqué par l'overflow:hidden
+   de #cube-stage, coupait justement le bandeau adverse (pseudo, ELO,
+   pendule) sous la barre d'adresse. */
 .face-viewport{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
-  width:100vw;height:100vh;overflow:hidden}
+  width:100vw;height:100dvh;overflow:hidden}
 #face-viewport-armees{overflow-y:auto}
 
 /* Les pages réelles déplacées dans une face : toujours affichées (la
