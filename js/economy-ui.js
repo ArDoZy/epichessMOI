@@ -420,6 +420,10 @@ function showChestCeremony(chest,lots,applyOnClose,onClose){
   // sur le couvercle, et la cérémonie se joue comme avant.
   const canBreak=typeof chestBreakReady==='function'&&chestBreakReady(chest.id);
   visual.style.display=canBreak?'none':'';
+  // Un coffre qu'on brise se joue sur FOND NOIR PLEIN, et non par-dessus
+  // l'écran de fin de partie qu'on devinerait derrière : les sept images ont
+  // un fond noir, la scène doit continuer jusqu'aux bords de l'écran.
+  modal.classList.toggle('pb-cinema',canBreak);
   if(canBreak){
     st.seq=chestBreakMount(chest.id,()=>{
       if(_chestState!==st)return;
@@ -490,7 +494,7 @@ function chestCeremonyClose(){
   _chestState=null;
   if(st.seq)st.seq.destroy();
   if(st.applyOnClose)chestApply(st.lots);
-  document.getElementById('chest-modal').classList.remove('show','opening');
+  document.getElementById('chest-modal').classList.remove('show','opening','pb-cinema');
   // Une créature inédite sort du coffre : on ouvre son exercice de
   // déplacement (js/tuto-drill.js) avant de rendre la main. Une pièce dont on
   // ignore le déplacement n'est pas vraiment débloquée.

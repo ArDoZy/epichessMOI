@@ -1470,10 +1470,39 @@ body.light .pmv-dark{background:#c3bdae}
   transition:width .6s cubic-bezier(.3,.9,.3,1);
   user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent}
 .pbreak[hidden]{display:none}
-/* Une fois le socle vide, la scène recule pour laisser la place aux lots :
-   sur un téléphone, une image de 320 px de large et le premier lot ne
-   tiennent pas ensemble sous le titre. */
-.pbreak.pb-done{--pb-w:clamp(140px,42vw,210px)}
+
+/* PLEIN ÉCRAN. À l'explosion, la scène quitte sa boîte : plus d'ovale, plus
+   de 320 px de large, elle prend tout. Elle y RESTE pour le socle vide, qui
+   devient le décor sur lequel les lots vont apparaître — d'où le z-index
+   bas, sous le titre et les lots, qui ont déjà le leur (z-index:2). */
+.pbreak.pb-full{position:fixed;inset:0;z-index:0;margin:0;
+  width:auto;height:auto;max-width:none;aspect-ratio:auto}
+.pbreak.pb-full .pb-frame{object-position:50% 50%}
+
+/* DEUX FAÇONS DE REMPLIR L'ÉCRAN, parce que les deux images ne demandent
+   pas la même chose.
+
+   `bleed` — l'explosion. Elle déborde de partout, rognée n'importe comment :
+   une déflagration n'a pas de composition à préserver, et on la veut jusque
+   dans les coins. L'ovale saute.
+
+   `boxed` — le socle vide. Là le cadrage compte. La scène reprend le FORMAT
+   de l'image (dimensions posées par pbFitBox, js/chest-break.js) et se
+   centre : l'image remplit exactement sa boîte, donc l'ovale de découpe
+   retombe pile sur ses bords et la fond dans le noir. Étirer l'image sur
+   tout l'écran aurait laissé deux bandes et une couture visible dès que le
+   fond de l'image n'est pas un noir parfait. */
+.pbreak.pb-bleed .pb-scene{-webkit-mask-image:none;mask-image:none}
+.pbreak.pb-boxed .pb-trem{display:flex;align-items:center;justify-content:center}
+.pbreak.pb-boxed .pb-scene{position:relative;inset:auto}
+/* Le passage hors flux ferait remonter d'un coup tout ce qui suit la scène.
+   Comme il tombe juste avant le voile blanc, on efface ces textes : le saut
+   a lieu pendant qu'il n'y a rien à voir. Ils reviennent avec le socle vide
+   (pb-done), à temps pour annoncer les lots. */
+.pbreak.pb-full ~ .chest-title,
+.pbreak.pb-full ~ .chest-hint{opacity:0;transition:opacity .12s linear}
+.pbreak.pb-full.pb-done ~ .chest-title,
+.pbreak.pb-full.pb-done ~ .chest-hint{opacity:1;transition:opacity .45s ease .35s}
 
 /* Le découpage en ovale fait FONDRE l'image dans le noir du fond : sans
    lui, on voit un rectangle de photo posé sur la scène, et le cadrage
@@ -1486,6 +1515,27 @@ body.light .pmv-dark{background:#c3bdae}
   object-fit:cover;object-position:50% 56%;
   transition:opacity var(--pb-fade,240ms) ease-out}
 .pb-frame.on{opacity:1}
+
+/* L'EMBALLEMENT. L'image déferle — elle part plus petite que l'écran et le
+   dépasse — pendant que sa luminosité monte jusqu'à la brûlure. Seule, elle
+   ne blanchirait que là où elle est ; c'est .pb-white qui emporte le reste
+   de l'écran, les deux montent ensemble. */
+.pb-scene.blast{animation:pbBlastIn var(--pb-bldur,440ms) cubic-bezier(.16,.86,.3,1) forwards}
+@keyframes pbBlastIn{
+  0%  {transform:scale(.58);filter:brightness(1) saturate(1)}
+  36% {transform:scale(1.02);filter:brightness(1.7) saturate(1.2)}
+  100%{transform:scale(1.18);filter:brightness(6) saturate(1.35)}
+}
+
+/* LE VOILE BLANC. Il monte très vite, tient un court instant — l'écran est
+   alors entièrement lumineux, il ne montre plus rien — puis redescend. Le
+   palier est l'abri sous lequel l'explosion s'éteint et le socle vide prend
+   sa place : la luminosité revient à la normale sur une autre image. */
+.pb-white{position:fixed;inset:0;z-index:4;background:#fff;opacity:0;pointer-events:none}
+.pb-white.go{animation:pbWhite var(--pb-wdur,820ms) linear}
+@keyframes pbWhite{
+  0%{opacity:0} 30%{opacity:1} 48%{opacity:1} 100%{opacity:0}
+}
 
 /* LE HALO. Une copie floutée de l'image courante, fondue en « screen » :
    le fond noir n'ajoute rien, seules les fissures — les zones claires —
@@ -1536,7 +1586,7 @@ body.light .pmv-dark{background:#c3bdae}
 .pb-ring{position:absolute;left:50%;top:54%;width:44px;height:44px;margin:-22px 0 0 -22px;
   border-radius:50%;border:2px solid rgba(255,228,158,.9);opacity:0;pointer-events:none}
 .pb-ring.go{animation:pbRing .78s cubic-bezier(.12,.72,.28,1)}
-@keyframes pbRing{0%{opacity:.9;transform:scale(.15)}100%{opacity:0;transform:scale(8.5)}}
+@keyframes pbRing{0%{opacity:.9;transform:scale(.15)}100%{opacity:0;transform:scale(var(--pb-ringmax,8.5))}}
 
 .pb-sparks{position:absolute;inset:0;pointer-events:none}
 .pb-spark{position:absolute;left:50%;top:54%;width:var(--s,4px);height:var(--s,4px);border-radius:50%;
@@ -1548,13 +1598,44 @@ body.light .pmv-dark{background:#c3bdae}
   100%{opacity:0;transform:translate3d(var(--dx,0),var(--dy,0),0) scale(.2)}
 }
 
+/* LE CINÉMA. Le coffre qu'on brise ne s'ouvre pas par-dessus l'écran de fin
+   de partie : le fond passe au NOIR PLEIN. Les images sont sur fond noir,
+   elles n'ont donc plus de bord du tout — c'est une scène, plus un modal
+   posé sur une page. */
+.chest-modal.pb-cinema{background:#000}
+.chest-modal.pb-cinema .chest-stage{position:relative;z-index:1}
+/* La scène en plein écran est positionnée : sans z-index à lui, le bouton
+   « Récupérer », qui ne l'est pas, passerait dessous. */
+.chest-modal.pb-cinema #chest-close{position:relative;z-index:2}
+
+/* Les lots apparaissent AU MILIEU du socle vide, en l'air au-dessus de lui,
+   et non plus en dessous de la scène : la récompense se matérialise là où
+   la pièce vient d'éclater. La carte flotte (lootFloat) et s'éclaire par en
+   dessous — sans quoi, posée sur une photo, elle aurait l'air collée. */
+.chest-modal.pb-cinema .loot-reveal{
+  background:rgba(9,13,17,.66);border-color:rgba(255,255,255,.16);
+  -webkit-backdrop-filter:blur(7px);backdrop-filter:blur(7px);
+  box-shadow:0 22px 60px rgba(0,0,0,.75),0 0 70px rgba(217,182,78,.16);
+  animation:lootIn .5s cubic-bezier(.2,1.4,.4,1) forwards,
+            lootFloat 3.6s ease-in-out .55s infinite}
+@keyframes lootFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-9px)}}
+.chest-modal.pb-cinema .chest-loot-count{text-shadow:0 2px 10px #000}
+.chest-modal.pb-cinema .chest-title{text-shadow:0 2px 14px #000}
+.chest-modal.pb-cinema .chest-hint{text-shadow:0 2px 10px #000}
+
 /* MOINS D'ANIMATION : on garde ce qui RACONTE (les fissures qui montent, la
-   lumière qui gonfle) et on retire tout ce qui secoue. Le joueur voit la
-   même histoire, l'écran ne bouge pas. */
+   lumière qui gonfle, le passage par le blanc qui fait basculer la scène) et
+   on retire tout ce qui secoue, grossit ou clignote. Le voile blanc est
+   plafonné : un écran qui passe au blanc pur est exactement ce qu'un joueur
+   sensible cherche à éviter. */
 @media(prefers-reduced-motion:reduce){
   .pb-shake.go,.pb-trem.live,.pb-ring.go{animation:none}
   .pb-bloom{animation:none;opacity:var(--pb-b1,0);transition:opacity .5s ease}
   .pb-spark{display:none}
+  .pb-scene.blast{animation:none;filter:brightness(1.8)}
+  .pb-white.go{animation:pbWhiteCalm var(--pb-wdur,820ms) linear}
+  @keyframes pbWhiteCalm{0%{opacity:0}30%{opacity:.82}48%{opacity:.82}100%{opacity:0}}
+  .chest-modal.pb-cinema .loot-reveal{animation:lootIn .5s ease forwards}
 }
 
 .chest-title{font-family:var(--f-display);font-size:22px;font-weight:900;
