@@ -105,8 +105,15 @@ function renderVoiePage(){
   const route=document.getElementById('voie-route');let html='';
   let lastRankId=null;
   UNLOCK_MILESTONES.forEach((milestone,idx)=>{
-    const mRank=vvGetRank(milestone.eloRequired);
-    if(mRank.id!==lastRankId){lastRankId=mRank.id;html+='<div class="vm-rank-section"><div class="vm-rank-bar"><span class="vm-rank-label" style="color:'+mRank.color+'">'+mRank.name+'</span><span class="vm-rank-range">'+mRank.min+'–'+(mRank.max===9999?'∞':mRank.max)+' ELO</span></div></div>';}
+    // Les cinq jalons de départ (Roi, Dame, Fourmi, Peureux, Éléphant de
+    // guerre — `starter`) sont à 0 ELO, donc numériquement dans la tranche
+    // Bois, mais ils ne portent PAS son bandeau : ils forment le socle tout
+    // en bas de la Voie, sous l'arène. Le bandeau Bois s'ouvre normalement au
+    // jalon suivant (Preux Chevalier, 50 ELO), premier jalon non-`starter`.
+    if(!milestone.starter){
+      const mRank=vvGetRank(milestone.eloRequired);
+      if(mRank.id!==lastRankId){lastRankId=mRank.id;html+='<div class="vm-rank-section"><div class="vm-rank-bar"><span class="vm-rank-label" style="color:'+mRank.color+'">'+mRank.name+'</span><span class="vm-rank-range">'+mRank.min+'–'+(mRank.max===9999?'∞':mRank.max)+' ELO</span></div></div>';}
+    }
     if(!milestone.pieceId){const reached2=elo>=milestone.eloRequired;html+='<div class="voie-milestone"><div class="vm-card '+(reached2?'reached':'locked-milestone')+'" style="text-align:center"><div class="vm-piece-name">'+milestone.label+'</div></div><div class="vm-center"><div class="vm-dot'+(reached2?' reached':'')+'"></div><div class="vm-elo-badge">'+milestone.eloRequired+' ELO</div></div><div style="flex:1;max-width:calc(50% - 40px)"></div></div>';return;}
     const pd=PIECES.find(p=>p.id===milestone.pieceId);if(!pd)return;
     const reached=elo>=milestone.eloRequired&&VV_UNLOCKED.has(milestone.pieceId);
@@ -123,6 +130,7 @@ function renderVoiePage(){
     html+='<div class="voie-milestone"><div class="'+cardCls+'"><span class="vm-piece-emoji">'+pieceIcon(pd.id,'n')+'</span><div class="vm-piece-name">'+pd.name+'</div></div><div class="vm-center"><div class="'+dotCls+'"></div><div class="vm-elo-badge">'+(milestone.eloRequired===0?'Départ':milestone.eloRequired+' ELO')+'</div></div><div style="flex:1;max-width:calc(50% - 40px)"></div></div>';
   });
   route.innerHTML=html;
+  voieAutoScroll(route);
 }
 
 // La Voie a été une face du cube ; c'est de nouveau une page à part entière,
@@ -134,52 +142,109 @@ document.getElementById('voie-back')?.addEventListener('click',()=>{
 });
 
 // ----------------------------------------------------------------
-// REMONTÉE DE LA VOIE
+// POSITION D'ARRIVÉE SUR LA VOIE
 // ----------------------------------------------------------------
 // C'est le conteneur de la page qui défile (.page.active est en
-// position:fixed avec son propre overflow), pas le document. Remonter window
-// ne faisait donc rien.
+// position:fixed avec son propre overflow), pas le document.
 //
-// Le bouton téléportait en haut de page, ce qui faisait perdre le fil : on ne
-// voyait pas les rangs défiler et on ne savait plus où on avait atterri. Il
-// remonte maintenant en ACCÉLÉRANT (courbe en ease-in), comme une bille qui
-// dévale la pente à l'envers : le regard suit le mouvement et comprend la
-// distance parcourue.
+// La Voie se lit maintenant du bas (le départ) vers le haut (voir
+// [VOIE]/.voie-route dans css/style.css, column-reverse) : la page elle-même
+// ne défile PAS à l'envers, seuls les jalons qu'elle contient sont empilés en
+// sens inverse — au repos (scrollTop 0), on voit donc le HAUT du chemin
+// (Or Légendaire), et « le début » (Roi, tout en bas) est en scrollTop
+// MAXIMUM, après le dernier jalon.
+//
+// La toute première fois qu'un compte ouvre la Voie, elle glisse du haut
+// vers le bas pour montrer d'un geste toute l'étendue du chemin possible.
+// Les fois suivantes, inutile de refaire ce voyage à chaque fois : la page
+// s'ouvre directement sur le jalon EN COURS — sans quoi revoir sa
+// progression coûtait, à chaque passage, un défilement jusqu'en bas.
 function voieScrollHost(){
   return document.getElementById('page-voie')||document.scrollingElement;
 }
 
+function voieAutoScroll(){
+  const host=voieScrollHost();
+  if(!host)return;
+  const firstVisit=!accGet('voie_seen',false);
+  // renderVoiePage() est appelée AVANT showPage('page-voie') (voir
+  // js/cube-nav.js) : la page est encore masquée ici, sans la moindre
+  // géométrie (scrollHeight à 0, scrollIntoView sans effet). On attend la
+  // frame suivante — après quoi showPage() a déjà posé la classe .active,
+  // synchrone, dans le même tick — pour que le positionnement porte sur une
+  // page réellement affichée.
+  requestAnimationFrame(()=>{
+    if(firstVisit){
+      accSet('voie_seen',true);
+      voieRevealSlide(host);
+    }else{
+      // Pas de défilement animé ici : on veut arriver directement, pas
+      // regarder un trajet qu'on a déjà vu au premier passage.
+      const cur=host.querySelector('.current-milestone');
+      if(cur)(cur.closest('.voie-milestone')||cur).scrollIntoView({block:'center'});
+    }
+  });
+}
+
+// Glissement du haut vers le bas, au tout premier passage : ease-out, comme
+// une bille qui se pose (vite au départ, elle ralentit en approchant le bas,
+// c'est-à-dire le départ du chemin).
+let _voieRevealRaf=null;
+function voieRevealSlide(host){
+  if(_voieRevealRaf)cancelAnimationFrame(_voieRevealRaf);
+  const start=host.scrollTop;
+  const target=host.scrollHeight-host.clientHeight;
+  const dist=target-start;
+  if(dist<=0)return; // tout tient déjà à l'écran
+  const duration=Math.min(1800,Math.max(600,dist*0.9));
+  const t0=performance.now();
+  const ease=t=>1-Math.pow(1-t,3);
+  const step=now=>{
+    const t=Math.min(1,(now-t0)/duration);
+    host.scrollTop=start+dist*ease(t);
+    if(t<1)_voieRevealRaf=requestAnimationFrame(step);
+    else{host.scrollTop=target;_voieRevealRaf=null;}
+  };
+  _voieRevealRaf=requestAnimationFrame(step);
+}
+
+// Bouton « Retour au début » : le début du chemin (Roi, Bois) est maintenant
+// en BAS de la page (scrollTop maximum), pas en haut — la Voie s'y rend donc
+// en DESCENDANT (ease-in, comme une bille qui dévale une pente).
 let _voieScrollRaf=null;
-function voieSmoothTop(){
+function voieSmoothToStart(){
   const host=voieScrollHost();
   if(!host)return;
   if(_voieScrollRaf)cancelAnimationFrame(_voieScrollRaf);
   const start=host.scrollTop;
-  if(start<=0)return;
-  // Durée proportionnelle à la distance, mais bornée : une Voie très longue
-  // ne doit pas imposer une remontée interminable.
-  const duration=Math.min(1100,Math.max(420,start*0.55));
+  const target=host.scrollHeight-host.clientHeight;
+  const dist=target-start;
+  if(dist<=0)return;
+  const duration=Math.min(1100,Math.max(420,dist*0.55));
   const t0=performance.now();
   // ease-in cubique : lent au départ, de plus en plus rapide.
   const ease=t=>t*t*t;
   const step=now=>{
     const t=Math.min(1,(now-t0)/duration);
-    host.scrollTop=start*(1-ease(t));
+    host.scrollTop=start+dist*ease(t);
     if(t<1)_voieScrollRaf=requestAnimationFrame(step);
-    else{host.scrollTop=0;_voieScrollRaf=null;}
+    else{host.scrollTop=target;_voieScrollRaf=null;}
   };
   _voieScrollRaf=requestAnimationFrame(step);
 }
-document.getElementById('voie-scroll-top').addEventListener('click',voieSmoothTop);
+document.getElementById('voie-scroll-top').addEventListener('click',voieSmoothToStart);
 
-// Le bouton ne sert à rien quand on est déjà en haut : il n'apparaît qu'une
-// fois la page réellement descendue.
+// Le bouton ne sert à rien quand on est déjà en bas (au début) : il
+// n'apparaît qu'une fois la page réellement remontée vers les hauts rangs.
 (function(){
   const btn=document.getElementById('voie-scroll-top');
   if(!btn)return;
   const host=voieScrollHost();
   if(!host||!host.addEventListener)return;
-  const sync=()=>{btn.style.visibility=host.scrollTop>320?'':'hidden';};
+  const sync=()=>{
+    const dist=(host.scrollHeight-host.clientHeight)-host.scrollTop;
+    btn.style.visibility=dist>320?'':'hidden';
+  };
   host.addEventListener('scroll',sync,{passive:true});
   sync();
 })();

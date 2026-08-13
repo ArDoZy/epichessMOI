@@ -192,7 +192,10 @@ function pUpdateAll(){
 
 // Armée aléatoire : 1 monarque, 1 général, 3 pièces parmi les débloquées
 // (budget 24 pts, 1 primordiale max). Enregistrée aussitôt (toujours
-// complète par construction).
+// complète par construction). Il n'y a plus de bouton « Armée aléatoire » sur
+// la page (retiré avec le menu ⋯) : cette fonction ne sert plus qu'au
+// tutoriel, qui l'appelle directement pour offrir une armée de départ
+// (js/tutorial.js, avant d'atteindre COMBAT).
 function pRandomize(){
   const unlocked=VV_UNLOCKED;
   const monarques=PIECES.filter(p=>p.class==='Monarque'&&unlocked.has(p.id));
@@ -219,13 +222,6 @@ function pRandomize(){
   }
   showNotif('Impossible de générer une armée aléatoire avec vos pièces actuelles.','err');
 }
-function pReset(){
-  pArmy={mon:null,gen:null,extras:[]};pEditId=null;
-  savedArmies=[];saveArmies();
-  pUpdateAll();
-}
-document.getElementById('ar-random')?.addEventListener('click',pRandomize);
-document.getElementById('ar-reset')?.addEventListener('click',pReset);
 
 // Point d'entrée de la page "Mes armées" : recharge depuis la seule armée
 // enregistrée et (re)dessine. Appelée à chaque arrivée sur la face "armées"
@@ -244,7 +240,15 @@ const renderArmiesPage=()=>{
 // "Adversaires" partent donc directement au combat avec elle (ou, à défaut,
 // ramènent sur "Mes armées" pour en composer une).
 window.startArmySelection=mode=>{
-  if(!savedArmies.length){
+  // On vérifie la composition EN COURS (pArmy), pas seulement savedArmies :
+  // une armée complète enregistrée plus tôt (ex. l'armée de départ du
+  // tutoriel) restait utilisable pour combattre même après avoir retiré des
+  // pièces sans en reposer d'autres, puisque savedArmies[0] n'est écrasée
+  // qu'au moment où la composition redevient complète (voir pAutosave). Le
+  // joueur qui laisse sa composition incomplète et lance un combat doit voir
+  // l'erreur, pas combattre avec une ancienne armée qu'il a quittée des yeux.
+  if(!pLoaded){pLoad();pLoaded=true;}
+  if(!pArmyValid()){
     renderArmiesPage();showPage('page-armies');
     showNotif('Votre armée est incomplète','err');
     return;
