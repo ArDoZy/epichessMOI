@@ -1448,6 +1448,115 @@ body.light .pmv-dark{background:#c3bdae}
   100%{transform:rotateX(-122deg)}
 }
 .chest-modal.opening .chest-lg .chest-lock{opacity:0;transition:opacity .25s}
+
+/* [CHEST-BREAK] : le coffre Pion se BRISE au lieu de s'ouvrir ======
+   Sept images fixes empilées (js/chest-break.js), et tout le mouvement
+   ajouté par-dessus en CSS. Chaque image est opaque et cadrée à
+   l'identique : faire monter l'opacité de la suivante par-dessus la pile
+   suffit à faire POUSSER les fissures, sans le creux sombre qu'un vrai
+   fondu croisé laisserait au milieu.
+
+   Les couches, du fond vers la surface :
+     .pb-shake   secousse d'impact (déplacement + grossissement)
+     .pb-trem    tremblement continu, une fois la pièce fendue
+     .pb-scene   les sept images + le halo, découpés en ovale
+     .pb-flash   la gerbe de lumière
+     .pb-ring    l'onde de choc
+     .pb-sparks  les éclats projetés
+   Deux niveaux de transformation imbriqués seulement (secousse et
+   tremblement) : c'est le maximum raisonnable sur un téléphone. */
+.pbreak{position:relative;z-index:2;margin:0 auto 14px;cursor:pointer;
+  width:min(100%,var(--pb-w,320px));aspect-ratio:3/4;
+  transition:width .6s cubic-bezier(.3,.9,.3,1);
+  user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent}
+.pbreak[hidden]{display:none}
+/* Une fois le socle vide, la scène recule pour laisser la place aux lots :
+   sur un téléphone, une image de 320 px de large et le premier lot ne
+   tiennent pas ensemble sous le titre. */
+.pbreak.pb-done{--pb-w:clamp(140px,42vw,210px)}
+
+/* Le découpage en ovale fait FONDRE l'image dans le noir du fond : sans
+   lui, on voit un rectangle de photo posé sur la scène, et le cadrage
+   `cover` trahit ses bords. */
+.pb-shake,.pb-trem{position:absolute;inset:0}
+.pb-scene{position:absolute;inset:0;
+  -webkit-mask-image:radial-gradient(ellipse 76% 70% at 50% 54%,#000 50%,transparent 100%);
+  mask-image:radial-gradient(ellipse 76% 70% at 50% 54%,#000 50%,transparent 100%)}
+.pb-frame{position:absolute;inset:0;width:100%;height:100%;opacity:0;pointer-events:none;
+  object-fit:cover;object-position:50% 56%;
+  transition:opacity var(--pb-fade,240ms) ease-out}
+.pb-frame.on{opacity:1}
+
+/* LE HALO. Une copie floutée de l'image courante, fondue en « screen » :
+   le fond noir n'ajoute rien, seules les fissures — les zones claires —
+   débordent en lumière. C'est l'OPACITÉ qui bat, pas le filtre : le flou
+   n'est calculé qu'une fois, et la respiration reste gratuite pour le
+   compositeur. Sa période raccourcit d'étape en étape, la pièce panique. */
+.pb-bloom{position:absolute;inset:0;pointer-events:none;opacity:0;
+  background-size:cover;background-position:50% 56%;
+  mix-blend-mode:screen;filter:blur(9px) brightness(1.25) saturate(1.15);
+  animation:pbBloom var(--pb-bt,2.6s) ease-in-out infinite}
+@keyframes pbBloom{0%,100%{opacity:var(--pb-b0,0)}50%{opacity:var(--pb-b1,0)}}
+
+/* L'IMPACT. Le déplacement change de sens à chaque palier pour que le coup
+   parte dans tous les sens à la fois, et le grossissement retombe en
+   dessous de 1 avant de revenir : c'est ce léger recul qui donne le poids. */
+.pb-shake.go{animation:pbHit var(--pb-hdur,420ms) cubic-bezier(.22,.9,.3,1)}
+@keyframes pbHit{
+  0%  {transform:translate3d(0,0,0) scale(1)}
+  10% {transform:translate3d(calc(var(--pb-amp,8px)*-1),calc(var(--pb-amp,8px)*.55),0) scale(var(--pb-zoom,1.05))}
+  26% {transform:translate3d(calc(var(--pb-amp,8px)*.85),calc(var(--pb-amp,8px)*-.75),0) scale(calc(var(--pb-zoom,1.05)*.985))}
+  44% {transform:translate3d(calc(var(--pb-amp,8px)*-.6),calc(var(--pb-amp,8px)*-.3),0) scale(calc(var(--pb-zoom,1.05)*.995))}
+  62% {transform:translate3d(calc(var(--pb-amp,8px)*.35),calc(var(--pb-amp,8px)*.45),0) scale(.995)}
+  80% {transform:translate3d(calc(var(--pb-amp,8px)*-.15),0,0) scale(1.002)}
+  100%{transform:translate3d(0,0,0) scale(1)}
+}
+
+/* LE TREMBLEMENT. Il s'installe à la troisième fissure et ne s'arrête plus :
+   entre deux frappes, la pièce vibre. C'est ce qui dit, sans une phrase,
+   qu'elle ne tiendra pas un coup de plus. */
+.pb-trem.live{animation:pbTrem .085s steps(2,end) infinite}
+@keyframes pbTrem{
+  0%,100%{transform:translate3d(0,0,0)}
+  25%{transform:translate3d(var(--pb-trem,1px),0,0)}
+  50%{transform:translate3d(0,calc(var(--pb-trem,1px)*-1),0)}
+  75%{transform:translate3d(calc(var(--pb-trem,1px)*-1),var(--pb-trem,1px),0)}
+}
+
+/* LA GERBE. Débordante (inset négatif) pour que la lumière morde sur le
+   fond du modal et non sur le seul rectangle de l'image. `.big` est
+   réservée à l'explosion : elle éclaire tout l'écran. */
+.pb-flash{position:absolute;inset:-14%;pointer-events:none;opacity:0;
+  background:radial-gradient(circle at 50% 54%,
+    rgba(255,249,232,.98) 0%,rgba(255,216,124,.55) 30%,rgba(228,160,60,.18) 52%,transparent 72%)}
+.pb-flash.big{inset:-48%}
+.pb-flash.go{animation:pbFlash var(--pb-fdur,300ms) ease-out}
+@keyframes pbFlash{0%{opacity:0}14%{opacity:var(--pb-fmax,.5)}100%{opacity:0}}
+
+.pb-ring{position:absolute;left:50%;top:54%;width:44px;height:44px;margin:-22px 0 0 -22px;
+  border-radius:50%;border:2px solid rgba(255,228,158,.9);opacity:0;pointer-events:none}
+.pb-ring.go{animation:pbRing .78s cubic-bezier(.12,.72,.28,1)}
+@keyframes pbRing{0%{opacity:.9;transform:scale(.15)}100%{opacity:0;transform:scale(8.5)}}
+
+.pb-sparks{position:absolute;inset:0;pointer-events:none}
+.pb-spark{position:absolute;left:50%;top:54%;width:var(--s,4px);height:var(--s,4px);border-radius:50%;
+  background:radial-gradient(circle,#fffaea 0%,#f3c45f 45%,#c8802a 100%);
+  box-shadow:0 0 9px rgba(255,203,116,.85);
+  animation:pbSpark var(--d,700ms) cubic-bezier(.08,.72,.3,1) forwards}
+@keyframes pbSpark{
+  0%  {opacity:1;transform:translate3d(0,0,0) scale(1)}
+  100%{opacity:0;transform:translate3d(var(--dx,0),var(--dy,0),0) scale(.2)}
+}
+
+/* MOINS D'ANIMATION : on garde ce qui RACONTE (les fissures qui montent, la
+   lumière qui gonfle) et on retire tout ce qui secoue. Le joueur voit la
+   même histoire, l'écran ne bouge pas. */
+@media(prefers-reduced-motion:reduce){
+  .pb-shake.go,.pb-trem.live,.pb-ring.go{animation:none}
+  .pb-bloom{animation:none;opacity:var(--pb-b1,0);transition:opacity .5s ease}
+  .pb-spark{display:none}
+}
+
 .chest-title{font-family:var(--f-display);font-size:22px;font-weight:900;
   color:var(--gold2);margin-bottom:6px;position:relative;z-index:2}
 .chest-hint{font-size:13px;color:var(--muted);font-style:italic;margin-bottom:20px;position:relative;z-index:2}

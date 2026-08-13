@@ -82,13 +82,15 @@ async function launchChromium(){
   }
 }
 
-// Les portraits d'adversaires (assets/adversaires/<id>.png) et le fond du
-// menu principal (assets/backgrounds/main-page.png) sont FACULTATIFS par
-// construction : le jeu dessine un repli quand ils manquent. Leur 404 est
-// donc un comportement voulu et non une panne, au même titre que les polices
-// Google ou le CDN Supabase quand le réseau est coupé.
+// Les portraits d'adversaires (assets/adversaires/<id>.png), le fond du menu
+// principal (assets/backgrounds/main-page.png) et les planches de
+// destruction des coffres (assets/chests/<id>/) sont FACULTATIFS par
+// construction : le jeu dessine un repli quand ils manquent — un coffre à
+// couvercle pour les planches (voir chestBreakReady, js/chest-break.js).
+// Leur 404 est donc un comportement voulu et non une panne, au même titre
+// que les polices Google ou le CDN Supabase quand le réseau est coupé.
 const IGNORED_CONSOLE=/ERR_TUNNEL_CONNECTION_FAILED|ERR_CONNECTION_RESET|ERR_NAME_NOT_RESOLVED|fonts\.googleapis|fonts\.gstatic|jsdelivr|supabase/;
-const OPTIONAL_ASSET=/adversaires\/[a-z-]+\.png|backgrounds\/main-page\.png/;
+const OPTIONAL_ASSET=/adversaires\/[a-z-]+\.png|backgrounds\/main-page\.png|chests\/[a-z]+\//;
 
 (async()=>{
   const server=serve();

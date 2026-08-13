@@ -612,6 +612,11 @@
 <div class="chest-modal" id="chest-modal">
   <div class="chest-stage">
     <div class="chest-rays"></div>
+    <!-- Le coffre Pion ne s'ouvre pas : il se BRISE sous les frappes du
+         joueur (js/chest-break.js remplit cette scène de sept images). Les
+         cinq autres coffres gardent le couvercle dessiné juste en dessous ;
+         la cérémonie affiche l'un OU l'autre. -->
+    <div class="pbreak" id="chest-break" hidden></div>
     <div class="chest chest-lg" id="chest-visual"><div class="chest-lid"></div><div class="chest-body"></div><div class="chest-lock"></div></div>
     <div class="chest-title" id="chest-title">Coffre Pion</div>
     <div class="chest-hint" id="chest-hint">Cliquez le coffre pour l'ouvrir</div>
@@ -778,6 +783,7 @@
 <script src="js/ai-engine.js"></script>
 <script src="js/game-flow.js"></script>
 <script src="js/voie.js"></script>
+<script src="js/chest-break.js"></script>
 <script src="js/economy-ui.js"></script>
 <script src="js/tuto-drill.js"></script>
 <script src="js/tutorial.js"></script>

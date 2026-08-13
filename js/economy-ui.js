@@ -400,14 +400,36 @@ function showChestCeremony(chest,lots,applyOnClose,onClose){
   // meilleure surprise doit donc arriver en dernier, pas au hasard de l'ordre
   // de tirage.
   const sorted=lots.slice().sort((a,b)=>chestLotValue(a)-chestLotValue(b));
-  _chestState={chest,lots:sorted,idx:-1,applyOnClose,onClose,opened:false};
+  const st=_chestState={chest,lots:sorted,idx:-1,applyOnClose,onClose,opened:false,seq:null};
   modal.classList.remove('opening');
   modal.style.setProperty('--chest-c',chest.color||'#c19a45');
-  document.getElementById('chest-visual').style.setProperty('--chest-c',chest.color||'#c19a45');
+  const visual=document.getElementById('chest-visual');
+  visual.style.setProperty('--chest-c',chest.color||'#c19a45');
   document.getElementById('chest-title').textContent=chest.name;
   document.getElementById('chest-hint').textContent='Cliquez le coffre pour l\'ouvrir';
   document.getElementById('chest-loot').innerHTML='';
   document.getElementById('chest-close').style.display='none';
+
+  // COFFRE QU'ON BRISE (js/chest-break.js). Certains coffres — le Pion pour
+  // l'instant — ne s'ouvrent pas d'un clic : le joueur les FRAPPE jusqu'à ce
+  // qu'ils éclatent. La séquence remplace alors le couvercle dessiné, et
+  // rend la main ici une fois le socle vide, pour la révélation des lots.
+  //
+  // chestBreakReady dit non tant que les images ne sont pas chargées, et non
+  // pour toujours si elles manquent du dépôt : dans les deux cas on retombe
+  // sur le couvercle, et la cérémonie se joue comme avant.
+  const canBreak=typeof chestBreakReady==='function'&&chestBreakReady(chest.id);
+  visual.style.display=canBreak?'none':'';
+  if(canBreak){
+    st.seq=chestBreakMount(chest.id,()=>{
+      if(_chestState!==st)return;
+      // Le coffre est détruit : les rayons se mettent à tourner derrière la
+      // scène vide, exactement comme après l'ouverture d'un couvercle.
+      modal.classList.add('opening');
+      st.opened=true;
+      chestRevealNext();
+    });
+  }
   modal.classList.add('show');
 }
 
@@ -466,6 +488,7 @@ function chestRevealNext(){
 function chestCeremonyClose(){
   const st=_chestState;if(!st)return;
   _chestState=null;
+  if(st.seq)st.seq.destroy();
   if(st.applyOnClose)chestApply(st.lots);
   document.getElementById('chest-modal').classList.remove('show','opening');
   // Une créature inédite sort du coffre : on ouvre son exercice de
@@ -497,11 +520,17 @@ function chestCeremonyClose(){
 // scène fait pareil, pour que personne ne reste coincé devant un coffre
 // fermé ou un lot affiché.
 function chestCeremonyAdvance(){
-  if(!_chestState)return;
-  if(!_chestState.opened)chestCeremonyOpen();
+  const st=_chestState;if(!st)return;
+  // PHASE DE DESTRUCTION (coffre qu'on brise) : chaque frappe fait avancer
+  // d'une étape. Une frappe donnée pendant que l'impact précédent retombe
+  // est ignorée — sans quoi un joueur qui martèle traverserait la séquence
+  // entière sans rien voir, et l'explosion n'aurait été qu'un scintillement.
+  if(st.seq&&!st.opened){if(!st.seq.busy())st.seq.next();return;}
+  if(!st.opened)chestCeremonyOpen();
   else chestRevealNext();
 }
 document.getElementById('chest-visual')?.addEventListener('click',chestCeremonyAdvance);
+document.getElementById('chest-break')?.addEventListener('click',chestCeremonyAdvance);
 document.getElementById('chest-loot')?.addEventListener('click',()=>{
   if(_chestState&&_chestState.opened)chestRevealNext();
 });

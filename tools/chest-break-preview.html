@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Coffre Pion — banc d'essai de la destruction</title>
+
+<!--
+  BANC D'ESSAI DU COFFRE QU'ON BRISE
+  =================================================================
+  Cette page ne fait PAS partie du jeu : rien dans index.html ne la
+  charge. Elle joue la séquence de destruction du Coffre Pion avec le
+  VRAI moteur (js/chest-break.js) et le VRAI décor (css/style.css), hors
+  du jeu — pour régler le rythme sans devoir gagner un coffre à chaque
+  essai.
+
+  Deux usages :
+
+  1. Les sept images sont déjà dans assets/chests/pion/ : la page les
+     prend telles quelles.
+  2. Elles n'y sont pas encore : la page dessine sept planches
+     d'approximation au canevas (un pion blanc, des fissures dorées, une
+     explosion) pour qu'on puisse juger le rythme tout de suite. On peut
+     aussi DÉPOSER ses sept images sur la page — rien n'est copié dans le
+     dépôt, tout se joue dans le navigateur.
+
+  Le réglage lui-même (secousses, halo, durées) est dans la table
+  CHEST_BREAK, en tête de js/chest-break.js.
+
+  Ouvrir :  npm run dev   puis   /tools/chest-break-preview.html
+  (le protocole file:// bloque le chargement des images, il faut un
+  serveur — celui de `npm run dev` suffit)
+-->
+
+<link rel="stylesheet" href="../css/style.css">
+<style>
+  body{margin:0;background:#05070a}
+  .pv-bar{position:fixed;left:0;right:0;bottom:0;z-index:9999;
+    display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:center;
+    padding:12px 14px;background:rgba(10,14,18,.94);border-top:1px solid rgba(255,255,255,.1);
+    font-family:system-ui,sans-serif;font-size:12.5px;color:#9fb0bd}
+  .pv-bar button{font:inherit;font-weight:700;cursor:pointer;padding:8px 16px;border-radius:9px;
+    border:1px solid rgba(217,182,78,.5);background:rgba(217,182,78,.13);color:#e5c76a}
+  .pv-bar button:hover{background:rgba(217,182,78,.24)}
+  .pv-bar label{cursor:pointer;text-decoration:underline dotted}
+  .pv-bar input[type=file]{display:none}
+  .pv-src{color:#6f8091;font-style:italic}
+  .chest-modal{background:rgba(4,7,9,.98);padding-bottom:80px}
+</style>
+</head>
+<body>
+
+<div class="chest-modal show" id="chest-modal">
+  <div class="chest-stage">
+    <div class="chest-rays"></div>
+    <div class="pbreak" id="chest-break" hidden></div>
+    <div class="chest-title" id="chest-title">Coffre Pion</div>
+    <div class="chest-hint" id="chest-hint"></div>
+    <div class="chest-loot" id="chest-loot"></div>
+  </div>
+</div>
+
+<div class="pv-bar">
+  <button id="pv-replay">Rejouer</button>
+  <label>Utiliser mes images<input type="file" id="pv-files" accept="image/*" multiple></label>
+  <span class="pv-src" id="pv-src">…</span>
+</div>
+
+<script src="../js/chest-break.js"></script>
+<script>
+// Le dossier des images est relatif à index.html : depuis tools/, il faut
+// remonter d'un cran.
+CHEST_BREAK.pion.dir='../assets/chests/pion/';
+
+const STAGES=CHEST_BREAK.pion.stages;
+const NAMES=STAGES.map(s=>s.src);
+const srcLabel=document.getElementById('pv-src');
+let seq=null;
+
+// ----------------------------------------------------------------
+// PLANCHES D'APPROXIMATION
+// ----------------------------------------------------------------
+// Dessinées au canevas, et volontairement grossières : elles ne servent
+// qu'à juger le RYTHME (combien de temps tient une frappe, à quel moment
+// le tremblement devient inquiétant, si l'explosion arrive trop vite).
+// Elles partagent le seul point qui compte avec les vraies : un cadrage
+// rigoureusement identique d'une planche à l'autre.
+const W=512,H=683;
+function rng(seed){let s=seed>>>0;return()=>((s=(s*1664525+1013904223)>>>0)/4294967296);}
+
+function beam(g){
+  const gr=g.createLinearGradient(W/2,0,W/2,H*0.8);
+  gr.addColorStop(0,'rgba(226,238,248,.30)');gr.addColorStop(1,'rgba(226,238,248,0)');
+  g.fillStyle=gr;
+  g.beginPath();g.moveTo(W*0.44,0);g.lineTo(W*0.56,0);
+  g.lineTo(W*0.70,H*0.82);g.lineTo(W*0.30,H*0.82);g.closePath();g.fill();
+}
+function podium(g){
+  [[0.46,0.060,'#0e1319',H*0.905],[0.40,0.052,'#171d25',H*0.862]].forEach(([rx,ry,col,cy])=>{
+    g.beginPath();g.ellipse(W/2,cy,W*rx,H*ry,0,0,7);
+    g.fillStyle=col;g.fill();
+    g.strokeStyle='rgba(150,170,190,.20)';g.lineWidth=2;g.stroke();
+  });
+}
+function pawnPath(g){
+  const cx=W/2;
+  g.beginPath();
+  g.moveTo(cx-W*0.170,H*0.815);
+  g.lineTo(cx-W*0.150,H*0.775);
+  g.quadraticCurveTo(cx-W*0.130,H*0.700,cx-W*0.070,H*0.640);
+  g.quadraticCurveTo(cx-W*0.040,H*0.590,cx-W*0.048,H*0.552);
+  g.lineTo(cx+W*0.048,H*0.552);
+  g.quadraticCurveTo(cx+W*0.040,H*0.590,cx+W*0.070,H*0.640);
+  g.quadraticCurveTo(cx+W*0.130,H*0.700,cx+W*0.150,H*0.775);
+  g.lineTo(cx+W*0.170,H*0.815);
+  g.closePath();
+}
+function pawn(g){
+  const cx=W/2,gr=g.createLinearGradient(cx-W*0.17,0,cx+W*0.17,0);
+  gr.addColorStop(0,'#c9c6bd');gr.addColorStop(.35,'#f4f1e8');gr.addColorStop(1,'#b8b5ac');
+  g.fillStyle=gr;
+  pawnPath(g);g.fill();
+  g.beginPath();g.ellipse(cx,H*0.545,W*0.085,H*0.016,0,0,7);g.fill();   // collerette
+  g.beginPath();g.arc(cx,H*0.462,W*0.085,0,7);g.fill();                 // tête
+}
+// Une fissure : une marche aléatoire vers le bas, avec des embranchements.
+// Le tirage est SEMÉ, donc la fissure n°3 est la même à tous les niveaux :
+// chaque planche contient les précédentes, comme les vraies images.
+function crack(g,r,x,y,len,wid){
+  g.beginPath();g.moveTo(x,y);
+  let a=Math.PI/2+(r()-.5)*0.9;
+  for(let i=0;i<len;i++){
+    a+=(r()-.5)*0.85;
+    x+=Math.cos(a)*11;y+=Math.sin(a)*11;
+    g.lineTo(x,y);
+  }
+  g.lineWidth=wid;g.lineCap='round';
+  g.strokeStyle='#fff3cf';g.shadowColor='#ffb43c';g.shadowBlur=22;g.stroke();
+  g.shadowBlur=9;g.strokeStyle='rgba(255,214,120,.9)';g.lineWidth=wid*2.4;g.stroke();
+  g.shadowBlur=0;
+}
+function cracks(g,n){
+  const r=rng(7);
+  g.save();
+  pawnPath(g);g.clip();                       // les fissures restent dans la pièce
+  g.globalCompositeOperation='lighter';
+  for(let i=0;i<n;i++){
+    crack(g,r,W/2+(r()-.5)*W*0.16,H*(0.44+r()*0.10),9+((r()*7)|0),1.6);
+  }
+  g.restore();
+}
+function shards(g,n,spread,size){
+  const r=rng(19);
+  g.save();g.globalCompositeOperation='lighter';
+  for(let i=0;i<n;i++){
+    const a=r()*7,d=(0.15+r()*spread)*W,
+          x=W/2+Math.cos(a)*d,y=H*0.60+Math.sin(a)*d*1.15,s=size*(0.4+r());
+    g.beginPath();
+    for(let k=0;k<5;k++){
+      const t=k/5*7,rr=s*(0.6+r()*0.7);
+      g[k?'lineTo':'moveTo'](x+Math.cos(t)*rr,y+Math.sin(t)*rr);
+    }
+    g.closePath();
+    g.fillStyle='#efece2';g.shadowColor='#ffbe4e';g.shadowBlur=26;g.fill();
+  }
+  g.restore();
+}
+function core(g,power){
+  const gr=g.createRadialGradient(W/2,H*0.60,0,W/2,H*0.60,W*power);
+  gr.addColorStop(0,'rgba(255,253,244,'+Math.min(1,power*1.8)+')');
+  gr.addColorStop(.30,'rgba(255,219,130,'+(power*1.1)+')');
+  gr.addColorStop(.62,'rgba(236,163,54,'+(power*0.45)+')');
+  gr.addColorStop(1,'rgba(120,70,10,0)');
+  g.save();g.globalCompositeOperation='lighter';
+  g.fillStyle=gr;g.fillRect(0,0,W,H);g.restore();
+}
+
+function placeholder(i){
+  const c=document.createElement('canvas');c.width=W;c.height=H;
+  const g=c.getContext('2d');
+  g.fillStyle='#05070a';g.fillRect(0,0,W,H);
+  beam(g);podium(g);
+  if(i<=3){ pawn(g); if(i)cracks(g,[0,1,5,14][i]); if(i)core(g,i*0.10); }
+  else if(i===4){ pawn(g);cracks(g,22);shards(g,16,0.55,17);core(g,0.55); }
+  else if(i===5){ shards(g,26,0.85,13);core(g,1.05); }
+  return c.toDataURL('image/png');   // i===6 : le socle seul
+}
+
+// ----------------------------------------------------------------
+function play(){
+  if(seq)seq.destroy();
+  document.getElementById('chest-modal').classList.remove('opening');
+  seq=chestBreakMount('pion',()=>{
+    document.getElementById('chest-modal').classList.add('opening');
+    document.getElementById('chest-hint').textContent='Terminé — la cérémonie révélerait les lots ici.';
+  });
+}
+function useSources(srcs,label){
+  CHEST_BREAK.pion.dir='';
+  srcs.forEach((s,i)=>{STAGES[i].src=s;});
+  srcLabel.textContent=label;
+  play();
+}
+
+document.getElementById('chest-break').addEventListener('click',()=>{
+  if(seq&&!seq.busy())seq.next();
+});
+document.getElementById('pv-replay').addEventListener('click',play);
+
+// Sept images déposées à la main : triées par nom de fichier, dans l'ordre
+// des étapes. C'est pour ça que les noms sont numérotés.
+document.getElementById('pv-files').addEventListener('change',e=>{
+  const f=[].slice.call(e.target.files).sort((a,b)=>a.name.localeCompare(b.name));
+  if(f.length!==STAGES.length){
+    srcLabel.textContent='Il en faut exactement '+STAGES.length+' (reçu '+f.length+').';
+    return;
+  }
+  useSources(f.map(x=>URL.createObjectURL(x)),f.length+' images déposées');
+});
+
+// Les vraies images d'abord ; les approximations seulement si elles
+// manquent — la page doit montrer quelque chose dans tous les cas.
+const probe=new Image();
+probe.onload=()=>{srcLabel.textContent='assets/chests/pion/ — vraies images';play();};
+probe.onerror=()=>useSources(STAGES.map((s,i)=>placeholder(i)),
+  'approximations dessinées (assets/chests/pion/ est vide) — attendus : '+NAMES.join(', '));
+probe.src=CHEST_BREAK.pion.dir+NAMES[0];
+</script>
+</body>
+</html>
