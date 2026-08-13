@@ -385,7 +385,17 @@ function chestLotValue(l){
   if(l.pearls!=null)return l.pearls*(l.lucky?1.3:1)*0.4;
   const p=PIECES.find(x=>x.id===l.pieceId);
   const v=Math.max(1,(p&&p.value)||3);
-  return v*l.qty*(l.lucky?1.3:1)*(l.isNew?50:1);
+  return v*l.qty*(l.lucky?1.3:1);
+}
+
+// OUVRIR UNE CRÉATURE PASSE TOUJOURS EN DERNIER, quoi que vaille le reste.
+// Ce n'est pas une question de barème : c'est le seul lot qui change ce
+// qu'on peut aligner, les autres ne font qu'épaissir un stock. Cette place
+// était tenue par un facteur 50 dans le barème ci-dessus — et une grosse
+// poignée de perles finissait par passer devant, une fois sur mille, en
+// reléguant le déblocage à l'avant-dernier rang.
+function chestLotRank(a,b){
+  return (a.isNew?1:0)-(b.isNew?1:0) || chestLotValue(a)-chestLotValue(b);
 }
 
 // ----------------------------------------------------------------
@@ -399,7 +409,7 @@ function showChestCeremony(chest,lots,applyOnClose,onClose){
   // Triés du moins bon au meilleur : la révélation se joue lot par lot, la
   // meilleure surprise doit donc arriver en dernier, pas au hasard de l'ordre
   // de tirage.
-  const sorted=lots.slice().sort((a,b)=>chestLotValue(a)-chestLotValue(b));
+  const sorted=lots.slice().sort(chestLotRank);
   const st=_chestState={chest,lots:sorted,idx:-1,applyOnClose,onClose,opened:false,seq:null};
   modal.classList.remove('opening');
   modal.style.setProperty('--chest-c',chest.color||'#c19a45');
@@ -424,12 +434,21 @@ function showChestCeremony(chest,lots,applyOnClose,onClose){
   // l'écran de fin de partie qu'on devinerait derrière : les sept images ont
   // un fond noir, la scène doit continuer jusqu'aux bords de l'écran.
   modal.classList.toggle('pb-cinema',canBreak);
+  // La page derrière est verrouillée pendant la cinématique : on ne fait pas
+  // défiler un décor sous une scène plein écran. Et `scrollbar-gutter:stable`
+  // (html, css/style.css) réserve en permanence la largeur d'une barre de
+  // défilement — une bande de onze pixels sur le bord droit, à travers
+  // laquelle on voyait la page, juste à côté d'une image censée aller
+  // jusqu'au bord. Le temps de la scène, on la rend.
+  document.documentElement.style.scrollbarGutter=canBreak?'auto':'';
+  document.body.style.overflow=canBreak?'hidden':'';
   if(canBreak){
     st.seq=chestBreakMount(chest.id,()=>{
       if(_chestState!==st)return;
-      // Le coffre est détruit : les rayons se mettent à tourner derrière la
-      // scène vide, exactement comme après l'ouverture d'un couvercle.
-      modal.classList.add('opening');
+      // Le coffre est détruit. `pb-loot` recentre la scène autour de la carte
+      // de lot : elle doit apparaître à l'endroit EXACT où la pièce vient
+      // d'exploser, pas plus bas parce qu'un titre la pousse.
+      modal.classList.add('opening','pb-loot');
       st.opened=true;
       chestRevealNext();
     });
@@ -494,7 +513,9 @@ function chestCeremonyClose(){
   _chestState=null;
   if(st.seq)st.seq.destroy();
   if(st.applyOnClose)chestApply(st.lots);
-  document.getElementById('chest-modal').classList.remove('show','opening','pb-cinema');
+  document.getElementById('chest-modal').classList.remove('show','opening','pb-cinema','pb-loot');
+  document.body.style.overflow='';
+  document.documentElement.style.scrollbarGutter='';
   // Une créature inédite sort du coffre : on ouvre son exercice de
   // déplacement (js/tuto-drill.js) avant de rendre la main. Une pièce dont on
   // ignore le déplacement n'est pas vraiment débloquée.

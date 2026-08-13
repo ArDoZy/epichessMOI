@@ -19,7 +19,6 @@
 //   tremblement à partir de la troisième fissure, la pièce vibre en continu
 //               entre deux frappes : elle annonce qu'elle va lâcher
 //   éclats      des étincelles projetées depuis le centre
-//   onde        un anneau de choc, à l'explosion seulement
 //
 // Pourquoi empiler les images plutôt que les remplacer : chaque image
 // contient tout ce qu'avait la précédente PLUS des fissures en trop. Comme
@@ -55,7 +54,6 @@
 //   bt      période de cette respiration — elle raccourcit, la pièce panique
 //   trem    amplitude (px) du tremblement continu entre deux frappes
 //   sparks  nombre d'étincelles projetées
-//   ring    onde de choc circulaire ; ringmax = son rayon final
 //   blast   l'image DÉFERLE : elle grandit et sa luminosité s'emballe
 //   white   voile blanc plein écran, en ms : c'est lui qui fait le flash
 //   full    la scène quitte sa boîte et prend l'écran. 'bleed' : elle déborde
@@ -98,16 +96,23 @@ const CHEST_BREAK={
       // donner, la destruction s'enchaîne d'elle-même jusqu'au socle vide.
       {src:'05-eclats.webp',   hint:'',                  fade:120, shake:20, zoom:1.11,
        flash:.80, fdur:300, bloom:[.35,.80], bt:'.9s',  sparks:34, trem:1.8,
-       ring:true, ringmax:9, hold:190, snd:[150,240,360]},
+       hold:190, snd:[150,240,360]},
 
       // L'EXPLOSION. Elle sort de sa boîte : plein écran, en `cover` — une
       // déflagration n'a pas de composition à préserver, on peut la rogner
       // n'importe comment. La secousse est retirée ici, elle ne ferait que
       // découvrir du noir sur les bords ; c'est le grossissement et la
       // luminosité qui portent le coup.
+      //
+      // ELLE DOIT SE REGARDER. Première version : le voile blanc montait dès
+      // la première image, et la planche d'explosion était mangée par le
+      // flash avant d'avoir été vue — on payait une image pour ne jamais
+      // l'afficher. Elle arrive maintenant plein écran en 200 ms, puis TIENT
+      // nue pendant une demi-seconde, à luminosité presque normale : le temps
+      // de voir la matière en fusion. Ce n'est qu'ensuite que ça s'emballe.
       {src:'06-explosion.webp',hint:'',                  fade:70,  full:'bleed',
-       blast:true, bldur:460, white:820, flash:.9, fdur:300,
-       sparks:54, sparkR:3.2, ring:true, ringmax:30, hold:300,
+       blast:true, bldur:1150, white:1500, flash:.9, fdur:520,
+       sparks:54, sparkR:3.2, hold:1050,
        snd:[90,140,200,300,440]},
 
       // LE SOCLE VIDE. En `boxed` : ici le cadrage compte, le socle doit
@@ -249,7 +254,7 @@ function chestBreakMount(chestId,onDone){
       cfg.stages.map((s,i)=>'<img class="pb-frame" alt="" draggable="false" src="'+pbSrc(cfg,i)+'">').join('')+
       '<div class="pb-bloom"></div>'+
     '</div></div></div>'+
-    '<div class="pb-flash"></div><div class="pb-ring"></div><div class="pb-sparks"></div>'+
+    '<div class="pb-flash"></div><div class="pb-sparks"></div>'+
     '<div class="pb-white"></div>';
   host.className='pbreak';
   host.hidden=false;
@@ -259,7 +264,6 @@ function chestBreakMount(chestId,onDone){
         scene=host.querySelector('.pb-scene'),
         bloom=host.querySelector('.pb-bloom'),
         flash=host.querySelector('.pb-flash'),
-        ring =host.querySelector('.pb-ring'),
         white=host.querySelector('.pb-white'),
         sparkBox=host.querySelector('.pb-sparks'),
         frames=[].slice.call(host.querySelectorAll('.pb-frame'));
@@ -372,10 +376,6 @@ function chestBreakMount(chestId,onDone){
         host.style.setProperty('--pb-fdur',(st.fdur||300)+'ms');
         flash.classList.toggle('big',!!st.blast);
         pbRestart(flash,'go');
-      }
-      if(st.ring&&!calm){
-        host.style.setProperty('--pb-ringmax',st.ringmax||8.5);
-        pbRestart(ring,'go');
       }
       sparks(st.sparks,st.sparkR);
       pbSound(st.snd);

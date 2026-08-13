@@ -1427,15 +1427,20 @@ body.light .pmv-dark{background:#c3bdae}
    exemplaires de chaque pièce possédée : passé une dizaine de créatures, la
    pile de lots dépassait la hauteur d'un écran de téléphone et poussait le
    coffre lui-même hors de l'écran — il devenait impossible de l'ouvrir. */
+/* overflow-x:hidden est OBLIGATOIRE ici, pas de la coquetterie : dès qu'on
+   met overflow-y:auto, l'axe X passe de `visible` à `auto` tout seul (c'est
+   la règle CSS), et la moindre décoration qui déborde — la gerbe de lumière
+   de l'explosion a des marges négatives, les étincelles partent loin —
+   déclenche une barre de défilement horizontale en bas de l'écran. */
 .chest-modal{position:fixed;inset:0;background:rgba(4,7,9,.94);z-index:9200;display:none;
-  align-items:flex-start;justify-content:center;padding:clamp(12px,4vw,20px);overflow-y:auto}
+  align-items:flex-start;justify-content:center;padding:clamp(12px,4vw,20px);
+  overflow-y:auto;overflow-x:hidden}
 .chest-modal.show{display:flex}
 .chest-stage{text-align:center;max-width:560px;width:100%;position:relative;margin:auto 0}
-.chest-rays{position:absolute;left:50%;top:88px;width:520px;height:520px;margin-left:-260px;margin-top:-260px;
-  background:conic-gradient(from 0deg,transparent 0 6deg,var(--chest-c,#c19a45) 6deg 9deg,transparent 9deg 18deg);
-  opacity:0;pointer-events:none;filter:blur(1px)}
-.chest-modal.opening .chest-rays{opacity:.24;animation:raysSpin 14s linear infinite}
-@keyframes raysSpin{to{transform:rotate(360deg)}}
+/* Il y avait ici une roue de rayons dorés qui tournait derrière les lots
+   pendant toute la révélation. Elle tirait l'œil au lieu de le poser : ce
+   qu'on doit regarder, c'est la carte du lot, pas le décor qui bouge
+   derrière. Retirée pour les six coffres. */
 /* Le couvercle bascule en ARRIÈRE sur sa charnière (rotateX en perspective),
    comme un vrai coffre. Une rotation 2D le faisait pivoter à plat sur le côté,
    ce qui ressemblait à une planche qui décolle. */
@@ -1461,7 +1466,6 @@ body.light .pmv-dark{background:#c3bdae}
      .pb-trem    tremblement continu, une fois la pièce fendue
      .pb-scene   les sept images + le halo, découpés en ovale
      .pb-flash   la gerbe de lumière
-     .pb-ring    l'onde de choc
      .pb-sparks  les éclats projetés
    Deux niveaux de transformation imbriqués seulement (secousse et
    tremblement) : c'est le maximum raisonnable sur un téléphone. */
@@ -1525,11 +1529,15 @@ body.light .pmv-dark{background:#c3bdae}
    dépasse — pendant que sa luminosité monte jusqu'à la brûlure. Seule, elle
    ne blanchirait que là où elle est ; c'est .pb-white qui emporte le reste
    de l'écran, les deux montent ensemble. */
-.pb-scene.blast{animation:pbBlastIn var(--pb-bldur,440ms) cubic-bezier(.16,.86,.3,1) forwards}
+.pb-scene.blast{animation:pbBlastIn var(--pb-bldur,440ms) linear forwards}
 @keyframes pbBlastIn{
+  /* Elle DÉFERLE (0→18%), puis elle TIENT (18→55%) : la matière en fusion
+     reste lisible une demi-seconde à luminosité presque normale. Ce n'est
+     qu'après qu'elle s'emballe vers la brûlure. */
   0%  {transform:scale(.58);filter:brightness(1) saturate(1)}
-  36% {transform:scale(1.02);filter:brightness(1.7) saturate(1.2)}
-  100%{transform:scale(1.18);filter:brightness(6) saturate(1.35)}
+  18% {transform:scale(1.00);filter:brightness(1.12) saturate(1.08)}
+  55% {transform:scale(1.06);filter:brightness(1.5) saturate(1.2)}
+  100%{transform:scale(1.20);filter:brightness(6) saturate(1.35)}
 }
 
 /* LE VOILE BLANC. Il monte très vite, tient un court instant — l'écran est
@@ -1539,7 +1547,9 @@ body.light .pmv-dark{background:#c3bdae}
 .pb-white{position:fixed;inset:0;z-index:4;background:#fff;opacity:0;pointer-events:none}
 .pb-white.go{animation:pbWhite var(--pb-wdur,820ms) linear}
 @keyframes pbWhite{
-  0%{opacity:0} 30%{opacity:1} 48%{opacity:1} 100%{opacity:0}
+  /* Rien pendant la première moitié : c'est le temps qu'on laisse à
+     l'explosion pour se faire regarder. */
+  0%{opacity:0} 52%{opacity:0} 68%{opacity:1} 80%{opacity:1} 100%{opacity:0}
 }
 
 /* LE HALO. Une copie floutée de l'image courante, fondue en « screen » :
@@ -1588,10 +1598,15 @@ body.light .pmv-dark{background:#c3bdae}
 .pb-flash.go{animation:pbFlash var(--pb-fdur,300ms) ease-out}
 @keyframes pbFlash{0%{opacity:0}14%{opacity:var(--pb-fmax,.5)}100%{opacity:0}}
 
-.pb-ring{position:absolute;left:50%;top:54%;width:44px;height:44px;margin:-22px 0 0 -22px;
-  border-radius:50%;border:2px solid rgba(255,228,158,.9);opacity:0;pointer-events:none}
-.pb-ring.go{animation:pbRing .78s cubic-bezier(.12,.72,.28,1)}
-@keyframes pbRing{0%{opacity:.9;transform:scale(.15)}100%{opacity:0;transform:scale(var(--pb-ringmax,8.5))}}
+/* PAS DE POUSSIÈRE AJOUTÉE. Une nuée de particules CSS a été essayée
+   au-dessus de la scène, pour que l'image fixe ait moins l'air d'un arrêt
+   sur image. Elle a été retirée : les planches sont des rendus
+   photoréalistes avec une lumière précise — un faisceau froid, tout le reste
+   dans l'ombre — et des points lumineux posés dans les zones non éclairées
+   se lisaient comme des pixels morts, pas comme de la matière en suspension.
+   De la poussière ne se voit que là où la lumière la traverse. La faire
+   correctement demanderait des planches où les particules vivent sur un
+   calque à part, pas une couche ajoutée à l'aveugle par-dessus. */
 
 .pb-sparks{position:absolute;inset:0;pointer-events:none}
 .pb-spark{position:absolute;left:50%;top:54%;width:var(--s,4px);height:var(--s,4px);border-radius:50%;
@@ -1607,11 +1622,32 @@ body.light .pmv-dark{background:#c3bdae}
    de partie : le fond passe au NOIR PLEIN. Les images sont sur fond noir,
    elles n'ont donc plus de bord du tout — c'est une scène, plus un modal
    posé sur une page. */
-.chest-modal.pb-cinema{background:#000}
+.chest-modal.pb-cinema{background:#000;overflow:hidden}
 .chest-modal.pb-cinema .chest-stage{position:relative;z-index:1}
 /* La scène en plein écran est positionnée : sans z-index à lui, le bouton
    « Récupérer », qui ne l'est pas, passerait dessous. */
 .chest-modal.pb-cinema #chest-close{position:relative;z-index:2}
+
+/* LE LOT EXACTEMENT AU CENTRE. La pièce a explosé au milieu de l'écran, la
+   récompense doit se matérialiser AU MÊME ENDROIT — pas quelques dizaines de
+   pixels plus bas parce qu'un titre la pousse. La grille `1fr auto 1fr` met
+   la carte au centre géométrique par construction, sans nombre magique à
+   ajuster quand la carte change de taille ; le titre se pose au bas de la
+   rangée du haut, la phrase et le bouton en haut de celle du bas.
+   Le compteur « 1 / 3 » sort du flux (bottom:100%), sinon sa hauteur
+   décentrerait la carte de sa propre moitié. */
+.chest-modal.pb-loot .chest-stage{position:fixed;inset:0;max-width:none;width:auto;
+  margin:0;padding:clamp(12px,4vw,20px);
+  display:grid;grid-template-rows:1fr auto 1fr;justify-items:center}
+/* La marge basse du titre doit dégager la hauteur du compteur « 1 / 3 »,
+   qui flotte juste au-dessus de la carte : sans elle, les deux se
+   superposent. */
+.chest-modal.pb-loot .chest-title{grid-row:1;align-self:end;margin:0 0 42px}
+.chest-modal.pb-loot .chest-loot{grid-row:2;margin:0;min-height:0}
+.chest-modal.pb-loot .chest-hint{grid-row:3;align-self:start;margin:18px 0 0}
+.chest-modal.pb-loot #chest-close{grid-row:3;align-self:start;margin-top:62px}
+.chest-modal.pb-loot .chest-loot-count{position:absolute;bottom:100%;left:0;right:0;
+  width:auto;margin:0 0 10px}
 
 /* Les lots apparaissent AU MILIEU du socle vide, en l'air au-dessus de lui,
    et non plus en dessous de la scène : la récompense se matérialise là où
@@ -1623,7 +1659,10 @@ body.light .pmv-dark{background:#c3bdae}
   box-shadow:0 22px 60px rgba(0,0,0,.75),0 0 70px rgba(217,182,78,.16);
   animation:lootIn .5s cubic-bezier(.2,1.4,.4,1) forwards,
             lootFloat 3.6s ease-in-out .55s infinite}
-@keyframes lootFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-9px)}}
+/* La lévitation oscille AUTOUR du centre (+5 → −5) et non au-dessus de lui :
+   sinon la carte passe tout son temps plus haut que le point où la pièce a
+   explosé, et le centrage exact obtenu par la grille est perdu. */
+@keyframes lootFloat{0%,100%{transform:translateY(5px)}50%{transform:translateY(-5px)}}
 .chest-modal.pb-cinema .chest-loot-count{text-shadow:0 2px 10px #000}
 .chest-modal.pb-cinema .chest-title{text-shadow:0 2px 14px #000}
 .chest-modal.pb-cinema .chest-hint{text-shadow:0 2px 10px #000}
@@ -1634,7 +1673,7 @@ body.light .pmv-dark{background:#c3bdae}
    plafonné : un écran qui passe au blanc pur est exactement ce qu'un joueur
    sensible cherche à éviter. */
 @media(prefers-reduced-motion:reduce){
-  .pb-shake.go,.pb-trem.live,.pb-ring.go{animation:none}
+  .pb-shake.go,.pb-trem.live{animation:none}
   .pb-bloom{animation:none;opacity:var(--pb-b1,0);transition:opacity .5s ease}
   .pb-spark{display:none}
   .pb-scene.blast{animation:none;filter:brightness(1.8)}
