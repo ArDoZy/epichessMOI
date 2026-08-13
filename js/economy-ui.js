@@ -385,7 +385,17 @@ function chestLotValue(l){
   if(l.pearls!=null)return l.pearls*(l.lucky?1.3:1)*0.4;
   const p=PIECES.find(x=>x.id===l.pieceId);
   const v=Math.max(1,(p&&p.value)||3);
-  return v*l.qty*(l.lucky?1.3:1)*(l.isNew?50:1);
+  return v*l.qty*(l.lucky?1.3:1);
+}
+
+// OUVRIR UNE CRÉATURE PASSE TOUJOURS EN DERNIER, quoi que vaille le reste.
+// Ce n'est pas une question de barème : c'est le seul lot qui change ce
+// qu'on peut aligner, les autres ne font qu'épaissir un stock. Cette place
+// était tenue par un facteur 50 dans le barème ci-dessus — et une grosse
+// poignée de perles finissait par passer devant, une fois sur mille, en
+// reléguant le déblocage à l'avant-dernier rang.
+function chestLotRank(a,b){
+  return (a.isNew?1:0)-(b.isNew?1:0) || chestLotValue(a)-chestLotValue(b);
 }
 
 // ----------------------------------------------------------------
@@ -399,7 +409,7 @@ function showChestCeremony(chest,lots,applyOnClose,onClose){
   // Triés du moins bon au meilleur : la révélation se joue lot par lot, la
   // meilleure surprise doit donc arriver en dernier, pas au hasard de l'ordre
   // de tirage.
-  const sorted=lots.slice().sort((a,b)=>chestLotValue(a)-chestLotValue(b));
+  const sorted=lots.slice().sort(chestLotRank);
   const st=_chestState={chest,lots:sorted,idx:-1,applyOnClose,onClose,opened:false,seq:null};
   modal.classList.remove('opening');
   modal.style.setProperty('--chest-c',chest.color||'#c19a45');

@@ -19,9 +19,6 @@
 //   tremblement à partir de la troisième fissure, la pièce vibre en continu
 //               entre deux frappes : elle annonce qu'elle va lâcher
 //   éclats      des étincelles projetées depuis le centre
-//   poussière   une nuée de particules qui lévitent au-dessus de la scène,
-//               en dérive lente et continue : c'est ce qui empêche l'image
-//               fixe d'avoir l'air d'un arrêt sur image
 //
 // Pourquoi empiler les images plutôt que les remplacer : chaque image
 // contient tout ce qu'avait la précédente PLUS des fissures en trop. Comme
@@ -236,39 +233,6 @@ function pbSound(freqs){
 }
 
 // ----------------------------------------------------------------
-// LA POUSSIÈRE EN SUSPENSION
-// ----------------------------------------------------------------
-// Les particules visibles autour du pion sont PEINTES DANS les planches :
-// à plat, indissociables du fond, rien ne peut les animer. Celles-ci sont
-// donc de vraies particules posées par-dessus la scène, qui montent, dérivent
-// et scintillent — chacune avec sa taille, sa vitesse et son retard, sinon
-// elles battraient toutes ensemble et se verraient comme un motif.
-//
-// Elles sont regroupées vers le centre (là où se tient la pièce) et
-// n'existent qu'en haut des deux tiers de la scène : sous le socle, de la
-// poussière qui monte n'aurait aucun sens.
-const PB_MOTES=26;
-function pbDust(calm){
-  if(calm)return'';                 // ça bouge en continu : c'est exactement
-                                    // ce qu'on retire quand on demande moins
-                                    // d'animation
-  let h='';
-  for(let i=0;i<PB_MOTES;i++){
-    const x=18+Math.random()*64, y=14+Math.random()*62,
-          s=(1.2+Math.random()*2.4).toFixed(1),
-          dx=(Math.random()*46-23).toFixed(0),
-          dy=(-34-Math.random()*72).toFixed(0),
-          d=(6+Math.random()*8).toFixed(1),
-          dl=(-Math.random()*14).toFixed(1),   // décalage négatif : la nuée est
-                                               // déjà en mouvement à l'ouverture
-          o=(.22+Math.random()*.4).toFixed(2);
-    h+='<i class="pb-mote" style="--x:'+x.toFixed(1)+'%;--y:'+y.toFixed(1)+'%;--s:'+s+'px;'+
-       '--dx:'+dx+'px;--dy:'+dy+'px;--d:'+d+'s;--dl:'+dl+'s;--o:'+o+'"></i>';
-  }
-  return h;
-}
-
-// ----------------------------------------------------------------
 // LE MOTEUR
 // ----------------------------------------------------------------
 // chestBreakMount installe la scène et rend une télécommande :
@@ -288,7 +252,7 @@ function chestBreakMount(chestId,onDone){
   host.innerHTML=
     '<div class="pb-shake"><div class="pb-trem"><div class="pb-scene">'+
       cfg.stages.map((s,i)=>'<img class="pb-frame" alt="" draggable="false" src="'+pbSrc(cfg,i)+'">').join('')+
-      '<div class="pb-bloom"></div><div class="pb-dust">'+pbDust(calm)+'</div>'+
+      '<div class="pb-bloom"></div>'+
     '</div></div></div>'+
     '<div class="pb-flash"></div><div class="pb-sparks"></div>'+
     '<div class="pb-white"></div>';

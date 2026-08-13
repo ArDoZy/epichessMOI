@@ -1598,25 +1598,15 @@ body.light .pmv-dark{background:#c3bdae}
 .pb-flash.go{animation:pbFlash var(--pb-fdur,300ms) ease-out}
 @keyframes pbFlash{0%{opacity:0}14%{opacity:var(--pb-fmax,.5)}100%{opacity:0}}
 
-/* LA POUSSIÈRE EN SUSPENSION. Les particules qu'on voit autour du pion sont
-   peintes DANS les planches : elles sont à plat, rien ne peut les faire
-   bouger séparément du fond. Celles-ci sont donc de vraies particules, en
-   CSS, posées par-dessus la scène — elles montent lentement, dérivent et
-   scintillent. C'est ce qui empêche l'image fixe d'avoir l'air d'un arrêt
-   sur image entre deux frappes. Elles vivent DANS .pb-scene, donc l'ovale de
-   découpe les efface aux bords comme le reste, et elles suivent la scène
-   quand elle passe en plein écran. */
-.pb-dust{position:absolute;inset:0;pointer-events:none;overflow:hidden}
-.pb-mote{position:absolute;border-radius:50%;opacity:0;
-  width:var(--s,2px);height:var(--s,2px);left:var(--x,50%);top:var(--y,50%);
-  background:radial-gradient(circle,#fff6dd 0%,#e8c485 55%,rgba(200,150,60,0) 100%);
-  animation:pbMote var(--d,9s) ease-in-out var(--dl,0s) infinite}
-@keyframes pbMote{
-  0%  {transform:translate3d(0,0,0);opacity:0}
-  18% {opacity:var(--o,.45)}
-  74% {opacity:var(--o,.45)}
-  100%{transform:translate3d(var(--dx,6px),var(--dy,-52px),0);opacity:0}
-}
+/* PAS DE POUSSIÈRE AJOUTÉE. Une nuée de particules CSS a été essayée
+   au-dessus de la scène, pour que l'image fixe ait moins l'air d'un arrêt
+   sur image. Elle a été retirée : les planches sont des rendus
+   photoréalistes avec une lumière précise — un faisceau froid, tout le reste
+   dans l'ombre — et des points lumineux posés dans les zones non éclairées
+   se lisaient comme des pixels morts, pas comme de la matière en suspension.
+   De la poussière ne se voit que là où la lumière la traverse. La faire
+   correctement demanderait des planches où les particules vivent sur un
+   calque à part, pas une couche ajoutée à l'aveugle par-dessus. */
 
 .pb-sparks{position:absolute;inset:0;pointer-events:none}
 .pb-spark{position:absolute;left:50%;top:54%;width:var(--s,4px);height:var(--s,4px);border-radius:50%;

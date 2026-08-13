@@ -355,15 +355,26 @@ function chestRoll(chestId){
 
   // La pièce inédite est rare (1 % à 25 %) : quand elle tombe, elle tombe en
   // nombre, sinon on débloquerait une créature sans pouvoir l'aligner.
-  if(locked.length&&Math.random()<chest.newChance){
+  //
+  // Elle est GARANTIE quand on ne possède encore rien. Un coffre ne distribue
+  // que des exemplaires de pièces déjà possédées (voir plus bas) : sans cette
+  // garantie, il ne resterait que les perles à mettre dedans. Débloquer est
+  // justement ce qu'il faut faire quand il n'y a rien à renforcer.
+  if(locked.length&&(!owned.length||Math.random()<chest.newChance)){
     const pick=weightedPick(locked,chest.bias);
     if(pick)lots.push({pieceId:pick,qty:Math.max(4,chest.qty[1]),isNew:true});
   }
-  const pool=owned.length?owned:PIECES.filter(p=>p.value<=3).map(p=>p.id);
-  const rolls=chestRollCount(chest);
+
+  // ON NE REÇOIT PAS D'EXEMPLAIRES D'UNE PIÈCE QU'ON N'A PAS. Un lot
+  // d'exemplaires RENFORCE ce qu'on possède déjà ; ouvrir une créature est un
+  // événement d'une autre nature, réservé au lot inédit ci-dessus. Il y avait
+  // ici un repli qui, faute de pièces possédées, puisait dans le catalogue
+  // entier : il distribuait des exemplaires de créatures encore verrouillées,
+  // qui s'empilaient dans un stock sans jamais devenir jouables.
+  const rolls=owned.length?chestRollCount(chest):0;
   for(let i=0;i<rolls;i++){
     const good=Math.random()<lucky;
-    const pick=weightedPick(pool,chest.bias*(good?2.2:1));
+    const pick=weightedPick(owned,chest.bias*(good?2.2:1));
     if(!pick)continue;
     const qty=randInt(chest.qty[0],chest.qty[1]);
     lots.push({pieceId:pick,qty:good?qty*2:qty,isNew:false,lucky:good});
