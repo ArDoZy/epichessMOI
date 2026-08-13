@@ -276,7 +276,7 @@
   function swipeBlocked(target){
     return !!(target&&target.closest&&target.closest(
       'button,a,input,textarea,select,.game-board,.pmv,.psheet,.jc-chest,'+
-      '.pcard,.comp-slot,.skin-card,.move-log,[data-noswipe]'));
+      '.pcard,.comp-slot,.move-log,[data-noswipe]'));
   }
   function wireSwipe(){
     const stage=document.getElementById('cube-stage');

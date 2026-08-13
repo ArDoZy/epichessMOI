@@ -228,8 +228,6 @@
     <div class="mp-status" id="mp-status"></div>
     <button class="btn btn-ghost" id="mp-cancel" style="margin-top:14px">Annuler</button>
   </div>
-
-  <div class="mp-wait-clock" id="mp-wait-clock"><span id="mp-wait-time">0:00</span></div>
 </div>
 
 <!-- CONFIRM MODAL : remplace window.confirm() par une boîte de dialogue
@@ -495,7 +493,10 @@
            chaque créature dans le builder (.pc-stock) et sous chaque pièce
            posée dans la composition (.cs-stock). Répété une troisième fois en
            bas de l'Armurerie, il ne faisait plus que rallonger la page. -->
-      <div class="rs-sec"><div class="rs-sec-title">Échiquiers</div><div class="skin-grid" id="rs-skins"></div></div>
+      <!-- Plus de choix d'échiquier ici : la matière du plateau suit
+           désormais automatiquement l'ELO (voir bestUnlockedSkin(),
+           js/economy-ui.js) — la présenter comme un choix laissait croire
+           qu'on pouvait revenir à une matière déjà dépassée. -->
     </div>
   </div>
 </div>
@@ -584,9 +585,6 @@
         <div class="history-badge" id="history-badge"></div>
         <div class="move-log" id="move-log"></div>
       </div>
-      <!-- Ce qui est engagé dans cette partie (voir js/economy.js). -->
-      <div class="gs-stake" id="game-stake"></div>
-
       <div class="gp-bar" id="human-player-bar">
         <div class="gp-av" id="human-player-avatar">?</div>
         <div class="gp-id">

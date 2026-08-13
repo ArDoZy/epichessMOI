@@ -319,8 +319,7 @@ const TUTO_STEPS=[
   },
   {
     text:'Les plateaux aussi se méritent&nbsp;: bois, puis pierre, acier, argent, et or '+
-         'tout en haut. Ils s\'ouvrent en montant dans les rangs.',
-    at:'#rs-skins',
+         'tout en haut. Ils s\'ouvrent en montant dans les rangs, tout seuls.',
   },
   {
     text:'Il reste une salle. <strong>Encore une face à droite.</strong>',

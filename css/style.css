@@ -127,7 +127,7 @@ body.light{
    (Linear, Notion, Xcode). Chaque composant déclare donc sa propre
    transition, à la durée de son propre geste (voir [MOTION] plus bas pour
    les composants qui n'en avaient pas). */
-*{box-sizing:border-box;margin:0;padding:0}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html{scroll-behavior:auto;scrollbar-gutter:stable}
 html,body{min-height:100%;color:var(--text);overflow-x:hidden;font-family:var(--f-ui);transition:background .5s ease,color .5s ease}
 body{
@@ -157,6 +157,12 @@ body{
 /* Trois niveaux de bouton seulement, et un seul « primaire » par écran :
    .btn-primary = l'action attendue (vert-de-gris), .btn-gold = ce qui touche
    aux récompenses, .btn-ghost = tout le reste. */
+/* Le focus par défaut du navigateur (souvent un halo bleu) apparaît aussi au
+   TOUCHER sur mobile, où un bouton appuyé reste « sélectionné » jusqu'au
+   prochain appui ailleurs. On le retire partout et on ne le redonne qu'au
+   clavier via :focus-visible (voir plus bas). */
+button,.btn,.cube-arrow,.jouer-btn,.chest-card,.army-card,.adv-card,
+.jc-chest,a,[role="button"]{outline:none}
 .btn{padding:10px 20px;border-radius:9px;font-weight:600;cursor:pointer;border:none;font-size:14px;transition:transform .14s,background .18s,border-color .18s,color .18s;font-family:var(--f-ui);letter-spacing:0;position:relative}
 .btn:active:not(:disabled){transform:translateY(1px)}
 .btn-ghost{background:transparent;color:var(--text);border:1px solid var(--border2)}
@@ -737,12 +743,7 @@ body.has-acc .builder-inner{padding-top:var(--page-top)}
 .history-nav button:disabled{opacity:.28;cursor:not-allowed}
 .history-badge{font-family:var(--f-ui);font-size:9.5px;color:var(--muted);text-align:center;margin-bottom:6px;min-height:13px}
 
-/* --- La mise : rappel de ce que la partie coûte ou rapporte (economy.js) --- */
-.gs-stake{background:var(--bg2);border:1px solid var(--border);border-radius:11px;padding:10px 12px}
-.gs-stake-row{display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin-top:6px}
-.gs-stake-row .pc-icon{width:19px;height:19px}
 .gs-stake-q{font-family:var(--f-ui);font-size:10px;color:var(--muted);margin-left:-2px;margin-right:5px}
-.gs-streak{font-family:var(--f-ui);font-size:10.5px;color:var(--gold);margin-top:8px}
 
 /* --- L'ÉCHIQUIER --- */
 .game-board-outer{display:flex;align-items:stretch;width:100%}
@@ -1415,42 +1416,6 @@ body.light .pmv-dark{background:#c3bdae}
 
 /* --- Inventaire --- */
 
-/* --- Sélecteur d'échiquier --- */
-.skin-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
-/* Bordure de 1 px au repos : à 2 px, TOUTES les cartes portaient un contour
-   épais et paraissaient toutes à demi sélectionnées, ce qui privait la
-   sélection de sa force. Elle se signale maintenant par la couleur ET un
-   anneau interne — jamais par un changement d'épaisseur, qui décalerait le
-   contenu d'un pixel. */
-.skin-card{border:1px solid var(--border);border-radius:14px;overflow:hidden;cursor:pointer;
-  background:var(--surface);transition:transform .18s ease,border-color .18s ease,box-shadow .2s ease}
-.skin-card:hover{transform:translateY(-3px);border-color:var(--border2)}
-.skin-card.skin-on{border-color:var(--accent2);box-shadow:inset 0 0 0 1px var(--accent2)}
-/* Le filtre est sur l'APERÇU, pas sur la carte : le pied reste lisible. */
-.skin-card.skin-locked{cursor:not-allowed}
-.skin-card.skin-locked .skin-prev{filter:grayscale(.55) brightness(.7)}
-.skin-card.skin-locked:hover{transform:none}
-.skin-prev{position:relative;aspect-ratio:1;background-size:cover;background-position:center}
-.skin-lock{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
-  width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;
-  background:rgba(0,0,0,.5);backdrop-filter:blur(6px);
-  box-shadow:inset 0 0 0 1px rgba(255,255,255,.12)}
-.skin-lock .lock-icon{width:14px;height:17px}
-/* « En usage » était écrit en prose bas-de-casse au milieu d'une interface
-   dont tous les autres états sont des puces. C'est un état, il en prend la
-   forme — et il monte sur l'aperçu, où on le voit avant de lire. */
-.skin-chip{position:absolute;top:8px;right:8px;font-family:var(--f-ui);
-  font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
-  color:#04120f;background:var(--accent2);border-radius:999px;padding:3px 9px}
-/* Le pied était à 9/10 px sous un aperçu de ~170 px : la carte paraissait
-   lestée du haut et coupée en bas. */
-.skin-meta{padding:12px 14px 14px}
-.skin-name{font-family:var(--f-ui);font-size:13px;font-weight:650}
-.skin-req{font-size:11.5px;color:var(--muted);margin-top:3px;font-variant-numeric:tabular-nums}
-.skin-track{height:2px;border-radius:1px;background:var(--bg);margin-top:7px;overflow:hidden}
-.skin-track span{display:block;height:100%;border-radius:1px;background:var(--gold);
-  transition:width .2s cubic-bezier(.2,.8,.2,1)}
-
 /* [CHEST-OPENING] : cérémonie d'ouverture ======================== */
 /* La cérémonie DÉFILE. Un coffre de réapprovisionnement rend quatre
    exemplaires de chaque pièce possédée : passé une dizaine de créatures, la
@@ -1816,13 +1781,11 @@ body.light #settings-panel{box-shadow:0 12px 32px -10px rgba(20,26,25,.26)}
 /* Voiles posés SUR une image (cadenas de carte, cadenas d'échiquier) : ils
    restent sombres dans les deux thèmes — ils voilent une texture, pas une
    surface d'interface — mais leur liseré interne clair n'a plus de sens. */
-body.light .pcard-lockbadge,body.light .skin-lock{background:rgba(20,26,25,.42);
+body.light .pcard-lockbadge{background:rgba(20,26,25,.42);
   box-shadow:inset 0 0 0 1px rgba(255,255,255,.18)}
 body.light .pcard-req{color:#6b5316;background:rgba(138,107,28,.12);border-color:rgba(138,107,28,.34)}
 body.light .ac-val{color:#6b5316;background:rgba(138,107,28,.10);border-color:rgba(138,107,28,.30)}
-body.light .skin-chip{color:#fff}
-body.light .skin-track,body.light .bd-gauge{background:rgba(20,26,25,.10)}
-body.light .skin-card.skin-locked .skin-prev{filter:grayscale(.5) brightness(.88)}
+body.light .bd-gauge{background:rgba(20,26,25,.10)}
 
 /* Cartes pointillées et corbeille : le gris du thème sombre disparaît sur
    crème, il faut remonter le contraste du trait. */
@@ -1860,15 +1823,14 @@ body.light .intro-close{color:#241a10}
      spatial d'un échiquier réel — l'adverse au-dessus, le sien en dessous.
      Coût : 88 px, contre ~600 px de défilement auparavant. */
   .game-wrap{display:flex;flex-direction:column;height:auto;overflow:visible;
-    gap:8px;padding:0 10px calc(14px + var(--safe-b))}
+    gap:8px;padding:calc(8px + var(--safe-t)) 10px calc(14px + var(--safe-b))}
   .game-side{display:contents}
   #ai-player-bar{order:1}
   .game-main{order:2}
   #human-player-bar{order:3}
   #game-status{order:4}
   .gs-block{order:5}
-  .gs-stake{order:6}
-  .game-btns{order:7;margin-top:2px}
+  .game-btns{order:6;margin-top:2px}
 
   /* Le plateau prend la largeur ; la hauteur lui est comptée à partir de ce
      que le reste occupe réellement (chrome + deux bandeaux + écarts +
@@ -1880,11 +1842,11 @@ body.light .intro-close{color:#241a10}
     padding:0;gap:6px;
     --bsz:min(calc(100vw - 20px),calc(100dvh - var(--chrome-h) - var(--safe-t) - 200px))}
 
-  /* --- Le bandeau joueur : UNE rangée de 44 px --- */
-  .gp-bar{flex-wrap:nowrap;min-height:44px;padding:0 10px;gap:9px;border-radius:12px}
-  .gp-av{width:28px;height:28px;font-size:12px;border-radius:8px}
-  .gp-name{font-size:13.5px}
-  .gp-elo{font-size:11px}
+  /* --- Le bandeau joueur : UNE rangée de 40 px --- */
+  .gp-bar{flex-wrap:nowrap;min-height:40px;padding:0 8px;gap:7px;border-radius:12px}
+  .gp-av{width:24px;height:24px;font-size:11px;border-radius:7px}
+  .gp-name{font-size:12px}
+  .gp-elo{font-size:10px}
   .gp-id{flex:0 1 auto;min-width:0}
   /* Les prises passent EN LIGNE et défilent : sur leur propre rangée, elles
      ajoutaient une deuxième ligne au bandeau à la première capture. */
@@ -1892,7 +1854,7 @@ body.light .intro-close{color:#241a10}
     max-height:20px;overflow-x:auto;overflow-y:hidden;scrollbar-width:none}
   .gp-taken::-webkit-scrollbar{display:none}
   .gp-taken .pc-icon{width:16px;height:16px}
-  .gp-clock{order:5;font-size:20px;font-weight:800;min-width:76px;padding:2px 8px;border-radius:8px}
+  .gp-clock{order:5;font-size:17px;font-weight:800;min-width:66px;padding:2px 7px;border-radius:8px}
   /* Le camp au trait s'annonce aussi par un trait le long de l'arête tournée
      vers le plateau : on le voit sans lire. */
   /* Le bouton de réglages flotte en haut à droite et n'a plus de barre sous
@@ -1912,12 +1874,12 @@ body.light .intro-close{color:#241a10}
   .gs-block.gs-grow{flex:0 0 auto}
   /* `margin-top:auto` poussait les deux boutons tout en bas de la colonne. */
   .game-btns{margin-top:2px}
-  .gs-block,.gs-stake,.status-bar{width:100%}
+  .gs-block,.status-bar{width:100%}
 
   /* --- LE JOURNAL DEVIENT UNE FEUILLE GLISSANTE ------------------
      Il empilait sous le plateau un titre, une rangée de commandes, un
-     compteur et la liste — plus le bloc « Engagé dans cette partie » et les
-     deux boutons de partie : environ 300 px de défilement pour une
+     compteur et la liste — plus les deux boutons de partie : environ 300 px
+     de défilement pour une
      information qu'on consulte par intermittence.
      Tout cela vit maintenant dans une feuille ancrée en bas d'écran. Au
      repos, on n'en voit que la POIGNÉE : le nombre de coups, le dernier coup
@@ -2119,7 +2081,7 @@ body.cube-active:not(.nav-overlay) .notif-host{bottom:92px}
    ============================================================== */
 .btn:focus-visible,.cube-arrow:focus-visible,.jouer-btn:focus-visible,
 .linput:focus-visible,.acc-item:focus-visible,.history-nav button:focus-visible,
-.chest-card:focus-visible,.skin-card:focus-visible{
+.chest-card:focus-visible{
   outline:2px solid var(--accent2);outline-offset:3px}
 /* Les pièces sont redessinées 32 fois par plateau : la transition universelle
    de couleur du reset s'appliquait à chaque tracé SVG, pour rien. */
@@ -2164,14 +2126,7 @@ body.cube-active:not(.nav-overlay) .notif-host{bottom:92px}
 /* [MP-WAIT] =====================================================
    L'ATTENTE D'UN ADVERSAIRE. C'est le seul moment du jeu où le joueur n'a
    rien à faire : la fenêtre de salon s'efface derrière la toile plein écran
-   `assets/backgrounds/duel-wait.png`, et il ne reste qu'une inscription et
-   un chronomètre.
-
-   TOUT EST EMPILÉ EN COLONNE, au centre : l'inscription, puis le compteur
-   juste dessous. Le chronomètre était auparavant épinglé au bas de l'écran,
-   à 74 px de haut : il n'appartenait à rien, écrasait le bas de l'image, et
-   sur un écran bas il chevauchait la boîte. Il fait maintenant partie du
-   même bloc, à la taille d'une indication et non d'un titre.
+   `assets/backgrounds/duel-wait.png`, et il ne reste qu'une inscription.
 
    Changer la toile : remplacer le fichier PNG, il n'y a rien à coder.
    ============================================================== */
@@ -2197,15 +2152,6 @@ body.cube-active:not(.nav-overlay) .notif-host{bottom:92px}
    creusait un trou entre le texte et le bouton. */
 #mp-modal.mp-wait .mp-status:empty{display:none;margin:0;min-height:0}
 #mp-modal.mp-wait #mp-cancel{margin-top:10px}
-
-.mp-wait-clock{display:none}
-#mp-modal.mp-wait .mp-wait-clock{
-  display:block;position:static;transform:none;
-  font-family:var(--f-ui);font-weight:900;letter-spacing:3px;
-  font-size:clamp(24px,3.4vw,38px);line-height:1;
-  color:var(--gold2);font-variant-numeric:tabular-nums;
-  text-shadow:0 0 24px rgba(0,0,0,.9),0 3px 14px rgba(0,0,0,.9);
-  pointer-events:none}
 
 /* [ICON-BUTTONS] ================================================
    Les boutons d'action des cartes portent maintenant des icônes SVG
@@ -2570,7 +2516,6 @@ body.light .adv-advised{color:#f6f5f1}
      .20s — un changement d'état qui porte une information.
    ============================================================== */
 .status-bar{transition:color .2s ease,border-color .2s ease,background-color .2s ease}
-.skin-card{transition:transform .18s ease,border-color .18s ease,box-shadow .2s ease}
 .jc-price,.jc-name{transition:color .16s ease}
 .btn{transition:transform .14s,background .18s,border-color .18s,color .18s,box-shadow .18s}
 .bd-budget-num,.pcard-stock{transition:color .2s ease}
@@ -2579,13 +2524,13 @@ body.light .adv-advised{color:#f6f5f1}
 /* Le focus clavier n'était visible que par la couleur héritée : il lui faut
    un anneau à lui, sur tout ce qui se pilote au clavier. */
 .btn:focus-visible,.jouer-btn:focus-visible,.cube-arrow:focus-visible,
-.army-card:focus-visible,.skin-card:focus-visible,.chest-card:focus-visible,
+.army-card:focus-visible,.chest-card:focus-visible,
 .adv-card:focus-visible,.jc-chest:focus-visible,#settings-btn:focus-visible{
   outline:2px solid var(--accent2);outline-offset:2px}
 
 /* Le mouvement réduit reste prioritaire sur tout ce qui précède. */
 @media(prefers-reduced-motion:reduce){
-  .status-bar,.skin-card,.jc-price,.jc-name,.btn,.bd-budget-num,.pcard-stock{transition:none}
+  .status-bar,.jc-price,.jc-name,.btn,.bd-budget-num,.pcard-stock{transition:none}
     .bd-over }
 
 /* [MOBILE-APP] : LA MISE EN PAGE TÉLÉPHONE ========================
@@ -2670,10 +2615,8 @@ body.light .adv-advised{color:#f6f5f1}
   /* --- Armurerie --- */
   .reserve-wrap{padding:var(--page-top) 3.5vw var(--page-bottom)}
   .rs-sec{margin-top:5vw}
-  .skin-grid,.chest-grid{grid-template-columns:repeat(auto-fill,minmax(clamp(104px,30vw,150px),1fr));
+  .chest-grid{grid-template-columns:repeat(auto-fill,minmax(clamp(104px,30vw,150px),1fr));
     gap:2.5vw}
-  .skin-name{font-size:clamp(9.5px,2.8vw,12px)}
-  .skin-req{font-size:clamp(8px,2.4vw,10px)}
 
   /* --- Mes armées --- */
   .armies-grid{grid-template-columns:1fr;gap:2.5vw}

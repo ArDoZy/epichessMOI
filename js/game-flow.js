@@ -145,7 +145,6 @@ function startGame(colorAlreadyChosen,multiplayer,tutoCfg){
   // et donc en jeu (voir js/economy.js, en-tête). Rien de tel en tutoriel :
   // ces pièces sont prêtées par le savant, les perdre ne coûte rien.
   if(!tutoCfg&&typeof economyCommit==='function')economyCommit(currentArmyData);
-  if(typeof renderGameStake==='function')renderGameStake(tutoCfg?{}:GS);
   // Une partie contre un autre joueur a sa propre adresse (voir setAppPath
   // dans js/main.js) : /combat. Elle revient à l'adresse d'origine dès qu'on
   // quitte la partie.
