@@ -657,9 +657,9 @@ body.has-acc .builder-inner{padding-top:var(--page-top)}
    ils étaient autour du plateau — et l'échiquier occupe seul toute la
    hauteur, sans jamais provoquer de défilement.
    ============================================================== */
-#page-game{padding:0;min-height:100vh;background:var(--bg)}
+#page-game{padding:0;min-height:100dvh;background:var(--bg)}
 #page-game.active{display:block}
-.game-wrap{display:flex;height:100vh;overflow:hidden;gap:0}
+.game-wrap{display:flex;height:100dvh;overflow:hidden;gap:0}
 /* Taille du plateau : la plus grande valeur compatible avec la hauteur
    disponible (le plateau plus ses repères de colonnes) et la largeur
    disponible (moins la colonne latérale et les repères de rangées). Plus de
@@ -1025,10 +1025,16 @@ body.nav-overlay #cube-stage{display:none}
 .cube-face[data-face="game"]     {transform:rotateX(90deg)   translateZ(50vmax)}
 .cube-face[data-face="variantes"]{transform:rotateX(-90deg)  translateZ(50vmax)}
 
-/* Zone utile réelle d'une face = un rectangle plein écran (100vw×100vh)
-   centré dans le grand carré (le reste du carré est masqué par #cube-stage). */
+/* Zone utile réelle d'une face = un rectangle plein écran (100vw×100dvh)
+   centré dans le grand carré (le reste du carré est masqué par #cube-stage).
+   100dvh (et non 100vh) : sur mobile, 100vh vaut la hauteur "grande" comme si
+   la barre d'adresse du navigateur était repliée. Comme la face est centrée
+   (top:50% + translate), un excédent de hauteur déborde à parts égales en
+   haut et en bas — et le débordement du haut, masqué par l'overflow:hidden
+   de #cube-stage, coupait justement le bandeau adverse (pseudo, ELO,
+   pendule) sous la barre d'adresse. */
 .face-viewport{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
-  width:100vw;height:100vh;overflow:hidden}
+  width:100vw;height:100dvh;overflow:hidden}
 #face-viewport-armees{overflow-y:auto}
 
 /* Les pages réelles déplacées dans une face : toujours affichées (la
@@ -1462,6 +1468,18 @@ body.light .pmv-dark{background:#c3bdae}
 .loot-new-tag{font-family:var(--f-ui);font-size:9px;text-transform:uppercase;letter-spacing:1.2px;
   color:#1a1206;background:var(--gold2);border-radius:5px;padding:1px 7px;display:inline-block;margin-top:5px}
 @keyframes lootIn{to{opacity:1;transform:translateY(0) scale(1)}}
+
+/* Révélation d'UN lot à la fois (du moins bon au meilleur, voir
+   chestRevealNext dans js/economy-ui.js) : une seule carte, agrandie,
+   remplace la grille qui montrait tout d'un coup. Chaque remplacement du
+   contenu crée un nouveau nœud .loot, qui rejoue l'animation lootIn tout
+   seul — pas besoin de délai en cascade ici. */
+.chest-loot-count{font-family:var(--f-ui);font-size:12px;font-weight:700;
+  color:var(--muted);letter-spacing:.5px;width:100%;margin-bottom:12px}
+.loot-reveal{min-width:170px;padding:24px 30px}
+.loot-reveal .loot-name{font-size:14px;margin-top:10px}
+.loot-reveal .loot-qty{font-size:32px;margin-top:6px}
+.loot-reveal .loot-new-tag{font-size:11px;padding:2px 10px;margin-top:9px}
 
 /* [CINEMATIC] ===================================================
    Deux moments mis en scène : l'entrée en combat et son issue. Ce sont des
@@ -2636,16 +2654,23 @@ body.light .adv-advised{color:#f6f5f1}
   .chest-stage .chest-lg{margin-bottom:3vh}
   .chest-title{font-size:clamp(15px,5vw,22px)}
   .chest-hint{font-size:clamp(10px,3vw,13px);margin-bottom:2.5vh}
-  /* Les lots en grille plutôt qu'en ligne libre : quatre par rangée sur un
-     téléphone, chacun dimensionné en fraction d'écran. */
-  .chest-loot{display:grid;grid-template-columns:repeat(auto-fill,minmax(clamp(66px,21vw,110px),1fr));
-    gap:2vw;min-height:0;margin-bottom:3vh}
+  /* Un seul lot affiché à la fois (voir chestRevealNext, js/economy-ui.js) :
+     le compteur au-dessus, la carte en dessous, centrés en colonne. */
+  .chest-loot{display:flex;flex-direction:column;align-items:center;
+    gap:0;min-height:0;margin-bottom:3vh}
   .loot{min-width:0;padding:2.5vw 1.5vw;border-radius:10px}
   .loot .pc-icon{width:clamp(28px,9vw,48px);height:clamp(28px,9vw,48px)}
   .loot-name{font-size:clamp(8px,2.4vw,10.5px)}
   .loot-qty{font-size:clamp(13px,4.2vw,19px)}
   .loot-new-tag{font-size:clamp(6.5px,2vw,9px);padding:1px 5px}
   .loot .pearl-icon{width:clamp(28px,9vw,48px)!important;height:clamp(28px,9vw,48px)!important}
+  /* La carte de révélation (une à la fois) reste grande : ce n'est plus une
+     tuile parmi d'autres dans une grille, rien ne justifie de la rétrécir. */
+  .chest-loot-count{font-size:clamp(10px,3vw,12px)}
+  .loot-reveal{padding:5vw 6vw}
+  .loot-reveal .loot-name{font-size:clamp(11px,3.4vw,14px)}
+  .loot-reveal .loot-qty{font-size:clamp(21px,7vw,32px)}
+  .loot-reveal .loot-new-tag{font-size:clamp(9px,2.6vw,11px);padding:2px 8px}
 
   /* --- Modal de fin de partie --- */
   .result-box{padding:5vw 4vw;max-height:88vh;overflow-y:auto}

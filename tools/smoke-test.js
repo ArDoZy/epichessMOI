@@ -157,9 +157,14 @@ const OPTIONAL_ASSET=/adversaires\/[a-z-]+\.png|backgrounds\/main-page\.png/;
     await page.waitForSelector('#chest-modal.show',{timeout:8000});
     const titre=await page.textContent('#chest-title');
     if(!/réapprovisionnement/i.test(titre))throw new Error('coffre inattendu : '+titre);
+    // Les lots se révèlent un par un (voir chestRevealNext, js/economy-ui.js) :
+    // on clique le coffre pour l'ouvrir, puis on continue de cliquer jusqu'à
+    // ce que le dernier lot vu referme la cérémonie.
     await page.click('#chest-visual');
-    await page.waitForSelector('#chest-close:visible',{timeout:8000});
-    await page.click('#chest-close');
+    for(let i=0;i<40&&await page.isVisible('#chest-modal.show');i++){
+      await page.waitForTimeout(650);
+      await page.click('#chest-visual');
+    }
     await page.waitForSelector('#chest-modal.show',{state:'hidden',timeout:8000});
     if(await page.evaluate(()=>dailyChestAvailable()))
       throw new Error('le coffre du jour est encore dû après son ouverture');

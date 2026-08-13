@@ -375,6 +375,19 @@ function renderDailyChest(){
   dailyChestMaybeOpen();
 }
 
+// Valeur d'un lot, pour classer la révélation du moins bon au meilleur : une
+// pièce inédite est toujours le clou du spectacle (elle domine largement le
+// score), sinon on se fie à la valeur de la pièce — le même repère qui
+// pilote sa rareté de tirage, voir pieceRarityWeight dans js/economy.js —
+// multipliée par sa quantité, et un bon tirage (chestLuckyChance) pèse un
+// peu plus. Les perles suivent la même échelle grossière.
+function chestLotValue(l){
+  if(l.pearls!=null)return l.pearls*(l.lucky?1.3:1)*0.4;
+  const p=PIECES.find(x=>x.id===l.pieceId);
+  const v=Math.max(1,(p&&p.value)||3);
+  return v*l.qty*(l.lucky?1.3:1)*(l.isNew?50:1);
+}
+
 // ----------------------------------------------------------------
 // CÉRÉMONIE D'OUVERTURE
 // ----------------------------------------------------------------
@@ -383,7 +396,11 @@ function renderDailyChest(){
 let _chestState=null;
 function showChestCeremony(chest,lots,applyOnClose,onClose){
   const modal=document.getElementById('chest-modal');if(!modal)return;
-  _chestState={chest,lots,applyOnClose,onClose,opened:false};
+  // Triés du moins bon au meilleur : la révélation se joue lot par lot, la
+  // meilleure surprise doit donc arriver en dernier, pas au hasard de l'ordre
+  // de tirage.
+  const sorted=lots.slice().sort((a,b)=>chestLotValue(a)-chestLotValue(b));
+  _chestState={chest,lots:sorted,idx:-1,applyOnClose,onClose,opened:false};
   modal.classList.remove('opening');
   modal.style.setProperty('--chest-c',chest.color||'#c19a45');
   document.getElementById('chest-visual').style.setProperty('--chest-c',chest.color||'#c19a45');
@@ -401,37 +418,49 @@ function chestCeremonyOpen(){
   modal.classList.add('opening');
   document.getElementById('chest-hint').textContent='';
   if(typeof playSound==='function')playSound('promo');
-  const loot=document.getElementById('chest-loot');
-  // Les lots apparaissent un par un : c'est ce décalage qui fait la
-  // révélation, tout afficher d'un coup rendrait l'animation inutile.
-  loot.innerHTML=_chestState.lots.map((l,i)=>{
-    const delay='style="animation-delay:'+(0.55+i*0.22)+'s"';
+  // Le couvercle s'anime (lidOpen, css/style.css) avant que quoi que ce soit
+  // ne se révèle : la première récompense n'apparaît qu'une fois le coffre
+  // visuellement ouvert.
+  setTimeout(chestRevealNext,550);
+}
+
+// Affiche le lot suivant, un seul à la fois — clic après clic, du moins bon
+// au meilleur. Une fois le dernier lot vu, le clic suivant ferme la
+// cérémonie (chestCeremonyClose) : une seule et même action (cliquer) pilote
+// tout l'enchaînement, jusqu'au retour à l'écran principal.
+function chestRevealNext(){
+  const st=_chestState;if(!st||!st.opened)return;
+  st.idx++;
+  if(st.idx>=st.lots.length){chestCeremonyClose();return;}
+  const l=st.lots[st.idx],last=st.idx===st.lots.length-1;
+  if(typeof playSound==='function')playSound('promo');
+  // Un BON lot (double quantité, tirage favorable — voir chestLuckyChance
+  // dans js/economy.js) se signale : sans marque, on ne distingue pas un
+  // coup de chance d'un tirage moyen, et la moitié du plaisir passe à côté.
+  const tag=l.isNew?'<div class="loot-new-tag">Inédite</div>'
+    :(l.lucky?'<div class="loot-new-tag loot-lucky-tag">Bon lot</div>':'');
+  let card;
+  if(l.pearls!=null){
     // Lot de perles : même carte que les pièces, pour qu'il se lise comme une
     // récompense et non comme une note de bas de page.
-    // Un BON lot (double quantité, tirage favorable — voir chestLuckyChance
-    // dans js/economy.js) se signale : sans marque, on ne distingue pas un
-    // coup de chance d'un tirage moyen, et la moitié du plaisir passe à côté.
-    const tag=l.isNew?'<div class="loot-new-tag">Inédite</div>'
-      :(l.lucky?'<div class="loot-new-tag loot-lucky-tag">Bon lot</div>':'');
-    if(l.pearls){
-      return '<div class="loot loot-pearl'+(l.lucky?' loot-lucky':'')+'" '+delay+'>'+
-        pearlIcon(3)+
-        '<div class="loot-name">Perles</div>'+
-        '<div class="loot-qty">+'+l.pearls+'</div>'+tag+
-      '</div>';
-    }
+    card='<div class="loot loot-reveal loot-pearl'+(l.lucky?' loot-lucky':'')+'">'+
+      pearlIcon(4.5)+
+      '<div class="loot-name">Perles</div>'+
+      '<div class="loot-qty">+'+l.pearls+'</div>'+tag+
+    '</div>';
+  }else{
     const p=PIECES.find(x=>x.id===l.pieceId);
-    return '<div class="loot'+(l.isNew?' loot-new':l.lucky?' loot-lucky':'')+'" '+delay+'>'+
-      pieceIcon(l.pieceId,'n',3)+
+    card='<div class="loot loot-reveal'+(l.isNew?' loot-new':l.lucky?' loot-lucky':'')+'">'+
+      pieceIcon(l.pieceId,'n',4.5)+
       '<div class="loot-name">'+escH(p?p.name:l.pieceId)+'</div>'+
       '<div class="loot-qty">+'+l.qty+'</div>'+tag+
     '</div>';
-  }).join('');
-  const delay=700+_chestState.lots.length*220;
-  setTimeout(()=>{
-    const btn=document.getElementById('chest-close');
-    if(btn&&_chestState)btn.style.display='';
-  },delay);
+  }
+  document.getElementById('chest-loot').innerHTML=
+    '<div class="chest-loot-count">'+(st.idx+1)+' / '+st.lots.length+'</div>'+card;
+  document.getElementById('chest-hint').textContent=
+    last?'Cliquez pour tout récupérer':'Cliquez pour continuer';
+  document.getElementById('chest-close').style.display=last?'':'none';
 }
 
 function chestCeremonyClose(){
@@ -461,14 +490,25 @@ function chestCeremonyClose(){
   if(st.onClose)st.onClose();
 }
 
-document.getElementById('chest-visual')?.addEventListener('click',chestCeremonyOpen);
-document.getElementById('chest-close')?.addEventListener('click',chestCeremonyClose);
+// Un même geste — cliquer — pilote toute la cérémonie : ouvre le coffre,
+// révèle le lot suivant, puis referme une fois le dernier vu. Le coffre, la
+// carte de lot affichée et le bouton "Récupérer" (visible seulement sur le
+// dernier lot) déclenchent tous la même suite ; le fond sombre autour de la
+// scène fait pareil, pour que personne ne reste coincé devant un coffre
+// fermé ou un lot affiché.
+function chestCeremonyAdvance(){
+  if(!_chestState)return;
+  if(!_chestState.opened)chestCeremonyOpen();
+  else chestRevealNext();
+}
+document.getElementById('chest-visual')?.addEventListener('click',chestCeremonyAdvance);
+document.getElementById('chest-loot')?.addEventListener('click',()=>{
+  if(_chestState&&_chestState.opened)chestRevealNext();
+});
+document.getElementById('chest-close')?.addEventListener('click',chestRevealNext);
 document.getElementById('chest-modal')?.addEventListener('click',e=>{
-  // Un clic hors du coffre l'ouvre aussi, puis referme une fois révélé :
-  // personne ne doit rester coincé devant un coffre fermé.
   if(e.target.id!=='chest-modal')return;
-  if(_chestState&&!_chestState.opened)chestCeremonyOpen();
-  else if(_chestState&&document.getElementById('chest-close').style.display!=='none')chestCeremonyClose();
+  chestCeremonyAdvance();
 });
 
 
