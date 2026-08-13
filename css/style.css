@@ -1506,11 +1506,16 @@ body.light .pmv-dark{background:#c3bdae}
 
 /* Le découpage en ovale fait FONDRE l'image dans le noir du fond : sans
    lui, on voit un rectangle de photo posé sur la scène, et le cadrage
-   `cover` trahit ses bords. */
+   `cover` trahit ses bords.
+   Les rayons de l'ovale (50% / 52%) ne dépassent pas la distance du centre
+   aux bords : c'est la condition pour que le dégradé atteigne VRAIMENT zéro
+   avant le bord. Un ovale plus large laisse l'image à demi visible sur les
+   côtés, et la couture réapparaît — le fond des planches n'est pas un noir
+   parfait, il se détache du noir pur du modal. */
 .pb-shake,.pb-trem{position:absolute;inset:0}
 .pb-scene{position:absolute;inset:0;
-  -webkit-mask-image:radial-gradient(ellipse 76% 70% at 50% 54%,#000 50%,transparent 100%);
-  mask-image:radial-gradient(ellipse 76% 70% at 50% 54%,#000 50%,transparent 100%)}
+  -webkit-mask-image:radial-gradient(ellipse 50% 52% at 50% 52%,#000 52%,transparent 100%);
+  mask-image:radial-gradient(ellipse 50% 52% at 50% 52%,#000 52%,transparent 100%)}
 .pb-frame{position:absolute;inset:0;width:100%;height:100%;opacity:0;pointer-events:none;
   object-fit:cover;object-position:50% 56%;
   transition:opacity var(--pb-fade,240ms) ease-out}

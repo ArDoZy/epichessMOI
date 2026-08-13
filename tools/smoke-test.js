@@ -36,7 +36,7 @@ catch(e){
 const ROOT=path.resolve(__dirname,'..');
 const PORT=8123;
 const MIME={'.html':'text/html','.js':'text/javascript','.css':'text/css','.svg':'image/svg+xml',
-  '.png':'image/png','.mp3':'audio/mpeg','.json':'application/json','.txt':'text/plain',
+  '.png':'image/png','.webp':'image/webp','.mp3':'audio/mpeg','.json':'application/json','.txt':'text/plain',
   '.webmanifest':'application/manifest+json','.xml':'application/xml'};
 
 // Serveur statique minimal, qui rejoue les réécritures de vercel.json

@@ -83,20 +83,20 @@ const CHEST_BREAK={
   pion:{
     dir:'assets/chests/pion/',
     stages:[
-      {src:'01-intact.png',   hint:'Frappez le pion pour le briser', fade:260},
+      {src:'01-intact.webp',   hint:'Frappez le pion pour le briser', fade:260},
 
-      {src:'02-fissure.png',  hint:'Encore',            fade:210, shake:7,  zoom:1.045,
+      {src:'02-fissure.webp',  hint:'Encore',            fade:210, shake:7,  zoom:1.045,
        flash:.42, fdur:280, bloom:[.10,.26], bt:'3.2s', sparks:8,  snd:[210,320]},
 
-      {src:'03-fissures.png', hint:'Encore',            fade:190, shake:10, zoom:1.06,
+      {src:'03-fissures.webp', hint:'Encore',            fade:190, shake:10, zoom:1.06,
        flash:.55, fdur:300, bloom:[.16,.40], bt:'2.3s', sparks:14, trem:.4, snd:[250,380]},
 
-      {src:'04-brisures.png', hint:'Il ne tient plus…', fade:170, shake:14, zoom:1.075,
+      {src:'04-brisures.webp', hint:'Il ne tient plus…', fade:170, shake:14, zoom:1.075,
        flash:.68, fdur:320, bloom:[.24,.62], bt:'1.4s', sparks:22, trem:1,  snd:[300,460]},
 
       // À partir d'ici la pièce ne tient plus : plus une seule frappe à
       // donner, la destruction s'enchaîne d'elle-même jusqu'au socle vide.
-      {src:'05-eclats.png',   hint:'',                  fade:120, shake:20, zoom:1.11,
+      {src:'05-eclats.webp',   hint:'',                  fade:120, shake:20, zoom:1.11,
        flash:.80, fdur:300, bloom:[.35,.80], bt:'.9s',  sparks:34, trem:1.8,
        ring:true, ringmax:9, hold:190, snd:[150,240,360]},
 
@@ -105,7 +105,7 @@ const CHEST_BREAK={
       // n'importe comment. La secousse est retirée ici, elle ne ferait que
       // découvrir du noir sur les bords ; c'est le grossissement et la
       // luminosité qui portent le coup.
-      {src:'06-explosion.png',hint:'',                  fade:70,  full:'bleed',
+      {src:'06-explosion.webp',hint:'',                  fade:70,  full:'bleed',
        blast:true, bldur:460, white:820, flash:.9, fdur:300,
        sparks:54, sparkR:3.2, ring:true, ringmax:30, hold:300,
        snd:[90,140,200,300,440]},
@@ -114,7 +114,7 @@ const CHEST_BREAK={
       // rester entier sur un téléphone comme sur un écran large. `solo`
       // éteint les six images du dessous — sans quoi l'explosion continuerait
       // de brûler derrière, à travers l'ovale de découpe.
-      {src:'07-vide.png',     hint:'',                  fade:380, full:'boxed',
+      {src:'07-vide.webp',     hint:'',                  fade:380, full:'boxed',
        solo:true, trem:0, hold:620, end:true},
     ],
     // Format des planches (largeur/hauteur). Il donne à la scène `boxed` les
