@@ -584,38 +584,22 @@ function mpEnterPair(hostId){
 }
 
 // ----------------------------------------------------------------
-// ÉCRAN D'ATTENTE : la toile et le chronomètre
+// ÉCRAN D'ATTENTE : la toile
 // ----------------------------------------------------------------
 // Attendre un adversaire est le seul moment du jeu où le joueur ne fait rien
 // et ne peut rien faire. La fenêtre de salon s'efface donc derrière une toile
 // plein écran (assets/backgrounds/duel-wait.svg, voir [MP-WAIT] dans
-// css/style.css) et un CHRONOMÈTRE s'installe en bas au milieu : il est le
-// seul élément qui bouge, donc la seule preuve que quelque chose tourne
-// encore. Il vaut pour les deux attentes — la recherche automatique et
-// l'attente d'un ami sur une partie privée, qui n'avait jusqu'ici aucun
-// compteur du tout.
+// css/style.css). Vaut pour les deux attentes — la recherche automatique et
+// l'attente d'un ami sur une partie privée.
 const MP_WAIT_SCREENS=new Set(['quick']);
-let _mpWaitTimer=null;
 
-function mpFmtClock(sec){
-  const m=Math.floor(sec/60),s=Math.floor(sec%60);
-  return m+':'+(s<10?'0':'')+s;
-}
-function mpWaitTick(){
-  const el=document.getElementById('mp-wait-time');
-  if(!el)return;
-  el.textContent=mpFmtClock((Date.now()-(MP.waitStartedAt||Date.now()))/1000);
-}
 function mpWaitStart(){
   mpWaitStop();
   MP.waitStartedAt=Date.now();
   document.getElementById('mp-modal')?.classList.add('mp-wait');
   mpRenderTip();
-  mpWaitTick();
-  _mpWaitTimer=setInterval(mpWaitTick,1000);
 }
 function mpWaitStop(){
-  if(_mpWaitTimer){clearInterval(_mpWaitTimer);_mpWaitTimer=null;}
   document.getElementById('mp-modal')?.classList.remove('mp-wait');
 }
 
@@ -632,7 +616,7 @@ function mpRenderTip(){
   const el=document.getElementById('mp-tip');
   if(!el||!MP_TIPS.length){if(el)el.innerHTML='';return;}
   const txt=MP_TIPS[Math.floor(Math.random()*MP_TIPS.length)];
-  el.innerHTML='<span class="mp-tip-lbl">Le savez-vous&nbsp;?</span>'+
+  el.innerHTML='<span class="mp-tip-lbl">Le saviez-vous&nbsp;?</span>'+
     '<span class="mp-tip-txt">'+(typeof escH==='function'?escH(txt):txt)+'</span>';
 }
 
@@ -644,11 +628,7 @@ function mpRenderSearch(waitS,peerCount,win){
   // aussi « Personne d'autre en attente pour l'instant » : apprendre qu'on est
   // seul en ligne pendant qu'on attend n'aide en rien et décourage d'attendre.
   const note=document.getElementById('mp-search-note');
-  if(note){
-    note.textContent=(win===Infinity)
-      ? 'Recherche ouverte à tous les niveaux.'
-      : 'Adversaire recherché entre '+Math.max(0,mpMyCard().elo-win)+' et '+(mpMyCard().elo+win)+' ELO.';
-  }
+  if(note)note.textContent='Recherche d\'adversaire en cours';
 }
 
 // ----------------------------------------------------------------

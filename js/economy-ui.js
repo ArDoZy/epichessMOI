@@ -2,8 +2,9 @@
 // ECONOMY-UI.JS : l'Armurerie (perles, échiquiers), les coffres du menu
 // principal, et les affichages liés à l'économie ailleurs dans le jeu
 // ================================================================
-// Contient : le rendu de la face « Armurerie » du cube (#page-reserve : les
-// perles et le choix de l'échiquier), la cérémonie d'ouverture d'un coffre,
+// Contient : le rendu de la face « Armurerie » du cube (#page-reserve), la
+// texture du plateau (suit automatiquement l'ELO, voir bestUnlockedSkin),
+// la cérémonie d'ouverture d'un coffre,
 // les coffres illimités du mode test (renderAdminChests), les six coffres du
 // menu principal (renderMenuChests, qui portent aussi la série de victoires),
 // le coffre de réapprovisionnement quotidien — lui aussi sur le menu
@@ -33,17 +34,7 @@ function bestUnlockedSkin(){
   return ok.length?ok[ok.length-1]:BOARD_SKINS[0];
 }
 function getBoardSkin(){
-  const id=accGet('board_skin',null);
-  const s=id?boardSkinById(id):null;
-  if(s&&boardSkinUnlocked(s))return s;
   return bestUnlockedSkin();
-}
-function setBoardSkin(id){
-  const s=boardSkinById(id);
-  if(!boardSkinUnlocked(s))return false;
-  accSet('board_skin',s.id);
-  applyBoardSkin();
-  return true;
 }
 // La texture est posée DIRECTEMENT sur l'élément, et non passée par une
 // variable CSS : une url() relative placée dans une custom property est
@@ -136,18 +127,6 @@ function stakeListHTML(armyData,color){
   return entries.map(([id,n])=>
     '<span class="gs-stake-q">'+n+'×</span>'+pieceIcon(id,color||'n',1.4)).join('');
 }
-// Panneau latéral pendant la partie.
-function renderGameStake(gs){
-  const el=document.getElementById('game-stake');
-  if(!el)return;
-  if(!gs||!gs.playerArmy){el.innerHTML='';return;}
-  el.innerHTML='<div class="gsb-title" style="margin-bottom:4px">Engagé dans cette partie</div>'+
-    '<div class="gs-stake-row">'+stakeListHTML(gs.playerArmy,gs.playerColor||'w')+'</div>'+
-    // Deux lignes séparées : en une seule phrase, les deux issues se lisaient
-    // comme une seule règle et personne ne voyait où l'une finissait.
-    '<div class="gs-streak">Défaite : toutes les pièces sont perdues.</div>'+
-    '<div class="gs-streak">Victoire : seules les pièces capturées sont perdues.</div>';
-}
 // Bandeau de la page Combat, avant de s'engager.
 function renderCombatStake(armyData){
   const el=document.getElementById('cstake');
@@ -193,7 +172,6 @@ function pearlAmountHTML(n,em){
 function renderReservePage(){
   if(!CUR_ACC)return;
   renderAdminChests();
-  renderBoardSkins();
 }
 
 // Ce que promet une carte de coffre, en une ligne : les deux nombres qui
@@ -493,42 +471,4 @@ document.getElementById('chest-modal')?.addEventListener('click',e=>{
   else if(_chestState&&document.getElementById('chest-close').style.display!=='none')chestCeremonyClose();
 });
 
-// ----------------------------------------------------------------
-// ÉCHIQUIERS
-// ----------------------------------------------------------------
-function renderBoardSkins(){
-  const el=document.getElementById('rs-skins');if(!el)return;
-  const cur=getBoardSkin();
-  el.innerHTML=BOARD_SKINS.map(s=>{
-    const ok=boardSkinUnlocked(s);
-    // MONTRER LA MARCHANDISE. Le filtre s'appliquait à la CARTE entière
-    // (opacity:.45 + grayscale) : quatre échiquiers verrouillés devenaient
-    // quatre damiers gris indiscernables, et « Débloqué à 850 ELO » tombait
-    // sous 2:1 de contraste. Une boutique dont on ne peut pas voir la
-    // marchandise ne vend rien. Le filtre passe sur l'APERÇU seul, la texture
-    // reste identifiable, et le pied de carte retrouve sa pleine opacité.
-    //
-    // UN MUR DEVIENT UNE ÉCHELLE. « Débloqué à 850 ELO » est un refus ;
-    // « 23 / 850 » avec sa piste est une progression.
-    const myElo=(typeof vvLoadElo==='function')?vvLoadElo():0;
-    let state,bar='';
-    if(!ok){
-      state='<span class="skin-goal">'+myElo+' / '+s.eloRequired+' ELO</span>';
-      const pct=Math.max(2,Math.min(100,myElo/s.eloRequired*100));
-      bar='<div class="skin-track"><span style="width:'+pct+'%"></span></div>';
-    }else state='<span class="skin-desc">'+escH(s.desc)+'</span>';
-    return '<div class="skin-card'+(s.id===cur.id?' skin-on':'')+(ok?'':' skin-locked')+'" data-id="'+s.id+'"'+
-      (ok?'':' title="Débloqué à '+s.eloRequired+' ELO"')+'>'+
-      '<div class="skin-prev" style="background-image:url(\''+s.file+'\')">'+
-        (ok?'':'<span class="skin-lock"><span class="lock-icon"></span></span>')+
-        (s.id===cur.id?'<span class="skin-chip">Actif</span>':'')+
-      '</div>'+
-      '<div class="skin-meta"><div class="skin-name">'+escH(s.name)+'</div>'+
-      '<div class="skin-req">'+state+'</div>'+bar+'</div>'+
-    '</div>';
-  }).join('');
-  el.querySelectorAll('.skin-card:not(.skin-locked)').forEach(card=>{
-    card.addEventListener('click',()=>{if(setBoardSkin(card.dataset.id))renderBoardSkins();});
-  });
-}
 

@@ -177,7 +177,6 @@ const BOARD_SKINS=[
   {id:'argent', name:'Argent', file:'assets/boards/argent.svg', eloRequired:1800, sqLight:'#f5f7f9', sqDark:'#5e666d', desc:'Argent poli miroir.'},
   {id:'or',     name:'Or',     file:'assets/boards/or.svg',     eloRequired:2400, sqLight:'#f6dc92', sqDark:'#6f4f0f', desc:'Or massif. Il n\'y a rien au-delà.'},
 ];
-function boardSkinById(id){return BOARD_SKINS.find(b=>b.id===id)||BOARD_SKINS[0];}
 
 // ----------------------------------------------------------------
 // COFFRES : six raretés nommées d'après les pièces d'échecs
