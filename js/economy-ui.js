@@ -424,12 +424,21 @@ function showChestCeremony(chest,lots,applyOnClose,onClose){
   // l'écran de fin de partie qu'on devinerait derrière : les sept images ont
   // un fond noir, la scène doit continuer jusqu'aux bords de l'écran.
   modal.classList.toggle('pb-cinema',canBreak);
+  // La page derrière est verrouillée pendant la cinématique : on ne fait pas
+  // défiler un décor sous une scène plein écran. Et `scrollbar-gutter:stable`
+  // (html, css/style.css) réserve en permanence la largeur d'une barre de
+  // défilement — une bande de onze pixels sur le bord droit, à travers
+  // laquelle on voyait la page, juste à côté d'une image censée aller
+  // jusqu'au bord. Le temps de la scène, on la rend.
+  document.documentElement.style.scrollbarGutter=canBreak?'auto':'';
+  document.body.style.overflow=canBreak?'hidden':'';
   if(canBreak){
     st.seq=chestBreakMount(chest.id,()=>{
       if(_chestState!==st)return;
-      // Le coffre est détruit : les rayons se mettent à tourner derrière la
-      // scène vide, exactement comme après l'ouverture d'un couvercle.
-      modal.classList.add('opening');
+      // Le coffre est détruit. `pb-loot` recentre la scène autour de la carte
+      // de lot : elle doit apparaître à l'endroit EXACT où la pièce vient
+      // d'exploser, pas plus bas parce qu'un titre la pousse.
+      modal.classList.add('opening','pb-loot');
       st.opened=true;
       chestRevealNext();
     });
@@ -494,7 +503,9 @@ function chestCeremonyClose(){
   _chestState=null;
   if(st.seq)st.seq.destroy();
   if(st.applyOnClose)chestApply(st.lots);
-  document.getElementById('chest-modal').classList.remove('show','opening','pb-cinema');
+  document.getElementById('chest-modal').classList.remove('show','opening','pb-cinema','pb-loot');
+  document.body.style.overflow='';
+  document.documentElement.style.scrollbarGutter='';
   // Une créature inédite sort du coffre : on ouvre son exercice de
   // déplacement (js/tuto-drill.js) avant de rendre la main. Une pièce dont on
   // ignore le déplacement n'est pas vraiment débloquée.
