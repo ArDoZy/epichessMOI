@@ -55,8 +55,13 @@
 //   bt      période de cette respiration — elle raccourcit, la pièce panique
 //   trem    amplitude (px) du tremblement continu entre deux frappes
 //   sparks  nombre d'étincelles projetées
-//   ring    onde de choc circulaire
-//   blast   gerbe plein écran (l'explosion, pas un simple impact)
+//   ring    onde de choc circulaire ; ringmax = son rayon final
+//   blast   l'image DÉFERLE : elle grandit et sa luminosité s'emballe
+//   white   voile blanc plein écran, en ms : c'est lui qui fait le flash
+//   full    la scène quitte sa boîte et prend l'écran. 'bleed' : elle déborde
+//           de partout, sans découpe (l'explosion). 'boxed' : elle garde le
+//           format de l'image et se centre, découpe comprise (le socle vide)
+//   solo    n'affiche QUE cette image : les précédentes sont éteintes
 //   snd     fréquences (Hz) empilées pour le bruit de fracture
 //   hold    si présent, l'étape suivante s'enchaîne SEULE après ce délai (ms)
 //   end     dernière étape : la cérémonie reprend la main (les lots)
@@ -65,35 +70,57 @@
 // (quatre coups), puis 05 déclenche l'explosion, qui se déroule toute seule
 // jusqu'à la scène vide. Pour rendre l'explosion manuelle elle aussi, il
 // suffit de retirer les `hold` des étapes 05 et 06.
+//
+// LA FIN EST UN SEUL GESTE, et ses trois temps s'emboîtent au millième :
+// 05 ne tient que 190 ms, juste de quoi voir la pièce partir en morceaux ;
+// 06 déferle alors sur tout l'écran en montant en luminosité, pendant qu'un
+// voile blanc monte par-dessus — au sommet du voile, l'écran est
+// entièrement lumineux et ne montre plus rien ; c'est SOUS ce voile, à
+// couvert, que l'explosion s'éteint et que le socle vide prend sa place. Le
+// voile redescend, la luminosité revient à la normale, et le socle est là.
+// Le flash ne cache pas une transition ratée : il EST la transition.
 const CHEST_BREAK={
   pion:{
     dir:'assets/chests/pion/',
     stages:[
-      {src:'01-intact.png',   hint:'Frappez le pion pour le briser', fade:260},
+      {src:'01-intact.webp',   hint:'Frappez le pion pour le briser', fade:260},
 
-      {src:'02-fissure.png',  hint:'Encore',            fade:210, shake:7,  zoom:1.045,
+      {src:'02-fissure.webp',  hint:'Encore',            fade:210, shake:7,  zoom:1.045,
        flash:.42, fdur:280, bloom:[.10,.26], bt:'3.2s', sparks:8,  snd:[210,320]},
 
-      {src:'03-fissures.png', hint:'Encore',            fade:190, shake:10, zoom:1.06,
+      {src:'03-fissures.webp', hint:'Encore',            fade:190, shake:10, zoom:1.06,
        flash:.55, fdur:300, bloom:[.16,.40], bt:'2.3s', sparks:14, trem:.4, snd:[250,380]},
 
-      {src:'04-brisures.png', hint:'Il ne tient plus…', fade:170, shake:14, zoom:1.075,
+      {src:'04-brisures.webp', hint:'Il ne tient plus…', fade:170, shake:14, zoom:1.075,
        flash:.68, fdur:320, bloom:[.24,.62], bt:'1.4s', sparks:22, trem:1,  snd:[300,460]},
 
       // À partir d'ici la pièce ne tient plus : plus une seule frappe à
       // donner, la destruction s'enchaîne d'elle-même jusqu'au socle vide.
-      {src:'05-eclats.png',   hint:'',                  fade:130, shake:20, zoom:1.11,
-       flash:.80, fdur:340, bloom:[.35,.80], bt:'.9s',  sparks:34, trem:1.8,
-       ring:true, hold:420, snd:[150,240,360]},
+      {src:'05-eclats.webp',   hint:'',                  fade:120, shake:20, zoom:1.11,
+       flash:.80, fdur:300, bloom:[.35,.80], bt:'.9s',  sparks:34, trem:1.8,
+       ring:true, ringmax:9, hold:190, snd:[150,240,360]},
 
-      {src:'06-explosion.png',hint:'',                  fade:90,  shake:26, zoom:1.20,
-       flash:.96, fdur:540, sparks:48, ring:true, blast:true, hold:560,
+      // L'EXPLOSION. Elle sort de sa boîte : plein écran, en `cover` — une
+      // déflagration n'a pas de composition à préserver, on peut la rogner
+      // n'importe comment. La secousse est retirée ici, elle ne ferait que
+      // découvrir du noir sur les bords ; c'est le grossissement et la
+      // luminosité qui portent le coup.
+      {src:'06-explosion.webp',hint:'',                  fade:70,  full:'bleed',
+       blast:true, bldur:460, white:820, flash:.9, fdur:300,
+       sparks:54, sparkR:3.2, ring:true, ringmax:30, hold:300,
        snd:[90,140,200,300,440]},
 
-      // Le socle vide reparaît lentement — c'est la respiration après le
-      // fracas, et le décor sur lequel les lots vont s'afficher.
-      {src:'07-vide.png',     hint:'',                  fade:820, hold:520, end:true},
+      // LE SOCLE VIDE. En `boxed` : ici le cadrage compte, le socle doit
+      // rester entier sur un téléphone comme sur un écran large. `solo`
+      // éteint les six images du dessous — sans quoi l'explosion continuerait
+      // de brûler derrière, à travers l'ovale de découpe.
+      {src:'07-vide.webp',     hint:'',                  fade:380, full:'boxed',
+       solo:true, trem:0, hold:620, end:true},
     ],
+    // Format des planches (largeur/hauteur). Il donne à la scène `boxed` les
+    // proportions exactes de l'image, pour que l'ovale de découpe tombe
+    // pile sur ses bords.
+    ratio:2/3,
   },
 };
 
@@ -222,29 +249,47 @@ function chestBreakMount(chestId,onDone){
       cfg.stages.map((s,i)=>'<img class="pb-frame" alt="" draggable="false" src="'+pbSrc(cfg,i)+'">').join('')+
       '<div class="pb-bloom"></div>'+
     '</div></div></div>'+
-    '<div class="pb-flash"></div><div class="pb-ring"></div><div class="pb-sparks"></div>';
+    '<div class="pb-flash"></div><div class="pb-ring"></div><div class="pb-sparks"></div>'+
+    '<div class="pb-white"></div>';
   host.className='pbreak';
   host.hidden=false;
 
   const shake=host.querySelector('.pb-shake'),
         trem =host.querySelector('.pb-trem'),
+        scene=host.querySelector('.pb-scene'),
         bloom=host.querySelector('.pb-bloom'),
         flash=host.querySelector('.pb-flash'),
         ring =host.querySelector('.pb-ring'),
+        white=host.querySelector('.pb-white'),
         sparkBox=host.querySelector('.pb-sparks'),
         frames=[].slice.call(host.querySelectorAll('.pb-frame'));
 
   const ctl={i:-1,_busy:true,_timer:null,_dead:false};
   ctl.busy=()=>ctl._busy;
 
+  // Mode `boxed` : la scène reprend le format de l'image, aussi grande que
+  // l'écran le permet, et se centre. CSS seul n'y arrive pas — `aspect-ratio`
+  // avec une hauteur imposée ET une largeur plafonnée casse le rapport dans
+  // un sens ou dans l'autre selon l'écran. Deux lignes de calcul le font
+  // exactement, et le rendez-vous avec l'ovale de découpe est garanti.
+  function fitBox(){
+    if(!host.classList.contains('pb-boxed'))return;
+    const ar=cfg.ratio||2/3,vw=innerWidth,vh=innerHeight;
+    let w=vh*ar,h=vh;
+    if(w>vw){w=vw;h=vw/ar;}
+    scene.style.width=w+'px';
+    scene.style.height=h+'px';
+  }
+  window.addEventListener('resize',fitBox);
+
   // Les étincelles sont créées à la volée puis se retirent elles-mêmes : une
   // explosion en projette une cinquantaine, les garder dans le document
   // alourdirait la scène pour rien.
-  function sparks(n){
+  function sparks(n,radius){
     if(calm||!n)return;
     for(let k=0;k<n;k++){
       const a=Math.random()*Math.PI*2,
-            d=40+Math.random()*150,
+            d=(40+Math.random()*150)*(radius||1),
             sp=document.createElement('span');
       sp.className='pb-spark';
       sp.style.setProperty('--dx',(Math.cos(a)*d).toFixed(1)+'px');
@@ -265,11 +310,39 @@ function chestBreakMount(chestId,onDone){
     pbWhenReady(pbSrc(cfg,i),()=>{
       if(ctl._dead)return;
 
+      // LA SCÈNE QUITTE SA BOÎTE. À l'explosion, l'ovale et les 320 px de
+      // large sautent : l'image passe en position fixe sur tout l'écran. Le
+      // titre et la phrase s'effacent d'eux-mêmes (règle de voisinage
+      // `.pbreak.pb-full ~ …` dans css/style.css), donc le passage hors flux
+      // ne fait sauter aucun texte.
+      if(st.full){
+        host.classList.add('pb-full');
+        host.classList.toggle('pb-bleed',st.full==='bleed');
+        host.classList.toggle('pb-boxed',st.full==='boxed');
+        fitBox();
+      }
+
       // L'image monte par-dessus la pile ; celles du dessous restent en
-      // place, cachées derrière, et rien ne clignote.
+      // place, cachées derrière, et rien ne clignote. Sauf `solo` : la
+      // dernière image est seule en scène, on éteint tout le reste.
       const f=frames[i];
       f.style.setProperty('--pb-fade',(st.fade||240)+'ms');
+      if(st.solo)frames.forEach(o=>{if(o!==f)o.classList.remove('on');});
       f.classList.add('on');
+
+      // L'EMBALLEMENT. `blast` fait grandir l'image et monte sa luminosité
+      // jusqu'à la brûlure ; le voile blanc monte par-dessus et finit le
+      // travail. Retirer la classe à l'étape suivante rend sa luminosité
+      // normale à la scène — sous le voile, donc invisiblement.
+      scene.classList.toggle('blast',!!st.blast);
+      if(st.blast){
+        host.style.setProperty('--pb-bldur',(st.bldur||440)+'ms');
+        pbRestart(scene,'blast');
+      }
+      if(st.white){
+        host.style.setProperty('--pb-wdur',st.white+'ms');
+        pbRestart(white,'go');
+      }
 
       // Le halo suit l'image affichée : même cadrage, mais flouté et fondu
       // en « screen », donc seules les fissures brillent.
@@ -279,9 +352,12 @@ function chestBreakMount(chestId,onDone){
       host.style.setProperty('--pb-b1',b[1]);
       host.style.setProperty('--pb-bt',st.bt||'2.6s');
 
-      // Le tremblement continu s'installe et ne repart plus : une pièce
-      // fendue jusqu'au cœur ne redevient pas calme entre deux coups.
-      if(st.trem&&!calm){
+      // Le tremblement continu s'installe et ne repart plus tant que la
+      // pièce est là : fendue jusqu'au cœur, elle ne redevient pas calme
+      // entre deux coups. `trem:0` l'arrête — le socle vide, lui, ne vibre
+      // pas : il n'y a plus rien dessus pour trembler.
+      if(st.trem===0)trem.classList.remove('live');
+      else if(st.trem&&!calm){
         trem.style.setProperty('--pb-trem',st.trem+'px');
         trem.classList.add('live');
       }
@@ -297,8 +373,11 @@ function chestBreakMount(chestId,onDone){
         flash.classList.toggle('big',!!st.blast);
         pbRestart(flash,'go');
       }
-      if(st.ring&&!calm)pbRestart(ring,'go');
-      sparks(st.sparks);
+      if(st.ring&&!calm){
+        host.style.setProperty('--pb-ringmax',st.ringmax||8.5);
+        pbRestart(ring,'go');
+      }
+      sparks(st.sparks,st.sparkR);
       pbSound(st.snd);
 
       const hint=document.getElementById('chest-hint');
@@ -324,6 +403,7 @@ function chestBreakMount(chestId,onDone){
   ctl.destroy=function(){
     ctl._dead=true;
     clearTimeout(ctl._timer);
+    window.removeEventListener('resize',fitBox);
     host.hidden=true;
     host.innerHTML='';
     host.className='pbreak';

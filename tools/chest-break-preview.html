@@ -51,7 +51,7 @@
 </head>
 <body>
 
-<div class="chest-modal show" id="chest-modal">
+<div class="chest-modal show pb-cinema" id="chest-modal">
   <div class="chest-stage">
     <div class="chest-rays"></div>
     <div class="pbreak" id="chest-break" hidden></div>
@@ -188,12 +188,29 @@ function placeholder(i){
 }
 
 // ----------------------------------------------------------------
+// Une fausse carte de lot, pour juger la composition finale : la récompense
+// doit flotter EN L'AIR au milieu du socle vide, pas s'empiler sous la
+// scène. C'est la vraie carte du jeu (.loot-reveal), avec le vrai habillage
+// de cinéma — seul son contenu est simulé.
+function fakeLoot(n,total){
+  document.getElementById('chest-loot').innerHTML=
+    '<div class="chest-loot-count">'+n+' / '+total+'</div>'+
+    '<div class="loot loot-reveal"><div class="pc-icon" style="width:72px;height:72px;margin:0 auto;'+
+      'border-radius:50%;background:radial-gradient(circle at 40% 35%,#f6f2e6,#8e9299)"></div>'+
+    '<div class="loot-name">Lot d\'exemple</div><div class="loot-qty">+'+(n*3)+'</div></div>';
+  document.getElementById('chest-hint').textContent=
+    n<total?'Cliquez pour continuer':'Cliquez pour tout récupérer';
+}
+let lootN=0;
+const LOOT_TOTAL=3;
 function play(){
   if(seq)seq.destroy();
+  lootN=0;
+  document.getElementById('chest-loot').innerHTML='';
   document.getElementById('chest-modal').classList.remove('opening');
   seq=chestBreakMount('pion',()=>{
     document.getElementById('chest-modal').classList.add('opening');
-    document.getElementById('chest-hint').textContent='Terminé — la cérémonie révélerait les lots ici.';
+    fakeLoot(++lootN,LOOT_TOTAL);
   });
 }
 function useSources(srcs,label){
@@ -203,8 +220,12 @@ function useSources(srcs,label){
   play();
 }
 
+// Une frappe tant que la pièce tient ; ensuite, le même clic fait défiler
+// les lots — c'est exactement l'enchaînement de chestCeremonyAdvance.
 document.getElementById('chest-break').addEventListener('click',()=>{
-  if(seq&&!seq.busy())seq.next();
+  if(!seq)return;
+  if(lootN)fakeLoot(lootN<LOOT_TOTAL?++lootN:(lootN=1),LOOT_TOTAL);
+  else if(!seq.busy())seq.next();
 });
 document.getElementById('pv-replay').addEventListener('click',play);
 

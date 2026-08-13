@@ -11,13 +11,13 @@ Sept images, dans **ce dossier**, sous **exactement** ces noms :
 
 | Fichier | Ce qu'elle montre | Comment on y arrive |
 |---|---|---|
-| `01-intact.png`    | le pion intact sur son socle          | état de départ |
-| `02-fissure.png`   | une première fissure lumineuse        | 1ʳᵉ frappe |
-| `03-fissures.png`  | un réseau de fissures                 | 2ᵉ frappe |
-| `04-brisures.png`  | la pièce saturée de fissures          | 3ᵉ frappe |
-| `05-eclats.png`    | l'explosion commence, éclats projetés | 4ᵉ frappe |
-| `06-explosion.png` | l'explosion, plein cadre              | enchaîné seul |
-| `07-vide.png`      | le socle seul, la scène vide          | enchaîné seul |
+| `01-intact.webp`    | le pion intact sur son socle          | état de départ |
+| `02-fissure.webp`   | une première fissure lumineuse        | 1ʳᵉ frappe |
+| `03-fissures.webp`  | un réseau de fissures                 | 2ᵉ frappe |
+| `04-brisures.webp`  | la pièce saturée de fissures          | 3ᵉ frappe |
+| `05-eclats.webp`    | l'explosion commence, éclats projetés | 4ᵉ frappe |
+| `06-explosion.webp` | l'explosion, plein cadre              | enchaîné seul |
+| `07-vide.webp`      | le socle seul, la scène vide          | enchaîné seul |
 
 Quatre frappes suffisent donc : la quatrième déclenche l'explosion, qui se
 déroule ensuite toute seule jusqu'au socle vide. Pour rendre `05` et `06`
@@ -45,14 +45,25 @@ Le reste :
 
 ## Poids
 
-Sept images chargées au démarrage du jeu : **viser 150–250 Ko par image**.
-Le `.webp` est parfait pour ça et le moteur s'en moque — les noms de
-fichiers sont dans la table `CHEST_BREAK`, il suffit d'y écrire `.webp`.
+Sept images chargées au démarrage du jeu : le total compte plus que chacune.
+Les planches d'origine étaient en PNG, 1,7 à 2,2 Mo pièce — **12,8 Mo à
+télécharger avant qu'un seul coffre puisse s'ouvrir**. Ces images sont
+photographiques (dégradés, halo, grain) : le PNG y est le pire format
+possible, il code sans perte un bruit que personne ne regarde. En `.webp`
+qualité 86, à taille identique, la même séquence pèse **0,74 Mo** — dix-sept
+fois moins, sans différence visible sur le marbre ni sur les fissures.
+
+Refaire la conversion après avoir régénéré une planche :
 
 ```sh
-# 1024×1536 → ~200 Ko chacune
-for f in *.png; do cwebp -q 82 -resize 1024 0 "$f" -o "${f%.png}.webp"; done
+npm i -D sharp
+node -e "const s=require('sharp'),fs=require('fs');
+  fs.readdirSync('.').filter(f=>f.endsWith('.png')).forEach(f=>
+    s(f).webp({quality:86,effort:6}).toFile(f.replace('.png','.webp')));"
 ```
+
+Les noms de fichiers vivent dans la table `CHEST_BREAK` de
+`js/chest-break.js` : changer d'extension, c'est changer cette table.
 
 ## Essayer sans rien copier
 
