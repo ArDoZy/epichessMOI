@@ -83,6 +83,25 @@ function vvCheckNewUnlocks(oldElo,newElo){
   if(newUnlocks.length)vvSaveUnlocked(VV_UNLOCKED);return newUnlocks;
 }
 
+// Petits jalons de récompense (perles / exemplaires) semés entre les jalons
+// de déblocage, voir UNLOCK_TABLE (js/data-pieces.js). Versés une seule fois
+// chacun (accGet/accSet 'voie_rewards_claimed', par id de jalon) : sans ce
+// suivi, un ELO qui redescend puis remonte au-dessus d'un palier déjà
+// franchi verserait la récompense une seconde fois.
+function vvCheckRewardMilestones(oldElo,newElo){
+  const claimed=new Set(accGet('voie_rewards_claimed',[]));
+  const granted=[];
+  UNLOCK_MILESTONES.forEach(u=>{
+    if(!u.reward||claimed.has(u.id))return;
+    if(!(u.eloRequired>oldElo&&u.eloRequired<=newElo))return;
+    if(u.reward==='pearls'&&typeof pearlAdd==='function')pearlAdd(u.amount);
+    else if(u.reward==='copies'&&typeof invAdd==='function')invAdd(u.copyId,u.qty);
+    claimed.add(u.id);granted.push(u);
+  });
+  if(granted.length)accSet('voie_rewards_claimed',[...claimed]);
+  return granted;
+}
+
 // ----------------------------------------------------------------
 // RENDU DE LA PAGE VOIE
 // ----------------------------------------------------------------
@@ -104,6 +123,13 @@ function renderVoiePage(){
   banner.innerHTML='<div class="veb-info"><div class="veb-rank-name" style="color:'+rank.color+'">'+rank.name+'</div><div class="veb-elo">'+elo+' <span>ELO</span></div><div class="veb-progress-wrap"><div class="veb-progress-bar" style="width:'+progress+'%;background:linear-gradient(90deg,'+rank.color+',var(--gold))"></div></div><div class="veb-progress-label">'+(nextRank?'Vers '+nextRank.name+' ('+nextRank.min+' ELO) · '+progress+'%':'Rang maximum atteint !')+'</div></div>';
   const route=document.getElementById('voie-route');let html='';
   let lastRankId=null;
+  // Alternance gauche/droite : un compteur À PART, incrémenté uniquement
+  // pour les jalons réellement rendus (pas les bandeaux de rang, qui sont un
+  // sibling de plus dans .voie-route et décalaient la parité de tout ce qui
+  // suit si on la confiait à nth-child en CSS — deux jalons consécutifs
+  // pouvaient alors atterrir du même côté juste après un bandeau).
+  let side=0;
+  const sideCls=()=>(side++%2===0)?'vm-l':'vm-r';
   UNLOCK_MILESTONES.forEach((milestone,idx)=>{
     // Les cinq jalons de départ (Roi, Dame, Fourmi, Peureux, Éléphant de
     // guerre — `starter`) sont à 0 ELO, donc numériquement dans la tranche
@@ -114,7 +140,18 @@ function renderVoiePage(){
       const mRank=vvGetRank(milestone.eloRequired);
       if(mRank.id!==lastRankId){lastRankId=mRank.id;html+='<div class="vm-rank-section"><div class="vm-rank-bar"><span class="vm-rank-label" style="color:'+mRank.color+'">'+mRank.name+'</span><span class="vm-rank-range">'+mRank.min+'–'+(mRank.max===9999?'∞':mRank.max)+' ELO</span></div></div>';}
     }
-    if(!milestone.pieceId){const reached2=elo>=milestone.eloRequired;html+='<div class="voie-milestone"><div class="vm-card '+(reached2?'reached':'locked-milestone')+'" style="text-align:center"><div class="vm-piece-name">'+milestone.label+'</div></div><div class="vm-center"><div class="vm-dot'+(reached2?' reached':'')+'"></div><div class="vm-elo-badge">'+milestone.eloRequired+' ELO</div></div><div style="flex:1;max-width:calc(50% - 40px)"></div></div>';return;}
+    // Jalon de récompense (perles / exemplaires) : ni pièce à débloquer, ni
+    // texte de palier — juste un petit lot versé dès que l'ELO l'atteint
+    // (vvCheckRewardMilestones, appelé en fin de partie).
+    if(milestone.reward){
+      const reached3=elo>=milestone.eloRequired;
+      const body=milestone.reward==='pearls'
+        ?(pearlAmountHTML?pearlAmountHTML(milestone.amount,1.6):milestone.amount+' perles')
+        :'<span class="vm-piece-emoji">'+pieceIcon(milestone.copyId,'n')+'</span><div class="vm-piece-name">×'+milestone.qty+'</div>';
+      html+='<div class="voie-milestone '+sideCls()+'"><div class="vm-card vm-reward '+(reached3?'reached':'locked-milestone')+'" style="text-align:center">'+body+'</div><div class="vm-center"><div class="vm-dot'+(reached3?' reached':'')+'"></div><div class="vm-elo-badge">'+milestone.eloRequired+' ELO</div></div><div style="flex:1;max-width:calc(50% - 40px)"></div></div>';
+      return;
+    }
+    if(!milestone.pieceId){const reached2=elo>=milestone.eloRequired;html+='<div class="voie-milestone '+sideCls()+'"><div class="vm-card '+(reached2?'reached':'locked-milestone')+'" style="text-align:center"><div class="vm-piece-name">'+milestone.label+'</div></div><div class="vm-center"><div class="vm-dot'+(reached2?' reached':'')+'"></div><div class="vm-elo-badge">'+milestone.eloRequired+' ELO</div></div><div style="flex:1;max-width:calc(50% - 40px)"></div></div>';return;}
     const pd=PIECES.find(p=>p.id===milestone.pieceId);if(!pd)return;
     const reached=elo>=milestone.eloRequired&&VV_UNLOCKED.has(milestone.pieceId);
     const isCurrent=!reached&&elo<milestone.eloRequired&&(idx===0||(UNLOCK_MILESTONES[idx-1]&&elo>=UNLOCK_MILESTONES[idx-1].eloRequired));
@@ -127,7 +164,7 @@ function renderVoiePage(){
     // ici : on ne compose pas son armée sur la Voie, on regarde ce qui reste
     // à décrocher. Le détail complet est dans la fiche de la pièce (bottom
     // sheet du builder, js/piece-card.js).
-    html+='<div class="voie-milestone"><div class="'+cardCls+'"><span class="vm-piece-emoji">'+pieceIcon(pd.id,'n')+'</span><div class="vm-piece-name">'+pd.name+'</div></div><div class="vm-center"><div class="'+dotCls+'"></div><div class="vm-elo-badge">'+(milestone.eloRequired===0?'Départ':milestone.eloRequired+' ELO')+'</div></div><div style="flex:1;max-width:calc(50% - 40px)"></div></div>';
+    html+='<div class="voie-milestone '+sideCls()+'"><div class="'+cardCls+'"><span class="vm-piece-emoji">'+pieceIcon(pd.id,'n')+'</span><div class="vm-piece-name">'+pd.name+'</div></div><div class="vm-center"><div class="'+dotCls+'"></div><div class="vm-elo-badge">'+(milestone.eloRequired===0?'Départ':milestone.eloRequired+' ELO')+'</div></div><div style="flex:1;max-width:calc(50% - 40px)"></div></div>';
   });
   route.innerHTML=html;
   voieAutoScroll(route);
@@ -135,9 +172,14 @@ function renderVoiePage(){
 
 // La Voie a été une face du cube ; c'est de nouveau une page à part entière,
 // ouverte par le bouton « Voie » posé à côté de l'ELO sur le menu principal
-// (js/cube-nav.js). D'où le retour explicite ci-dessous : une page en
-// surimpression n'a pas de flèche de cube pour en sortir.
-document.getElementById('voie-back')?.addEventListener('click',()=>{
+// (js/cube-nav.js). D'où le bouton de sortie explicite ci-dessous : une page
+// en surimpression n'a pas de flèche de cube pour en sortir.
+//
+// UN SEUL BOUTON « OK », épinglé en bas de l'écran (voir .voie-ok-bar dans
+// css/style.css), plutôt qu'un « ← Retour » dans l'en-tête : la Voie peut
+// être longue (une quinzaine de jalons), il fallait la remonter en entier
+// pour sortir. Le bouton reste sous le pouce, où qu'on ait défilé.
+document.getElementById('voie-ok')?.addEventListener('click',()=>{
   if(typeof goToMainMenu==='function')goToMainMenu();else showPage('page-armies');
 });
 

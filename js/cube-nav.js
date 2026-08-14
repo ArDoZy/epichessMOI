@@ -103,6 +103,7 @@
   function refreshFaceContent(name){
     if(name==='reserve'&&typeof renderReservePage==='function')renderReservePage();
     else if(name==='armees'&&typeof renderArmiesPage==='function')renderArmiesPage();
+    else if(name==='magasin'&&typeof renderMagasinPage==='function')renderMagasinPage();
     else if(name==='jouer'){
       if(typeof renderMenuChests==='function')renderMenuChests();
       if(typeof renderMenuIdentity==='function')renderMenuIdentity();

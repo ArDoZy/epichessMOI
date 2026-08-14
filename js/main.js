@@ -12,7 +12,7 @@
 // Chargé après data-pieces.js et accounts.js, avant tous les modules de page.
 // La plupart des autres modules lisent/écrivent les variables globales
 // définies ici (army, savedArmies, savedAiArmies, editingArmyId, builderMode,
-// currentArmyData, aiArmyData, VV_UNLOCKED, darkMode, etc.)
+// currentArmyData, aiArmyData, VV_UNLOCKED, etc.)
 // ================================================================
 
 // ----------------------------------------------------------------
@@ -28,7 +28,6 @@ let editingArmyId=null;
 let builderMode='player';
 let currentArmyData=null;
 let aiArmyData=null;
-let darkMode=true;
 let VV_UNLOCKED=new Set();
 // MODE TEST : ce n'est pas un interrupteur posé sur le jeu normal, c'est une
 // ADRESSE (voir juste en dessous). On y entre et on en sort par les réglages,
@@ -137,13 +136,6 @@ const svgX='<svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.
 const PEN_ICON='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="12" height="12"><path d="M17 3a2.83 2.83 0 0 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="M15 5l4 4"/></svg>';
 const TRASH_ICON='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="13" height="13"><path d="M4 6h16"/><path d="M9 6V4h6v2"/><path d="M6 6l1 14h10l1-14"/><path d="M10 10v7M14 10v7"/></svg>';
 const fmtDate=ts=>{const d=new Date(ts);return d.toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});};
-
-function toggleTheme(){
-  darkMode=!darkMode;
-  document.body.classList.toggle('light',!darkMode);
-  const t=document.getElementById('sp-theme');
-  if(t)t.classList.toggle('on',darkMode);
-}
 
 // ----------------------------------------------------------------
 // NOTIFICATIONS
@@ -379,5 +371,14 @@ document.getElementById('intro-close')?.addEventListener('click',()=>{
 // ----------------------------------------------------------------
 function initApp(){
   mountEmblems();
-  renderLoginPage();
+  // accountsBoot() peut entrer directement dans le jeu (compte déjà connu,
+  // voir js/accounts.js) et donc faire tourner le cube dès le démarrage —
+  // il lui faut #cube déjà repéré par cube-nav.js (son propre init(), posé
+  // sur DOMContentLoaded). initApp() tourne PENDANT le chargement du
+  // document (juste après le dernier <script>, avant DOMContentLoaded) :
+  // on attend donc le même évènement, en s'inscrivant APRÈS cube-nav.js
+  // (chargé plus tôt dans index.html) pour que son listener s'exécute
+  // d'abord.
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',accountsBoot);
+  else accountsBoot();
 }
