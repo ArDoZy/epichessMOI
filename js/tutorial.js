@@ -347,13 +347,13 @@ const TUTO_STEPS=[
     at:'.jouer-player',
   },
   {
-    text:'Et tout en bas, mes six coffres, du Pion au Roi. Celui qui <strong>brille</strong> '+
-         'est celui que votre prochaine victoire vous donnera&nbsp;; ceux qui sont allumés '+
-         'à sa gauche, vous les avez déjà eus dans cette série. Vous n\'avez rien à lire&nbsp;: '+
-         'regardez-les avant de cliquer COMBAT.<br>'+
-         'Et si vous êtes pressé, <strong>n\'importe lequel s\'achète en perles</strong>, '+
-         'quelle que soit votre série.',
-    at:'#jouer-chests',
+    text:'<strong>Série du jour</strong> ouvre mes six coffres, du Pion au Roi. Chaque '+
+         'victoire d\'affilée en décroche un de plus, et le suivant est toujours plus '+
+         'rare que le précédent&nbsp;— mais <strong>une seule défaite ferme la série '+
+         'jusqu\'au lendemain</strong>. Réfléchissez avant de relancer.<br>'+
+         'Et si vous êtes pressé, <strong>n\'importe lequel s\'achète en perles</strong> '+
+         'au <strong>Magasin</strong>, la face du cube à votre gauche.',
+    at:'#jouer-streak',
   },
   {
     // Le coffre de réapprovisionnement n'a plus de carte à montrer du doigt :

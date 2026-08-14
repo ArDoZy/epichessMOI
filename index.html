@@ -141,17 +141,23 @@
      toutes les pages. Seul le bouton de réglages reste épinglé en haut à
      droite (voir #settings-btn). -->
 
-<!-- PAGE LOGIN -->
-<div id="page-login" class="page active">
+<!-- CHOIX DU PSEUDO, À LA TOUTE PREMIÈRE VISITE UNIQUEMENT.
+     IL N'Y A PLUS DE PAGE DE CONNEXION. C'en était une (#page-login, avec la
+     classe `active` posée directement dans ce fichier), et comme elle était
+     donc affichée dès le premier octet de HTML, on la voyait CLIGNOTER à
+     chaque ouverture du jeu — le temps que les scripts se chargent et que le
+     compte enregistré soit reconnu (accountsBoot, js/accounts.js).
+     C'est maintenant un simple voile masqué par défaut (`display:none` en
+     dur ci-dessous, comme #intro-modal), que accountsBoot n'affiche QUE s'il
+     n'y a aucun pseudo enregistré. Un joueur qui revient ne le voit jamais,
+     pas même une image. -->
+<div class="pseudo-gate" id="pseudo-gate" style="display:none">
   <div class="login-wrap">
     <!-- L'emblème (ballon d'alchimiste couronné) est injecté par
          mountEmblems() dans js/main.js : un seul tracé, deux emplacements. -->
     <div class="login-logo"><div class="login-emblem"></div><h1>EPIC CHESS</h1><p>Un savant fou, dans un laboratoire d'échecs oublié, a fait naître des créatures de l'alchimie. Composez votre armée et affrontez d'autres esprits dérangés.</p></div>
     <!-- UN SEUL COMPTE, toujours connecté : pas de mot de passe, pas de
-         changement de compte, pas de déconnexion (voir js/accounts.js).
-         Cet écran ne s'affiche donc qu'une fois, à la toute première visite,
-         le temps de choisir un pseudo — ensuite le jeu démarre directement
-         dessus à chaque ouverture. -->
+         changement de compte, pas de déconnexion (voir js/accounts.js). -->
     <div class="login-card">
       <div class="lbl">Choisissez votre pseudo</div>
       <div class="iform">
@@ -160,11 +166,8 @@
       </div>
     </div>
 
-    <!-- Le texte de présentation, la FAQ indexable et la mention de
-         prototype vivaient ici, sous le formulaire : ils poussaient la
-         connexion vers le haut d'une page qu'il fallait dérouler. Tout est
-         désormais sur /info (info.html), atteignable par le bouton « i »
-         ci-dessous, discret et en bas à gauche de l'écran. -->
+    <!-- Le texte de présentation et la FAQ indexable sont sur /info
+         (info.html), atteignable par ce bouton « i » discret. -->
     <a class="login-info-btn" id="login-info-btn" href="/info" title="À propos d'Epic Chess" aria-label="À propos d'Epic Chess">i</a>
   </div>
 </div>
@@ -216,6 +219,28 @@
   </div>
 </div>
 
+<!-- FENÊTRE DE SÉRIE : l'avancement de la série de victoires du jour, une
+     colonne du Coffre Pion (en haut) au Coffre Roi (en bas). Ouverte par le
+     bouton « Série du jour » posé au-dessus de COMBAT sur le menu principal.
+     Elle remplace le rail de six coffres qui occupait le bas du menu : ici
+     elle a la place de montrer chaque palier en grand, avec le nombre de
+     victoires qu'il demande. Remplie par renderStreakModal()
+     (js/economy-ui.js), qui la fait aussi défiler jusqu'au palier en cours. -->
+<div class="streak-modal" id="streak-modal">
+  <div class="streak-panel" role="dialog" aria-modal="true" aria-labelledby="streak-title">
+    <div class="streak-head">
+      <div>
+        <div class="streak-title" id="streak-title">Série du jour</div>
+        <div class="streak-sub" id="streak-sub"></div>
+      </div>
+      <button class="streak-close" id="streak-close" aria-label="Fermer">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="streak-scroll" id="streak-scroll"></div>
+  </div>
+</div>
+
 
 <!-- ================================================================
      CUBE DE NAVIGATION : menu principal. Coquille visuelle uniquement :
@@ -255,8 +280,25 @@
           </div>
           <!-- COMBAT = affronter un autre joueur. C'est ce que les gens
                viennent chercher, donc c'est le gros bouton. S'entraîner
-               contre l'IA est une action secondaire, pas l'inverse. -->
+               contre l'IA est une action secondaire, pas l'inverse.
+
+               LE RAIL DES SIX COFFRES A QUITTÉ CE MENU. Il montrait la série
+               de victoires en bas de l'écran, avec le solde de perles et la
+               mention « Série · N victoires » : trois informations posées en
+               permanence sous le pouce, pour un état qu'on ne consulte qu'au
+               moment de décider si on relance une partie. Tout cela vit
+               maintenant DANS la fenêtre de série (bouton ci-dessous), qui a
+               la place de la montrer en grand — voir renderStreakModal()
+               dans js/economy-ui.js.
+
+               Le coffre de réapprovisionnement, lui, n'a jamais eu de carte
+               ici : il s'ouvre tout seul dès que son délai est écoulé (voir
+               dailyChestMaybeOpen, js/economy-ui.js). -->
           <div class="jouer-actions">
+            <button class="jouer-streak" id="jouer-streak">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h16v11a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 19V8Z"/><path d="M3 5.5h18V8H3z"/><path d="M12 8v12.5"/></svg>
+              <span id="jouer-streak-lbl">Série du jour</span>
+            </button>
             <button class="jouer-btn" id="cube-jouer-btn"><span>COMBAT</span></button>
             <div class="jouer-second">
               <button class="btn btn-text" id="b-vs-ia">Adversaires
@@ -264,25 +306,6 @@
               </button>
             </div>
           </div>
-          <!-- LES SIX COFFRES, en bas de l'écran, de gauche à droite du Pion
-               au Roi (renderMenuChests, js/economy-ui.js). Ils sont ici et
-               plus dans l'Armurerie parce qu'ils disent DEUX choses à la fois,
-               et les deux se lisent juste avant de cliquer COMBAT :
-                 · où en est la série de victoires — les coffres déjà ouverts
-                   dans la série sont allumés, celui que la prochaine victoire
-                   décrocherait est éclatant, les suivants sont éteints. La
-                   phrase « prochaine victoire : Coffre Fou » ne sert plus à
-                   rien : elle est dans l'image.
-                 · combien de perles coûte chacun — on peut toujours acheter
-                   n'importe lequel, quelle que soit la série. -->
-          <!-- LE COFFRE DE RÉAPPROVISIONNEMENT N'A PLUS DE CARTE. Il occupait
-               un tiers du menu pour un bouton qu'on cliquait sans réfléchir,
-               tous les jours, avant de passer à autre chose. Il S'OUVRE
-               MAINTENANT TOUT SEUL dès que le délai est écoulé et que le
-               joueur est disponible : à la connexion, ou en sortant d'une
-               partie s'il était en train de jouer (voir dailyChestMaybeOpen,
-               js/economy-ui.js). -->
-          <div class="jouer-chests" id="jouer-chests"></div>
         </div>
       </div>
     </div>
@@ -475,9 +498,9 @@
       </div>
       <!-- LE SOLDE DE PERLES N'EST PLUS ICI. On ne dépense pas de perles dans
            l'Armurerie : elles servent à acheter les coffres, et le solde est
-           déjà écrit sous les coffres, au menu principal, là où on décide
-           (voir .jc-bank, js/economy-ui.js). Répété ici, il ne faisait
-           qu'occuper le haut de l'écran. -->
+           déjà écrit dans l'en-tête du MAGASIN, là où on décide de dépenser
+           (voir renderMagasinPage, js/economy-ui.js). Répété ici, il ne
+           faisait qu'occuper le haut de l'écran. -->
       <!-- MODE ADMIN : les six récompenses en accès illimité. Vide (et
            masquée) hors mode admin, remplie par renderAdminChests()
            dans js/economy-ui.js. Le mode admin ne donne aucune pièce
@@ -491,8 +514,9 @@
            La file d'attente n'ajoutait qu'un aller-retour entre la fin de
            partie et l'Armurerie avant de voir sa récompense.
            Il n'y a plus non plus de « Boutique » ici : les six coffres et
-           leur prix en perles sont en bas du MENU PRINCIPAL (#jouer-chests),
-           là où ils racontent en même temps la série de victoires en cours. -->
+           leur prix en perles sont sur la face MAGASIN du cube
+           (#shop-chest-grid), et la série de victoires en cours se lit dans sa
+           propre fenêtre, ouverte depuis le menu principal (#streak-modal). -->
       <!-- Il n'y a plus de liste « Vos pièces » ici : le nombre d'exemplaires
            possédés se lit là où il sert à décider, c'est-à-dire sur la carte de
            chaque créature dans le builder (.pc-stock) et sous chaque pièce

@@ -118,8 +118,15 @@ const OPTIONAL_ASSET=/adversaires\/[a-z-]+\.png|backgrounds\/main-page\.png|ches
   console.log('\nEpic Chess · test de fumée\n');
   await page.goto('http://localhost:'+PORT+'/',{waitUntil:'domcontentloaded'});
 
-  await step('la page de connexion s\'affiche',async()=>{
-    await page.waitForSelector('#page-login.active',{timeout:8000});
+  // PREMIÈRE VISITE : le voile de choix du pseudo s'affiche. Il n'y a plus de
+  // page de connexion — c'était une page marquée `active` dans le HTML, donc
+  // visible dès le premier octet, et qui CLIGNOTAIT à chaque ouverture du jeu
+  // avant que le compte enregistré soit reconnu. Ce voile est masqué en dur et
+  // n'est montré que faute de pseudo (accountsBoot, js/accounts.js) — l'étape
+  // « le jeu reprend sans voile » plus bas vérifie l'autre moitié.
+  await step('le choix du pseudo s\'affiche à la première visite',async()=>{
+    await page.waitForSelector('#pseudo-gate.show',{timeout:8000});
+    if(await page.locator('#page-login').count())throw new Error('la page de connexion existe encore');
   });
 
   await step('l\'emblème est injecté',async()=>{
@@ -133,11 +140,12 @@ const OPTIONAL_ASSET=/adversaires\/[a-z-]+\.png|backgrounds\/main-page\.png|ches
     if(!/Pseudo/.test(t))throw new Error('message inattendu : '+t);
   });
 
-  await step('un compte se crée',async()=>{
+  await step('un compte se crée et le voile se referme',async()=>{
     await page.fill('#reg-u','SmokeTest');
     await page.click('#btn-reg');
     await page.waitForSelector('#intro-modal',{state:'visible',timeout:8000});
     await page.click('#intro-close');
+    if(await page.isVisible('#pseudo-gate'))throw new Error('le voile de pseudo reste affiché après création');
   });
 
   await step('le tutoriel démarre et se passe',async()=>{
@@ -148,11 +156,6 @@ const OPTIONAL_ASSET=/adversaires\/[a-z-]+\.png|backgrounds\/main-page\.png|ches
     if(await page.evaluate(()=>savedArmies.length)<1)throw new Error('aucune armée offerte');
   });
 
-  // LE COFFRE DE RÉAPPROVISIONNEMENT S'OUVRE TOUT SEUL. Il n'a plus de carte
-  // ni de bouton « Récupérer » sur le menu : dès que son délai est écoulé et
-  // que le joueur est disponible — ici, à la sortie du tutoriel — la cérémonie
-  // s'ouvre d'elle-même (voir dailyChestMaybeOpen, js/economy-ui.js). Le
-  // joueur ouvre le coffre lui-même, comme n'importe quel autre.
   await step('le coffre de réapprovisionnement s\'ouvre de lui-même',async()=>{
     await page.waitForSelector('#chest-modal.show',{timeout:8000});
     const titre=await page.textContent('#chest-title');
@@ -169,6 +172,31 @@ const OPTIONAL_ASSET=/adversaires\/[a-z-]+\.png|backgrounds\/main-page\.png|ches
     if(await page.evaluate(()=>dailyChestAvailable()))
       throw new Error('le coffre du jour est encore dû après son ouverture');
   });
+
+  // L'AUTRE MOITIÉ DU CORRECTIF : à la RÉOUVERTURE, le voile ne doit jamais
+  // apparaître, pas même le temps d'une image. On le vérifie deux fois : sur
+  // le HTML brut servi (l'élément part masqué, donc rien ne peut clignoter
+  // avant que les scripts tournent) et sur la page une fois lancée.
+  await step('à la réouverture, aucun voile de connexion ne clignote',async()=>{
+    const brut=await (await fetch('http://localhost:'+PORT+'/')).text();
+    const balise=(brut.match(/<div class="pseudo-gate"[^>]*>/)||[''])[0];
+    if(!balise)throw new Error('#pseudo-gate absent du HTML servi');
+    if(!/display:\s*none/.test(balise))
+      throw new Error('le voile n\'est pas masqué dans le HTML : il clignotera ('+balise+')');
+    if(/class="page active"/.test(brut))
+      throw new Error('une page est encore marquée active dans le HTML servi');
+    await page.goto('http://localhost:'+PORT+'/',{waitUntil:'domcontentloaded'});
+    await page.waitForSelector('#cube-jouer-btn',{state:'visible',timeout:8000});
+    if(await page.isVisible('#pseudo-gate'))throw new Error('le voile s\'affiche alors qu\'un pseudo est enregistré');
+    if(!await page.evaluate(()=>CUR_ACC==='SmokeTest'))throw new Error('le compte enregistré n\'est pas repris');
+  });
+
+
+  // LE COFFRE DE RÉAPPROVISIONNEMENT S'OUVRE TOUT SEUL. Il n'a plus de carte
+  // ni de bouton « Récupérer » sur le menu : dès que son délai est écoulé et
+  // que le joueur est disponible — ici, à la sortie du tutoriel — la cérémonie
+  // s'ouvre d'elle-même (voir dailyChestMaybeOpen, js/economy-ui.js). Le
+  // joueur ouvre le coffre lui-même, comme n'importe quel autre.
 
   await step('les réglages sont conservés',async()=>{
     await page.click('#settings-btn');
@@ -272,52 +300,90 @@ const OPTIONAL_ASSET=/adversaires\/[a-z-]+\.png|backgrounds\/main-page\.png|ches
     await page.evaluate(()=>{GS.gameOver=true;stopClockTick(GS);renderReservePage();renderVoiePage();renderArmiesPage();});
   });
 
-  // Les six coffres du menu principal portent DEUX informations à la fois
-  // (où en est la série, combien coûte chaque coffre) : un état de série mal
-  // calculé se verrait sur un écran que tout le monde regarde avant de jouer.
-  await step('les six coffres du menu montrent la série en cours, sans s\'acheter',async()=>{
-    const r=await page.evaluate(()=>{
+  // LA FENÊTRE DE SÉRIE remplace le rail de six coffres qui occupait le bas du
+  // menu principal : c'est elle qu'on regarde avant de relancer une partie, un
+  // état de série mal calculé s'y verrait tout de suite.
+  await step('la fenêtre de série montre les paliers du Pion (en haut) au Roi (en bas)',async()=>{
+    await page.evaluate(()=>{
       accSet('streak_lock_day',null);accSet('win_streak',2);accSet('pearls',300);
       showPage('face-jouer');renderMenuChests();
-      const cards=[...document.querySelectorAll('#jouer-chests .jc-chest')];
-      return{n:cards.length,
-        etats:cards.map(c=>c.className.match(/chest-(won|next|far)/)[1]),
-        ordre:cards.map(c=>c.dataset.chest),
-        // Achat retiré du menu principal (déménagé au Magasin) : ni bouton,
-        // ni prix ici.
-        boutons:document.querySelectorAll('#jouer-chests button').length,
-        prix:!!document.querySelector('#jouer-chests .jc-price')};
     });
-    if(r.n!==6)throw new Error(r.n+' coffres au lieu de 6');
+    // Le menu principal ne porte plus ni rail de coffres, ni solde de perles,
+    // ni mention « Série · N victoires » : tout est passé dans la fenêtre.
+    const menu=await page.evaluate(()=>({
+      rail:!!document.getElementById('jouer-chests'),
+      texteSerie:/Série\s*·/.test(document.querySelector('.jouer-menu').textContent),
+      perles:/perles/i.test(document.querySelector('.jouer-menu').textContent),
+      bouton:!!document.getElementById('jouer-streak'),
+    }));
+    if(menu.rail)throw new Error('le rail de coffres est encore sur le menu principal');
+    if(menu.texteSerie)throw new Error('la mention « Série · N victoires » est encore sur le menu');
+    if(menu.perles)throw new Error('le solde de perles est encore sur le menu principal');
+    if(!menu.bouton)throw new Error('le bouton « Série du jour » est absent du menu');
+
+    await page.click('#jouer-streak');
+    await page.waitForSelector('#streak-modal.show',{timeout:8000});
+    await page.waitForTimeout(400);
+    const r=await page.evaluate(()=>{
+      const rows=[...document.querySelectorAll('#streak-scroll .streak-row')];
+      const host=document.getElementById('streak-scroll');
+      const next=document.querySelector('#streak-scroll .streak-row.chest-next');
+      const hb=host.getBoundingClientRect(),nb=next?next.getBoundingClientRect():null;
+      return{
+        n:rows.length,
+        ordre:rows.map(x=>x.dataset.chest),
+        etats:rows.map(x=>x.className.match(/chest-(won|next|far)/)[1]),
+        // Le palier en jeu est amené dans la fenêtre visible.
+        nextVisible:!!nb&&nb.top>=hb.top-2&&nb.bottom<=hb.bottom+2,
+      };
+    });
+    if(r.n!==6)throw new Error(r.n+' paliers au lieu de 6');
+    // Pion en PREMIER dans le DOM = tout en haut ; Roi en dernier = tout en bas.
     if(r.ordre.join(',')!=='pion,cavalier,fou,tour,dame,roi')throw new Error('ordre : '+r.ordre.join(','));
     if(r.etats.join(',')!=='won,won,next,far,far,far')throw new Error('états : '+r.etats.join(','));
-    if(r.boutons)throw new Error('coffres encore cliquables sur le menu principal');
-    if(r.prix)throw new Error('prix encore affiché sur le menu principal');
+    if(!r.nextVisible)throw new Error('la fenêtre ne s\'ouvre pas sur le palier en cours');
+    await page.click('#streak-close');
+    await page.waitForSelector('#streak-modal.show',{state:'hidden',timeout:8000});
   });
 
-  // LA SÉRIE EST QUOTIDIENNE : une défaite verrouille le rail du menu pour le
-  // reste de la journée (streakLockedToday, js/economy.js) — plus aucun
-  // coffre gagné, et le rail disparaît entièrement (renderMenuChests).
+  // LA SÉRIE EST QUOTIDIENNE : une défaite la ferme pour le reste de la
+  // journée (streakLockedToday, js/economy.js) — plus aucun coffre gagné, plus
+  // aucun palier « prochain », et la fenêtre s'ouvre sur le début.
   await step('une défaite verrouille la série jusqu\'au lendemain',async()=>{
     const r=await page.evaluate(()=>{
       accSet('win_streak',3);accSet('streak_lock_day',null);
       const report=economySettle('loss',{board:[],promoGains:{}});
-      showPage('face-jouer');renderMenuChests();
+      renderStreakModal();
       return{
         streakAfterLoss:report.streak,
         locked:streakLockedToday(),
-        railEmpty:document.getElementById('jouer-chests').innerHTML.trim()===''
+        next:document.querySelectorAll('#streak-scroll .streak-row.chest-next').length,
+        sub:document.getElementById('streak-sub').textContent,
       };
     });
     if(r.streakAfterLoss!==0)throw new Error('série non remise à zéro : '+r.streakAfterLoss);
     if(!r.locked)throw new Error('la série n\'est pas verrouillée après une défaite');
-    if(!r.railEmpty)throw new Error('le rail de coffres est encore affiché après une défaite');
+    if(r.next)throw new Error('un palier est encore marqué « prochain » alors que la série est perdue');
+    if(!/perdue/i.test(r.sub))throw new Error('la fenêtre ne dit pas que la série est perdue : '+r.sub);
     // Une victoire le MÊME jour ne doit rendre aucun coffre.
     const r2=await page.evaluate(()=>{
       const report=economySettle('win',{board:[],promoGains:{}});
       return{chest:report.chest,streak:report.streak};
     });
     if(r2.chest)throw new Error('un coffre a été gagné malgré le verrou du jour');
+    // Série terminée : les six paliers sont acquis, la fenêtre ouvre en haut.
+    const r3=await page.evaluate(()=>{
+      accSet('streak_lock_day',null);accSet('win_streak',6);
+      renderStreakModal();
+      return{
+        won:document.querySelectorAll('#streak-scroll .streak-row.chest-won').length,
+        next:document.querySelectorAll('#streak-scroll .streak-row.chest-next').length,
+        haut:document.getElementById('streak-scroll').scrollTop,
+      };
+    });
+    if(r3.won!==6)throw new Error('série terminée : '+r3.won+' paliers acquis au lieu de 6');
+    if(r3.next)throw new Error('série terminée : un palier est encore « prochain »');
+    if(r3.haut>2)throw new Error('série terminée : la fenêtre ne s\'ouvre pas sur le début');
     // Reset propre pour la suite du parcours (achat de coffre plus bas).
     await page.evaluate(()=>{accSet('streak_lock_day',null);accSet('win_streak',0);});
   });

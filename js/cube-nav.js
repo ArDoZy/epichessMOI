@@ -239,7 +239,6 @@
   // ---- Intégration avec showPage() -------------------------------
   function cubeOnShowPage(id){
     if(!cube)return;
-    if(id==='page-login'){ document.body.classList.remove('cube-active','nav-overlay'); locked=false; return; }
     if(id==='face-jouer'){ goToMainMenu(); return; }
     const face=EMBED[id];
     if(face==='armees'||face==='reserve'){

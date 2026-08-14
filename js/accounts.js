@@ -3,7 +3,7 @@
 // ================================================================
 // UN SEUL COMPTE, toujours connecté : pas de mot de passe, pas de liste de
 // comptes, pas de changement de compte, pas de déconnexion. Le pseudo choisi
-// à la première visite (#page-login) est mémorisé (CUR_USERNAME_KEY) et le
+// à la première visite (#pseudo-gate) est mémorisé (CUR_USERNAME_KEY) et le
 // jeu démarre dessus directement à chaque ouverture suivante — c'est initApp()
 // (js/main.js) qui décide, au chargement, entre l'écran de choix du pseudo et
 // l'entrée directe dans le jeu (voir accountsBoot ci-dessous).
@@ -57,8 +57,27 @@ function loadUsername(){
 }
 
 // ----------------------------------------------------------------
-// ÉCRAN DE PREMIÈRE VISITE : choix du pseudo, une seule fois
+// VOILE DE PREMIÈRE VISITE : choix du pseudo, une seule fois
 // ----------------------------------------------------------------
+// Ce n'est PAS une page (il n'y a plus de page de connexion) : c'est un voile
+// masqué par défaut dans index.html, qu'on n'affiche que s'il n'y a aucun
+// pseudo enregistré. Une page marquée `active` dans le HTML se serait vue
+// clignoter à chaque ouverture du jeu, avant même que les scripts aient pu
+// reconnaître le compte.
+function pseudoGate(){return document.getElementById('pseudo-gate');}
+function showPseudoGate(){
+  const g=pseudoGate();
+  if(!g)return;
+  g.style.display='flex';
+  g.classList.add('show');
+  setTimeout(()=>document.getElementById('reg-u')?.focus(),60);
+}
+function hidePseudoGate(){
+  const g=pseudoGate();
+  if(!g)return;
+  g.classList.remove('show');
+  g.style.display='none';
+}
 document.getElementById('reg-u')?.addEventListener('keydown',e=>{
   if(e.key==='Enter')document.getElementById('btn-reg').click();
 });
@@ -66,16 +85,17 @@ document.getElementById('btn-reg')?.addEventListener('click',()=>{
   const u=document.getElementById('reg-u').value.trim();
   if(u.length<2||u.length>20){showNotif('Pseudo : 2 à 20 caractères.');return;}
   localStorage.setItem(CUR_USERNAME_KEY,u);
+  hidePseudoGate();
   enterAccount(u,true);
 });
 
 // Appelée une seule fois au chargement (voir initApp, js/main.js) : entre
-// directement dans le jeu si un pseudo est déjà enregistré, sinon affiche
-// l'écran de choix du pseudo (#page-login, resté la page active par défaut
-// dans le HTML).
+// directement dans le jeu si un pseudo est déjà enregistré, sinon affiche le
+// voile de choix du pseudo.
 function accountsBoot(){
   const u=loadUsername();
-  if(u)enterAccount(u,false);
+  if(u){hidePseudoGate();enterAccount(u,false);}
+  else showPseudoGate();
 }
 
 function enterAccount(username,isNewAccount){
