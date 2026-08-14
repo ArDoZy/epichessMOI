@@ -851,9 +851,15 @@ body.has-acc .builder-inner{padding-top:var(--page-top)}
 .aio-timer-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--gold));border-radius:2px;transition:width 1s linear}
 
 /* [VOIE] ======================================================= */
-/* padding-bottom : dégage la place du bouton OK épinglé en bas de l'écran
-   (.voie-ok-bar), sinon le dernier jalon se retrouve caché dessous. */
-#page-voie{padding:clamp(14px,3vw,28px) clamp(12px,3vw,20px) calc(84px + var(--safe-b));min-height:100vh;background:var(--bg)}
+/* COLONNE FLEX PLEINE HAUTEUR : .voie-scroll défile, .voie-ok-bar reste au
+   bas de l'écran. Le bouton n'est PAS en position:fixed — l'animation
+   d'entrée de .page.active laisse un transform permanent sur la page, qui en
+   ferait le bloc conteneur du fixed et collerait le bouton au bas du contenu
+   (voir le commentaire dans index.html). */
+#page-voie{padding:0;min-height:100vh;background:var(--bg)}
+#page-voie.active{display:flex;flex-direction:column;overflow:hidden}
+.voie-scroll{flex:1 1 auto;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;
+  padding:clamp(14px,3vw,28px) clamp(12px,3vw,20px) 6px}
 .voie-inner{max-width:860px;margin:0 auto}
 .voie-hdr{display:flex;align-items:center;gap:12px;margin-bottom:24px;flex-wrap:wrap}
 .voie-title{font-family:var(--f-display);font-size:clamp(20px,4.5vw,26px);font-weight:900;flex:1;color:var(--gold)}
@@ -913,12 +919,12 @@ body.has-acc .builder-inner{padding-top:var(--page-top)}
 .vm-card.vm-reward .vm-piece-emoji{font-size:22px;margin-bottom:2px}
 .vm-card.vm-reward .vm-piece-name{margin-bottom:0}
 
-/* Bouton de sortie de la Voie, épinglé en bas de l'écran (voir index.html /
-   js/voie.js). Position fixed : #page-voie.active est déjà position:fixed
-   avec son propre scroll (.page.active), donc ce bouton reste sous le pouce
-   quel que soit le défilement, sans dépendre de la géométrie du contenu. */
-.voie-ok-bar{position:fixed;left:50%;bottom:calc(16px + var(--safe-b));transform:translateX(-50%);
-  z-index:210;width:min(100% - 40px,420px);height:52px;border-radius:14px;
+/* Bouton de sortie de la Voie : DERNIER ÉLÉMENT DE LA COLONNE FLEX de
+   #page-voie (voir plus haut). Il ne défile donc jamais, sans position:fixed
+   — que le transform permanent de .page.active rendrait inopérant. */
+.voie-ok-bar{flex:0 0 auto;align-self:center;
+  width:min(100% - 40px,420px);height:52px;border-radius:14px;
+  margin:8px auto calc(14px + var(--safe-b));
   font-family:var(--f-ui);font-weight:800;font-size:16px;letter-spacing:.5px}
 
 /* [ADMIN] ======================================================= */
@@ -1425,12 +1431,18 @@ body.light .pmv-dark{background:#c3bdae}
    grille plutôt qu'en scène. */
 .shop-wrap{position:absolute;inset:0;overflow-y:auto;padding:var(--page-top) 22px var(--page-bottom)}
 .shop-inner{max-width:640px;margin:0 auto}
-.shop-hdr{display:flex;align-items:baseline;justify-content:space-between;gap:14px;
+.shop-hdr{display:flex;align-items:center;justify-content:space-between;gap:14px;
   flex-wrap:wrap;margin-bottom:24px}
 .shop-title{font-family:var(--f-display);font-size:clamp(22px,4vw,32px);font-weight:900;color:var(--gold2)}
-.shop-bank{font-size:15px}
-.shop-bank .pearl-amt{font-size:16px}
-.shop-bank span{color:var(--muted);font-family:var(--f-ui);font-weight:400;font-size:12px;margin-left:4px}
+/* Le solde tient sur UNE ligne, icône, nombre et unité alignés sur le même
+   axe : en baseline avec un simple margin, le mot « perles » se décrochait
+   sous le nombre dès que l'en-tête se resserrait. */
+.shop-bank{display:inline-flex;align-items:center;gap:6px;white-space:nowrap;
+  padding:7px 14px;border-radius:12px;border:1px solid var(--border2);
+  background:rgba(255,255,255,.04)}
+.shop-bank .pearl-amt{font-size:16px;line-height:1}
+.shop-bank>span{color:var(--muted);font-family:var(--f-ui);font-weight:600;
+  font-size:11px;text-transform:uppercase;letter-spacing:.08em;line-height:1}
 /* Deux rangées de trois, toujours — pas de repli en une colonne : la grille
    reste explicitement à 3 colonnes, seule la taille des cartes se resserre
    sur petit écran (voir la section [RESPONSIVE] plus bas). */
@@ -1444,19 +1456,24 @@ body.light .pmv-dark{background:#c3bdae}
 .shop-chest .chest-lg{margin:0 auto}
 .shop-chest-name{font-family:var(--f-title);font-weight:800;font-size:clamp(12px,3vw,15px);
   color:var(--gold2);text-align:center}
-.shop-chest .chest-rar{text-align:center}
 .shop-chest-price{margin-top:2px}
 .shop-chest-price .pearl-amt{font-size:13px}
 .shop-chest.jc-poor{opacity:.62}
 .shop-chest.jc-poor:hover{opacity:.85}
-/* Le Coffre Pion ne montre plus la statuette qui se brise à l'ouverture (voir
-   js/chest-break.js) — cette mise en scène reste réservée à une vraie
-   victoire. Ici il ne garde que sa pièce, un simple pion, teinté au filtre
-   pour rester dans le ton métal/or des autres coffres plutôt que dans les
-   couleurs vives d'une fiche de pièce. */
-.chest-pawn{display:flex;align-items:center;justify-content:center;background:none}
-.chest-pawn .pc-icon{filter:grayscale(.55) sepia(.35) saturate(1.6) brightness(.92)
-  drop-shadow(0 8px 16px rgba(0,0,0,.5));}
+/* Le Coffre Pion montre LA STATUETTE de sa première planche
+   (assets/chests/pion/01-intact.webp, l'image qui ouvre la séquence de bris —
+   voir js/chest-break.js, qui est intacte et se joue toujours à l'ouverture).
+   `mix-blend-mode:screen` est le filtre qui « enlève le reste » : sur cette
+   planche, le fond et le socle sont noirs, et le noir est neutre en fusion
+   screen — il disparaît donc entièrement, ne laissant que le pion clair. */
+/* La statuette occupe une bande étroite au milieu d'une planche 2:3 : on
+   agrandit l'image (height:190%) et on la recale pour amener CE pion — et non
+   le centre de la planche — au centre de la tuile, socle et fond hors cadre. */
+.chest-pawn{background:none;overflow:hidden}
+.chest-pawn img{position:absolute;left:50%;top:50%;width:auto;height:190%;
+  transform:translate(-50%,-46%);
+  mix-blend-mode:screen;pointer-events:none;
+  filter:brightness(1.06) contrast(1.04) drop-shadow(0 6px 14px rgba(0,0,0,.55))}
 @media(max-width:480px){
   .shop-chest-grid{gap:8px}
   .shop-chest{padding:14px 4px 12px;border-radius:14px}
@@ -1465,7 +1482,6 @@ body.light .pmv-dark{background:#c3bdae}
   .shop-chest .chest-lg .chest-body{width:84px;height:44px;top:29px;border-width:2px}
   .shop-chest .chest-lg .chest-lock{width:19px;height:22px;margin-left:-9.5px;top:21px;border-width:2px}
   .shop-chest .chest-lg .chest-lock::after{width:5px;height:8px;margin-left:-2.5px;top:6px}
-  .shop-chest.chest-pawn .pc-icon,.chest-pawn .pc-icon{width:52px!important;height:52px!important}
   .shop-chest-price .pearl-amt{font-size:11px}
 }
 

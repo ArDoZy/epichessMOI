@@ -201,8 +201,11 @@ document.getElementById('voie-ok')?.addEventListener('click',()=>{
 // Les fois suivantes, inutile de refaire ce voyage à chaque fois : la page
 // s'ouvre directement sur le jalon EN COURS — sans quoi revoir sa
 // progression coûtait, à chaque passage, un défilement jusqu'en bas.
+// Ce n'est plus #page-voie qui défile : la page est une colonne flex (pour
+// garder le bouton OK au bas de l'écran, voir [VOIE] dans css/style.css) et
+// c'est .voie-scroll, son premier élément, qui porte le défilement.
 function voieScrollHost(){
-  return document.getElementById('page-voie')||document.scrollingElement;
+  return document.getElementById('voie-scroll')||document.scrollingElement;
 }
 
 function voieAutoScroll(){
