@@ -529,16 +529,24 @@
 
 <!-- PAGE VOIE : page à part entière, ouverte par le bouton « Voie » posé à
      côté de l'ELO sur le menu principal. -->
+<!-- LE BOUTON « OK » NE PEUT PAS ÊTRE EN position:fixed ICI. `.page.active`
+     porte une animation d'entrée dont la dernière image laisse un `transform`
+     posé en permanence (animation-fill-mode:both) : cet élément devient donc
+     le bloc conteneur de tout descendant en position:fixed, qui se retrouve
+     collé au bas du CONTENU (des milliers de pixels plus bas) au lieu de
+     l'écran. D'où cette structure : la page est une COLONNE FLEX pleine
+     hauteur, seule .voie-scroll défile, et le bouton est le dernier élément
+     de la colonne — il reste sous les yeux quel que soit le défilement, sans
+     dépendre du positionnement fixe. -->
 <div id="page-voie" class="page">
-<div class="voie-inner">
-  <div class="voie-hdr"><div class="voie-title">Voie des Victoires</div></div>
-  <div class="voie-elo-banner" id="voie-elo-banner"></div>
-  <div class="voie-route" id="voie-route"></div>
-  <div style="text-align:left;margin-top:16px;padding-bottom:20px"><button class="btn btn-ghost" id="voie-scroll-top" style="font-size:11px">↓ Retour au début</button></div>
+<div class="voie-scroll" id="voie-scroll">
+  <div class="voie-inner">
+    <div class="voie-hdr"><div class="voie-title">Voie des Victoires</div></div>
+    <div class="voie-elo-banner" id="voie-elo-banner"></div>
+    <div class="voie-route" id="voie-route"></div>
+    <div style="text-align:left;margin-top:16px;padding-bottom:20px"><button class="btn btn-ghost" id="voie-scroll-top" style="font-size:11px">↓ Retour au début</button></div>
+  </div>
 </div>
-<!-- BOUTON DE SORTIE, épinglé en bas de l'écran tant qu'on est sur la Voie
-     (voir js/voie.js) : elle peut être longue, un « ← Retour » dans l'en-tête
-     obligeait à la remonter en entier pour sortir. -->
 <button class="btn btn-gold voie-ok-bar" id="voie-ok">OK</button>
 </div>
 

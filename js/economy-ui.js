@@ -192,14 +192,9 @@ function chestPromiseHTML(chest){
 // admin, il passe directement par ici. Le contenu est tiré MAINTENANT, donc
 // fermer la fenêtre en cours de route ne permet pas de relancer le tirage
 // jusqu'à obtenir mieux.
-// forcePlain : force la cérémonie à couvercle même pour un coffre équipé
-// d'une séquence de bris (le Pion, voir js/chest-break.js). Utilisé par le
-// Magasin (buyChestFromShop) : les six coffres s'y ouvrent de la même façon
-// élégante et uniforme, la mise en scène spectaculaire du Pion restant
-// réservée à une victoire méritée.
-function chestOpenNow(chestId,onClose,forcePlain){
+function chestOpenNow(chestId,onClose){
   const chest=chestById(chestId);
-  showChestCeremony(chest,chestRoll(chest.id),true,onClose||function(){},forcePlain);
+  showChestCeremony(chest,chestRoll(chest.id),true,onClose||function(){});
 }
 
 // Retour à l'Armurerie après une ouverture lancée depuis l'Armurerie.
@@ -257,31 +252,34 @@ function buyChestFromShop(chestId){
   showConfirmModal('Acheter un '+chest.name+' pour '+price+' perles ?',()=>{
     if(!pearlBuyChest(chest.id))return;
     if(typeof playSound==='function')playSound('promo');
-    // forcePlain (dernier argument) : même cérémonie à couvercle pour les six
-    // coffres, y compris le Pion — voir la note sur chestOpenNow plus haut.
-    chestOpenNow(chest.id,renderMagasinPage,true);
+    // Cérémonie d'ouverture normale : un Coffre Pion acheté ici se BRISE
+    // exactement comme un Coffre Pion gagné (js/chest-break.js).
+    chestOpenNow(chest.id,renderMagasinPage);
   },{okLabel:'Acheter',cancelLabel:'Annuler',okClass:'btn-gold'});
 }
 
-// La carte du Magasin, en grand. Le Coffre Pion n'y montre plus la statuette
-// qu'il brise à l'ouverture (voir js/chest-break.js) : cette mise en scène
-// reste réservée à une victoire méritée. Ici, comme les cinq autres, il ne
-// garde que sa pièce — un simple pion, teinté par un filtre CSS pour rester
-// dans le ton métal/or des coffres plutôt que dans les couleurs vives de la
-// fiche de pièce.
+// La carte du Magasin, en grand. Le Coffre Pion ne s'y montre pas sous la
+// forme du coffre à couvercle dessiné en CSS : il montre LA STATUETTE de sa
+// première planche (assets/chests/pion/01-intact.webp, l'image qui ouvre la
+// séquence de bris — voir js/chest-break.js), dont le socle et le fond noir
+// sont effacés par un filtre CSS (mix-blend-mode:screen, voir .chest-pawn)
+// pour ne garder que le pion. La séquence de bris elle-même est INTACTE et se
+// joue normalement à l'ouverture, ici comme après une victoire.
 function magasinChestVisual(chest){
   if(chest.id!=='pion')return chestVisual(chest,'chest-lg');
   return '<div class="chest chest-lg chest-pawn" style="--chest-c:'+chest.color+'">'+
-    pieceIcon('std-pawn','n',5.4)+
+    '<img src="assets/chests/pion/01-intact.webp" alt="" draggable="false">'+
   '</div>';
 }
+// La carte ne dit que ce qu'il faut pour décider : quel coffre, et combien il
+// coûte. Le nombre de lots et la probabilité de pièce inédite
+// (chestPromiseHTML) restent réservés aux cartes du mode test.
 function magasinChestCardHTML(chest){
   const price=chestPearlPrice(chest.id);
   const afford=pearlInfinite()||pearlBalance()>=price;
   return '<button class="shop-chest'+(afford?'':' jc-poor')+'" data-chest="'+chest.id+'" style="--chest-c:'+chest.color+'">'+
     magasinChestVisual(chest)+
     '<div class="shop-chest-name">'+escH(chest.name)+'</div>'+
-    chestPromiseHTML(chest)+
     '<div class="shop-chest-price">'+pearlAmountHTML(price,1.15)+'</div>'+
   '</button>';
 }
@@ -442,7 +440,7 @@ function chestLotRank(a,b){
 // applyOnClose : true pour un vrai coffre (le contenu est crédité au moment
 // où le joueur empoche), false quand le gain a déjà été appliqué ailleurs.
 let _chestState=null;
-function showChestCeremony(chest,lots,applyOnClose,onClose,forcePlain){
+function showChestCeremony(chest,lots,applyOnClose,onClose){
   const modal=document.getElementById('chest-modal');if(!modal)return;
   // Triés du moins bon au meilleur : la révélation se joue lot par lot, la
   // meilleure surprise doit donc arriver en dernier, pas au hasard de l'ordre
@@ -466,7 +464,7 @@ function showChestCeremony(chest,lots,applyOnClose,onClose,forcePlain){
   // chestBreakReady dit non tant que les images ne sont pas chargées, et non
   // pour toujours si elles manquent du dépôt : dans les deux cas on retombe
   // sur le couvercle, et la cérémonie se joue comme avant.
-  const canBreak=!forcePlain&&typeof chestBreakReady==='function'&&chestBreakReady(chest.id);
+  const canBreak=typeof chestBreakReady==='function'&&chestBreakReady(chest.id);
   visual.style.display=canBreak?'none':'';
   // Un coffre qu'on brise se joue sur FOND NOIR PLEIN, et non par-dessus
   // l'écran de fin de partie qu'on devinerait derrière : les sept images ont

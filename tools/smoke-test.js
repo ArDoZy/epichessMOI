@@ -322,7 +322,7 @@ const OPTIONAL_ASSET=/adversaires\/[a-z-]+\.png|backgrounds\/main-page\.png|ches
     await page.evaluate(()=>{accSet('streak_lock_day',null);accSet('win_streak',0);});
   });
 
-  await step('le Magasin vend les six coffres, en grand, et le Pion n\'y montre pas sa statuette',async()=>{
+  await step('le Magasin vend les six coffres, le Pion sous sa statuette et sans fiche technique',async()=>{
     await page.evaluate(()=>{accSet('pearls',5000);showPage('face-jouer');});
     // Navigue réellement sur la face « magasin » (et non un simple appel de
     // renderMagasinPage() en coulisses) : sans la rotation du cube, la face
@@ -334,30 +334,70 @@ const OPTIONAL_ASSET=/adversaires\/[a-z-]+\.png|backgrounds\/main-page\.png|ches
       const pion=document.querySelector('#shop-chest-grid .shop-chest[data-chest="pion"]');
       return{
         n:cards.length,
-        pionHasPawnIcon:!!pion&&!!pion.querySelector('.chest-pawn .pc-icon'),
+        // Le Pion porte la planche 01-intact, pas le coffre dessiné en CSS.
+        pionImg:(pion&&pion.querySelector('.chest-pawn img'))
+          ?pion.querySelector('.chest-pawn img').getAttribute('src'):'',
         pionHasLidChest:!!pion&&!!pion.querySelector('.chest-lid'),
+        // Ni nombre de lots ni probabilité de pièce inédite sur les cartes.
+        fiches:document.querySelectorAll('#shop-chest-grid .chest-rar').length,
+        prix:document.querySelectorAll('#shop-chest-grid .shop-chest-price').length,
       };
     });
     if(r.n!==6)throw new Error(r.n+' coffres au lieu de 6 dans le Magasin');
-    if(!r.pionHasPawnIcon)throw new Error('le Coffre Pion du Magasin ne montre pas l\'icône du pion');
+    if(!/01-intact\.webp$/.test(r.pionImg||''))throw new Error('le Coffre Pion du Magasin ne montre pas sa statuette : '+r.pionImg);
     if(r.pionHasLidChest)throw new Error('le Coffre Pion du Magasin montre encore le coffre à couvercle dessiné');
-    // Achète un Coffre Pion depuis le Magasin, sans que la séquence de bris
-    // (chest-break.js) ne se déclenche : ouverture directe, cérémonie à
-    // couvercle comme les cinq autres.
+    if(r.fiches)throw new Error(r.fiches+' fiches technique (lots / % inédite) encore affichées dans le Magasin');
+    if(r.prix!==6)throw new Error('prix manquants dans le Magasin : '+r.prix+'/6');
+    // Achète un Coffre Pion : la SÉQUENCE DE BRIS doit se jouer, exactement
+    // comme pour un Coffre Pion gagné en partie (js/chest-break.js).
     await page.click('#shop-chest-grid .shop-chest[data-chest="pion"]');
     await page.click('#confirm-ok');
     await page.waitForSelector('#chest-modal.show',{timeout:8000});
+    await page.waitForTimeout(400);
     const state=await page.evaluate(()=>({
-      pbBreak:document.getElementById('chest-break')&&!document.getElementById('chest-break').hidden,
-      visualShown:getComputedStyle(document.getElementById('chest-visual')).display!=='none',
+      pbBreak:!document.getElementById('chest-break').hidden,
+      frames:document.querySelectorAll('#chest-break .pb-frame').length,
     }));
-    if(state.pbBreak)throw new Error('la séquence de bris du Pion s\'est déclenchée depuis le Magasin');
-    if(!state.visualShown)throw new Error('le coffre à couvercle n\'est pas affiché pour l\'achat du Magasin');
-    for(let i=0;i<10&&await page.isVisible('#chest-modal.show');i++){
-      await page.click('#chest-visual');
-      await page.waitForTimeout(300);
+    if(!state.pbBreak||state.frames!==7)
+      throw new Error('la séquence de bris du Pion ne se joue pas depuis le Magasin (frames : '+state.frames+')');
+    // Frappe jusqu'à l'explosion, puis déroule la révélation des lots.
+    for(let i=0;i<40&&await page.isVisible('#chest-modal.show');i++){
+      await page.click('#chest-modal');
+      await page.waitForTimeout(650);
     }
     await page.waitForSelector('#chest-modal.show',{state:'hidden',timeout:8000});
+  });
+
+  // Le bouton OK de la Voie doit rester à l'écran quel que soit le
+  // défilement : il ne peut pas être en position:fixed (l'animation d'entrée
+  // de .page.active laisse un transform qui en ferait le bloc conteneur), il
+  // est donc le dernier élément d'une colonne flex pleine hauteur.
+  await step('le bouton OK de la Voie reste en bas de l\'écran quand on défile',async()=>{
+    await page.evaluate(()=>{renderVoiePage();showPage('page-voie');});
+    await page.waitForSelector('#page-voie.active',{timeout:8000});
+    await page.waitForTimeout(500);
+    const r=await page.evaluate(()=>{
+      const host=document.getElementById('voie-scroll');
+      const btn=document.getElementById('voie-ok');
+      const vh=innerHeight;
+      const mesure=()=>{const b=btn.getBoundingClientRect();return{top:b.top,bottom:b.bottom};};
+      host.scrollTop=0;
+      const haut=mesure();
+      host.scrollTop=host.scrollHeight;              // tout en bas
+      const bas=mesure();
+      return{haut,bas,vh,scrollable:host.scrollHeight>host.clientHeight+40,
+        retourVisible:!!document.getElementById('voie-back')};
+    });
+    if(!r.scrollable)throw new Error('la Voie ne défile pas, le test ne prouve rien');
+    if(r.retourVisible)throw new Error('le bouton « Retour » est encore là');
+    // Immobile d'un bout à l'autre du défilement, et dans le bas de l'écran.
+    if(Math.abs(r.haut.top-r.bas.top)>1)
+      throw new Error('le bouton OK bouge avec le défilement ('+r.haut.top+' → '+r.bas.top+')');
+    if(r.haut.bottom>r.vh+1||r.haut.bottom<r.vh-90)
+      throw new Error('le bouton OK n\'est pas au bas de l\'écran (bas à '+Math.round(r.haut.bottom)+' pour une hauteur de '+r.vh+')');
+    await page.click('#voie-ok');
+    await page.waitForTimeout(400);
+    if(await page.isVisible('#page-voie.active'))throw new Error('le bouton OK ne referme pas la Voie');
   });
 
   // Les schémas de déplacement sont DÉDUITS du moteur (js/piece-moves.js) :
