@@ -1,14 +1,13 @@
 // ================================================================
-// SETTINGS-ADMIN.JS : Panneau de réglages (thème, volume) + Mode Administrateur
+// SETTINGS-ADMIN.JS : Panneau de réglages (volume)
 // ================================================================
 // Contient : le bouton et panneau flottant de réglages (#settings-btn /
-// #settings-panel) qui contrôle le thème clair/sombre et LE volume (un seul,
-// voir plus bas), et l'entree du mode Administrateur (bouton #sp-admin) qui
-// ouvre des coffres illimités dans l'Armurerie et met les parties hors
-// classement, pour tester/démontrer le jeu sans fausser la progression.
+// #settings-panel) qui contrôle LE volume (un seul, voir plus bas). Le jeu
+// n'a qu'un thème (sombre) : il n'y a donc plus de réglage d'apparence ici.
+// Le mode test (/?test, voir plus bas dans main.js) reste utilisable par son
+// adresse, mais n'a plus d'entrée dans ce panneau.
 //
-// Dépendances : main.js (toggleTheme, ADMIN_MODE, updAll),
-// accounts.js (updateCab, CUR_ACC), economy-ui.js (renderReservePage),
+// Dépendances : main.js (ADMIN_MODE),
 // rules-engine.js (_soundEnabled), combat-music.js (window._musicGain).
 //
 // Si vous ajoutez un nouveau réglage : ajoutez sa ligne .sp-row dans
@@ -29,11 +28,10 @@ let _musicVol=MUSIC_RATIO;
 // ----------------------------------------------------------------
 // PERSISTANCE DES RÉGLAGES
 // ----------------------------------------------------------------
-// Ces trois réglages ne sont PAS stockés par compte (accGet/accSet) : ils
-// s'appliquent avant même qu'un compte soit connecté, et le thème doit être
-// posé sur la page de connexion. Une seule clé localStorage globale, donc.
-// Sans elle, chaque rechargement remettait le thème en sombre et les volumes
-// à leur valeur d'usine, y compris pour quelqu'un qui avait coupé le son.
+// Ce réglage n'est PAS stocké par compte (accGet/accSet) : il s'applique
+// avant même qu'un compte soit connecté, sur la page de connexion. Une seule
+// clé localStorage globale, donc. Sans elle, chaque rechargement remettait le
+// volume à sa valeur d'usine, y compris pour quelqu'un qui avait coupé le son.
 const PREFS_KEY='mc_prefs_v1';
 function loadPrefs(){
   try{return JSON.parse(localStorage.getItem(PREFS_KEY)||'{}')||{};}catch(e){return{};}
@@ -56,7 +54,6 @@ function applySfxVol(v){
   const panel=document.getElementById('settings-panel');
   btn.addEventListener('click',e=>{e.stopPropagation();panel.classList.toggle('open');});
   document.addEventListener('click',e=>{if(!panel.contains(e.target)&&e.target!==btn)panel.classList.remove('open');});
-  document.getElementById('sp-theme').addEventListener('click',()=>{toggleTheme();savePrefs({dark:darkMode});});
   const sfx=document.getElementById('sp-sfx-vol');
   sfx.addEventListener('input',function(){applySfxVol(parseFloat(this.value));savePrefs({sfx:_sfxVol});});
 
@@ -64,46 +61,10 @@ function applySfxVol(v){
   // appliqué, sinon le curseur ment dès la seconde visite.
   const prefs=loadPrefs();
   if(typeof prefs.sfx==='number'){applySfxVol(prefs.sfx);sfx.value=_sfxVol;}
-  if(prefs.dark===false&&darkMode)toggleTheme();
 })();
 
-// ----------------------------------------------------------------
-// MODE TEST : une ADRESSE, pas un interrupteur
-// ----------------------------------------------------------------
-// C'est un BAC À SABLE : tout le catalogue est débloqué, chaque pièce est en
-// stock sans limite, l'ELO vaut 10 000 (donc tous les échiquiers sont ouverts)
-// et la bourse de perles est sans fond. On peut donc essayer n'importe quelle
-// composition d'armée sans avoir à la mériter d'abord.
-//
-// Et RIEN N'Y EST ÉCRIT. Ni inventaire, ni perles, ni déblocages, ni ELO : les
-// lectures sont détournées (invAll/pearlBalance dans js/economy.js,
-// vvLoadElo/loadAccountGlobals dans js/accounts.js) et les écritures sont
-// ignorées. On retrouve sa progression exacte en revenant sur `/`. C'est aussi
-// pour cela qu'aucune partie jouée ici ne compte au classement (voir
-// vvNoEloReason, js/voie.js).
-//
-// Il vivait derrière un badge flottant qu'on activait par mégarde et qui ne
-// se voyait plus une fois activé. C'est maintenant une ADRESSE : `/?test`,
-// identique au jeu normal en tout point sauf les coffres illimités, et qu'on
-// quitte en revenant sur `/`. L'entrée est dans les réglages, et la barre
-// d'adresse dit en permanence où l'on se trouve.
-//
-// Ce fut `/test` tout court, et ce chemin répondait 404 : il n'existe aucun
-// fichier à cette adresse, elle ne tenait que par une réécriture côté
-// hébergeur. Le paramètre `?test` laisse le chemin à `/`, donc il n'y a plus
-// rien à réécrire et plus rien qui puisse manquer (voir js/main.js).
-//
-// Le passage recharge volontairement la page : ADMIN_MODE est lu au
-// démarrage à partir de l'adresse (js/main.js), une bascule à chaud laisserait
-// l'adresse et l'état se contredire.
-(function(){
-  const btn=document.getElementById('sp-admin');
-  const note=document.getElementById('sp-admin-note');
-  if(!btn)return;
-  btn.textContent=ADMIN_MODE?'Quitter le mode test':'Ouvrir le mode test';
-  if(ADMIN_MODE){
-    btn.classList.add('btn-gold');
-    if(note)note.textContent='Vous êtes en mode test : toutes les pièces, 10 000 ELO, perles illimitées. Rien n\'est enregistré sur votre compte.';
-  }
-  btn.addEventListener('click',()=>{location.href=ADMIN_MODE?'/':'/?'+ADMIN_QUERY;});
-})();
+// Le mode test (bac à sable : tout le catalogue, 10 000 ELO, perles
+// illimitées, rien n'est enregistré — voir js/economy.js et js/accounts.js)
+// reste accessible par son adresse, `/?test` (voir ADMIN_QUERY, js/main.js),
+// mais n'a plus de bouton dans les réglages : ce n'était utile qu'en
+// démonstration, et ça n'a pas sa place dans le jeu normal.

@@ -6,15 +6,18 @@
 // texture du plateau (suit automatiquement l'ELO, voir bestUnlockedSkin),
 // la cérémonie d'ouverture d'un coffre,
 // les coffres illimités du mode test (renderAdminChests), les six coffres du
-// menu principal (renderMenuChests, qui portent aussi la série de victoires),
-// le coffre de réapprovisionnement quotidien — lui aussi sur le menu
-// principal (renderDailyChest) — et le rappel de la mise pendant la partie.
+// menu principal (renderMenuChests, qui montrent la série de victoires mais
+// ne s'achètent plus), la face « Magasin » du cube où ils s'achètent
+// (renderMagasinPage/buyChestFromShop), le coffre de réapprovisionnement
+// quotidien — sur le menu principal (renderDailyChest) — et le rappel de la
+// mise pendant la partie.
 //
-// Dépendances : economy.js (inventaire, coffres, quotidien), data-pieces.js
-// (PIECES, CHESTS, BOARD_SKINS), piece-art.js (pieceIcon/pieceSVG),
-// accounts.js (accGet/accSet, VV_UNLOCKED), main.js (escH, showPage).
-// Utilisé par : cube-nav.js (ouverture de la face), game-flow.js (mise en
-// partie), game-render.js (texture de plateau).
+// Dépendances : economy.js (inventaire, coffres, quotidien, streakLockedToday),
+// data-pieces.js (PIECES, CHESTS, BOARD_SKINS), piece-art.js
+// (pieceIcon/pieceSVG), accounts.js (accGet/accSet, VV_UNLOCKED), main.js
+// (escH, showPage).
+// Utilisé par : cube-nav.js (ouverture des faces jouer/armurerie/magasin),
+// game-flow.js (mise en partie), game-render.js (texture de plateau).
 // ================================================================
 
 // ----------------------------------------------------------------
@@ -67,8 +70,10 @@ function applyBoardSkin(){
 // Deux victoires d'affilée : Pion et Cavalier allumés, Fou éclatant, Tour,
 // Dame et Roi en retrait. Il n'y a plus rien à lire, il n'y a qu'à regarder.
 //
-// Le prix en perles reste sous CHAQUE coffre, éclatant ou éteint : la série
-// ne verrouille rien, on achète celui qu'on veut quand on en a les moyens.
+// LE RAIL N'EST PLUS ACHETABLE : il ne fait plus que MONTRER la série (voir
+// menuChestsHTML/renderMenuChests) — acheter un coffre contre des perles se
+// fait désormais uniquement depuis le Magasin (renderMagasinPage, plus bas),
+// qui porte aussi les six mêmes coffres en grand.
 function menuChestState(i,streak){
   // Série ≥ 6 : le Coffre Roi est à la fois acquis et reconduit à chaque
   // victoire suivante — il reste donc l'éclatant.
@@ -86,30 +91,26 @@ function menuChestsHTML(){
   let head='<div class="jc-head"><span class="jc-bank">'+pearlAmountHTML(balTxt,1.1)+' perles</span>'+
     (streak>0?'<span class="jc-streak">Série · '+streak+' victoire'+(streak>1?'s':'')+'</span>':'')+
   '</div>';
+  // Simples pastilles : plus de bouton ni de prix, voir la note ci-dessus.
   let rail='<div class="jc-rail">'+CHESTS.map((ch,i)=>{
-    const price=chestPearlPrice(ch.id);
     const state=menuChestState(i,streak);
-    const afford=bal>=price;
-    return '<button class="jc-chest '+state+(afford?'':' jc-poor')+'" data-chest="'+ch.id+'"'+
-      ' style="--chest-c:'+ch.color+'" title="'+escH(ch.name)+' · '+price+' perles">'+
+    return '<div class="jc-chest '+state+'" data-chest="'+ch.id+'" style="--chest-c:'+ch.color+'" title="'+escH(ch.name)+'">'+
       chestVisual(ch,state==='chest-next'?'chest-ready':'')+
       '<span class="jc-name">'+escH(ch.name.replace(/^Coffre /,''))+'</span>'+
-      '<span class="jc-price">'+pearlAmountHTML(price,1)+'</span>'+
-    '</button>';
+    '</div>';
   }).join('')+'</div>';
-  // Les prix hors de portée sont GRIS et non rouge d'alerte (voir .jc-poor) :
-  // ne pas pouvoir s'offrir un coffre est l'état normal du jeu, pas une
-  // erreur. Le refus reste expliqué au clic.
   return head+rail;
 }
 function renderMenuChests(){
   renderDailyChest();
   const el=document.getElementById('jouer-chests');
   if(el){
-    el.innerHTML=CUR_ACC?menuChestsHTML():'';
-    el.querySelectorAll('.jc-chest').forEach(b=>{
-      b.addEventListener('click',()=>buyChestWithPearls(b.dataset.chest,renderMenuChests));
-    });
+    // SÉRIE PERDUE POUR AUJOURD'HUI (streakLockedToday, js/economy.js) : le
+    // rail entier disparaît plutôt que de montrer une série figée à zéro —
+    // il ne redit rien tant qu'il n'y a rien de nouveau à y lire, et revient
+    // de lui-même le lendemain.
+    const show=CUR_ACC&&!(typeof streakLockedToday==='function'&&streakLockedToday());
+    el.innerHTML=show?menuChestsHTML():'';
   }
   // Le menu principal se rafraîchit ici (connexion, fin de partie) : c'est
   // aussi le moment de remettre à jour le pseudo et l'ELO affichés au-dessus,
@@ -191,9 +192,14 @@ function chestPromiseHTML(chest){
 // admin, il passe directement par ici. Le contenu est tiré MAINTENANT, donc
 // fermer la fenêtre en cours de route ne permet pas de relancer le tirage
 // jusqu'à obtenir mieux.
-function chestOpenNow(chestId,onClose){
+// forcePlain : force la cérémonie à couvercle même pour un coffre équipé
+// d'une séquence de bris (le Pion, voir js/chest-break.js). Utilisé par le
+// Magasin (buyChestFromShop) : les six coffres s'y ouvrent de la même façon
+// élégante et uniforme, la mise en scène spectaculaire du Pion restant
+// réservée à une victoire méritée.
+function chestOpenNow(chestId,onClose,forcePlain){
   const chest=chestById(chestId);
-  showChestCeremony(chest,chestRoll(chest.id),true,onClose||function(){});
+  showChestCeremony(chest,chestRoll(chest.id),true,onClose||function(){},forcePlain);
 }
 
 // Retour à l'Armurerie après une ouverture lancée depuis l'Armurerie.
@@ -229,29 +235,20 @@ function settleAndCelebrate(result,gs,onDone){
 }
 
 // ----------------------------------------------------------------
-// ACHAT D'UN COFFRE CONTRE DES PERLES
+// LE MAGASIN : achat d'un coffre contre des perles
 // ----------------------------------------------------------------
 // Les six mêmes coffres que ceux gagnés en enchaînant les victoires, au même
 // contenu : l'achat ne fabrique pas une seconde économie, il donne simplement
-// un second chemin vers la première. Un coffre acheté s'ouvre immédiatement.
-// Il s'achète depuis le menu principal (renderMenuChests), quelle que soit la
-// série en cours : la série éclaire les coffres, elle n'en interdit aucun.
+// un second chemin vers la première. C'est le SEUL endroit du jeu où un
+// coffre s'achète — le rail du menu principal ne fait plus que montrer la
+// série (voir renderMenuChests plus haut).
 //
-// onDone : ce qu'il faut redessiner une fois le coffre empoché. Par défaut on
-// revient au menu, c'est-à-dire là d'où l'achat est parti.
-function buyChestWithPearls(chestId,onDone){
+// On reste sur le Magasin après l'achat : la cérémonie n'est qu'une fenêtre
+// par-dessus, il n'y a donc rien à raviver ailleurs qu'à réafficher la grille
+// (le solde de perles et l'affordabilité de chaque coffre ont changé).
+function buyChestFromShop(chestId){
   const chest=chestById(chestId);
   const price=chestPearlPrice(chest.id);
-  const back=()=>{
-    // 'face-jouer' = le menu principal (cube-nav.js) : l'exercice de
-    // déplacement d'une créature inédite a pu nous emmener ailleurs.
-    if(typeof onDone==='function'){
-      if(typeof showPage==='function')showPage('face-jouer');
-      onDone();
-      if(typeof updAll==='function')updAll();
-      if(typeof renderArmiesPage==='function')renderArmiesPage();
-    }else chestBackToMenu();
-  };
   if(pearlBalance()<price){
     if(typeof showNotif==='function')
       showNotif('Il vous manque '+(price-pearlBalance())+' perles pour ce coffre.','err');
@@ -260,8 +257,49 @@ function buyChestWithPearls(chestId,onDone){
   showConfirmModal('Acheter un '+chest.name+' pour '+price+' perles ?',()=>{
     if(!pearlBuyChest(chest.id))return;
     if(typeof playSound==='function')playSound('promo');
-    chestOpenNow(chest.id,back);
+    // forcePlain (dernier argument) : même cérémonie à couvercle pour les six
+    // coffres, y compris le Pion — voir la note sur chestOpenNow plus haut.
+    chestOpenNow(chest.id,renderMagasinPage,true);
   },{okLabel:'Acheter',cancelLabel:'Annuler',okClass:'btn-gold'});
+}
+
+// La carte du Magasin, en grand. Le Coffre Pion n'y montre plus la statuette
+// qu'il brise à l'ouverture (voir js/chest-break.js) : cette mise en scène
+// reste réservée à une victoire méritée. Ici, comme les cinq autres, il ne
+// garde que sa pièce — un simple pion, teinté par un filtre CSS pour rester
+// dans le ton métal/or des coffres plutôt que dans les couleurs vives de la
+// fiche de pièce.
+function magasinChestVisual(chest){
+  if(chest.id!=='pion')return chestVisual(chest,'chest-lg');
+  return '<div class="chest chest-lg chest-pawn" style="--chest-c:'+chest.color+'">'+
+    pieceIcon('std-pawn','n',5.4)+
+  '</div>';
+}
+function magasinChestCardHTML(chest){
+  const price=chestPearlPrice(chest.id);
+  const afford=pearlInfinite()||pearlBalance()>=price;
+  return '<button class="shop-chest'+(afford?'':' jc-poor')+'" data-chest="'+chest.id+'" style="--chest-c:'+chest.color+'">'+
+    magasinChestVisual(chest)+
+    '<div class="shop-chest-name">'+escH(chest.name)+'</div>'+
+    chestPromiseHTML(chest)+
+    '<div class="shop-chest-price">'+pearlAmountHTML(price,1.15)+'</div>'+
+  '</button>';
+}
+// Face « magasin » du cube (voir refreshFaceContent, js/cube-nav.js) : les
+// six coffres, en grand, achetables contre des perles — le seul endroit du
+// jeu où ils s'achètent (voir la note sur buyChestFromShop plus haut).
+function renderMagasinPage(){
+  const bank=document.getElementById('shop-bank');
+  if(bank){
+    const balTxt=pearlInfinite()?'∞':pearlBalance();
+    bank.innerHTML=pearlAmountHTML(balTxt,1.3)+'<span>perles</span>';
+  }
+  const grid=document.getElementById('shop-chest-grid');
+  if(!grid)return;
+  grid.innerHTML=CHESTS.map(magasinChestCardHTML).join('');
+  grid.querySelectorAll('.shop-chest').forEach(b=>{
+    b.addEventListener('click',()=>buyChestFromShop(b.dataset.chest));
+  });
 }
 
 // ----------------------------------------------------------------
@@ -404,7 +442,7 @@ function chestLotRank(a,b){
 // applyOnClose : true pour un vrai coffre (le contenu est crédité au moment
 // où le joueur empoche), false quand le gain a déjà été appliqué ailleurs.
 let _chestState=null;
-function showChestCeremony(chest,lots,applyOnClose,onClose){
+function showChestCeremony(chest,lots,applyOnClose,onClose,forcePlain){
   const modal=document.getElementById('chest-modal');if(!modal)return;
   // Triés du moins bon au meilleur : la révélation se joue lot par lot, la
   // meilleure surprise doit donc arriver en dernier, pas au hasard de l'ordre
@@ -428,7 +466,7 @@ function showChestCeremony(chest,lots,applyOnClose,onClose){
   // chestBreakReady dit non tant que les images ne sont pas chargées, et non
   // pour toujours si elles manquent du dépôt : dans les deux cas on retombe
   // sur le couvercle, et la cérémonie se joue comme avant.
-  const canBreak=typeof chestBreakReady==='function'&&chestBreakReady(chest.id);
+  const canBreak=!forcePlain&&typeof chestBreakReady==='function'&&chestBreakReady(chest.id);
   visual.style.display=canBreak?'none':'';
   // Un coffre qu'on brise se joue sur FOND NOIR PLEIN, et non par-dessus
   // l'écran de fin de partie qu'on devinerait derrière : les sept images ont

@@ -135,8 +135,6 @@ const OPTIONAL_ASSET=/adversaires\/[a-z-]+\.png|backgrounds\/main-page\.png|ches
 
   await step('un compte se crée',async()=>{
     await page.fill('#reg-u','SmokeTest');
-    await page.fill('#reg-p','abcd');
-    await page.fill('#reg-p2','abcd');
     await page.click('#btn-reg');
     await page.waitForSelector('#intro-modal',{state:'visible',timeout:8000});
     await page.click('#intro-close');
@@ -174,11 +172,10 @@ const OPTIONAL_ASSET=/adversaires\/[a-z-]+\.png|backgrounds\/main-page\.png|ches
 
   await step('les réglages sont conservés',async()=>{
     await page.click('#settings-btn');
-    await page.click('#sp-theme');
-    if(!await page.evaluate(()=>document.body.classList.contains('light')))throw new Error('thème clair non appliqué');
+    await page.fill('#sp-sfx-vol','0.4');
+    await page.dispatchEvent('#sp-sfx-vol','input');
     const p=await page.evaluate(()=>JSON.parse(localStorage.getItem('mc_prefs_v1')||'{}'));
-    if(p.dark!==false)throw new Error('préférence non enregistrée');
-    await page.click('#sp-theme');
+    if(p.sfx!==0.4)throw new Error('préférence de volume non enregistrée');
     await page.keyboard.press('Escape');
   });
 
@@ -278,20 +275,89 @@ const OPTIONAL_ASSET=/adversaires\/[a-z-]+\.png|backgrounds\/main-page\.png|ches
   // Les six coffres du menu principal portent DEUX informations à la fois
   // (où en est la série, combien coûte chaque coffre) : un état de série mal
   // calculé se verrait sur un écran que tout le monde regarde avant de jouer.
-  await step('les six coffres du menu montrent la série en cours',async()=>{
+  await step('les six coffres du menu montrent la série en cours, sans s\'acheter',async()=>{
     const r=await page.evaluate(()=>{
-      accSet('win_streak',2);accSet('pearls',300);
+      accSet('streak_lock_day',null);accSet('win_streak',2);accSet('pearls',300);
       showPage('face-jouer');renderMenuChests();
       const cards=[...document.querySelectorAll('#jouer-chests .jc-chest')];
       return{n:cards.length,
         etats:cards.map(c=>c.className.match(/chest-(won|next|far)/)[1]),
         ordre:cards.map(c=>c.dataset.chest),
+        // Achat retiré du menu principal (déménagé au Magasin) : ni bouton,
+        // ni prix ici.
+        boutons:document.querySelectorAll('#jouer-chests button').length,
         prix:!!document.querySelector('#jouer-chests .jc-price')};
     });
     if(r.n!==6)throw new Error(r.n+' coffres au lieu de 6');
     if(r.ordre.join(',')!=='pion,cavalier,fou,tour,dame,roi')throw new Error('ordre : '+r.ordre.join(','));
     if(r.etats.join(',')!=='won,won,next,far,far,far')throw new Error('états : '+r.etats.join(','));
-    if(!r.prix)throw new Error('aucun prix en perles affiché');
+    if(r.boutons)throw new Error('coffres encore cliquables sur le menu principal');
+    if(r.prix)throw new Error('prix encore affiché sur le menu principal');
+  });
+
+  // LA SÉRIE EST QUOTIDIENNE : une défaite verrouille le rail du menu pour le
+  // reste de la journée (streakLockedToday, js/economy.js) — plus aucun
+  // coffre gagné, et le rail disparaît entièrement (renderMenuChests).
+  await step('une défaite verrouille la série jusqu\'au lendemain',async()=>{
+    const r=await page.evaluate(()=>{
+      accSet('win_streak',3);accSet('streak_lock_day',null);
+      const report=economySettle('loss',{board:[],promoGains:{}});
+      showPage('face-jouer');renderMenuChests();
+      return{
+        streakAfterLoss:report.streak,
+        locked:streakLockedToday(),
+        railEmpty:document.getElementById('jouer-chests').innerHTML.trim()===''
+      };
+    });
+    if(r.streakAfterLoss!==0)throw new Error('série non remise à zéro : '+r.streakAfterLoss);
+    if(!r.locked)throw new Error('la série n\'est pas verrouillée après une défaite');
+    if(!r.railEmpty)throw new Error('le rail de coffres est encore affiché après une défaite');
+    // Une victoire le MÊME jour ne doit rendre aucun coffre.
+    const r2=await page.evaluate(()=>{
+      const report=economySettle('win',{board:[],promoGains:{}});
+      return{chest:report.chest,streak:report.streak};
+    });
+    if(r2.chest)throw new Error('un coffre a été gagné malgré le verrou du jour');
+    // Reset propre pour la suite du parcours (achat de coffre plus bas).
+    await page.evaluate(()=>{accSet('streak_lock_day',null);accSet('win_streak',0);});
+  });
+
+  await step('le Magasin vend les six coffres, en grand, et le Pion n\'y montre pas sa statuette',async()=>{
+    await page.evaluate(()=>{accSet('pearls',5000);showPage('face-jouer');});
+    // Navigue réellement sur la face « magasin » (et non un simple appel de
+    // renderMagasinPage() en coulisses) : sans la rotation du cube, la face
+    // jouer resterait devant et intercepterait les clics.
+    await page.click('.cube-facebar-btn[data-face="magasin"]');
+    await page.waitForTimeout(600);
+    const r=await page.evaluate(()=>{
+      const cards=[...document.querySelectorAll('#shop-chest-grid .shop-chest')];
+      const pion=document.querySelector('#shop-chest-grid .shop-chest[data-chest="pion"]');
+      return{
+        n:cards.length,
+        pionHasPawnIcon:!!pion&&!!pion.querySelector('.chest-pawn .pc-icon'),
+        pionHasLidChest:!!pion&&!!pion.querySelector('.chest-lid'),
+      };
+    });
+    if(r.n!==6)throw new Error(r.n+' coffres au lieu de 6 dans le Magasin');
+    if(!r.pionHasPawnIcon)throw new Error('le Coffre Pion du Magasin ne montre pas l\'icône du pion');
+    if(r.pionHasLidChest)throw new Error('le Coffre Pion du Magasin montre encore le coffre à couvercle dessiné');
+    // Achète un Coffre Pion depuis le Magasin, sans que la séquence de bris
+    // (chest-break.js) ne se déclenche : ouverture directe, cérémonie à
+    // couvercle comme les cinq autres.
+    await page.click('#shop-chest-grid .shop-chest[data-chest="pion"]');
+    await page.click('#confirm-ok');
+    await page.waitForSelector('#chest-modal.show',{timeout:8000});
+    const state=await page.evaluate(()=>({
+      pbBreak:document.getElementById('chest-break')&&!document.getElementById('chest-break').hidden,
+      visualShown:getComputedStyle(document.getElementById('chest-visual')).display!=='none',
+    }));
+    if(state.pbBreak)throw new Error('la séquence de bris du Pion s\'est déclenchée depuis le Magasin');
+    if(!state.visualShown)throw new Error('le coffre à couvercle n\'est pas affiché pour l\'achat du Magasin');
+    for(let i=0;i<10&&await page.isVisible('#chest-modal.show');i++){
+      await page.click('#chest-visual');
+      await page.waitForTimeout(300);
+    }
+    await page.waitForSelector('#chest-modal.show',{state:'hidden',timeout:8000});
   });
 
   // Les schémas de déplacement sont DÉDUITS du moteur (js/piece-moves.js) :
@@ -404,17 +470,16 @@ const OPTIONAL_ASSET=/adversaires\/[a-z-]+\.png|backgrounds\/main-page\.png|ches
   // promet — tout le catalogue, 10 000 ELO, des perles sans fond — se vérifie
   // ici, parce que c'est exactement ce qui ne se voit pas quand ça casse.
   await step('le mode test donne tout et ne classe rien',async()=>{
+    // Le pseudo créé plus haut est toujours dans localStorage (un seul
+    // compte, toujours connecté — voir js/accounts.js) : cette navigation s'y
+    // reconnecte automatiquement, sans repasser par #page-login.
     await page.goto('http://localhost:'+PORT+'/?test',{waitUntil:'domcontentloaded'});
-    await page.waitForSelector('#page-login.active',{timeout:8000});
+    await page.waitForSelector('#cube-jouer-btn',{state:'visible',timeout:8000});
     if(!await page.evaluate(()=>ADMIN_MODE))throw new Error('/?test n active pas le mode test');
     if(!/Mode test/.test(await page.evaluate(()=>vvNoEloReason({}))||''))throw new Error('les parties y sont encore classees');
     const bad=await page.evaluate(()=>{
       const out=[];
-      // Le compte créé plus haut est toujours dans localStorage : on s'y
-      // reconnecte pour lire l'économie telle que la voit un joueur.
-      CUR_ACC=Object.keys(loadAccs())[0]||null;
       if(!CUR_ACC){out.push('aucun compte de test');return out;}
-      loadAccountGlobals();
       if(vvLoadElo()!==10000)out.push('ELO '+vvLoadElo()+' au lieu de 10000');
       const manquantes=PIECES.filter(p=>!VV_UNLOCKED.has(p.id)).map(p=>p.id);
       if(manquantes.length)out.push('pieces verrouillees : '+manquantes.join(','));

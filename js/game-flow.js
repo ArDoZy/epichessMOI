@@ -340,6 +340,7 @@ function triggerEndOfGame(result){
     newElo=calc.newElo;delta=calc.delta;
     const newRankIdx=vvGetRankIdx(newElo);if(newRankIdx>vvLoadRankMax())vvSaveRankMax(newRankIdx);
     newUnlocks=vvCheckNewUnlocks(oldElo,newElo);
+    if(typeof vvCheckRewardMilestones==='function')vvCheckRewardMilestones(oldElo,newElo);
     vvSaveElo(newElo);
   }
   const foeId=(!GS.multiplayer&&typeof aiCurrentOpponent==='function')?aiCurrentOpponent().id:null;

@@ -56,14 +56,14 @@
   // Disposition canonique (au menu principal). La face de droite est
   // "armees" (Mes armées) : le builder (composition) n'est plus une face du
   // cube, c'est un overlay ouvert depuis "Mes armées" (bouton "Nouvelle armée").
-  // La face de gauche s'appelle « libre » : elle a porté la Voie des
+  // La face de gauche s'appelle « magasin » : elle a porté la Voie des
   // Victoires, repartie en page à part entière (bouton « Voie » du menu
   // principal). Elle reste dans le cycle de rotation — quatre côtés — mais
-  // n'a pas encore de contenu. La face du bas (Variantes) a été retirée ; son
-  // emplacement 3D reste déclaré parce que les permutations de rotation le
-  // référencent, mais aucune face ne l'occupe.
-  const CANON={front:'jouer',right:'armees',back:'reserve',left:'libre',top:'game',bottom:null};
-  const SIDE=new Set(['jouer','armees','reserve','libre']);
+  // n'a pas encore de contenu (boutique à construire). La face du bas
+  // (Variantes) a été retirée ; son emplacement 3D reste déclaré parce que
+  // les permutations de rotation le référencent, mais aucune face ne l'occupe.
+  const CANON={front:'jouer',right:'armees',back:'reserve',left:'magasin',top:'game',bottom:null};
+  const SIDE=new Set(['jouer','armees','reserve','magasin']);
   const EMBED={'page-armies':'armees','page-game':'game','page-reserve':'reserve'};
 
 
@@ -103,6 +103,7 @@
   function refreshFaceContent(name){
     if(name==='reserve'&&typeof renderReservePage==='function')renderReservePage();
     else if(name==='armees'&&typeof renderArmiesPage==='function')renderArmiesPage();
+    else if(name==='magasin'&&typeof renderMagasinPage==='function')renderMagasinPage();
     else if(name==='jouer'){
       if(typeof renderMenuChests==='function')renderMenuChests();
       if(typeof renderMenuIdentity==='function')renderMenuIdentity();
@@ -119,6 +120,17 @@
     const set=(id,show)=>{const e=document.getElementById(id);if(e)e.style.display=show?'':'none';};
     set('cube-arrow-left', h);
     set('cube-arrow-right', h);
+    set('cube-facebar', h);
+    updateFacebar();
+  }
+  // Allume le logo de la face affichée dans le repère du bas, éteint les
+  // trois autres.
+  function updateFacebar(){
+    const bar=document.getElementById('cube-facebar');
+    if(!bar)return;
+    bar.querySelectorAll('.cube-facebar-btn').forEach(b=>{
+      b.classList.toggle('is-active', b.dataset.face===slots.front);
+    });
   }
 
   // Réinitialise le cube à l'angle 0 avec les emplacements courants (sans
@@ -177,6 +189,23 @@
   // mise en file par animate()) plutôt que de l'ignorer, c'est ce qui
   // permet d'enchaîner deux rotations sans attendre.
   function nav(kind){ if(!locked && (animating || SIDE.has(slots.front))) animate(kind); }
+
+  // Amène directement une face au front, avec animation (une ou deux
+  // rotations enchaînées selon sa position dans le cycle), utilisé par les
+  // logos du repère du bas.
+  function goToFace(name){
+    if(locked||animating||!SIDE.has(name)||slots.front===name)return;
+    const path=[];
+    let s=Object.assign({},slots),g=0;
+    while(s.front!==name && g++<3){
+      let pos; for(const k in s) if(s[k]===name){ pos=k; break; }
+      const kind = pos==='left' ? 'left' : 'right'; // 'back' : deux pas à droite
+      path.push(kind);
+      s=PERM[kind](s);
+    }
+    let i=0;
+    (function step(){ if(i>=path.length)return; animate(path[i++],step); })();
+  }
   // Bouton secondaire « Adversaires » : il ouvre la galerie des douze
   // adversaires (js/adversaires.js), qui enchaîne elle-même sur la sélection
   // d'armée. Auparavant il partait directement affronter l'Instructeur, seul
@@ -263,20 +292,24 @@
   // c'est l'inverse de ce que font les flèches (qui, elles, DÉSIGNENT la face
   // à faire venir).
   //
-  // Trois garde-fous, sinon le geste se déclenche tout le temps :
+  // Deux garde-fous, sinon le geste se déclenche tout le temps :
   //   · le glissement doit être franchement HORIZONTAL (sinon c'est un
   //     défilement de la page : l'Armurerie et « Mes armées » défilent) ;
   //   · il doit couvrir au moins 12 % de la largeur de l'écran — un seuil en
   //     pourcentage, pas en pixels, pour se comporter pareil sur un petit
-  //     téléphone et sur une tablette ;
-  //   · il ne compte que s'il part d'une zone neutre : ni un bouton, ni un
-  //     champ, ni le plateau de jeu, ni un curseur de réglage.
+  //     téléphone et sur une tablette.
+  // Le point de départ, lui, N'EST PLUS filtré par défaut : la majorité de
+  // l'écran est couverte de cartes/boutons (coffres, pièces, armées...), un
+  // filtre large y rendait le glissement quasi inopérant hors du fond nu.
+  // Comme un tap ne parcourt pas 12 % de l'écran, il n'y a pas de conflit
+  // avec les clics. Seules restent exclues les zones où un glissement
+  // horizontal a déjà un autre sens : le plateau de jeu (déplacer une pièce)
+  // et les zones qui défilent horizontalement elles-mêmes.
   const SWIPE_RATIO=0.12;      // fraction de la largeur d'écran à parcourir
   const SWIPE_MAX_MS=700;      // au-delà, c'est un déplacement, pas un geste
   function swipeBlocked(target){
     return !!(target&&target.closest&&target.closest(
-      'button,a,input,textarea,select,.game-board,.pmv,.psheet,.jc-chest,'+
-      '.pcard,.comp-slot,.move-log,[data-noswipe]'));
+      'input,textarea,select,.game-board,.pmv,.psheet,.move-log,[data-noswipe]'));
   }
   function wireSwipe(){
     const stage=document.getElementById('cube-stage');
@@ -328,6 +361,9 @@
     document.getElementById('jouer-voie')      ?.addEventListener('click',()=>{
       if(typeof renderVoiePage==='function')renderVoiePage();
       showPage('page-voie');
+    });
+    document.querySelectorAll('#cube-facebar .cube-facebar-btn').forEach(b=>{
+      b.addEventListener('click',()=>goToFace(b.dataset.face));
     });
 
     document.addEventListener('keydown',e=>{

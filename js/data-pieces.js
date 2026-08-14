@@ -315,6 +315,15 @@ const CLASS_COLOR_VARS={Monarque:'var(--monarque)',Général:'var(--general)',Pr
 // tous à 0 ELO, ils sont rendus TOUT EN BAS de la Voie, sous l'arène Bois,
 // sans bandeau de rang — voir renderVoiePage (js/voie.js), qui saute leur
 // bandeau et ouvre celui de Bois juste après (au Preux Chevalier).
+// Jalons de RÉCOMPENSE (pas de nouvelle pièce) : ils jalonnent la Voie entre
+// deux déblocages, pour qu'il y ait toujours quelque chose à décrocher de
+// proche en proche plutôt que de longues sections vides entre deux pièces.
+// `reward:'pearls'` verse des perles (pearlAdd) ; `reward:'copies'` verse des
+// exemplaires supplémentaires d'une pièce DÉJÀ débloquée à ce palier
+// (invAdd), pour qu'ils servent tout de suite. Chaque jalon porte un `id`
+// unique et stable : vvCheckRewardMilestones (js/voie.js) l'utilise pour ne
+// verser la récompense qu'une seule fois, même si l'ELO redescend puis
+// remonte au-dessus du palier.
 const UNLOCK_TABLE=[
   {pieceId:'roi',eloRequired:0,starter:true},{pieceId:'dame',eloRequired:0,starter:true},
   {pieceId:'fourmi',eloRequired:0,coffre:true,voieMilestone:true,starter:true},
@@ -323,14 +332,27 @@ const UNLOCK_TABLE=[
   {pieceId:'cavalier-primordial',eloRequired:0,coffre:true},
   {pieceId:'fou-primordial',eloRequired:0,coffre:true},
   {pieceId:'tour-primordiale',eloRequired:0,coffre:true},
+  {id:'rw-25',reward:'pearls',amount:20,eloRequired:25},
   {pieceId:'preux-chevalier',eloRequired:50},
+  {id:'rw-100',reward:'copies',copyId:'preux-chevalier',qty:2,eloRequired:100},
   {pieceId:'chevaucheur-rhinoceros',eloRequired:150},
+  {id:'rw-180',reward:'pearls',amount:25,eloRequired:180},
   {pieceId:'meduse',eloRequired:210},{pieceId:'amazone',eloRequired:260},
+  {id:'rw-320',reward:'copies',copyId:'chevaucheur-rhinoceros',qty:2,eloRequired:320},
+  {id:'rw-400',reward:'pearls',amount:30,eloRequired:400},
   {pieceId:'empereur',eloRequired:480},
+  {id:'rw-550',reward:'copies',copyId:'meduse',qty:2,eloRequired:550},
   {pieceId:'garde-pierre',eloRequired:600},
+  {id:'rw-700',reward:'pearls',amount:35,eloRequired:700},
   {pieceId:'pretre',eloRequired:800},{pieceId:'typhon',eloRequired:1000,bigReward:true},
+  {id:'rw-900',reward:'copies',copyId:'empereur',qty:2,eloRequired:900},
+  {id:'rw-1080',reward:'pearls',amount:40,eloRequired:1080},
   {pieceId:'banshee',eloRequired:1150},
+  {id:'rw-1300',reward:'copies',copyId:'garde-pierre',qty:2,eloRequired:1300},
+  {id:'rw-1450',reward:'pearls',amount:45,eloRequired:1450},
   {pieceId:'grand-maitre',eloRequired:1700},
+  {id:'rw-1600',reward:'copies',copyId:'pretre',qty:2,eloRequired:1600},
+  {id:'rw-1850',reward:'pearls',amount:50,eloRequired:1850},
   {pieceId:null,eloRequired:2000,bigReward:true,label:'Or Légendaire atteint !'},
 ];
 

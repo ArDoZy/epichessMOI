@@ -262,43 +262,9 @@ button,.btn,.cube-arrow,.jouer-btn,.chest-card,.army-card,.adv-card,
 .login-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:26px;position:relative;overflow:hidden}
 .login-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--gold)}
 .lbl{font-family:var(--f-ui);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:10px}
-.acc-item{display:flex;align-items:center;gap:11px;padding:11px 13px;border-radius:10px;border:1px solid var(--border);background:var(--bg);margin-bottom:7px;cursor:pointer;transition:all .18s}
-.acc-item:hover{border-color:var(--accent2);background:var(--accent-bg)}
-.acc-av{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--f-ui);font-weight:800;font-size:16px;color:#fff;flex-shrink:0}
-.acc-info{flex:1}.acc-name{font-family:var(--f-ui);font-size:14px;font-weight:700}.acc-meta{font-size:11px;color:var(--muted);margin-top:2px}
-.acc-del{width:28px;height:28px;border-radius:6px;background:transparent;border:none;cursor:pointer;color:var(--muted);font-size:14px;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0}
-.acc-del:hover{background:rgba(239,68,68,.15);color:var(--danger)}
-.ldiv{border:none;border-top:1px solid var(--border);margin:16px 0}
 .iform{display:flex;flex-direction:column;gap:10px}
 .linput{background:var(--bg);border:1px solid var(--border2);border-radius:8px;padding:11px 14px;color:var(--text);font-size:15px;font-family:var(--f-ui);outline:none;transition:border-color .2s;width:100%}
 .linput:focus{border-color:var(--accent2)}.linput::placeholder{color:var(--muted)}
-
-/* --- Œil de révélation du mot de passe ---------------------------
-   Le bouton n'apparaît que sur le champ où l'on est en train d'écrire
-   (classe .pw-eye-on posée par bindPasswordEye() dans js/accounts.js) :
-   trois yeux affichés en permanence sur la carte de connexion feraient
-   trois icônes à ignorer. L'œil et l'œil barré sont dessinés en CSS pur
-   (::before = paupière, ::after = pupille ou barre), comme le reste des
-   ornements du jeu : aucun glyphe de police n'a les deux états. */
-.pw-field{position:relative;display:block}
-/* Place pour l'œil : le texte du mot de passe ne doit pas passer dessous. */
-.pw-field .linput{padding-right:44px}
-.pw-eye{position:absolute;right:6px;top:50%;transform:translateY(-50%);
-  width:32px;height:32px;border:none;background:transparent;cursor:pointer;padding:0;
-  opacity:0;pointer-events:none;transition:opacity .18s,color .15s;color:var(--muted)}
-.pw-field.pw-eye-on .pw-eye{opacity:1;pointer-events:auto}
-.pw-eye:hover{color:var(--accent2)}
-/* Paupière : un « œil de chat » obtenu par deux coins arrondis opposés. */
-.pw-eye::before{content:'';position:absolute;left:50%;top:50%;width:20px;height:13px;
-  margin:-6.5px 0 0 -10px;border:1.6px solid currentColor;
-  border-radius:11px 2px 11px 2px;transform:rotate(45deg)}
-.pw-eye::after{content:'';position:absolute;left:50%;top:50%;width:6px;height:6px;
-  margin:-3px 0 0 -3px;border-radius:50%;background:currentColor;transition:none}
-/* État « révélé » : l'œil se barre d'un trait oblique (la pupille devient
-   la barre), c'est ce bouton qui remasque le mot de passe. */
-.pw-eye.pw-eye-off{color:var(--gold)}
-.pw-eye.pw-eye-off::after{width:24px;height:1.8px;border-radius:2px;
-  margin:-.9px 0 0 -12px;transform:rotate(-45deg)}
 
 /* --- Bouton « i » de la page de connexion ------------------------
    Toutes les explications sont sur /info : ce bouton est le seul lien
@@ -312,9 +278,6 @@ button,.btn,.cube-arrow,.jouer-btn,.chest-card,.army-card,.adv-card,
   text-decoration:none;color:var(--gold);background:rgba(193,154,69,.13);
   border:1px solid rgba(193,154,69,.35);transition:all .2s}
 .login-info-btn:hover{background:rgba(193,154,69,.3);border-color:var(--gold);color:var(--gold2);transform:translateY(-2px)}
-.pw-modal{position:fixed;inset:0;background:rgba(0,0,0,.78);display:flex;align-items:center;justify-content:center;z-index:9000;visibility:hidden}
-.pw-modal.show{visibility:visible}
-.pw-box{background:var(--surface2);border:1px solid var(--border2);border-radius:14px;padding:28px;min-width:300px;max-width:380px;text-align:center}
 /* Pas de logo/titre sur la page builder (retiré) : juste la clearance de la
    barre de compte + un petit espace de respiration, la page remonte. */
 /* (le retrait est porté par .builder-inner, cf. plus haut) */
@@ -559,7 +522,11 @@ body.has-acc .builder-inner{padding-top:var(--page-top)}
   transition:color .16s ease,border-color .16s ease,background .16s ease}
 #settings-btn svg{width:19px;height:19px}
 #settings-btn:hover{border-color:var(--accent2);color:var(--text)}
-#settings-panel{position:fixed;top:calc(var(--chrome-h) + var(--safe-t) + 6px);right:12px;z-index:7999;background:var(--surface);border:1px solid var(--border2);border-radius:12px;padding:14px 16px;min-width:220px;box-shadow:0 8px 32px rgba(0,0,0,.5);display:none;animation:settingsPanelIn .18s ease}
+/* top : sous le bouton (haut safe-t+10, haut 40px), pas dessous — la
+   Déconnexion a longtemps occupé toute la première rangée et masquait ce
+   chevauchement ; sans elle la première rangée (Mode sombre) tombait
+   directement sous le bouton, hors de portée du clic. */
+#settings-panel{position:fixed;top:calc(var(--chrome-h) + var(--safe-t) + 58px);right:12px;z-index:7999;background:var(--surface);border:1px solid var(--border2);border-radius:12px;padding:14px 16px;min-width:220px;box-shadow:0 8px 32px rgba(0,0,0,.5);display:none;animation:settingsPanelIn .18s ease}
 #settings-panel.open{display:block}
 /* Panneau ancré à droite : pas de translateX (nIn est fait pour un élément
    centré horizontalement, il décalait ce panneau vers la gauche). */
@@ -567,16 +534,8 @@ body.has-acc .builder-inner{padding-top:var(--page-top)}
 .sp-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;font-family:var(--f-ui);font-size:11px;color:var(--text)}
 .sp-row:last-child{margin-bottom:0}
 .sp-label{font-size:11px;font-family:var(--f-ui);color:var(--muted);text-transform:uppercase;letter-spacing:.6px;white-space:nowrap}
-.sp-toggle{width:36px;height:20px;border-radius:10px;border:none;cursor:pointer;position:relative;transition:background .2s;flex-shrink:0;background:var(--border2)}
-.sp-toggle.on{background:var(--accent)}
-.sp-toggle::after{content:'';position:absolute;top:3px;left:3px;width:14px;height:14px;border-radius:50%;background:#fff;transition:left .2s}
-.sp-toggle.on::after{left:19px}
 .sp-slider{-webkit-appearance:none;appearance:none;width:100px;height:4px;border-radius:2px;background:var(--border2);outline:none;cursor:pointer}
 .sp-slider::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--accent2);cursor:pointer}
-.sp-divider{border:none;border-top:1px solid var(--border);margin:10px 0}
-/* Ce que fait /test, écrit sous le bouton : on n'y entre pas par curiosité
-   sans savoir que les parties n'y comptent plus. */
-.sp-admin-note{font-size:10px;color:var(--muted);line-height:1.4;margin-top:6px;font-style:italic}
 
 /* [ARMIES] ======================================================= */
 #page-armies{padding:clamp(16px,3vw,32px) clamp(12px,3vw,20px);min-height:100vh;background:var(--bg)}
@@ -892,7 +851,9 @@ body.has-acc .builder-inner{padding-top:var(--page-top)}
 .aio-timer-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--gold));border-radius:2px;transition:width 1s linear}
 
 /* [VOIE] ======================================================= */
-#page-voie{padding:clamp(14px,3vw,28px) clamp(12px,3vw,20px);min-height:100vh;background:var(--bg)}
+/* padding-bottom : dégage la place du bouton OK épinglé en bas de l'écran
+   (.voie-ok-bar), sinon le dernier jalon se retrouve caché dessous. */
+#page-voie{padding:clamp(14px,3vw,28px) clamp(12px,3vw,20px) calc(84px + var(--safe-b));min-height:100vh;background:var(--bg)}
 .voie-inner{max-width:860px;margin:0 auto}
 .voie-hdr{display:flex;align-items:center;gap:12px;margin-bottom:24px;flex-wrap:wrap}
 .voie-title{font-family:var(--f-display);font-size:clamp(20px,4.5vw,26px);font-weight:900;flex:1;color:var(--gold)}
@@ -909,13 +870,16 @@ body.has-acc .builder-inner{padding-top:var(--page-top)}
    grimpe, on ne descend pas. Le HTML reste construit en ELO croissant
    (renderVoiePage, js/voie.js) — c'est `column-reverse` qui pose le premier
    jalon généré (le plus bas en ELO) tout en bas de l'écran et le dernier
-   (le plus haut) tout en haut, sans toucher à l'ordre de génération ni à
-   l'alternance gauche/droite des cartes (nth-child suit l'ordre DOM, pas
-   l'ordre visuel). */
+   (le plus haut) tout en haut, sans toucher à l'ordre de génération. */
 .voie-route{position:relative;padding:10px 0 30px;display:flex;flex-direction:column-reverse}
 .voie-route::before{content:'';position:absolute;left:50%;top:0;bottom:0;width:3px;background:linear-gradient(to top,var(--accent),var(--gold),var(--accent2));transform:translateX(-50%);border-radius:2px;opacity:.35;z-index:0}
 .voie-milestone{display:flex;align-items:center;gap:18px;margin-bottom:20px;position:relative;z-index:1}
-.voie-milestone:nth-child(odd){flex-direction:row}.voie-milestone:nth-child(even){flex-direction:row-reverse}
+/* Alternance gauche/droite : classes posées explicitement par renderVoiePage
+   (js/voie.js), sur un compteur qui ne porte que sur les jalons réellement
+   rendus. Un nth-child CSS se laissait décaler par les bandeaux de rang
+   (.vm-rank-section), un sibling de plus qui n'est pas un jalon : deux
+   jalons pouvaient alors atterrir du même côté juste après un bandeau. */
+.voie-milestone.vm-l{flex-direction:row}.voie-milestone.vm-r{flex-direction:row-reverse}
 .vm-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 18px;flex:1;max-width:calc(50% - 40px);transition:all .25s;position:relative;overflow:hidden}
 .vm-card.reached{border-color:var(--gold)}
 .vm-card.reached::after{content:'✓';position:absolute;top:8px;right:10px;color:var(--success);font-size:15px;font-weight:900}
@@ -940,6 +904,22 @@ body.has-acc .builder-inner{padding-top:var(--page-top)}
 .vm-rank-bar{display:inline-flex;align-items:center;gap:10px;justify-content:center;background:var(--surface);border:1px solid var(--border2);border-radius:10px;padding:8px 18px}
 .vm-rank-label{font-family:var(--f-ui);font-size:13px;font-weight:700}
 .vm-rank-range{font-size:10px;color:var(--muted);margin-left:4px;font-family:var(--f-ui)}
+
+/* Jalons de récompense (perles / exemplaires) semés entre les jalons de
+   déblocage — même carte, plus petite et plus discrète : ce ne sont que des
+   à-côtés, la pièce à débloquer reste le jalon qui compte. */
+.vm-card.vm-reward{padding:10px 14px}
+.vm-card.vm-reward .pearl-amt{display:inline-flex;align-items:center;gap:6px;font-family:var(--f-ui);font-weight:800;font-size:15px}
+.vm-card.vm-reward .vm-piece-emoji{font-size:22px;margin-bottom:2px}
+.vm-card.vm-reward .vm-piece-name{margin-bottom:0}
+
+/* Bouton de sortie de la Voie, épinglé en bas de l'écran (voir index.html /
+   js/voie.js). Position fixed : #page-voie.active est déjà position:fixed
+   avec son propre scroll (.page.active), donc ce bouton reste sous le pouce
+   quel que soit le défilement, sans dépendre de la géométrie du contenu. */
+.voie-ok-bar{position:fixed;left:50%;bottom:calc(16px + var(--safe-b));transform:translateX(-50%);
+  z-index:210;width:min(100% - 40px,420px);height:52px;border-radius:14px;
+  font-family:var(--f-ui);font-weight:800;font-size:16px;letter-spacing:.5px}
 
 /* [ADMIN] ======================================================= */
 /* Le badge Admin flottant a ete retire : le mode admin est l'adresse /test,
@@ -1097,14 +1077,14 @@ body.light .cube-face[data-face="jouer"]{background:
 .jouer-actions{display:flex;flex-direction:column;align-items:center;gap:14px}
 
 /* --- Faces placeholder (Magasin / Missions / Variantes) --- */
-/* Armurerie et face libre : mêmes matières que le menu, un ton plus neutre pour
+/* Armurerie et Magasin : mêmes matières que le menu, un ton plus neutre pour
    que le contenu (cartes, coffres) ressorte. */
 .cube-face[data-face="reserve"],
-.cube-face[data-face="libre"]{background:
+.cube-face[data-face="magasin"]{background:
   radial-gradient(ellipse at 50% 8%,rgba(47,177,151,.09),transparent 58%),
   linear-gradient(165deg,#141b20,#0c1114)}
 body.light .cube-face[data-face="reserve"],
-body.light .cube-face[data-face="libre"]{background:
+body.light .cube-face[data-face="magasin"]{background:
   radial-gradient(ellipse at 50% 8%,rgba(18,120,106,.10),transparent 58%),
   linear-gradient(165deg,#f2f1ec,#e2e1da)}
 /* L'Armurerie embarque une page longue : elle doit défiler. */
@@ -1139,6 +1119,21 @@ body.light .cube-face[data-face="libre"]{background:
 #cube-arrow-down{bottom:calc(22px + var(--safe-b))}
 #cube-arrow-up{top:calc(var(--chrome-h) + var(--safe-t) + 10px)}
 
+/* --- Repère des faces (logos en bas) : un logo par face du cube, celui de
+   la face affichée s'allume. Centré, entre les deux flèches. --- */
+.cube-facebar{position:fixed;z-index:400;left:50%;bottom:calc(22px + var(--safe-b));
+  transform:translateX(-50%);display:flex;gap:4px;padding:5px;border-radius:16px;
+  border:1px solid var(--border2);background:rgba(255,255,255,.05);
+  backdrop-filter:blur(14px);box-shadow:0 6px 20px rgba(0,0,0,.4)}
+.cube-facebar-btn{cursor:pointer;border:none;background:transparent;color:var(--muted);
+  width:40px;height:40px;border-radius:11px;display:flex;align-items:center;justify-content:center;
+  padding:0;transition:all .2s ease}
+.cube-facebar-btn svg{display:block;width:56%;height:56%;pointer-events:none}
+.cube-facebar-btn:hover{color:var(--text);background:var(--surface2)}
+.cube-facebar-btn.is-active{color:#1a1206;background:var(--gold)}
+body.light .cube-facebar{background:rgba(255,255,255,.82);border-color:var(--border2)}
+body.light .cube-facebar-btn:hover{background:#fff}
+
 /* --- Pages secondaires : overlays plein écran AU-DESSUS du cube ---
    (armées, voie, combat, login). Restent pilotées par
    .page/.active comme avant, mais deviennent des couches opaques qui
@@ -1165,6 +1160,8 @@ body.light .cube-face[data-face="libre"]{background:
   #cube-arrow-right{right:12px}
   .cube-arrow-vert{width:52px;height:34px}
   #cube-arrow-down{bottom:calc(12px + var(--safe-b))}
+  .cube-facebar{bottom:calc(12px + var(--safe-b));gap:2px;padding:4px}
+  .cube-facebar-btn{width:34px;height:34px;border-radius:9px}
 }
 @media(max-width:480px){
   .intro-parchment-inner{padding:24px 18px 22px}
@@ -1419,6 +1416,58 @@ body.light .pmv-dark{background:#c3bdae}
 .pearl-amt{display:inline-flex;align-items:center;gap:5px;font-family:var(--f-ui);font-weight:700}
 .loot.loot-pearl{border-color:rgba(143,166,184,.55);
   background:linear-gradient(180deg,rgba(223,234,242,.10),var(--surface))}
+
+/* [MAGASIN] ======================================================
+   Face « Magasin » du cube : les six coffres, en grand, en deux rangées de
+   trois — le seul endroit du jeu où ils s'achètent (js/economy-ui.js,
+   renderMagasinPage/buyChestFromShop). Même matière que l'Armurerie/menu
+   principal, présentation proche de [CHEST-OPENING] (.chest-lg) mais posée en
+   grille plutôt qu'en scène. */
+.shop-wrap{position:absolute;inset:0;overflow-y:auto;padding:var(--page-top) 22px var(--page-bottom)}
+.shop-inner{max-width:640px;margin:0 auto}
+.shop-hdr{display:flex;align-items:baseline;justify-content:space-between;gap:14px;
+  flex-wrap:wrap;margin-bottom:24px}
+.shop-title{font-family:var(--f-display);font-size:clamp(22px,4vw,32px);font-weight:900;color:var(--gold2)}
+.shop-bank{font-size:15px}
+.shop-bank .pearl-amt{font-size:16px}
+.shop-bank span{color:var(--muted);font-family:var(--f-ui);font-weight:400;font-size:12px;margin-left:4px}
+/* Deux rangées de trois, toujours — pas de repli en une colonne : la grille
+   reste explicitement à 3 colonnes, seule la taille des cartes se resserre
+   sur petit écran (voir la section [RESPONSIVE] plus bas). */
+.shop-chest-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.shop-chest{display:flex;flex-direction:column;align-items:center;gap:8px;
+  padding:22px 8px 18px;border-radius:18px;border:1px solid var(--border);
+  background:linear-gradient(180deg,var(--surface),color-mix(in srgb,var(--chest-c) 6%,var(--surface)));
+  cursor:pointer;transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease}
+.shop-chest:hover{transform:translateY(-5px);border-color:var(--chest-c);
+  box-shadow:0 16px 34px -8px rgba(0,0,0,.55),0 0 0 1px color-mix(in srgb,var(--chest-c) 40%,transparent)}
+.shop-chest .chest-lg{margin:0 auto}
+.shop-chest-name{font-family:var(--f-title);font-weight:800;font-size:clamp(12px,3vw,15px);
+  color:var(--gold2);text-align:center}
+.shop-chest .chest-rar{text-align:center}
+.shop-chest-price{margin-top:2px}
+.shop-chest-price .pearl-amt{font-size:13px}
+.shop-chest.jc-poor{opacity:.62}
+.shop-chest.jc-poor:hover{opacity:.85}
+/* Le Coffre Pion ne montre plus la statuette qui se brise à l'ouverture (voir
+   js/chest-break.js) — cette mise en scène reste réservée à une vraie
+   victoire. Ici il ne garde que sa pièce, un simple pion, teinté au filtre
+   pour rester dans le ton métal/or des autres coffres plutôt que dans les
+   couleurs vives d'une fiche de pièce. */
+.chest-pawn{display:flex;align-items:center;justify-content:center;background:none}
+.chest-pawn .pc-icon{filter:grayscale(.55) sepia(.35) saturate(1.6) brightness(.92)
+  drop-shadow(0 8px 16px rgba(0,0,0,.5));}
+@media(max-width:480px){
+  .shop-chest-grid{gap:8px}
+  .shop-chest{padding:14px 4px 12px;border-radius:14px}
+  .shop-chest .chest-lg{width:84px;height:74px}
+  .shop-chest .chest-lg .chest-lid{width:84px;height:32px;border-radius:16px 16px 4px 4px;border-width:2px}
+  .shop-chest .chest-lg .chest-body{width:84px;height:44px;top:29px;border-width:2px}
+  .shop-chest .chest-lg .chest-lock{width:19px;height:22px;margin-left:-9.5px;top:21px;border-width:2px}
+  .shop-chest .chest-lg .chest-lock::after{width:5px;height:8px;margin-left:-2.5px;top:6px}
+  .shop-chest.chest-pawn .pc-icon,.chest-pawn .pc-icon{width:52px!important;height:52px!important}
+  .shop-chest-price .pearl-amt{font-size:11px}
+}
 
 /* --- Inventaire --- */
 
@@ -1797,10 +1846,11 @@ body.light .pmv-dark{background:#c3bdae}
 .jouer-chests:empty{display:none}
 .jc-rail{display:flex;align-items:flex-end;justify-content:center;gap:clamp(4px,1.4vw,16px);
   width:100%}
-.jc-chest{flex:0 1 auto;background:none;border:none;padding:2px 0;cursor:pointer;
-  display:flex;flex-direction:column;align-items:center;gap:4px;
-  transition:transform .18s ease,opacity .18s ease}
-.jc-chest:hover{transform:translateY(-4px)}
+/* Simples pastilles depuis que l'achat a déménagé au Magasin (voir
+   [MAGASIN] plus haut) : plus de bouton, plus de prix, juste où en est la
+   série. */
+.jc-chest{flex:0 1 auto;padding:2px 0;
+  display:flex;flex-direction:column;align-items:center;gap:4px}
 .jc-chest .chest{width:clamp(50px,8vw,76px);height:clamp(43px,7vw,66px)}
 .jc-chest .chest-lid{width:100%;height:43%;border-radius:22% 22% 3px 3px}
 .jc-chest .chest-body{width:100%;height:61%;top:39%}
@@ -1808,9 +1858,6 @@ body.light .pmv-dark{background:#c3bdae}
 .jc-chest .chest-lock::after{width:4px;height:6px;margin-left:-2px;top:4px}
 .jc-name{font-family:var(--f-ui);font-size:clamp(8px,1.1vw,10.5px);font-weight:700;
   letter-spacing:.8px;text-transform:uppercase;color:var(--muted)}
-.jc-price{font-family:var(--f-ui);font-size:clamp(9px,1.15vw,11.5px);color:var(--muted);
-  display:flex;align-items:center;gap:3px}
-.jc-price .pearl-icon{width:1em;height:1em}
 /* Déjà décroché dans la série : allumé, mais calme. */
 .jc-chest.chest-won .chest{filter:drop-shadow(0 0 9px color-mix(in srgb,var(--chest-c) 65%,transparent))}
 .jc-chest.chest-won .jc-name{color:var(--text)}
@@ -1826,10 +1873,6 @@ body.light .pmv-dark{background:#c3bdae}
 @keyframes jcBreathe{0%,100%{opacity:.62}50%{opacity:1}}
 /* Encore loin : éteint, sans disparaître. */
 .jc-chest.chest-far{opacity:.4;filter:saturate(.3) brightness(.78)}
-.jc-chest.chest-far:hover{opacity:.9;filter:saturate(.85) brightness(1)}
-/* Prix hors de portée : GRIS, et non rouge d'alerte. Le coffre reste
-   cliquable, le refus reste expliqué au clic. */
-.jc-chest.jc-poor .jc-price{color:var(--muted);opacity:.72}
 /* L'en-tête du rail : le solde à gauche, la série à droite, un filet dessous.
    Deux faits de nature différente, deux ancrages. */
 .jc-head{display:flex;align-items:center;justify-content:space-between;gap:12px;
@@ -1850,7 +1893,6 @@ body.light .pmv-dark{background:#c3bdae}
   .jouer-chests{width:96%;margin-top:clamp(24px,8vh,70px)}
   .jc-rail{gap:1.4vw}
   .jc-chest .chest{width:13.5vw;height:11.6vw}
-  .jc-price{font-size:clamp(8px,2.3vw,11px)}
   }
 
 /* [ECONOMY-INLINE] : rappels d'économie dans les écrans existants ====
@@ -2332,7 +2374,7 @@ body.cube-active:not(.nav-overlay) .notif-host{bottom:92px}
    beaucoup (cube, cinématiques, particules, pulsations).
    ============================================================== */
 .btn:focus-visible,.cube-arrow:focus-visible,.jouer-btn:focus-visible,
-.linput:focus-visible,.acc-item:focus-visible,.history-nav button:focus-visible,
+.linput:focus-visible,.history-nav button:focus-visible,
 .chest-card:focus-visible{
   outline:2px solid var(--accent2);outline-offset:3px}
 /* Les pièces sont redessinées 32 fois par plateau : la transition universelle
@@ -2411,8 +2453,7 @@ body.cube-active:not(.nav-overlay) .notif-host{bottom:92px}
    un centrage explicite, un `font-size` ne dimensionne plus rien.
    ============================================================== */
 .ac-btns .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px}
-.ac-btns .btn svg,.ac-name-edit-btn svg,.acc-del svg{display:block}
-.acc-del svg{width:15px;height:15px}
+.ac-btns .btn svg,.ac-name-edit-btn svg{display:block}
 
 /* Compteur d'étapes du tutoriel, posé à côté du nom du savant. */
 .tuto-progress{font-family:var(--f-ui);font-size:9.5px;font-weight:700;letter-spacing:1px;
@@ -2768,7 +2809,7 @@ body.light .adv-advised{color:#f6f5f1}
      .20s — un changement d'état qui porte une information.
    ============================================================== */
 .status-bar{transition:color .2s ease,border-color .2s ease,background-color .2s ease}
-.jc-price,.jc-name{transition:color .16s ease}
+.jc-name{transition:color .16s ease}
 .btn{transition:transform .14s,background .18s,border-color .18s,color .18s,box-shadow .18s}
 .bd-budget-num,.pcard-stock{transition:color .2s ease}
 .lore-faq summary::before{transition:transform .18s ease}
@@ -2782,7 +2823,7 @@ body.light .adv-advised{color:#f6f5f1}
 
 /* Le mouvement réduit reste prioritaire sur tout ce qui précède. */
 @media(prefers-reduced-motion:reduce){
-  .status-bar,.jc-price,.jc-name,.btn,.bd-budget-num,.pcard-stock{transition:none}
+  .status-bar,.jc-name,.btn,.bd-budget-num,.pcard-stock{transition:none}
     .bd-over }
 
 /* [MOBILE-APP] : LA MISE EN PAGE TÉLÉPHONE ========================

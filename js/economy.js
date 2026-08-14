@@ -231,18 +231,27 @@ function economySettle(result,gs){
   // donneraient un Coffre Roi : le moyen le plus rentable de progresser
   // serait de ne jamais affronter personne à sa mesure. Le jeu en ligne n'a
   // pas de plafond, l'adversaire y vaut toujours le sien.
+  //
+  // UNE SEULE SÉRIE PAR JOUR (streakLockedToday, plus bas) : une défaite ne
+  // remet plus seulement le compteur à zéro, elle ferme aussi la série pour
+  // le reste de la journée — les victoires suivantes ne donnent plus de
+  // coffre tant que la date locale n'a pas changé. Sans ce verrou, perdre
+  // n'était qu'un contretemps qu'une victoire suivante effaçait aussitôt.
   let streak=accGet('win_streak',0);
   let chest=null;
   if(result==='win'){
-    streak=streak+1;
-    chest=chestForStreak(streak);
-    const cap=economyChestCap(gs);
-    if(cap!==null&&chest.tier>cap)chest=CHESTS[cap];
-    // Le coffre n'est pas crédité ici : c'est settleAndCelebrate()
-    // (js/economy-ui.js) qui l'ouvre, une fois la cinématique d'issue passée
-    // et avant l'écran de résultat.
+    if(!streakLockedToday()){
+      streak=streak+1;
+      chest=chestForStreak(streak);
+      const cap=economyChestCap(gs);
+      if(cap!==null&&chest.tier>cap)chest=CHESTS[cap];
+      // Le coffre n'est pas crédité ici : c'est settleAndCelebrate()
+      // (js/economy-ui.js) qui l'ouvre, une fois la cinématique d'issue passée
+      // et avant l'écran de résultat.
+    }
   }else if(result==='loss'){
     streak=0;
+    accSet('streak_lock_day',todayKey());
   }
   accSet('win_streak',streak);
 
@@ -416,6 +425,13 @@ function todayKey(){
   return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 }
 function dailyChestAvailable(){return accGet('daily_last',null)!==todayKey();}
+
+// La série de victoires à coffres est elle aussi quotidienne (voir
+// economySettle plus haut) : une défaite pose `streak_lock_day` à la date du
+// jour, et tant que la date locale n'a pas changé, plus aucune victoire ne
+// donne de coffre. Le lendemain, todayKey() change tout seul et la série
+// redevient jouable — rien à réinitialiser explicitement.
+function streakLockedToday(){return accGet('streak_lock_day',null)===todayKey();}
 function dailyChestPreview(){
   const gains={};
   invOwnedIds().forEach(id=>{gains[id]=DAILY_CHEST.perPiece;});
