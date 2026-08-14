@@ -5,12 +5,11 @@
 // Contient : le rendu de la face « Armurerie » du cube (#page-reserve), la
 // texture du plateau (suit automatiquement l'ELO, voir bestUnlockedSkin),
 // la cérémonie d'ouverture d'un coffre,
-// les coffres illimités du mode test (renderAdminChests), les six coffres du
-// menu principal (renderMenuChests, qui montrent la série de victoires mais
-// ne s'achètent plus), la face « Magasin » du cube où ils s'achètent
+// les coffres illimités du mode test (renderAdminChests), la fenêtre de la
+// série du jour (renderStreakModal, ouverte depuis le menu principal), la
+// face « Magasin » du cube où les coffres s'achètent
 // (renderMagasinPage/buyChestFromShop), le coffre de réapprovisionnement
-// quotidien — sur le menu principal (renderDailyChest) — et le rappel de la
-// mise pendant la partie.
+// quotidien (renderDailyChest) et le rappel de la mise pendant la partie.
 //
 // Dépendances : economy.js (inventaire, coffres, quotidien, streakLockedToday),
 // data-pieces.js (PIECES, CHESTS, BOARD_SKINS), piece-art.js
@@ -57,64 +56,106 @@ function applyBoardSkin(){
 }
 
 // ----------------------------------------------------------------
-// LES SIX COFFRES DU MENU PRINCIPAL
+// LA SÉRIE DU JOUR : une fenêtre, plus un rail
 // ----------------------------------------------------------------
-// Ils remplacent à la fois l'ancien badge « prochaine victoire : Coffre Fou »
-// et l'ancienne boutique de l'Armurerie, et disent les deux choses d'un seul
-// coup d'œil, dans l'ordre Pion → Roi :
+// La série de victoires occupait le bas du MENU PRINCIPAL : six coffres en
+// rang, le solde de perles et la mention « Série · N victoires ». Trois
+// informations posées en permanence sous le pouce pour un état qu'on ne
+// consulte qu'au moment de décider si on relance une partie — et six coffres
+// larges de 13 vw chacun, donc illisibles.
 //
-//   allumé      coffre déjà décroché dans la série en cours
-//   éclatant    celui que la PROCHAINE victoire donnerait
-//   éteint      encore à plusieurs victoires de là
+// Elle a maintenant SA fenêtre, ouverte par le bouton « Série du jour »
+// au-dessus de COMBAT. Une colonne, du Coffre Pion (en haut) au Coffre Roi
+// (en bas) : chaque palier a la place de dire combien de victoires d'affilée
+// il demande, et on arrive directement sur celui qui est en jeu.
 //
-// Deux victoires d'affilée : Pion et Cavalier allumés, Fou éclatant, Tour,
-// Dame et Roi en retrait. Il n'y a plus rien à lire, il n'y a qu'à regarder.
+//   chest-won   palier déjà décroché dans la série du jour
+//   chest-next  celui que la PROCHAINE victoire donnerait
+//   chest-far   encore à plusieurs victoires de là
 //
-// LE RAIL N'EST PLUS ACHETABLE : il ne fait plus que MONTRER la série (voir
-// menuChestsHTML/renderMenuChests) — acheter un coffre contre des perles se
-// fait désormais uniquement depuis le Magasin (renderMagasinPage, plus bas),
-// qui porte aussi les six mêmes coffres en grand.
-function menuChestState(i,streak){
-  // Série ≥ 6 : le Coffre Roi est à la fois acquis et reconduit à chaque
-  // victoire suivante — il reste donc l'éclatant.
-  const next=Math.min(streak,CHESTS.length-1);
-  if(i===next)return 'chest-next';
-  return i<streak?'chest-won':'chest-far';
-}
-function menuChestsHTML(){
+// La série est QUOTIDIENNE (voir economySettle/streakLockedToday dans
+// js/economy.js) : une défaite la ferme jusqu'au lendemain, et il n'y a
+// alors plus de palier « next » du tout.
+function streakSnapshot(){
   const streak=accGet('win_streak',0);
-  const bal=pearlBalance();
-  const balTxt=(typeof pearlInfinite==='function'&&pearlInfinite())?'∞':bal;
-  // Le solde et la série sont deux faits de nature différente : ils étaient
-  // juxtaposés sur une même ligne de 11 px, séparés par un espace. Ils
-  // deviennent l'EN-TÊTE du rail, chacun sur son ancrage.
-  let head='<div class="jc-head"><span class="jc-bank">'+pearlAmountHTML(balTxt,1.1)+' perles</span>'+
-    (streak>0?'<span class="jc-streak">Série · '+streak+' victoire'+(streak>1?'s':'')+'</span>':'')+
-  '</div>';
-  // Simples pastilles : plus de bouton ni de prix, voir la note ci-dessus.
-  let rail='<div class="jc-rail">'+CHESTS.map((ch,i)=>{
-    const state=menuChestState(i,streak);
-    return '<div class="jc-chest '+state+'" data-chest="'+ch.id+'" style="--chest-c:'+ch.color+'" title="'+escH(ch.name)+'">'+
-      chestVisual(ch,state==='chest-next'?'chest-ready':'')+
-      '<span class="jc-name">'+escH(ch.name.replace(/^Coffre /,''))+'</span>'+
-    '</div>';
-  }).join('')+'</div>';
-  return head+rail;
+  const locked=(typeof streakLockedToday==='function')&&streakLockedToday();
+  const done=streak>=CHESTS.length;
+  // Ni série perdue ni série terminée : le prochain palier est celui d'indice
+  // `streak` (0 victoire → Coffre Pion).
+  const nextIdx=(locked||done)?-1:Math.min(streak,CHESTS.length-1);
+  return{streak,locked,done,nextIdx};
 }
+function streakRowState(i,snap){
+  if(i<snap.streak)return 'chest-won';
+  if(i===snap.nextIdx)return 'chest-next';
+  return 'chest-far';
+}
+// Une phrase, sous le titre : où l'on en est, et ce que ça implique.
+function streakSubtitle(snap){
+  if(snap.locked)return 'Série perdue pour aujourd\'hui. Elle repart demain.';
+  if(snap.done)return 'Série terminée, les six coffres sont tombés. Elle repart demain.';
+  const next=CHESTS[snap.nextIdx];
+  if(!snap.streak)return 'Une victoire, et le '+next.name+' est à vous.';
+  return snap.streak+' victoire'+(snap.streak>1?'s':'')+' d\'affilée · la prochaine donne le '+next.name+'.';
+}
+// L'ORDRE EST CELUI DU DOM : CHESTS va du Pion au Roi, et les lignes se
+// posent de haut en bas — donc Pion tout en haut, Roi tout en bas.
+function streakRowsHTML(snap){
+  return CHESTS.map((ch,i)=>{
+    const state=streakRowState(i,snap);
+    const wins=i+1;
+    const mark=state==='chest-won'?'<span class="streak-mark streak-mark-ok">✓</span>'
+      :state==='chest-next'?'<span class="streak-mark streak-mark-next">Prochain</span>':'';
+    return '<div class="streak-row '+state+'" data-chest="'+ch.id+'" data-idx="'+i+'" style="--chest-c:'+ch.color+'">'+
+      '<div class="streak-row-chest">'+chestVisual(ch,state==='chest-next'?'chest-ready':'')+'</div>'+
+      '<div class="streak-row-txt">'+
+        '<div class="streak-row-name">'+escH(ch.name)+'</div>'+
+        '<div class="streak-row-win">'+(wins===1?'1re victoire':wins+'e victoire d\'affilée')+'</div>'+
+      '</div>'+mark+
+    '</div>';
+  }).join('');
+}
+function renderStreakModal(){
+  const snap=streakSnapshot();
+  const sub=document.getElementById('streak-sub');
+  if(sub)sub.textContent=streakSubtitle(snap);
+  const host=document.getElementById('streak-scroll');
+  if(!host)return snap;
+  host.innerHTML=streakRowsHTML(snap);
+  // On ARRIVE LÀ OÙ ON EN EST quand une série est en cours : le palier que la
+  // prochaine victoire donnerait est amené au centre. Série terminée ou
+  // perdue, il n'y a pas de « prochain » à montrer — on ouvre donc sur le
+  // début de la colonne (le Coffre Pion, tout en haut).
+  requestAnimationFrame(()=>{
+    if(snap.nextIdx>0){
+      const row=host.querySelector('.streak-row[data-idx="'+snap.nextIdx+'"]');
+      if(row)row.scrollIntoView({block:'center'});
+    }else host.scrollTop=0;
+  });
+  return snap;
+}
+function openStreakModal(){
+  if(!CUR_ACC)return;
+  renderStreakModal();
+  document.getElementById('streak-modal')?.classList.add('show');
+}
+function closeStreakModal(){
+  document.getElementById('streak-modal')?.classList.remove('show');
+}
+document.getElementById('jouer-streak')?.addEventListener('click',openStreakModal);
+document.getElementById('streak-close')?.addEventListener('click',closeStreakModal);
+// Un clic sur le voile (et non sur le panneau) referme, comme les autres
+// fenêtres du jeu.
+document.getElementById('streak-modal')?.addEventListener('click',e=>{
+  if(e.target.id==='streak-modal')closeStreakModal();
+});
+
+// Conservée sous son nom historique : une douzaine d'appels y mènent
+// (connexion, fin de partie, arrivée sur la face JOUER). Le menu n'a plus de
+// rail de coffres à dessiner — il ne reste que le coffre quotidien à
+// déclencher et l'identité à rafraîchir.
 function renderMenuChests(){
   renderDailyChest();
-  const el=document.getElementById('jouer-chests');
-  if(el){
-    // SÉRIE PERDUE POUR AUJOURD'HUI (streakLockedToday, js/economy.js) : le
-    // rail entier disparaît plutôt que de montrer une série figée à zéro —
-    // il ne redit rien tant qu'il n'y a rien de nouveau à y lire, et revient
-    // de lui-même le lendemain.
-    const show=CUR_ACC&&!(typeof streakLockedToday==='function'&&streakLockedToday());
-    el.innerHTML=show?menuChestsHTML():'';
-  }
-  // Le menu principal se rafraîchit ici (connexion, fin de partie) : c'est
-  // aussi le moment de remettre à jour le pseudo et l'ELO affichés au-dessus,
-  // qui viennent peut-être de bouger.
   if(typeof renderMenuIdentity==='function')renderMenuIdentity();
 }
 
@@ -169,7 +210,8 @@ function pearlAmountHTML(n,em){
 
 // L'Armurerie ne montre plus le solde de perles : on n'y achète rien. Les
 // perles servent aux coffres, et leur solde est écrit sous les coffres, au
-// menu principal, là où on décide de dépenser (voir .jc-bank).
+// Magasin, sur la carte de chaque coffre et dans l'en-tête (voir
+// renderMagasinPage), là où on décide de dépenser.
 function renderReservePage(){
   if(!CUR_ACC)return;
   renderAdminChests();
@@ -277,7 +319,7 @@ function magasinChestVisual(chest){
 function magasinChestCardHTML(chest){
   const price=chestPearlPrice(chest.id);
   const afford=pearlInfinite()||pearlBalance()>=price;
-  return '<button class="shop-chest'+(afford?'':' jc-poor')+'" data-chest="'+chest.id+'" style="--chest-c:'+chest.color+'">'+
+  return '<button class="shop-chest'+(afford?'':' shop-poor')+'" data-chest="'+chest.id+'" style="--chest-c:'+chest.color+'">'+
     magasinChestVisual(chest)+
     '<div class="shop-chest-name">'+escH(chest.name)+'</div>'+
     '<div class="shop-chest-price">'+pearlAmountHTML(price,1.15)+'</div>'+
@@ -369,7 +411,7 @@ function dailyChestBusy(){
   // On ne se fie pas à GS.gameOver seul : cet objet existe dès le chargement,
   // avec gameOver à false, alors qu'aucune partie n'a commencé.
   if(document.querySelector('.cube-face[data-face="game"].is-front'))return true;
-  if(document.querySelector('.page.active:not(#page-login)'))return true;
+  if(document.querySelector('.page.active'))return true;
   if(_chestState)return true;                                      // coffre déjà ouvert
   if(typeof tutoActive==='function'&&tutoActive())return true;      // le savant parle
   // Tutoriel pas encore terminé : le savant distribue déjà ses propres
@@ -380,7 +422,8 @@ function dailyChestBusy(){
     (el.classList.contains('show')||el.classList.contains('active')||
      el.style.display==='flex');};
   if(shown('result-modal')||shown('chest-modal')||shown('confirm-modal')||
-     shown('mp-modal')||shown('intro-modal'))return true;
+     shown('mp-modal')||shown('intro-modal')||shown('pseudo-gate')||
+     shown('streak-modal'))return true;
   return false;
 }
 
