@@ -1097,14 +1097,14 @@ body.light .cube-face[data-face="jouer"]{background:
 .jouer-actions{display:flex;flex-direction:column;align-items:center;gap:14px}
 
 /* --- Faces placeholder (Magasin / Missions / Variantes) --- */
-/* Armurerie et face libre : mêmes matières que le menu, un ton plus neutre pour
+/* Armurerie et Magasin : mêmes matières que le menu, un ton plus neutre pour
    que le contenu (cartes, coffres) ressorte. */
 .cube-face[data-face="reserve"],
-.cube-face[data-face="libre"]{background:
+.cube-face[data-face="magasin"]{background:
   radial-gradient(ellipse at 50% 8%,rgba(47,177,151,.09),transparent 58%),
   linear-gradient(165deg,#141b20,#0c1114)}
 body.light .cube-face[data-face="reserve"],
-body.light .cube-face[data-face="libre"]{background:
+body.light .cube-face[data-face="magasin"]{background:
   radial-gradient(ellipse at 50% 8%,rgba(18,120,106,.10),transparent 58%),
   linear-gradient(165deg,#f2f1ec,#e2e1da)}
 /* L'Armurerie embarque une page longue : elle doit défiler. */
@@ -1139,6 +1139,21 @@ body.light .cube-face[data-face="libre"]{background:
 #cube-arrow-down{bottom:calc(22px + var(--safe-b))}
 #cube-arrow-up{top:calc(var(--chrome-h) + var(--safe-t) + 10px)}
 
+/* --- Repère des faces (logos en bas) : un logo par face du cube, celui de
+   la face affichée s'allume. Centré, entre les deux flèches. --- */
+.cube-facebar{position:fixed;z-index:400;left:50%;bottom:calc(22px + var(--safe-b));
+  transform:translateX(-50%);display:flex;gap:4px;padding:5px;border-radius:16px;
+  border:1px solid var(--border2);background:rgba(255,255,255,.05);
+  backdrop-filter:blur(14px);box-shadow:0 6px 20px rgba(0,0,0,.4)}
+.cube-facebar-btn{cursor:pointer;border:none;background:transparent;color:var(--muted);
+  width:40px;height:40px;border-radius:11px;display:flex;align-items:center;justify-content:center;
+  padding:0;transition:all .2s ease}
+.cube-facebar-btn svg{display:block;width:56%;height:56%;pointer-events:none}
+.cube-facebar-btn:hover{color:var(--text);background:var(--surface2)}
+.cube-facebar-btn.is-active{color:#1a1206;background:var(--gold)}
+body.light .cube-facebar{background:rgba(255,255,255,.82);border-color:var(--border2)}
+body.light .cube-facebar-btn:hover{background:#fff}
+
 /* --- Pages secondaires : overlays plein écran AU-DESSUS du cube ---
    (armées, voie, combat, login). Restent pilotées par
    .page/.active comme avant, mais deviennent des couches opaques qui
@@ -1165,6 +1180,8 @@ body.light .cube-face[data-face="libre"]{background:
   #cube-arrow-right{right:12px}
   .cube-arrow-vert{width:52px;height:34px}
   #cube-arrow-down{bottom:calc(12px + var(--safe-b))}
+  .cube-facebar{bottom:calc(12px + var(--safe-b));gap:2px;padding:4px}
+  .cube-facebar-btn{width:34px;height:34px;border-radius:9px}
 }
 @media(max-width:480px){
   .intro-parchment-inner{padding:24px 18px 22px}
