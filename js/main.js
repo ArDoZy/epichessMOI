@@ -147,12 +147,17 @@ const fmtDate=ts=>{const d=new Date(ts);return d.toLocaleDateString('fr-FR',{day
 // faisaient donc rien du tout, sans un mot d'explication : le jeu paraissait
 // cassé là où il refusait simplement une action.
 //
-// Le bandeau est revenu, mais discret : en bas à droite, trois messages au
-// plus, effacé au clic, et jamais au milieu de l'écran (l'ancien apparaissait
+// Le bandeau est revenu, mais discret : en bas à droite, UN SEUL message à la
+// fois, effacé au clic, et jamais au milieu de l'écran (l'ancien apparaissait
 // en haut, par-dessus la barre de compte).
 //
+// Pourquoi un seul : un refus en entraîne souvent d'autres (on reclique, on
+// essaie à côté), et les bandeaux s'empilaient jusqu'à manger le bas de
+// l'écran. Le dernier message est toujours celui qui compte — le précédent
+// sort par la droite dès qu'un nouveau arrive.
+//
 //   type : 'err' (refus, par défaut) | 'ok' (confirmation) | 'info'
-const NOTIF_MAX=3;
+const NOTIF_MAX=1;
 const NOTIF_MS=3600;
 let _notifHost=null;
 function notifHost(){
@@ -164,12 +169,18 @@ function notifHost(){
   document.body.appendChild(_notifHost);
   return _notifHost;
 }
+// Les messages VIVANTS : un bandeau qui part garde sa place dans le document
+// le temps de son animation de sortie (260 ms), mais il ne compte plus — ni
+// pour la limite, ni comme jumeau à rallumer.
+function notifsLive(host){
+  return [...host.children].filter(el=>!el.dataset.closing);
+}
 function showNotif(msg,type){
   if(!msg)return;
   const host=notifHost();
   // Deux clics sur un bouton refusé ne doivent pas empiler deux fois le même
   // message : on rallume celui qui est déjà là.
-  const twin=[...host.children].find(el=>el.dataset.msg===String(msg));
+  const twin=notifsLive(host).find(el=>el.dataset.msg===String(msg));
   if(twin){
     twin.classList.remove('notif-pop');void twin.offsetWidth;twin.classList.add('notif-pop');
     clearTimeout(+twin.dataset.timer);
@@ -182,7 +193,15 @@ function showNotif(msg,type){
   el.textContent=msg;
   el.addEventListener('click',()=>dismissNotif(el));
   host.appendChild(el);
-  while(host.children.length>NOTIF_MAX)dismissNotif(host.firstElementChild);
+  // ON PARCOURT UNE LISTE FIGÉE, jamais le document. La version précédente
+  // bouclait sur `host.children.length > NOTIF_MAX` en congédiant
+  // `firstElementChild` : comme dismissNotif ne retire le nœud qu'au bout de
+  // son animation, l'enfant restait en place, la condition restait vraie, et
+  // le second appel ressortait aussitôt (déjà `closing`) sans rien changer —
+  // boucle infinie, onglet figé dès le message de trop. Ici on retire les
+  // plus anciens d'une liste qui, elle, se vide à chaque tour.
+  const live=notifsLive(host);
+  while(live.length>NOTIF_MAX)dismissNotif(live.shift());
   el.dataset.timer=setTimeout(()=>dismissNotif(el),NOTIF_MS);
 }
 function dismissNotif(el){
@@ -317,7 +336,12 @@ function showPieceCtxMenu(e,pieceDef,opts){
   }else{
     pBtn.style.display='none';
   }
-  const mx=Math.min(e.clientX,window.innerWidth-330),my=Math.min(e.clientY,window.innerHeight-260);
+  // Le coin haut-gauche va au point cliqué, reculé juste ce qu'il faut pour
+  // que la fiche tienne à l'écran. Le Math.max garde le bord gauche visible :
+  // sous 338 px de large, le seul Math.min donnait une abscisse NÉGATIVE et
+  // la fiche sortait par la gauche.
+  const mx=Math.max(8,Math.min(e.clientX,window.innerWidth-330)),
+        my=Math.max(8,Math.min(e.clientY,window.innerHeight-260));
   menu.style.left=mx+'px';menu.style.top=my+'px';menu.classList.add('show');
 }
 

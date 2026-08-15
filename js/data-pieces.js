@@ -201,13 +201,21 @@ const BOARD_SKINS=[
 // sont plus gros, plus nombreux, et la probabilité qu'un lot soit un BON lot
 // est calculée à partir de newChance (chestLuckyChance, js/economy.js). Un
 // coffre sans pièce inédite reste donc un bon coffre.
+// LES QUANTITÉS ONT ÉTÉ DIVISÉES PAR DEUX ET DEMI. Un Coffre Roi rendait 144
+// exemplaires ; les pièces, elles, ne se perdent qu'à la défaite et une par
+// une (economySettle plus haut ne retire que les non-survivantes). Le robinet
+// coulait bien plus vite que la fuite : au bout de quelques séries, tous les
+// stocks étaient saturés et un coffre ne changeait plus rien à ce qu'on
+// pouvait aligner. Le NOMBRE DE LOTS ne bouge pas — c'est lui qui fait la
+// cérémonie, on n'a rien à gagner à la raccourcir —, seule la quantité par lot
+// est resserrée.
 const CHESTS=[
-  {id:'pion',    tier:0,name:'Coffre Pion',    rolls:2,qty:[1,4],  newChance:0.010,bias:0.60,color:'#7f8b94'},
-  {id:'cavalier',tier:1,name:'Coffre Cavalier',rolls:3,qty:[2,5],  newChance:0.028,bias:0.90,color:'#7d9c6a'},
-  {id:'fou',     tier:2,name:'Coffre Fou',     rolls:4,qty:[3,7],  newChance:0.030,bias:1.25,color:'#5f93b8'},
-  {id:'tour',    tier:3,name:'Coffre Tour',    rolls:4,qty:[5,10], newChance:0.050,bias:1.80,color:'#9a6fc4'},
-  {id:'dame',    tier:4,name:'Coffre Dame',    rolls:5,qty:[7,14], newChance:0.100,bias:2.40,color:'#d0742e'},
-  {id:'roi',     tier:5,name:'Coffre Roi',     rolls:6,qty:[10,20],newChance:0.250,bias:3.30,color:'#d9b64e'},
+  {id:'pion',    tier:0,name:'Coffre Pion',    rolls:2,qty:[1,2], newChance:0.010,bias:0.60,color:'#7f8b94'},
+  {id:'cavalier',tier:1,name:'Coffre Cavalier',rolls:3,qty:[1,3], newChance:0.028,bias:0.90,color:'#7d9c6a'},
+  {id:'fou',     tier:2,name:'Coffre Fou',     rolls:4,qty:[2,4], newChance:0.030,bias:1.25,color:'#5f93b8'},
+  {id:'tour',    tier:3,name:'Coffre Tour',    rolls:4,qty:[2,5], newChance:0.050,bias:1.80,color:'#9a6fc4'},
+  {id:'dame',    tier:4,name:'Coffre Dame',    rolls:5,qty:[3,6], newChance:0.100,bias:2.40,color:'#d0742e'},
+  {id:'roi',     tier:5,name:'Coffre Roi',     rolls:6,qty:[4,8], newChance:0.250,bias:3.30,color:'#d9b64e'},
 ];
 function chestById(id){return CHESTS.find(c=>c.id===id)||CHESTS[0];}
 // Une série de n victoires donne le coffre de rang n-1, plafonné au Roi.
@@ -221,26 +229,44 @@ function chestForStreak(streak){return CHESTS[Math.min(Math.max(streak,1)-1,CHES
 // une sortie à une série de coffres médiocres : même sans pièce inédite, on
 // avance vers le coffre qu'on vise.
 //
-// pearls : fourchette de perles contenues dans le coffre. Relevée en même
-//          temps que les lots de pièces, pour la même raison : une pièce
-//          inédite étant devenue rare, un coffre doit valoir quelque chose
-//          même quand il n'en contient pas.
+// pearls : fourchette de perles contenues dans le coffre. Elle vaut à peu
+//          près la MOITIÉ de ce qu'elle valait : un coffre doit faire avancer
+//          vers le suivant, pas se payer lui-même.
 // price  : prix du coffre, payable en perles depuis le menu principal.
+//
+// UN COFFRE NE DOIT JAMAIS SE REMBOURSER, même sur son meilleur tirage. Le
+// Coffre Pion y arrivait une fois sur trente : 18 perles au maximum, ×1,8 sur
+// un bon lot, soit 32 perles pour un prix de 30 — de quoi en racheter un et
+// recommencer indéfiniment, chaque tour rapportant des pièces en prime. Le
+// plafond de chaque coffre (haut de fourchette × 1,8, le facteur « bon lot »
+// de chestRoll) est maintenant sous la moitié de son prix :
+//
+//   pion 16/30 · cavalier 36/120 · fou 52/150
+//   tour 90/250 · dame 158/500 · roi 252/750
+//
+// Toucher à l'une de ces fourchettes, c'est refaire ce calcul.
 const CHEST_PEARLS={
-  pion:    {pearls:[6,18],   price:30},
-  cavalier:{pearls:[15,36],  price:120},
-  fou:     {pearls:[26,58],  price:150},
-  tour:    {pearls:[45,100], price:250},
-  dame:    {pearls:[80,175], price:500},
-  roi:     {pearls:[130,280],price:750},
+  pion:    {pearls:[3,9],    price:30},
+  cavalier:{pearls:[8,20],   price:120},
+  fou:     {pearls:[13,29],  price:150},
+  tour:    {pearls:[22,50],  price:250},
+  dame:    {pearls:[40,88],  price:500},
+  roi:     {pearls:[65,140], price:750},
 };
 function chestPearlRange(id){return (CHEST_PEARLS[id]||CHEST_PEARLS.pion).pearls;}
 function chestPearlPrice(id){return (CHEST_PEARLS[id]||CHEST_PEARLS.pion).price;}
 
-// Coffre de réapprovisionnement quotidien : +4 exemplaires de CHAQUE pièce
+// Coffre de réapprovisionnement quotidien : +2 exemplaires de CHAQUE pièce
 // possédée. C'est le filet de sécurité du système : sans lui, un joueur qui
 // perd tout son inventaire ne pourrait plus composer d'armée du tout.
-const DAILY_CHEST={id:'reappro',name:'Coffre de réapprovisionnement',perPiece:4};
+//
+// Il était à 4, et c'était en réalité LA plus grosse source de pièces du jeu :
+// versée tous les jours, sur tout le catalogue possédé, sans rien demander —
+// bien devant les coffres de série, qui eux se méritent. Resserrer les coffres
+// en le laissant à 4 n'aurait presque rien changé à ce qu'on a en stock. À 2,
+// il reste ce qu'il doit être : de quoi se refaire une armée, pas de quoi en
+// accumuler dix.
+const DAILY_CHEST={id:'reappro',name:'Coffre de réapprovisionnement',perPiece:2};
 
 // ----------------------------------------------------------------
 // CATALOGUE COMPLET DES PIÈCES (version light)

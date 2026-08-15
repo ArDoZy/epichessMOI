@@ -4,31 +4,33 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex">
-<title>Coffre Pion — banc d'essai de la destruction</title>
+<title>Coffres qu'on brise — banc d'essai de la destruction</title>
 
 <!--
   BANC D'ESSAI DU COFFRE QU'ON BRISE
   =================================================================
   Cette page ne fait PAS partie du jeu : rien dans index.html ne la
-  charge. Elle joue la séquence de destruction du Coffre Pion avec le
-  VRAI moteur (js/chest-break.js) et le VRAI décor (css/style.css), hors
-  du jeu — pour régler le rythme sans devoir gagner un coffre à chaque
+  charge. Elle joue la séquence de destruction d'un coffre avec le VRAI
+  moteur (js/chest-break.js) et le VRAI décor (css/style.css), hors du
+  jeu — pour régler le rythme sans devoir gagner un coffre à chaque
   essai.
 
   Deux usages :
 
-  1. Les sept images sont déjà dans assets/chests/pion/ : la page les
+  1. Les planches sont déjà dans assets/chests/<id>/ (les cinq de la
+     pièce) et assets/chests/forall/ (les trois communes) : la page les
      prend telles quelles.
-  2. Elles n'y sont pas encore : la page dessine sept planches
-     d'approximation au canevas (un pion blanc, des fissures dorées, une
-     explosion) pour qu'on puisse juger le rythme tout de suite. On peut
-     aussi DÉPOSER ses sept images sur la page — rien n'est copié dans le
+  2. Elles n'y sont pas encore : la page dessine des planches
+     d'approximation au canevas (une pièce blanche, des fissures dorées,
+     une explosion) pour qu'on puisse juger le rythme tout de suite. On
+     peut aussi DÉPOSER ses images sur la page — rien n'est copié dans le
      dépôt, tout se joue dans le navigateur.
 
   Le réglage lui-même (secousses, halo, durées) est dans la table
   CHEST_BREAK, en tête de js/chest-break.js.
 
   Ouvrir :  npm run dev   puis   /tools/chest-break-preview.html
+            ?chest=cavalier   pour régler le Cavalier plutôt que le Pion
   (le protocole file:// bloque le chargement des images, il faut un
   serveur — celui de `npm run dev` suffit)
 -->
@@ -62,17 +64,39 @@
 
 <div class="pv-bar">
   <button id="pv-replay">Rejouer</button>
+  <button id="pv-swap">Autre coffre</button>
   <label>Utiliser mes images<input type="file" id="pv-files" accept="image/*" multiple></label>
   <span class="pv-src" id="pv-src">…</span>
 </div>
 
 <script src="../js/chest-break.js"></script>
 <script>
-// Le dossier des images est relatif à index.html : depuis tools/, il faut
-// remonter d'un cran.
-CHEST_BREAK.pion.dir='../assets/chests/pion/';
+// Quel coffre règle-t-on ? ?chest=cavalier pour le Cavalier, le Pion sinon.
+// Le bouton « Autre coffre » recharge la page sur l'autre séquence : le
+// moteur monte une scène par séquence, on ne les mélange pas à chaud.
+const IDS=Object.keys(CHEST_BREAK);
+const CHEST=IDS.indexOf(new URLSearchParams(location.search).get('chest'))>=0
+  ?new URLSearchParams(location.search).get('chest'):IDS[0];
+const CFG=CHEST_BREAK[CHEST];
 
-const STAGES=CHEST_BREAK.pion.stages;
+// Les dossiers sont relatifs à index.html : depuis tools/, il faut remonter
+// d'un cran. On les remonte TOUS, pas seulement ceux du coffre réglé :
+// chestBreakPreload (js/chest-break.js) va chercher la première planche de
+// chaque coffre au démarrage, et laisser les autres chemins tels quels ne
+// donnerait rien de plus qu'une paire de 404 dans la console.
+IDS.forEach(id=>{
+  const c=CHEST_BREAK[id];
+  c.dir='../'+c.dir;
+  c.stages.forEach(st=>{if(st.dir)st.dir='../'+st.dir;});
+});
+
+document.getElementById('chest-title').textContent=
+  'Coffre '+CHEST.charAt(0).toUpperCase()+CHEST.slice(1);
+document.getElementById('pv-swap').addEventListener('click',()=>{
+  location.search='?chest='+IDS[(IDS.indexOf(CHEST)+1)%IDS.length];
+});
+
+const STAGES=CFG.stages;
 const NAMES=STAGES.map(s=>s.src);
 const srcLabel=document.getElementById('pv-src');
 let seq=null;
@@ -182,8 +206,9 @@ function placeholder(i){
   beam(g);podium(g);
   if(i<=3){ pawn(g); if(i)cracks(g,[0,1,5,14][i]); if(i)core(g,i*0.10); }
   else if(i===4){ pawn(g);cracks(g,22);shards(g,16,0.55,17);core(g,0.55); }
-  else if(i===5){ shards(g,26,0.85,13);core(g,1.05); }
-  return c.toDataURL('image/png');   // i===6 : le socle seul
+  else if(i===5){ shards(g,26,0.85,13);core(g,1.05); }        // l'éclatement
+  else if(i===6){ shards(g,34,1.20,11);core(g,1.70); }        // plein cadre
+  return c.toDataURL('image/png');   // i===7 : le socle seul
 }
 
 // ----------------------------------------------------------------
@@ -207,13 +232,13 @@ function play(){
   lootN=0;
   document.getElementById('chest-loot').innerHTML='';
   document.getElementById('chest-modal').classList.remove('opening');
-  seq=chestBreakMount('pion',()=>{
+  seq=chestBreakMount(CHEST,()=>{
     document.getElementById('chest-modal').classList.add('opening');
     fakeLoot(++lootN,LOOT_TOTAL);
   });
 }
 function useSources(srcs,label){
-  CHEST_BREAK.pion.dir='';
+  CFG.dir='';
   srcs.forEach((s,i)=>{STAGES[i].src=s;});
   srcLabel.textContent=label;
   play();
@@ -228,8 +253,9 @@ document.getElementById('chest-break').addEventListener('click',()=>{
 });
 document.getElementById('pv-replay').addEventListener('click',play);
 
-// Sept images déposées à la main : triées par nom de fichier, dans l'ordre
-// des étapes. C'est pour ça que les noms sont numérotés.
+// Les images déposées à la main : triées par nom de fichier, dans l'ordre des
+// étapes — les cinq de la pièce PUIS les trois communes. C'est pour ça que
+// les noms sont numérotés de 01 à 08 d'un dossier à l'autre.
 document.getElementById('pv-files').addEventListener('change',e=>{
   const f=[].slice.call(e.target.files).sort((a,b)=>a.name.localeCompare(b.name));
   if(f.length!==STAGES.length){
@@ -242,10 +268,10 @@ document.getElementById('pv-files').addEventListener('change',e=>{
 // Les vraies images d'abord ; les approximations seulement si elles
 // manquent — la page doit montrer quelque chose dans tous les cas.
 const probe=new Image();
-probe.onload=()=>{srcLabel.textContent='assets/chests/pion/ — vraies images';play();};
+probe.onload=()=>{srcLabel.textContent='assets/chests/'+CHEST+'/ — vraies images';play();};
 probe.onerror=()=>useSources(STAGES.map((s,i)=>placeholder(i)),
-  'approximations dessinées (assets/chests/pion/ est vide) — attendus : '+NAMES.join(', '));
-probe.src=CHEST_BREAK.pion.dir+NAMES[0];
+  'approximations dessinées (assets/chests/'+CHEST+'/ est vide) — attendus : '+NAMES.join(', '));
+probe.src=CFG.dir+NAMES[0];
 </script>
 </body>
 </html>
