@@ -12,6 +12,15 @@
 // l'armée qu'il a composée : les deux armées sont échangées au moment
 // de la connexion.
 //
+// QUITTER L'ONGLET NE CASSE PLUS LA PARTIE. Un broadcast est perdu sans bruit
+// si l'autre camp n'écoute pas à cet instant : un onglet en arrière-plan, un
+// téléphone verrouillé ou une coupure réseau suffisaient donc à faire
+// disparaître définitivement le coup de l'adversaire. Chaque coup est
+// désormais numéroté et conservé dans un journal, réclamé et rejoué au retour.
+// Voir la section RÉSILIENCE plus bas : c'est là qu'est expliqué le mécanisme
+// complet (journal, rattrapage, battement de cœur, reconnexion, délai de
+// grâce avant de déclarer un adversaire parti).
+//
 // AVANT DE POUVOIR JOUER EN LIGNE : renseignez SUPABASE_URL ci-dessous
 // (Settings > API de votre projet supabase.com > "Project URL"). Ce n'est
 // PAS l'adresse de ce site, mais celle du projet Supabase, de la forme
@@ -58,6 +67,15 @@ const MP={
   rematchMine:false, // j'ai proposé une revanche
   rematchTheirs:false,
   gameSeq:0,         // numéro de partie dans ce salon (revanches successives)
+  // -- RATTRAPAGE APRÈS UNE ABSENCE (voir la section RÉSILIENCE plus bas) --
+  log:[],            // journal ordonné des coups de la partie en cours
+  hbId:null,         // battement de cœur : annonce la longueur de mon journal
+  rejoinId:null,     // reconnexion programmée après une coupure
+  rejoinTries:0,     // nombre d'essais de reconnexion consécutifs
+  leaving:false,     // fermeture volontaire : ne pas tenter de reconnexion
+  oppGoneTimerId:null, // délai de grâce avant de déclarer l'adversaire parti
+  oppGone:false,     // adversaire actuellement absent du salon
+  lastRxAt:0,        // date du dernier message reçu : preuve que le canal vit
 };
 
 // Carte de visite envoyée avec l'armée : sans elle l'adversaire n'est qu'un
@@ -191,12 +209,68 @@ function mpConnect(code,asHost){
   MP.myArmy=currentArmyData;MP.oppArmy=null;MP.started=false;
   MP.oppName=null;MP.oppElo=null;MP.oppId=null;
   MP.rematchMine=false;MP.rematchTheirs=false;MP.gameSeq=0;
+  MP.log=[];MP.leaving=false;MP.rejoinTries=0;
+  mpClearOppGone();
 
-  MP.channel=client.channel('epichess-room-'+code,{config:{presence:{key:MP.myId}}});
+  mpJoinRoom(false);
 
+  // RENVOI PÉRIODIQUE DE L'ARMÉE. Un seul envoi ne suffit pas : les deux
+  // camps ne s'abonnent pas à la même seconde, et un broadcast émis avant que
+  // l'autre n'écoute est perdu sans erreur ni accusé de réception. Les deux
+  // clients restaient alors face à face, chacun attendant une armée déjà
+  // envoyée. On réémet donc jusqu'à ce que la partie démarre.
+  mpStartArmyRetry();
+}
+
+// Ouvre (ou rouvre) le canal du salon. `isRejoin` distingue la reconnexion
+// après une coupure — où la partie est déjà en cours et où il faut réclamer
+// les coups manqués — de la connexion initiale.
+function mpJoinRoom(isRejoin){
+  const client=mpInitClient();if(!client||!MP.roomCode)return;
+  if(MP.rejoinId){clearTimeout(MP.rejoinId);MP.rejoinId=null;}
+  if(MP.channel){try{MP.channel.unsubscribe();}catch(e){}MP.channel=null;}
+
+  const ch=client.channel('epichess-room-'+MP.roomCode,{config:{presence:{key:MP.myId}}});
+  MP.channel=ch;
+  mpBindRoomHandlers(ch);
+
+  // Le second argument du rappel porte l'erreur de Realtime : l'ignorer,
+  // c'était perdre la seule information disponible sur la panne.
+  ch.subscribe(async(status,err)=>{
+    if(MP.channel!==ch)return;   // canal remplacé entre-temps : plus rien à en tirer
+    if(status==='SUBSCRIBED'){
+      MP.rejoinTries=0;
+      await ch.track({joinedAt:Date.now()});
+      if(MP.started){
+        // De retour dans le salon : on réclame tout de suite ce qu'on a pu
+        // manquer, plutôt que d'attendre le prochain battement de cœur.
+        mpRequestSync();
+        mpStartHeartbeat();
+        if(isRejoin)mpGameMessage('Reconnecté à la partie.','');
+      }else if(isRejoin){
+        mpSendArmy();
+      }else if(MP.isHost)mpStatus('En attente de votre adversaire','wait');
+      else{
+        mpStatus('Connexion au salon','wait');
+        // Si personne n'est là après quelques secondes, le code est
+        // probablement faux ou la partie n'a pas encore été créée.
+        MP.joinTimeoutId=setTimeout(()=>{
+          if(!MP.started)mpStatus('Aucune partie trouvée avec ce code. Vérifiez-le, ou demandez à votre ami de créer la partie.','err');
+        },8000);
+      }
+    }else if(status==='CHANNEL_ERROR'||status==='TIMED_OUT'||status==='CLOSED'){
+      // Une partie en cours ne doit PAS rester sur un canal mort : c'est
+      // exactement le cas où les coups de l'adversaire disparaissent.
+      if(MP.started){mpScheduleRejoin();return;}
+      mpReportFailure(status,err);
+    }
+  });
+}
+
+function mpBindRoomHandlers(channel){
   // Réception de l'armée adverse. On répond avec la nôtre pour couvrir le
   // cas où notre premier envoi est parti avant que l'autre camp n'écoute.
-  MP.channel.on('broadcast',{event:'army'},({payload})=>{
+  channel.on('broadcast',{event:'army'},({payload})=>{
     if(payload.senderId===MP.myId||MP.started)return;
     MP.oppArmy=payload.army;
     MP.oppId=payload.senderId;
@@ -209,77 +283,105 @@ function mpConnect(code,asHost){
   // Revanche : chacun annonce son souhait, la partie repart quand les deux
   // l'ont fait. Les couleurs s'inversent, sinon le même camp commencerait
   // toutes les parties de la soirée.
-  MP.channel.on('broadcast',{event:'rematch'},({payload})=>{
+  channel.on('broadcast',{event:'rematch'},({payload})=>{
     if(payload.senderId===MP.myId)return;
     MP.rematchTheirs=true;
     mpUpdateRematchUI();
     mpTryRematch();
   });
 
-  MP.channel.on('broadcast',{event:'move'},({payload})=>{
+  // Un coup porte son NUMÉRO D'ORDRE dans la partie : c'est ce qui permet de
+  // reconnaître un coup déjà appliqué (doublon) d'un coup qui en suppose un
+  // autre qu'on n'a jamais reçu (trou → on réclame le journal).
+  channel.on('broadcast',{event:'move'},({payload})=>{
     if(payload.senderId===MP.myId)return;
+    if(!mpSeqOk(payload))return;
+    mpNoteOppAlive();
+    if(typeof payload.idx==='number'){
+      if(payload.idx<MP.log.length)return;              // déjà joué chez nous
+      if(payload.idx>MP.log.length)return mpRequestSync(); // il nous manque un coup
+    }
     mpApplyRemoteMove(payload.from,payload.to,payload.promo);
   });
 
-  MP.channel.on('broadcast',{event:'power'},({payload})=>{
+  channel.on('broadcast',{event:'power'},({payload})=>{
     if(payload.senderId===MP.myId)return;
+    if(!mpSeqOk(payload))return;
+    mpNoteOppAlive();
+    if(typeof payload.idx==='number'){
+      if(payload.idx<MP.log.length)return;
+      if(payload.idx>MP.log.length)return mpRequestSync();
+    }
     mpApplyRemotePower(payload.r,payload.c,payload.pieceId);
   });
 
-  MP.channel.on('broadcast',{event:'resign'},({payload})=>{
+  // BATTEMENT DE CŒUR : chaque camp annonce régulièrement combien de coups il
+  // a enregistrés. Deux longueurs différentes = un message perdu, et celui qui
+  // est en avance renvoie ce qui manque sans qu'on ait à le lui demander.
+  channel.on('broadcast',{event:'ping'},({payload})=>{
+    if(payload.senderId===MP.myId||!mpSeqOk(payload))return;
+    mpNoteOppAlive();
+    if(typeof payload.len!=='number')return;
+    if(payload.len<MP.log.length)mpSendLog(payload.len);
+    else if(payload.len>MP.log.length)mpRequestSync();
+    else mpAdoptOppClock(payload.clock);   // positions identiques : sa pendule fait foi
+  });
+
+  // Demande explicite de rattrapage (retour d'onglet, reconnexion). La
+  // demande est aussi une DÉCLARATION : celui qui revient peut très bien être
+  // en avance sur nous — c'est le cas s'il a joué juste avant de perdre la
+  // connexion. On lui réclame donc à notre tour ce qui nous manque.
+  channel.on('broadcast',{event:'sync-req'},({payload})=>{
+    if(payload.senderId===MP.myId||!mpSeqOk(payload))return;
+    mpNoteOppAlive();
+    const theirLen=(typeof payload.len==='number')?payload.len:0;
+    if(theirLen<MP.log.length)mpSendLog(theirLen);
+    else if(theirLen>MP.log.length)mpRequestSync();
+  });
+
+  // Réponse : les coups manquants, dans l'ordre.
+  channel.on('broadcast',{event:'sync-log'},({payload})=>{
+    if(payload.senderId===MP.myId||!mpSeqOk(payload))return;
+    mpNoteOppAlive();
+    mpApplySyncEntries(payload.entries);
+  });
+
+  channel.on('broadcast',{event:'resign'},({payload})=>{
     if(payload.senderId===MP.myId||!GS||!GS.multiplayer||GS.gameOver)return;
     mpGameMessage('Votre adversaire a abandonné : vous gagnez !','mate');
     GS.gameOver=true;stopClockTick(GS);
+    mpStopHeartbeat();
     if(!_endGameTriggered)triggerEndOfGame('win');
   });
 
   // Départ de l'adversaire en cours de partie : fermer l'onglet ne doit pas
-  // être un moyen d'éviter une défaite. Le joueur resté en ligne gagne.
-  MP.channel.on('presence',{event:'leave'},({leftPresences})=>{
+  // être un moyen d'éviter une défaite. Le joueur resté en ligne gagne — mais
+  // seulement APRÈS un délai de grâce (voir MP_GRACE_MS) : une mise en veille
+  // du téléphone ou un passage sous tunnel coupe la connexion sans que
+  // personne n'ait quitté quoi que ce soit.
+  channel.on('presence',{event:'leave'},({leftPresences})=>{
     if(!MP.started||!GS||!GS.multiplayer||GS.gameOver)return;
     const left=(leftPresences||[]).some(p=>p&&(p.key===MP.oppId||p.senderId===MP.oppId));
     if(!left&&MP.oppId)return;
-    GS.gameOver=true;stopClockTick(GS);
-    const bar=document.getElementById('game-status');
-    if(bar){bar.textContent='Votre adversaire a quitté la partie : vous gagnez.';bar.className='status-bar mate';}
-    if(!_endGameTriggered)triggerEndOfGame('win');
+    mpOppMissing();
+  });
+
+  channel.on('presence',{event:'join'},()=>{
+    if(MP.started)mpOppMaybeBack();
   });
 
   // Dès qu'un second joueur est présent dans le salon, on s'échange les armées.
-  MP.channel.on('presence',{event:'sync'},()=>{
-    if(MP.started)return;
-    const count=Object.keys(MP.channel.presenceState()).length;
+  channel.on('presence',{event:'sync'},()=>{
+    let count=0;
+    try{count=Object.keys(channel.presenceState()).length;}catch(e){count=0;}
+    if(MP.started){
+      if(count>=2)mpOppMaybeBack();
+      return;
+    }
     if(count>=2){
       if(MP.joinTimeoutId){clearTimeout(MP.joinTimeoutId);MP.joinTimeoutId=null;}
       mpStatus('Adversaire trouvé, préparation de la partie','wait');
       mpSendArmy();
-    }
-  });
-
-  // RENVOI PÉRIODIQUE DE L'ARMÉE. Un seul envoi ne suffit pas : les deux
-  // camps ne s'abonnent pas à la même seconde, et un broadcast émis avant que
-  // l'autre n'écoute est perdu sans erreur ni accusé de réception. Les deux
-  // clients restaient alors face à face, chacun attendant une armée déjà
-  // envoyée. On réémet donc jusqu'à ce que la partie démarre.
-  mpStartArmyRetry();
-
-  // Le second argument du rappel porte l'erreur de Realtime : l'ignorer,
-  // c'était perdre la seule information disponible sur la panne.
-  MP.channel.subscribe(async(status,err)=>{
-    if(status==='SUBSCRIBED'){
-      await MP.channel.track({joinedAt:Date.now()});
-      if(asHost)mpStatus('En attente de votre adversaire','wait');
-      else{
-        mpStatus('Connexion au salon','wait');
-        // Si personne n'est là après quelques secondes, le code est
-        // probablement faux ou la partie n'a pas encore été créée.
-        MP.joinTimeoutId=setTimeout(()=>{
-          if(!MP.started)mpStatus('Aucune partie trouvée avec ce code. Vérifiez-le, ou demandez à votre ami de créer la partie.','err');
-        },8000);
-      }
-    }else if(status==='CHANNEL_ERROR'||status==='TIMED_OUT'||status==='CLOSED'){
-      if(MP.started)return;   // partie déjà lancée : la fermeture est normale
-      mpReportFailure(status,err);
     }
   });
 }
@@ -318,8 +420,229 @@ function mpTryStart(){
   // L'ELO gagné ou perdu se calcule contre le classement réel de
   // l'adversaire, pas contre celui de l'IA.
   if(typeof vvSetOpponentElo==='function')vvSetOpponentElo(MP.oppElo);
+  MP.log=[];
+  mpClearOppGone();
   mpCloseModal();
   startGame(true,true);
+  mpStartHeartbeat();
+}
+
+// ================================================================
+// RÉSILIENCE : ne jamais perdre le coup de l'adversaire
+// ================================================================
+// LE BUG QUE CETTE SECTION CORRIGE. Les coups voyageaient en « broadcast »
+// pur : un message émis pendant que l'autre camp n'écoute pas est perdu, sans
+// erreur ni accusé de réception. Or un onglet mis en arrière-plan, un
+// téléphone verrouillé ou un simple passage sous un tunnel ferment la
+// connexion temps réel. Au retour, le joueur retrouvait le plateau EXACTEMENT
+// comme il l'avait laissé : le coup de l'adversaire n'était jamais rejoué, les
+// deux écrans montraient deux parties différentes, et la partie était morte.
+//
+// TROIS MÉCANISMES, qui se rattrapent l'un l'autre :
+//
+//   1. UN JOURNAL NUMÉROTÉ (MP.log). Chaque action appliquée au plateau — coup
+//      ou pouvoir, le mien comme le sien — y est ajoutée dans l'ordre, des
+//      deux côtés. La longueur du journal devient donc l'état de la partie en
+//      un seul nombre, et un coup reçu porte son numéro d'ordre.
+//   2. UN RATTRAPAGE À LA DEMANDE ('sync-req' → 'sync-log'). Au retour dans
+//      l'onglet, à la reconnexion, ou dès qu'un numéro reçu saute un cran, on
+//      réclame les coups manquants et on les rejoue dans l'ordre, par le même
+//      chemin validé que les coups reçus en direct (rien n'est appliqué sans
+//      avoir été recalculé légal par notre propre moteur).
+//   3. UN BATTEMENT DE CŒUR ('ping'). Toutes les 5 s chacun annonce la
+//      longueur de son journal. Celui qui est en avance renvoie spontanément
+//      ce qui manque à l'autre. C'est le filet : il rattrape même les pertes
+//      que personne n'a remarquées, y compris un coup ÉMIS dans le vide par un
+//      joueur dont la connexion venait de tomber.
+//
+// S'ajoute la reconnexion automatique du canal, et le délai de grâce sur le
+// départ de l'adversaire : sans lui, la coupure d'une mise en veille était
+// immédiatement comptée comme un abandon.
+const MP_HB_MS=5000;      // période du battement de cœur
+const MP_GRACE_MS=45000;  // absence tolérée avant de déclarer l'adversaire parti
+
+// Les messages d'une partie précédente (revanche) n'ont rien à faire dans
+// celle-ci : les numéros d'ordre y repartent de zéro.
+function mpSeqOk(payload){
+  return !payload||typeof payload.seq!=='number'||payload.seq===MP.gameSeq;
+}
+
+function mpLogPush(entry){
+  MP.log.push(entry);
+}
+
+function mpSend(event,payload){
+  if(!MP.channel)return;
+  try{MP.channel.send({type:'broadcast',event,payload:Object.assign({senderId:MP.myId,seq:MP.gameSeq},payload)});}
+  catch(e){console.warn('[MP] envoi impossible :',event,e);}
+}
+
+// Le retour dans l'onglet peut déclencher plusieurs événements à la suite
+// (visibilitychange + focus + pageshow) : une seule demande suffit. Une
+// demande trop rapprochée n'est pas ABANDONNÉE mais REPORTÉE — la jeter,
+// c'était risquer de perdre justement celle qui portait un vrai retard.
+let _mpLastSyncReq=0;
+let _mpSyncReqPending=null;
+const MP_SYNC_MIN_MS=1200;
+function mpRequestSync(){
+  if(!MP.started||!GS||!GS.multiplayer)return;
+  const now=Date.now();
+  const wait=MP_SYNC_MIN_MS-(now-_mpLastSyncReq);
+  if(wait>0){
+    if(_mpSyncReqPending)return;
+    _mpSyncReqPending=setTimeout(()=>{_mpSyncReqPending=null;mpRequestSync();},wait);
+    return;
+  }
+  _mpLastSyncReq=now;
+  mpSend('sync-req',{len:MP.log.length});
+}
+
+// Temps restant de MON camp, joint au battement de cœur : chacun fait
+// autorité sur sa propre pendule. Sans cela, un joueur revenu d'une absence
+// repart avec la pendule figée là où il l'avait laissée, et les deux écrans
+// n'affichent plus le même temps — jusqu'au drapeau tombé d'un seul côté.
+function mpMyClock(){
+  if(!GS||!GS.clockMs)return null;
+  return MP.myColor==='w'?GS.timeWhite:GS.timeBlack;
+}
+function mpAdoptOppClock(ms){
+  if(typeof ms!=='number'||!GS||!GS.clockMs||GS.gameOver)return;
+  const key=mpOppColor()==='w'?'timeWhite':'timeBlack';
+  if(Math.abs(GS[key]-ms)<1500)return;      // simple gigue réseau : on n'y touche pas
+  GS[key]=Math.max(0,ms);
+  if(typeof renderClocks==='function')renderClocks(GS);
+}
+
+// Renvoie tout ce qui suit le rang `from` dans notre journal.
+function mpSendLog(from){
+  const start=Math.max(0,from|0);
+  if(start>=MP.log.length)return;
+  mpSend('sync-log',{from:start,entries:MP.log.slice(start)});
+}
+
+// Rejoue les coups manqués, strictement dans l'ordre. Un trou (une entrée dont
+// le rang dépasse la longueur de notre journal) interrompt le rattrapage :
+// mieux vaut attendre le lot complet que d'appliquer un coup dont la position
+// de départ n'existe pas encore chez nous.
+function mpApplySyncEntries(entries){
+  if(!Array.isArray(entries)||!GS||!GS.multiplayer||GS.gameOver)return;
+  const sorted=entries.slice().filter(e=>e&&typeof e.i==='number').sort((a,b)=>a.i-b.i);
+  for(const e of sorted){
+    if(e.i<MP.log.length)continue;      // déjà appliqué
+    if(e.i>MP.log.length)break;         // trou : on s'arrête là
+    const ok=(e.kind==='power')
+      ? mpApplyRemotePower(e.r,e.c,e.pieceId)
+      : mpApplyRemoteMove(e.from,e.to,e.promo);
+    if(!ok)break;                        // coup refusé : inutile d'insister
+    if(GS.gameOver)break;
+  }
+}
+
+// ----------------------------------------------------------------
+// BATTEMENT DE CŒUR
+// ----------------------------------------------------------------
+function mpStartHeartbeat(){
+  mpStopHeartbeat();
+  MP.hbId=setInterval(()=>{
+    if(!MP.started||!GS||!GS.multiplayer||GS.gameOver){mpStopHeartbeat();return;}
+    mpSend('ping',{len:MP.log.length,clock:mpMyClock()});
+  },MP_HB_MS);
+}
+function mpStopHeartbeat(){
+  if(MP.hbId){clearInterval(MP.hbId);MP.hbId=null;}
+}
+
+// ----------------------------------------------------------------
+// RECONNEXION DU CANAL
+// ----------------------------------------------------------------
+// Realtime ne se rouvre pas toujours de lui-même après une coupure longue :
+// on relance donc l'abonnement, en espaçant les essais pour ne pas marteler un
+// serveur injoignable.
+function mpScheduleRejoin(){
+  if(MP.leaving||MP.rejoinId)return;
+  if(!MP.started||!GS||!GS.multiplayer||GS.gameOver)return;
+  const wait=Math.min(15000,2000*Math.pow(2,Math.min(3,MP.rejoinTries)));
+  MP.rejoinTries++;
+  MP.rejoinId=setTimeout(()=>{
+    MP.rejoinId=null;
+    if(MP.leaving||!MP.started||!GS||!GS.multiplayer||GS.gameOver)return;
+    mpJoinRoom(true);
+  },wait);
+}
+
+// Le canal est-il réellement ouvert ? (état interne du SDK : 'joined' quand
+// l'abonnement est vivant.)
+function mpChannelAlive(){
+  return !!(MP.channel&&MP.channel.state==='joined');
+}
+
+// Retour dans l'onglet, retour du réseau, ou page restaurée depuis le cache de
+// navigation : on vérifie le canal et on réclame les coups manqués.
+function mpResumeIfNeeded(){
+  if(!MP.started||!GS||!GS.multiplayer||GS.gameOver)return;
+  if(!mpChannelAlive()){mpJoinRoom(true);return;}
+  // Le canal se DIT ouvert : sur mobile, une socket tuée en arrière-plan peut
+  // rester marquée « joined » alors que plus rien ne passe. On demande donc le
+  // rattrapage, et si rien n'arrive en retour on rouvre le canal pour de bon.
+  mpRequestSync();
+  const askedAt=Date.now();
+  setTimeout(()=>{
+    if(!MP.started||!GS||!GS.multiplayer||GS.gameOver)return;
+    if(MP.lastRxAt<askedAt)mpJoinRoom(true);
+  },6000);
+}
+
+if(typeof document!=='undefined'){
+  document.addEventListener('visibilitychange',()=>{
+    if(document.visibilityState==='visible')mpResumeIfNeeded();
+  });
+}
+if(typeof window!=='undefined'){
+  window.addEventListener('online',mpResumeIfNeeded);
+  window.addEventListener('focus',mpResumeIfNeeded);
+  window.addEventListener('pageshow',mpResumeIfNeeded);
+}
+
+// ----------------------------------------------------------------
+// ABSENCE DE L'ADVERSAIRE : délai de grâce
+// ----------------------------------------------------------------
+function mpClearOppGone(){
+  if(MP.oppGoneTimerId){clearTimeout(MP.oppGoneTimerId);MP.oppGoneTimerId=null;}
+  MP.oppGone=false;
+}
+
+function mpOppMissing(){
+  if(MP.oppGone||!MP.started||!GS||!GS.multiplayer||GS.gameOver)return;
+  MP.oppGone=true;
+  mpGameMessage('Votre adversaire s\'est déconnecté. Il a '+Math.round(MP_GRACE_MS/1000)+' secondes pour revenir…','check');
+  MP.oppGoneTimerId=setTimeout(()=>{
+    MP.oppGoneTimerId=null;
+    if(!MP.oppGone||!GS||!GS.multiplayer||GS.gameOver)return;
+    GS.gameOver=true;stopClockTick(GS);mpStopHeartbeat();
+    mpGameMessage('Votre adversaire a quitté la partie : vous gagnez.','mate');
+    if(!_endGameTriggered)triggerEndOfGame('win');
+  },MP_GRACE_MS);
+}
+
+// L'adversaire est de retour : on annule le compte à rebours et on se remet
+// d'accord sur la position, car chacun a pu jouer pendant la coupure.
+function mpOppMaybeBack(){
+  if(!MP.oppGone)return;
+  mpClearOppGone();
+  if(GS&&GS.multiplayer&&!GS.gameOver){
+    mpGameMessage('Votre adversaire est revenu.','');
+    if(typeof updateStatus==='function')setTimeout(()=>{if(GS&&!GS.gameOver)updateStatus(GS);},2500);
+  }
+  mpRequestSync();
+  mpSendLog(0);
+}
+
+// Tout message reçu prouve deux choses : que l'adversaire est là — même si
+// « presence » n'a pas encore rattrapé son retour — et que notre canal
+// fonctionne réellement (voir mpResumeIfNeeded).
+function mpNoteOppAlive(){
+  MP.lastRxAt=Date.now();
+  if(MP.oppGone)mpOppMaybeBack();
 }
 
 // ----------------------------------------------------------------
@@ -343,6 +666,10 @@ function mpTryRematch(){
   if(!MP.rematchMine||!MP.rematchTheirs)return;
   MP.rematchMine=false;MP.rematchTheirs=false;
   MP.gameSeq++;
+  // Nouvelle partie : journal remis à zéro des deux côtés, sinon les numéros
+  // d'ordre de la partie précédente feraient croire à des coups manquants.
+  MP.log=[];
+  mpClearOppGone();
   // Les camps s'échangent : l'hôte ne garde pas les Blancs indéfiniment.
   MP.myColor=MP.myColor==='w'?'b':'w';
   MP.isHost=!MP.isHost;
@@ -351,6 +678,7 @@ function mpTryRematch(){
   _playerColor=MP.myColor;
   document.getElementById('result-modal')?.classList.remove('active');
   startGame(true,true);
+  mpStartHeartbeat();
 }
 
 // ----------------------------------------------------------------
@@ -374,6 +702,7 @@ function mpGameMessage(text,cls){
 function mpRejectMove(reason){
   console.warn('[MP] coup rejeté :',reason);
   mpGameMessage('Coup adverse invalide, ignoré ('+reason+').','check');
+  return false;
 }
 
 function mpOppColor(){return MP.myColor==='w'?'b':'w';}
@@ -397,9 +726,12 @@ function mpSanitizePromo(promo){
   return mpAllowedPromotions().find(o=>o.pieceId===promo.pieceId)||null;
 }
 
+// Renvoie true si le coup a bien été appliqué : le rattrapage
+// (mpApplySyncEntries) s'arrête au premier refus plutôt que de rejouer la
+// suite sur une position qui n'est plus la bonne.
 let _mpApplyingRemote=false;
 function mpApplyRemoteMove(from,to,promo){
-  if(!GS||!GS.multiplayer||GS.gameOver)return;
+  if(!GS||!GS.multiplayer||GS.gameOver)return false;
   const oppCol=mpOppColor();
 
   if(GS.turn!==oppCol)return mpRejectMove('ce n\'est pas son tour');
@@ -431,12 +763,16 @@ function mpApplyRemoteMove(from,to,promo){
   executeGameMove({r:from.r,c:from.c},move,GS);
   GS._forcedPromo=null;
   _mpApplyingRemote=false;
+  // Le coup adverse entre au journal EXACTEMENT comme chez lui : les deux
+  // journaux gardent la même longueur, qui sert de repère au rattrapage.
+  mpLogPush({i:MP.log.length,kind:'move',from:{r:from.r,c:from.c},to:{r:to.r,c:to.c},promo:safePromo});
+  return true;
 }
 
 // Pouvoir du Garde de Pierre : il change le tour sans passer par
 // executeGameMove, il a donc son propre message, revalidé de la même façon.
 function mpApplyRemotePower(r,c,pieceId){
-  if(!GS||!GS.multiplayer||GS.gameOver)return;
+  if(!GS||!GS.multiplayer||GS.gameOver)return false;
   const oppCol=mpOppColor();
   if(GS.turn!==oppCol)return mpRejectMove('pouvoir hors tour');
   if(!inB(r,c))return mpRejectMove('pouvoir hors plateau');
@@ -445,16 +781,25 @@ function mpApplyRemotePower(r,c,pieceId){
   if(cell.pieceId!==pieceId||pieceId!=='garde-pierre')return mpRejectMove('pouvoir inconnu');
   if(GS.gardePierreUsed[oppCol])return mpRejectMove('pouvoir déjà utilisé');
   applyGardePierre(r,c,oppCol,GS);
+  mpLogPush({i:MP.log.length,kind:'power',r,c,pieceId});
+  return true;
 }
 
+// Nos propres actions sont journalisées AVANT d'être émises : même si le
+// message se perd (connexion tombée à cet instant précis), le journal, lui,
+// contient le coup et le battement de cœur le fera parvenir à l'adversaire.
 function mpSendMove(from,to,promo){
-  if(!MP.channel)return;
-  MP.channel.send({type:'broadcast',event:'move',payload:{senderId:MP.myId,from,to,promo:promo||null}});
+  if(!GS||!GS.multiplayer)return;
+  const idx=MP.log.length;
+  mpLogPush({i:idx,kind:'move',from:{r:from.r,c:from.c},to:{r:to.r,c:to.c},promo:promo||null});
+  mpSend('move',{idx,from:{r:from.r,c:from.c},to:{r:to.r,c:to.c},promo:promo||null});
 }
 
 function mpSendPower(r,c,pieceId){
-  if(!MP.channel)return;
-  MP.channel.send({type:'broadcast',event:'power',payload:{senderId:MP.myId,r,c,pieceId}});
+  if(!GS||!GS.multiplayer)return;
+  const idx=MP.log.length;
+  mpLogPush({i:idx,kind:'power',r,c,pieceId});
+  mpSend('power',{idx,r,c,pieceId});
 }
 
 // executeGameMove est le point de passage unique de tout coup joué :
@@ -471,16 +816,21 @@ executeGameMove=function(from,to,gs){
 // Prévient l'adversaire quand on quitte la partie (bouton Abandonner).
 function mpNotifyResign(){
   if(!MP.channel||!GS||!GS.multiplayer)return;
-  MP.channel.send({type:'broadcast',event:'resign',payload:{senderId:MP.myId}});
+  mpSend('resign',{});
 }
 
 function mpLeave(){
+  MP.leaving=true;
   if(MP.joinTimeoutId){clearTimeout(MP.joinTimeoutId);MP.joinTimeoutId=null;}
+  if(MP.rejoinId){clearTimeout(MP.rejoinId);MP.rejoinId=null;}
+  MP.rejoinTries=0;
+  mpStopHeartbeat();
+  mpClearOppGone();
   mpStopArmyRetry();
   if(typeof mpWaitStop==='function')mpWaitStop();
   if(MP.channel){MP.channel.unsubscribe();MP.channel=null;}
   mpLeaveLobby();
-  MP.started=false;MP.matched=false;MP.oppArmy=null;MP.roomCode=null;
+  MP.started=false;MP.matched=false;MP.oppArmy=null;MP.roomCode=null;MP.log=[];
   MP.searchStartedAt=0;MP.waitStartedAt=0;
   MP.oppName=null;MP.oppElo=null;MP.oppId=null;
   MP.rematchMine=false;MP.rematchTheirs=false;
