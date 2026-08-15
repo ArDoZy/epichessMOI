@@ -76,6 +76,7 @@ const MP={
   oppGoneTimerId:null, // délai de grâce avant de déclarer l'adversaire parti
   oppGone:false,     // adversaire actuellement absent du salon
   lastRxAt:0,        // date du dernier message reçu : preuve que le canal vit
+  resumeWatchId:null,// veille de reprise après une absence
 };
 
 // Carte de visite envoyée avec l'armée : sans elle l'adversaire n'est qu'un
@@ -209,7 +210,8 @@ function mpConnect(code,asHost){
   MP.myArmy=currentArmyData;MP.oppArmy=null;MP.started=false;
   MP.oppName=null;MP.oppElo=null;MP.oppId=null;
   MP.rematchMine=false;MP.rematchTheirs=false;MP.gameSeq=0;
-  MP.log=[];MP.leaving=false;MP.rejoinTries=0;
+  MP.log=[];MP.leaving=false;MP.rejoinTries=0;MP.lastRxAt=0;
+  _mpGoodbyeSent=false;   // nouvelle partie : l'adieu de la précédente est oublié
   mpClearOppGone();
 
   mpJoinRoom(false);
@@ -225,14 +227,55 @@ function mpConnect(code,asHost){
 // Ouvre (ou rouvre) le canal du salon. `isRejoin` distingue la reconnexion
 // après une coupure — où la partie est déjà en cours et où il faut réclamer
 // les coups manqués — de la connexion initiale.
-function mpJoinRoom(isRejoin){
+// Deux canaux abonnés au MÊME sujet sur la même connexion se marchent dessus :
+// on attend donc que l'ancien soit vraiment retiré avant d'en ouvrir un neuf.
+// removeChannel() fait ce que unsubscribe() seul ne fait pas : il sort aussi le
+// canal de la liste que le SDK réabonne tout seul à la reconnexion.
+async function mpDropChannel(){
+  const old=MP.channel;MP.channel=null;
+  if(!old)return;
+  try{
+    if(MP.client&&typeof MP.client.removeChannel==='function')await MP.client.removeChannel(old);
+    else await old.unsubscribe();
+  }catch(e){console.warn('[MP] fermeture du canal :',e);}
+}
+
+// Notre carte d'identité dans la présence du salon. L'identifiant y est écrit
+// EN PLUS de la clé de présence : certains événements ne donnent que les
+// métadonnées, et l'anonymat rendait l'adversaire indétectable.
+function mpTrackMe(ch){
+  return ch.track({id:MP.myId,joinedAt:Date.now()});
+}
+
+// L'événement de présence parle-t-il bien de l'adversaire ? `key` est
+// l'identifiant du joueur concerné ; les métadonnées servent de second recours.
+function mpIsOpp(key,presences){
+  if(!MP.oppId)return true;                    // adversaire pas encore identifié
+  if(key&&key===MP.oppId)return true;
+  return (presences||[]).some(p=>p&&p.id===MP.oppId);
+}
+
+let _mpJoining=false;
+async function mpJoinRoom(isRejoin){
   const client=mpInitClient();if(!client||!MP.roomCode)return;
+  if(_mpJoining)return;            // une (re)connexion est déjà en cours
+  _mpJoining=true;
   if(MP.rejoinId){clearTimeout(MP.rejoinId);MP.rejoinId=null;}
-  if(MP.channel){try{MP.channel.unsubscribe();}catch(e){}MP.channel=null;}
+  await mpDropChannel();
+  if(MP.leaving){_mpJoining=false;return;}
+
+  // Une socket peut se dire ouverte alors qu'elle est morte depuis la mise en
+  // veille : on la relance nous-mêmes plutôt que d'attendre que le SDK s'en
+  // aperçoive à son prochain battement.
+  try{
+    const rt=client.realtime;
+    if(rt&&typeof rt.isConnected==='function'&&!rt.isConnected()&&typeof rt.connect==='function')rt.connect();
+  }catch(e){}
 
   const ch=client.channel('epichess-room-'+MP.roomCode,{config:{presence:{key:MP.myId}}});
   MP.channel=ch;
   mpBindRoomHandlers(ch);
+  _mpJoining=false;
 
   // Le second argument du rappel porte l'erreur de Realtime : l'ignorer,
   // c'était perdre la seule information disponible sur la panne.
@@ -240,11 +283,13 @@ function mpJoinRoom(isRejoin){
     if(MP.channel!==ch)return;   // canal remplacé entre-temps : plus rien à en tirer
     if(status==='SUBSCRIBED'){
       MP.rejoinTries=0;
-      await ch.track({joinedAt:Date.now()});
+      await mpTrackMe(ch);
       if(MP.started){
         // De retour dans le salon : on réclame tout de suite ce qu'on a pu
-        // manquer, plutôt que d'attendre le prochain battement de cœur.
+        // manquer, plutôt que d'attendre le prochain battement de cœur. La
+        // veille (mpStartResumeWatch) réinsiste tant que rien ne répond.
         mpRequestSync();
+        mpStartResumeWatch();
         mpStartHeartbeat();
         if(isRejoin)mpGameMessage('Reconnecté à la partie.','');
       }else if(isRejoin){
@@ -346,6 +391,18 @@ function mpBindRoomHandlers(channel){
     mpApplySyncEntries(payload.entries);
   });
 
+  // « Je ferme l'onglet » : c'est un abandon, annoncé sans détour. Sans ce
+  // message, le joueur resté en ligne attendait un coup qui ne viendrait
+  // jamais, sans savoir que l'autre était parti.
+  channel.on('broadcast',{event:'bye'},({payload})=>{
+    if(payload.senderId===MP.myId||!GS||!GS.multiplayer||GS.gameOver)return;
+    if(!MP.started)return;
+    mpClearOppGone();mpStopHeartbeat();mpStopResumeWatch();
+    mpGameMessage('Votre adversaire a quitté la partie : vous gagnez.','mate');
+    GS.gameOver=true;stopClockTick(GS);
+    if(!_endGameTriggered)triggerEndOfGame('win');
+  });
+
   channel.on('broadcast',{event:'resign'},({payload})=>{
     if(payload.senderId===MP.myId||!GS||!GS.multiplayer||GS.gameOver)return;
     mpGameMessage('Votre adversaire a abandonné : vous gagnez !','mate');
@@ -359,15 +416,23 @@ function mpBindRoomHandlers(channel){
   // seulement APRÈS un délai de grâce (voir MP_GRACE_MS) : une mise en veille
   // du téléphone ou un passage sous tunnel coupe la connexion sans que
   // personne n'ait quitté quoi que ce soit.
-  channel.on('presence',{event:'leave'},({leftPresences})=>{
+  // QUI est parti ? Le SDK met l'identifiant du partant dans le champ `key` du
+  // PAYLOAD, pas dans les objets de `leftPresences` : ceux-ci ne contiennent
+  // que ce qui a été passé à track() (plus un `presence_ref`). Le test portait
+  // sur `leftPresences[].key`, une propriété qui n'existe pas : il était donc
+  // toujours faux, et le départ de l'adversaire n'a jamais été détecté — ni
+  // pour la victoire, ni pour le message. On lit maintenant `key`, avec les
+  // métadonnées en second recours (mpTrackMe y écrit aussi notre identifiant).
+  channel.on('presence',{event:'leave'},({key,leftPresences})=>{
     if(!MP.started||!GS||!GS.multiplayer||GS.gameOver)return;
-    const left=(leftPresences||[]).some(p=>p&&(p.key===MP.oppId||p.senderId===MP.oppId));
-    if(!left&&MP.oppId)return;
+    if(!mpIsOpp(key,leftPresences))return;
     mpOppMissing();
   });
 
-  channel.on('presence',{event:'join'},()=>{
-    if(MP.started)mpOppMaybeBack();
+  channel.on('presence',{event:'join'},({key,newPresences})=>{
+    if(!MP.started)return;
+    if(!mpIsOpp(key,newPresences))return;
+    mpOppMaybeBack();
   });
 
   // Dès qu'un second joueur est présent dans le salon, on s'échange les armées.
@@ -459,6 +524,7 @@ function mpTryStart(){
 // départ de l'adversaire : sans lui, la coupure d'une mise en veille était
 // immédiatement comptée comme un abandon.
 const MP_HB_MS=5000;      // période du battement de cœur
+const MP_SILENCE_MS=16000;// silence au-delà duquel on soupçonne notre propre liaison
 const MP_GRACE_MS=45000;  // absence tolérée avant de déclarer l'adversaire parti
 
 // Les messages d'une partie précédente (revanche) n'ont rien à faire dans
@@ -543,9 +609,16 @@ function mpApplySyncEntries(entries){
 // ----------------------------------------------------------------
 function mpStartHeartbeat(){
   mpStopHeartbeat();
+  MP.lastRxAt=Date.now();
   MP.hbId=setInterval(()=>{
     if(!MP.started||!GS||!GS.multiplayer||GS.gameOver){mpStopHeartbeat();return;}
     mpSend('ping',{len:MP.log.length,clock:mpMyClock()});
+    // SILENCE ANORMAL. L'adversaire émet lui aussi toutes les 5 s : trois
+    // périodes sans le moindre message, alors que la présence ne signale
+    // aucun départ, veut dire que c'est NOTRE liaison qui est morte sans le
+    // dire. On la rouvre — sans quoi on attend indéfiniment un coup qui a
+    // pourtant bien été joué en face.
+    if(!MP.oppGone&&Date.now()-MP.lastRxAt>MP_SILENCE_MS)mpJoinRoom(true);
   },MP_HB_MS);
 }
 function mpStopHeartbeat(){
@@ -583,13 +656,34 @@ function mpResumeIfNeeded(){
   if(!mpChannelAlive()){mpJoinRoom(true);return;}
   // Le canal se DIT ouvert : sur mobile, une socket tuée en arrière-plan peut
   // rester marquée « joined » alors que plus rien ne passe. On demande donc le
-  // rattrapage, et si rien n'arrive en retour on rouvre le canal pour de bon.
+  // rattrapage, et la veille ci-dessous se charge d'insister.
   mpRequestSync();
-  const askedAt=Date.now();
-  setTimeout(()=>{
-    if(!MP.started||!GS||!GS.multiplayer||GS.gameOver)return;
-    if(MP.lastRxAt<askedAt)mpJoinRoom(true);
-  },6000);
+  mpStartResumeWatch();
+}
+
+// ----------------------------------------------------------------
+// VEILLE DE REPRISE : insister jusqu'à ce que l'adversaire réponde
+// ----------------------------------------------------------------
+// Une seule demande de rattrapage ne suffit pas au retour d'une absence : elle
+// part souvent AVANT que la connexion ne soit réellement rétablie, et rien ne
+// la rejoue. On redemande donc toutes les 2 secondes tant qu'aucun message
+// n'est arrivé, en rouvrant le canal au bout de quelques essais infructueux.
+// La veille s'arrête au premier signe de vie de l'adversaire.
+function mpStartResumeWatch(){
+  mpStopResumeWatch();
+  const since=Date.now();
+  let tries=0;
+  MP.resumeWatchId=setInterval(()=>{
+    if(!MP.started||!GS||!GS.multiplayer||GS.gameOver){mpStopResumeWatch();return;}
+    if(MP.lastRxAt>=since){mpStopResumeWatch();return;}   // il a répondu : tout va bien
+    tries++;
+    if(tries>15){mpStopResumeWatch();return;}             // ~30 s : c'est un vrai départ
+    if(tries===3||tries===8)mpJoinRoom(true);             // toujours muet : on rouvre le canal
+    mpRequestSync();
+  },2000);
+}
+function mpStopResumeWatch(){
+  if(MP.resumeWatchId){clearInterval(MP.resumeWatchId);MP.resumeWatchId=null;}
 }
 
 if(typeof document!=='undefined'){
@@ -601,6 +695,26 @@ if(typeof window!=='undefined'){
   window.addEventListener('online',mpResumeIfNeeded);
   window.addEventListener('focus',mpResumeIfNeeded);
   window.addEventListener('pageshow',mpResumeIfNeeded);
+
+  // FERMETURE DE L'ONGLET : on prévient nous-mêmes, tout de suite. La présence
+  // finit par signaler le départ, mais avec le délai du serveur puis celui de
+  // grâce ; un adieu explicite dit à l'adversaire dans la seconde ce qui vient
+  // de se passer. `persisted` distingue la vraie fermeture d'une mise en
+  // arrière-plan sur mobile, où la page peut revenir intacte : dans ce cas on
+  // ne dit rien, c'est le rattrapage qui prendra le relais au retour.
+  window.addEventListener('pagehide',(e)=>{
+    if(e&&e.persisted)return;
+    mpSayGoodbye();
+  });
+  window.addEventListener('beforeunload',()=>mpSayGoodbye());
+}
+
+let _mpGoodbyeSent=false;
+function mpSayGoodbye(){
+  if(_mpGoodbyeSent||!MP.started||!MP.channel)return;
+  if(!GS||!GS.multiplayer||GS.gameOver)return;
+  _mpGoodbyeSent=true;
+  mpSend('bye',{});
 }
 
 // ----------------------------------------------------------------
@@ -825,10 +939,11 @@ function mpLeave(){
   if(MP.rejoinId){clearTimeout(MP.rejoinId);MP.rejoinId=null;}
   MP.rejoinTries=0;
   mpStopHeartbeat();
+  mpStopResumeWatch();
   mpClearOppGone();
   mpStopArmyRetry();
   if(typeof mpWaitStop==='function')mpWaitStop();
-  if(MP.channel){MP.channel.unsubscribe();MP.channel=null;}
+  mpDropChannel();
   mpLeaveLobby();
   MP.started=false;MP.matched=false;MP.oppArmy=null;MP.roomCode=null;MP.log=[];
   MP.searchStartedAt=0;MP.waitStartedAt=0;
@@ -1033,7 +1148,7 @@ function mpQuickPlay(){
     if(!payload||MP.matched||MP.started)return;
     if(payload.guest!==MP.myId)return;
     MP.lobby.send({type:'broadcast',event:'pair-ok',payload:{host:payload.host,guest:MP.myId}});
-    try{MP.lobby.track({joinedAt,elo:card.elo,busy:true});}catch(e){}
+    try{MP.lobby.track({id:MP.myId,joinedAt,elo:card.elo,busy:true});}catch(e){}
     mpEnterPair(payload.host);
   });
 
@@ -1042,23 +1157,25 @@ function mpQuickPlay(){
     if(!payload||MP.matched||MP.started)return;
     if(payload.host!==MP.myId||payload.guest!==MP.pairPending)return;
     mpClearProposal();
-    try{MP.lobby.track({joinedAt,elo:card.elo,busy:true});}catch(e){}
+    try{MP.lobby.track({id:MP.myId,joinedAt,elo:card.elo,busy:true});}catch(e){}
     mpEnterPair(MP.myId);
   });
 
   // Une arrivée ou un départ relance le calcul tout de suite plutôt que
   // d'attendre le prochain battement.
   MP.lobby.on('presence',{event:'sync'},()=>mpLobbyTick());
-  MP.lobby.on('presence',{event:'leave'},({leftPresences})=>{
+  MP.lobby.on('presence',{event:'leave'},({key,leftPresences})=>{
     // Le candidat à qui l'on vient de proposer une partie est parti : inutile
-    // d'attendre les 3,5 s de la confirmation, on repart en recherche.
-    if(MP.pairPending&&(leftPresences||[]).some(p=>p&&p.key===MP.pairPending))mpClearProposal();
+    // d'attendre les 3,5 s de la confirmation, on repart en recherche. Ici
+    // aussi, l'identité du partant est dans `key`, pas dans les métadonnées.
+    const gone=key===MP.pairPending||(leftPresences||[]).some(p=>p&&p.id===MP.pairPending);
+    if(MP.pairPending&&gone)mpClearProposal();
     mpLobbyTick();
   });
 
   MP.lobby.subscribe(async(status,err)=>{
     if(status==='SUBSCRIBED'){
-      await MP.lobby.track({joinedAt,elo:card.elo,busy:false});
+      await MP.lobby.track({id:MP.myId,joinedAt,elo:card.elo,busy:false});
       mpStatus('');
       mpRenderSearch(0,1,mpEloWindow(0));
       mpStopLobbyTick();
