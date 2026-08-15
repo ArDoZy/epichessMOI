@@ -300,17 +300,22 @@ function buyChestFromShop(chestId){
   },{okLabel:'Acheter',cancelLabel:'Annuler',okClass:'btn-gold'});
 }
 
-// La carte du Magasin, en grand. Le Coffre Pion ne s'y montre pas sous la
-// forme du coffre à couvercle dessiné en CSS : il montre LA STATUETTE de sa
-// première planche (assets/chests/pion/01-intact.webp, l'image qui ouvre la
+// La carte du Magasin, en grand. Un coffre qu'on BRISE ne s'y montre pas sous
+// la forme du coffre à couvercle dessiné en CSS : il montre LA STATUETTE de sa
+// première planche (assets/chests/<id>/01-intact.webp, l'image qui ouvre la
 // séquence de bris — voir js/chest-break.js), dont le socle et le fond noir
 // sont effacés par un filtre CSS (mix-blend-mode:screen, voir .chest-pawn)
-// pour ne garder que le pion. La séquence de bris elle-même est INTACTE et se
+// pour ne garder que la pièce. La séquence de bris elle-même est INTACTE et se
 // joue normalement à l'ouverture, ici comme après une victoire.
+//
+// Le choix se fait sur l'EXISTENCE d'une séquence, pas sur une liste d'ids :
+// équiper le Fou de ses cinq planches suffira à lui donner sa statuette ici
+// aussi, sans rien changer dans ce fichier.
 function magasinChestVisual(chest){
-  if(chest.id!=='pion')return chestVisual(chest,'chest-lg');
+  const poster=typeof chestBreakPoster==='function'?chestBreakPoster(chest.id):'';
+  if(!poster)return chestVisual(chest,'chest-lg');
   return '<div class="chest chest-lg chest-pawn" style="--chest-c:'+chest.color+'">'+
-    '<img src="assets/chests/pion/01-intact.webp" alt="" draggable="false">'+
+    '<img src="'+poster+'" alt="" draggable="false">'+
   '</div>';
 }
 // La carte ne dit que ce qu'il faut pour décider : quel coffre, et combien il
@@ -499,8 +504,8 @@ function showChestCeremony(chest,lots,applyOnClose,onClose){
   document.getElementById('chest-loot').innerHTML='';
   document.getElementById('chest-close').style.display='none';
 
-  // COFFRE QU'ON BRISE (js/chest-break.js). Certains coffres — le Pion pour
-  // l'instant — ne s'ouvrent pas d'un clic : le joueur les FRAPPE jusqu'à ce
+  // COFFRE QU'ON BRISE (js/chest-break.js). Certains coffres — le Pion et le
+  // Cavalier — ne s'ouvrent pas d'un clic : le joueur les FRAPPE jusqu'à ce
   // qu'ils éclatent. La séquence remplace alors le couvercle dessiné, et
   // rend la main ici une fois le socle vide, pour la révélation des lots.
   //
@@ -510,7 +515,7 @@ function showChestCeremony(chest,lots,applyOnClose,onClose){
   const canBreak=typeof chestBreakReady==='function'&&chestBreakReady(chest.id);
   visual.style.display=canBreak?'none':'';
   // Un coffre qu'on brise se joue sur FOND NOIR PLEIN, et non par-dessus
-  // l'écran de fin de partie qu'on devinerait derrière : les sept images ont
+  // l'écran de fin de partie qu'on devinerait derrière : les planches ont
   // un fond noir, la scène doit continuer jusqu'aux bords de l'écran.
   modal.classList.toggle('pb-cinema',canBreak);
   // La page derrière est verrouillée pendant la cinématique : on ne fait pas

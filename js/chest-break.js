@@ -6,7 +6,7 @@
 // chaque frappe la pièce tient un peu moins. C'est la même récompense au
 // bout, mais elle a été arrachée.
 //
-// La séquence n'est pas une vidéo : ce sont sept images fixes empilées, que
+// La séquence n'est pas une vidéo : ce sont huit images fixes empilées, que
 // l'on fait apparaître l'une par-dessus l'autre. Tout le mouvement est
 // ajouté PAR-DESSUS, en CSS :
 //
@@ -27,9 +27,9 @@
 // de POUSSER, là où un remplacement les ferait clignoter — et il n'y a jamais
 // de creux sombre au milieu du fondu, contrairement à un vrai fondu croisé.
 //
-// Le pion est le seul coffre équipé pour l'instant. Les cinq autres gardent
-// le couvercle dessiné en CSS (voir .chest dans css/style.css) : la
-// cérémonie choisit toute seule, selon que le coffre a une séquence d'images
+// Le Pion et le Cavalier sont équipés. Les quatre autres gardent le
+// couvercle dessiné en CSS (voir .chest dans css/style.css) : la cérémonie
+// choisit toute seule, selon que le coffre a une séquence d'images
 // utilisable ou non (chestBreakReady).
 //
 // Dépendances : rules-engine.js (playTone, facultatif — le son se tait tout
@@ -63,25 +63,87 @@
 //   snd     fréquences (Hz) empilées pour le bruit de fracture
 //   hold    si présent, l'étape suivante s'enchaîne SEULE après ce délai (ms)
 //   end     dernière étape : la cérémonie reprend la main (les lots)
+//   dir     dossier de CETTE image, quand il n'est pas celui du coffre :
+//           c'est ce qui permet aux trois dernières planches d'être
+//           communes à tous les coffres (voir plus bas)
 //
 // Les étapes SANS `hold` attendent une frappe. Ici : 01→04 se frappent
 // (quatre coups), puis 05 déclenche l'explosion, qui se déroule toute seule
 // jusqu'à la scène vide. Pour rendre l'explosion manuelle elle aussi, il
-// suffit de retirer les `hold` des étapes 05 et 06.
+// suffit de retirer les `hold` des étapes 05, 06 et 07.
 //
-// LA FIN EST UN SEUL GESTE, et ses trois temps s'emboîtent au millième :
+// ----------------------------------------------------------------
+// CINQ PLANCHES PAR PIÈCE, TROIS POUR TOUT LE MONDE
+// ----------------------------------------------------------------
+// Une pièce n'est reconnaissable que tant qu'elle tient debout : le pion se
+// fissure en pion, le cavalier en cavalier. Passé l'éclatement, il ne reste
+// que du feu et des éclats de marbre — plus rien qui dise de quelle pièce
+// ils viennent. Ces trois planches-là (l'explosion, sa suite plein cadre, le
+// socle vide) sont donc dessinées UNE FOIS, dans assets/chests/forall/, et
+// partagées par tous les coffres. Équiper une nouvelle pièce ne demande plus
+// que cinq images.
+//
+// Chaque coffre reçoit sa PROPRE copie des trois étapes communes
+// (chestBreakTail construit des objets neufs) : le réglage du Fou pourra
+// diverger de celui du Pion sans que l'un déforme l'autre, et le banc
+// d'essai (tools/chest-break-preview.html) peut réécrire les `src` d'une
+// séquence sans toucher aux autres.
+const CHEST_BREAK_FORALL='assets/chests/forall/';
+
+// LA FIN EST UN SEUL GESTE, et ses temps s'emboîtent au millième :
 // 05 ne tient que 190 ms, juste de quoi voir la pièce partir en morceaux ;
-// 06 déferle alors sur tout l'écran en montant en luminosité, pendant qu'un
-// voile blanc monte par-dessus — au sommet du voile, l'écran est
-// entièrement lumineux et ne montre plus rien ; c'est SOUS ce voile, à
-// couvert, que l'explosion s'éteint et que le socle vide prend sa place. Le
-// voile redescend, la luminosité revient à la normale, et le socle est là.
-// Le flash ne cache pas une transition ratée : il EST la transition.
-const CHEST_BREAK={
-  pion:{
-    dir:'assets/chests/pion/',
+// 06 la fait éclater au-dessus de son socle, encore dans la boîte, le temps
+// d'un battement ; 07 déferle alors sur tout l'écran en montant en
+// luminosité, pendant qu'un voile blanc monte par-dessus — au sommet du
+// voile, l'écran est entièrement lumineux et ne montre plus rien ; c'est
+// SOUS ce voile, à couvert, que l'explosion s'éteint et que le socle vide
+// prend sa place. Le voile redescend, la luminosité revient à la normale, et
+// le socle est là. Le flash ne cache pas une transition ratée : il EST la
+// transition.
+function chestBreakTail(){
+  return [
+    // L'ÉCLATEMENT. La pièce part en morceaux mais le socle est encore là,
+    // et la scène tient encore dans son ovale : c'est le dernier plan où
+    // l'on voit d'où vient l'explosion. Il ne dure qu'un battement.
+    {src:'06-explosion.webp', hint:'', fade:90, dir:CHEST_BREAK_FORALL,
+     shake:22, zoom:1.13, flash:.86, fdur:300, bloom:[.30,.72], bt:'.7s',
+     sparks:44, sparkR:1.6, trem:2.2, hold:260, snd:[120,190,280]},
+
+    // L'EXPLOSION. Elle sort de sa boîte : plein écran, en `cover` — une
+    // déflagration n'a pas de composition à préserver, on peut la rogner
+    // n'importe comment. La secousse est retirée ici, elle ne ferait que
+    // découvrir du noir sur les bords ; c'est le grossissement et la
+    // luminosité qui portent le coup.
+    //
+    // ELLE DOIT SE REGARDER. Première version : le voile blanc montait dès
+    // la première image, et la planche d'explosion était mangée par le
+    // flash avant d'avoir été vue — on payait une image pour ne jamais
+    // l'afficher. Elle arrive maintenant plein écran en 200 ms, puis TIENT
+    // nue pendant une demi-seconde, à luminosité presque normale : le temps
+    // de voir la matière en fusion. Ce n'est qu'ensuite que ça s'emballe.
+    {src:'07-explosion-suite.webp', hint:'', fade:70, dir:CHEST_BREAK_FORALL,
+     full:'bleed', blast:true, bldur:1150, white:1500, flash:.9, fdur:520,
+     sparks:54, sparkR:3.2, hold:1050,
+     snd:[90,140,200,300,440]},
+
+    // LE SOCLE VIDE. En `boxed` : ici le cadrage compte, le socle doit
+    // rester entier sur un téléphone comme sur un écran large. `solo`
+    // éteint les sept images du dessous — sans quoi l'explosion continuerait
+    // de brûler derrière, à travers l'ovale de découpe.
+    {src:'08-vide.webp', hint:'', fade:380, dir:CHEST_BREAK_FORALL,
+     full:'boxed', solo:true, trem:0, hold:620, end:true},
+  ];
+}
+
+// Les cinq planches propres à une pièce. Le rythme est le même d'un coffre à
+// l'autre — c'est la même destruction, seule la statuette change — donc une
+// seule fabrique, à qui l'on donne le dossier et le nom de la pièce (celui
+// qui apparaît dans la première phrase, « Frappez le cavalier… »).
+function chestBreakSeq(dir,piece){
+  return {
+    dir:dir,
     stages:[
-      {src:'01-intact.webp',   hint:'Frappez le pion pour le briser', fade:260},
+      {src:'01-intact.webp',   hint:'Frappez '+piece+' pour le briser', fade:260},
 
       {src:'02-fissure.webp',  hint:'Encore',            fade:210, shake:7,  zoom:1.045,
        flash:.42, fdur:280, bloom:[.10,.26], bt:'3.2s', sparks:8,  snd:[210,320]},
@@ -97,47 +159,31 @@ const CHEST_BREAK={
       {src:'05-eclats.webp',   hint:'',                  fade:120, shake:20, zoom:1.11,
        flash:.80, fdur:300, bloom:[.35,.80], bt:'.9s',  sparks:34, trem:1.8,
        hold:190, snd:[150,240,360]},
-
-      // L'EXPLOSION. Elle sort de sa boîte : plein écran, en `cover` — une
-      // déflagration n'a pas de composition à préserver, on peut la rogner
-      // n'importe comment. La secousse est retirée ici, elle ne ferait que
-      // découvrir du noir sur les bords ; c'est le grossissement et la
-      // luminosité qui portent le coup.
-      //
-      // ELLE DOIT SE REGARDER. Première version : le voile blanc montait dès
-      // la première image, et la planche d'explosion était mangée par le
-      // flash avant d'avoir été vue — on payait une image pour ne jamais
-      // l'afficher. Elle arrive maintenant plein écran en 200 ms, puis TIENT
-      // nue pendant une demi-seconde, à luminosité presque normale : le temps
-      // de voir la matière en fusion. Ce n'est qu'ensuite que ça s'emballe.
-      {src:'06-explosion.webp',hint:'',                  fade:70,  full:'bleed',
-       blast:true, bldur:1150, white:1500, flash:.9, fdur:520,
-       sparks:54, sparkR:3.2, hold:1050,
-       snd:[90,140,200,300,440]},
-
-      // LE SOCLE VIDE. En `boxed` : ici le cadrage compte, le socle doit
-      // rester entier sur un téléphone comme sur un écran large. `solo`
-      // éteint les six images du dessous — sans quoi l'explosion continuerait
-      // de brûler derrière, à travers l'ovale de découpe.
-      {src:'07-vide.webp',     hint:'',                  fade:380, full:'boxed',
-       solo:true, trem:0, hold:620, end:true},
-    ],
+    ].concat(chestBreakTail()),
     // Format des planches (largeur/hauteur). Il donne à la scène `boxed` les
     // proportions exactes de l'image, pour que l'ovale de découpe tombe
     // pile sur ses bords.
     ratio:2/3,
-  },
+  };
+}
+
+const CHEST_BREAK={
+  pion:    chestBreakSeq('assets/chests/pion/',    'le pion'),
+  cavalier:chestBreakSeq('assets/chests/cavalier/','le cavalier'),
 };
 
 function chestBreakFor(chestId){
   return (chestId&&CHEST_BREAK[chestId])||null;
 }
 function pbSrc(cfg,i){
-  const s=cfg.stages[i].src;
+  const st=cfg.stages[i],s=st.src;
   // Une source absolue (data:, blob:, http…) court-circuite le dossier : la
   // page de réglage tools/chest-break-preview.html injecte ainsi les images
   // que l'on vient de déposer, sans rien copier dans le dépôt.
-  return /^(data:|blob:|https?:|\/)/.test(s)?s:cfg.dir+s;
+  if(/^(data:|blob:|https?:|\/)/.test(s))return s;
+  // `dir` d'étape avant `dir` de coffre : les trois dernières planches sont
+  // communes à tous les coffres et vivent ailleurs (CHEST_BREAK_FORALL).
+  return (st.dir||cfg.dir)+s;
 }
 
 // ----------------------------------------------------------------
@@ -180,8 +226,8 @@ function pbWhenReady(src,cb,wait){
 }
 
 // La PREMIÈRE image sert de sonde : si elle manque, le dossier n'a pas été
-// rempli et les six autres manquent aussi. Inutile d'aller chercher six 404
-// de plus — la cérémonie retombera de toute façon sur le couvercle.
+// rempli et les quatre autres manquent aussi. Inutile d'aller chercher quatre
+// 404 de plus — la cérémonie retombera de toute façon sur le couvercle.
 function chestBreakPreload(){
   Object.keys(CHEST_BREAK).forEach(id=>{
     const cfg=CHEST_BREAK[id];
@@ -195,6 +241,15 @@ function chestBreakPreload(){
 // non si les images ne sont pas dans le dépôt (404) : dans les deux cas la
 // cérémonie retombe sur le coffre à couvercle, et le jeu reste jouable même
 // si le dossier assets/chests/ est vide.
+// L'AFFICHE d'un coffre : sa première planche, la statuette intacte. Le
+// Magasin s'en sert pour montrer la pièce plutôt que le coffre à couvercle
+// dessiné en CSS (magasinChestVisual, js/economy-ui.js). Rend '' pour un
+// coffre sans séquence — l'appelant retombe alors sur le couvercle.
+function chestBreakPoster(chestId){
+  const cfg=chestBreakFor(chestId);
+  return cfg?pbSrc(cfg,0):'';
+}
+
 function chestBreakReady(chestId){
   const cfg=chestBreakFor(chestId);
   if(!cfg)return false;
@@ -417,8 +472,9 @@ function chestBreakMount(chestId,onDone){
 }
 
 // Le chargement démarre avec le jeu, à l'écart du premier rendu : au moment
-// où un coffre Pion tombe, les sept images sont dans le cache depuis
-// longtemps.
+// où un coffre équipé tombe, ses huit planches sont dans le cache depuis
+// longtemps — et les trois planches communes n'ont été téléchargées qu'une
+// fois pour tous les coffres, pbLoad les mettant en cache par URL.
 (function(){
   const start=()=>window.requestIdleCallback
     ?requestIdleCallback(chestBreakPreload,{timeout:2000})

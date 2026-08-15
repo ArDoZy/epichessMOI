@@ -400,10 +400,15 @@ const OPTIONAL_ASSET=/adversaires\/[a-z-]+\.png|backgrounds\/main-page\.png|ches
       const pion=document.querySelector('#shop-chest-grid .shop-chest[data-chest="pion"]');
       return{
         n:cards.length,
-        // Le Pion porte la planche 01-intact, pas le coffre dessiné en CSS.
+        // Le Pion et le Cavalier portent leur planche 01-intact, pas le
+        // coffre dessiné en CSS.
         pionImg:(pion&&pion.querySelector('.chest-pawn img'))
           ?pion.querySelector('.chest-pawn img').getAttribute('src'):'',
         pionHasLidChest:!!pion&&!!pion.querySelector('.chest-lid'),
+        cavImg:(()=>{
+          const c=document.querySelector('#shop-chest-grid .shop-chest[data-chest="cavalier"] .chest-pawn img');
+          return c?c.getAttribute('src'):'';
+        })(),
         // Ni nombre de lots ni probabilité de pièce inédite sur les cartes.
         fiches:document.querySelectorAll('#shop-chest-grid .chest-rar').length,
         prix:document.querySelectorAll('#shop-chest-grid .shop-chest-price').length,
@@ -412,6 +417,7 @@ const OPTIONAL_ASSET=/adversaires\/[a-z-]+\.png|backgrounds\/main-page\.png|ches
     if(r.n!==6)throw new Error(r.n+' coffres au lieu de 6 dans le Magasin');
     if(!/01-intact\.webp$/.test(r.pionImg||''))throw new Error('le Coffre Pion du Magasin ne montre pas sa statuette : '+r.pionImg);
     if(r.pionHasLidChest)throw new Error('le Coffre Pion du Magasin montre encore le coffre à couvercle dessiné');
+    if(!/cavalier\/01-intact\.webp$/.test(r.cavImg||''))throw new Error('le Coffre Cavalier du Magasin ne montre pas sa statuette : '+r.cavImg);
     if(r.fiches)throw new Error(r.fiches+' fiches technique (lots / % inédite) encore affichées dans le Magasin');
     if(r.prix!==6)throw new Error('prix manquants dans le Magasin : '+r.prix+'/6');
     // Achète un Coffre Pion : la SÉQUENCE DE BRIS doit se jouer, exactement
@@ -424,7 +430,7 @@ const OPTIONAL_ASSET=/adversaires\/[a-z-]+\.png|backgrounds\/main-page\.png|ches
       pbBreak:!document.getElementById('chest-break').hidden,
       frames:document.querySelectorAll('#chest-break .pb-frame').length,
     }));
-    if(!state.pbBreak||state.frames!==7)
+    if(!state.pbBreak||state.frames!==8)
       throw new Error('la séquence de bris du Pion ne se joue pas depuis le Magasin (frames : '+state.frames+')');
     // Frappe jusqu'à l'explosion, puis déroule la révélation des lots.
     for(let i=0;i<40&&await page.isVisible('#chest-modal.show');i++){
