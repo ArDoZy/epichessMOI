@@ -511,6 +511,29 @@ const OPTIONAL_ASSET=/adversaires\/[a-z-]+\.png|backgrounds\/main-page\.png|ches
     if(bad.length)throw new Error(bad.join(' · '));
   });
 
+  // UN COFFRE NE SE REMBOURSE JAMAIS. Le Coffre Pion l'a fait : 18 perles au
+  // plus, ×1,8 sur un bon lot, soit 32 perles pour un prix de 30 — on
+  // rachetait le coffre avec son propre contenu, indéfiniment, en encaissant
+  // les pièces au passage. C'est la borne HAUTE qu'on vérifie, pas la
+  // moyenne : le trou ne s'ouvre que sur le meilleur tirage, et une moyenne
+  // saine le cache complètement. Le calcul est celui de chestRoll, pas une
+  // constante recopiée — changer le facteur « bon lot » fera bouger ce test
+  // avec lui.
+  await step('aucun coffre ne peut se payer avec ses propres perles',async()=>{
+    const bad=await page.evaluate(()=>{
+      const out=[];
+      CHESTS.forEach(ch=>{
+        const max=Math.round(chestPearlRange(ch.id)[1]*1.8),prix=chestPearlPrice(ch.id);
+        if(max>=prix)out.push(ch.id+' : jusqu\'a '+max+' perles pour un prix de '+prix);
+        // Une marge, et pas seulement l'inegalite stricte : a 99 % du prix, il
+        // suffit d'un coffre gagne en jouant pour relancer la boucle.
+        if(max>prix*0.6)out.push(ch.id+' : '+max+' perles, soit '+Math.round(100*max/prix)+'% du prix (>60%)');
+      });
+      return out;
+    });
+    if(bad.length)throw new Error(bad.join(' · '));
+  });
+
   // LES POUVOIRS, un par un. Ils sont ce que le jeu a de particulier et ce
   // qu'aucun autre test ne touche : une partie jouée par le robot ne croise
   // presque jamais un Prêtre bien placé ou une Banshee au contact. Chaque
