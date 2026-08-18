@@ -67,9 +67,15 @@ function vvGetRankIdx(elo){for(let i=RANKS.length-1;i>=0;i--)if(elo>=RANKS[i].mi
 //   style    biais de composition d'armée ET d'évaluation (voir STYLE_EVAL
 //            dans js/ai-engine.js et generateAIArmy dans js/armies.js).
 //   budget   valeur d'armée visée, sur les 24 points du builder.
-//   tier     plafond de rareté du coffre gagné en le battant (index dans
-//            CHESTS). Battre un débutant vingt fois ne donne pas un Coffre
-//            Roi : c'est ce qui empêche de farmer le bas de l'échelle.
+//   tier     palier de difficulté, de 0 (Cendre) à 5 (L'Athanor). Il a
+//            longtemps PLAFONNÉ la rareté du coffre gagné en battant
+//            l'adversaire — et comme la galerie conseille les deux plus
+//            faibles à un compte neuf, un débutant ne voyait jamais autre
+//            chose qu'un Coffre Pion, même après six victoires d'affilée.
+//            Ce n'est plus le cas : la série seule décide du coffre (voir
+//            economySettle, js/economy.js), et le verrou quotidien suffit à
+//            empêcher de farmer le bas de l'échelle. Le champ ne sert plus
+//            qu'à situer l'adversaire sur l'échelle des douze.
 //
 // PORTRAITS : chaque adversaire cherche `assets/adversaires/<id>.png`. Le
 // fichier est FACULTATIF — sans lui, js/adversaires.js dessine un sceau SVG

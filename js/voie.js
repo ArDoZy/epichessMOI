@@ -60,9 +60,9 @@ function vvCalcNewElo(playerElo,aiElo,result){
 // Il y a maintenant douze adversaires d'ELO connu et espacé (AI_OPPONENTS) :
 // une victoire contre l'un d'eux mesure exactement ce que mesure une victoire
 // contre un humain de même niveau. Ces parties sont donc CLASSÉES, et le
-// classement se régule tout seul — battre un adversaire très au-dessous de
-// son propre niveau ne rapporte quasiment rien (formule Elo), et la rareté du
-// coffre gagné est plafonnée par le palier de l'adversaire (economySettle).
+// classement se régule tout seul : battre un adversaire très au-dessous de
+// son propre niveau ne rapporte quasiment rien (formule Elo), donc aucun des
+// paliers qui débloquent pièces et échiquiers.
 //
 // Restent non classées : les parties du mode test (une démonstration ne doit
 // pas polluer la progression réelle) et les batailles du tutoriel, qui ne

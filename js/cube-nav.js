@@ -122,6 +122,18 @@
     set('cube-arrow-right', h);
     set('cube-facebar', h);
     updateFacebar();
+    updateMainMenuFlag(active);
+  }
+  // LE BOUTON DE RÉGLAGES N'EST QUE SUR LE MENU PRINCIPAL. Il flottait en haut
+  // à droite de tout le jeu, et chaque page lui réservait une bande vide en
+  // haut qui repoussait son titre. `body.main-menu` allume le seul écran qui
+  // le porte encore : la face JOUER devant, aucune page par-dessus. Tout ce
+  // qui en découle est dans la feuille de style (voir [SETTINGS]), y compris
+  // la fermeture du panneau quand on s'en va.
+  function updateMainMenuFlag(active){
+    const on=!!active && !animating && slots.front==='jouer';
+    document.body.classList.toggle('main-menu',on);
+    if(!on)document.getElementById('settings-panel')?.classList.remove('open');
   }
   // Allume le logo de la face affichée dans le repère du bas, éteint les
   // trois autres.

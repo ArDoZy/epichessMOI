@@ -138,8 +138,10 @@
      largeur en haut de CHAQUE écran pour n'y porter qu'un rond avec l'initiale
      du pseudo — une information qu'on connaît déjà, et qui est de toute façon
      répétée en toutes lettres sur le menu principal. Il rognait le haut de
-     toutes les pages. Seul le bouton de réglages reste épinglé en haut à
-     droite (voir #settings-btn). -->
+     toutes les pages. Le bouton de réglages, lui, n'est plus épinglé qu'en
+     haut à droite du MENU PRINCIPAL (voir #settings-btn et body.main-menu,
+     js/cube-nav.js) : partout ailleurs il ne servait qu'à réserver une bande
+     vide au-dessus du titre. -->
 
 <!-- CHOIX DU PSEUDO, À LA TOUTE PREMIÈRE VISITE UNIQUEMENT.
      IL N'Y A PLUS DE PAGE DE CONNEXION. C'en était une (#page-login, avec la
@@ -553,15 +555,19 @@
 
 <!-- PAGE VOIE : page à part entière, ouverte par le bouton « Voie » posé à
      côté de l'ELO sur le menu principal. -->
-<!-- LE BOUTON « OK » NE PEUT PAS ÊTRE EN position:fixed ICI. `.page.active`
-     porte une animation d'entrée dont la dernière image laisse un `transform`
-     posé en permanence (animation-fill-mode:both) : cet élément devient donc
-     le bloc conteneur de tout descendant en position:fixed, qui se retrouve
-     collé au bas du CONTENU (des milliers de pixels plus bas) au lieu de
-     l'écran. D'où cette structure : la page est une COLONNE FLEX pleine
-     hauteur, seule .voie-scroll défile, et le bouton est le dernier élément
-     de la colonne — il reste sous les yeux quel que soit le défilement, sans
-     dépendre du positionnement fixe. -->
+<!-- LE BOUTON « OK » N'EST PLUS UNE BARRE. Il occupait toute la largeur au
+     bas de l'écran, en dernier élément de la colonne flex : une bande de
+     66 px que la Voie ne pouvait plus utiliser, alors qu'elle se lit
+     justement du bas vers le haut. C'est maintenant une petite pastille
+     posée PAR-DESSUS la Voie, en position:absolute dans #page-voie (voir
+     .voie-ok-bar dans css/style.css).
+     Elle ne peut pas être en position:fixed : `.page.active` porte une
+     animation d'entrée dont la dernière image laisse un `transform` posé en
+     permanence (animation-fill-mode:both), ce qui fait de la page le bloc
+     conteneur de tout descendant en position:fixed — il se retrouverait
+     collé au bas du CONTENU, des milliers de pixels plus bas. En absolu,
+     c'est #page-voie lui-même (position:fixed;inset:0) qui sert de
+     référence : le bouton reste sous les yeux quel que soit le défilement. -->
 <div id="page-voie" class="page">
 <div class="voie-scroll" id="voie-scroll">
   <div class="voie-inner">

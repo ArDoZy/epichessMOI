@@ -77,6 +77,10 @@ function applyBoardSkin(){
 // js/economy.js) : une défaite la ferme jusqu'au lendemain, et il n'y a
 // alors plus de palier « next » du tout.
 function streakSnapshot(){
+  // Remise à zéro au changement de jour AVANT toute lecture : sans elle, la
+  // fenêtre affichait la série de la veille (et « Série terminée » à vie une
+  // fois les six paliers cumulés). Voir streakEnsureToday, js/economy.js.
+  if(typeof streakEnsureToday==='function')streakEnsureToday();
   const streak=accGet('win_streak',0);
   const locked=(typeof streakLockedToday==='function')&&streakLockedToday();
   const done=streak>=CHESTS.length;
@@ -92,8 +96,8 @@ function streakRowState(i,snap){
 }
 // Une phrase, sous le titre : où l'on en est, et ce que ça implique.
 function streakSubtitle(snap){
-  if(snap.locked)return 'Série perdue pour aujourd\'hui. Elle repart demain.';
-  if(snap.done)return 'Série terminée, les six coffres sont tombés. Elle repart demain.';
+  if(snap.locked)return 'Série perdue pour aujourd\'hui. Elle repart du Coffre Pion demain.';
+  if(snap.done)return 'Les six coffres sont tombés : chaque victoire de plus redonne un Coffre Roi. La série repart du Coffre Pion demain.';
   const next=CHESTS[snap.nextIdx];
   if(!snap.streak)return 'Une victoire, et le '+next.name+' est à vous.';
   return snap.streak+' victoire'+(snap.streak>1?'s':'')+' d\'affilée · la prochaine donne le '+next.name+'.';

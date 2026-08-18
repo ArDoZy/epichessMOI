@@ -20,8 +20,9 @@
 // partie perdue coûterait huit pions et le jeu deviendrait injouable.
 //
 // FILET DE SÉCURITÉ : une victoire donne un coffre, dont la rareté suit la
-// SÉRIE de victoires (1re = Pion ... 6e et plus = Roi) ; une défaite remet la
-// série à zéro. Et une fois par jour, le coffre de réapprovisionnement rend
+// SÉRIE de victoires (1re = Pion ... 6e et plus = Roi) et rien d'autre ; une
+// défaite remet la série à zéro et la ferme jusqu'au lendemain, où elle
+// repart du Coffre Pion. Et une fois par jour, le coffre de réapprovisionnement rend
 // 4 exemplaires de chaque pièce possédée, ce qui rend impossible de rester
 // bloqué sans armée jouable.
 //
@@ -197,12 +198,26 @@ function economyOnPromotion(pieceId,gs){
   if(gs){gs.promoGains=gs.promoGains||{};gs.promoGains[pieceId]=(gs.promoGains[pieceId]||0)+1;}
 }
 
-// Palier de coffre maximal pour la partie qui vient de finir, ou null quand
-// il n'y a pas de plafond (jeu en ligne : l'adversaire vaut le sien).
-function economyChestCap(gs){
-  if(gs&&gs.multiplayer)return null;
-  const o=(typeof aiCurrentOpponent==='function')?aiCurrentOpponent():null;
-  return(o&&typeof o.tier==='number')?o.tier:null;
+// ----------------------------------------------------------------
+// LA SÉRIE REPART À ZÉRO CHAQUE JOUR
+// ----------------------------------------------------------------
+// « Série DU JOUR » : la fenêtre du menu principal l'annonce, le verrou de
+// défaite promet qu'« elle repart demain » — et elle ne repartait pas. Rien
+// ne remettait `win_streak` à zéro au changement de date : seul le verrou
+// expirait tout seul (streakLockedToday compare à la date du jour). Le
+// compteur, lui, traversait les jours et les semaines. Passé six victoires
+// cumulées, la fenêtre affichait « Série terminée » pour toujours, les six
+// paliers marqués acquis, et il n'y avait plus jamais de palier à décrocher :
+// la Voie des coffres était finie et ne redémarrait jamais.
+//
+// `streak_day` est la date de la série en cours. Dès que la date locale
+// change, le compteur repart de zéro (et le verrou avec lui) : on retrouve un
+// Coffre Pion à la première victoire, un Coffre Roi à la sixième.
+function streakEnsureToday(){
+  if(accGet('streak_day',null)===todayKey())return;
+  accSet('streak_day',todayKey());
+  accSet('win_streak',0);
+  accSet('streak_lock_day',null);
 }
 
 // Règlement complet. Renvoie un rapport affiché par la cinématique de fin
@@ -225,26 +240,38 @@ function economySettle(result,gs){
 
   // Série de victoires et coffre associé.
   //
-  // La rareté suit la série, MAIS elle est plafonnée par le palier de
-  // l'adversaire battu (champ `tier` de AI_OPPONENTS). Sans ce plafond, six
-  // victoires d'affilée contre Cendre (150 ELO, qui joue presque au hasard)
-  // donneraient un Coffre Roi : le moyen le plus rentable de progresser
-  // serait de ne jamais affronter personne à sa mesure. Le jeu en ligne n'a
-  // pas de plafond, l'adversaire y vaut toujours le sien.
+  // LA RARETÉ SUIT LA SÉRIE, ET RIEN D'AUTRE : 1re victoire → Coffre Pion,
+  // 6e et au-delà → Coffre Roi, exactement l'échelle que la fenêtre « Série
+  // du jour » affiche du haut vers le bas.
+  //
+  // Il y avait ici un PLAFOND par le palier de l'adversaire battu (champ
+  // `tier` de AI_OPPONENTS) : contre Cendre ou Suie (tier 0), tout coffre
+  // gagné redescendait au Coffre Pion, quelle que soit la série. Or ce sont
+  // précisément les deux adversaires que la galerie conseille à un compte
+  // neuf (advNextFoe, js/adversaires.js) : un débutant pouvait enchaîner six
+  // victoires et ne jamais voir autre chose qu'un Coffre Pion, pendant que la
+  // fenêtre lui promettait le Coffre Roi. Le filet de sécurité ne rattrapait
+  // plus personne, et l'échelle affichée était un mensonge.
+  //
+  // Ce que le plafond protégeait — « farmer » le plus faible pour empiler les
+  // Coffres Roi — est déjà tenu par le VERROU QUOTIDIEN juste dessous : il
+  // n'y a qu'une série par jour, donc au mieux un Coffre Roi par jour, et il
+  // faut six victoires d'affilée pour l'atteindre. Battre un adversaire très
+  // en dessous de soi ne rapporte par ailleurs quasiment aucun ELO
+  // (vvCalcNewElo, js/voie.js), donc rien de ce qui se débloque par palier.
   //
   // UNE SEULE SÉRIE PAR JOUR (streakLockedToday, plus bas) : une défaite ne
   // remet plus seulement le compteur à zéro, elle ferme aussi la série pour
   // le reste de la journée — les victoires suivantes ne donnent plus de
   // coffre tant que la date locale n'a pas changé. Sans ce verrou, perdre
   // n'était qu'un contretemps qu'une victoire suivante effaçait aussitôt.
+  streakEnsureToday();
   let streak=accGet('win_streak',0);
   let chest=null;
   if(result==='win'){
     if(!streakLockedToday()){
       streak=streak+1;
       chest=chestForStreak(streak);
-      const cap=economyChestCap(gs);
-      if(cap!==null&&chest.tier>cap)chest=CHESTS[cap];
       // Le coffre n'est pas crédité ici : c'est settleAndCelebrate()
       // (js/economy-ui.js) qui l'ouvre, une fois la cinématique d'issue passée
       // et avant l'écran de résultat.
@@ -429,8 +456,10 @@ function dailyChestAvailable(){return accGet('daily_last',null)!==todayKey();}
 // La série de victoires à coffres est elle aussi quotidienne (voir
 // economySettle plus haut) : une défaite pose `streak_lock_day` à la date du
 // jour, et tant que la date locale n'a pas changé, plus aucune victoire ne
-// donne de coffre. Le lendemain, todayKey() change tout seul et la série
-// redevient jouable — rien à réinitialiser explicitement.
+// donne de coffre. Le lendemain, todayKey() change tout seul et le verrou
+// tombe — mais le COMPTEUR, lui, doit être remis à zéro explicitement, sans
+// quoi la série repart au palier où elle s'était arrêtée la veille (voir
+// streakEnsureToday, plus haut).
 function streakLockedToday(){return accGet('streak_lock_day',null)===todayKey();}
 function dailyChestPreview(){
   const gains={};
