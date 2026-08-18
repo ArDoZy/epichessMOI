@@ -204,7 +204,6 @@ function renderAdversairesPage(){
   grid.innerHTML=AI_OPPONENTS.map(o=>{
     const rec=advRecord(o.id);
     const gap=advGapLabel(o.elo,myElo);
-    const chest=(typeof chestById==='function')?chestById(CHESTS[o.tier]?.id||'pion'):null;
     const recTxt=(rec.w+rec.l+rec.d)>0
       ? '<span class="adv-rec-w">'+rec.w+'V</span><span class="adv-rec-d">'+rec.d+'N</span><span class="adv-rec-l">'+rec.l+'D</span>'
       : '<span class="adv-rec-none">Jamais affronté</span>';
@@ -220,7 +219,6 @@ function renderAdversairesPage(){
         '<div class="adv-tags">'+
           '<span class="adv-tag">'+(ADV_STYLE_LABEL[o.style]||o.style)+'</span>'+
           '<span class="adv-tag">armée '+o.budget+' pts</span>'+
-          (chest?'<span class="adv-tag adv-tag-chest">jusqu\'au '+escH(chest.name)+'</span>':'')+
         '</div>'+
         '<div class="adv-foot"><span class="adv-gap '+gap.cls+'">'+
           (o.id===advised?'À votre mesure':gap.txt)+'</span>'+

@@ -182,10 +182,18 @@ fenêtre. Un adversaire faible ne voit pas le mat, mais s'il le voit, il le
 joue — sinon il aurait l'air de se moquer du joueur.
 
 Deux garde-fous contre le farm du bas de l'échelle : la formule Elo elle-même
-(battre beaucoup plus faible que soi ne rapporte quasiment rien), et le
-**plafond de coffre** par palier d'adversaire (`economyChestCap`,
-js/economy.js) — six victoires d'affilée contre Cendre ne donnent pas un
-Coffre Roi.
+(battre beaucoup plus faible que soi ne rapporte quasiment rien, donc aucun
+palier de déblocage), et le **verrou quotidien** de la série de coffres
+(`streakLockedToday`/`streakEnsureToday`, js/economy.js) — une seule série par
+jour, six victoires d'affilée pour toucher le Coffre Roi.
+
+Il y a eu un troisième garde-fou, un **plafond de coffre** par palier
+d'adversaire, retiré : il ramenait tout coffre au Coffre Pion contre Cendre ou
+Suie, c'est-à-dire contre les deux adversaires que la galerie conseille à un
+compte neuf. Un débutant enchaînait six victoires et ne voyait jamais autre
+chose qu'un Coffre Pion, pendant que la fenêtre « Série du jour » lui promettait
+le Coffre Roi. Le `tier` d'`AI_OPPONENTS` ne sert plus qu'à situer l'adversaire
+sur l'échelle des douze.
 
 `tools/ai-bench.js` fait s'affronter les adversaires en autopartie et vérifie
 que l'échelle tient dans le bon sens. Il ne fait pas partie de `npm test` (une
@@ -336,8 +344,9 @@ caractères », « Les mots de passe ne correspondent pas », « 3 pièces max �
 Tous ces boutons ne faisaient donc rien du tout, sans un mot : le jeu
 paraissait cassé là où il refusait simplement une action.
 
-Le bandeau est de retour, en bas à droite (le haut de l'écran appartient à la
-barre de compte et au bouton de réglages), trois messages au plus, effacé au
+Le bandeau est de retour, en bas à droite (le haut de l'écran appartient au
+titre de la page, et au bouton de réglages sur le seul menu principal), trois
+messages au plus, effacé au
 clic. `showNotif(msg, 'err' | 'ok' | 'info')`. **Ne la revidez pas** : un
 refus muet est un bug, pas un choix de sobriété.
 
@@ -534,7 +543,10 @@ mais dans une version que Playwright refuse, le script le retrouve tout seul
 | Ajouter un nouveau réglage utilisateur | `index.html` (bloc `#settings-panel`) + `js/settings-admin.js` |
 | Modifier la présentation ou la FAQ publiques | `info.html` (texte visible **et** JSON-LD `FAQPage`) |
 | Changer les modes qui rapportent de l'ELO | `js/voie.js` (`vvNoEloReason`) |
-| Changer le plafond de coffre par adversaire | `tier` dans `AI_OPPONENTS` + `economyChestCap` dans `js/economy.js` |
+| Changer le coffre gagné par série de victoires | `CHESTS`/`chestForStreak` dans `js/data-pieces.js` + `economySettle` dans `js/economy.js` |
+| Changer la remise à zéro quotidienne de la série | `streakEnsureToday`/`streakLockedToday` dans `js/economy.js` |
+| Changer les écrans qui portent le bouton de réglages | `updateMainMenuFlag` dans `js/cube-nav.js` + `body.main-menu` dans `[SETTINGS]` de `css/style.css` |
+| Changer le retrait haut des pages (sous l'encoche) | `--page-top` / `--menu-top` en tête de `css/style.css` |
 | Changer ce que donne le mode test | `economyAdmin`/`invAll`/`pearlBalance` dans `js/economy.js` + `vvLoadElo`/`loadAccountGlobals` dans `js/accounts.js` |
 | Ajouter un tips d'attente en ligne | `MP_TIPS` dans `js/multiplayer.js` (une ligne de plus dans le tableau) |
 | Ajouter une adresse au jeu (comme `/combat`) | `vercel.json` (`rewrites`) + `appPath`/`setAppPath`/`appHomePath` dans `js/main.js` |

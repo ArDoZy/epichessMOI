@@ -207,6 +207,29 @@ const OPTIONAL_ASSET=/adversaires\/[a-z-]+\.png|backgrounds\/main-page\.png|ches
     await page.keyboard.press('Escape');
   });
 
+  // LE BOUTON DE RÉGLAGES N'EST QUE SUR LE MENU PRINCIPAL. Partout ailleurs il
+  // ne faisait que réserver une bande vide au-dessus du titre de la page.
+  await step('le bouton de réglages ne suit pas hors du menu principal',async()=>{
+    if(!await page.isVisible('#settings-btn'))
+      throw new Error('le bouton de réglages manque sur le menu principal');
+    // Une page en overlay (la Voie) : plus de bouton.
+    await page.evaluate(()=>{renderVoiePage();showPage('page-voie');});
+    await page.waitForSelector('#page-voie.active',{timeout:8000});
+    if(await page.isVisible('#settings-btn'))
+      throw new Error('le bouton de réglages est encore là sur la Voie');
+    await page.click('#voie-ok');
+    await page.waitForTimeout(400);
+    // Une autre face du cube (l'Armurerie) : plus de bouton non plus.
+    await page.evaluate(()=>showPage('page-reserve'));
+    await page.waitForTimeout(300);
+    if(await page.isVisible('#settings-btn'))
+      throw new Error('le bouton de réglages est encore là sur l\'Armurerie');
+    await page.evaluate(()=>showPage('face-jouer'));
+    await page.waitForTimeout(700);
+    if(!await page.isVisible('#settings-btn'))
+      throw new Error('le bouton de réglages ne revient pas au menu principal');
+  });
+
   await step('la galerie des adversaires s\'affiche',async()=>{
     await page.click('#b-vs-ia');
     await page.waitForSelector('#page-adversaires.active',{timeout:8000});
@@ -305,7 +328,7 @@ const OPTIONAL_ASSET=/adversaires\/[a-z-]+\.png|backgrounds\/main-page\.png|ches
   // état de série mal calculé s'y verrait tout de suite.
   await step('la fenêtre de série montre les paliers du Pion (en haut) au Roi (en bas)',async()=>{
     await page.evaluate(()=>{
-      accSet('streak_lock_day',null);accSet('win_streak',2);accSet('pearls',300);
+      accSet('streak_day',todayKey());accSet('streak_lock_day',null);accSet('win_streak',2);accSet('pearls',300);
       showPage('face-jouer');renderMenuChests();
     });
     // Le menu principal ne porte plus ni rail de coffres, ni solde de perles,
@@ -351,7 +374,7 @@ const OPTIONAL_ASSET=/adversaires\/[a-z-]+\.png|backgrounds\/main-page\.png|ches
   // aucun palier « prochain », et la fenêtre s'ouvre sur le début.
   await step('une défaite verrouille la série jusqu\'au lendemain',async()=>{
     const r=await page.evaluate(()=>{
-      accSet('win_streak',3);accSet('streak_lock_day',null);
+      accSet('streak_day',todayKey());accSet('win_streak',3);accSet('streak_lock_day',null);
       const report=economySettle('loss',{board:[],promoGains:{}});
       renderStreakModal();
       return{
@@ -373,7 +396,7 @@ const OPTIONAL_ASSET=/adversaires\/[a-z-]+\.png|backgrounds\/main-page\.png|ches
     if(r2.chest)throw new Error('un coffre a été gagné malgré le verrou du jour');
     // Série terminée : les six paliers sont acquis, la fenêtre ouvre en haut.
     const r3=await page.evaluate(()=>{
-      accSet('streak_lock_day',null);accSet('win_streak',6);
+      accSet('streak_day',todayKey());accSet('streak_lock_day',null);accSet('win_streak',6);
       renderStreakModal();
       return{
         won:document.querySelectorAll('#streak-scroll .streak-row.chest-won').length,
@@ -386,6 +409,50 @@ const OPTIONAL_ASSET=/adversaires\/[a-z-]+\.png|backgrounds\/main-page\.png|ches
     if(r3.haut>2)throw new Error('série terminée : la fenêtre ne s\'ouvre pas sur le début');
     // Reset propre pour la suite du parcours (achat de coffre plus bas).
     await page.evaluate(()=>{accSet('streak_lock_day',null);accSet('win_streak',0);});
+  });
+
+  // LA SÉRIE REPART DE ZÉRO CHAQUE JOUR. Rien ne remettait `win_streak` à zéro
+  // au changement de date : le compteur traversait les jours, et passé six
+  // victoires cumulées la fenêtre affichait « Série terminée » à vie, sans
+  // plus jamais de palier à décrocher.
+  await step('la série repart du Coffre Pion le lendemain',async()=>{
+    const r=await page.evaluate(()=>{
+      // Une série d'hier, terminée et verrouillée.
+      accSet('streak_day','2000-01-01');accSet('win_streak',6);
+      accSet('streak_lock_day','2000-01-01');
+      const snap=streakSnapshot();
+      renderStreakModal();
+      return{
+        streak:snap.streak,next:snap.nextIdx,locked:snap.locked,
+        prochain:document.querySelector('#streak-scroll .streak-row.chest-next')?.dataset.chest||null,
+        acquis:document.querySelectorAll('#streak-scroll .streak-row.chest-won').length,
+      };
+    });
+    if(r.streak!==0)throw new Error('la série d\'hier n\'est pas remise à zéro : '+r.streak);
+    if(r.locked)throw new Error('le verrou d\'hier est encore posé aujourd\'hui');
+    if(r.acquis)throw new Error(r.acquis+' paliers encore marqués acquis au réveil');
+    if(r.prochain!=='pion')throw new Error('le prochain palier n\'est pas le Coffre Pion : '+r.prochain);
+  });
+
+  // LE COFFRE SUIT LA SÉRIE, ET RIEN D'AUTRE. Un plafond par le palier de
+  // l'adversaire ramenait tout coffre au Coffre Pion contre les deux plus
+  // faibles — c'est-à-dire contre ceux que la galerie conseille à un compte
+  // neuf : six victoires d'affilée, six Coffres Pion.
+  await step('six victoires d\'affilée montent du Coffre Pion au Coffre Roi',async()=>{
+    const ids=await page.evaluate(()=>{
+      aiSetOpponent('cendre');            // le plus faible des douze (tier 0)
+      accSet('streak_day',todayKey());accSet('streak_lock_day',null);accSet('win_streak',0);
+      const out=[];
+      for(let i=0;i<6;i++)out.push(economySettle('win',{board:[],promoGains:{}}).chest?.id||null);
+      return out;
+    });
+    const attendu='pion,cavalier,fou,tour,dame,roi';
+    if(ids.join(',')!==attendu)
+      throw new Error('coffres de la série contre Cendre : '+ids.join(',')+' au lieu de '+attendu);
+    await page.evaluate(()=>{
+      aiSetOpponent('instructeur');
+      accSet('streak_lock_day',null);accSet('win_streak',0);
+    });
   });
 
   await step('le Magasin vend les six coffres, le Pion sous sa statuette et sans fiche technique',async()=>{
@@ -443,7 +510,9 @@ const OPTIONAL_ASSET=/adversaires\/[a-z-]+\.png|backgrounds\/main-page\.png|ches
   // Le bouton OK de la Voie doit rester à l'écran quel que soit le
   // défilement : il ne peut pas être en position:fixed (l'animation d'entrée
   // de .page.active laisse un transform qui en ferait le bloc conteneur), il
-  // est donc le dernier élément d'une colonne flex pleine hauteur.
+  // est donc en position:absolute dans #page-voie, lui-même en fixed.
+  // Et c'est une PASTILLE, pas une barre : la Voie continue de courir
+  // derrière lui au lieu de perdre une bande pleine largeur en bas d'écran.
   await step('le bouton OK de la Voie reste en bas de l\'écran quand on défile',async()=>{
     await page.evaluate(()=>{renderVoiePage();showPage('page-voie');});
     await page.waitForSelector('#page-voie.active',{timeout:8000});
@@ -452,13 +521,19 @@ const OPTIONAL_ASSET=/adversaires\/[a-z-]+\.png|backgrounds\/main-page\.png|ches
       const host=document.getElementById('voie-scroll');
       const btn=document.getElementById('voie-ok');
       const vh=innerHeight;
-      const mesure=()=>{const b=btn.getBoundingClientRect();return{top:b.top,bottom:b.bottom};};
+      const mesure=()=>{const b=btn.getBoundingClientRect();return{top:b.top,bottom:b.bottom,w:b.width,h:b.height};};
       host.scrollTop=0;
       const haut=mesure();
       host.scrollTop=host.scrollHeight;              // tout en bas
       const bas=mesure();
-      return{haut,bas,vh,scrollable:host.scrollHeight>host.clientHeight+40,
-        retourVisible:!!document.getElementById('voie-back')};
+      // La Voie passe-t-elle DERRIÈRE le bouton ? Le point juste à côté de la
+      // pastille, à sa hauteur, doit appartenir à la zone défilante — s'il y
+      // avait encore un bandeau, il occuperait toute la largeur.
+      const b=btn.getBoundingClientRect();
+      const cote=document.elementFromPoint(8,b.top+b.height/2);
+      return{haut,bas,vh,vw:innerWidth,scrollable:host.scrollHeight>host.clientHeight+40,
+        retourVisible:!!document.getElementById('voie-back'),
+        voieDerriere:!!cote&&host.contains(cote)};
     });
     if(!r.scrollable)throw new Error('la Voie ne défile pas, le test ne prouve rien');
     if(r.retourVisible)throw new Error('le bouton « Retour » est encore là');
@@ -467,6 +542,13 @@ const OPTIONAL_ASSET=/adversaires\/[a-z-]+\.png|backgrounds\/main-page\.png|ches
       throw new Error('le bouton OK bouge avec le défilement ('+r.haut.top+' → '+r.bas.top+')');
     if(r.haut.bottom>r.vh+1||r.haut.bottom<r.vh-90)
       throw new Error('le bouton OK n\'est pas au bas de l\'écran (bas à '+Math.round(r.haut.bottom)+' pour une hauteur de '+r.vh+')');
+    // Une pastille : petite, et loin d'occuper la largeur de l'écran.
+    if(r.haut.w>r.vw*0.5)
+      throw new Error('le bouton OK fait encore barre ('+Math.round(r.haut.w)+' px pour '+r.vw+' px d\'écran)');
+    if(r.haut.h>44)
+      throw new Error('le bouton OK est encore haut de '+Math.round(r.haut.h)+' px');
+    if(!r.voieDerriere)
+      throw new Error('un bandeau occupe encore toute la largeur derrière le bouton OK');
     await page.click('#voie-ok');
     await page.waitForTimeout(400);
     if(await page.isVisible('#page-voie.active'))throw new Error('le bouton OK ne referme pas la Voie');

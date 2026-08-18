@@ -131,9 +131,9 @@ C'est la mécanique qui distingue le plus Epic Chess des autres variantes :
   Obsidienne (1300-1799), Argent (1800-2399), Or Légendaire (2400+).
 - Franchir un palier de rang **débloque de nouvelles créatures** et de
   nouveaux **échiquiers** : bois, pierre, acier, argent puis or.
-- La rareté du coffre gagné suit la **série de victoires**, plafonnée par le
-  niveau de l'adversaire battu : enchaîner les victoires contre le plus
-  faible ne donne pas les meilleurs coffres.
+- La rareté du coffre gagné suit la **série de victoires** : 1re victoire du
+  jour → Coffre Pion, 6e → Coffre Roi. La série est **quotidienne** — une
+  défaite la ferme jusqu'au lendemain, et elle repart du Coffre Pion.
 
 ## Confidentialité
 
