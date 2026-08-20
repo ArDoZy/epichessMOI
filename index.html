@@ -45,8 +45,15 @@
 <meta name="twitter:description" content="Un savant fou, dans un laboratoire d'échecs oublié, a fait naître des créatures de l'alchimie. Composez votre armée et affrontez d'autres esprits dérangés."/>
 
 <!-- Une seule icône, vectorielle : elle sert d'onglet, d'icône d'écran
-     d'accueil et de vignette de manifeste (voir site.webmanifest). -->
-<link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
+     d'accueil et de vignette de manifeste (voir site.webmanifest).
+     LE `?v=2` N'EST PAS DÉCORATIF. Les navigateurs gardent l'icône d'onglet
+     en cache bien plus longtemps que le reste du site — souvent des semaines,
+     et sans la relire à un rechargement ordinaire. Après une refonte de
+     l'emblème, l'ancienne image restait donc dans l'onglet de tous ceux qui
+     avaient déjà ouvert le jeu. Changer l'ADRESSE est le seul moyen sûr de la
+     faire abandonner : incrémentez ce numéro (ici et dans site.webmanifest,
+     qui doit pointer la même) à chaque fois que le tracé change. -->
+<link rel="icon" href="/favicon.svg?v=2" type="image/svg+xml"/>
 <link rel="manifest" href="/site.webmanifest"/>
 
 <!-- preconnect : les polices viennent d'un autre domaine ; ouvrir la
@@ -159,7 +166,13 @@
 <div class="intro-modal" id="intro-modal" style="display:none">
   <div class="intro-parchment">
     <div class="intro-parchment-inner">
-      <span class="vial vial-lg intro-seal"><span class="vial-bubble"></span></span>
+      <!-- L'EMBLÈME, ET PLUS UNE FIOLE ANONYME. Le parchemin est le premier
+           écran d'un compte neuf : il portait une fiole d'alchimiste
+           décorative (.vial), le même dessin que les états vides du reste du
+           jeu, qui ne disait rien de plus que « alchimie ». C'est la place du
+           sceau — il se lit ici à l'encre du parchemin (voir .intro-emblem
+           dans css/style.css), pas en laiton sur ardoise. -->
+      <div class="game-emblem intro-emblem"></div>
       <h2 class="intro-title">Bienvenue, apprenti alchimiste</h2>
       <p class="intro-p">Dans ce laboratoire abandonné, un savant fou a fusionné les pièces d'un jeu d'échecs ordinaire avec des créatures nées de l'alchimie. Le résultat : <strong>Epic Chess</strong>, une variante où chaque créature a son propre pouvoir et ses propres déplacements.</p>
       <ul class="intro-list">
@@ -193,9 +206,10 @@
      pas même une image. -->
 <div class="pseudo-gate" id="pseudo-gate" style="display:none">
   <div class="login-wrap">
-    <!-- L'emblème (ballon d'alchimiste couronné) est injecté par
-         mountEmblems() dans js/main.js : un seul tracé, deux emplacements. -->
-    <div class="login-logo"><div class="login-emblem"></div><h1>EPIC CHESS</h1><p>Un savant fou, dans un laboratoire d'échecs oublié, a fait naître des créatures de l'alchimie. Composez votre armée et affrontez d'autres esprits dérangés.</p></div>
+    <!-- L'emblème (le sceau d'alchimiste) est injecté par mountEmblems()
+         dans js/main.js : un seul tracé, tous les emplacements. La classe
+         `game-emblem` est le crochet, `login-emblem` ne règle que la taille. -->
+    <div class="login-logo"><div class="game-emblem login-emblem"></div><h1>EPIC CHESS</h1><p>Un savant fou, dans un laboratoire d'échecs oublié, a fait naître des créatures de l'alchimie. Composez votre armée et affrontez d'autres esprits dérangés.</p></div>
     <!-- UN SEUL COMPTE, toujours connecté : pas de mot de passe, pas de
          changement de compte, pas de déconnexion (voir js/accounts.js). -->
     <div class="login-card">
@@ -308,7 +322,17 @@
                chose : votre rang. Le bouton fantôme, en particulier, avait
                exactement l'apparence d'un élément désactivé. Toute la pastille
                ouvre la Voie : aucune fonction n'est perdue. -->
+          <!-- L'EMBLÈME EST DE RETOUR EN TÊTE DU MENU. Il en avait été retiré
+               au profit du pseudo et de l'ELO, au motif qu'on sait déjà où
+               l'on est — sauf qu'il ne restait alors AUCUN écran du jeu où
+               l'identité s'affiche : le voile de choix du pseudo ne se montre
+               qu'à la toute première visite, et l'icône d'onglet dort dans le
+               cache du navigateur. Le menu principal est l'écran que l'on
+               ouvre à chaque partie ; le sceau y tient en 52 px, au-dessus du
+               pseudo, sans rien lui prendre (la colonne du menu recule
+               d'autant, voir --menu-emblem-h dans css/style.css). -->
           <div class="jouer-player">
+            <div class="game-emblem menu-emblem"></div>
             <div class="jouer-name" id="jouer-name"></div>
             <button class="jouer-idpill" id="jouer-voie" aria-label="Voir la Voie des Victoires">
               <span class="jp-dot" id="jouer-rank-dot"></span>
