@@ -13,6 +13,7 @@
 //
 // Dépendances : data-pieces.js (PIECES, CLASS_ORDER), accounts.js
 // (savedArmies, savedAiArmies, saveArmies, saveAiArmies, VV_UNLOCKED),
+// economy.js (invOwnedIds — le vivier des bots, voir aiPiecePool),
 // main.js (showPage, showNotif, showPieceCtxMenu, showConfirmModal, escH),
 // piece-card.js (pieceCardHTML, wirePieceCards), builder.js
 // (derivePlacements, slotStockHTML — la fabrication de l'armée du joueur
@@ -352,34 +353,57 @@ document.getElementById('ai-ar-new').addEventListener('click',()=>{builderMode='
 //   Il ne change pas la force de calcul, il change CE QU'ELLE ALIGNE — c'est
 //   ce qui fait qu'affronter Cinabre (sorcier) et Orpiment (brute) au même
 //   niveau ne se joue pas de la même façon.
-// opts.full : puiser dans TOUT le catalogue au lieu des seules pièces
-//   débloquées par le joueur. Un adversaire à 1750 ELO doit pouvoir aligner
-//   un Typhon que le joueur n'a pas encore vu : c'est comme ça qu'on découvre
-//   qu'il existe. Les armées « miroir » gardent l'ancien comportement, qui
-//   garantit un duel à armes connues.
+//
+// UN BOT NE PEUT ALIGNER QUE DES PIÈCES QUE LE JOUEUR POSSÈDE DÉJÀ.
+// Les adversaires puisaient auparavant dans TOUT le catalogue (opts.full) :
+// on pouvait perdre au sixième coup contre un Typhon dont on n'avait jamais
+// lu le pouvoir, et sans aucun moyen d'en aligner un en retour. Un duel ne
+// se joue plus qu'à armes connues : le vivier est celui de la Voie et de
+// l'Armurerie du joueur (aiPiecePool ci-dessous), et le catalogue s'ouvre en
+// face de soi au rythme où l'on débloque les pièces.
+// opts.full : réservé aux OUTILS (tools/ai-bench.js), qui mesurent la force
+//   du moteur hors de toute progression de compte. Le jeu ne le passe plus.
 const ARMY_STYLE_CLASS={
   brute:'Brute',sorcier:'Sorcier',nuee:'Brute',
   agressif:'Général',gourmand:'Général',positionnel:'Primordiale',
   defensif:'Brute',mobile:'Primordiale',
 };
+// LE VIVIER D'UN BOT : exactement les pièces que le joueur possède.
+// « Posséder » se lit comme dans l'Armurerie (invOwnedIds, js/economy.js) :
+// débloquée sur la Voie OU présente en stock — une pièce débloquée puis
+// tombée à zéro exemplaire reste connue du joueur, donc jouable par le bot.
+// L'IA, elle, n'est toujours pas soumise à l'économie : elle ne consomme
+// aucun exemplaire, elle se contente de ne rien aligner d'inconnu.
+function aiPiecePool(){
+  const owned=new Set();
+  if(typeof invOwnedIds==='function')invOwnedIds().forEach(id=>owned.add(id));
+  (typeof VV_UNLOCKED!=='undefined'?VV_UNLOCKED:new Set()).forEach(id=>owned.add(id));
+  return owned;
+}
 function generateAIArmy(minValue,opts){
   opts=opts||{};
   const floor=typeof minValue==='number'?minValue:0;
-  // L'IA n'est pas soumise à l'économie : elle ne « possède » pas ses pièces,
-  // sinon il faudrait lui tenir un inventaire qui n'a aucun sens de jeu.
-  const unlocked=VV_UNLOCKED;
-  const known=p=>opts.full||unlocked.has(p.id);
+  const owned=aiPiecePool();
+  const known=p=>opts.full||owned.has(p.id);
   const monarques=PIECES.filter(p=>p.class==='Monarque'&&known(p));
   const generaux=PIECES.filter(p=>p.class==='Général'&&known(p));
-  // L'IA peut utiliser TOUTES les Primordiaux (exception spéciale), + les autres pièces débloquées
   // Règle : une pièce avec qty>=2 crée une paire, l'IA ne peut avoir qu'UNE paire de Primordiale max
   // et jamais plusieurs paires de la même pièce (ie. une seule pièce qty>=2 au total parmi les extras)
-  const primordiaux=PIECES.filter(p=>p.class==='Primordiale');
+  // Les Primordiales ne sont plus une exception : elles ne s'obtiennent QUE
+  // dans les coffres, et un bot qui les alignait toutes d'office trahissait
+  // la règle du duel à armes connues dès la première partie.
+  const primordiaux=PIECES.filter(p=>p.class==='Primordiale'&&known(p));
   const othersUnlocked=PIECES.filter(p=>p.class!=='Monarque'&&p.class!=='Général'&&p.class!=='Primordiale'&&known(p));
   const others=[...primordiaux,...othersUnlocked];
+  // Filets de sécurité : un compte tout neuf ne possède qu'un Monarque et un
+  // Général, et il faut TROIS pièces d'appoint pour remplir un plateau. Tant
+  // que le joueur n'en possède pas trois, on complète avec les moins chères
+  // du catalogue — sans quoi la partie ne pourrait pas commencer du tout.
   const allMon=monarques.length?monarques:PIECES.filter(p=>p.id==='roi');
   const allGen=generaux.length?generaux:PIECES.filter(p=>p.id==='dame');
-  const allOth=others.length>=3?others:PIECES.filter(p=>p.class!=='Monarque'&&p.class!=='Général').slice(0,6);
+  const allOth=others.length>=3?others
+    :[...others,...PIECES.filter(p=>p.class!=='Monarque'&&p.class!=='Général'&&!others.includes(p))
+        .sort((a,b)=>a.value-b.value)].slice(0,6);
   const rnd=arr=>arr[Math.floor(Math.random()*arr.length)];
   // Le style ne verrouille pas la composition, il la penche : la classe
   // favorite passe en tête du tirage une fois sur deux. Un filtre strict

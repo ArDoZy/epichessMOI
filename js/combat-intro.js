@@ -34,13 +34,15 @@ window.launchCombat=id=>{
   startAiBattle(a,aiArmyForOpponent());
 };
 
-// Armée de l'adversaire courant : son budget et son style (AI_OPPONENTS), et
-// tout le catalogue à sa disposition — c'est en la voyant qu'on découvre les
-// créatures qu'on n'a pas encore débloquées.
+// Armée de l'adversaire courant : son budget et son style (AI_OPPONENTS),
+// composée dans les SEULES pièces que le joueur possède déjà (voir
+// aiPiecePool / generateAIArmy dans js/armies.js). Un adversaire n'aligne
+// donc jamais une créature dont on n'a pas lu le pouvoir, et dont on ne
+// pourrait pas aligner l'équivalent en face : ce qu'il joue, on l'a.
 function aiArmyForOpponent(){
   const o=(typeof aiChosenOpponent==='function')?aiChosenOpponent():null;
   if(!o)return generateAIArmy();
-  return generateAIArmy(Math.max(0,o.budget-4),{style:o.style,budget:o.budget,full:true});
+  return generateAIArmy(Math.max(0,o.budget-4),{style:o.style,budget:o.budget});
 }
 
 window.launchOnline=id=>{

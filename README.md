@@ -30,8 +30,8 @@ epic-chess/
 ├── sitemap.xml              # Une seule URL (le jeu est une SPA)
 ├── llms.txt                 # Résumé factuel du jeu pour les moteurs IA
 ├── site.webmanifest         # Métadonnées d'installation (icône, couleurs)
-├── favicon.svg              # Icône d'onglet et d'écran d'accueil : la
-│                            #  pièce en fusion dans le ballon couronné
+├── favicon.svg              # Icône d'onglet et d'écran d'accueil : le
+│                            #  Monarque dressé dans le sceau d'alchimiste
 ├── assets/
 │   ├── adversaires/         # FACULTATIF : <id>.png, un portrait par
 │   │                        #  adversaire. Absent = sceau SVG procédural.
@@ -176,6 +176,27 @@ Quatre champs font la force d'un adversaire, et il faut les distinguer :
   termes que `evalBoard` calcule déjà — aucun parcours de plateau
   supplémentaire, donc aucun coût de recherche — et `ARMY_STYLE_CLASS`
   (armies.js) penche la composition de son armée vers une classe de créature.
+
+**Un bot ne peut aligner que des pièces que le joueur possède déjà.**
+`generateAIArmy` puisait dans TOUT le catalogue (option `full`), au motif
+qu'un adversaire à 1750 ELO devait pouvoir montrer un Typhon avant qu'on le
+débloque. En pratique, on perdait au sixième coup contre une créature dont on
+n'avait jamais lu le pouvoir, sans aucun moyen d'en aligner l'équivalent en
+face. Le vivier est maintenant `aiPiecePool()` (js/armies.js) : les pièces
+**débloquées sur la Voie ou présentes en stock**, exactement la définition
+d'`invOwnedIds()` (js/economy.js). Les Primordiales, qui échappaient à la
+règle par une exception explicite, y sont soumises comme les autres. Le
+catalogue adverse s'ouvre donc au rythme où le joueur débloque le sien.
+
+Deux filets de sécurité, sans quoi un compte neuf (un Monarque, un Général,
+zéro pièce d'appoint) ne pourrait plus lancer une seule partie : tant que le
+joueur possède moins de trois pièces d'appoint, le vivier est complété par les
+moins chères du catalogue ; et `opts.full` existe toujours, réservé à
+`tools/ai-bench.js`, qui mesure la force du moteur hors de toute progression
+de compte. Le jeu, lui, ne le passe plus. La règle est vérifiée par
+`npm test` (« un adversaire ne compose son armée qu'avec des pièces que le
+joueur possède »), sur un compte réduit à cinq pièces pour que le filet de
+sécurité ne masque pas la règle.
 
 Un mat trouvé n'est jamais gâché : au-delà de 40000, `aiPickMove` ferme la
 fenêtre. Un adversaire faible ne voit pas le mat, mais s'il le voit, il le
@@ -349,6 +370,33 @@ titre de la page, et au bouton de réglages sur le seul menu principal), trois
 messages au plus, effacé au
 clic. `showNotif(msg, 'err' | 'ok' | 'info')`. **Ne la revidez pas** : un
 refus muet est un bug, pas un choix de sobriété.
+
+### 7 bis. Le verrou de portrait (`js/main.js::lockPortrait`)
+
+Le jeu se joue **en hauteur, et seulement en hauteur** : plateau au centre,
+journal en feuille glissante sous le pouce, barre des faces collée en bas.
+Couché, un téléphone n'offre plus que ~400 px de haut, que le plateau devrait
+partager avec la barre de compte, la barre d'état et le journal — il ne reste
+qu'un échiquier de la taille d'une vignette entre deux bandes vides.
+
+Trois verrous, du plus fort au plus faible, parce qu'**aucun ne suffit seul** :
+
+1. `site.webmanifest` déclare `"orientation": "portrait"` — le seul vrai
+   verrou, mais il ne vaut que pour une application **installée** sur l'écran
+   d'accueil ;
+2. `lockPortrait()` appelle `screen.orientation.lock('portrait')`. Les
+   navigateurs ne l'accordent qu'en plein écran ou en application installée,
+   et le refusent partout ailleurs ; sur iOS l'API n'existe pas. Le refus est
+   donc le cas **normal**, d'où le `try/catch` **et** le `.catch()` sur la
+   promesse — sans quoi la console se remplirait à chaque ouverture ;
+3. le voile `#rotate-gate` (`index.html` + `[PORTRAIT-LOCK]` de
+   `css/style.css`) prend le relais dans un onglet ordinaire : il recouvre
+   tout dès que l'écran bascule et disparaît dès qu'on le redresse.
+
+Le media query du voile décrit « un téléphone couché », et rien d'autre :
+`(hover:none) and (pointer:coarse)` (un écran tactile), `(orientation:landscape)`
+(couché) et `(max-height:560px)` (un téléphone — une tablette couchée dépasse
+les 700 px de haut et garde le droit de jouer en paysage).
 
 ### 8. L'appariement en ligne (`js/multiplayer.js`)
 
@@ -555,6 +603,10 @@ mais dans une version que Playwright refuse, le script le retrouve tout seul
 | Changer le fond de l'écran d'attente en ligne | remplacer `assets/backgrounds/duel-wait.png` (rien à coder) |
 | Changer un message de refus / d'information | l'appel `showNotif()` concerné ; l'apparence est dans `[NOTIF]` de `css/style.css` |
 | Modifier l'emblème (logo) du jeu | `EMBLEM_SVG` dans `js/main.js` + `favicon.svg` (même tracé) + `[EMBLEM]` de `css/style.css` |
+| Modifier les blasons de la barre des faces | les quatre `<svg>` de `#cube-facebar` dans `index.html` + `.cube-facebar-btn` dans `css/style.css` |
+| Changer ce qu'un bot peut aligner | `aiPiecePool()` / `generateAIArmy()` dans `js/armies.js` |
+| Changer le verrou d'orientation (téléphone) | `lockPortrait()` dans `js/main.js` + `orientation` dans `site.webmanifest` + `[PORTRAIT-LOCK]` de `css/style.css` (voile `#rotate-gate`) |
+| Changer le bandeau « à qui de jouer » | `updateStatus()` dans `js/game-render.js` (constantes `TURN_YOU` / `TURN_OPP`) |
 | Changer les règles d'appariement en ligne | `mpEloWindow` / `mpLobbyTick` dans `js/multiplayer.js` |
 | Ajouter une icône d'interface | `js/main.js` (`PEN_ICON`, `TRASH_ICON`, `svgX`), en SVG et jamais en émoji |
 | Modifier l'animation de déplacement des pièces | `animateLastMove()` dans `js/game-render.js` + `[BOARD-MOTION]` de `css/style.css` |
