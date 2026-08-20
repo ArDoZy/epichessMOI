@@ -371,6 +371,61 @@ messages au plus, effacé au
 clic. `showNotif(msg, 'err' | 'ok' | 'info')`. **Ne la revidez pas** : un
 refus muet est un bug, pas un choix de sobriété.
 
+### 7 ter. Le mode bureau (`js/main.js::watchDeskMode`, `[DESKTOP]`)
+
+Le jeu est pensé **téléphone d'abord**, et c'est le bon choix. Mais les 22
+règles adaptatives de la feuille de style étaient **toutes** des `max-width` :
+il n'existait pas une seule règle « à partir de tant de pixels ». Sur un écran
+d'ordinateur, le jeu ne s'adaptait donc pas — il restait une colonne de
+téléphone posée au milieu du vide, avec une barre des faces (une barre de
+**pouce**) qui flottait par-dessus le contenu et en masquait une partie.
+
+**Il n'y a pas de « version ordinateur ».** Même balisage, mêmes scripts, mêmes
+gestionnaires d'évènements : seule la mise en page change, sous une classe.
+Deux fichiers auraient divergé au troisième changement.
+
+`body.desk` est l'interrupteur unique, posé par `watchDeskMode()` à partir
+d'une requête écrite **une seule fois, en JS** :
+`(min-width:1024px) and (hover:hover) and (pointer:fine)`. Le JS doit prendre
+les mêmes décisions que le CSS, et deux seuils écrits à deux endroits finissent
+toujours par se désaccorder — la feuille de style ne raisonne donc que sur la
+classe. Une tablette tactile large reste en mise en page tactile : on y joue au
+doigt.
+
+Le principe qui guide tout le bloc : **le téléphone cache, l'ordinateur
+montre.** Rien n'est inventé pour l'ordinateur, on y déplie ce que le petit
+écran est obligé d'enfermer derrière un bouton.
+
+| Ce qui change | Pourquoi |
+|---|---|
+| La barre des faces devient un **rail vertical** à gauche, avec libellés | Une barre de pouce flottante masquait deux noms de cartes en plein milieu de « Mes armées ». Le rail ne recouvre plus rien : la zone utile de chaque face recule d'autant |
+| Les deux flèches de rotation disparaissent | Sur 1500 px elles se retrouvaient à 1400 px l'une de l'autre, sans lien visible avec le cube. Le rail nomme les quatre faces ; ← et → tournent toujours |
+| Le menu principal passe en **deux colonnes** | La colonne de droite (`#menu-side`) déplie la série du jour et le prochain palier de la Voie |
+| Les largeurs de contenu montent à `--content-max` (1280 px) | Les plafonds (980, 1000, 860…) étaient des plafonds de lisibilité inutiles sur téléphone et un plafond de gâchis sur grand écran |
+| Le catalogue passe de 6 à ~8 colonnes, avec des cartes plus grandes | Les 18 pièces tiennent alors sur un écran, sans défilement |
+| Le **survol** d'une carte ouvre ses deux boutons | L'appui qui déplie la carte ne sert plus à rien quand un pointeur la désigne déjà : composer une armée passe de deux clics par pièce à un seul |
+
+Deux pièges à connaître avant d'y toucher :
+
+- **`body.rail-on`** (posé par `updateArrows`, js/cube-nav.js) reflète la
+  visibilité de la barre des faces. Le retrait de la zone utile y est
+  conditionné, parce qu'il doit disparaître **exactement** quand le rail
+  disparaît — pendant une partie, par exemple, où le cube est verrouillé. Sans
+  ce drapeau, le plateau jouerait avec une bande vide de 200 px à sa gauche.
+- **Le rail est posé dans le repère des faces**, pas dans celui de la fenêtre :
+  `left:calc((100% - 100vw) / 2)`. `html` réserve en permanence la place d'une
+  barre de défilement (`scrollbar-gutter:stable`), donc le bloc conteneur d'un
+  élément `fixed` fait 11 px de moins que `100vw`, alors que les faces sont
+  dimensionnées en `vmax`/`vw`. Sans ce calcul, le rail mordait de 5,5 px sur
+  le contenu. Là où aucune place n'est réservée (téléphone), le calcul vaut 0.
+
+`Échap` (`wireEscape`, js/main.js) ferme le panneau de réglages, la fenêtre de
+série et les pages en surimpression. La liste est **courte et volontaire** :
+sont exclus la cérémonie d'un coffre (fermer applique le lot), la fenêtre de
+fin de partie (elle règle l'ELO et la mise), la promotion d'un pion (il faut
+choisir) et la recherche en ligne (partir sans annuler laisse une entrée dans
+le salon). Une touche ne doit pas engager ce qu'un clic n'engage pas.
+
 ### 7 bis. Le verrou de portrait (`js/main.js::lockPortrait`)
 
 Le jeu se joue **en hauteur, et seulement en hauteur** : plateau au centre,
@@ -606,6 +661,10 @@ mais dans une version que Playwright refuse, le script le retrouve tout seul
 | Ajouter l'icône d'un nouveau pouvoir | `POWER_ICONS` dans `js/piece-card.js` (clé = id de la pièce) |
 | Changer quand le coffre de réapprovisionnement s'ouvre | `dailyChestMaybeOpen()` / `dailyChestBusy()` dans `js/economy-ui.js` |
 | Ajuster la mise en page téléphone d'un écran | section `[MOBILE-APP]` de `css/style.css` (en dernier dans le fichier, elle l'emporte sur les sections d'origine) |
+| Ajuster la mise en page ordinateur d'un écran | section `[DESKTOP]` de `css/style.css` (tout à la fin, après `[MOBILE-APP]`), sous `body.desk` |
+| Changer le seuil du mode bureau | `DESK_QUERY` dans `js/main.js` — **et nulle part ailleurs** : le CSS ne raisonne que sur `body.desk` |
+| Changer ce que montre la colonne de droite du menu | `renderMenuSidePanel()` / `menuNextMilestoneHTML()` dans `js/economy-ui.js` + `#menu-side` dans `index.html` |
+| Ajouter un raccourci clavier global | `wireEscape()` dans `js/main.js` (Échap) ou l'écouteur `keydown` d'`init()` dans `js/cube-nav.js` (← →) |
 | Modifier les pictogrammes du schéma de déplacement (patte, ailes, couteau…) | `PMV_ICONS` / `PMV_LABELS` dans `js/piece-moves.js` + section `[PMV]` de `css/style.css` |
 | Modifier les cinématiques de combat | `js/cinematics.js` + section `[CINEMATIC]` de `css/style.css` |
 | Modifier le tutoriel (textes, étapes, cibles) | `js/tutorial.js` (`TUTO_STEPS`) |

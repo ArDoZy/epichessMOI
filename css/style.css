@@ -24,6 +24,8 @@
      [A11Y]         focus clavier, mouvement réduit
      [MP-SEARCH]    écran de recherche d'adversaire (multiplayer.js)
      [ICON-BUTTONS] boutons porteurs d'une icône SVG (stylo, corbeille)
+     [MOBILE-APP]   mise en page téléphone (avant-dernière : elle l'emporte)
+     [DESKTOP]      mise en page ordinateur, sous body.desk (la DERNIÈRE)
    Si vous ne modifiez qu'une page, cherchez son tag pour cibler la zone
    à éditer sans tout relire. Les variables de thème (:root / body.light)
    sont utilisées PARTOUT : ne pas les renommer sans grep global.
@@ -3191,3 +3193,224 @@ body.light .adv-advised{color:#f6f5f1}
   .class-sec{padding:2.5vw 2vw 3vw;border-left-width:3px}
   #page-builder{padding:0 2.5vw}
 }
+
+/* [DESKTOP] : LA MISE EN PAGE ORDINATEUR ===========================
+   Le jeu est pensé TÉLÉPHONE D'ABORD, et ce bloc ne le renie pas : il ne
+   redéfinit que ce qui n'a plus de sens à la souris, sur un grand écran.
+
+   Tout est accroché à `body.desk`, posé par watchDeskMode() (js/main.js) à
+   partir d'une seule requête média — écran d'au moins 1024 px ET pointeur fin
+   ET survol possible. Le seuil est écrit UNE fois, en JS, parce que le script
+   doit prendre les mêmes décisions que la feuille de style ; ici on ne
+   raisonne que sur la classe. Une tablette tactile reste donc en mise en page
+   tactile même large : on y joue au doigt.
+
+   Placé en DERNIER, après [MOBILE-APP], pour l'emporter à spécificité égale.
+
+   Le principe qui guide tout le bloc : LE TÉLÉPHONE CACHE, L'ORDINATEUR
+   MONTRE. Rien n'est inventé pour l'ordinateur — on y déplie ce que le petit
+   écran est obligé d'enfermer derrière un bouton.
+   ============================================================== */
+
+/* La gouttière du rail. À 0 partout ailleurs : les règles qui s'en servent
+   peuvent donc rester écrites une seule fois, sans doublon tactile. */
+:root{--rail-w:0px}
+body.desk{--rail-w:200px}
+
+/* --- LE RAIL DES FACES ------------------------------------------
+   La barre des faces est une barre de POUCE : posée en bas, au milieu, elle
+   flotte PAR-DESSUS le contenu. Sur un téléphone c'est le bon compromis (le
+   pouce y arrive, et le contenu défile dessous). Sur un grand écran c'était
+   un défaut net : sur « Mes armées », elle masquait deux noms de cartes en
+   plein milieu de l'écran.
+   Elle devient donc un rail vertical à gauche, qui ne recouvre plus rien :
+   la zone utile de chaque face recule d'autant (voir .face-viewport plus
+   bas). C'est la même barre, le même balisage, les mêmes clics. */
+body.desk .cube-facebar{
+  /* LE RAIL EST POSÉ DANS LE REPÈRE DES FACES DU CUBE, et non dans celui de
+     la fenêtre — sans quoi il mordrait de 5,5 px sur le contenu.
+     Pourquoi : `html` réserve en permanence la place d'une barre de
+     défilement (`scrollbar-gutter:stable`, voir [THEME] — c'est ce qui évite
+     que la page saute quand la barre apparaît). Le bloc conteneur d'un
+     élément `fixed` fait donc 11 px de moins que `100vw`, alors que les faces
+     du cube, elles, sont dimensionnées en `vmax`/`vw`. Une face de 1400 px
+     centrée dans 1389 commence à −5,5.
+     `calc((100% - 100vw) / 2)` vaut exactement ce décalage (100% = le bloc
+     conteneur du fixed, 100vw = l'unité qui dimensionne les faces) : le rail
+     se cale au même endroit qu'elles. Là où aucune place n'est réservée
+     (téléphone, barres flottantes), le calcul vaut 0 et rien ne bouge. */
+  left:calc((100% - 100vw) / 2);top:0;bottom:0;width:var(--rail-w);
+  transform:none;flex-direction:column;justify-content:center;
+  gap:6px;padding:20px 14px;border-radius:0;
+  border:none;border-right:1px solid var(--border2);
+  background:linear-gradient(180deg,rgba(255,255,255,.055),rgba(255,255,255,.025));
+  backdrop-filter:blur(18px);
+  box-shadow:2px 0 24px -8px rgba(0,0,0,.6)}
+body.desk .cube-facebar-btn{
+  width:100%;height:52px;border-radius:12px;
+  justify-content:flex-start;gap:14px;padding:0 14px}
+/* L'icône garde une taille FIXE : en pourcentage, elle enflait avec la
+   hauteur du bouton et écrasait le libellé. */
+body.desk .cube-facebar-btn svg{width:24px;height:24px;flex:0 0 24px}
+/* Le libellé n'existe que sur le rail — sur le téléphone, la barre n'a de
+   place que pour le blason, et le `title` suffit à lever un doute. */
+.cfb-label{display:none}
+body.desk .cfb-label{display:block;font-family:var(--f-ui);font-size:13.5px;
+  font-weight:700;letter-spacing:.3px;white-space:nowrap}
+
+/* Les deux flèches de rotation s'en vont : elles étaient déjà le secours du
+   glissement de doigt, et sur un grand écran elles se retrouvaient à 1400 px
+   l'une de l'autre, collées aux coins, sans lien visible avec le cube. Le
+   rail nomme les quatre faces et y mène directement ; les touches ← et →
+   (js/cube-nav.js) tournent toujours le cube d'un cran. */
+body.desk .cube-arrow-side{display:none!important}
+
+/* --- LA GOUTTIÈRE -----------------------------------------------
+   `.face-viewport` est le rectangle utile de chaque face du cube, et
+   l'ancêtre commun de TOUT ce qu'une face affiche — y compris les enfants en
+   position:absolute;inset:0, que ni un padding ni une marge n'atteindraient.
+   Le rétrécir est donc la seule façon de réserver la place du rail en une
+   règle, sans retoucher chaque page.
+   Le décalage vaut la moitié de la gouttière parce que la face est CENTRÉE
+   (left:50% + translate(-50%)) : pour la coller au bord droit de la gouttière,
+   son centre doit avancer de --rail-w/2.
+   La gouttière est conditionnée à `body.rail-on`, drapeau posé par
+   updateArrows() (js/cube-nav.js) en même temps que la barre s'affiche : le
+   retrait doit disparaître EXACTEMENT quand le rail disparaît. Il disparaît
+   pendant une partie (cube verrouillé) et sous une page en overlay (Voie,
+   builder, galerie des adversaires), qui reprennent donc l'écran entier —
+   sans quoi le plateau aurait joué avec une bande vide de 200 px à sa
+   gauche. */
+body.desk.rail-on .face-viewport{
+  width:calc(100vw - var(--rail-w));
+  left:calc(50% + var(--rail-w) / 2)}
+
+/* --- LE MENU PRINCIPAL EN DEUX COLONNES --------------------------
+   Le menu est bâti pour un téléphone : le bloc d'identité est ÉPINGLÉ en
+   haut (position:absolute) et les actions sont centrées dans ce qui reste.
+   Sur un grand écran, cela donnait un ruban de 240 px au milieu de 900 px de
+   vide, avec 600 px d'écart entre le pseudo et le bouton COMBAT.
+   Il redevient ici une vraie grille : identité puis actions dans la colonne
+   de gauche, et la colonne de droite (#menu-side) déplie ce que le petit
+   écran doit cacher. Aucun élément n'est déplacé dans le DOM — les enfants
+   sont simplement placés à la main dans la grille. */
+body.desk .jouer-menu{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(300px,360px);
+  align-content:center;justify-items:center;align-items:center;
+  column-gap:clamp(28px,4vw,72px);
+  /* Le retrait du haut ne sert plus à rien : il dégageait la place du bloc
+     d'identité épinglé, qui est maintenant dans le flux. */
+  padding:clamp(28px,5vh,56px) clamp(28px,4vw,64px)}
+/* `display:contents` sur téléphone (le conteneur n'existe pas pour la mise en
+   page), vraie colonne en mode bureau : sans lui, la carte de droite étendue
+   sur deux rangées les gonflait toutes les deux et écartait le pseudo du
+   bouton COMBAT de 170 px. */
+.jouer-col{display:contents}
+body.desk .jouer-col{display:flex;flex-direction:column;align-items:center;
+  gap:clamp(18px,3.4vh,36px)}
+body.desk .jouer-player{position:static;transform:none;width:auto;max-width:100%;gap:10px}
+/* L'emblème a la place de respirer : c'est le seul écran qui porte l'identité
+   du jeu, et 52 px sur 900 px de large, c'était une vignette. */
+body.desk .jouer-menu{--menu-emblem-h:68px}
+/* COMBAT est l'action principale : à la souris, sur 900 px de large, elle a
+   le droit d'être franchement plus grande qu'une cible de pouce. */
+body.desk .jouer-btn{font-size:clamp(22px,2vw,30px);padding:22px 64px;letter-spacing:6px}
+/* Le bouton « Série du jour » n'a plus d'objet : sa fenêtre est dépliée en
+   permanence dans la colonne de droite, juste à côté. */
+body.desk .jouer-streak{display:none}
+
+/* --- LA COLONNE DE DROITE ---------------------------------------- */
+.menu-side{display:none}
+body.desk .menu-side{
+  display:flex;flex-direction:column;gap:14px;width:100%;
+  /* Au-dessus du fond de laboratoire, qui est très chargé sur les bords. */
+  position:relative;z-index:2}
+.ms-card{background:color-mix(in srgb,var(--surface) 88%,transparent);
+  border:1px solid var(--border);border-radius:16px;padding:16px 16px 18px;
+  backdrop-filter:blur(10px);
+  box-shadow:0 10px 30px -14px rgba(0,0,0,.7)}
+.ms-title{font-family:var(--f-ui);font-size:10.5px;font-weight:800;
+  text-transform:uppercase;letter-spacing:1.4px;color:var(--gold);margin-bottom:6px}
+.ms-sub{font-size:12px;line-height:1.45;color:var(--muted);margin-bottom:12px}
+/* Les six paliers tiennent rarement en entier : la colonne défile chez elle
+   plutôt que d'étirer la carte au-delà de l'écran. */
+.ms-rows{display:flex;flex-direction:column;gap:8px;
+  max-height:min(44vh,400px);overflow-y:auto;padding-right:2px}
+/* Le rail vient de streakRowsHTML() : mêmes lignes que la fenêtre, resserrées
+   pour une colonne de 360 px. */
+.ms-rows .streak-row{gap:10px;padding:8px 10px}
+.ms-rows .streak-row-chest{width:50px}
+.ms-rows .streak-row-chest .chest{width:46px;height:40px}
+.ms-rows .streak-row-name{font-size:13px}
+.ms-rows .streak-row-win{font-size:10px}
+
+/* Prochain palier : la carte, le nom, et une jauge qui part du jalon
+   précédent (voir menuNextMilestoneHTML, js/economy-ui.js). */
+.ms-next-row{display:flex;align-items:center;gap:12px}
+.ms-next-icon{flex:0 0 auto;width:38px;height:38px;display:flex;align-items:center;justify-content:center}
+.ms-next-icon svg{width:100%;height:100%}
+.ms-next-txt{min-width:0}
+.ms-next-name{font-family:var(--f-title);font-weight:800;font-size:14.5px;color:var(--text)}
+.ms-next-elo{font-family:var(--f-ui);font-size:11px;color:var(--muted);margin-top:2px}
+.ms-gauge{margin-top:12px;height:6px;border-radius:3px;overflow:hidden;
+  background:rgba(255,255,255,.08)}
+.ms-gauge span{display:block;height:100%;border-radius:3px;
+  background:linear-gradient(90deg,var(--accent2),var(--gold));
+  transition:width .4s ease}
+
+/* --- LES LARGEURS DE CONTENU -------------------------------------
+   Chaque page plafonne sa colonne de contenu à une valeur écrite en dur
+   (980 px pour les armées, 1000 pour l'Armurerie, 860 pour la Voie…).
+   C'étaient des plafonds de LISIBILITÉ pensés pour un téléphone, où ils ne
+   servent jamais : l'écran est toujours plus étroit. Sur un écran de 1500 px
+   ils devenaient un plafond de gâchis — on défilait beaucoup pendant que la
+   moitié de l'écran ne servait à rien.
+   Une seule variable les relève tous, pour que le prochain écran ajouté n'ait
+   pas à redécouvrir la valeur. */
+body.desk{--content-max:1280px}
+body.desk .armies-inner,
+body.desk .reserve-inner,
+body.desk .adv-inner,
+body.desk .shop-inner{max-width:var(--content-max)}
+/* La Voie garde une colonne plus étroite, et ce n'est pas un oubli : ses
+   jalons alternent de part et d'autre d'un chemin central (.vm-l / .vm-r).
+   Au-delà de ~1000 px, les deux colonnes s'écartent au point qu'on ne suit
+   plus le fil qui les relie — la page raconte une progression, pas un
+   tableau. */
+body.desk .voie-inner{max-width:1040px}
+
+/* Le catalogue de pièces gagne des colonnes ET des cartes plus grandes. Sa
+   grille est en `auto-fill` : il suffit de relever la largeur minimale d'une
+   colonne, le nombre de colonnes suit tout seul (≈8 sur 1280 px, contre 6
+   avant, avec des cartes plus lisibles plutôt que plus nombreuses). */
+body.desk .cards-grid{
+  grid-template-columns:repeat(auto-fill,minmax(150px,1fr));
+  gap:14px}
+
+/* --- LE SURVOL FAIT LE TRAVAIL DU PREMIER APPUI ------------------
+   Une carte de pièce s'ouvre en deux gestes : un appui la déplie et découvre
+   « Infos » et « Utiliser », un second appuie sur le bon bouton. C'est le bon
+   compromis au doigt — il n'y a pas de survol, et un appui direct sur
+   « Utiliser » serait trop facile à déclencher par erreur en défilant.
+   À la souris, ce premier appui ne sert plus à rien : le pointeur DÉSIGNE
+   déjà la carte sans rien engager. Le survol fait donc ce que faisait
+   l'appui, et composer une armée passe de deux clics par pièce à un seul.
+   Le clic continue de fonctionner exactement comme avant (il pose
+   `.pcard-open`) : rien n'est retiré, on ajoute un raccourci. */
+body.desk .pcard:hover{z-index:31;border-color:var(--pc)}
+body.desk .pcard:hover .pcard-actions{display:flex}
+/* LE BLOC DE BOUTONS VIENT TOUCHER LA CARTE (top:100% au lieu de 100% + 5px).
+   Ces 5 px de vide n'appartiennent à aucun élément : en descendant vers
+   « Utiliser », le pointeur les traversait, `:hover` tombait, et le bloc
+   disparaissait sous le curseur avant qu'on l'atteigne. Au doigt le problème
+   n'existe pas — on ne traverse pas, on appuie. */
+body.desk .pcard-actions{top:100%}
+
+/* Les cinq emplacements d'armée gardent une taille de CARTE. Leur grille est
+   en cinq colonnes égales (repeat(5,1fr)) avec un rapport 3/4 : elle suit donc
+   la largeur de son conteneur, et sur 1280 px chaque emplacement montait à
+   240×320 px — la moitié de l'écran occupée par cinq rectangles dont trois
+   sont vides. Ils restent à la taille des cartes du catalogue juste en
+   dessous, ce qui est aussi ce qu'ils SONT. */
+body.desk .comp-grid{max-width:820px;margin-left:auto;margin-right:auto}

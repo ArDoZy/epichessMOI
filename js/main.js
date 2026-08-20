@@ -172,6 +172,86 @@ function lockPortrait(){
   }catch(e){/* verrou refusé : le voile CSS prend le relais */}
 }
 
+// ----------------------------------------------------------------
+// MODE BUREAU (body.desk)
+// ----------------------------------------------------------------
+// Le jeu a été conçu comme une application de téléphone, et c'était le bon
+// choix : c'est là qu'on y joue. Mais toutes les règles adaptatives de la
+// feuille de style étaient des `max-width` — pas UNE seule règle « à partir de
+// tant de pixels ». Sur un écran d'ordinateur, le jeu ne s'adaptait donc pas :
+// il restait une colonne de téléphone posée au milieu du vide, avec la barre
+// des faces (une barre de POUCE) qui flottait par-dessus le contenu et en
+// masquait une partie.
+//
+// `body.desk` est l'interrupteur unique de tout ce qui change alors. Il n'y a
+// pas de « version ordinateur » : c'est le même balisage, les mêmes scripts et
+// les mêmes gestionnaires d'évènements, avec une mise en page différente (voir
+// [DESKTOP] dans css/style.css). Deux fichiers auraient divergé au troisième
+// changement.
+//
+// Pourquoi une classe et pas seulement un @media : le JS doit prendre les
+// MÊMES décisions que le CSS (le rail latéral ne se comporte pas comme la
+// barre du bas), et deux seuils écrits à deux endroits finissent toujours par
+// se désaccorder. La requête est donc écrite ICI, une fois, et la feuille de
+// style ne raisonne que sur la classe.
+//
+// Les trois conditions décrivent ensemble « un vrai écran d'ordinateur » :
+//   · min-width:1024px  → la place d'un rail de 200 px + du contenu ;
+//   · hover:hover       → un pointeur qui peut survoler ;
+//   · pointer:fine      → une souris, pas un doigt.
+// Une tablette tactile de 1200 px reste donc en mise en page tactile, ce qui
+// est voulu : on y joue au doigt, avec des cibles de pouce.
+// ÉCHAP FERME CE QUI EST OUVERT. Le jeu se pilote au doigt : on ferme en
+// appuyant sur une croix, un voile ou un bouton « OK ». Au clavier, Échap est
+// le geste attendu, et il n'existait que pour la fiche d'une pièce
+// (js/piece-card.js, qui garde son propre écouteur en phase de CAPTURE et
+// passe donc avant celui-ci).
+//
+// LA LISTE EST COURTE, ET C'EST VOLONTAIRE. Échap ne touche qu'à ce qui a
+// DÉJÀ un bouton de fermeture explicite, et dont la fermeture ne décide de
+// rien : le panneau de réglages, la fenêtre de série, et les pages posées
+// par-dessus le cube (Voie, composition d'armée IA, galerie des adversaires),
+// que leur propre bouton « OK »/« Retour » ramène au menu.
+// Sont délibérément EXCLUS : la cérémonie d'un coffre (fermer applique le
+// lot), la fenêtre de fin de partie (elle règle l'ELO et la mise), la
+// promotion d'un pion (il FAUT choisir) et la recherche d'adversaire en ligne
+// (partir sans annuler laisserait une entrée dans le salon). Une touche ne
+// doit pas pouvoir engager ce qu'un clic n'engage pas.
+function wireEscape(){
+  document.addEventListener('keydown',e=>{
+    if(e.key!=='Escape')return;
+    const ae=document.activeElement;
+    if(ae&&/INPUT|TEXTAREA|SELECT/.test(ae.tagName))return;
+    const panel=document.getElementById('settings-panel');
+    if(panel&&panel.classList.contains('open')){panel.classList.remove('open');return;}
+    const streak=document.getElementById('streak-modal');
+    if(streak&&streak.classList.contains('show')){
+      if(typeof closeStreakModal==='function')closeStreakModal();
+      return;
+    }
+    // Une page en surimpression : `nav-overlay` est posée par cube-nav.js
+    // exactement pour celles-là (la partie, elle, est une FACE du cube et n'en
+    // porte pas — Échap n'abandonne donc jamais une partie en cours).
+    if(document.body.classList.contains('nav-overlay')&&typeof goToMainMenu==='function'){
+      goToMainMenu();
+    }
+  });
+}
+
+const DESK_QUERY='(min-width:1024px) and (hover:hover) and (pointer:fine)';
+function applyDeskFlag(mq){
+  document.body.classList.toggle('desk',!!(mq&&mq.matches));
+}
+function watchDeskMode(){
+  if(!window.matchMedia)return;                 // navigateur trop ancien : on reste en tactile
+  const mq=window.matchMedia(DESK_QUERY);
+  applyDeskFlag(mq);
+  // La bascule doit être VIVANTE : on redimensionne une fenêtre, on branche un
+  // écran, on passe en mode tablette dans les outils de développement.
+  if(mq.addEventListener)mq.addEventListener('change',()=>applyDeskFlag(mq));
+  else if(mq.addListener)mq.addListener(()=>applyDeskFlag(mq));
+}
+
 // UN SEUL POINT DE MONTAGE POUR TOUS LES EMPLACEMENTS. L'emblème n'était
 // injecté que dans `.login-emblem`, c'est-à-dire dans le voile de choix du
 // pseudo — un écran que `accountsBoot` n'affiche QU'À la première visite. Un
@@ -459,6 +539,8 @@ document.getElementById('intro-close')?.addEventListener('click',()=>{
 function initApp(){
   mountEmblems();
   lockPortrait();
+  watchDeskMode();
+  wireEscape();
   // accountsBoot() peut entrer directement dans le jeu (compte déjà connu,
   // voir js/accounts.js) et donc faire tourner le cube dès le démarrage —
   // il lui faut #cube déjà repéré par cube-nav.js (son propre init(), posé

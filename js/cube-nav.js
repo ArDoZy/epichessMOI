@@ -121,6 +121,14 @@
     set('cube-arrow-left', h);
     set('cube-arrow-right', h);
     set('cube-facebar', h);
+    // `rail-on` REFLÈTE la visibilité de la barre des faces pour la feuille de
+    // style. En mode bureau, cette barre est un rail latéral, et la zone utile
+    // de chaque face recule d'autant (voir [DESKTOP] dans css/style.css) : ce
+    // retrait doit disparaître EXACTEMENT quand le rail disparaît — pendant
+    // une partie, par exemple, où le cube est verrouillé. Sans ce drapeau, le
+    // plateau aurait joué avec une bande vide de 200 px sur sa gauche, parce
+    // que le CSS ne peut pas lire le `style.display` posé juste au-dessus.
+    document.body.classList.toggle('rail-on', h);
     updateFacebar();
     updateMainMenuFlag(active);
   }

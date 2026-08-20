@@ -331,6 +331,15 @@
                ouvre à chaque partie ; le sceau y tient en 52 px, au-dessus du
                pseudo, sans rien lui prendre (la colonne du menu recule
                d'autant, voir --menu-emblem-h dans css/style.css). -->
+          <!-- CONTENEUR NEUTRE, ET NON UN NIVEAU DE PLUS. `.jouer-col` est en
+               `display:contents` partout sauf en mode bureau : sur téléphone,
+               le navigateur fait donc comme s'il n'existait pas — le bloc
+               d'identité reste épinglé et les actions restent centrées,
+               exactement comme avant. En mode bureau il devient la COLONNE DE
+               GAUCHE de la grille, ce qui évite que la carte de droite, en
+               s'étendant sur deux rangées, écarte le pseudo du bouton COMBAT
+               de 170 px. -->
+          <div class="jouer-col">
           <div class="jouer-player">
             <div class="game-emblem menu-emblem"></div>
             <div class="jouer-name" id="jouer-name"></div>
@@ -370,6 +379,29 @@
               </button>
             </div>
           </div>
+          </div><!-- /.jouer-col -->
+          <!-- COLONNE DE DROITE, ORDINATEUR SEULEMENT (masquée par défaut,
+               allumée par body.desk — voir [DESKTOP] dans css/style.css).
+
+               C'est l'application du principe : LE TÉLÉPHONE CACHE,
+               L'ORDINATEUR MONTRE. Sur un petit écran, la série du jour est
+               enfermée derrière le bouton « Série du jour » et la progression
+               derrière la pastille d'ELO — il n'y a pas la place de faire
+               autrement. Sur un écran de 1500 px, le menu était une colonne de
+               téléphone posée au milieu de 900 px de vide : ces deux choses y
+               tiennent sans rien déplacer.
+               Rien n'est réécrit pour l'occasion : le rail des coffres est
+               produit par streakRowsHTML(), la MÊME fonction qui remplit la
+               fenêtre du bouton (voir renderMenuSidePanel dans
+               js/economy-ui.js). Une seule source, deux affichages. -->
+          <aside class="menu-side" id="menu-side">
+            <section class="ms-card">
+              <div class="ms-title">Série du jour</div>
+              <div class="ms-sub" id="ms-streak-sub"></div>
+              <div class="ms-rows" id="ms-streak-rows"></div>
+            </section>
+            <section class="ms-card" id="ms-next"></section>
+          </aside>
         </div>
       </div>
     </div>
@@ -445,7 +477,14 @@
        Les creux (fente du heaume, serrure du coffre, plateaux de la balance)
        sont de VRAIS trous, obtenus par fill-rule="evenodd" : ils restent
        transparents sur le laiton de la face active comme sur le fond sombre
-       des trois autres. -->
+       des trois autres.
+
+       SUR ORDINATEUR, CETTE BARRE DEVIENT UN RAIL VERTICAL À GAUCHE, et les
+       `.cfb-label` ci-dessous sortent de l'ombre : à la souris, il y a la
+       place d'écrire où mènent les quatre blasons, et plus aucune raison de
+       faire deviner. Voir [DESKTOP] dans css/style.css — c'est la MÊME barre,
+       le même balisage et les mêmes gestionnaires de clic : rien n'est
+       dupliqué pour l'ordinateur, tout est déplacé. -->
   <div class="cube-facebar" id="cube-facebar" style="display:none">
     <button type="button" class="cube-facebar-btn" data-face="magasin" title="Magasin" aria-label="Magasin">
       <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -458,6 +497,7 @@
         <path d="M8.9 18.2h6.2l1.6 2.15H7.3z"/>
         <path d="M6.1 20.1h11.8v1.6H6.1z"/>
       </svg>
+      <span class="cfb-label">Magasin</span>
     </button>
     <button type="button" class="cube-facebar-btn" data-face="jouer" title="Combat" aria-label="Combat">
       <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -477,6 +517,7 @@
           <circle cx="12" cy="21.35" r="1.35"/>
         </g>
       </svg>
+      <span class="cfb-label">Combat</span>
     </button>
     <button type="button" class="cube-facebar-btn" data-face="armees" title="Mes armées" aria-label="Mes armées">
       <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -497,6 +538,7 @@
         <path d="M4.4 16.6h15.2v1.7H4.4z"/>
         <path d="M2.2 19h19.6v1.7H2.2z"/>
       </svg>
+      <span class="cfb-label">Mes armées</span>
     </button>
     <button type="button" class="cube-facebar-btn" data-face="reserve" title="Armurerie" aria-label="Armurerie">
       <svg viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd" aria-hidden="true">
@@ -504,6 +546,7 @@
         <path d="M2.9 11.05h18.2v8.15c0 1-.8 1.8-1.8 1.8H4.7c-1 0-1.8-.8-1.8-1.8Zm7.5 2.2v3.95h3.2v-3.95Z"/>
         <path d="M10.4 7.65h3.2v2.1h-3.2z"/>
       </svg>
+      <span class="cfb-label">Armurerie</span>
     </button>
   </div>
 </div>

@@ -367,20 +367,35 @@ const OPTIONAL_ASSET=/adversaires\/[a-z-]+\.png|backgrounds\/main-page\.png|ches
       accSet('streak_day',todayKey());accSet('streak_lock_day',null);accSet('win_streak',2);accSet('pearls',300);
       showPage('face-jouer');renderMenuChests();
     });
-    // Le menu principal ne porte plus ni rail de coffres, ni solde de perles,
-    // ni mention « Série · N victoires » : tout est passé dans la fenêtre.
-    const menu=await page.evaluate(()=>({
-      rail:!!document.getElementById('jouer-chests'),
-      texteSerie:/Série\s*·/.test(document.querySelector('.jouer-menu').textContent),
-      perles:/perles/i.test(document.querySelector('.jouer-menu').textContent),
-      bouton:!!document.getElementById('jouer-streak'),
-    }));
+    // La COLONNE du menu (`.jouer-col` : identité, COMBAT, Adversaires) ne
+    // porte plus ni rail de coffres, ni solde de perles, ni mention
+    // « Série · N victoires » — tout est passé dans la fenêtre.
+    // Les assertions visent la colonne et non `.jouer-menu` entier : sur un
+    // écran d'ordinateur, `.jouer-menu` contient AUSSI la colonne de droite
+    // (#menu-side), qui déplie délibérément la série et le prochain palier —
+    // et qui peut donc contenir le mot « perles » quand c'est un lot de perles
+    // qui vient. C'est l'exception voulue, pas le retour du désordre : ce qui
+    // est proscrit, c'est d'encombrer la colonne sous le pouce.
+    const menu=await page.evaluate(()=>{
+      const col=document.querySelector('.jouer-col');
+      return{
+        rail:!!document.getElementById('jouer-chests'),
+        texteSerie:/Série\s*·/.test(col.textContent),
+        perles:/perles/i.test(col.textContent),
+        bouton:!!document.getElementById('jouer-streak'),
+      };
+    });
     if(menu.rail)throw new Error('le rail de coffres est encore sur le menu principal');
-    if(menu.texteSerie)throw new Error('la mention « Série · N victoires » est encore sur le menu');
-    if(menu.perles)throw new Error('le solde de perles est encore sur le menu principal');
+    if(menu.texteSerie)throw new Error('la mention « Série · N victoires » est encore dans la colonne du menu');
+    if(menu.perles)throw new Error('le solde de perles est encore dans la colonne du menu');
     if(!menu.bouton)throw new Error('le bouton « Série du jour » est absent du menu');
 
-    await page.click('#jouer-streak');
+    // La fenêtre s'ouvre par son point d'entrée public et non par un clic sur
+    // le bouton : celui-ci est masqué en mode bureau (la colonne de droite
+    // montre déjà les six paliers en permanence), et ce test-ci porte sur le
+    // CONTENU de la fenêtre, pas sur le bouton qui l'ouvre. Le bouton, lui,
+    // est vérifié juste au-dessus — il existe et reste le chemin du téléphone.
+    await page.evaluate(()=>openStreakModal());
     await page.waitForSelector('#streak-modal.show',{timeout:8000});
     await page.waitForTimeout(400);
     const r=await page.evaluate(()=>{
@@ -403,6 +418,70 @@ const OPTIONAL_ASSET=/adversaires\/[a-z-]+\.png|backgrounds\/main-page\.png|ches
     if(!r.nextVisible)throw new Error('la fenêtre ne s\'ouvre pas sur le palier en cours');
     await page.click('#streak-close');
     await page.waitForSelector('#streak-modal.show',{state:'hidden',timeout:8000});
+  });
+
+  // LE MODE BUREAU. Le jeu est pensé téléphone d'abord, et toutes ses règles
+  // adaptatives étaient des `max-width` : sur un écran d'ordinateur, il ne
+  // s'adaptait donc pas du tout — colonne de téléphone au milieu du vide, et
+  // une barre des faces flottante qui RECOUVRAIT le contenu (sur « Mes
+  // armées », elle masquait deux noms de cartes en plein milieu de l'écran).
+  // Ce test tient les trois promesses du mode bureau : le drapeau s'allume,
+  // le rail ne recouvre plus rien, et la colonne de droite déplie la série.
+  // La fenêtre du test fait 1400 px avec un pointeur fin : elle est donc en
+  // mode bureau, comme un vrai ordinateur.
+  await step('le mode bureau pose son rail sans recouvrir le contenu',async()=>{
+    await page.evaluate(()=>{showPage('face-jouer');renderMenuChests();});
+    await page.waitForTimeout(400);
+    const r=await page.evaluate(()=>{
+      const desk=document.body.classList.contains('desk');
+      const bar=document.getElementById('cube-facebar');
+      const bb=bar.getBoundingClientRect();
+      const vp=document.querySelector('.cube-face[data-face="jouer"] .face-viewport');
+      const vb=vp.getBoundingClientRect();
+      return{
+        desk,railOn:document.body.classList.contains('rail-on'),
+        // Rail VERTICAL collé à gauche, et non plus une pastille flottante en
+        // bas au milieu.
+        railGauche:bb.left<=1,railHaut:bb.height>vb.height*0.8,
+        // La preuve que rien n'est recouvert : la zone utile de la face
+        // commence exactement où le rail s'arrête.
+        gouttiere:Math.abs(vb.left-bb.right)<=1,
+        // Les libellés sortent de l'ombre : à la souris, il y a la place.
+        libelles:[...bar.querySelectorAll('.cfb-label')]
+          .filter(el=>getComputedStyle(el).display!=='none').length,
+        // La colonne de droite déplie les six paliers de la série.
+        sideRows:document.querySelectorAll('#ms-streak-rows .streak-row').length,
+        sideVisible:!!document.getElementById('menu-side')&&
+          getComputedStyle(document.getElementById('menu-side')).display!=='none',
+        // Et le bouton qui ouvrait la fenêtre s'efface : la colonne montre déjà
+        // ce qu'il allait chercher.
+        boutonMasque:getComputedStyle(document.getElementById('jouer-streak')).display==='none',
+      };
+    });
+    if(!r.desk)throw new Error('body.desk ne s\'allume pas sur un écran d\'ordinateur');
+    if(!r.railOn)throw new Error('body.rail-on manque alors que la barre des faces est affichée');
+    if(!r.railGauche||!r.railHaut)throw new Error('la barre des faces n\'est pas devenue un rail latéral');
+    if(!r.gouttiere)throw new Error('la zone utile ne recule pas derrière le rail : il recouvre le contenu');
+    if(r.libelles!==4)throw new Error(r.libelles+' libellés visibles sur le rail au lieu de 4');
+    if(!r.sideVisible)throw new Error('la colonne de droite du menu est absente');
+    if(r.sideRows!==6)throw new Error(r.sideRows+' paliers dans la colonne de droite au lieu de 6');
+    if(!r.boutonMasque)throw new Error('le bouton « Série du jour » double encore la colonne de droite');
+  });
+
+  // Et le retrait doit DISPARAÎTRE avec le rail : pendant une partie, le cube
+  // est verrouillé et la barre des faces s'efface. Sans ce lien, le plateau
+  // aurait joué avec une bande vide de 200 px sur sa gauche.
+  await step('la gouttière du rail disparaît avec lui',async()=>{
+    const r=await page.evaluate(()=>{
+      const vp=document.querySelector('.cube-face[data-face="jouer"] .face-viewport');
+      document.body.classList.remove('rail-on');       // ce que fait updateArrows() quand la barre s'en va
+      const sans=vp.getBoundingClientRect().left;
+      document.body.classList.add('rail-on');
+      const avec=vp.getBoundingClientRect().left;
+      return{sans,avec};
+    });
+    if(r.sans>1)throw new Error('la zone utile garde son retrait alors que le rail est masqué ('+Math.round(r.sans)+' px)');
+    if(r.avec<=1)throw new Error('la zone utile ne recule plus quand le rail revient');
   });
 
   // LA SÉRIE EST QUOTIDIENNE : une défaite la ferme pour le reste de la
