@@ -172,8 +172,19 @@ function lockPortrait(){
   }catch(e){/* verrou refusé : le voile CSS prend le relais */}
 }
 
+// UN SEUL POINT DE MONTAGE POUR TOUS LES EMPLACEMENTS. L'emblème n'était
+// injecté que dans `.login-emblem`, c'est-à-dire dans le voile de choix du
+// pseudo — un écran que `accountsBoot` n'affiche QU'À la première visite. Un
+// joueur qui a déjà un compte ne le voyait donc jamais, nulle part : le seul
+// endroit où l'identité du jeu lui apparaissait encore était l'icône
+// d'onglet, que les navigateurs gardent en cache pendant des semaines.
+// Le crochet est maintenant la classe `.game-emblem`, portée par TOUS les
+// emplacements (voile de pseudo, menu principal, parchemin d'accueil) ; les
+// classes qui l'accompagnent (`login-emblem`, `menu-emblem`, `intro-emblem`)
+// ne règlent plus que la taille et l'encre. Ajouter un emplacement = poser
+// une div `game-emblem`, rien de plus.
 function mountEmblems(){
-  document.querySelectorAll('.login-emblem').forEach(el=>{
+  document.querySelectorAll('.game-emblem').forEach(el=>{
     if(!el.firstElementChild)el.innerHTML=EMBLEM_SVG;
   });
 }

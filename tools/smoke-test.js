@@ -133,6 +133,42 @@ const OPTIONAL_ASSET=/adversaires\/[a-z-]+\.png|backgrounds\/main-page\.png|ches
     if(await page.locator('.login-emblem svg.emblem').count()!==1)throw new Error('emblème absent');
   });
 
+  // L'EMBLÈME EST PARTOUT OÙ LE JEU SE PRÉSENTE. Il n'a longtemps vécu que
+  // dans le voile de choix du pseudo — un écran qu'un joueur ayant déjà un
+  // compte ne revoit JAMAIS. Le refondre ne se voyait donc nulle part, et
+  // c'est exactement le genre de panne qu'aucun test ne rattrape : rien n'est
+  // cassé, il n'y a simplement plus personne pour regarder. On vérifie donc
+  // que chaque emplacement porte bien le crochet `.game-emblem`, et que
+  // mountEmblems les a tous remplis.
+  await step('chaque emplacement d\'emblème est rempli',async()=>{
+    const bad=await page.evaluate(()=>{
+      const out=[];
+      const slots=[...document.querySelectorAll('.game-emblem')];
+      ['login-emblem','menu-emblem','intro-emblem'].forEach(cls=>{
+        if(!slots.some(el=>el.classList.contains(cls)))out.push('emplacement manquant : .'+cls);
+      });
+      slots.forEach(el=>{
+        if(!el.querySelector('svg.emblem'))out.push('emplacement vide : '+el.className);
+      });
+      return out;
+    });
+    if(bad.length)throw new Error(bad.join(' · '));
+  });
+
+  // L'ICÔNE D'ONGLET EST VERSIONNÉE. Les navigateurs la gardent en cache des
+  // semaines sans la relire : sans changement d'adresse, une refonte de
+  // l'emblème laisse l'ancienne image dans l'onglet de tous les revenants.
+  // Le manifeste doit pointer la MÊME adresse, sinon l'écran d'accueil et
+  // l'onglet divergent.
+  await step('l\'icône d\'onglet est versionnée, et le manifeste suit',async()=>{
+    const href=await page.getAttribute('link[rel="icon"]','href');
+    if(!/\?v=\d+$/.test(href||''))throw new Error('l\'icône n\'est pas versionnée : '+href);
+    const man=await (await fetch('http://localhost:'+PORT+'/site.webmanifest')).json();
+    const src=(man.icons||[]).map(i=>i.src);
+    if(!src.includes(href))throw new Error('le manifeste pointe '+src.join(',')+' au lieu de '+href);
+    if(man.orientation!=='portrait')throw new Error('le manifeste n\'impose plus le portrait');
+  });
+
   await step('un refus de création de compte est expliqué',async()=>{
     await page.fill('#reg-u','a');
     await page.click('#btn-reg');

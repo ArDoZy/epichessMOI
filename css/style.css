@@ -269,6 +269,10 @@ button,.btn,.cube-arrow,.jouer-btn,.chest-card,.army-card,.adv-card,
 .pseudo-gate.show{display:flex}
 .login-wrap{width:100%;max-width:480px;margin-block:auto}
 .login-logo{text-align:center;margin-bottom:28px}
+/* /info n'exécute aucun script : son emblème est une <img> sur favicon.svg,
+   qui porte son propre fond ardoise arrondi — d'où le radius, pour que le
+   coin de l'image ne dépasse pas du dessin. */
+.login-emblem-img{display:block;margin:0 auto 10px;width:78px;height:78px;border-radius:18px}
 .login-logo h1{font-family:var(--f-display);font-size:clamp(28px,7vw,48px);background:linear-gradient(135deg,var(--accent2),var(--gold2),var(--gold));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;text-shadow:0 2px 10px rgba(0,0,0,.35)}
 .login-logo p{font-size:13px;color:var(--muted);margin-top:6px;font-style:italic}
 .login-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:26px;position:relative;overflow:hidden}
@@ -1131,9 +1135,15 @@ body.light .cube-face[data-face="jouer"]{background:
    est en position absolue, il ne pousse donc rien. Sans cette réserve, la
    colonne — qui a grandi d'une carte en récupérant le coffre quotidien — se
    centre trop haut et vient chevaucher le pseudo et l'ELO. */
-.jouer-menu{position:absolute;inset:0;display:flex;flex-direction:column;
+/* --menu-emblem-h : la hauteur du sceau posé au-dessus du pseudo. Le bloc
+   d'identité est en position:absolute (il ne pousse donc rien), c'est ce
+   retrait du haut de la colonne qui lui fait sa place. Les deux valeurs sont
+   liées : changer l'une sans l'autre fait chevaucher COMBAT et l'identité. */
+.jouer-menu{--menu-emblem-h:52px;
+  position:absolute;inset:0;display:flex;flex-direction:column;
   align-items:center;justify-content:center;gap:clamp(14px,3vh,30px);
-  text-align:center;padding:calc(var(--menu-top) + clamp(56px,10vh,110px)) 5% calc(clamp(18px,3vh,28px) + var(--safe-b));
+  text-align:center;
+  padding:calc(var(--menu-top) + var(--menu-emblem-h) + clamp(50px,9vh,100px)) 5% calc(clamp(18px,3vh,28px) + var(--safe-b));
   overflow:hidden}
 .jouer-btn{position:relative;cursor:pointer;border:none;
   font-family:var(--f-title);font-weight:900;letter-spacing:4px;
@@ -2087,7 +2097,8 @@ body.light .pmv-dark{background:#c3bdae}
    lui : le menu n'a plus qu'un bloc d'identité, deux boutons et le rail des
    coffres, ce qui tient enfin sur un écran de téléphone sans défilement. */
 @media(max-width:760px){
-  .jouer-menu{padding-top:calc(var(--menu-top) + clamp(44px,7vh,80px))}
+  .jouer-menu{--menu-emblem-h:44px;
+    padding-top:calc(var(--menu-top) + var(--menu-emblem-h) + clamp(38px,6vh,72px))}
 }
 
 .jouer-second{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
@@ -2514,7 +2525,23 @@ body.cube-active:not(.nav-overlay) .notif-host{bottom:92px}
    première chose qu'on voyait, et la moitié menthe se noyait dans le liquide. */
 .emblem .em-piece{fill:var(--gold2)}
 .emblem .em-gem,.emblem .em-stud{fill:var(--gold2)}
+/* LES EMPLACEMENTS. `.game-emblem` est le crochet commun (c'est lui que
+   cherche mountEmblems) ; les classes qui l'accompagnent ne règlent que la
+   taille et l'encre. */
+.game-emblem{display:block}
 .login-emblem{width:78px;height:78px;margin:0 auto 10px}
+/* Menu principal : au-dessus du pseudo. La hauteur est une VARIABLE parce que
+   la colonne du menu doit reculer d'autant (voir .jouer-menu) — sans quoi le
+   bouton COMBAT remonterait sous le bloc d'identité. */
+.menu-emblem{width:var(--menu-emblem-h);height:var(--menu-emblem-h);margin:0 auto}
+/* Parchemin d'accueil : à l'encre du parchemin. Le laiton et l'or clair, sur
+   un fond beige, se lisent comme deux taches délavées ; le sceau reprend donc
+   ici le brun du titre (#6b4f1e), et le bouillon garde sa couleur — c'est le
+   seul point vif du parchemin, comme la fiole qu'il remplace. */
+.intro-emblem{width:78px;height:78px;margin:0 auto 12px}
+.intro-emblem .em-ring,.intro-emblem .em-ring-in,.intro-emblem .em-ticks{stroke:#6b4f1e}
+.intro-emblem .em-piece,.intro-emblem .em-gem,.intro-emblem .em-stud{fill:#6b4f1e}
+.intro-emblem .em-surface{stroke:#1f6b5c;opacity:.6}
 /* La bulle du liquide monte en continu : l'emblème est vivant, comme les
    fioles du reste de l'interface. Les délais sont portés par des CLASSES et
    non par :nth-of-type — le sceau contient d'autres <circle> (anneaux, clous)

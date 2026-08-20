@@ -31,7 +31,7 @@
 <meta property="og:locale" content="fr_FR"/>
 <meta name="twitter:card" content="summary"/>
 
-<link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
+<link rel="icon" href="/favicon.svg?v=2" type="image/svg+xml"/>
 <link rel="manifest" href="/site.webmanifest"/>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -131,6 +131,12 @@
 <body class="info-body">
 <main class="info-wrap">
   <div class="login-logo">
+    <!-- L'emblème vient du FICHIER, et non d'un tracé recopié : cette page
+         n'exécute aucun script (elle ne charge que du JSON-LD), donc
+         mountEmblems() n'y passe jamais. Une <img> sur favicon.svg garantit
+         qu'elle ne pourra pas diverger du reste du jeu. -->
+    <img class="login-emblem-img" src="/favicon.svg?v=2" width="78" height="78"
+         alt="Emblème d'Epic Chess : un monarque d'échecs dressé dans un sceau d'alchimiste"/>
     <h1>EPIC CHESS</h1>
     <p>Un savant fou, dans un laboratoire d'échecs oublié, a fait naître des créatures de l'alchimie.</p>
   </div>

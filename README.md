@@ -485,6 +485,36 @@ Le tracé de `favicon.svg` est **le même** que celui de `EMBLEM_SVG`
 (`js/main.js`), à l'échelle 0,64 près : retoucher l'un sans l'autre fait
 diverger l'onglet et l'écran d'accueil.
 
+L'adresse de l'icône est **versionnée** (`/favicon.svg?v=2`) dans
+`index.html`, `info.html` et `site.webmanifest`. Ce n'est pas décoratif : les
+navigateurs gardent l'icône d'onglet en cache bien plus longtemps que le reste
+du site, souvent sans la relire à un rechargement ordinaire. Après une refonte
+de l'emblème, l'ancienne image restait dans l'onglet de tous ceux qui avaient
+déjà ouvert le jeu ; changer l'adresse est le seul moyen sûr de la faire
+abandonner. **Incrémentez le numéro aux trois endroits à chaque fois que le
+tracé change** — `npm test` vérifie que le manifeste pointe bien la même
+adresse que le `<link rel="icon">`.
+
+### Où l'emblème s'affiche
+
+Le crochet est la classe **`.game-emblem`** : `mountEmblems()` (js/main.js)
+remplit tout élément qui la porte, et les classes qui l'accompagnent ne
+règlent que la taille et l'encre. Trois emplacements aujourd'hui :
+
+| Classe | Écran | Particularité |
+|---|---|---|
+| `login-emblem` | voile de choix du pseudo | première visite seulement |
+| `menu-emblem` | menu principal, au-dessus du pseudo | sa hauteur est `--menu-emblem-h`, dont dépend le retrait de `.jouer-menu` |
+| `intro-emblem` | parchemin d'accueil | repeint à l'encre du parchemin (#6b4f1e) : le laiton sur beige est illisible |
+
+`/info` (info.html) n'exécute **aucun** script : son emblème est une `<img>`
+sur `favicon.svg`, pour qu'il ne puisse pas diverger d'une copie de tracé.
+
+Ajouter un emplacement, c'est poser une `<div class="game-emblem …">` — rien
+d'autre. L'emblème n'a longtemps vécu que dans le voile de pseudo, c'est-à-dire
+sur un écran qu'un joueur ayant déjà un compte ne revoit jamais : le refondre
+ne se voyait alors nulle part.
+
 ## Ordre de chargement (`index.html`, en bas de page)
 
 L'ordre des `<script>` est important car il n'y a pas de système de modules :
@@ -602,7 +632,8 @@ mais dans une version que Playwright refuse, le script le retrouve tout seul
 | Changer ce que contient un coffre | `CHESTS`/`CHEST_PEARLS` dans `js/data-pieces.js` + `chestRoll`/`chestLuckyChance` dans `js/economy.js` |
 | Changer le fond de l'écran d'attente en ligne | remplacer `assets/backgrounds/duel-wait.png` (rien à coder) |
 | Changer un message de refus / d'information | l'appel `showNotif()` concerné ; l'apparence est dans `[NOTIF]` de `css/style.css` |
-| Modifier l'emblème (logo) du jeu | `EMBLEM_SVG` dans `js/main.js` + `favicon.svg` (même tracé) + `[EMBLEM]` de `css/style.css` |
+| Modifier l'emblème (logo) du jeu | `EMBLEM_SVG` dans `js/main.js` + `favicon.svg` (même tracé) + `[EMBLEM]` de `css/style.css` — **et incrémenter le `?v=` de l'icône** dans `index.html`, `info.html` et `site.webmanifest`, sinon l'onglet garde l'ancienne en cache |
+| Ajouter un endroit qui affiche l'emblème | poser une `<div class="game-emblem …">` dans `index.html` : `mountEmblems()` (js/main.js) la remplit toute seule |
 | Modifier les blasons de la barre des faces | les quatre `<svg>` de `#cube-facebar` dans `index.html` + `.cube-facebar-btn` dans `css/style.css` |
 | Changer ce qu'un bot peut aligner | `aiPiecePool()` / `generateAIArmy()` dans `js/armies.js` |
 | Changer le verrou d'orientation (téléphone) | `lockPortrait()` dans `js/main.js` + `orientation` dans `site.webmanifest` + `[PORTRAIT-LOCK]` de `css/style.css` (voile `#rotate-gate`) |

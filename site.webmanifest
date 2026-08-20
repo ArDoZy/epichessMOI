@@ -11,6 +11,6 @@
   "theme_color": "#0e1216",
   "categories": ["games", "board", "strategy"],
   "icons": [
-    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+    { "src": "/favicon.svg?v=2", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
   ]
 }
