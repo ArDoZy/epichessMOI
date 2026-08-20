@@ -6,7 +6,7 @@
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "orientation": "any",
+  "orientation": "portrait",
   "background_color": "#0e1216",
   "theme_color": "#0e1216",
   "categories": ["games", "board", "strategy"],

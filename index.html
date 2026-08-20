@@ -115,6 +115,44 @@
 <body>
 <div class="drag-ghost" id="drag-ghost"></div>
 
+<!-- VERROU DE PORTRAIT (TÉLÉPHONE UNIQUEMENT).
+     Le jeu est pensé en colonne : plateau au centre, journal en feuille
+     glissante sous le pouce, barre des faces collée en bas. Couché, un
+     téléphone n'a plus que ~400 px de haut : le plateau devait alors partager
+     cette hauteur avec la barre de compte, la barre d'état et le journal, et
+     il ne restait qu'un échiquier de la taille d'une vignette entre deux
+     bandes vides. Ce n'est pas une mise en page à réparer, c'est une
+     orientation dont le jeu n'a pas l'usage.
+     DEUX VERROUS, parce qu'aucun ne suffit seul :
+       · site.webmanifest déclare `"orientation": "portrait"`, et
+         lockPortrait() (js/main.js) appelle screen.orientation.lock() : c'est
+         le vrai verrou, mais les navigateurs ne l'accordent qu'à une
+         application installée ou en plein écran ;
+       · partout ailleurs, ce voile prend toute la place dès que l'écran
+         bascule (voir [PORTRAIT-LOCK] dans css/style.css). Il n'y a rien à
+         faire dessous : le jeu attend qu'on redresse l'appareil.
+     Il ne s'affiche QUE sur un écran tactile bas de plafond (hover:none,
+     pointer:coarse, max-height:560px) : une tablette et un ordinateur
+     portable à écran tactile continuent de jouer en paysage. -->
+<div class="rotate-gate" id="rotate-gate" aria-hidden="true">
+  <div class="rotate-gate-inner">
+    <!-- Un téléphone DEBOUT, et deux arcs de rotation posés DE PART ET
+         D'AUTRE — jamais par-dessus l'appareil : le téléphone doit rester
+         lisible comme téléphone, c'est lui le sujet. -->
+    <svg class="rotate-gate-icon" viewBox="0 0 64 64" aria-hidden="true">
+      <rect x="22" y="7" width="20" height="50" rx="4" fill="none" stroke="currentColor" stroke-width="3"/>
+      <path d="M29 12h6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>
+      <circle cx="32" cy="51" r="2" fill="currentColor"/>
+      <path d="M15 22a22 22 0 0 0 0 20" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+      <path d="m11.4 23.6 4.6-4.4 2.4 5.8z" fill="currentColor"/>
+      <path d="M49 42a22 22 0 0 0 0-20" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+      <path d="m52.6 40.4-4.6 4.4-2.4-5.8z" fill="currentColor"/>
+    </svg>
+    <div class="rotate-gate-title">Redressez votre téléphone</div>
+    <div class="rotate-gate-text">Epic Chess se joue en hauteur : le plateau, le journal des coups et la barre des faces y tiennent d'un seul tenant.</div>
+  </div>
+</div>
+
 <!-- PARCHEMIN D'ACCUEIL : affiché juste après la création d'un nouveau
      compte (voir enterAccount() dans js/accounts.js et showIntroModal() dans
      js/main.js), pas à l'arrivée sur le site : masqué par défaut ici. -->
@@ -363,22 +401,85 @@
   <button class="cube-arrow cube-arrow-side" id="cube-arrow-right" title="Tourner à droite" style="display:none">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 5, 16 12, 9 19"/></svg>
   </button>
-  <!-- Repère des quatre faces du cube, en bas de l'écran : un logo par face,
-       celui de la face affichée s'allume. Sert aussi de raccourci (on peut
-       taper directement le logo d'une face pour y aller). Voir
-       js/cube-nav.js (updateFacebar / goToFace). -->
+  <!-- Repère des quatre faces du cube, en bas de l'écran : un blason par
+       face, celui de la face affichée s'allume. Sert aussi de raccourci (on
+       peut taper directement le blason d'une face pour y aller). Voir
+       js/cube-nav.js (updateFacebar / goToFace).
+
+       QUATRE BLASONS PLEINS, ET PLUS QUATRE PICTOGRAMMES AU TRAIT. Les
+       précédents étaient des icônes d'interface génériques — un sac de
+       courses, un marteau, un écusson vide, une étagère — dessinées au trait
+       fin de 2,2 px : à 22 px de côté, sur un fond translucide, il n'en
+       restait que quatre gribouillis interchangeables, dont aucun ne disait
+       la face qu'il ouvrait. Chacun est maintenant une silhouette PLEINE,
+       taillée pour cette taille-là, et qui nomme sa face d'un seul coup
+       d'œil :
+         · Magasin    → une balance de marchand (on y échange des perles) ;
+         · Combat     → deux épées entrecroisées ;
+         · Mes armées → le Monarque encadré de deux pièces, sur son socle ;
+         · Armurerie  → un coffre ferré, cadenassé.
+       Les creux (fente du heaume, serrure du coffre, plateaux de la balance)
+       sont de VRAIS trous, obtenus par fill-rule="evenodd" : ils restent
+       transparents sur le laiton de la face active comme sur le fond sombre
+       des trois autres. -->
   <div class="cube-facebar" id="cube-facebar" style="display:none">
-    <button type="button" class="cube-facebar-btn" data-face="magasin" title="Magasin">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 7h12l-1.2 12.2a1.5 1.5 0 0 1-1.5 1.3H8.7a1.5 1.5 0 0 1-1.5-1.3L6 7Z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg>
+    <button type="button" class="cube-facebar-btn" data-face="magasin" title="Magasin" aria-label="Magasin">
+      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <circle cx="12" cy="3.15" r="1.5"/>
+        <path d="M11.2 4.4h1.6v14.3h-1.6z"/>
+        <path d="M3.9 6.3h16.2v1.45H3.9z"/>
+        <path d="M4.35 7.4h1v2.5h-1zM18.65 7.4h1v2.5h-1z"/>
+        <path d="M1.55 10.2h7.1c0 2.1-1.6 3.55-3.55 3.55S1.55 12.3 1.55 10.2Z"/>
+        <path d="M15.35 10.2h7.1c0 2.1-1.6 3.55-3.55 3.55s-3.55-1.45-3.55-3.55Z"/>
+        <path d="M8.9 18.2h6.2l1.6 2.15H7.3z"/>
+        <path d="M6.1 20.1h11.8v1.6H6.1z"/>
+      </svg>
     </button>
-    <button type="button" class="cube-facebar-btn" data-face="jouer" title="Jouer">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 3.5 20 9l-9 9-3.2.7L8.5 15z"/><path d="m17.2 6.3 1.3-1.3"/><path d="M4 20l3.3-3.3"/><path d="m3 21 1.4-1.4"/></svg>
+    <button type="button" class="cube-facebar-btn" data-face="jouer" title="Combat" aria-label="Combat">
+      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <!-- Une seule épée, dessinée pointe en haut, puis pivotée de ±42°
+             autour du centre : les deux lames se croisent donc exactement au
+             milieu du blason, gardes en bas, pointes en haut. -->
+        <g transform="rotate(42 12 12)">
+          <path d="M12 1.2l1.2 3.2v11.05h-2.4V4.4z"/>
+          <path d="M7.35 15.15h9.3v1.85h-9.3z"/>
+          <path d="M11.1 17.2h1.8v2.9h-1.8z"/>
+          <circle cx="12" cy="21.35" r="1.35"/>
+        </g>
+        <g transform="rotate(-42 12 12)">
+          <path d="M12 1.2l1.2 3.2v11.05h-2.4V4.4z"/>
+          <path d="M7.35 15.15h9.3v1.85h-9.3z"/>
+          <path d="M11.1 17.2h1.8v2.9h-1.8z"/>
+          <circle cx="12" cy="21.35" r="1.35"/>
+        </g>
+      </svg>
     </button>
-    <button type="button" class="cube-facebar-btn" data-face="armees" title="Mes armées">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7 3.2v5.4c0 4.6-3 7.8-7 9.1-4-1.3-7-4.5-7-9.1V6.2L12 3Z"/></svg>
+    <button type="button" class="cube-facebar-btn" data-face="armees" title="Mes armées" aria-label="Mes armées">
+      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <!-- Les deux pièces d'escorte sont la MÊME silhouette, réduite à 0,84
+             autour de (cx,18) : le pied reste posé sur le socle au lieu de
+             remonter avec l'échelle. -->
+        <g transform="translate(4.9 18) scale(.84) translate(-4.9 -18)">
+          <circle cx="4.9" cy="9.6" r="2.15"/>
+          <path d="M3.15 11.8h3.5c.15 1.6.9 3.2 2.25 4.6H.9c1.35-1.4 2.1-3 2.25-4.6Z"/>
+        </g>
+        <path d="M9.35 6.5 8.5 2.6l2.4 1.75L12 1.5l1.1 2.85 2.4-1.75-.85 3.9Z"/>
+        <path d="M9.5 6.9h5v1.9h-5z"/>
+        <path d="M10 9.3h4c.2 2.5 1.2 4.8 2.9 6.9H7.1c1.7-2.1 2.7-4.4 2.9-6.9Z"/>
+        <g transform="translate(19.1 18) scale(.84) translate(-19.1 -18)">
+          <circle cx="19.1" cy="9.6" r="2.15"/>
+          <path d="M17.35 11.8h3.5c.15 1.6.9 3.2 2.25 4.6h-8c1.35-1.4 2.1-3 2.25-4.6Z"/>
+        </g>
+        <path d="M4.4 16.6h15.2v1.7H4.4z"/>
+        <path d="M2.2 19h19.6v1.7H2.2z"/>
+      </svg>
     </button>
-    <button type="button" class="cube-facebar-btn" data-face="reserve" title="Armurerie">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h18"/><path d="M5 7v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7"/><path d="M9.5 11.5h5"/></svg>
+    <button type="button" class="cube-facebar-btn" data-face="reserve" title="Armurerie" aria-label="Armurerie">
+      <svg viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd" aria-hidden="true">
+        <path d="M2.9 9.75V8.3c0-2.95 2.4-5.35 5.35-5.35h7.5c2.95 0 5.35 2.4 5.35 5.35v1.45h-4.7V8.3a.65.65 0 0 0-.65-.65h-7.5a.65.65 0 0 0-.65.65v1.45Z"/>
+        <path d="M2.9 11.05h18.2v8.15c0 1-.8 1.8-1.8 1.8H4.7c-1 0-1.8-.8-1.8-1.8Zm7.5 2.2v3.95h3.2v-3.95Z"/>
+        <path d="M10.4 7.65h3.2v2.1h-3.2z"/>
+      </svg>
     </button>
   </div>
 </div>
@@ -555,12 +656,14 @@
 
 <!-- PAGE VOIE : page à part entière, ouverte par le bouton « Voie » posé à
      côté de l'ELO sur le menu principal. -->
-<!-- LE BOUTON « OK » N'EST PLUS UNE BARRE. Il occupait toute la largeur au
-     bas de l'écran, en dernier élément de la colonne flex : une bande de
-     66 px que la Voie ne pouvait plus utiliser, alors qu'elle se lit
-     justement du bas vers le haut. C'est maintenant une petite pastille
-     posée PAR-DESSUS la Voie, en position:absolute dans #page-voie (voir
-     .voie-ok-bar dans css/style.css).
+<!-- LE BOUTON « OK » EST UNE BARRE PLEINE LARGEUR, COLLÉE AU BAS DE L'ÉCRAN.
+     Il a été une petite pastille de 38 px flottant à 14 px du bord : une
+     cible étroite, posée au milieu du chemin de la Voie, qu'on manquait au
+     pouce et qui masquait le palier qu'elle recouvrait. C'est la SEULE sortie
+     de cet écran, elle a droit à toute la largeur — et elle TOUCHE le bord
+     (bottom:0), la zone sûre des téléphones à encoche étant absorbée par son
+     rembourrage intérieur (voir .voie-ok-bar dans css/style.css).
+     Elle est posée PAR-DESSUS la Voie, en position:absolute dans #page-voie.
      Elle ne peut pas être en position:fixed : `.page.active` porte une
      animation d'entrée dont la dernière image laisse un `transform` posé en
      permanence (animation-fill-mode:both), ce qui fait de la page le bloc
@@ -738,11 +841,18 @@
 </div>
 
 <!-- SETTINGS BUTTON & PANEL -->
-<button id="settings-btn" title="Réglages">
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-    <line x1="4" y1="7" x2="20" y2="7"/><circle cx="14" cy="7" r="2" fill="currentColor" stroke="none"/>
-    <line x1="4" y1="12" x2="20" y2="12"/><circle cx="8" cy="12" r="2" fill="currentColor" stroke="none"/>
-    <line x1="4" y1="17" x2="20" y2="17"/><circle cx="16" cy="17" r="2" fill="currentColor" stroke="none"/>
+<!-- UN MÉDAILLON DE LAITON, ET PLUS UN BOUTON D'APPLICATION. Le bouton
+     portait trois curseurs de réglage (le pictogramme « mixer » des barres
+     d'outils modernes) dans un carré arrondi gris : c'était le seul élément
+     de tout le jeu qui venait d'ailleurs, posé au-dessus d'un laboratoire
+     d'alchimie du XVIIᵉ siècle. Il est maintenant un jeton rond de laiton
+     patiné — bord doré, cerne gravé, reflet en haut à gauche, creux en bas —
+     frappé d'un ROUAGE à huit dents. Voir #settings-btn dans css/style.css.
+     La géométrie du rouage est calculée (dents à r=10,6 ; pied à r=7,7 ;
+     moyeu percé à r=4,3 par fill-rule="evenodd") pour rester nette à 20 px. -->
+<button id="settings-btn" title="Réglages" aria-label="Réglages">
+  <svg viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd" aria-hidden="true">
+    <path d="M10.01 4.56 10.16 1.56h3.68l.15 3A7.7 7.7 0 0 1 15.85 5.33L18.08 3.32l2.6 2.6-2.01 2.23a7.7 7.7 0 0 1 .77 1.86l3 .15v3.68l-3 .15a7.7 7.7 0 0 1-.77 1.86l2.01 2.23-2.6 2.6-2.23-2.01a7.7 7.7 0 0 1-1.86.77l-.15 3h-3.68l-.15-3a7.7 7.7 0 0 1-1.86-.77L5.92 20.68l-2.6-2.6 2.01-2.23a7.7 7.7 0 0 1-.77-1.86l-3-.15v-3.68l3-.15a7.7 7.7 0 0 1 .77-1.86L3.32 5.92l2.6-2.6 2.23 2.01a7.7 7.7 0 0 1 1.86-.77ZM12 7.7a4.3 4.3 0 1 0 0 8.6 4.3 4.3 0 0 0 0-8.6Z"/>
   </svg>
 </button>
 <div id="settings-panel">

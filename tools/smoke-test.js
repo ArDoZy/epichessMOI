@@ -511,9 +511,10 @@ const OPTIONAL_ASSET=/adversaires\/[a-z-]+\.png|backgrounds\/main-page\.png|ches
   // défilement : il ne peut pas être en position:fixed (l'animation d'entrée
   // de .page.active laisse un transform qui en ferait le bloc conteneur), il
   // est donc en position:absolute dans #page-voie, lui-même en fixed.
-  // Et c'est une PASTILLE, pas une barre : la Voie continue de courir
-  // derrière lui au lieu de perdre une bande pleine largeur en bas d'écran.
-  await step('le bouton OK de la Voie reste en bas de l\'écran quand on défile',async()=>{
+  // Et c'est une BARRE COLLÉE AU BAS DE L'ÉCRAN, pas une pastille flottante :
+  // c'est la seule sortie de l'écran, elle prend toute la largeur, la hauteur
+  // d'un vrai bouton de pouce, et son bord inférieur touche celui de l'écran.
+  await step('le bouton OK de la Voie est une barre collée au bas de l\'écran',async()=>{
     await page.evaluate(()=>{renderVoiePage();showPage('page-voie');});
     await page.waitForSelector('#page-voie.active',{timeout:8000});
     await page.waitForTimeout(500);
@@ -531,24 +532,33 @@ const OPTIONAL_ASSET=/adversaires\/[a-z-]+\.png|backgrounds\/main-page\.png|ches
       // avait encore un bandeau, il occuperait toute la largeur.
       const b=btn.getBoundingClientRect();
       const cote=document.elementFromPoint(8,b.top+b.height/2);
-      return{haut,bas,vh,vw:innerWidth,scrollable:host.scrollHeight>host.clientHeight+40,
+      return{haut,bas,vh,vw:innerWidth,
+        // Largeur de RÉFÉRENCE : celle de la page, et non innerWidth — sur un
+        // écran d'ordinateur, la barre de défilement en retire une dizaine de
+        // pixels que le bouton n'a aucun moyen de reprendre.
+        pw:document.getElementById('page-voie').clientWidth,
+        scrollable:host.scrollHeight>host.clientHeight+40,
         retourVisible:!!document.getElementById('voie-back'),
-        voieDerriere:!!cote&&host.contains(cote)};
+        // Le point au ras du bord gauche, à hauteur du bouton, doit être LE
+        // BOUTON : c'est ce qui distingue une barre pleine largeur d'une
+        // pastille centrée.
+        barrePleineLargeur:cote===btn||btn.contains(cote)};
     });
     if(!r.scrollable)throw new Error('la Voie ne défile pas, le test ne prouve rien');
     if(r.retourVisible)throw new Error('le bouton « Retour » est encore là');
     // Immobile d'un bout à l'autre du défilement, et dans le bas de l'écran.
     if(Math.abs(r.haut.top-r.bas.top)>1)
       throw new Error('le bouton OK bouge avec le défilement ('+r.haut.top+' → '+r.bas.top+')');
-    if(r.haut.bottom>r.vh+1||r.haut.bottom<r.vh-90)
-      throw new Error('le bouton OK n\'est pas au bas de l\'écran (bas à '+Math.round(r.haut.bottom)+' pour une hauteur de '+r.vh+')');
-    // Une pastille : petite, et loin d'occuper la largeur de l'écran.
-    if(r.haut.w>r.vw*0.5)
-      throw new Error('le bouton OK fait encore barre ('+Math.round(r.haut.w)+' px pour '+r.vw+' px d\'écran)');
-    if(r.haut.h>44)
-      throw new Error('le bouton OK est encore haut de '+Math.round(r.haut.h)+' px');
-    if(!r.voieDerriere)
-      throw new Error('un bandeau occupe encore toute la largeur derrière le bouton OK');
+    // COLLÉ : le bas du bouton touche le bas de l'écran, à un pixel près.
+    if(Math.abs(r.haut.bottom-r.vh)>1)
+      throw new Error('le bouton OK n\'est pas collé au bas de l\'écran (bas à '+Math.round(r.haut.bottom)+' pour une hauteur de '+r.vh+')');
+    // AGRANDI : toute la largeur, et la hauteur d'un vrai bouton de pouce.
+    if(r.haut.w<r.pw-1)
+      throw new Error('le bouton OK n\'occupe pas toute la largeur ('+Math.round(r.haut.w)+' px pour '+r.pw+' px de page)');
+    if(r.haut.h<52)
+      throw new Error('le bouton OK n\'est haut que de '+Math.round(r.haut.h)+' px');
+    if(!r.barrePleineLargeur)
+      throw new Error('le bouton OK ne s\'étend pas jusqu\'au bord de l\'écran');
     await page.click('#voie-ok');
     await page.waitForTimeout(400);
     if(await page.isVisible('#page-voie.active'))throw new Error('le bouton OK ne referme pas la Voie');
@@ -678,6 +688,48 @@ const OPTIONAL_ASSET=/adversaires\/[a-z-]+\.png|backgrounds\/main-page\.png|ches
       if(!b[2][4]||b[2][4].pieceId!=='std-pawn')out.push('hurlement : le pion n est pas arrive derriere');
       if(!b[3][5]||b[3][5].pieceId!=='fourmi')out.push('hurlement : la fourmi a ete traitee comme un pion');
       return out;
+    });
+    if(bad.length)throw new Error(bad.join(' · '));
+  });
+
+  // UN BOT NE PEUT ALIGNER QUE CE QUE LE JOUEUR POSSÈDE. C'est une règle
+  // qu'on ne voit pas casser : une armée d'adversaire est plausible même
+  // truffée de créatures inconnues, et il faut lire la fiche de chaque pièce
+  // en pleine partie pour s'apercevoir qu'on n'en possède aucune.
+  // Le test se donne un compte MINIMAL (deux pièces maîtresses et trois
+  // pièces d'appoint, rien d'autre) pour que toute pièce hors de cette liste
+  // soit une infraction — sinon le filet de sécurité de generateAIArmy, qui
+  // complète le vivier quand le joueur possède moins de trois pièces
+  // d'appoint, masquerait la règle au lieu de la prouver.
+  await step('un adversaire ne compose son armée qu\'avec des pièces que le joueur possède',async()=>{
+    const bad=await page.evaluate(()=>{
+      const avant={unlocked:new Set(VV_UNLOCKED),inv:JSON.parse(JSON.stringify(invAll()))};
+      const permis=['roi','dame','cavalier-primordial','peureux','meduse'];
+      const out=[];
+      try{
+        VV_UNLOCKED=new Set(permis);
+        invSaveAll({});                        // rien en stock : seul le déblocage compte
+        const ok=new Set(permis);
+        AI_OPPONENTS.forEach(o=>{
+          for(let i=0;i<15;i++){
+            const a=generateAIArmy(Math.max(0,o.budget-4),{style:o.style,budget:o.budget});
+            [a.mon.id,a.gen.id,...a.extras].forEach(id=>{
+              if(!ok.has(id))out.push(o.id+' aligne '+id+', que le joueur ne possède pas');
+            });
+          }
+        });
+        // Et le filet de sécurité doit bien exister : un compte tout neuf (un
+        // Monarque, un Général, aucune pièce d'appoint) doit malgré tout
+        // produire une armée complète, sans quoi la partie ne démarrerait pas.
+        VV_UNLOCKED=new Set(['roi','dame']);
+        const neuf=generateAIArmy(0,{budget:24});
+        if(!neuf||!neuf.mon||!neuf.gen||(neuf.extras||[]).length!==3)
+          out.push('un compte neuf ne produit plus d\'armée adverse complète');
+      }finally{
+        VV_UNLOCKED=avant.unlocked;
+        invSaveAll(avant.inv);
+      }
+      return [...new Set(out)];
     });
     if(bad.length)throw new Error(bad.join(' · '));
   });

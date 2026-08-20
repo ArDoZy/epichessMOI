@@ -82,44 +82,96 @@ function escH(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').rep
 // ----------------------------------------------------------------
 // EMBLÈME DU JEU
 // ----------------------------------------------------------------
-// Le jeu n'avait pour identité qu'un mot en lettres dorées, « EPIC CHESS »,
-// et une fiole en favicon qui ne parlait que d'alchimie. L'emblème dit tout
-// le jeu d'un seul dessin : un ballon d'alchimiste couronné (le Monarque
-// posé sur le laboratoire) d'où monte une pièce EN TRAIN DE FUSIONNER —
-// moitié pion ordinaire, moitié créature, fendue par une fêlure lumineuse.
-// Deux pièces d'échecs flottent autour du ballon : sans elles, à petite
-// taille, il ne resterait qu'une fiole.
+// UN SCEAU D'ALCHIMISTE : un médaillon d'or, du bouillon au fond, et le
+// MONARQUE qui s'y dresse.
+//
+// L'emblème précédent empilait trois idées mal cousues : un ballon d'alambic,
+// une pièce « en fusion » coupée en deux moitiés qui ne se raccordaient pas
+// (un demi-pion doré collé à une demi-créature menthe), et deux petites
+// pièces d'échecs flottant de part et d'autre du verre. À 74 px la couture
+// ressemblait à un accident, et à 16 px les satellites n'étaient plus que
+// deux taches sans forme.
+//
+// Le dessin ne dit plus qu'UNE chose, et il la dit d'un seul tracé : une
+// pièce d'échecs NAÎT de l'alchimie. Une seule silhouette, entière et
+// symétrique (couronne, collerette, robe, socle), debout dans la potion, au
+// centre d'un sceau d'alchimiste — double anneau, couronne de graduations,
+// gemme au sommet, deux clous aux flancs. Rien n'est coupé, rien ne flotte,
+// et la silhouette reste lisible jusqu'à la taille d'un favicon.
 //
 // Il est écrit ici une seule fois et injecté sur la page de connexion — et
 // nulle part ailleurs : le menu principal porte désormais le pseudo et l'ELO
 // du joueur à sa place, l'emblème n'y est plus que dans l'onglet.
-// favicon.svg reprend EXACTEMENT les mêmes
-// tracés (mis à l'échelle 0.64) pour que l'onglet et l'écran d'accueil
-// montrent la même chose. Les couleurs viennent des variables de thème
-// (voir [EMBLEM] dans css/style.css), donc il suit le mode clair comme le
-// mode sombre.
+// favicon.svg reprend EXACTEMENT les mêmes tracés pour que l'onglet et
+// l'écran d'accueil montrent la même chose. Les couleurs viennent des
+// variables de thème (voir [EMBLEM] dans css/style.css), donc il suit le
+// mode clair comme le mode sombre.
+//
+// Repères géométriques (viewBox 100×100), à respecter si l'on y retouche :
+//   · sceau centré en (50,52) : anneau extérieur r=38, filet intérieur
+//     r=32,5, graduations sur r=35,3 (un cercle pointillé, et non 24 traits
+//     séparés : un seul élément à tenir dans les deux fichiers) ;
+//   · surface du bouillon à y=66, corde du cercle r=32,5 (demi-largeur
+//     √(32,5²−14²) ≈ 29,33, d'où 20,67 → 79,33) ;
+//   · monarque de y=22,4 (pointe de la couronne) à y=67,8 (bas du socle) :
+//     son socle plonge donc de 1,8 px sous la surface — il SORT du liquide,
+//     il ne flotte pas dessus.
 const EMBLEM_SVG=
   '<svg class="emblem" viewBox="0 0 100 100" aria-hidden="true" focusable="false">'+
-    // Pièces satellites : un pion (gauche) et un cavalier (droite). Mêmes
-    // silhouettes que le fond d'attente (tools/gen-duel-bg.js).
-    '<path class="em-mini" transform="translate(3 31) scale(.21)" d="M50 8c-9 0-16 7-16 16 0 5 2 9 6 12-8 6-13 16-15 28h50c-2-12-7-22-15-28 4-3 6-7 6-12 0-9-7-16-16-16zM22 66h56l6 12H16zM12 80h76c5 0 8 4 8 9v11H4V89c0-5 3-9 8-9z"/>'+
-    '<path class="em-mini" transform="translate(77 30) scale(.22)" d="M34 100c0-17 2-29 8-40l-11 8c-9 6-19 3-21-6-3-11 3-22 12-31C30 24 39 18 46 11c6-6 9-11 11-19l9 9 8-8c15 12 26 30 30 49 4 19 5 39 5 58z"/>'+
-    '<path class="em-crown" d="M34 24 30 7l10 7 10-11 10 11 10-7-4 17z"/>'+
-    '<path class="em-glass" d="M42 28v12M58 28v12"/>'+
-    '<circle class="em-glass" cx="50" cy="64" r="26"/>'+
-    // LA FUSION : les deux moitiés se rejoignent sur l'axe x=50, pieds posés
-    // sur le niveau du liquide (y=68), d'où la pièce a l'air d'en sortir.
-    '<g transform="translate(50 68) scale(1.2) translate(-50 -68)">'+
-      '<path class="em-piece-a" d="M50 46c-4 0-7 2.6-7 6 0 1.8.9 3.4 2.3 4.4-3.5 2.6-6 6.6-7.3 11.6H50z"/>'+
-      '<path class="em-piece-b" d="M50 46c4.6 0 7.6 3.2 6.8 7.2 2 1.2 3.6 3 4.6 5.2l3.4-6.4 1.4 8.6c.4 3 .2 5.6-.6 7.4H50z"/>'+
-      '<path class="em-seam" d="M50 44l-3.2 11h5.4L49 68"/>'+
+    // LE SCEAU : deux anneaux et une couronne de graduations.
+    '<circle class="em-ring" cx="50" cy="52" r="38"/>'+
+    '<circle class="em-ring-in" cx="50" cy="52" r="32.5"/>'+
+    '<circle class="em-ticks" cx="50" cy="52" r="35.3"/>'+
+    // LE BOUILLON : segment circulaire sous la corde y=66, plus le trait clair
+    // de la surface — sans lui, le liquide n'a pas de niveau, juste une masse.
+    '<path class="em-liquid" d="M20.67 66A32.5 32.5 0 0 0 79.33 66Z"/>'+
+    '<path class="em-surface" d="M20.67 66h58.66"/>'+
+    '<circle class="em-bubble" cx="28.5" cy="72" r="2.3"/>'+
+    '<circle class="em-bubble em-bubble2" cx="70" cy="69" r="1.6"/>'+
+    // LE MONARQUE, d'une seule pièce : couronne à trois pointes, collerette,
+    // robe évasée, plinthe, socle.
+    '<g class="em-piece">'+
+      '<path d="M39.6 34.2 37.6 24.6l6 4.4L50 22.4l6.4 6.6 6-4.4-2 9.6Z"/>'+
+      '<rect x="39.9" y="33.6" width="20.2" height="4.6" rx="2.2"/>'+
+      '<path d="M44 38.2c-.4 6.4-2.6 12.6-6.2 18.4h24.4c-3.6-5.8-5.8-12-6.2-18.4Z"/>'+
+      '<rect x="35.4" y="56" width="29.2" height="4.6" rx="1.9"/>'+
+      '<rect x="32.6" y="61.4" width="34.8" height="6.4" rx="2.6"/>'+
     '</g>'+
-    // Segment circulaire : le niveau du liquide est la corde à y=68, le reste
-    // suit l'arc inférieur du ballon (centre 50,64 · rayon 26).
-    '<path class="em-liquid" d="M24.3 68A26 26 0 0 0 75.7 68Z"/>'+
-    '<circle class="em-bubble" cx="41" cy="80" r="3"/>'+
-    '<circle class="em-bubble" cx="60" cy="76" r="2.2"/>'+
+    // Gemme au sommet et clous aux flancs : ce sont eux qui font un OBJET
+    // forgé plutôt qu'un simple cercle tracé.
+    '<path class="em-gem" d="M50 8.6 54.4 14 50 19.4 45.6 14Z"/>'+
+    '<circle class="em-stud" cx="12" cy="52" r="2.6"/>'+
+    '<circle class="em-stud" cx="88" cy="52" r="2.6"/>'+
   '</svg>';
+// ----------------------------------------------------------------
+// VERROU DE PORTRAIT (TÉLÉPHONE)
+// ----------------------------------------------------------------
+// Le jeu se joue en hauteur, et rien qu'en hauteur : couché, un téléphone
+// n'offre plus que ~400 px, que le plateau devrait partager avec la barre de
+// compte, la barre d'état et le journal des coups.
+//
+// Trois verrous, du plus fort au plus faible, parce qu'AUCUN ne suffit seul :
+//   1. site.webmanifest déclare `"orientation": "portrait"` — c'est le seul
+//      qui tienne vraiment, mais il ne vaut que pour une application
+//      INSTALLÉE sur l'écran d'accueil ;
+//   2. screen.orientation.lock('portrait'), ci-dessous : les navigateurs ne
+//      l'accordent qu'en plein écran ou en application installée, et le
+//      refusent PARTOUT ailleurs — sur iOS l'API n'existe même pas. D'où le
+//      try/catch et le .catch() : un refus est le cas NORMAL, pas une erreur
+//      à remonter, et une promesse rejetée non capturée polluerait la console
+//      à chaque ouverture ;
+//   3. le voile #rotate-gate (index.html + [PORTRAIT-LOCK] dans style.css),
+//      purement visuel, qui prend le relais dans un onglet ordinaire.
+function lockPortrait(){
+  try{
+    const so=screen&&screen.orientation;
+    if(so&&typeof so.lock==='function'){
+      const r=so.lock('portrait');
+      if(r&&typeof r.catch==='function')r.catch(()=>{});
+    }
+  }catch(e){/* verrou refusé : le voile CSS prend le relais */}
+}
+
 function mountEmblems(){
   document.querySelectorAll('.login-emblem').forEach(el=>{
     if(!el.firstElementChild)el.innerHTML=EMBLEM_SVG;
@@ -395,6 +447,7 @@ document.getElementById('intro-close')?.addEventListener('click',()=>{
 // ----------------------------------------------------------------
 function initApp(){
   mountEmblems();
+  lockPortrait();
   // accountsBoot() peut entrer directement dans le jeu (compte déjà connu,
   // voir js/accounts.js) et donc faire tourner le cube dès le démarrage —
   // il lui faut #cube déjà repéré par cube-nav.js (son propre init(), posé

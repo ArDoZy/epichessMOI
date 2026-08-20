@@ -502,13 +502,18 @@ function updateStatus(gs){
     }
     return;
   }
-  if(check){bar.textContent='Échec ! Tour : '+(t===playerCol?'Vous':oppLabel);bar.className='status-bar check';playSound('check');}
+  // LE BANDEAU NE DIT PLUS QU'UNE CHOSE : à qui de jouer. Il a porté trois
+  // formulations pour deux états (« À vous de jouer », « Au tour de votre
+  // adversaire… », « Cinabre réfléchit… ») ; celle qui nommait l'adversaire
+  // obligeait à se rappeler QUI est Cinabre pour savoir si l'on attend ou si
+  // l'on joue. Deux phrases, toujours les mêmes, se lisent d'un coup d'œil au
+  // milieu d'une partie — le nom de l'adversaire, lui, est déjà en haut de
+  // l'écran.
+  const TURN_YOU='À votre tour';
+  const TURN_OPP='Au tour de votre adversaire';
+  if(check){bar.textContent='Échec ! '+(t===playerCol?TURN_YOU:TURN_OPP);bar.className='status-bar check';playSound('check');}
   else{
-    if(t===aiCol&&gs.multiplayer){
-      bar.textContent='Au tour de votre adversaire…';
-    }else if(t===aiCol){
-      bar.textContent=oppLabel+' réfléchit…';
-    }else bar.textContent='À vous de jouer';
+    bar.textContent=(t===aiCol)?TURN_OPP:TURN_YOU;
     bar.className='status-bar '+(t===aiCol?'thinking':'ok');
   }
 }
