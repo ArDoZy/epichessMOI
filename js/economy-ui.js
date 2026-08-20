@@ -154,13 +154,85 @@ document.getElementById('streak-modal')?.addEventListener('click',e=>{
   if(e.target.id==='streak-modal')closeStreakModal();
 });
 
+// ----------------------------------------------------------------
+// LA COLONNE DE DROITE DU MENU (ORDINATEUR)
+// ----------------------------------------------------------------
+// Sur un grand écran, le menu principal était une colonne de téléphone posée
+// au milieu de 900 px de vide. La colonne de droite (#menu-side, masquée hors
+// de body.desk) y déplie deux choses que le petit écran est OBLIGÉ d'enfermer
+// derrière un bouton : la série du jour et le prochain palier de la Voie.
+//
+// Le rail des coffres n'est PAS réécrit pour l'occasion : c'est
+// streakRowsHTML(), la même fonction que la fenêtre du bouton « Série du
+// jour », sur le même streakSnapshot(). Deux affichages, une seule source —
+// sinon les deux divergent au premier changement de règle.
+function menuNextMilestoneHTML(){
+  if(typeof UNLOCK_MILESTONES==='undefined')return '';
+  const elo=(typeof vvLoadElo==='function')?vvLoadElo():0;
+  // Le prochain jalon est le premier au-dessus de l'ELO courant : la table est
+  // déjà triée par eloRequired (voir data-pieces.js).
+  const next=UNLOCK_MILESTONES.find(u=>u.eloRequired>elo);
+  if(!next){
+    return '<div class="ms-title">Voie des Victoires</div>'+
+      '<div class="ms-sub">Tous les paliers sont franchis. Il ne reste que le classement.</div>';
+  }
+  // Le point de départ de la jauge est le jalon PRÉCÉDENT, pas zéro : sinon
+  // une barre presque pleine ne bouge plus visiblement d'un palier à l'autre
+  // en haut de l'échelle (1700 → 2000 ELO se lit comme 85 % → 100 %).
+  let from=0;
+  UNLOCK_MILESTONES.forEach(u=>{if(u.eloRequired<=elo&&u.eloRequired>from)from=u.eloRequired;});
+  const span=Math.max(1,next.eloRequired-from);
+  const pct=Math.max(0,Math.min(100,Math.round((elo-from)/span*100)));
+  // Trois natures de jalon, comme sur la Voie (voir renderVoiePage) : une
+  // créature à débloquer, un lot (perles ou exemplaires), ou un simple palier
+  // de rang.
+  let visuel='',nom='';
+  if(next.reward==='pearls'){
+    visuel=(typeof pearlAmountHTML==='function')?pearlAmountHTML(next.amount,1.5):next.amount+' perles';
+    nom='Perles';
+  }else if(next.reward==='copies'){
+    const p=PIECES.find(x=>x.id===next.copyId);
+    visuel=(typeof pieceIcon==='function')?pieceIcon(next.copyId,'n'):'';
+    nom=(p?p.name:'Exemplaires')+' ×'+next.qty;
+  }else if(next.pieceId){
+    const p=PIECES.find(x=>x.id===next.pieceId);
+    visuel=(typeof pieceIcon==='function')?pieceIcon(next.pieceId,'n'):'';
+    nom=p?p.name:'';
+  }else{
+    nom=next.label||'Palier';
+  }
+  return '<div class="ms-title">Prochain palier</div>'+
+    '<div class="ms-next-row">'+
+      (visuel?'<span class="ms-next-icon">'+visuel+'</span>':'')+
+      '<div class="ms-next-txt">'+
+        '<div class="ms-next-name">'+escH(nom)+'</div>'+
+        '<div class="ms-next-elo">'+next.eloRequired+' ELO · encore '+(next.eloRequired-elo)+'</div>'+
+      '</div>'+
+    '</div>'+
+    '<div class="ms-gauge"><span style="width:'+pct+'%"></span></div>';
+}
+function renderMenuSidePanel(){
+  const rows=document.getElementById('ms-streak-rows');
+  if(!rows)return;                       // balisage absent : rien à faire
+  const snap=streakSnapshot();
+  rows.innerHTML=streakRowsHTML(snap);
+  const sub=document.getElementById('ms-streak-sub');
+  if(sub)sub.textContent=streakSubtitle(snap);
+  const next=document.getElementById('ms-next');
+  if(next)next.innerHTML=menuNextMilestoneHTML();
+}
+
 // Conservée sous son nom historique : une douzaine d'appels y mènent
 // (connexion, fin de partie, arrivée sur la face JOUER). Le menu n'a plus de
 // rail de coffres à dessiner — il ne reste que le coffre quotidien à
-// déclencher et l'identité à rafraîchir.
+// déclencher, l'identité à rafraîchir, et la colonne de droite (ordinateur)
+// à remettre à jour. Elle se redessine même quand elle est masquée : c'est
+// une poignée de nœuds, et la calculer seulement en mode bureau obligerait
+// chaque appelant à savoir sur quel appareil il tourne.
 function renderMenuChests(){
   renderDailyChest();
   if(typeof renderMenuIdentity==='function')renderMenuIdentity();
+  renderMenuSidePanel();
 }
 
 // ----------------------------------------------------------------
