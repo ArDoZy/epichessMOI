@@ -8,6 +8,10 @@ moteur d'animation est dans `js/chest-break.js`, le décor dans `css/style.css`
 Deux coffres sont équipés : le **Pion** et le **Cavalier**. Les quatre autres
 gardent le couvercle dessiné en CSS.
 
+**Chaque rang a sa couleur** — blanc, jaune, orange, rouge, violet, bleu — et
+elle est obtenue **par le code, pas par l'image** : voir « La couleur de la
+lumière » plus bas. Il n'y a donc jamais qu'un seul jeu de planches par pièce.
+
 ## Cinq planches par pièce, trois pour tout le monde
 
 Une pièce n'est reconnaissable que tant qu'elle tient debout. Passé
@@ -43,14 +47,23 @@ manuelles elles aussi, retirer leur `hold` dans `js/chest-break.js`
 1. Produire les cinq planches, sous exactement ces noms, dans
    `assets/chests/<id>/` — l'`id` est celui de `CHESTS` (`js/data-pieces.js`) :
    `fou`, `tour`, `dame`, `roi`.
-2. Ajouter une ligne à `CHEST_BREAK`, en tête de `js/chest-break.js` :
+2. Décommenter la ligne qui l'attend dans `CHEST_BREAK`, en tête de
+   `js/chest-break.js` :
 
    ```js
    fou: chestBreakSeq('assets/chests/fou/', 'le fou'),
    ```
 
    (le second argument est le nom qui apparaît dans « Frappez le fou pour le
-   briser »)
+   briser » ; commencer par `la` — « la tour », « la dame » — accorde la
+   phrase tout seul)
+
+   La ligne n'est posée d'avance qu'en commentaire parce qu'elle donne aussi
+   au Magasin le droit d'afficher la statuette de la pièce : décommentée avant
+   que les images existent, elle y montrerait une image cassée.
+
+3. Rien pour la couleur : elle est déjà réglée pour les six rangs
+   (`CHEST_BREAK_GLOW`).
 
 Le reste du jeu n'a rien à savoir : les trois planches communes s'ajoutent
 d'elles-mêmes, la cérémonie choisit la séquence au lieu du couvercle, et le
@@ -77,6 +90,43 @@ Le reste :
 - **Fissures très lumineuses.** Le halo qui respire est une copie floutée de
   l'image fondue en `screen` : il ne fait ressortir que les zones claires.
   Des fissures ternes ne brilleront pas.
+- **Lumière CHAUDE, et elle seule colorée.** C'est la condition pour que la
+  teinte du rang puisse être posée par le code — voir la section suivante.
+  Ne pas rendre les fissures de la Dame en violet : elles doivent sortir de
+  l'atelier dorées comme celles du Pion.
+
+## La couleur de la lumière
+
+Chaque rang a sa couleur, et **aucune n'a demandé une image de plus** :
+
+| Coffre | Couleur | Coffre | Couleur |
+|---|---|---|---|
+| Pion     | blanc | Tour | rouge  |
+| Cavalier | jaune | Dame | violet |
+| Fou      | orange | Roi | bleu   |
+
+Les planches sont rendues **une seule fois, en lumière chaude** (un or à
+environ 35° de teinte), et c'est le navigateur qui fait tourner cette teinte
+vers celle du rang — `filter:hue-rotate()` sur l'image affichée, réglé par
+`CHEST_BREAK_GLOW` (`js/chest-break.js`).
+
+Ça marche parce que `hue-rotate` **laisse les gris exactement où ils sont** et
+ne déplace que ce qui est coloré. Or c'est la découpe même de ces planches :
+un marbre quasiment neutre (saturation mesurée entre 0,03 et 0,15) et une
+lumière franchement chaude (0,24 à 0,50). Faire tourner la teinte de toute
+l'image ne touche donc, en pratique, que la lumière : la statuette reste de la
+pierre, l'or des fissures devient rouge, violet ou bleu. **D'où la contrainte
+de rendu : le marbre neutre, la lumière chaude.** Une planche rendue avec un
+marbre bleuté verrait sa pierre virer avec la lumière.
+
+Les trois planches communes suivent le même chemin : c'est le même feu doré
+qui tourne, et l'explosion du Roi est bleue sans qu'on ait eu à dessiner six
+explosions. La gerbe de lumière, les étincelles et le voile blanc du flash,
+eux, sont dessinés en CSS : ils lisent directement la teinte du rang.
+
+Pour juger une couleur : `tools/chest-break-preview.html`, sélecteur
+« Teinte ». Il repeint la scène en cours sans la rejouer, et n'importe quel
+jeu de planches sert à juger n'importe quelle couleur.
 
 ## Poids
 

@@ -19,6 +19,11 @@
 //   tremblement à partir de la troisième fissure, la pièce vibre en continu
 //               entre deux frappes : elle annonce qu'elle va lâcher
 //   éclats      des étincelles projetées depuis le centre
+//   teinte      la couleur du rang. Les planches sont rendues en lumière
+//               chaude et le navigateur fait tourner cette teinte : blanche
+//               pour le Pion, jaune pour le Cavalier, orange, rouge, violette
+//               et bleue pour les quatre autres. Aucune image n'est doublée
+//               (voir CHEST_BREAK_GLOW)
 //
 // Pourquoi empiler les images plutôt que les remplacer : chaque image
 // contient tout ce qu'avait la précédente PLUS des fissures en trop. Comme
@@ -143,7 +148,9 @@ function chestBreakSeq(dir,piece){
   return {
     dir:dir,
     stages:[
-      {src:'01-intact.webp',   hint:'Frappez '+piece+' pour le briser', fade:260},
+      // « Frappez la tour pour LA briser » : l'accord suit le nom donné, sans
+      // quoi la Tour et la Dame parleraient au masculin.
+      {src:'01-intact.webp',   hint:'Frappez '+piece+' pour '+(/^la /.test(piece)?'la':'le')+' briser', fade:260},
 
       {src:'02-fissure.webp',  hint:'Encore',            fade:210, shake:7,  zoom:1.045,
        flash:.42, fdur:280, bloom:[.10,.26], bt:'3.2s', sparks:8,  snd:[210,320]},
@@ -167,14 +174,99 @@ function chestBreakSeq(dir,piece){
   };
 }
 
+// Un coffre n'entre ici QUE quand ses cinq planches sont dans le dépôt : la
+// ligne est ce qui donne au Magasin le droit d'afficher sa statuette
+// (chestBreakPoster, plus bas), et une ligne posée d'avance montrerait une
+// image cassée en attendant les images. Les quatre autres attendent donc,
+// prêtes à décommenter — leur COULEUR, elle, est déjà réglée
+// (CHEST_BREAK_GLOW) : le jour où assets/chests/fou/ est rempli, la ligne
+// suffit, l'orange du Fou vient avec.
 const CHEST_BREAK={
   pion:    chestBreakSeq('assets/chests/pion/',    'le pion'),
   cavalier:chestBreakSeq('assets/chests/cavalier/','le cavalier'),
+  // fou:  chestBreakSeq('assets/chests/fou/',     'le fou'),
+  // tour: chestBreakSeq('assets/chests/tour/',    'la tour'),
+  // dame: chestBreakSeq('assets/chests/dame/',    'la dame'),
+  // roi:  chestBreakSeq('assets/chests/roi/',     'le roi'),
 };
 
 function chestBreakFor(chestId){
   return (chestId&&CHEST_BREAK[chestId])||null;
 }
+
+// ----------------------------------------------------------------
+// LA COULEUR DE LA LUMIÈRE — UNE TEINTE PAR COFFRE, SANS UNE IMAGE DE PLUS
+// ----------------------------------------------------------------
+// Chaque rang a sa couleur : le Pion est blanc, le Cavalier jaune, le Fou
+// orange, la Tour rouge, la Dame violette, le Roi bleu. On la voit à deux
+// endroits, et ce sont les deux qui coûtent cher à redessiner : la lumière
+// qui sort des fissures, et l'explosion.
+//
+// LES PLANCHES NE SONT PAS REDESSINÉES POUR AUTANT. Elles sont rendues une
+// fois, en lumière chaude — un or à ~35° de teinte, mesuré sur les images —
+// et c'est le NAVIGATEUR qui fait tourner cette teinte vers la couleur du
+// rang, avec `filter:hue-rotate()` sur l'image affichée.
+//
+// Pourquoi ça marche ici et pas n'importe où : hue-rotate est une matrice
+// qui laisse les gris EXACTEMENT où ils sont, et ne déplace que ce qui est
+// coloré. Or c'est précisément la découpe de ces planches — un marbre
+// quasiment neutre (saturation mesurée : 0,03 à 0,15) et une lumière
+// franchement chaude (0,24 à 0,50). Faire tourner la teinte de toute
+// l'image ne touche donc, en pratique, que la lumière : la statuette reste
+// de la pierre, l'or des fissures devient bleu, violet ou rouge. Un calque
+// de couleur posé par-dessus, lui, aurait teinté le marbre avec.
+//
+// Le même réglage sert aux trois planches communes (l'explosion) : c'est le
+// même feu doré qui tourne, et l'explosion du Roi est donc bleue sans qu'on
+// ait eu à dessiner six explosions.
+//
+//   rot  rotation de teinte (deg). 0 = les planches telles qu'elles sont
+//        rendues, c'est-à-dire l'orange : le Fou n'en demande presque pas.
+//   sat  saturation APRÈS rotation. Une grande rotation délave (la matrice
+//        n'est qu'une approximation), on rattrape ici.
+//   lum  luminosité AVANT rotation. Les planches d'explosion sont
+//        surexposées — du blanc à 98 % de valeur — et un blanc ne prend
+//        aucune teinte : les assombrir d'un cheveu les fait redescendre
+//        du plafond, où la couleur peut enfin se poser. 1 = intact.
+//   h    teinte (deg) de ce qui est DESSINÉ en CSS par-dessus les planches :
+//        la gerbe de lumière, les étincelles, le voile blanc du flash.
+//   hs   saturation de ces mêmes dessins. 0 % = du blanc pur (le Pion).
+//
+// Les valeurs ont été calées en simulant les primitives de filtre CSS sur
+// les vraies planches, teinte cible par teinte cible ; elles se retouchent
+// à vue dans tools/chest-break-preview.html, qui a un sélecteur de couleur.
+const CHEST_BREAK_GLOW={
+  pion:    {rot:0,    sat:0.12, lum:1.00, h:42,  hs:'0%'},   // blanc
+  cavalier:{rot:19,   sat:1.35, lum:1.00, h:48,  hs:'92%'},  // jaune
+  fou:     {rot:-7,   sat:1.30, lum:1.00, h:30,  hs:'95%'},  // orange
+  tour:    {rot:-45,  sat:1.85, lum:0.93, h:4,   hs:'92%'},  // rouge
+  dame:    {rot:-128, sat:1.80, lum:0.90, h:285, hs:'85%'},  // violet
+  roi:     {rot:172,  sat:1.70, lum:0.90, h:205, hs:'92%'},  // bleu
+};
+
+// La teinte neutre : les planches telles qu'elles sont rendues. C'est ce que
+// reçoit un coffre absent de la table — mieux vaut la lumière d'origine
+// qu'une scène qui refuse de s'afficher.
+const CHEST_BREAK_GLOW0={rot:0,sat:1,lum:1,h:42,hs:'88%'};
+
+function chestBreakGlow(chestId){
+  return CHEST_BREAK_GLOW[chestId]||CHEST_BREAK_GLOW0;
+}
+
+// Pose les cinq variables sur la scène. Tout le reste est en CSS : les
+// images et le halo lisent rot/sat/lum, la gerbe, les étincelles et le
+// voile lisent h/hs. Repeindre en cours de séquence est donc gratuit — le
+// banc d'essai s'en sert pour comparer deux couleurs sans rejouer.
+function chestBreakPaint(host,chestId){
+  if(!host)return;
+  const g=chestBreakGlow(chestId);
+  host.style.setProperty('--pb-rot',g.rot+'deg');
+  host.style.setProperty('--pb-sat',g.sat);
+  host.style.setProperty('--pb-lum',g.lum);
+  host.style.setProperty('--pb-h',g.h);
+  host.style.setProperty('--pb-hs',g.hs);
+}
+
 function pbSrc(cfg,i){
   const st=cfg.stages[i],s=st.src;
   // Une source absolue (data:, blob:, http…) court-circuite le dossier : la
@@ -312,6 +404,10 @@ function chestBreakMount(chestId,onDone){
     '<div class="pb-flash"></div><div class="pb-sparks"></div>'+
     '<div class="pb-white"></div>';
   host.className='pbreak';
+  // La couleur du rang, posée avant la première image : les fissures du
+  // Cavalier ne doivent pas s'allumer en orange pour redevenir jaunes à la
+  // frappe suivante.
+  chestBreakPaint(host,chestId);
   host.hidden=false;
 
   const shake=host.querySelector('.pb-shake'),
