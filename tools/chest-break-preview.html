@@ -29,6 +29,12 @@
   Le réglage lui-même (secousses, halo, durées) est dans la table
   CHEST_BREAK, en tête de js/chest-break.js.
 
+  Le sélecteur « Teinte » rejoue la scène avec la COULEUR d'un autre rang
+  (CHEST_BREAK_GLOW, js/chest-break.js) sans toucher aux planches : c'est là
+  qu'on juge si le violet de la Dame ou le bleu du Roi tiennent sur des
+  images rendues, elles, en lumière chaude. Il repeint à chaud — inutile de
+  rejouer pour comparer deux couleurs.
+
   Ouvrir :  npm run dev   puis   /tools/chest-break-preview.html
             ?chest=cavalier   pour régler le Cavalier plutôt que le Pion
   (le protocole file:// bloque le chargement des images, il faut un
@@ -65,6 +71,10 @@
 <div class="pv-bar">
   <button id="pv-replay">Rejouer</button>
   <button id="pv-swap">Autre coffre</button>
+  <label style="text-decoration:none">Teinte
+    <select id="pv-glow" style="font:inherit;margin-left:6px;padding:6px 8px;border-radius:8px;
+      border:1px solid rgba(255,255,255,.18);background:#111820;color:#cfe0ee"></select>
+  </label>
   <label>Utiliser mes images<input type="file" id="pv-files" accept="image/*" multiple></label>
   <span class="pv-src" id="pv-src">…</span>
 </div>
@@ -95,6 +105,25 @@ document.getElementById('chest-title').textContent=
 document.getElementById('pv-swap').addEventListener('click',()=>{
   location.search='?chest='+IDS[(IDS.indexOf(CHEST)+1)%IDS.length];
 });
+
+// ----------------------------------------------------------------
+// LA TEINTE
+// ----------------------------------------------------------------
+// Les planches d'un coffre servent à juger TOUTES les couleurs : ce sont les
+// mêmes images, seule la rotation de teinte change. On peut donc regarder le
+// bleu du Roi sur la statuette du Pion, ce qui est exactement ce qu'il faut
+// pour décider — la couleur se juge sur des fissures, pas sur une pièce.
+const GLOW_IDS=Object.keys(CHEST_BREAK_GLOW);
+const glowSel=document.getElementById('pv-glow');
+glowSel.innerHTML=GLOW_IDS.map(id=>{
+  const g=CHEST_BREAK_GLOW[id];
+  return '<option value="'+id+'">'+id+' ('+g.rot+'° / '+g.sat+' / '+g.lum+')</option>';
+}).join('');
+glowSel.value=GLOW_IDS.indexOf(CHEST)>=0?CHEST:GLOW_IDS[0];
+// chestBreakPaint ne fait que poser cinq variables CSS : repeindre au milieu
+// d'une frappe est sans effet de bord, l'animation en cours continue.
+function paint(){chestBreakPaint(document.getElementById('chest-break'),glowSel.value);}
+glowSel.addEventListener('change',paint);
 
 const STAGES=CFG.stages;
 const NAMES=STAGES.map(s=>s.src);
@@ -236,6 +265,10 @@ function play(){
     document.getElementById('chest-modal').classList.add('opening');
     fakeLoot(++lootN,LOOT_TOTAL);
   });
+  // chestBreakMount vient de repeindre avec la couleur du coffre réglé : on
+  // remet celle qui est choisie dans la barre, sans quoi « Rejouer »
+  // annulerait le sélecteur.
+  paint();
 }
 function useSources(srcs,label){
   CFG.dir='';
