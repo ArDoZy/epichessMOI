@@ -21,8 +21,9 @@
 //   éclats      des étincelles projetées depuis le centre
 //   teinte      la couleur du rang. Les planches sont rendues en lumière
 //               chaude et le navigateur fait tourner cette teinte : blanche
-//               pour le Pion, jaune pour le Cavalier, orange, rouge, violette
-//               et bleue pour les quatre autres. Aucune image n'est doublée
+//               pour le Pion, jaune pour le Cavalier, orange pour le Fou,
+//               rouge, violette et bleue pour les trois autres. Aucune image
+//               n'est doublée
 //               (voir CHEST_BREAK_GLOW)
 //
 // Pourquoi empiler les images plutôt que les remplacer : chaque image
@@ -32,7 +33,7 @@
 // de POUSSER, là où un remplacement les ferait clignoter — et il n'y a jamais
 // de creux sombre au milieu du fondu, contrairement à un vrai fondu croisé.
 //
-// Le Pion et le Cavalier sont équipés. Les quatre autres gardent le
+// Le Pion, le Cavalier et le Fou sont équipés. Les trois autres gardent le
 // couvercle dessiné en CSS (voir .chest dans css/style.css) : la cérémonie
 // choisit toute seule, selon que le coffre a une séquence d'images
 // utilisable ou non (chestBreakReady).
@@ -177,14 +178,14 @@ function chestBreakSeq(dir,piece){
 // Un coffre n'entre ici QUE quand ses cinq planches sont dans le dépôt : la
 // ligne est ce qui donne au Magasin le droit d'afficher sa statuette
 // (chestBreakPoster, plus bas), et une ligne posée d'avance montrerait une
-// image cassée en attendant les images. Les quatre autres attendent donc,
+// image cassée en attendant les images. Les trois autres attendent donc,
 // prêtes à décommenter — leur COULEUR, elle, est déjà réglée
-// (CHEST_BREAK_GLOW) : le jour où assets/chests/fou/ est rempli, la ligne
-// suffit, l'orange du Fou vient avec.
+// (CHEST_BREAK_GLOW) : le jour où assets/chests/tour/ est rempli, la ligne
+// suffit, le rouge de la Tour vient avec.
 const CHEST_BREAK={
   pion:    chestBreakSeq('assets/chests/pion/',    'le pion'),
   cavalier:chestBreakSeq('assets/chests/cavalier/','le cavalier'),
-  // fou:  chestBreakSeq('assets/chests/fou/',     'le fou'),
+  fou:     chestBreakSeq('assets/chests/fou/',     'le fou'),
   // tour: chestBreakSeq('assets/chests/tour/',    'la tour'),
   // dame: chestBreakSeq('assets/chests/dame/',    'la dame'),
   // roi:  chestBreakSeq('assets/chests/roi/',     'le roi'),
