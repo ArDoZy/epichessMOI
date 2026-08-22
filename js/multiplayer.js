@@ -1075,7 +1075,7 @@ function mpWaitStop(){
 // ligne de plus dans ce tableau, il n'y a rien d'autre à toucher — un tips est
 // tiré au sort à chaque entrée en attente (mpRenderTip).
 const MP_TIPS=[
-  'Les pièces primordiales furent les premières expériences du savant, c\'est pour cela qu\'elles n\'ont pas de pouvoir.',
+  'Les pièces primordiales furent les premières expériences des Alchimistes, c\'est pour cela qu\'elles n\'ont pas de pouvoir.',
 ];
 function mpRenderTip(){
   const el=document.getElementById('mp-tip');

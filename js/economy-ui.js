@@ -494,8 +494,8 @@ function dailyChestBusy(){
   if(document.querySelector('.cube-face[data-face="game"].is-front'))return true;
   if(document.querySelector('.page.active'))return true;
   if(_chestState)return true;                                      // coffre déjà ouvert
-  if(typeof tutoActive==='function'&&tutoActive())return true;      // le savant parle
-  // Tutoriel pas encore terminé : le savant distribue déjà ses propres
+  if(typeof tutoActive==='function'&&tutoActive())return true;      // l'Alchimiste parle
+  // Tutoriel pas encore terminé : l'Alchimiste distribue déjà ses propres
   // coffres et enchaîne les exercices, un septième coffre surgissant au
   // milieu de sa visite couperait son fil. Le quotidien attendra la sortie.
   if(typeof tutoDone==='function'&&!tutoDone())return true;
@@ -503,7 +503,7 @@ function dailyChestBusy(){
     (el.classList.contains('show')||el.classList.contains('active')||
      el.style.display==='flex');};
   if(shown('result-modal')||shown('chest-modal')||shown('confirm-modal')||
-     shown('mp-modal')||shown('intro-modal')||shown('pseudo-gate')||
+     shown('mp-modal')||shown('lore-intro')||shown('pseudo-gate')||
      shown('streak-modal'))return true;
   return false;
 }

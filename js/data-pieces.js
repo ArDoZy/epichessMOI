@@ -85,7 +85,7 @@ const AI_OPPONENTS=[
   {id:'cendre',name:'Cendre',title:'Balayeuse de l\'atelier',elo:150,tier:0,
    accent:'#8b8578',style:'erratique',budget:12,
    timeMs:0,depthCap:1,slack:900,blunder:0.34,
-   desc:'Elle a vu jouer par-dessus l\'épaule du savant, jamais rien de plus.'},
+   desc:'Elle a vu jouer par-dessus l\'épaule d\'un Alchimiste, jamais rien de plus.'},
   {id:'suie',name:'Suie',title:'Souffleur de verre',elo:300,tier:0,
    accent:'#6f7a86',style:'gourmand',budget:14,
    timeMs:0,depthCap:1,slack:620,blunder:0.24,
@@ -129,7 +129,7 @@ const AI_OPPONENTS=[
   {id:'athanor',name:'L\'Athanor',title:'Le four qui ne s\'éteint pas',elo:2300,tier:5,
    accent:'#c9a84c',style:'equilibre',budget:24,
    timeMs:5000,depthCap:30,slack:0,blunder:0,
-   desc:'Le savant l\'a allumé une fois et n\'a jamais su l\'arrêter. Il n\'oublie rien.'},
+   desc:'Un Alchimiste l\'a allumé une fois et n\'a jamais su l\'arrêter. Il n\'oublie rien.'},
 ];
 function aiOpponentById(id){return AI_OPPONENTS.find(o=>o.id===id)||AI_OPPONENTS[0];}
 function aiOpponentIndex(id){const i=AI_OPPONENTS.findIndex(o=>o.id===id);return i<0?0:i;}

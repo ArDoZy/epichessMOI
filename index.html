@@ -22,7 +22,7 @@
      formulaire et un bouton « i » qui y renvoie.
      ============================================================ -->
 <title>Epic Chess, variante d'échecs alchimique : composez votre armée</title>
-<meta name="description" content="Un savant fou, dans un laboratoire d'échecs oublié, a fait naître des créatures de l'alchimie. Composez votre armée et affrontez d'autres esprits dérangés."/>
+<meta name="description" content="Les Alchimistes ont insufflé la vie aux pièces d'échecs. Composez votre armée de créatures et affrontez les autres Alchimistes."/>
 <link rel="canonical" href="https://epichess.app/"/>
 <meta name="robots" content="index,follow,max-snippet:-1,max-image-preview:large,max-video-preview:-1"/>
 <meta name="author" content="Epic Chess"/>
@@ -36,13 +36,13 @@
      description seuls, ce qui est exact plutôt que cassé. -->
 <meta property="og:site_name" content="Epic Chess"/>
 <meta property="og:title" content="Epic Chess, variante d'échecs alchimique"/>
-<meta property="og:description" content="Un savant fou, dans un laboratoire d'échecs oublié, a fait naître des créatures de l'alchimie. Composez votre armée et affrontez d'autres esprits dérangés."/>
+<meta property="og:description" content="Les Alchimistes ont insufflé la vie aux pièces d'échecs. Composez votre armée de créatures et affrontez les autres Alchimistes."/>
 <meta property="og:type" content="website"/>
 <meta property="og:url" content="https://epichess.app/"/>
 <meta property="og:locale" content="fr_FR"/>
 <meta name="twitter:card" content="summary"/>
 <meta name="twitter:title" content="Epic Chess, variante d'échecs alchimique"/>
-<meta name="twitter:description" content="Un savant fou, dans un laboratoire d'échecs oublié, a fait naître des créatures de l'alchimie. Composez votre armée et affrontez d'autres esprits dérangés."/>
+<meta name="twitter:description" content="Les Alchimistes ont insufflé la vie aux pièces d'échecs. Composez votre armée de créatures et affrontez les autres Alchimistes."/>
 
 <!-- Une seule icône, vectorielle : elle sert d'onglet, d'icône d'écran
      d'accueil et de vignette de manifeste (voir site.webmanifest).
@@ -77,7 +77,7 @@
       "@id": "https://epichess.app/#game",
       "name": "Epic Chess",
       "url": "https://epichess.app/",
-      "description": "Epic Chess est une variante d'échecs gratuite jouable dans le navigateur. Dans un laboratoire d'alchimie abandonné, un savant fou a mêlé les pièces d'un jeu d'échecs à des créatures alchimiques. Avant chaque partie, le joueur compose son armée de 5 pièces (1 Monarque, 1 Général et 3 créatures) dans une limite de 24 points, puis affronte un autre joueur en ligne ou l'un des douze adversaires du laboratoire, une galerie d'IA nommées allant de 150 à 2300 ELO, sur un échiquier classique 8×8. Tous les duels sont classés. Les pièces se possèdent en exemplaires et se risquent à chaque partie.",
+      "description": "Epic Chess est une variante d'échecs gratuite jouable dans le navigateur. Dans un monde d'échecs brisé par la révolte des pions, les Alchimistes s'affrontent avec des créatures nées de leur art. Avant chaque partie, le joueur compose son armée de 5 pièces (1 Monarque, 1 Général et 3 créatures) dans une limite de 24 points, puis affronte un autre joueur en ligne ou l'un des douze adversaires du laboratoire, une galerie d'IA nommées allant de 150 à 2300 ELO, sur un échiquier classique 8×8. Tous les duels sont classés. Les pièces se possèdent en exemplaires et se risquent à chaque partie.",
       "inLanguage": "fr",
       "genre": ["Jeu de stratégie", "Variante d'échecs", "Jeu de réflexion"],
       "gamePlatform": "Navigateur web",
@@ -103,7 +103,7 @@
       "@id": "https://epichess.app/#website",
       "url": "https://epichess.app/",
       "name": "Epic Chess",
-      "description": "Un savant fou, dans un laboratoire d'échecs oublié, a fait naître des créatures de l'alchimie. Composez votre armée et affrontez d'autres esprits dérangés.",
+      "description": "Les Alchimistes ont insufflé la vie aux pièces d'échecs. Composez votre armée de créatures et affrontez les autres Alchimistes.",
       "inLanguage": "fr",
       "about": {"@id": "https://epichess.app/#game"}
     },
@@ -160,30 +160,16 @@
   </div>
 </div>
 
-<!-- PARCHEMIN D'ACCUEIL : affiché juste après la création d'un nouveau
-     compte (voir enterAccount() dans js/accounts.js et showIntroModal() dans
-     js/main.js), pas à l'arrivée sur le site : masqué par défaut ici. -->
-<div class="intro-modal" id="intro-modal" style="display:none">
-  <div class="intro-parchment">
-    <div class="intro-parchment-inner">
-      <!-- L'EMBLÈME, ET PLUS UNE FIOLE ANONYME. Le parchemin est le premier
-           écran d'un compte neuf : il portait une fiole d'alchimiste
-           décorative (.vial), le même dessin que les états vides du reste du
-           jeu, qui ne disait rien de plus que « alchimie ». C'est la place du
-           sceau — il se lit ici à l'encre du parchemin (voir .intro-emblem
-           dans css/style.css), pas en laiton sur ardoise. -->
-      <div class="game-emblem intro-emblem"></div>
-      <h2 class="intro-title">Bienvenue, apprenti alchimiste</h2>
-      <p class="intro-p">Dans ce laboratoire abandonné, un savant fou a fusionné les pièces d'un jeu d'échecs ordinaire avec des créatures nées de l'alchimie. Le résultat : <strong>Epic Chess</strong>, une variante où chaque créature a son propre pouvoir et ses propres déplacements.</p>
-      <ul class="intro-list">
-        <li><strong>Composez votre armée</strong> : Choisissez 1 Monarque, 1 Général et 3 créatures de votre choix, respectant une limite de 24 points.</li>
-        <li><strong>Défiez un adversaire</strong> : Affrontez des joueurs du monde entier ainsi que des armées toujours différentes.</li>
-        <li><strong>Avancez dans la voie des victoires</strong> : Débloquez de nouvelles créatures qui rejoindront vos soldats.</li>
-      </ul>
-      <button class="btn btn-gold intro-close" id="intro-close">Continuer</button>
-    </div>
-  </div>
-</div>
+<!-- LE LORE, EN QUATRE PAGES PLEIN ÉCRAN.
+     Affiché juste après la création d'un nouveau compte (voir enterAccount()
+     dans js/accounts.js et showLoreIntro() dans js/lore-intro.js), pas à
+     l'arrivée sur le site : masqué par défaut ici.
+     Le conteneur est VIDE : les quatre pages sont construites par
+     js/lore-intro.js, qui porte aussi le texte — quatre blocs identiques à un
+     chiffre et un paragraphe près, personne ne veut les maintenir en double.
+     Il a remplacé le parchemin d'accueil, qui listait les règles du jeu : le
+     tutoriel les MONTRE juste après, ce mur de texte faisait doublon. -->
+<div class="lore-intro" id="lore-intro" style="display:none" role="dialog" aria-modal="true" aria-label="L'histoire d'Epic Chess"></div>
 
 <!-- LE BANDEAU DE COMPTE A ÉTÉ SUPPRIMÉ. Il occupait une bande pleine
      largeur en haut de CHAQUE écran pour n'y porter qu'un rond avec l'initiale
@@ -201,7 +187,7 @@
      chaque ouverture du jeu — le temps que les scripts se chargent et que le
      compte enregistré soit reconnu (accountsBoot, js/accounts.js).
      C'est maintenant un simple voile masqué par défaut (`display:none` en
-     dur ci-dessous, comme #intro-modal), que accountsBoot n'affiche QUE s'il
+     dur ci-dessous, comme #lore-intro), que accountsBoot n'affiche QUE s'il
      n'y a aucun pseudo enregistré. Un joueur qui revient ne le voit jamais,
      pas même une image. -->
 <div class="pseudo-gate" id="pseudo-gate" style="display:none">
@@ -209,7 +195,7 @@
     <!-- L'emblème (le sceau d'alchimiste) est injecté par mountEmblems()
          dans js/main.js : un seul tracé, tous les emplacements. La classe
          `game-emblem` est le crochet, `login-emblem` ne règle que la taille. -->
-    <div class="login-logo"><div class="game-emblem login-emblem"></div><h1>EPIC CHESS</h1><p>Un savant fou, dans un laboratoire d'échecs oublié, a fait naître des créatures de l'alchimie. Composez votre armée et affrontez d'autres esprits dérangés.</p></div>
+    <div class="login-logo"><div class="game-emblem login-emblem"></div><h1>EPIC CHESS</h1><p>Les Alchimistes ont insufflé la vie aux pièces d'échecs. Composez votre armée de créatures et affrontez les autres Alchimistes.</p></div>
     <!-- UN SEUL COMPTE, toujours connecté : pas de mot de passe, pas de
          changement de compte, pas de déconnexion (voir js/accounts.js). -->
     <div class="login-card">
@@ -844,7 +830,7 @@
 <!-- Racine des cinématiques d'entrée et de fin de combat (js/cinematics.js) -->
 <div id="cine-root"></div>
 
-<!-- TUTORIEL (js/tutorial.js) : le savant fou fait visiter le laboratoire.
+<!-- TUTORIEL (js/tutorial.js) : l'Alchimiste fait visiter le laboratoire.
      Le projecteur ne capte aucun clic, la vraie interface reste utilisable
      dessous : c'est ce qui permet aux étapes d'attendre un vrai clic sur un
      vrai bouton. -->
@@ -856,7 +842,7 @@
       <!-- Le compteur d'étapes est rempli par tutoRenderProgress()
            (js/tutorial.js) : sans lui on ne sait jamais s'il reste deux
            répliques ou vingt. -->
-      <div class="tuto-name">Le Savant <span class="tuto-progress" id="tuto-progress"></span></div>
+      <div class="tuto-name">L'Alchimiste <span class="tuto-progress" id="tuto-progress"></span></div>
       <div class="tuto-text" id="tuto-text"></div>
       <div class="tuto-hint" id="tuto-hint"></div>
     </div>
@@ -989,6 +975,7 @@
 <script src="js/economy-ui.js"></script>
 <script src="js/tuto-drill.js"></script>
 <script src="js/tutorial.js"></script>
+<script src="js/lore-intro.js"></script>
 <script src="js/settings-admin.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/multiplayer.js"></script>

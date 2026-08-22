@@ -4,7 +4,7 @@
    Structure de ce fichier (recherchez les tags [SECTION] pour naviguer) :
      [THEME]        variables CSS clair/sombre + reset
      [COMMON]       boutons, notifications, typographie partagée
-     [INTRO]        parchemin d'accueil (première visite)
+     [LORE]         les quatre pages du Lore (création du compte)
      [ACCOUNTS]     page de connexion, liste comptes, modal mot de passe, cab (barre compte)
      [AI-LEVEL]     modal de choix d'instructeur IA
      [BUILDER]      page de composition d'armée (filtres, cartes de pièces, slots)
@@ -224,37 +224,99 @@ button,.btn,.cube-arrow,.jouer-btn,.chest-card,.army-card,.adv-card,
 .ambient-bubbles span:nth-child(6){left:93%;width:4px;height:4px;animation-duration:10s;animation-delay:4s}
 @keyframes ambientRise{0%{transform:translateY(0);opacity:0}8%{opacity:.7}92%{opacity:.3}100%{transform:translateY(-115vh);opacity:0}}
 
-/* [INTRO] ========================================================= */
-/* Parchemin d'accueil, affiché une seule fois (voir showIntroModal() dans
-   js/main.js). Volontairement indépendant du thème clair/sombre : un
-   vieux parchemin reste un vieux parchemin, jour ou nuit. */
-.intro-modal{position:fixed;inset:0;background:rgba(8,6,2,.86);display:flex;
-  align-items:center;justify-content:center;z-index:9500;padding:20px;
-  animation:introFadeIn .3s ease both}
-@keyframes introFadeIn{from{opacity:0}to{opacity:1}}
-.intro-parchment{position:relative;max-width:620px;width:100%;max-height:88vh;overflow-y:auto;
-  border-radius:6px 16px 8px 20px/16px 6px 20px 8px;
+/* [LORE] ========================================================== */
+/* LES QUATRE PAGES DU LORE, à la création d'un compte (voir
+   js/lore-intro.js). Elles ont remplacé le parchemin d'accueil, qui listait
+   les règles du jeu — le tutoriel les montre juste après.
+   Volontairement INDÉPENDANT DU THÈME clair/sombre : c'est une cinématique,
+   elle se joue dans le noir comme au cinéma, quel que soit le réglage.
+   Aucune image : le décor est un damier dessiné en CSS, très en dessous du
+   seuil de lisibilité, plus deux halos dorés. */
+.lore-intro{position:fixed;inset:0;z-index:9600;display:flex;
+  align-items:center;justify-content:center;
   background:
-    var(--parchment-noise),
-    radial-gradient(ellipse at 15% 8%,rgba(139,105,46,.25),transparent 55%),
-    radial-gradient(ellipse at 88% 95%,rgba(90,60,20,.3),transparent 55%),
-    linear-gradient(160deg,#e8d8ad,#d9c491);
-  background-blend-mode:overlay,normal,normal,normal;
-  box-shadow:0 0 0 1px #7a5f2e,0 0 0 7px #dccc9c,0 0 0 8px #7a5f2e,0 20px 60px rgba(0,0,0,.55);
-  animation:introPop .35s cubic-bezier(.22,.61,.36,1) both}
-@keyframes introPop{from{transform:scale(.92) translateY(14px);opacity:0}to{transform:scale(1) translateY(0);opacity:1}}
-.intro-parchment-inner{padding:34px 32px 30px;text-align:center;color:#3a2c14}
-.intro-seal{margin:0 auto 12px}
-.intro-seal::before,.intro-seal::after{border-color:#6b4f1e!important}
-.intro-title{font-family:var(--f-display);font-weight:900;
-  font-size:clamp(20px,4.4vw,27px);color:#6b4f1e;margin-bottom:16px;letter-spacing:.5px}
-.intro-p{font-family:'Crimson Pro',Georgia,serif;font-size:15px;line-height:1.65;
-  text-align:left;margin-bottom:16px;color:#3a2c14}
-.intro-list{text-align:left;list-style:none;margin:0 0 18px;padding:0;display:flex;flex-direction:column;gap:11px}
-.intro-list li{font-family:'Crimson Pro',Georgia,serif;font-size:14px;line-height:1.55;
-  padding:10px 14px;border-left:3px solid #8a6a26;background:rgba(122,95,46,.09);border-radius:0 8px 8px 0}
-.intro-list li strong{font-family:var(--f-ui);color:#6b4f1e;font-weight:700}
-.intro-close{width:100%;font-size:13px;padding:14px 20px}
+    radial-gradient(ellipse at 50% 8%,rgba(193,154,69,.16),transparent 60%),
+    radial-gradient(ellipse at 50% 100%,rgba(18,120,106,.14),transparent 62%),
+    #0a0805;
+  animation:loreIn .5s ease both}
+/* Le damier de fond : une couche à part, pour la garder sous le texte et
+   très faible. 2 cases = 1 motif, d'où les 50 % du dégradé.
+   Le masque radial l'efface au centre : à pleine surface il tachait le texte
+   de damiers plus sombres que le fond, et un texte posé sur une grille se lit
+   moins bien qu'un texte posé sur du noir. Il ne reste donc que sur les
+   bords, là où il ne fait que suggérer l'échiquier-monde. */
+.lore-intro::before{content:'';position:absolute;inset:0;pointer-events:none;
+  background:repeating-conic-gradient(rgba(255,255,255,.5) 0% 25%,transparent 0% 50%);
+  background-size:96px 96px;opacity:.03;
+  -webkit-mask-image:radial-gradient(ellipse at 50% 50%,transparent 22%,#000 78%);
+  mask-image:radial-gradient(ellipse at 50% 50%,transparent 22%,#000 78%)}
+@keyframes loreIn{from{opacity:0}to{opacity:1}}
+.lore-intro.lore-out{animation:loreOut .42s ease both}
+@keyframes loreOut{from{opacity:1}to{opacity:0}}
+
+/* Une seule page visible à la fois : toutes empilées au même endroit, celle
+   qui porte .show est la seule à ne pas être transparente. Pas de
+   display:none — un fondu ne peut pas partir d'un élément absent.
+   CHAQUE PAGE PORTE SES PROPRES MARGES et centre son contenu elle-même,
+   plutôt que d'être un bloc centré à la main dans un conteneur rembourré :
+   sur un écran bas (fenêtre de bureau écrasée), le bloc centré débordait
+   par-dessus les points et le bouton. Ici la marge basse réserve le pied de
+   page, et un paragraphe trop grand défile au lieu de le recouvrir. */
+.lore-page{position:absolute;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;text-align:center;overflow-y:auto;
+  padding:calc(var(--safe-t) + 52px) 24px calc(var(--safe-b) + 118px);
+  opacity:0;visibility:hidden;transition:opacity .42s ease,visibility .42s}
+.lore-page.show{opacity:1;visibility:visible}
+
+/* Le chiffre du chapitre. Il n'y a pas de titre : le texte de chaque page
+   est le titre. Le chiffre ne fait que dire où l'on en est. */
+.lore-num{font-family:var(--f-display);font-weight:700;
+  font-size:clamp(15px,2.4vw,19px);letter-spacing:.22em;
+  color:#c19a45;opacity:.75;margin-bottom:clamp(20px,4vh,34px);
+  /* letter-spacing pousse le dernier caractère : on rattrape pour rester
+     optiquement centré. Et il reste mesuré : à .42em, « IV » se lisait
+     « I V », deux chiffres au lieu d'un. */
+  text-indent:.22em}
+.lore-page.show .lore-num{animation:loreRise .6s ease both}
+
+.lore-text{font-family:'Crimson Pro',Georgia,serif;font-weight:300;
+  font-size:clamp(19px,2.2vw + 9px,34px);line-height:1.62;
+  color:#f2ead9;text-wrap:pretty;max-width:min(760px,88vw)}
+/* Le texte entre juste après le chiffre : on lit le chapitre, puis on lit. */
+.lore-page.show .lore-text{animation:loreRise .7s ease .18s both}
+@keyframes loreRise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+
+/* Pied de page : les quatre points et le bouton. Fixé en bas, jamais
+   déplacé d'une page à l'autre — c'est le seul repère stable de l'écran. */
+.lore-foot{position:absolute;left:0;right:0;bottom:calc(var(--safe-b) + 28px);
+  display:flex;flex-direction:column;align-items:center;gap:18px;padding:0 24px}
+.lore-dots{display:flex;gap:9px}
+.lore-dot{width:7px;height:7px;border-radius:50%;background:rgba(242,234,217,.22);
+  transition:background .3s,transform .3s}
+.lore-dot.on{background:#c19a45;transform:scale(1.25)}
+.lore-next{min-width:190px;font-size:13px;padding:14px 28px}
+
+/* « Passer » : disponible partout, mais assez discret pour qu'on ne le lise
+   qu'en le cherchant. */
+.lore-skip{position:absolute;top:calc(var(--safe-t) + 14px);right:16px;
+  background:none;border:none;cursor:pointer;padding:8px 12px;
+  font-family:var(--f-ui);font-size:12px;font-weight:600;letter-spacing:.06em;
+  color:rgba(242,234,217,.45);transition:color .2s}
+.lore-skip:hover{color:rgba(242,234,217,.85)}
+
+/* Écran bas (fenêtre de bureau écrasée, tablette en paysage) : la hauteur
+   manque avant la largeur, et c'est la taille du texte qui doit céder — pas
+   le pied de page, qui est le seul moyen d'avancer. */
+@media(max-height:560px){
+  .lore-text{font-size:clamp(16px,1.4vw + 8px,22px);line-height:1.5}
+  .lore-num{margin-bottom:12px;font-size:14px}
+  .lore-foot{bottom:calc(var(--safe-b) + 16px);gap:12px}
+  .lore-next{padding:11px 24px}
+}
+
+/* Le fond du jeu continue de vivre derrière le voile (particules, cube) :
+   inutile de le laisser tourner pendant une cinématique opaque. */
+body.lore-open{overflow:hidden}
 
 /* [ACCOUNTS] ======================================================= */
 /* La page de connexion porte désormais le bloc de contenu SEO (.lore) sous
@@ -1274,11 +1336,6 @@ body.light .cube-facebar-btn:hover{background:#fff}
   .cube-facebar{bottom:calc(12px + var(--safe-b));gap:2px;padding:4px}
   .cube-facebar-btn{width:34px;height:34px;border-radius:9px}
 }
-@media(max-width:480px){
-  .intro-parchment-inner{padding:24px 18px 22px}
-  .intro-list li{font-size:13px;padding:8px 11px}
-}
-
 /* [DRILL] ======================================================
    Exercice de déplacement (js/tuto-drill.js) : une pièce seule, cinq
    repères à ramasser. Le plateau reprend les couleurs de l'échiquier
@@ -2261,7 +2318,6 @@ body.light .ac-del-btn{border-color:rgba(20,26,25,.14)}
 /* Pendule et bandeaux de partie. */
 body.light .gp-clock{background:#fff}
 body.light .gp-bar.gp-turn{background:linear-gradient(90deg,var(--accent-bg),var(--surface) 40%)}
-body.light .intro-close{color:#241a10}
 
 /* [MOBILE-GAME] =================================================
    Sur petit écran la partie s'empile (plateau, bandeaux, colonne latérale)
@@ -2401,7 +2457,7 @@ body.light .intro-close{color:#241a10}
    le bouton lui-même (qui doit rester un seul mot lisible de loin). */
 
 /* [TUTORIEL] ====================================================
-   Visite guidée par le savant (js/tutorial.js). Deux couches :
+   Visite guidée par l'Alchimiste (js/tutorial.js). Deux couches :
    un PROJECTEUR qui perce un trou dans un voile sombre, et une BULLE de
    dialogue (masquée pendant les batailles scriptées et les exercices). Le projecteur ne capte aucun clic : l'interface reste utilisable
    dessous, ce qui permet aux étapes d'attendre un vrai clic sur un vrai
@@ -2540,10 +2596,6 @@ body.cube-active:not(.nav-overlay) .notif-host{bottom:92px}
    un fond beige, se lisent comme deux taches délavées ; le sceau reprend donc
    ici le brun du titre (#6b4f1e), et le bouillon garde sa couleur — c'est le
    seul point vif du parchemin, comme la fiole qu'il remplace. */
-.intro-emblem{width:78px;height:78px;margin:0 auto 12px}
-.intro-emblem .em-ring,.intro-emblem .em-ring-in,.intro-emblem .em-ticks{stroke:#6b4f1e}
-.intro-emblem .em-piece,.intro-emblem .em-gem,.intro-emblem .em-stud{fill:#6b4f1e}
-.intro-emblem .em-surface{stroke:#1f6b5c;opacity:.6}
 /* La bulle du liquide monte en continu : l'emblème est vivant, comme les
    fioles du reste de l'interface. Les délais sont portés par des CLASSES et
    non par :nth-of-type — le sceau contient d'autres <circle> (anneaux, clous)
@@ -2694,7 +2746,7 @@ body.cube-active:not(.nav-overlay) .notif-host{bottom:92px}
 .ac-btns .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px}
 .ac-btns .btn svg,.ac-name-edit-btn svg{display:block}
 
-/* Compteur d'étapes du tutoriel, posé à côté du nom du savant. */
+/* Compteur d'étapes du tutoriel, posé à côté du nom de l'Alchimiste. */
 .tuto-progress{font-family:var(--f-ui);font-size:9.5px;font-weight:700;letter-spacing:1px;
   color:var(--muted);background:var(--bg);border:1px solid var(--border);
   border-radius:6px;padding:1px 7px;margin-left:6px;vertical-align:1px}

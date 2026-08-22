@@ -1,5 +1,5 @@
 // ================================================================
-// TUTORIAL.JS : le savant fou fait visiter son laboratoire
+// TUTORIAL.JS : l'Alchimiste fait visiter son laboratoire
 // ================================================================
 // Le jeu expliquait ses règles dans un parchemin de bienvenue : un mur de
 // texte, lu une fois, oublié aussitôt, et qui ne montrait rien. Or ce jeu a
@@ -7,7 +7,7 @@
 // d'armée, la possession des pièces, les coffres), et une navigation par cube
 // qu'il faut avoir vu tourner une fois.
 //
-// Le tutoriel est donc une visite guidée où le savant parle et le joueur
+// Le tutoriel est donc une visite guidée où l'Alchimiste parle et le joueur
 // AGIT. Il se déroule en deux temps :
 //
 //   1. QUATRE BATAILLES SCRIPTÉES, contre quatre instructeurs volontairement
@@ -17,7 +17,7 @@
 //      créature (Peureux, puis Fourmi, puis Éléphant de guerre), suivie de
 //      son
 //      exercice de déplacement (js/tuto-drill.js). Une défaite ne fait pas
-//      avancer : le savant propose la revanche, autant de fois qu'il faut.
+//      avancer : l'Alchimiste propose la revanche, autant de fois qu'il faut.
 //      C'est ainsi que le joueur se retrouve, à la fin, avec une armée
 //      complète (Roi, Dame, Peureux, Fourmi, Éléphant de guerre) qu'il a
 //      gagnée.
@@ -41,17 +41,17 @@
 // (pieceIcon), data-pieces.js (TUTO_INSTRUCTORS, tutoInstructorLevel),
 // game-flow.js (startGame en mode tutoCfg), economy-ui.js
 // (showChestCeremony), tuto-drill.js (drillStart).
-// Lancé par : main.js (fermeture du parchemin d'accueil, compte neuf),
+// Lancé par : lore-intro.js (fin des quatre pages du Lore, compte neuf),
 // accounts.js (reprise à la connexion) et settings-admin.js (bouton
 // « Revoir le tutoriel »).
 // ================================================================
 
 // ----------------------------------------------------------------
-// LE SAVANT
+// L'ALCHIMISTE
 // ----------------------------------------------------------------
 // Dessiné dans le même système que les pièces (js/piece-art.js) : classes
 // .b / .l / .k, deux couleurs, donc il suit le thème clair comme sombre.
-const SAVANT_SVG=
+const ALCHIMISTE_SVG=
   '<svg class="pc-svg pc-n" viewBox="0 0 100 100" aria-hidden="true">'+
     // Cheveux hirsutes, dessinés AVANT le crâne pour dépasser derrière.
     '<path class="b" d="M22 44 12 26l14 6-4-20 14 12 4-16 10 13 8-13 5 17 13-9-5 18 14-4-12 17z"/>'+
@@ -131,7 +131,7 @@ function tutoBattleArmy(battleIdx){
   return{mon:{id:'roi'},gen:{id:'dame'},extras:[...cfg.extras],placements:{},totalValue:0,_tuto:true};
 }
 
-// Lance (ou relance) la bataille n. La bulle du savant s'efface le temps du
+// Lance (ou relance) la bataille n. La bulle de l'Alchimiste s'efface le temps du
 // combat : elle occupe le bas de l'écran, exactement là où se trouve le
 // plateau.
 function tutoStartBattle(battleIdx){
@@ -186,7 +186,7 @@ function tutoOnBattleEnd(result){
 // ÉTAPES
 // ----------------------------------------------------------------
 // Chaque étape :
-//   text     réplique du savant (HTML autorisé, écrit ici, jamais saisi)
+//   text     réplique de l'Alchimiste (HTML autorisé, écrit ici, jamais saisi)
 //   at       sélecteur de l'élément à mettre en lumière (facultatif)
 //   click    sélecteur à cliquer pour avancer ; sinon bouton « Suivant »
 //   btn      libellé du bouton quand l'étape n'attend pas de clic
@@ -197,7 +197,7 @@ function tutoOnBattleEnd(result){
 //   combat   n° de bataille lancée par le bouton COMBAT du menu (le clic est
 //            intercepté par tutoInterceptCombat, appelé depuis cube-nav.js)
 //   combatStep  le bouton COMBAT fait simplement avancer d'une étape (la
-//            flèche désigne COMBAT, mais le savant a encore quelque chose à
+//            flèche désigne COMBAT, mais l'Alchimiste a encore quelque chose à
 //            dire avant que le combat ne commence)
 //   reward   {chest,piece,qty} : cérémonie de coffre qui débloque une créature
 //   drill    id de pièce : exercice de déplacement (js/tuto-drill.js)
@@ -205,15 +205,16 @@ function tutoOnBattleEnd(result){
 // enchaînent d'elles-mêmes.
 const TUTO_STEPS=[
   {
-    text:'Bien le bonjour, jeune apprenti. Comme tu le sais sans doute déjà, je suis '+
-         'l\'honorable savant qui a créé cet endroit. Je vais t\'apprendre la subtile '+
-         'science et l\'art exact de l\'alchimie. Je ne m\'attends pas à ce que tu '+
+    text:'Bien le bonjour, jeune apprenti. Je suis un <strong>Alchimiste</strong>, l\'un '+
+         'des derniers à tenir encore un laboratoire debout. Je vais t\'apprendre la '+
+         'subtile science et l\'art exact de l\'alchimie. Je ne m\'attends pas à ce que tu '+
          'comprennes vraiment la beauté des vapeurs discrètes s\'échappant du chaudron, '+
          'ni l\'explosion accompagnant la fusion.',
   },
   {
     text:'Les plus persévérants pourront même admirer la vie être insufflée dans de '+
-         'simples objets. Ne sous-estime pas l\'immense pouvoir de ces fragments de bois '+
+         'simples objets. C\'est ainsi que tout a commencé, et c\'est ainsi que tout a '+
+         'fini par brûler. Ne sous-estime pas l\'immense pouvoir de ces fragments de bois '+
          'rudement sculptés.',
   },
   // La flèche désigne COMBAT pendant cette réplique : le joueur enchaîne du
@@ -507,7 +508,7 @@ function tutoStepSkipped(step){
 // ----------------------------------------------------------------
 // ÉTAPES SANS BULLE : coffre scripté, puis exercice de déplacement
 // ----------------------------------------------------------------
-// Le coffre du tutoriel n'est PAS tiré au sort : le savant sait ce qu'il y a
+// Le coffre du tutoriel n'est PAS tiré au sort : l'Alchimiste sait ce qu'il y a
 // dedans. Il passe malgré tout par la cérémonie habituelle (economy-ui.js) et
 // par chestApply(), donc la créature est réellement débloquée et les
 // exemplaires réellement crédités.
@@ -640,7 +641,7 @@ function tutoInterceptCombat(){
 // ----------------------------------------------------------------
 // COMPTEUR D'ÉTAPES
 // ----------------------------------------------------------------
-// On ne comptait rien : le savant enchaînait une vingtaine de répliques, des
+// On ne comptait rien : l'Alchimiste enchaînait une vingtaine de répliques, des
 // batailles et des exercices, sans jamais dire où l'on en était. C'est la
 // première raison de vouloir passer un tutoriel — l'impression qu'il ne
 // finira pas. Seules les étapes PARLÉES sont numérotées : les coffres et les
@@ -706,7 +707,7 @@ function tutoRender(step){
   }
 }
 
-// Le savant affiche sa réplique directement, plutôt que de la taper lettre
+// L'Alchimiste affiche sa réplique directement, plutôt que de la taper lettre
 // par lettre : sur une vingtaine d'étapes, l'animation ralentissait la
 // lecture plus qu'elle ne la rythmait. `dataset.typing`/`_tutoFinish`
 // restent posés (à leur état « terminé ») pour les quelques endroits qui les
@@ -788,7 +789,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   const{next,box,root}=tutoEls();
   if(next)next.addEventListener('click',tutoOnNextClick);
   // « Passer le tutoriel » : toujours à portée, à côté des répliques du
-  // savant, à toutes les étapes. On confirme quand même — on saute des
+  // l'Alchimiste, à toutes les étapes. On confirme quand même — on saute des
   // batailles et trois exercices, ce n'est pas un clic anodin.
   document.getElementById('tuto-skip')?.addEventListener('click',()=>{
     if(typeof showConfirmModal==='function'){
@@ -806,6 +807,6 @@ document.addEventListener('DOMContentLoaded',()=>{
   });
   if(root){
     const portrait=document.getElementById('tuto-portrait');
-    if(portrait)portrait.innerHTML=SAVANT_SVG;
+    if(portrait)portrait.innerHTML=ALCHIMISTE_SVG;
   }
 });
