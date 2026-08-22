@@ -143,7 +143,7 @@ function startGame(colorAlreadyChosen,multiplayer,tutoCfg){
   updateMedusaParalysis(GS.board,GS);updatePretreProtection(GS.board,GS);updateGrandMaitre(GS.board,GS);
   // Les exemplaires quittent l'Armurerie MAINTENANT : ils sont sur le terrain
   // et donc en jeu (voir js/economy.js, en-tête). Rien de tel en tutoriel :
-  // ces pièces sont prêtées par le savant, les perdre ne coûte rien.
+  // ces pièces sont prêtées par l'Alchimiste, les perdre ne coûte rien.
   if(!tutoCfg&&typeof economyCommit==='function')economyCommit(currentArmyData);
   // Une partie contre un autre joueur a sa propre adresse (voir setAppPath
   // dans js/main.js) : /combat. Elle revient à l'adresse d'origine dès qu'on
@@ -162,7 +162,7 @@ function startGame(colorAlreadyChosen,multiplayer,tutoCfg){
   // l'IA jouerait derrière le rideau, sur un plateau que le joueur n'a pas
   // encore vu, et le joueur découvrirait la partie déjà entamée.
   // En tutoriel, pas de cinématique : les deux camps ont la même armée, il n'y
-  // a rien à révéler, et le savant vient de parler juste avant.
+  // a rien à révéler, et l'Alchimiste vient de parler juste avant.
   if(tutoCfg)startGameClockAndAI();
   else showArmyIntro(currentArmyData,aiArmyData);
 }
@@ -241,7 +241,7 @@ function showResultModal(result,oldElo,newElo,delta,newUnlockIds,noEloReason){
   const noteEl=document.getElementById('result-elo-note');
   if(eloRow)eloRow.style.display=noEloReason?'none':'';
   // Les batailles du tutoriel n'ont pas besoin d'être justifiées à chaque fin
-  // de partie : le savant vient de dire que c'est un entraînement. La ligne
+  // de partie : l'Alchimiste vient de dire que c'est un entraînement. La ligne
   // d'ELO disparaît, la phrase aussi. Le mode admin, lui, garde sa mention :
   // elle rappelle où l'on se trouve.
   const showNote=!!noEloReason&&noEloReason!==VV_NO_ELO_TRAINING;
@@ -321,7 +321,7 @@ function triggerEndOfGame(result){
   stopClockTick(GS);
   endCombatMusic();
   // Bataille du tutoriel : ni ELO, ni coffre de série, ni règlement
-  // d'Armurerie. C'est le savant qui commente et enchaîne (revanche jusqu'à la
+  // d'Armurerie. C'est l'Alchimiste qui commente et enchaîne (revanche jusqu'à la
   // victoire, puis coffre et exercice de déplacement).
   if(GS&&GS.tuto){
     if(typeof tutoOnBattleEnd==='function')tutoOnBattleEnd(result);

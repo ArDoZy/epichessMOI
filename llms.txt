@@ -14,10 +14,19 @@ Plateforme : navigateur web (aucune installation)
 
 ## Univers
 
-Un savant fou, dans un laboratoire d'échecs oublié, a fait naître des
-créatures de l'alchimie. Le joueur compose son armée et affronte d'autres
-esprits dérangés. Tout le jeu adopte cette esthétique de laboratoire
+Pendant des siècles, les pions servirent les rois, créés pour mourir et
+sacrifiés sans remords, pendant que les autres pièces recevaient des pouvoirs
+féeriques. Un Alchimiste leur insuffla accidentellement la vie : les pions
+découvrirent que la promotion promise à tous était un mensonge, et se
+rebellèrent — la Pawnarchy. Les royaumes s'effondrèrent, l'échiquier-monde se
+fissura, et les Alchimistes se divisèrent entre partisans de la révolte et
+tenants de l'ancien ordre. Aujourd'hui, ils s'affrontent entre eux pour
+imposer un règne à leur effigie : c'est là qu'entre le joueur, qui compose son
+armée de créatures. Tout le jeu adopte cette esthétique de laboratoire
 d'apothicaire abandonné.
+
+Ces quatre paragraphes sont racontés au joueur en quatre pages plein écran à
+la création de son compte (js/lore-intro.js).
 
 ## Règles essentielles
 
@@ -100,12 +109,12 @@ C'est la mécanique qui distingue le plus Epic Chess des autres variantes :
   du laboratoire**, une galerie d'IA nommées.
 - Un compte neuf ne possède que son **Monarque et son Général** : toutes les
   créatures s'obtiennent en jouant.
-- Un **tutoriel interactif** guide le nouveau joueur : le savant fou lui fait
+- Un **tutoriel interactif** guide le nouveau joueur : un Alchimiste lui fait
   livrer quatre batailles contre des instructeurs faibles, où les deux camps
   ont exactement la même armée. Chaque victoire ouvre un coffre qui débloque
   une créature (Peureux, puis Fourmi, puis Éléphant de guerre), suivie d'un petit
   exercice où l'on apprend son déplacement en ramassant cinq repères avec
-  elle. Le savant fait ensuite visiter le laboratoire et composer une armée.
+  elle. L'Alchimiste fait ensuite visiter le laboratoire et composer une armée.
 - Cet exercice de déplacement revient à chaque créature inédite sortie d'un
   coffre, tutoriel ou pas.
 - Les **douze adversaires** vont de 150 à 2300 ELO : Cendre (150),

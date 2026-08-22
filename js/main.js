@@ -5,7 +5,7 @@
 // l'état des filtres du builder, les listes d'armées sauvegardées, le mode
 // builder courant, showPage(), showNotif(), le menu contextuel factorisé
 // (showPieceCtxMenu) utilisé par plusieurs pages, le parchemin d'accueil
-// (showIntroModal, appelé par accounts.js à la création d'un nouveau
+// (showLoreIntro dans js/lore-intro.js, appelé par accounts.js à la création
 // compte), et l'appel d'init final.
 //
 // Dépendances : data-pieces.js (PIECES, CLASS_COLOR_VARS)
@@ -259,8 +259,8 @@ function watchDeskMode(){
 // endroit où l'identité du jeu lui apparaissait encore était l'icône
 // d'onglet, que les navigateurs gardent en cache pendant des semaines.
 // Le crochet est maintenant la classe `.game-emblem`, portée par TOUS les
-// emplacements (voile de pseudo, menu principal, parchemin d'accueil) ; les
-// classes qui l'accompagnent (`login-emblem`, `menu-emblem`, `intro-emblem`)
+// emplacements (voile de pseudo, menu principal) ; les
+// classes qui l'accompagnent (`login-emblem`, `menu-emblem`)
 // ne règlent plus que la taille et l'encre. Ajouter un emplacement = poser
 // une div `game-emblem`, rien de plus.
 function mountEmblems(){
@@ -516,22 +516,14 @@ document.addEventListener('keydown',e=>{
 });
 
 // ----------------------------------------------------------------
-// PARCHEMIN D'ACCUEIL : affiché juste après la création d'un NOUVEAU compte
-// (voir enterAccount() dans accounts.js, appelé avec isNewAccount=true depuis
-// le listener de #btn-reg), pas à l'arrivée sur le site : avant la création
-// d'un compte, il n'y a encore ni armée ni ELO à expliquer.
+// PREMIER ÉCRAN D'UN COMPTE NEUF
 // ----------------------------------------------------------------
-function showIntroModal(){
-  const modal=document.getElementById('intro-modal');
-  if(modal)modal.style.display='flex';
-}
-document.getElementById('intro-close')?.addEventListener('click',()=>{
-  const modal=document.getElementById('intro-modal');
-  if(modal)modal.style.display='none';
-  // Le savant entre en scène à la fermeture du parchemin : c'est le premier
-  // moment où le compte existe vraiment (armée vide, dotation de départ).
-  if(typeof tutoMaybeStart==='function')tutoMaybeStart();
-});
+// C'était ici : un parchemin qui listait les règles du jeu, affiché juste
+// après la création d'un compte, et dont la fermeture lançait le tutoriel.
+// Il faisait doublon avec ce même tutoriel, qui MONTRE ces règles au lieu de
+// les écrire. À sa place, les quatre pages du Lore (js/lore-intro.js,
+// showLoreIntro), appelées au même endroit par accounts.js::enterAccount et
+// qui passent la main au tutoriel de la même façon.
 
 // ----------------------------------------------------------------
 // INIT : appelé en tout dernier (voir bas de index.html)

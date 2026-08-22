@@ -144,7 +144,7 @@ const OPTIONAL_ASSET=/adversaires\/[a-z-]+\.png|backgrounds\/main-page\.png|ches
     const bad=await page.evaluate(()=>{
       const out=[];
       const slots=[...document.querySelectorAll('.game-emblem')];
-      ['login-emblem','menu-emblem','intro-emblem'].forEach(cls=>{
+      ['login-emblem','menu-emblem'].forEach(cls=>{
         if(!slots.some(el=>el.classList.contains(cls)))out.push('emplacement manquant : .'+cls);
       });
       slots.forEach(el=>{
@@ -179,9 +179,21 @@ const OPTIONAL_ASSET=/adversaires\/[a-z-]+\.png|backgrounds\/main-page\.png|ches
   await step('un compte se crée et le voile se referme',async()=>{
     await page.fill('#reg-u','SmokeTest');
     await page.click('#btn-reg');
-    await page.waitForSelector('#intro-modal',{state:'visible',timeout:8000});
-    await page.click('#intro-close');
+    await page.waitForSelector('#lore-intro',{state:'visible',timeout:8000});
     if(await page.isVisible('#pseudo-gate'))throw new Error('le voile de pseudo reste affiché après création');
+  });
+
+  // LE LORE, EN QUATRE PAGES (js/lore-intro.js). C'est le tout premier écran
+  // d'un compte neuf, et il tient le tutoriel derrière lui : s'il ne
+  // s'enchaîne pas jusqu'au bout, personne n'atteint jamais le jeu.
+  await step('les quatre pages du Lore s\'enchaînent',async()=>{
+    for(let i=0;i<4;i++){
+      const shown=await page.getAttribute('.lore-page.show','data-lore');
+      if(shown!==String(i))throw new Error('page '+i+' attendue, '+shown+' affichée');
+      await page.click('#lore-next');
+      await page.waitForTimeout(520);
+    }
+    await page.waitForSelector('#lore-intro',{state:'hidden',timeout:5000});
   });
 
   await step('le tutoriel démarre et se passe',async()=>{

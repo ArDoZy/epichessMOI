@@ -120,10 +120,10 @@ function enterAccount(username,isNewAccount){
   updateBuilderBanner();updAll();
   if(typeof renderMenuChests==='function')renderMenuChests();
   if(typeof goToMainMenu==='function')goToMainMenu();else showPage('page-builder');
-  // Parchemin d'accueil : uniquement au tout premier lancement (pas à chaque
-  // ouverture du jeu) : voir showIntroModal() dans main.js. Le tutoriel
-  // prend le relais à sa fermeture.
-  if(isNewAccount && typeof showIntroModal==='function')showIntroModal();
+  // Le Lore, en quatre pages : uniquement au tout premier lancement (pas à
+  // chaque ouverture du jeu), voir showLoreIntro() dans js/lore-intro.js. Le
+  // tutoriel prend le relais à la fin de la quatrième page.
+  if(isNewAccount && typeof showLoreIntro==='function')showLoreIntro();
   else if(typeof tutoMaybeStart==='function')tutoMaybeStart();
 }
 
