@@ -5,8 +5,8 @@ pièce, les fissures s'étendent, la statuette éclate, le socle reste vide. Le
 moteur d'animation est dans `js/chest-break.js`, le décor dans `css/style.css`
 (section `[CHEST-BREAK]`).
 
-Trois coffres sont équipés : le **Pion**, le **Cavalier** et le **Fou**. Les
-trois autres gardent le couvercle dessiné en CSS.
+Quatre coffres sont équipés : le **Pion**, le **Cavalier**, le **Fou** et la
+**Tour**. Les deux autres gardent le couvercle dessiné en CSS.
 
 **Chaque rang a sa couleur** — blanc, jaune, orange, rouge, violet, bleu — et
 elle est obtenue **par le code, pas par l'image** : voir « La couleur de la
@@ -46,15 +46,15 @@ manuelles elles aussi, retirer leur `hold` dans `js/chest-break.js`
 
 1. Produire les cinq planches, sous exactement ces noms, dans
    `assets/chests/<id>/` — l'`id` est celui de `CHESTS` (`js/data-pieces.js`) :
-   `tour`, `dame`, `roi`.
+   `dame`, `roi`.
 2. Décommenter la ligne qui l'attend dans `CHEST_BREAK`, en tête de
    `js/chest-break.js` :
 
    ```js
-   tour: chestBreakSeq('assets/chests/tour/', 'la tour'),
+   dame: chestBreakSeq('assets/chests/dame/', 'la dame'),
    ```
 
-   (le second argument est le nom qui apparaît dans « Frappez la tour pour la
+   (le second argument est le nom qui apparaît dans « Frappez la dame pour la
    briser » ; commencer par `la` — « la tour », « la dame » — accorde la
    phrase tout seul)
 
