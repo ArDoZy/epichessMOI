@@ -110,19 +110,50 @@ environ 35° de teinte), et c'est le navigateur qui fait tourner cette teinte
 vers celle du rang — `filter:hue-rotate()` sur l'image affichée, réglé par
 `CHEST_BREAK_GLOW` (`js/chest-break.js`).
 
-Ça marche parce que `hue-rotate` **laisse les gris exactement où ils sont** et
-ne déplace que ce qui est coloré. Or c'est la découpe même de ces planches :
-un marbre quasiment neutre (saturation mesurée entre 0,03 et 0,15) et une
-lumière franchement chaude (0,24 à 0,50). Faire tourner la teinte de toute
-l'image ne touche donc, en pratique, que la lumière : la statuette reste de la
-pierre, l'or des fissures devient rouge, violet ou bleu. **D'où la contrainte
-de rendu : le marbre neutre, la lumière chaude.** Une planche rendue avec un
-marbre bleuté verrait sa pierre virer avec la lumière.
+Mais la rotation **ne peut pas s'appliquer à toute l'image**. `hue-rotate`
+laisse les gris exactement où ils sont et ne déplace que ce qui est coloré —
+sur un marbre parfaitement neutre, elle ne toucherait que la lumière. Le
+marbre de ces planches n'est pas neutre : il est éclairé chaud, et sa
+saturation monte de 0,11 (pièce intacte) à 0,33 (pièce saturée de fissures),
+c'est-à-dire la saturation de la lumière elle-même. Tourner l'image entière de
+−45° pour la Tour ne rougissait donc pas que les fissures : **elle repeignait
+la statuette en rose.**
+
+D'où la **clé**. La rotation est appliquée deux fois — une image chaude, une
+image gardée telle quelle — et les deux sont recousues pixel par pixel selon
+une seule question : ce pixel est-il de la *lumière* (chaud, R nettement
+au-dessus de B) ou de la *pierre* (R ≈ B) ? La lumière prend la couleur du
+rang, la pierre reste du marbre, et la clé fond entre les deux, ce qui fait
+déborder la lueur des fissures sur le marbre voisin au lieu de l'arrêter sur
+un liseré. C'est un filtre SVG de six primitives (`pbTintFilterHTML`,
+`js/chest-break.js`) parce que CSS ne sait pas mélanger deux versions d'une
+même image selon son contenu ; la rampe se règle dans `CHEST_BREAK_MARBLE`,
+juste à côté.
+
+`R − B` est la bonne mesure ici, et pas une mesure de saturation générale,
+parce que ces planches ne contiennent qu'une seule couleur : de l'or. **D'où
+la contrainte de rendu : la lumière chaude, et elle seule colorée.** Une
+planche rendue avec un marbre bleuté ou des fissures déjà violettes échappe à
+la clé — le marbre bleu ne serait pas reconnu comme de la pierre, les fissures
+violettes pas comme de la lumière.
 
 Les trois planches communes suivent le même chemin : c'est le même feu doré
 qui tourne, et l'explosion du Roi est bleue sans qu'on ait eu à dessiner six
 explosions. La gerbe de lumière, les étincelles et le voile blanc du flash,
 eux, sont dessinés en CSS : ils lisent directement la teinte du rang.
+
+**Ce que la clé laisse passer** — elle mesure la chaleur en valeur absolue
+(`R − B`), donc une lueur SOMBRE, dont le `R − B` est petit par construction,
+peut rester sous la rampe : la brume dans l'air et les braises qui flottent
+loin de la pièce gardent alors un soupçon de doré. Sur les quatre coffres
+équipés — blanc, jaune, orange, rouge — ça ne se voit pas, la teinte du rang
+est voisine de l'or. Ça se verra sur le violet de la Dame et le bleu du Roi le
+jour où leurs planches existeront : à ce moment-là, monter `k` et remonter `i`
+d'autant (`CHEST_BREAK_MARBLE`, `js/chest-break.js`) rattrape la lueur faible.
+Attention en revanche aux deux corrections qui semblent évidentes et ne le
+sont pas : teinter tout ce qui est sombre fait tourner le fond, qui n'est pas
+neutre, et normaliser la clé par la luminosité (un gamma avant la mesure)
+allume les creux d'ombre du marbre en rose. Les deux ont été essayées.
 
 Pour juger une couleur : `tools/chest-break-preview.html`, sélecteur
 « Teinte ». Il repeint la scène en cours sans la rejouer, et n'importe quel

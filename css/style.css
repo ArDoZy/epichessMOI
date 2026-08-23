@@ -1754,7 +1754,7 @@ body.light .pmv-dark{background:#c3bdae}
   mask-image:radial-gradient(ellipse 50% 52% at 50% 52%,#000 52%,transparent 100%)}
 .pb-frame{position:absolute;inset:0;width:100%;height:100%;opacity:0;pointer-events:none;
   object-fit:cover;object-position:50% 56%;
-  filter:brightness(var(--pb-lum,1)) hue-rotate(var(--pb-rot,0deg)) saturate(var(--pb-sat,1));
+  filter:brightness(var(--pb-lum,1)) var(--pb-tint,hue-rotate(var(--pb-rot,0deg)) saturate(var(--pb-sat,1)));
   transition:opacity var(--pb-fade,240ms) ease-out}
 .pb-frame.on{opacity:1}
 
@@ -1763,20 +1763,28 @@ body.light .pmv-dark{background:#c3bdae}
    est obtenue en faisant tourner cette teinte-là — le Pion blanc, le Cavalier
    jaune, la Tour rouge, le Roi bleu, sans une image de plus.
 
-   hue-rotate est le seul outil qui pouvait le faire ici : c'est une matrice
-   qui laisse les gris intacts et ne déplace que ce qui est coloré. Sur ces
-   planches — marbre quasi neutre, lumière franchement chaude — elle ne
-   touche donc en pratique QUE la lumière. Un calque de couleur en `screen`
-   ou en `color` par-dessus aurait teinté le marbre avec, et un calque en
-   `screen` ne sait de toute façon qu'ÉCLAIRCIR : il ne peut pas refroidir
-   une explosion dorée, il faut retirer du rouge, pas ajouter du bleu.
+   Mais la rotation ne peut pas s'appliquer à TOUTE l'image : le marbre de ces
+   planches est lui aussi éclairé chaud (saturation 0,11 à 0,33), et le faire
+   tourner de −45° repeignait la statuette de la Tour en rose. C'est
+   `--pb-tint` qui règle ça : un filtre SVG (pbTintFilterHTML,
+   js/chest-break.js) qui ne fait tourner la teinte QUE là où le pixel est de
+   la lumière — R nettement au-dessus de B — et laisse la pierre en marbre.
+   Un calque de couleur posé par-dessus, lui, aurait teinté le marbre avec, et
+   un calque en `screen` ne sait de toute façon qu'ÉCLAIRCIR : il ne peut pas
+   refroidir une explosion dorée, il faut retirer du rouge, pas ajouter du
+   bleu.
+
+   Le repli de la `var()` est l'ancienne rotation globale : si le SVG n'a pas
+   pu être posé, la scène s'affiche avec un marbre teinté plutôt que pas du
+   tout — un `filter:url()` qui ne pointe sur rien EFFACE son élément.
 
    `brightness` vient AVANT la rotation, et sert aux seules planches
    d'explosion : elles sont surexposées, et un blanc à 98 % ne prend aucune
    teinte. Un cheveu de moins les fait redescendre du plafond, où la couleur
-   se pose. `saturate` vient APRÈS et rattrape le délavage que produit une
-   grande rotation. Trois matrices de couleur, aucune ne rééchantillonne
-   l'image : sur un GPU c'est gratuit, contrairement au flou du halo. */
+   se pose. La resaturation, elle, vient APRÈS la rotation, dans le filtre :
+   elle rattrape le délavage que produit une grande rotation. Que des matrices
+   de couleur, aucune ne rééchantillonne l'image : sur un GPU c'est gratuit,
+   contrairement au flou du halo. */
 
 /* L'EMBALLEMENT. L'image déferle — elle part plus petite que l'écran et le
    dépasse — pendant que sa luminosité monte jusqu'à la brûlure. Seule, elle
@@ -1819,7 +1827,7 @@ body.light .pmv-dark{background:#c3bdae}
   background-size:cover;background-position:50% 56%;
   mix-blend-mode:screen;
   filter:blur(9px) brightness(calc(1.25*var(--pb-lum,1)))
-         hue-rotate(var(--pb-rot,0deg)) saturate(calc(1.15*var(--pb-sat,1)));
+         var(--pb-tint-b,hue-rotate(var(--pb-rot,0deg)) saturate(calc(1.15*var(--pb-sat,1))));
   animation:pbBloom var(--pb-bt,2.6s) ease-in-out infinite}
 @keyframes pbBloom{0%,100%{opacity:var(--pb-b0,0)}50%{opacity:var(--pb-b1,0)}}
 
