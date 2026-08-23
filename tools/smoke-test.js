@@ -10,7 +10,8 @@
 //
 // Ce script ouvre le vrai jeu dans un vrai navigateur et refait le parcours :
 // création de compte, tutoriel, composition, partie contre l'Instructeur,
-// Armurerie, Voie. Il échoue au premier message d'erreur de la console.
+// Armurerie, Diagonale de la Puissance, colonne des victoires et rangée de la
+// richesse. Il échoue au premier message d'erreur de la console.
 //
 // Il ne fait PAS partie du jeu : rien dans index.html ne le charge, et le jeu
 // continue de s'ouvrir en double-cliquant sur index.html.
@@ -580,6 +581,292 @@ const OPTIONAL_ASSET=/adversaires\/[a-z-]+\.png|backgrounds\/main-page\.png|ches
       aiSetOpponent('instructeur');
       accSet('streak_lock_day',null);accSet('win_streak',0);
     });
+  });
+
+  // LE BOUTON DU MENU OUVRE LA PAGE, ET « OK » EN SORT. Le reste des étapes
+  // pilote les deux voies par leurs fonctions ; celle-ci vérifie le chemin que
+  // le joueur emprunte réellement — un bouton, deux onglets, une sortie.
+  await step('le menu ouvre la page des récompenses, et « OK » en sort',async()=>{
+    await page.evaluate(()=>{showPage('face-jouer');});
+    await page.waitForTimeout(400);
+    await page.click('#jouer-rewards');
+    await page.waitForSelector('#page-rewards.active',{timeout:8000});
+    const onglets=await page.evaluate(()=>({
+      colonneVisible:!document.getElementById('rw-pane-colonne').hidden,
+      rangeeVisible:!document.getElementById('rw-pane-rangee').hidden,
+    }));
+    if(!onglets.colonneVisible||onglets.rangeeVisible)
+      throw new Error('la page ne s\'ouvre pas sur la colonne');
+    await page.click('#page-rewards .rw-tab[data-tab="rangee"]');
+    await page.waitForTimeout(200);
+    const apres=await page.evaluate(()=>({
+      colonneVisible:!document.getElementById('rw-pane-colonne').hidden,
+      rangeeVisible:!document.getElementById('rw-pane-rangee').hidden,
+      quetes:document.querySelectorAll('#rw-pane-rangee .rw-quest').length,
+      cases:document.querySelectorAll('#rw-row-strip .rw-cell').length,
+    }));
+    if(apres.colonneVisible||!apres.rangeeVisible)throw new Error('l\'onglet rangée ne s\'affiche pas');
+    if(apres.cases!==25)throw new Error(apres.cases+' cases dans la rangée au lieu de 25');
+    if(apres.quetes!==3)throw new Error(apres.quetes+' quêtes affichées au lieu de 3');
+    await page.click('#rw-ok');
+    await page.waitForTimeout(500);
+    if(await page.isVisible('#page-rewards.active'))throw new Error('« OK » ne referme pas la page');
+  });
+
+  // LA SÉRIE DU JOUR A UNE FIN. Elle n'en avait pas : chestForStreak plafonnait
+  // au dernier coffre, si bien que la 7e victoire du jour, la 8e et toutes les
+  // suivantes redonnaient un COFFRE ROI — le palier le plus rare du jeu devenu
+  // le lot ordinaire de la fin de journée, et les cinq premiers paliers réduits
+  // à un chemin pour y arriver.
+  await step('la série du jour s\'arrête au sixième coffre',async()=>{
+    const r=await page.evaluate(()=>{
+      accSet('streak_day',todayKey());accSet('streak_lock_day',null);accSet('win_streak',6);
+      const apres=[];
+      for(let i=0;i<3;i++)apres.push(economySettle('win',{board:[],promoGains:{}}).chest);
+      renderStreakModal();
+      return{
+        apres:apres.map(c=>c?c.id:null),
+        septieme:chestForStreak(7),
+        sub:document.getElementById('streak-sub').textContent,
+      };
+    });
+    if(r.apres.some(c=>c!==null))
+      throw new Error('la série continue de donner des coffres après le sixième : '+r.apres.join(','));
+    if(r.septieme!==null)throw new Error('chestForStreak(7) rend encore un coffre');
+    if(/Coffre Roi/.test(r.sub))throw new Error('la fenêtre promet encore un Coffre Roi de plus : '+r.sub);
+    if(!/terminée/i.test(r.sub))throw new Error('la fenêtre ne dit pas que la série est terminée : '+r.sub);
+    await page.evaluate(()=>{accSet('streak_lock_day',null);accSet('win_streak',0);});
+  });
+
+  // LA COLONNE DES VICTOIRES prend le relais : elle avance d'un cran à CHAQUE
+  // victoire, série du jour terminée ou non, et elle ne se remet jamais à zéro.
+  await step('la colonne des victoires avance à chaque victoire, même série terminée',async()=>{
+    const r=await page.evaluate(()=>{
+      accSet('col_wins',0);accSet('col_claimed',0);
+      accSet('streak_day',todayKey());accSet('streak_lock_day',null);accSet('win_streak',6);
+      for(let i=0;i<4;i++)economySettle('win',{board:[],promoGains:{}});
+      const avantDefaite=colWins();
+      economySettle('loss',{board:[],promoGains:{}});
+      return{avantDefaite,apresDefaite:colWins(),dus:colPending()};
+    });
+    if(r.avantDefaite!==4)throw new Error('la colonne a avancé de '+r.avantDefaite+' crans au lieu de 4');
+    if(r.apresDefaite!==4)throw new Error('une défaite a fait reculer la colonne : '+r.apresDefaite);
+    if(r.dus!==4)throw new Error(r.dus+' paliers dus au lieu de 4');
+  });
+
+  // L'ORDRE DES TRENTE PALIERS est la spécification du système : il se vérifie
+  // en entier, sinon une inversion passerait inaperçue.
+  await step('les trente paliers de la colonne sont dans l\'ordre annoncé',async()=>{
+    const lus=await page.evaluate(()=>VICTORY_COLUMN.map(s=>s.chest||('j'+s.jokers)));
+    const attendu=['pion','pion','j3','cavalier','pion','cavalier','pion','pion','fou','pion',
+                   'pion','cavalier','j5','pion','tour','pion','cavalier','pion','pion','j10',
+                   'pion','dame','cavalier','pion','fou','pion','j15','pion','tour','roi'];
+    if(lus.length!==30)throw new Error(lus.length+' paliers au lieu de 30');
+    if(lus.join(',')!==attendu.join(','))
+      throw new Error('ordre de la colonne :\n  '+lus.join(',')+'\nau lieu de\n  '+attendu.join(','));
+  });
+
+  // On encaisse un palier À LA FOIS, et un coffre encaissé s'ouvre avec la
+  // VRAIE cérémonie — la même qu'un coffre de série ou acheté au Magasin.
+  await step('un palier de coffre s\'encaisse et ouvre sa cérémonie',async()=>{
+    await page.evaluate(()=>{
+      accSet('col_wins',2);accSet('col_claimed',0);accSet('jokers',0);
+      // Pastille du menu : elle compte TOUT ce qui attend. On met la rangée et
+      // les jokers hors jeu pour n'y lire que les deux paliers de la colonne.
+      accSet('tickets',0);accSet('rich_claimed',0);
+      openRewardsPage('colonne');
+    });
+    await page.waitForSelector('#page-rewards.active',{timeout:8000});
+    const avant=await page.evaluate(()=>({
+      dus:colPending(),
+      badge:document.getElementById('jouer-rewards-badge').textContent,
+      lignes:document.querySelectorAll('#rw-col-strip .rw-step').length,
+      aPrendre:document.querySelectorAll('#rw-col-strip .rw-due').length,
+    }));
+    if(avant.lignes!==30)throw new Error(avant.lignes+' lignes dans la colonne au lieu de 30');
+    if(avant.aPrendre!==2)throw new Error(avant.aPrendre+' paliers « à prendre » au lieu de 2');
+    if(avant.badge!=='2')throw new Error('pastille du menu : '+avant.badge+' au lieu de 2 (les deux paliers dus)');
+    await page.click('#rw-claim-col');
+    await page.waitForSelector('#chest-modal.show',{timeout:8000});
+    for(let i=0;i<40&&await page.isVisible('#chest-modal.show');i++){
+      await page.click('#chest-modal',{position:{x:8,y:8}});
+      await page.waitForTimeout(400);
+    }
+    await page.waitForSelector('#chest-modal.show',{state:'hidden',timeout:9000});
+    // L'exercice de déplacement s'ouvre si le coffre contenait une créature
+    // inédite : on en sort avant de reprendre.
+    if(await page.isVisible('#page-drill.active')){
+      await page.evaluate(()=>{if(typeof drillAbort==='function')drillAbort();showPage('page-rewards');});
+    }
+    const apres=await page.evaluate(()=>({encaisses:colClaimed(),dus:colPending()}));
+    if(apres.encaisses!==1)throw new Error(apres.encaisses+' paliers encaissés au lieu de 1');
+    if(apres.dus!==1)throw new Error(apres.dus+' paliers encore dus au lieu de 1');
+  });
+
+  // LE JOKER SE CHOISIT. Trois jokers convertis en une créature donnent trois
+  // exemplaires de CETTE créature — et rien ne se perd si l'on ferme la
+  // fenêtre sans choisir.
+  await step('un palier de jokers se convertit en exemplaires de son choix',async()=>{
+    const r=await page.evaluate(()=>{
+      // Le troisième palier de la colonne, c'est 3 jokers.
+      accSet('col_wins',3);accSet('col_claimed',2);accSet('jokers',0);
+      openRewardsPage('colonne');
+      rewardsClaimColumn();
+      return{jokers:jokerBalance(),ouverte:document.getElementById('joker-modal').classList.contains('show')};
+    });
+    if(r.jokers!==3)throw new Error(r.jokers+' jokers en réserve au lieu de 3');
+    if(!r.ouverte)throw new Error('la fenêtre de conversion ne s\'est pas ouverte');
+    const conv=await page.evaluate(()=>{
+      const choix=document.querySelector('.joker-choice');
+      const id=choix?choix.dataset.piece:null;
+      return{id,avant:id?invCount(id):0,choix:document.querySelectorAll('.joker-choice').length};
+    });
+    if(!conv.id)throw new Error('aucune créature proposée à la conversion');
+    // Aucun Monarque dans la grille : un second roi ne se joue pas.
+    const monarque=await page.evaluate(()=>[...document.querySelectorAll('.joker-choice')]
+      .some(b=>(PIECES.find(p=>p.id===b.dataset.piece)||{}).class==='Monarque'));
+    if(monarque)throw new Error('un Monarque est proposé à la conversion');
+    await page.click('.joker-choice[data-piece="'+conv.id+'"]');
+    await page.click('#confirm-ok');
+    await page.waitForTimeout(300);
+    const apres=await page.evaluate(()=>({
+      jokers:jokerBalance(),
+      stock:invCount(document.body.dataset.jokTest||''),
+    }));
+    const stock=await page.evaluate(id=>invCount(id),conv.id);
+    if(apres.jokers!==0)throw new Error('il reste '+apres.jokers+' jokers après conversion');
+    if(stock!==conv.avant+3)throw new Error('stock après conversion : '+stock+' au lieu de '+(conv.avant+3));
+  });
+
+  // LA RANGÉE DE LA RICHESSE : vingt-cinq paliers, payés en tickets. Elle ne
+  // s'encaisse que si les tickets sont là, et l'encaissement les dépense.
+  await step('la rangée de la richesse se paie en tickets',async()=>{
+    const table=await page.evaluate(()=>WEALTH_ROW.map(s=>s.pearls+'/'+s.cost));
+    const attendu=[].concat(
+      Array(5).fill('5/3'),Array(5).fill('10/4'),Array(5).fill('15/5'),
+      Array(5).fill('20/6'),Array(5).fill('25/8'));
+    if(table.join(',')!==attendu.join(','))
+      throw new Error('rangée : '+table.join(',')+'\nau lieu de\n'+attendu.join(','));
+    const r=await page.evaluate(()=>{
+      accSet('rich_claimed',0);accSet('tickets',2);accSet('pearls',100);
+      const refus=richClaimNext();
+      accSet('tickets',5);
+      const ok=richClaimNext();
+      return{refus,ok,tickets:ticketBalance(),perles:pearlBalance(),paliers:richClaimed()};
+    });
+    if(r.refus)throw new Error('un palier a été encaissé sans les tickets nécessaires');
+    if(!r.ok)throw new Error('le palier n\'a pas été encaissé alors que les tickets y sont');
+    if(r.tickets!==2)throw new Error('tickets après encaissement : '+r.tickets+' au lieu de 2 (5 - 3)');
+    if(r.perles!==105)throw new Error('perles après encaissement : '+r.perles+' au lieu de 105');
+    if(r.paliers!==1)throw new Error(r.paliers+' paliers encaissés au lieu de 1');
+  });
+
+  // LES QUÊTES : trois par jour, sur des créatures QU'ON POSSÈDE, de natures
+  // différentes. Une quête infaisable (une créature qu'on n'a pas) serait un
+  // ticket perdu d'avance.
+  await step('les trois quêtes du jour sont faisables et distinctes',async()=>{
+    const r=await page.evaluate(()=>{
+      accSet('quests_day',null);accSet('quests',null);accSet('tickets',0);
+      const qs=questsToday();
+      const owned=invOwnedIds();
+      return{
+        n:qs.length,
+        natures:new Set(qs.map(q=>q.id)).size,
+        pieces:qs.map(q=>q.pieceId).filter(Boolean),
+        hors:qs.filter(q=>q.pieceId&&!owned.includes(q.pieceId)).map(q=>q.pieceId),
+        monarques:qs.filter(q=>q.pieceId&&(PIECES.find(p=>p.id===q.pieceId)||{}).class==='Monarque').length,
+        labels:qs.map(q=>questLabel(q)),
+      };
+    });
+    if(r.n!==3)throw new Error(r.n+' quêtes au lieu de 3');
+    if(r.natures!==3)throw new Error('deux quêtes de même nature le même jour');
+    if(r.hors.length)throw new Error('quête sur une créature non possédée : '+r.hors.join(','));
+    if(r.monarques)throw new Error('quête sur un Monarque : on ne mate pas avec son propre roi');
+    if(r.labels.some(l=>!l))throw new Error('quête sans libellé');
+  });
+
+  // LES QUÊTES SE REMPLISSENT PAR DE VRAIS FAITS DE JEU, et le ticket tombe
+  // dès qu'elles sont remplies : rien à aller chercher.
+  await step('une quête accomplie verse ses tickets',async()=>{
+    const r=await page.evaluate(()=>{
+      accSet('quests_day',todayKey());accSet('tickets',0);
+      // Une quête connue, posée à la main : « déplacer 5 fois » la première
+      // créature possédée.
+      const cible=invOwnedIds().find(id=>(PIECES.find(p=>p.id===id)||{}).class!=='Monarque');
+      accSet('quests',[{id:'move',pieceId:cible,prog:0,done:false}]);
+      for(let i=0;i<4;i++)questNote('move',cible,1);
+      const mi=questsToday()[0];
+      questNote('move',cible,1);
+      const fin=questsToday()[0];
+      return{mi:mi.prog,miDone:mi.done,fin:fin.prog,finDone:fin.done,tickets:ticketBalance()};
+    });
+    if(r.mi!==4||r.miDone)throw new Error('quête à mi-parcours : '+r.mi+'/5, done='+r.miDone);
+    if(!r.finDone)throw new Error('quête non accomplie après le 5e déplacement');
+    if(r.tickets!==2)throw new Error('tickets versés : '+r.tickets+' au lieu de 2');
+  });
+
+  // LES COUPS DU JOUEUR SEULEMENT. recordMove est traversée par TOUS les
+  // coups, y compris ceux de l'adversaire : compter les siens ferait avancer
+  // les quêtes du joueur en le regardant perdre.
+  await step('seuls les coups du joueur font avancer une quête',async()=>{
+    const r=await page.evaluate(()=>{
+      const cible=invOwnedIds().find(id=>(PIECES.find(p=>p.id===id)||{}).class!=='Monarque');
+      accSet('quests_day',todayKey());accSet('tickets',0);
+      accSet('quests',[{id:'move',pieceId:cible,prog:0,done:false}]);
+      const gs={playerColor:'w',movePairs:[],board:[],history:[]};
+      // Coup du joueur, puis coup de l'adversaire.
+      recordMove({color:'w',pieceId:cible},{r:4,c:4},false,gs,{r:6,c:4});
+      const apresJoueur=questsToday()[0].prog;
+      recordMove({color:'b',pieceId:cible},{r:3,c:4},false,gs,{r:1,c:4});
+      const apresAdversaire=questsToday()[0].prog;
+      // Bataille du tutoriel : rien ne compte non plus.
+      recordMove({color:'w',pieceId:cible},{r:4,c:5},false,{...gs,tuto:{}},{r:6,c:5});
+      return{apresJoueur,apresAdversaire,apresTuto:questsToday()[0].prog};
+    });
+    if(r.apresJoueur!==1)throw new Error('le coup du joueur n\'a pas compté');
+    if(r.apresAdversaire!==1)throw new Error('un coup de l\'adversaire a fait avancer la quête');
+    if(r.apresTuto!==1)throw new Error('un coup du tutoriel a fait avancer la quête');
+  });
+
+  // ÉCHEC ET MAT : la quête crédite la créature qui ATTAQUE le roi, y compris
+  // quand l'échec est donné à la découverte par une autre pièce que celle qui
+  // vient de bouger.
+  await step('l\'échec est crédité à la pièce qui attaque le roi',async()=>{
+    const r=await page.evaluate(()=>{
+      const vide=()=>Array.from({length:8},()=>Array(8).fill(null));
+      const b=vide();
+      b[0][4]={color:'b',type:'k',pieceId:'roi'};
+      b[7][4]={color:'w',type:'k',pieceId:'roi'};
+      b[0][0]={color:'w',type:'r',pieceId:'tour-primordiale'};   // échec sur la rangée
+      const gs={board:b,playerColor:'w',aiColor:'b',turn:'b',history:[],movePairs:[],
+                anchored:new Set(),medusaParalyzed:new Set()};
+      return questCheckers(gs,'b');
+    });
+    if(!r.includes('tour-primordiale'))
+      throw new Error('la pièce qui donne échec n\'est pas reconnue : '+JSON.stringify(r));
+  });
+
+  // LE MODE TEST N'ÉCRIT RIEN, ici comme ailleurs : on y regarde sa vraie
+  // progression sans jamais la modifier.
+  await step('le mode test ne fait avancer aucune des deux voies',async()=>{
+    const url=page.url();
+    await page.goto('http://localhost:'+PORT+'/test',{waitUntil:'domcontentloaded'});
+    await page.waitForTimeout(1200);
+    const r=await page.evaluate(()=>{
+      const avantCol=colWins(),avantTik=ticketBalance();
+      colNoteWin();
+      questNote('win',null,1);
+      ticketAdd(50);
+      return{avantCol,apresCol:colWins(),avantTik,apresTik:ticketBalance()};
+    });
+    if(r.apresCol!==r.avantCol)throw new Error('le mode test a fait avancer la colonne');
+    if(r.apresTik!==r.avantTik)throw new Error('le mode test a crédité des tickets');
+    await page.goto(url,{waitUntil:'domcontentloaded'});
+    await page.waitForTimeout(1200);
+    for(let i=0;i<40&&await page.isVisible('#chest-modal.show');i++){
+      await page.click('#chest-modal',{position:{x:8,y:8}});
+      await page.waitForTimeout(250);
+    }
   });
 
   await step('le Magasin vend les six coffres, le Pion sous sa statuette et sans fiche technique',async()=>{

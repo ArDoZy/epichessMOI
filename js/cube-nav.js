@@ -375,8 +375,9 @@
     document.getElementById('cube-arrow-left') ?.addEventListener('click',()=>nav('left'));
     document.getElementById('cube-jouer-btn')  ?.addEventListener('click',onCombat);
     document.getElementById('b-vs-ia')         ?.addEventListener('click',onVsIa);
-    // « Voie » : la Voie des Victoires n'est plus une face du cube, elle
-    // s'ouvre en page à part entière depuis le bloc d'identité du menu.
+    // « Voie » : la Diagonale de la Puissance (ex-« Voie des Victoires »)
+    // n'est plus une face du cube, elle s'ouvre en page à part entière depuis
+    // le bloc d'identité du menu.
     document.getElementById('jouer-voie')      ?.addEventListener('click',()=>{
       if(typeof renderVoiePage==='function')renderVoiePage();
       showPage('page-voie');

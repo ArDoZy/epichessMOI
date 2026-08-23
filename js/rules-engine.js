@@ -699,6 +699,15 @@ function showPromoModal(gs){
 // JOURNAL DES COUPS (notation textuelle simple, PAS la notation FIDE)
 // ================================================================
 function recordMove(p,to,isCapture,gs,from){
+  // QUÊTES DE LA RANGÉE DE LA RICHESSE (js/rewards.js) : « déplacer 5 fois X »,
+  // « capturer 3 pièces avec X », « engager X et la jouer 3 fois ». C'est ici
+  // et nulle part ailleurs, pour la même raison que l'incrément Fischer
+  // ci-dessous : recordMove est le seul point par lequel passe TOUT coup
+  // effectivement joué. Seuls les coups DU JOUEUR comptent (l'adversaire, IA
+  // ou humain en ligne, passe par la même fonction), et jamais ceux du
+  // tutoriel, où les pièces sont prêtées.
+  if(gs&&!gs.tuto&&p&&p.color===(gs.playerColor||'w')&&typeof questNoteMove==='function')
+    questNoteMove(gs,p.pieceId,!!isCapture);
   // Incrément Fischer : le joueur qui vient de jouer récupère son bonus. Ici
   // et pas ailleurs, parce que recordMove est le seul point par lequel passe
   // TOUT coup effectivement joué (y compris l'ancrage du Garde de Pierre, qui

@@ -135,14 +135,29 @@ C'est la mécanique qui distingue le plus Epic Chess des autres variantes :
   seul progresse donc entièrement. Seuls le mode test (/?test, un bac à
   sable où tout est débloqué et où rien n'est enregistré) et les batailles
   du tutoriel sont hors classement.
-- La **Voie des Victoires** suit l'ELO du joueur à travers **7 rangs** :
+- La progression suit **trois voies**, nommées d'après les trois lignes de
+  l'échiquier : la **Diagonale de la Puissance** (l'ELO), la **Colonne des
+  Victoires** (une victoire = un palier) et la **Rangée de la Richesse**
+  (des perles payées avec les tickets des quêtes).
+- La **Diagonale de la Puissance** suit l'ELO du joueur à travers **7 rangs** :
   Poussière (0-199), Pierre (200-499), Bronze (500-849), Acier (850-1299),
   Obsidienne (1300-1799), Argent (1800-2399), Or Légendaire (2400+).
 - Franchir un palier de rang **débloque de nouvelles créatures** et de
   nouveaux **échiquiers** : bois, pierre, acier, argent puis or.
 - La rareté du coffre gagné suit la **série de victoires** : 1re victoire du
-  jour → Coffre Pion, 6e → Coffre Roi. La série est **quotidienne** — une
-  défaite la ferme jusqu'au lendemain, et elle repart du Coffre Pion.
+  jour → Coffre Pion, 6e → Coffre Roi. La série est **quotidienne** et
+  **s'arrête à son sixième coffre** : au-delà, plus aucun coffre de série ce
+  jour-là. Une défaite la ferme aussi jusqu'au lendemain, où elle repart du
+  Coffre Pion.
+- La **Colonne des Victoires** prend le relais : **30 paliers**, un par
+  victoire, série du jour terminée ou non, sans jamais se remettre à zéro.
+  Elle donne des coffres et des **jokers** — un joker se transforme en la
+  créature de son choix (3 jokers = 3 exemplaires de la créature désignée).
+- La **Rangée de la Richesse** compte **25 paliers de perles** (5, 10, 15, 20
+  puis 25 perles, par tranches de cinq). On y avance avec des **tickets**,
+  gagnés en accomplissant les **trois quêtes du jour** (mater avec telle
+  créature, donner échec trois fois, la déplacer cinq fois, promouvoir un
+  pion en telle créature, gagner en l'alignant…).
 
 ## Confidentialité
 

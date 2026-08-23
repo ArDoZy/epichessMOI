@@ -261,9 +261,17 @@ function showResultModal(result,oldElo,newElo,delta,newUnlockIds,noEloReason){
     const st=_lastSettlement;
     if(st&&st.chest){
       chestSec.style.display='';
+      // La série du jour a une FIN : au sixième coffre, chestForStreak ne
+      // renvoie plus rien (js/data-pieces.js). Le rappel dit alors ce que
+      // devient une victoire de plus — un palier de la colonne des victoires
+      // (js/rewards.js) — au lieu d'annoncer un septième coffre qui
+      // n'existe pas.
+      const suivant=chestForStreak(st.streak+1);
       chestSec.innerHTML='<div class="rc-lbl">Série de '+st.streak+' victoire'+(st.streak>1?'s':'')+'</div>'+
         '<div class="rc-name">'+st.chest.name+' ouvert</div>'+
-        '<div class="rc-hint">Prochaine victoire : '+chestForStreak(st.streak+1).name+'.</div>';
+        '<div class="rc-hint">'+(suivant
+          ?'Prochaine victoire : '+suivant.name+'.'
+          :'Série du jour terminée. Vos prochaines victoires avancent dans la colonne des victoires.')+'</div>';
     }else chestSec.style.display='none';
   }
   modal.classList.add('active');
@@ -354,6 +362,10 @@ function triggerEndOfGame(result){
     ?settleAndCelebrate(result,GS,showModal)
     :(setTimeout(showModal,400),null);
   if(typeof renderMenuChests==='function')renderMenuChests();
+  // La victoire vient de faire avancer la colonne des victoires
+  // (economySettle, js/economy.js) : la pastille du menu doit le dire tout de
+  // suite, sans attendre une ouverture de la page.
+  if(typeof rewardsRefreshUI==='function')rewardsRefreshUI();
 }
 
 // ----------------------------------------------------------------

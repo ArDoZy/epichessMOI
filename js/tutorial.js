@@ -341,8 +341,8 @@ const TUTO_STEPS=[
     at:'.jouer-actions',
   },
   {
-    text:'Votre nom, votre rang et votre classement sont là-haut. Le bouton '+
-         '<strong>Voie</strong> ouvre la Voie des Victoires&nbsp;: chaque partie classée '+
+    text:'Votre nom, votre rang et votre classement sont là-haut. La pastille de rang '+
+         'ouvre la <strong>Diagonale de la Puissance</strong>&nbsp;: chaque partie classée '+
          'fait bouger ce chiffre, et chaque palier franchi <strong>libère une nouvelle '+
          'créature</strong> de mes bocaux.',
     at:'.jouer-player',
@@ -352,9 +352,23 @@ const TUTO_STEPS=[
          'victoire d\'affilée en décroche un de plus, et le suivant est toujours plus '+
          'rare que le précédent&nbsp;— mais <strong>une seule défaite ferme la série '+
          'jusqu\'au lendemain</strong>. Réfléchissez avant de relancer.<br>'+
-         'Et si vous êtes pressé, <strong>n\'importe lequel s\'achète en perles</strong> '+
+         'Les six pris, <strong>la série est finie pour la journée</strong>. Et si vous '+
+         'êtes pressé, <strong>n\'importe lequel s\'achète en perles</strong> '+
          'au <strong>Magasin</strong>, la face du cube à votre gauche.',
     at:'#jouer-streak',
+  },
+  {
+    // Les deux voies qui ne se referment jamais (js/rewards.js). Elles
+    // arrivent JUSTE APRÈS la série du jour, parce que c'est la question que
+    // la série pose : « et quand j'ai pris les six ? »
+    text:'Et quand les six sont tombés&nbsp;? <strong>Récompenses</strong>. Deux voies '+
+         'y courent&nbsp;: la <strong>colonne des victoires</strong>, trente paliers dont '+
+         'vous descendez un cran à chaque victoire, coffres et <strong>jokers</strong> '+
+         '(un joker devient la créature que vous désignez)&nbsp;; et la '+
+         '<strong>rangée de la richesse</strong>, des perles qui s\'achètent avec les '+
+         '<strong>tickets</strong> de mes quêtes du jour. Rien de tout ça ne se perd&nbsp;: '+
+         'ni défaite, ni lendemain n\'y touchent.',
+    at:'#jouer-rewards',
   },
   {
     // Le coffre de réapprovisionnement n'a plus de carte à montrer du doigt :

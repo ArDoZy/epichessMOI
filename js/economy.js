@@ -20,11 +20,14 @@
 // partie perdue coûterait huit pions et le jeu deviendrait injouable.
 //
 // FILET DE SÉCURITÉ : une victoire donne un coffre, dont la rareté suit la
-// SÉRIE de victoires (1re = Pion ... 6e et plus = Roi) et rien d'autre ; une
-// défaite remet la série à zéro et la ferme jusqu'au lendemain, où elle
-// repart du Coffre Pion. Et une fois par jour, le coffre de réapprovisionnement rend
-// 4 exemplaires de chaque pièce possédée, ce qui rend impossible de rester
-// bloqué sans armée jouable.
+// SÉRIE de victoires (1re = Pion ... 6e = Roi, et RIEN au-delà : la série du
+// jour est alors terminée) ; une défaite remet la série à zéro et la ferme
+// jusqu'au lendemain, où elle repart du Coffre Pion. Les victoires que la
+// série ne récompense plus font avancer la COLONNE DES VICTOIRES
+// (js/rewards.js), qui n'a pas de limite quotidienne. Et une fois par jour, le
+// coffre de réapprovisionnement rend des exemplaires de chaque pièce possédée
+// (DAILY_CHEST.perPiece), ce qui rend impossible de rester bloqué sans armée
+// jouable.
 //
 // Dépendances : data-pieces.js (PIECES, CHESTS, DAILY_CHEST, chestForStreak),
 // accounts.js (accGet/accSet, VV_UNLOCKED, vvSaveUnlocked).
@@ -196,6 +199,9 @@ function economyOnPromotion(pieceId,gs){
   if(!isOwnablePiece(pieceId))return;
   invAdd(pieceId,1);
   if(gs){gs.promoGains=gs.promoGains||{};gs.promoGains[pieceId]=(gs.promoGains[pieceId]||0)+1;}
+  // Quêtes de la rangée de la richesse (js/rewards.js) : « promouvoir un pion
+  // en X », et « promouvoir 2 pions » quelle que soit la pièce choisie.
+  if(typeof questNote==='function')questNote('promo',pieceId,1);
 }
 
 // ----------------------------------------------------------------
@@ -265,6 +271,12 @@ function economySettle(result,gs){
   // le reste de la journée — les victoires suivantes ne donnent plus de
   // coffre tant que la date locale n'a pas changé. Sans ce verrou, perdre
   // n'était qu'un contretemps qu'une victoire suivante effaçait aussitôt.
+  //
+  // ET ELLE S'ARRÊTE À SON SIXIÈME COFFRE. chestForStreak renvoie `null`
+  // au-delà (js/data-pieces.js) : la septième victoire du jour ne donne plus
+  // de Coffre Roi, ni rien d'autre ici. Ce que les victoires suivantes
+  // rapportent est dans la COLONNE DES VICTOIRES (colNoteWin, js/rewards.js),
+  // qui avance à chaque victoire sans jamais se refermer.
   streakEnsureToday();
   let streak=accGet('win_streak',0);
   let chest=null;
@@ -281,6 +293,20 @@ function economySettle(result,gs){
     accSet('streak_lock_day',todayKey());
   }
   accSet('win_streak',streak);
+
+  // LES DEUX AUTRES VOIES (js/rewards.js). La colonne des victoires avance
+  // d'un cran à chaque victoire — série du jour terminée ou non, c'est tout
+  // son intérêt — et les quêtes de la rangée comptent la victoire et les
+  // créatures effectivement engagées dans l'armée. C'est ici, et nulle part
+  // ailleurs, parce que c'est le seul point par lequel passe le règlement
+  // d'une partie (le tutoriel et le mode test n'y arrivent jamais).
+  if(result==='win'){
+    if(typeof colNoteWin==='function')colNoteWin();
+    if(typeof questNote==='function'){
+      questNote('win',null,1);
+      Object.keys(need).forEach(id=>questNote('winwith',id,1));
+    }
+  }
 
   return{result,lost,returned,gained:(gs&&gs.promoGains)||{},streak,chest};
 }

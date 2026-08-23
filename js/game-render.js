@@ -488,6 +488,16 @@ function updateStatus(gs){
   // Méduse, protection du Prêtre) n'ont pas encore été recalculés, et le mat
   // serait jugé sur un plateau périmé.
   if(typeof markLastMove==='function')markLastMove(gs,(!hasLegal&&check)?'#':check?'+':'');
+  // QUÊTES « donner échec / échec et mat avec X » (js/rewards.js). Le camp au
+  // trait (`t`) est celui qui SUBIT l'échec : il vient donc du joueur quand
+  // `t` n'est pas sa couleur. Compté une seule fois par demi-coup —
+  // updateStatus est rappelée à chaque rendu, y compris sans nouveau coup —,
+  // d'où le repère sur la longueur de l'historique, qui n'avance que d'un cran
+  // par coup joué.
+  if(check&&t!==playerCol&&!gs.tuto&&typeof questNoteCheck==='function'){
+    const ply=(gs.history&&gs.history.length)||0;
+    if(gs._questPly!==ply){gs._questPly=ply;questNoteCheck(gs,t,!hasLegal);}
+  }
   if(!hasLegal){
     if(check){
       const playerWins=opp(t)===playerCol;
