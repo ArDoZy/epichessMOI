@@ -86,10 +86,17 @@ epic-chess/
     ├── game-render.js        # Rendu plateau, drag&drop, clics, historique
     ├── ai-engine.js          # Évaluation (dont les POUVOIRS), minimax, Worker IA
     ├── game-flow.js          # Démarrage partie, fin de partie, résultat
-    ├── voie.js                # Page "Voie des Victoires" (ELO, rangs, jalons)
+    ├── voie.js                # Page "Diagonale de la Puissance" (ex-"Voie des
+    │                          # Victoires") : ELO, rangs, jalons
     ├── economy-ui.js         # Page "Armurerie" (échiquiers) + les six coffres
     │                          # du menu principal + le coffre quotidien, qui
     │                          # s'ouvre tout seul (dailyChestMaybeOpen)
+    ├── rewards.js            # Les deux voies qui ne dépendent pas de l'ELO :
+    │                          # colonne des victoires (30 paliers, un par
+    │                          # victoire), rangée de la richesse (25 paliers
+    │                          # de perles), quêtes du jour, tickets, jokers
+    ├── rewards-ui.js         # Page "Récompenses" (les deux voies + les quêtes)
+    │                          # et la fenêtre de conversion des jokers
     ├── tuto-drill.js         # Exercice de déplacement d'une créature débloquée
     ├── tutorial.js           # Tutoriel : 4 batailles scriptées + visite guidée
     ├── settings-admin.js     # Panneau réglages + mode test (/?test)
@@ -113,6 +120,40 @@ et toute nouvelle façon de la terminer DOIT appeler `economySettle()`, sinon
 les exemplaires engagés restent hors inventaire. Le garde-fou est
 `economyRecoverOrphanEngagement()`, appelé à la connexion : il rend les
 pièces d'une partie interrompue.
+
+### 1 bis. Les trois voies de progression (`js/voie.js`, `js/rewards.js`)
+
+Elles portent le nom des trois lignes de l'échiquier, et ce n'est pas
+décoratif : chacune se lit dans le sens de la sienne, ce qui évite d'avoir à
+lire le titre pour savoir où l'on est.
+
+| Voie | Ce qui la fait avancer | Ce qu'elle donne | Où |
+|---|---|---|---|
+| **Diagonale de la Puissance** | l'ELO (parties classées) | créatures, échiquiers, petits lots | `js/voie.js`, `UNLOCK_TABLE` |
+| **Colonne des Victoires** | une victoire = un palier | 30 paliers : coffres et jokers | `VICTORY_COLUMN`, `js/rewards.js` |
+| **Rangée de la Richesse** | les tickets des quêtes du jour | 25 paliers de perles (5→25) | `WEALTH_TIERS`, `js/rewards.js` |
+
+La « Voie des Victoires » S'APPELLE MAINTENANT la Diagonale de la Puissance.
+Seuls les libellés ont changé : les identifiants (`page-voie`, `voie-*`,
+`vv*`) sont les clés du CSS, du tutoriel, des sauvegardes de compte et du test
+de fumée — les renommer ne changerait rien à l'écran.
+
+Trois règles à ne pas casser :
+
+- **La série du jour a une fin.** `chestForStreak()` rend `null` au-delà du
+  sixième coffre. Elle plafonnait au Coffre Roi, si bien que la 7e victoire du
+  jour et toutes les suivantes en redonnaient un : le palier le plus rare du
+  jeu était devenu le lot ordinaire de la fin de journée. Ce que rapportent
+  ces victoires-là est maintenant dans la colonne.
+- **La colonne avance dans `economySettle()`**, une seule fois par partie
+  gagnée, et jamais en tutoriel ni en mode test. Toute nouvelle façon de
+  terminer une partie qui passerait à côté d'`economySettle` la laisserait
+  sur place.
+- **Les quêtes se remplissent par de vrais faits de jeu**, posés au seul
+  endroit par lequel ces faits passent : `recordMove()` (déplacements et
+  prises), `updateStatus()` (échec et mat), `economyOnPromotion()` (promotion)
+  et `economySettle()` (victoire). Les coups de l'ADVERSAIRE passent par les
+  mêmes fonctions : le filtre sur la couleur du joueur est indispensable.
 
 ### 2. Les logos de pièces (`js/piece-art.js`)
 
@@ -400,7 +441,7 @@ montre.** Rien n'est inventé pour l'ordinateur, on y déplie ce que le petit
 |---|---|
 | La barre des faces devient un **rail vertical** à gauche, avec libellés | Une barre de pouce flottante masquait deux noms de cartes en plein milieu de « Mes armées ». Le rail ne recouvre plus rien : la zone utile de chaque face recule d'autant |
 | Les deux flèches de rotation disparaissent | Sur 1500 px elles se retrouvaient à 1400 px l'une de l'autre, sans lien visible avec le cube. Le rail nomme les quatre faces ; ← et → tournent toujours |
-| Le menu principal passe en **deux colonnes** | La colonne de droite (`#menu-side`) déplie la série du jour et le prochain palier de la Voie |
+| Le menu principal passe en **deux colonnes** | La colonne de droite (`#menu-side`) déplie la série du jour, le résumé des deux voies de récompenses et le prochain palier de la Diagonale |
 | Les largeurs de contenu montent à `--content-max` (1280 px) | Les plafonds (980, 1000, 860…) étaient des plafonds de lisibilité inutiles sur téléphone et un plafond de gâchis sur grand écran |
 | Le catalogue passe de 6 à ~8 colonnes, avec des cartes plus grandes | Les 18 pièces tiennent alors sur un écran, sans défilement |
 | Le **survol** d'une carte ouvre ses deux boutons | L'appui qui déplie la carte ne sert plus à rien quand un pointeur la désigne déjà : composer une armée passe de deux clics par pièce à un seul |
@@ -582,7 +623,8 @@ data-pieces.js → piece-art.js → main.js → cube-nav.js → accounts.js
 → combat-intro.js
 → rules-engine.js → piece-moves.js → combat-music.js → cinematics.js
 → game-render.js
-→ ai-engine.js → game-flow.js → voie.js → economy-ui.js → tuto-drill.js
+→ ai-engine.js → game-flow.js → voie.js → economy-ui.js
+→ rewards.js → rewards-ui.js → tuto-drill.js
 → tutorial.js
 → settings-admin.js → multiplayer.js → (script inline) initApp()
 ```
@@ -596,6 +638,12 @@ chargé plus loin), mais seulement à l'ouverture d'une fiche : jamais au
 chargement.
 `piece-moves.js` doit venir après `rules-engine.js` : il fabrique ses schémas
 en interrogeant `generateMovesRaw()`.
+`rewards.js` doit venir après `economy.js` (inventaire, perles, `todayKey`) et
+`rewards-ui.js` après `economy-ui.js` (il réutilise `chestVisual`,
+`chestOpenNow` et `pearlAmountHTML`). Aucun des deux n'est appelé au
+chargement : tous les autres modules les invoquent par `typeof … === 'function'`,
+si bien qu'un jeu privé de ces deux fichiers continuerait de tourner sans ses
+deux voies de récompenses.
 
 `cube-nav.js` est chargé juste après `main.js` : il étend `showPage()` (la
 navigation devient un cube 3D en CSS) et déplace à l'exécution les pages
@@ -624,7 +672,9 @@ parcours : création de compte, refus expliqué, tutoriel, réglages conservés,
 galerie des douze adversaires, partie CLASSÉE contre l'un d'eux (avec un coup
 joué et la réponse de l'IA), pendule, orientation des tables position-carrés,
 destruction du Typhon dans la simulation de coup, rendu de l'Armurerie et de
-la Voie. Il échoue au
+la Diagonale de la Puissance, fin de la série du jour au sixième coffre,
+colonne des victoires (ordre des trente paliers, encaissement d'un coffre,
+conversion des jokers), rangée de la richesse et quêtes du jour. Il échoue au
 premier message d'erreur de la console.
 
 ```
@@ -682,6 +732,11 @@ mais dans une version que Playwright refuse, le script le retrouve tout seul
 | Changer les modes qui rapportent de l'ELO | `js/voie.js` (`vvNoEloReason`) |
 | Changer le coffre gagné par série de victoires | `CHESTS`/`chestForStreak` dans `js/data-pieces.js` + `economySettle` dans `js/economy.js` |
 | Changer la remise à zéro quotidienne de la série | `streakEnsureToday`/`streakLockedToday` dans `js/economy.js` |
+| Changer les récompenses de la colonne des victoires | `VICTORY_COLUMN` dans `js/rewards.js` (l'affichage suit tout seul) |
+| Changer les paliers ou le prix en tickets de la rangée | `WEALTH_TIERS` dans `js/rewards.js` |
+| Ajouter / modifier une quête | `QUEST_POOL` dans `js/rewards.js` ; si elle demande un fait de jeu inédit, poser l'appel `questNote()` là où ce fait se produit |
+| Changer ce que valent les jokers ou ce qu'ils peuvent devenir | `jokerChoices`/`jokerConvert` dans `js/rewards.js` + `renderJokerModal` dans `js/rewards-ui.js` |
+| Modifier la page « Récompenses » | `js/rewards-ui.js` + `#page-rewards` dans `index.html` + `[REWARDS]` de `css/style.css` |
 | Changer les écrans qui portent le bouton de réglages | `updateMainMenuFlag` dans `js/cube-nav.js` + `body.main-menu` dans `[SETTINGS]` de `css/style.css` |
 | Changer le retrait haut des pages (sous l'encoche) | `--page-top` / `--menu-top` en tête de `css/style.css` |
 | Changer ce que donne le mode test | `economyAdmin`/`invAll`/`pearlBalance` dans `js/economy.js` + `vvLoadElo`/`loadAccountGlobals` dans `js/accounts.js` |

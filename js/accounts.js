@@ -171,7 +171,7 @@ function updateCab(){
 // IDENTITÉ SUR LE MENU PRINCIPAL
 // ----------------------------------------------------------------
 // Pseudo en haut au milieu, rang et ELO juste dessous, et le bouton qui ouvre
-// la Voie des Victoires à côté du chiffre — c'est là qu'on va quand on se
+// la Diagonale de la Puissance à côté du chiffre — c'est là qu'on va quand on se
 // demande ce que cet ELO débloque. Appelée à la connexion, à chaque
 // changement d'ELO (vvSaveElo) et à l'arrivée sur la face JOUER.
 function renderMenuIdentity(){

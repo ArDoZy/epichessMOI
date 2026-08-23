@@ -97,7 +97,13 @@ function streakRowState(i,snap){
 // Une phrase, sous le titre : où l'on en est, et ce que ça implique.
 function streakSubtitle(snap){
   if(snap.locked)return 'Série perdue pour aujourd\'hui. Elle repart du Coffre Pion demain.';
-  if(snap.done)return 'Les six coffres sont tombés : chaque victoire de plus redonne un Coffre Roi. La série repart du Coffre Pion demain.';
+  // SÉRIE TERMINÉE VEUT DIRE TERMINÉE. Cette phrase promettait « un Coffre Roi
+  // de plus à chaque victoire », ce que le code faisait effectivement : le
+  // palier le plus rare du jeu devenait le lot ordinaire de la fin de journée.
+  // La série s'arrête maintenant à son sixième coffre (chestForStreak,
+  // js/data-pieces.js), et les victoires suivantes font avancer la colonne des
+  // victoires (js/rewards.js), qui n'a pas de limite quotidienne.
+  if(snap.done)return 'Les six coffres sont tombés : la série du jour est terminée. Vos victoires font maintenant avancer la colonne des victoires ; la série repart du Coffre Pion demain.';
   const next=CHESTS[snap.nextIdx];
   if(!snap.streak)return 'Une victoire, et le '+next.name+' est à vous.';
   return snap.streak+' victoire'+(snap.streak>1?'s':'')+' d\'affilée · la prochaine donne le '+next.name+'.';
@@ -173,7 +179,7 @@ function menuNextMilestoneHTML(){
   // déjà triée par eloRequired (voir data-pieces.js).
   const next=UNLOCK_MILESTONES.find(u=>u.eloRequired>elo);
   if(!next){
-    return '<div class="ms-title">Voie des Victoires</div>'+
+    return '<div class="ms-title">Diagonale de la Puissance</div>'+
       '<div class="ms-sub">Tous les paliers sont franchis. Il ne reste que le classement.</div>';
   }
   // Le point de départ de la jauge est le jalon PRÉCÉDENT, pas zéro : sinon
@@ -220,6 +226,11 @@ function renderMenuSidePanel(){
   if(sub)sub.textContent=streakSubtitle(snap);
   const next=document.getElementById('ms-next');
   if(next)next.innerHTML=menuNextMilestoneHTML();
+  // Les deux voies qui ne dépendent pas de l'ELO (js/rewards-ui.js) : la carte
+  // de résumé en mode bureau, et la pastille du bouton du menu, qui elle vaut
+  // sur tous les écrans.
+  if(typeof renderMenuRewardsCard==='function')renderMenuRewardsCard();
+  if(typeof renderRewardsBadge==='function')renderRewardsBadge();
 }
 
 // Conservée sous son nom historique : une douzaine d'appels y mènent
@@ -270,13 +281,23 @@ function chestVisual(chest,extraCls){
 // Dessinée et non écrite en emoji : l'emoji perle n'existe pas partout et
 // change de forme d'un système à l'autre, alors que cette monnaie doit être
 // reconnaissable instantanément dans un coffre comme sous un prix.
+//
+// LE DÉGRADÉ PORTE UN IDENTIFIANT UNIQUE À CHAQUE PERLE DESSINÉE. Il était
+// figé (`pearlG`) : la page en compte des dizaines, toutes les références
+// `url(#pearlG)` se résolvaient donc sur la PREMIÈRE du document — et si
+// celle-là se trouvait dans un sous-arbre `display:none` (la colonne de droite
+// du menu quand on n'est pas en mode bureau, un panneau d'onglet masqué),
+// Chrome ne peignait plus AUCUNE perle de la page : il ne restait que le petit
+// reflet blanc, qui, lui, n'a pas de dégradé. Un compteur suffit.
+let _pearlGradSeq=0;
 function pearlIcon(em){
   const s=(em||1.2)+'em';
+  const gid='pearlG'+(++_pearlGradSeq);
   return '<svg class="pearl-icon" style="width:'+s+';height:'+s+'" viewBox="0 0 24 24" aria-hidden="true">'+
-    '<defs><radialGradient id="pearlG" cx="35%" cy="30%">'+
+    '<defs><radialGradient id="'+gid+'" cx="35%" cy="30%">'+
       '<stop offset="0%" stop-color="#ffffff"/><stop offset="45%" stop-color="#dfeaf2"/>'+
       '<stop offset="100%" stop-color="#8fa6b8"/></radialGradient></defs>'+
-    '<circle cx="12" cy="12" r="9" fill="url(#pearlG)"/>'+
+    '<circle cx="12" cy="12" r="9" fill="url(#'+gid+')"/>'+
     '<circle cx="9" cy="9" r="2.4" fill="#fff" opacity=".85"/>'+
   '</svg>';
 }
@@ -504,7 +525,7 @@ function dailyChestBusy(){
      el.style.display==='flex');};
   if(shown('result-modal')||shown('chest-modal')||shown('confirm-modal')||
      shown('mp-modal')||shown('lore-intro')||shown('pseudo-gate')||
-     shown('streak-modal'))return true;
+     shown('streak-modal')||shown('joker-modal'))return true;
   return false;
 }
 

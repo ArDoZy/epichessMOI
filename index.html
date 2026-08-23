@@ -281,6 +281,27 @@
   </div>
 </div>
 
+<!-- FENÊTRE DES JOKERS : « vous avez N jokers, en quelle créature ? ». Un
+     joker vaut UN exemplaire de la créature choisie, et la réserve entière
+     part d'un coup sur le même choix (trois jokers → trois Gardes de Pierre).
+     Fermer sans choisir ne perd rien : les jokers restent en réserve et la
+     conversion se rouvre depuis la rangée de la richesse. Remplie par
+     renderJokerModal() (js/rewards-ui.js). -->
+<div class="streak-modal joker-modal" id="joker-modal">
+  <div class="streak-panel" role="dialog" aria-modal="true" aria-labelledby="joker-title">
+    <div class="streak-head">
+      <div>
+        <div class="streak-title" id="joker-title">Vos jokers</div>
+        <div class="streak-sub" id="joker-sub"></div>
+      </div>
+      <button class="streak-close" id="joker-close" aria-label="Fermer">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="streak-scroll" id="joker-grid"></div>
+  </div>
+</div>
+
 
 <!-- ================================================================
      CUBE DE NAVIGATION : menu principal. Coquille visuelle uniquement :
@@ -299,8 +320,9 @@
           <!-- IDENTITÉ DU JOUEUR, en haut au milieu, à la place du titre du
                jeu et de l'emblème : on sait déjà où l'on est, ce qu'on ne
                savait pas c'est où l'on en est. Rempli par renderMenuIdentity()
-               (js/accounts.js). Le bouton « Voie » ouvre la Voie des
-               Victoires, qui n'est plus une face du cube. -->
+               (js/accounts.js). Le bouton « Voie » ouvre la Diagonale de la
+               Puissance (ex-« Voie des Victoires »), qui n'est plus une face
+               du cube. -->
           <!-- UNE SEULE PASTILLE, et non trois objets. « POUSSIÈRE » (libellé
                gris), « 23 ELO » (pastille laiton bordée) et « VOIE » (bouton
                fantôme) occupaient la même ligne avec trois poids visuels,
@@ -329,7 +351,7 @@
           <div class="jouer-player">
             <div class="game-emblem menu-emblem"></div>
             <div class="jouer-name" id="jouer-name"></div>
-            <button class="jouer-idpill" id="jouer-voie" aria-label="Voir la Voie des Victoires">
+            <button class="jouer-idpill" id="jouer-voie" aria-label="Voir la Diagonale de la Puissance">
               <span class="jp-dot" id="jouer-rank-dot"></span>
               <span class="jouer-rank" id="jouer-rank"></span>
               <span class="jp-sep" aria-hidden="true">·</span>
@@ -354,10 +376,23 @@
                ici : il s'ouvre tout seul dès que son délai est écoulé (voir
                dailyChestMaybeOpen, js/economy-ui.js). -->
           <div class="jouer-actions">
-            <button class="jouer-streak" id="jouer-streak">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h16v11a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 19V8Z"/><path d="M3 5.5h18V8H3z"/><path d="M12 8v12.5"/></svg>
-              <span id="jouer-streak-lbl">Série du jour</span>
-            </button>
+            <div class="jouer-tracks">
+              <button class="jouer-streak" id="jouer-streak">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h16v11a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 19V8Z"/><path d="M3 5.5h18V8H3z"/><path d="M12 8v12.5"/></svg>
+                <span id="jouer-streak-lbl">Série du jour</span>
+              </button>
+              <!-- LES DEUX VOIES QUI NE SE REFERMENT PAS : la colonne des
+                   victoires (un palier par victoire) et la rangée de la
+                   richesse (des perles contre des tickets de quête). La
+                   pastille ne s'allume que quand quelque chose attend
+                   vraiment d'être récupéré (renderRewardsBadge,
+                   js/rewards-ui.js). -->
+              <button class="jouer-streak jouer-rewards" id="jouer-rewards">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4.5h16v15H4z"/><path d="M9 4.5v15"/><path d="M4 9.5h16"/></svg>
+                <span>Récompenses</span>
+                <span class="jouer-badge" id="jouer-rewards-badge" style="display:none">0</span>
+              </button>
+            </div>
             <button class="jouer-btn" id="cube-jouer-btn"><span>COMBAT</span></button>
             <div class="jouer-second">
               <button class="btn btn-text" id="b-vs-ia">Adversaires
@@ -386,6 +421,7 @@
               <div class="ms-sub" id="ms-streak-sub"></div>
               <div class="ms-rows" id="ms-streak-rows"></div>
             </section>
+            <section class="ms-card" id="ms-rewards"></section>
             <section class="ms-card" id="ms-next"></section>
           </aside>
         </div>
@@ -406,7 +442,7 @@
     <div class="cube-face" data-face="reserve">
       <div class="face-viewport" id="face-viewport-reserve"></div>
     </div>
-    <!-- Face 4 (gauche) : LE MAGASIN. Elle a porté la Voie des Victoires, qui
+    <!-- Face 4 (gauche) : LE MAGASIN. Elle a porté la Diagonale de la Puissance, qui
          est repartie en page à part entière (bouton « Voie » du menu
          principal, à côté de l'ELO). La face reste dans le cube — le cycle de
          rotation compte quatre côtés. Elle porte les six coffres, en grand,
@@ -707,8 +743,12 @@
   </div>
 </div>
 
-<!-- PAGE VOIE : page à part entière, ouverte par le bouton « Voie » posé à
-     côté de l'ELO sur le menu principal. -->
+<!-- PAGE VOIE : LA DIAGONALE DE LA PUISSANCE (l'ancienne « Voie des
+     Victoires »), page à part entière, ouverte par la pastille de rang posée
+     sous le pseudo sur le menu principal. Les identifiants restent en `voie-`
+     et `page-voie` : ce sont les clés sur lesquelles sont accrochés le CSS,
+     le tutoriel et le test de fumée, et les renommer ne changerait rien à
+     l'écran. -->
 <!-- LE BOUTON « OK » EST UNE BARRE PLEINE LARGEUR, COLLÉE AU BAS DE L'ÉCRAN.
      Il a été une petite pastille de 38 px flottant à 14 px du bord : une
      cible étroite, posée au milieu du chemin de la Voie, qu'on manquait au
@@ -727,13 +767,42 @@
 <div id="page-voie" class="page">
 <div class="voie-scroll" id="voie-scroll">
   <div class="voie-inner">
-    <div class="voie-hdr"><div class="voie-title">Voie des Victoires</div></div>
+    <div class="voie-hdr"><div class="voie-title">Diagonale de la Puissance</div></div>
     <div class="voie-elo-banner" id="voie-elo-banner"></div>
     <div class="voie-route" id="voie-route"></div>
     <div style="text-align:left;margin-top:16px;padding-bottom:20px"><button class="btn btn-ghost" id="voie-scroll-top" style="font-size:11px">↓ Retour au début</button></div>
   </div>
 </div>
 <button class="btn btn-gold voie-ok-bar" id="voie-ok">OK</button>
+</div>
+
+<!-- PAGE RÉCOMPENSES : les deux voies qui ne dépendent pas de l'ELO.
+     L'échiquier a trois lignes, le jeu a trois voies, et chacune se lit dans
+     le sens de la sienne — la COLONNE des victoires de haut en bas, la RANGÉE
+     de la richesse de gauche à droite, la DIAGONALE de la puissance
+     (#page-voie) en zigzag. Ouverte par le bouton « Récompenses » du menu
+     principal ; remplie par renderRewardsPage() (js/rewards-ui.js).
+     Elle reprend la mise en page de la Voie : une zone défilante et le bouton
+     « OK » en barre pleine largeur collée au bas de l'écran (voir la note
+     au-dessus de #page-voie pour la raison du position:absolute). -->
+<div id="page-rewards" class="page">
+<div class="voie-scroll rw-scroll" id="rw-scroll">
+  <div class="voie-inner rw-inner">
+    <div class="rw-hdr">
+      <div class="voie-title">Récompenses</div>
+      <div class="rw-tabs" role="tablist">
+        <button class="rw-tab is-on" data-tab="colonne" role="tab" aria-selected="true">Colonne des victoires</button>
+        <button class="rw-tab" data-tab="rangee" role="tab" aria-selected="false">Rangée de la richesse</button>
+      </div>
+    </div>
+    <section class="rw-pane" id="rw-pane-colonne" role="tabpanel"></section>
+    <section class="rw-pane" id="rw-pane-rangee" role="tabpanel" hidden></section>
+    <div class="rw-foot">
+      <button class="btn btn-ghost" id="rw-goto-voie" style="font-size:11px">Diagonale de la puissance →</button>
+    </div>
+  </div>
+</div>
+<button class="btn btn-gold voie-ok-bar" id="rw-ok">OK</button>
 </div>
 
 <!-- LA PAGE D'ENGAGEMENT A ÉTÉ SUPPRIMÉE. Elle s'intercalait entre « Combat »
@@ -973,6 +1042,8 @@
 <script src="js/voie.js"></script>
 <script src="js/chest-break.js"></script>
 <script src="js/economy-ui.js"></script>
+<script src="js/rewards.js"></script>
+<script src="js/rewards-ui.js"></script>
 <script src="js/tuto-drill.js"></script>
 <script src="js/tutorial.js"></script>
 <script src="js/lore-intro.js"></script>

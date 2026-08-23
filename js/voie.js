@@ -1,6 +1,16 @@
 // ================================================================
-// VOIE.JS : Page "Voie des Victoires" (#page-voie), ELO, rangs, jalons
+// VOIE.JS : Page "Diagonale de la Puissance" (#page-voie), ELO, rangs, jalons
 // ================================================================
+// LA « VOIE DES VICTOIRES » S'APPELLE MAINTENANT LA DIAGONALE DE LA
+// PUISSANCE. Il y a désormais trois voies de progression, et chacune porte le
+// nom d'une ligne de l'échiquier : la DIAGONALE (ici, l'ELO, qui monte en
+// zigzag), la COLONNE des victoires et la RANGÉE de la richesse (les deux
+// dans js/rewards.js). Les identifiants restent en `voie-` / `page-voie` /
+// `vv*` : ce sont les clés sur lesquelles sont accrochés le CSS, le tutoriel,
+// les sauvegardes de compte et le test de fumée — les renommer ne changerait
+// rien à l'écran (même raisonnement que 'chevaucheur-rhinoceros' dans
+// js/data-pieces.js).
+//
 // Contient : le calcul d'ELO après une partie (vvCalcNewElo, formule Elo
 // standard avec K-factor variable), la détection de nouveaux déblocages
 // (vvCheckNewUnlocks), l'estimation de l'ELO d'un instructeur IA

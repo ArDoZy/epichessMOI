@@ -224,8 +224,24 @@ const CHESTS=[
   {id:'roi',     tier:5,name:'Coffre Roi',     rolls:6,qty:[4,8], newChance:0.250,bias:3.30,color:'#d9b64e'},
 ];
 function chestById(id){return CHESTS.find(c=>c.id===id)||CHESTS[0];}
-// Une série de n victoires donne le coffre de rang n-1, plafonné au Roi.
-function chestForStreak(streak){return CHESTS[Math.min(Math.max(streak,1)-1,CHESTS.length-1)];}
+// Une série de n victoires donne le coffre de rang n-1 — et RIEN au-delà du
+// sixième.
+//
+// La borne était un PLAFOND (`Math.min(..., CHESTS.length-1)`) : passé le
+// Coffre Roi, chaque victoire supplémentaire de la journée en redonnait un
+// autre, puis un autre, indéfiniment. La série du jour n'avait donc pas de
+// fin : le palier le plus rare du jeu devenait, une fois les six coffres
+// tombés, le lot ordinaire de toute victoire suivante — et les cinq premiers
+// paliers ne servaient plus qu'à y arriver.
+//
+// La série s'arrête maintenant à son dernier coffre : `null` veut dire « la
+// série du jour est terminée, elle repart demain ». Ce que les victoires
+// suivantes rapportent est ailleurs — dans la COLONNE DES VICTOIRES
+// (js/rewards.js), qui n'a pas de limite quotidienne.
+function chestForStreak(streak){
+  const i=Math.max(1,streak)-1;
+  return i<CHESTS.length?CHESTS[i]:null;
+}
 
 // ----------------------------------------------------------------
 // PERLES : la monnaie des coffres
