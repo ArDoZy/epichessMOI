@@ -97,13 +97,13 @@ function streakRowState(i,snap){
 // Une phrase, sous le titre : où l'on en est, et ce que ça implique.
 function streakSubtitle(snap){
   if(snap.locked)return 'Série perdue pour aujourd\'hui. Elle repart du Coffre Pion demain.';
-  // SÉRIE TERMINÉE VEUT DIRE TERMINÉE. Cette phrase promettait « un Coffre Roi
-  // de plus à chaque victoire », ce que le code faisait effectivement : le
-  // palier le plus rare du jeu devenait le lot ordinaire de la fin de journée.
-  // La série s'arrête maintenant à son sixième coffre (chestForStreak,
-  // js/data-pieces.js), et les victoires suivantes font avancer la colonne des
-  // victoires (js/rewards.js), qui n'a pas de limite quotidienne.
-  if(snap.done)return 'Les six coffres sont tombés : la série du jour est terminée. Vos victoires font maintenant avancer la colonne des victoires ; la série repart du Coffre Pion demain.';
+  // SÉRIE TERMINÉE : RIEN À DIRE. Six coffres cochés du haut en bas de la
+  // colonne, aucun palier « prochain » — la fenêtre le montre déjà d'un coup
+  // d'œil, et la phrase qui doublait ce constat en trois lignes (« les six
+  // coffres sont tombés… vos victoires font maintenant avancer la colonne…
+  // elle repart demain ») ne faisait que meubler l'écran de la seule journée
+  // où il n'y a plus rien à décider.
+  if(snap.done)return '';
   const next=CHESTS[snap.nextIdx];
   if(!snap.streak)return 'Une victoire, et le '+next.name+' est à vous.';
   return snap.streak+' victoire'+(snap.streak>1?'s':'')+' d\'affilée · la prochaine donne le '+next.name+'.';
@@ -268,9 +268,34 @@ function renderCombatStake(armyData){
 }
 
 // ----------------------------------------------------------------
-// PAGE ARMURERIE
+// À QUOI RESSEMBLE UN COFFRE, PARTOUT DANS LE JEU
 // ----------------------------------------------------------------
+// UNE SEULE IMAGE PAR COFFRE, ET C'EST LA STATUETTE. Il y en avait deux : le
+// coffre à couvercle dessiné en CSS (trois div : couvercle, caisse, serrure) à
+// peu près partout, et la STATUETTE du Magasin — la première planche de la
+// séquence de bris, celle-là même qu'on frappe à l'ouverture. Le joueur voyait
+// donc un objet dans la série du jour et un autre au Magasin pour le même
+// Coffre Pion, et un troisième encore en l'ouvrant.
+//
+// C'est la statuette qui gagne, partout : c'est elle qu'on brise, c'est elle
+// qui dit de quelle pièce le coffre porte le nom. Le coffre dessiné ne reste
+// que là où il n'y a pas le choix — la Dame et le Roi, dont les planches
+// n'existent pas encore (voir assets/chests/README.md). Le jour où elles
+// arriveront, il n'y aura rien à changer ici : le choix se fait sur
+// l'EXISTENCE d'une séquence, pas sur une liste d'identifiants.
+//
+// Le socle et le fond noir de la planche sont effacés par le CSS
+// (mix-blend-mode:screen et un cadrage à 190 %, voir .chest-pawn) : il ne
+// reste que la pièce. ATTENTION en touchant aux états (acquis, à prendre,
+// encore loin) : un `filter` ou une `opacity` posés sur le CONTENEUR isolent
+// le mélange et feraient revenir le fond noir — ces états passent donc par la
+// variable `--pawn-fx`, lue par l'image elle-même.
 function chestVisual(chest,extraCls){
+  const poster=(typeof chestBreakPoster==='function')?chestBreakPoster(chest.id):'';
+  if(poster)
+    return '<div class="chest chest-pawn '+(extraCls||'')+'" style="--chest-c:'+chest.color+'">'+
+      '<img src="'+poster+'" alt="" draggable="false">'+
+    '</div>';
   return '<div class="chest '+(extraCls||'')+'" style="--chest-c:'+chest.color+'">'+
     '<div class="chest-lid"></div><div class="chest-body"></div><div class="chest-lock"></div></div>';
 }
@@ -397,24 +422,11 @@ function buyChestFromShop(chestId){
   },{okLabel:'Acheter',cancelLabel:'Annuler',okClass:'btn-gold'});
 }
 
-// La carte du Magasin, en grand. Un coffre qu'on BRISE ne s'y montre pas sous
-// la forme du coffre à couvercle dessiné en CSS : il montre LA STATUETTE de sa
-// première planche (assets/chests/<id>/01-intact.webp, l'image qui ouvre la
-// séquence de bris — voir js/chest-break.js), dont le socle et le fond noir
-// sont effacés par un filtre CSS (mix-blend-mode:screen, voir .chest-pawn)
-// pour ne garder que la pièce. La séquence de bris elle-même est INTACTE et se
-// joue normalement à l'ouverture, ici comme après une victoire.
+// La carte du Magasin, en grand. Elle avait sa propre fonction de rendu, la
+// seule à connaître la statuette ; c'est maintenant chestVisual() qui la
+// donne à tout le jeu (voir sa note plus haut), et le Magasin n'a plus qu'à
+// demander la grande taille.
 //
-// Le choix se fait sur l'EXISTENCE d'une séquence, pas sur une liste d'ids :
-// équiper le Fou de ses cinq planches suffira à lui donner sa statuette ici
-// aussi, sans rien changer dans ce fichier.
-function magasinChestVisual(chest){
-  const poster=typeof chestBreakPoster==='function'?chestBreakPoster(chest.id):'';
-  if(!poster)return chestVisual(chest,'chest-lg');
-  return '<div class="chest chest-lg chest-pawn" style="--chest-c:'+chest.color+'">'+
-    '<img src="'+poster+'" alt="" draggable="false">'+
-  '</div>';
-}
 // La carte ne dit que ce qu'il faut pour décider : quel coffre, et combien il
 // coûte. Le nombre de lots et la probabilité de pièce inédite
 // (chestPromiseHTML) restent réservés aux cartes du mode test.
@@ -422,7 +434,7 @@ function magasinChestCardHTML(chest){
   const price=chestPearlPrice(chest.id);
   const afford=pearlInfinite()||pearlBalance()>=price;
   return '<button class="shop-chest'+(afford?'':' shop-poor')+'" data-chest="'+chest.id+'" style="--chest-c:'+chest.color+'">'+
-    magasinChestVisual(chest)+
+    chestVisual(chest,'chest-lg')+
     '<div class="shop-chest-name">'+escH(chest.name)+'</div>'+
     '<div class="shop-chest-price">'+pearlAmountHTML(price,1.15)+'</div>'+
   '</button>';

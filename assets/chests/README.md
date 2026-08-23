@@ -66,9 +66,12 @@ manuelles elles aussi, retirer leur `hold` dans `js/chest-break.js`
    (`CHEST_BREAK_GLOW`).
 
 Le reste du jeu n'a rien à savoir : les trois planches communes s'ajoutent
-d'elles-mêmes, la cérémonie choisit la séquence au lieu du couvercle, et le
-Magasin montre la statuette de la pièce à la place du coffre dessiné — il se
-décide sur l'existence d'une séquence, pas sur une liste de noms.
+d'elles-mêmes, la cérémonie choisit la séquence au lieu du couvercle, et la
+statuette de la pièce remplace le coffre dessiné **partout** — série du jour,
+colonne des victoires, Magasin, cartes du mode test (`chestVisual`,
+`js/economy-ui.js`). Le choix se décide sur l'existence d'une séquence, pas sur
+une liste de noms : le jour où la Dame et le Roi auront leurs planches, ils
+cesseront d'eux-mêmes d'être les deux seuls coffres à couvercle du jeu.
 
 ## Ce que les images doivent respecter
 

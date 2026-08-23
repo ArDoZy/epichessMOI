@@ -701,6 +701,7 @@ mais dans une version que Playwright refuse, le script le retrouve tout seul
 | Changer la façon dont un style se joue | `STYLE_W` dans `js/ai-engine.js` (évaluation) + `ARMY_STYLE_CLASS` dans `js/armies.js` (composition) |
 | Ajouter un portrait d'adversaire | déposer `assets/adversaires/<id>.png` — rien à déclarer |
 | Changer le contenu ou la rareté des coffres | `js/data-pieces.js` (`CHESTS`, `DAILY_CHEST`) + `js/economy.js` (`chestRoll`) |
+| Changer à quoi ressemble un coffre (partout : série, colonne, Magasin) | `chestVisual()` dans `js/economy-ui.js` — il rend la **statuette** (première planche de la séquence de bris) dès qu'un coffre en a une, sinon le coffre à couvercle dessiné en CSS |
 | Changer les perles (gains en coffre, prix d'achat) | `js/data-pieces.js` (`CHEST_PEARLS`) + `js/economy.js` (`chestRoll`, `pearlBuyChest`) + `renderMenuChests()` dans `js/economy-ui.js` |
 | Changer la cadence des parties (temps, incrément) | `js/ai-level-modal.js` (`selectedTimeControl`, `selectedTimeIncrement`) ; l'incrément est crédité par `recordMove()` dans `js/rules-engine.js` |
 | Changer ce qu'une partie fait risquer ou rapporter | `js/economy.js` (`economyCommit` / `economySettle`) |
