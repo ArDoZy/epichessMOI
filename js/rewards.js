@@ -83,7 +83,6 @@ function colClaimed(){const n=rwGet('col_claimed',0);return Math.max(0,Math.min(
 // Paliers gagnés mais pas encore encaissés : c'est ce que le bouton
 // « Récupérer » de la page des récompenses déclenche, un par un.
 function colPending(){return Math.max(0,colWins()-colClaimed());}
-function colDone(){return colClaimed()>=colTotal();}
 // L'index (0-based) du palier que la prochaine victoire ouvrirait, ou -1 si la
 // colonne est finie.
 function colNextIdx(){const w=colWins();return w>=colTotal()?-1:w;}

@@ -443,10 +443,12 @@ function chestBreakPreload(){
 // non si les images ne sont pas dans le dépôt (404) : dans les deux cas la
 // cérémonie retombe sur le coffre à couvercle, et le jeu reste jouable même
 // si le dossier assets/chests/ est vide.
-// L'AFFICHE d'un coffre : sa première planche, la statuette intacte. Le
-// Magasin s'en sert pour montrer la pièce plutôt que le coffre à couvercle
-// dessiné en CSS (magasinChestVisual, js/economy-ui.js). Rend '' pour un
-// coffre sans séquence — l'appelant retombe alors sur le couvercle.
+// L'AFFICHE d'un coffre : sa première planche, la statuette intacte. C'est
+// ELLE qui représente le coffre partout dans le jeu — série du jour, colonne
+// des victoires, Magasin, cartes du mode test (chestVisual, js/economy-ui.js).
+// Rend '' pour un coffre sans séquence (la Dame et le Roi, dont les planches
+// n'existent pas encore) : l'appelant retombe alors sur le coffre à couvercle
+// dessiné en CSS.
 function chestBreakPoster(chestId){
   const cfg=chestBreakFor(chestId);
   return cfg?pbSrc(cfg,0):'';

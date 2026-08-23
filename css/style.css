@@ -1638,11 +1638,24 @@ body.light .pmv-dark{background:#c3bdae}
 /* La statuette occupe une bande étroite au milieu d'une planche 2:3 : on
    agrandit l'image (height:190%) et on la recale pour amener CE pion — et non
    le centre de la planche — au centre de la tuile, socle et fond hors cadre. */
+/* LA STATUETTE REPRÉSENTE LE COFFRE PARTOUT (chestVisual, js/economy-ui.js) :
+   série du jour, colonne des victoires, Magasin, cartes du mode test. Le fond
+   noir de la planche est effacé par `mix-blend-mode:screen`, et le socle par le
+   cadrage (190 % de haut, remonté de 46 %) — d'où l'`overflow:hidden`.
+
+   PIÈGE À CONNAÎTRE AVANT DE TOUCHER AUX ÉTATS : un `filter` ou une `opacity`
+   posés sur le CONTENEUR `.chest-pawn` créent un groupe d'isolation. Le
+   mélange n'aurait alors plus rien derrière lui à quoi se mélanger, et le fond
+   noir du .webp réapparaîtrait en plein milieu de la carte. Les états
+   (acquis, à prendre, encore loin) passent donc par `--pawn-fx`, une variable
+   qui, elle, s'hérite jusqu'à l'image — c'est l'IMAGE qui porte le filtre, et
+   une image peut être filtrée ET mélangée sans s'isoler d'elle-même. */
 .chest-pawn{background:none;overflow:hidden}
 .chest-pawn img{position:absolute;left:50%;top:50%;width:auto;height:190%;
   transform:translate(-50%,-46%);
   mix-blend-mode:screen;pointer-events:none;
-  filter:brightness(1.06) contrast(1.04) drop-shadow(0 6px 14px rgba(0,0,0,.55))}
+  filter:brightness(1.06) contrast(1.04) drop-shadow(0 6px 14px rgba(0,0,0,.55))
+    var(--pawn-fx,drop-shadow(0 0 0 rgba(0,0,0,0)))}
 @media(max-width:480px){
   .shop-chest-grid{gap:8px}
   .shop-chest{padding:14px 4px 12px;border-radius:14px}
@@ -2141,19 +2154,25 @@ body.light .pmv-dark{background:#c3bdae}
   color:#1a1206;background:var(--gold);border-radius:999px;padding:4px 9px}
 /* Déjà décroché : allumé, mais calme. */
 .streak-row.chest-won{border-color:color-mix(in srgb,var(--chest-c) 55%,var(--border))}
-.streak-row.chest-won .chest{filter:drop-shadow(0 0 8px color-mix(in srgb,var(--chest-c) 60%,transparent))}
+.streak-row.chest-won .chest:not(.chest-pawn){filter:drop-shadow(0 0 8px color-mix(in srgb,var(--chest-c) 60%,transparent))}
+.streak-row.chest-won .chest-pawn{--pawn-fx:drop-shadow(0 0 8px color-mix(in srgb,var(--chest-c) 60%,transparent))}
 /* Le prochain : c'est LUI qu'on joue. Halo qui respire, cadre laiton. Aucune
    translation ni mise à l'échelle : la colonne garde son alignement, qui est
    ce qui fait de ces six objets une SÉRIE. */
 .streak-row.chest-next{border-color:var(--gold);
   background:linear-gradient(100deg,rgba(193,154,69,.14),var(--surface))}
-.streak-row.chest-next .chest{filter:drop-shadow(0 0 14px var(--chest-c)) drop-shadow(0 0 30px color-mix(in srgb,var(--chest-c) 65%,transparent));
+.streak-row.chest-next .chest:not(.chest-pawn){filter:drop-shadow(0 0 14px var(--chest-c)) drop-shadow(0 0 30px color-mix(in srgb,var(--chest-c) 65%,transparent));
   animation:jcBreathe 2.6s ease-in-out infinite}
+.streak-row.chest-next .chest-pawn{--pawn-fx:drop-shadow(0 0 14px var(--chest-c)) drop-shadow(0 0 30px color-mix(in srgb,var(--chest-c) 65%,transparent))}
+/* La respiration est portée par l'IMAGE et non par sa boîte : une opacité sur
+   le conteneur isolerait le mélange (voir la note de .chest-pawn). */
+.streak-row.chest-next .chest-pawn img{animation:jcBreathe 2.6s ease-in-out infinite}
 .streak-row.chest-next .streak-row-name{color:var(--gold2)}
 @keyframes jcBreathe{0%,100%{opacity:.66}50%{opacity:1}}
 /* Encore loin : éteint, sans disparaître. */
 .streak-row.chest-far{opacity:.46}
-.streak-row.chest-far .chest{filter:saturate(.28) brightness(.8)}
+.streak-row.chest-far .chest:not(.chest-pawn){filter:saturate(.28) brightness(.8)}
+.streak-row.chest-far .chest-pawn{--pawn-fx:saturate(.28) brightness(.8)}
 @media(max-width:420px){
   .streak-row{gap:10px;padding:10px 11px}
   .streak-row-chest{width:56px}
@@ -2192,6 +2211,42 @@ body.light .pmv-dark{background:#c3bdae}
    collée au bas de l'écran (voir [VOIE] pour le pourquoi du position:absolute). */
 #page-rewards{padding:0;background:var(--bg)}
 #page-rewards.active{display:flex;flex-direction:column;overflow:hidden}
+/* LA COLONNE OCCUPE TOUT CE QUI RESTE. Sa bande plafonnait à 58 vh : sous le
+   dernier palier visible s'ouvrait une bande morte de cent pixels jusqu'à la
+   barre « OK » — celle-là même où se trouvait le bouton « Diagonale de la
+   puissance », parti avec lui. L'écran est donc découpé en flex : l'en-tête et
+   le bandeau prennent ce qu'il leur faut, la bande des paliers prend le reste,
+   et il n'y a plus rien en trop. La rangée, elle, dépasse et fait défiler la
+   page normalement. */
+/* `rw-fill` n'est posée que sur l'onglet COLONNE (rewardsSetTab,
+   js/rewards-ui.js) : lui seul doit tenir exactement dans l'écran, avec sa
+   bande qui défile chez elle. La rangée, elle, dépasse — sa hauteur ne doit
+   surtout pas être bridée, sinon les quêtes passeraient sous la barre « OK »,
+   et c'est pourquoi aucune de ces trois règles ne vaut hors de `rw-fill`.
+   `height` et pas `min-height` : avec un simple minimum, la bande reprenait la
+   hauteur de ses trente paliers et plus rien ne la contenait.
+   `flex:1 1 0` et pas `1 1 auto` : avec une base `auto`, la bande part de la
+   hauteur de ses trente paliers (2 100 px) et le calcul de rétrécissement lui
+   rend un peu moins que la place disponible — il restait une centaine de
+   pixels morts au-dessus de la barre « OK ». Base zéro : elle prend
+   exactement ce qui reste, ni plus ni moins. */
+.rw-inner{display:flex;flex-direction:column}
+/* La zone défilante réserve déjà la hauteur de la barre « OK » (76 px, voir
+   .voie-scroll) : le retrait du bas que la Voie ajoute sur téléphone
+   (`.voie-inner{padding-bottom:var(--page-bottom)}`, section [MOBILE-APP])
+   viendrait s'y AJOUTER — cent pixels vides de plus sous la rangée, et cent
+   pixels pris à la colonne, qui se calcule justement sur cette hauteur. */
+#page-rewards .rw-inner{padding-bottom:0}
+#page-rewards.rw-fill .rw-inner{height:100%}
+#page-rewards.rw-fill .rw-pane{flex:1 1 0;min-height:0}
+#page-rewards.rw-fill .rw-col-strip{flex:1 1 0;min-height:0}
+/* `hidden` doit rester plus fort que la règle d'affichage ci-dessous, sinon
+   l'onglet masqué se rouvre tout seul — et il l'a fait : `#rw-pane-colonne`
+   porte un identifiant, qui l'emportait sur un simple `.rw-pane[hidden]`, si
+   bien que la colonne restait affichée sous la rangée. D'où le sélecteur
+   d'identifiant des deux côtés. */
+#page-rewards .rw-pane[hidden]{display:none}
+#rw-pane-colonne{display:flex;flex-direction:column}
 .rw-hdr{margin-bottom:18px}
 .rw-hdr .voie-title{margin-bottom:12px}
 /* Deux onglets, pas un menu : il n'y a que deux voies ici. */
@@ -2207,25 +2262,27 @@ body.light .pmv-dark{background:#c3bdae}
 /* Le bandeau de tête d'un onglet : où l'on en est, et le bouton qui encaisse.
    Le bouton n'apparaît QUE quand il y a quelque chose à prendre — un bouton
    grisé en permanence ne dit rien de plus qu'une phrase. */
-.rw-banner{display:flex;align-items:center;gap:18px;flex-wrap:wrap;
+/* `flex:0 0 auto` : dans l'onglet colonne, le panneau est une colonne flex et
+   le bandeau s'y faisait COMPRIMER par la bande des trente paliers — son
+   bouton « Récupérer » débordait de sa boîte et passait sous la première
+   ligne. Il garde sa hauteur, la bande prend le reste. */
+.rw-banner{flex:0 0 auto;display:flex;align-items:center;gap:18px;flex-wrap:wrap;
   background:var(--surface);border:1px solid var(--border);border-radius:14px;
   padding:18px 20px;margin-bottom:20px;position:relative;overflow:hidden}
 .rw-banner::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;
   background:var(--gold);opacity:.5}
 .rw-banner-txt{flex:1 1 260px;min-width:0}
-.rw-banner-title{font-family:var(--f-title);font-size:17px;font-weight:800;color:var(--gold2)}
-.rw-banner-sub{font-family:var(--f-ui);font-size:12px;line-height:1.5;color:var(--muted);
-  margin:5px 0 10px}
-.rw-banner-note{font-family:var(--f-ui);font-size:10px;color:var(--muted);margin-top:6px;
-  letter-spacing:.06em;text-transform:uppercase}
 .rw-banner .ms-gauge{margin-top:0}
 .rw-claim{flex:0 0 auto;min-width:150px}
-.rw-bank{display:flex;align-items:center;gap:8px;margin-top:10px;
-  font-family:var(--f-ui);font-size:11px;color:var(--muted);letter-spacing:.05em}
+/* Bandeau réduit au seul bouton (la rangée) : il n'a plus de colonne de texte
+   à équilibrer, le bouton prend toute la largeur plutôt que de flotter à
+   gauche d'un vide. */
+.rw-banner-solo{padding:14px}
+.rw-banner-solo .rw-claim{flex:1 1 auto;width:100%}
 
 /* --- LA COLONNE : trente paliers, de haut en bas ------------------ */
 .rw-col-strip{display:flex;flex-direction:column;gap:10px;
-  max-height:min(58vh,620px);overflow-y:auto;-webkit-overflow-scrolling:touch;
+  overflow-y:auto;-webkit-overflow-scrolling:touch;
   padding:4px 4px 8px;position:relative}
 /* Le fil qui relie les paliers : c'est lui qui en fait une colonne et non une
    liste. Posé derrière les lignes, il court sous les numéros. */
@@ -2259,12 +2316,15 @@ body.light .pmv-dark{background:#c3bdae}
 .rw-due{border-color:var(--gold);
   background:linear-gradient(100deg,rgba(193,154,69,.16),var(--surface))}
 .rw-due .rw-step-name,.rw-due .rw-cell-gain{color:var(--gold2)}
-.rw-due .chest,.rw-due .rw-step-joker svg{
+.rw-due .chest:not(.chest-pawn),.rw-due .rw-step-joker svg{
   filter:drop-shadow(0 0 14px var(--chest-c,var(--gold))) drop-shadow(0 0 28px rgba(201,168,76,.5));
   animation:jcBreathe 2.6s ease-in-out infinite}
+.rw-due .chest-pawn{--pawn-fx:drop-shadow(0 0 14px var(--chest-c,var(--gold))) drop-shadow(0 0 28px rgba(201,168,76,.5))}
+.rw-due .chest-pawn img{animation:jcBreathe 2.6s ease-in-out infinite}
 .rw-next{border-color:var(--border2)}
 .rw-far{opacity:.42}
-.rw-far .chest{filter:saturate(.28) brightness(.8)}
+.rw-far .chest:not(.chest-pawn){filter:saturate(.28) brightness(.8)}
+.rw-far .chest-pawn{--pawn-fx:saturate(.28) brightness(.8)}
 .rw-far .rw-step-joker svg,.rw-far .pearl-icon{filter:saturate(.3) brightness(.85)}
 
 /* --- LA RANGÉE : vingt-cinq cases, de gauche à droite -------------- */
@@ -2314,7 +2374,6 @@ body.light .pmv-dark{background:#c3bdae}
 .rw-joker-call span{font-family:var(--f-ui);font-size:12px;color:var(--muted)}
 .rw-joker-call .btn{margin-left:auto;font-size:12px;padding:9px 18px}
 
-.rw-foot{text-align:left;margin-top:20px;padding-bottom:24px}
 
 /* Les deux monnaies dessinées, à côté de la perle (voir [RESERVE]). */
 .ticket-amt,.joker-amt{display:inline-flex;align-items:center;gap:6px;

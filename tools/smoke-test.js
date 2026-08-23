@@ -591,17 +591,21 @@ const OPTIONAL_ASSET=/adversaires\/[a-z-]+\.png|backgrounds\/main-page\.png|ches
     await page.waitForTimeout(400);
     await page.click('#jouer-rewards');
     await page.waitForSelector('#page-rewards.active',{timeout:8000});
-    const onglets=await page.evaluate(()=>({
-      colonneVisible:!document.getElementById('rw-pane-colonne').hidden,
-      rangeeVisible:!document.getElementById('rw-pane-rangee').hidden,
-    }));
+    // On lit l'AFFICHAGE CALCULÉ et pas l'attribut `hidden` : un sélecteur
+    // d'identifiant plus fort que `[hidden]` laissait la colonne affichée sous
+    // la rangée alors que l'attribut, lui, était bien posé.
+    const vu=()=>({
+      colonneVisible:getComputedStyle(document.getElementById('rw-pane-colonne')).display!=='none',
+      rangeeVisible:getComputedStyle(document.getElementById('rw-pane-rangee')).display!=='none',
+    });
+    const onglets=await page.evaluate(vu);
     if(!onglets.colonneVisible||onglets.rangeeVisible)
       throw new Error('la page ne s\'ouvre pas sur la colonne');
     await page.click('#page-rewards .rw-tab[data-tab="rangee"]');
     await page.waitForTimeout(200);
     const apres=await page.evaluate(()=>({
-      colonneVisible:!document.getElementById('rw-pane-colonne').hidden,
-      rangeeVisible:!document.getElementById('rw-pane-rangee').hidden,
+      colonneVisible:getComputedStyle(document.getElementById('rw-pane-colonne')).display!=='none',
+      rangeeVisible:getComputedStyle(document.getElementById('rw-pane-rangee')).display!=='none',
       quetes:document.querySelectorAll('#rw-pane-rangee .rw-quest').length,
       cases:document.querySelectorAll('#rw-row-strip .rw-cell').length,
     }));
@@ -611,6 +615,92 @@ const OPTIONAL_ASSET=/adversaires\/[a-z-]+\.png|backgrounds\/main-page\.png|ches
     await page.click('#rw-ok');
     await page.waitForTimeout(500);
     if(await page.isVisible('#page-rewards.active'))throw new Error('« OK » ne referme pas la page');
+  });
+
+  // UNE SEULE IMAGE PAR COFFRE, ET C'EST LA STATUETTE DU MAGASIN. Il y en
+  // avait deux : le coffre à couvercle dessiné en CSS dans la série du jour,
+  // la colonne et le mode test, et la statuette au Magasin — deux objets pour
+  // le même Coffre Pion, plus un troisième en l'ouvrant. Les quatre coffres
+  // équipés de planches (Pion, Cavalier, Fou, Tour) montrent partout leur
+  // statuette ; la Dame et le Roi gardent le couvercle, faute de planches.
+  await step('les coffres montrent partout la statuette du Magasin',async()=>{
+    const r=await page.evaluate(()=>{
+      openStreakModal();
+      const lire=sel=>{
+        const el=document.querySelector(sel);
+        if(!el)return 'absent';
+        if(el.querySelector('.chest-pawn img'))return 'statuette';
+        if(el.querySelector('.chest-lid'))return 'couvercle';
+        return 'rien';
+      };
+      const serie={};
+      ['pion','cavalier','fou','tour','dame','roi'].forEach(id=>{
+        serie[id]=lire('#streak-scroll .streak-row[data-chest="'+id+'"]');
+      });
+      closeStreakModal();
+      accSet('col_wins',3);accSet('col_claimed',0);
+      openRewardsPage('colonne');
+      const colonne=lire('#rw-col-strip .rw-step[data-idx="0"]');       // Coffre Pion
+      const source=(document.querySelector('#rw-col-strip .chest-pawn img')||{}).getAttribute
+        ?document.querySelector('#rw-col-strip .chest-pawn img').getAttribute('src'):'';
+      return{serie,colonne,source,
+        // Le mélange qui efface le fond noir de la planche ne survit pas à un
+        // filtre posé sur le CONTENEUR : il doit rester sur l'image.
+        blend:(()=>{
+          const img=document.querySelector('#rw-col-strip .chest-pawn img');
+          if(!img)return null;
+          return{
+            melange:getComputedStyle(img).mixBlendMode,
+            filtreBoite:getComputedStyle(img.parentElement).filter,
+            opaciteBoite:getComputedStyle(img.parentElement).opacity,
+          };
+        })()};
+    });
+    ['pion','cavalier','fou','tour'].forEach(id=>{
+      if(r.serie[id]!=='statuette')
+        throw new Error('série du jour : le Coffre '+id+' montre « '+r.serie[id]+' » au lieu de sa statuette');
+    });
+    ['dame','roi'].forEach(id=>{
+      if(r.serie[id]!=='couvercle')
+        throw new Error('série du jour : le Coffre '+id+' n\'a pas de planches, il devrait garder le couvercle ('+r.serie[id]+')');
+    });
+    if(r.colonne!=='statuette')throw new Error('colonne des victoires : « '+r.colonne+' » au lieu de la statuette');
+    if(!/01-intact\.webp$/.test(r.source||''))throw new Error('la colonne ne pointe pas la planche intacte : '+r.source);
+    if(!r.blend)throw new Error('aucune statuette rendue dans la colonne');
+    if(r.blend.melange!=='screen')throw new Error('le mélange qui efface le fond noir a disparu : '+r.blend.melange);
+    if(r.blend.filtreBoite!=='none')
+      throw new Error('un filtre est posé sur la boîte de la statuette : il isole le mélange et fait revenir le fond noir ('+r.blend.filtreBoite+')');
+    if(r.blend.opaciteBoite!=='1')
+      throw new Error('une opacité est posée sur la boîte de la statuette : même effet qu\'un filtre ('+r.blend.opaciteBoite+')');
+  });
+
+  // LES DEUX BANDEAUX NE PARLENT PLUS. Ils redisaient le nom de la voie (que
+  // l'onglet porte déjà), sa progression en toutes lettres et un compteur —
+  // trois façons d'écrire ce que la colonne et la rangée MONTRENT. Et le
+  // bouton « Diagonale de la puissance » a quitté le bas de la page : elle
+  // s'ouvre depuis la pastille de rang du menu.
+  await step('la page des récompenses ne redit plus ce qu\'elle montre',async()=>{
+    const r=await page.evaluate(()=>{
+      accSet('col_wins',5);accSet('col_claimed',5);accSet('tickets',0);accSet('rich_claimed',1);
+      openRewardsPage('colonne');
+      const colonne=document.getElementById('rw-pane-colonne');
+      const bandeauCol=colonne.querySelector('.rw-banner');
+      rewardsSetTab('rangee');
+      const rangee=document.getElementById('rw-pane-rangee');
+      return{
+        texteBandeauCol:bandeauCol?bandeauCol.textContent.trim():'',
+        jaugeCol:!!colonne.querySelector('.rw-banner .ms-gauge'),
+        // Rien à encaisser dans la rangée : pas de bandeau du tout.
+        bandeauRangee:!!rangee.querySelector('.rw-banner'),
+        diagonale:!!document.getElementById('rw-goto-voie'),
+        pied:document.querySelectorAll('#page-rewards .rw-foot').length,
+      };
+    });
+    if(r.texteBandeauCol)throw new Error('le bandeau de la colonne écrit encore : '+r.texteBandeauCol);
+    if(!r.jaugeCol)throw new Error('la jauge de la colonne a disparu avec le texte');
+    if(r.bandeauRangee)throw new Error('la rangée garde un bandeau vide alors qu\'il n\'y a rien à encaisser');
+    if(r.diagonale)throw new Error('le bouton « Diagonale de la puissance » est encore là');
+    if(r.pied)throw new Error('le pied de page vide est encore là');
   });
 
   // LA SÉRIE DU JOUR A UNE FIN. Elle n'en avait pas : chestForStreak plafonnait
@@ -628,13 +718,19 @@ const OPTIONAL_ASSET=/adversaires\/[a-z-]+\.png|backgrounds\/main-page\.png|ches
         apres:apres.map(c=>c?c.id:null),
         septieme:chestForStreak(7),
         sub:document.getElementById('streak-sub').textContent,
+        marques:document.querySelectorAll('#streak-scroll .streak-row.chest-won').length,
+        prochain:document.querySelectorAll('#streak-scroll .streak-row.chest-next').length,
       };
     });
     if(r.apres.some(c=>c!==null))
       throw new Error('la série continue de donner des coffres après le sixième : '+r.apres.join(','));
     if(r.septieme!==null)throw new Error('chestForStreak(7) rend encore un coffre');
-    if(/Coffre Roi/.test(r.sub))throw new Error('la fenêtre promet encore un Coffre Roi de plus : '+r.sub);
-    if(!/terminée/i.test(r.sub))throw new Error('la fenêtre ne dit pas que la série est terminée : '+r.sub);
+    // Série terminée : la fenêtre ne dit plus RIEN sous son titre. Six coffres
+    // cochés et aucun palier « prochain » le montrent déjà ; la phrase qui
+    // doublait ce constat a été retirée.
+    if(r.sub.trim())throw new Error('la fenêtre écrit encore quelque chose une fois la série terminée : '+r.sub);
+    if(r.marques!==6)throw new Error(r.marques+' paliers cochés au lieu de 6 : rien ne dit plus que la série est finie');
+    if(r.prochain)throw new Error('un palier est encore marqué « prochain » alors que la série est terminée');
     await page.evaluate(()=>{accSet('streak_lock_day',null);accSet('win_streak',0);});
   });
 

@@ -87,6 +87,9 @@ function rewardsSetTab(tab){
   const row=document.getElementById('rw-pane-rangee');
   if(col)col.hidden=_rwTab!=='colonne';
   if(row)row.hidden=_rwTab!=='rangee';
+  // La colonne tient dans l'écran (sa bande défile chez elle), la rangée
+  // dépasse et fait défiler la page : voir `rw-fill` dans [REWARDS].
+  document.getElementById('page-rewards')?.classList.toggle('rw-fill',_rwTab==='colonne');
   // Le positionnement se fait ICI et pas au rendu : un panneau `hidden` n'a
   // aucune géométrie, un défilement calculé dessus ne fait rien du tout — la
   // rangée s'ouvrait donc sur sa première case au lieu du palier en cours dès
@@ -141,13 +144,6 @@ function rwStepName(step){
   if(step.chest)return chestById(step.chest).name;
   return step.jokers+' joker'+(step.jokers>1?'s':'');
 }
-function rwColSubtitle(){
-  const wins=colWins(),due=colPending();
-  if(due)return due+' récompense'+(due>1?'s':'')+' à récupérer.';
-  if(colDone())return 'Les trente paliers sont tombés. La colonne est terminée.';
-  const next=VICTORY_COLUMN[colNextIdx()];
-  return wins+' victoire'+(wins>1?'s':'')+' · la prochaine ouvre le palier '+(wins+1)+' ('+rwStepName(next)+').';
-}
 function rwColRowsHTML(){
   return VICTORY_COLUMN.map((step,i)=>{
     const state=rwColState(i);
@@ -164,6 +160,12 @@ function rwColRowsHTML(){
     '</div>';
   }).join('');
 }
+// LE BANDEAU NE PARLE PLUS. Il portait le nom de la voie — que l'onglet
+// juste au-dessus dit déjà, en gros et en or —, une phrase de progression
+// (« 5 victoires · la prochaine ouvre le palier 6 ») et un compteur
+// « 5 / 30 paliers ». Trois façons d'écrire ce que la colonne elle-même
+// MONTRE : les paliers cochés, celui qui pulse, celui qui attend. Ne restent
+// que la jauge et le bouton, c'est-à-dire l'état et l'action.
 function renderRewardsColonne(){
   const pane=document.getElementById('rw-pane-colonne');
   if(!pane)return;
@@ -171,12 +173,7 @@ function renderRewardsColonne(){
   const gauge=Math.round(colClaimed()/colTotal()*100);
   pane.innerHTML=
     '<div class="rw-banner">'+
-      '<div class="rw-banner-txt">'+
-        '<div class="rw-banner-title">Colonne des victoires</div>'+
-        '<div class="rw-banner-sub">'+escH(rwColSubtitle())+'</div>'+
-        '<div class="ms-gauge"><span style="width:'+gauge+'%"></span></div>'+
-        '<div class="rw-banner-note">'+colClaimed()+' / '+colTotal()+' paliers</div>'+
-      '</div>'+
+      '<div class="rw-banner-txt"><div class="ms-gauge"><span style="width:'+gauge+'%"></span></div></div>'+
       (due?'<button class="btn btn-gold rw-claim" id="rw-claim-col">Récupérer'+(due>1?' ('+due+')':'')+'</button>':'')+
     '</div>'+
     '<div class="rw-col-strip" id="rw-col-strip">'+rwColRowsHTML()+'</div>';
@@ -225,13 +222,6 @@ function rwRichCellsHTML(){
     '</div>';
   }).join('');
 }
-function rwRichSubtitle(){
-  if(richDone())return 'Les vingt-cinq paliers sont tombés. La rangée est terminée.';
-  const step=richNextStep();
-  const have=ticketBalance();
-  if(have>=step.cost)return 'Palier '+(richClaimed()+1)+' : '+step.pearls+' perles, payées. À récupérer.';
-  return 'Palier '+(richClaimed()+1)+' : '+step.pearls+' perles pour '+step.cost+' tickets · encore '+(step.cost-have)+'.';
-}
 function rwQuestCardHTML(q){
   const tpl=questTpl(q.id);
   if(!tpl)return '';
@@ -256,15 +246,14 @@ function renderRewardsRangee(){
   const quests=questsToday();
   const can=richCanClaim();
   const jok=jokerBalance();
+  // MÊME RÈGLE QUE LA COLONNE : le bandeau ne redit pas ce que la rangée
+  // montre. Le nom de la voie est sur l'onglet, le palier en cours pulse dans
+  // la rangée avec son prix en tickets écrit dessus, et le solde se lit sur
+  // les quêtes. Il ne reste donc que le bouton — et sans bouton, pas de
+  // bandeau du tout : un cadre vide n'est pas une information.
   pane.innerHTML=
-    '<div class="rw-banner">'+
-      '<div class="rw-banner-txt">'+
-        '<div class="rw-banner-title">Rangée de la richesse</div>'+
-        '<div class="rw-banner-sub">'+escH(rwRichSubtitle())+'</div>'+
-        '<div class="rw-bank">'+ticketAmountHTML(ticketBalance(),1.5)+'<span>tickets en réserve</span></div>'+
-      '</div>'+
-      (can?'<button class="btn btn-gold rw-claim" id="rw-claim-rich">Récupérer</button>':'')+
-    '</div>'+
+    (can?'<div class="rw-banner rw-banner-solo">'+
+      '<button class="btn btn-gold rw-claim" id="rw-claim-rich">Récupérer</button></div>':'')+
     '<div class="rw-row-strip" id="rw-row-strip">'+rwRichCellsHTML()+'</div>'+
     (jok?'<div class="rw-joker-call">'+jokerAmountHTML(jok,1.6)+
       '<span>en attente de conversion</span>'+
@@ -415,10 +404,6 @@ function renderMenuRewardsCard(){
 document.getElementById('jouer-rewards')?.addEventListener('click',()=>openRewardsPage());
 document.getElementById('rw-ok')?.addEventListener('click',()=>{
   if(typeof goToMainMenu==='function')goToMainMenu();else showPage('face-jouer');
-});
-document.getElementById('rw-goto-voie')?.addEventListener('click',()=>{
-  if(typeof renderVoiePage==='function')renderVoiePage();
-  showPage('page-voie');
 });
 document.querySelectorAll('#page-rewards .rw-tab').forEach(b=>{
   b.addEventListener('click',()=>rewardsSetTab(b.dataset.tab));
