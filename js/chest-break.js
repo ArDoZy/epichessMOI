@@ -23,8 +23,9 @@
 //               chaude et le navigateur fait tourner cette teinte : blanche
 //               pour le Pion, jaune pour le Cavalier, orange pour le Fou,
 //               rouge pour la Tour, violette et bleue pour les deux autres.
-//               Aucune image n'est doublée
-//               (voir CHEST_BREAK_GLOW)
+//               La rotation ne prend QUE la lumière : le marbre, lui, reste
+//               du marbre. Aucune image n'est doublée
+//               (voir CHEST_BREAK_GLOW et CHEST_BREAK_MARBLE)
 //
 // Pourquoi empiler les images plutôt que les remplacer : chaque image
 // contient tout ce qu'avait la précédente PLUS des fissures en trop. Comme
@@ -206,20 +207,34 @@ function chestBreakFor(chestId){
 // LES PLANCHES NE SONT PAS REDESSINÉES POUR AUTANT. Elles sont rendues une
 // fois, en lumière chaude — un or à ~35° de teinte, mesuré sur les images —
 // et c'est le NAVIGATEUR qui fait tourner cette teinte vers la couleur du
-// rang, avec `filter:hue-rotate()` sur l'image affichée.
+// rang, avec `hue-rotate()` sur l'image affichée.
 //
-// Pourquoi ça marche ici et pas n'importe où : hue-rotate est une matrice
-// qui laisse les gris EXACTEMENT où ils sont, et ne déplace que ce qui est
-// coloré. Or c'est précisément la découpe de ces planches — un marbre
-// quasiment neutre (saturation mesurée : 0,03 à 0,15) et une lumière
-// franchement chaude (0,24 à 0,50). Faire tourner la teinte de toute
-// l'image ne touche donc, en pratique, que la lumière : la statuette reste
-// de la pierre, l'or des fissures devient bleu, violet ou rouge. Un calque
-// de couleur posé par-dessus, lui, aurait teinté le marbre avec.
+// MAIS ON NE PEUT PAS FAIRE TOURNER TOUTE L'IMAGE. hue-rotate laisse les
+// gris exactement où ils sont et ne déplace que ce qui est coloré : sur un
+// marbre parfaitement neutre, elle ne toucherait que la lumière. Le marbre
+// de ces planches N'EST PAS neutre — il est éclairé chaud, et sa saturation
+// mesurée monte de 0,11 (pièce intacte) à 0,33 (pièce saturée de fissures),
+// c'est-à-dire la saturation de la lumière elle-même. Faire tourner l'image
+// entière de −45° pour la Tour ne rougissait donc pas que les fissures :
+// elle repeignait la statuette en rose.
+//
+// D'où la CLÉ. La rotation est appliquée deux fois — une image chaude, une
+// image gardée telle quelle — et les deux sont recousues pixel par pixel
+// selon une seule question : ce pixel est-il de la LUMIÈRE (chaud, R
+// nettement au-dessus de B) ou de la PIERRE (R ≈ B) ? La lumière prend la
+// couleur du rang, la pierre reste du marbre. C'est un filtre SVG (six
+// primitives, voir pbTintFilterHTML) parce que CSS ne sait pas mélanger
+// deux versions d'une même image selon son contenu.
+//
+// R − B est la bonne mesure ici, et pas une mesure de saturation générale,
+// parce que les planches ne contiennent qu'une seule couleur : de l'or. Le
+// marbre intact reste sous 0,14 ; les fissures et le feu dépassent 0,30 —
+// deux populations séparées, la rampe (CHEST_BREAK_MARBLE) passe entre.
 //
 // Le même réglage sert aux trois planches communes (l'explosion) : c'est le
 // même feu doré qui tourne, et l'explosion du Roi est donc bleue sans qu'on
-// ait eu à dessiner six explosions.
+// ait eu à dessiner six explosions. La clé y gagne même les éclats de
+// marbre projetés, qui restent de la pierre blanche au milieu du feu.
 //
 //   rot  rotation de teinte (deg). 0 = les planches telles qu'elles sont
 //        rendues, c'est-à-dire l'orange : le Fou n'en demande presque pas.
@@ -250,14 +265,98 @@ const CHEST_BREAK_GLOW={
 // qu'une scène qui refuse de s'afficher.
 const CHEST_BREAK_GLOW0={rot:0,sat:1,lum:1,h:42,hs:'88%'};
 
+// LE MARBRE — ce qui échappe à la couleur du rang.
+//
+//   sat  saturation de la pierre, une fois la lumière retirée. Les planches
+//        sortent de l'atelier avec un marbre crème ; 0,70 le ramène au
+//        blanc cassé qu'on attend d'une statuette, sans le vider en gris.
+//   k,i  la rampe de la clé : clé = k·(R − B) + i, bornée à [0,1]. Ici la
+//        pierre (R − B ≤ 0,14) donne 0 — pas un soupçon de teinte — et la
+//        lumière (≥ 0,34) donne 1. Entre les deux, la clé fond : c'est ce
+//        dégradé qui fait que la lueur DÉBORDE des fissures sur le marbre
+//        voisin, au lieu de s'arrêter net sur un liseré.
+const CHEST_BREAK_MARBLE={sat:0.70,k:5,i:-0.70};
+
 function chestBreakGlow(chestId){
   return CHEST_BREAK_GLOW[chestId]||CHEST_BREAK_GLOW0;
 }
 
-// Pose les cinq variables sur la scène. Tout le reste est en CSS : les
-// images et le halo lisent rot/sat/lum, la gerbe, les étincelles et le
-// voile lisent h/hs. Repeindre en cours de séquence est donc gratuit — le
-// banc d'essai s'en sert pour comparer deux couleurs sans rejouer.
+// ----------------------------------------------------------------
+// LE FILTRE QUI SÉPARE LA LUMIÈRE DE LA PIERRE
+// ----------------------------------------------------------------
+// Six primitives, et aucune ne rééchantillonne l'image — que des matrices
+// de couleur et deux compositions, gratuites sur un GPU :
+//
+//   1-2  l'image CHAUDE : teinte tournée vers la couleur du rang, puis
+//        resaturée (les deux réglages de CHEST_BREAK_GLOW).
+//   3    l'image FROIDE : la même, gardée telle quelle, à peine dessaturée
+//        pour que le marbre lise blanc.
+//   4    LA CLÉ : une matrice qui jette les couleurs et ne garde, dans le
+//        canal alpha, que k·(R − B) + i — la chaleur du pixel. Opaque sur
+//        les fissures et le feu, transparente sur la pierre.
+//   5-6  l'image chaude est découpée par la clé (`in`), et ce qui reste est
+//        posé sur l'image froide (`over`). Le résultat est exactement le
+//        fondu chaud/froid pixel à pixel, la clé servant d'opacité.
+//
+// Deux filtres identiques au lieu d'un : le halo (.pb-bloom) est plus
+// saturé que l'image (×1.15), et un filtre SVG ne sait pas lire une
+// variable CSS — il faut donc un exemplaire par réglage.
+const PB_TINT='pbTint',PB_TINT_B='pbTintBloom';
+
+function pbKeyMatrix(){
+  const m=CHEST_BREAK_MARBLE;
+  // Trois lignes vides (le résultat n'a pas de couleur, juste une opacité),
+  // puis la ligne alpha : k·R + 0·G − k·B + 0·A + i.
+  return '0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 '+m.k+' 0 '+(-m.k)+' 0 '+m.i;
+}
+
+function pbTintFilterHTML(id){
+  return '<filter id="'+id+'" color-interpolation-filters="sRGB">'+
+    '<feColorMatrix data-pb="rot" type="hueRotate" values="0" result="pbRot"/>'+
+    '<feColorMatrix data-pb="sat" type="saturate" values="1" in="pbRot" result="pbHot"/>'+
+    '<feColorMatrix type="saturate" values="'+CHEST_BREAK_MARBLE.sat+'" in="SourceGraphic" result="pbCold"/>'+
+    '<feColorMatrix type="matrix" in="SourceGraphic" result="pbKey" values="'+pbKeyMatrix()+'"/>'+
+    '<feComposite in="pbHot" in2="pbKey" operator="in" result="pbLit"/>'+
+    '<feComposite in="pbLit" in2="pbCold" operator="over"/>'+
+  '</filter>';
+}
+
+// Les deux filtres vivent dans un SVG de taille nulle, posé une fois en fin
+// de page. Rend null tant qu'il n'y a pas de <body> : l'appelant retombe
+// alors sur le repli écrit dans la CSS (rotation globale), et la scène
+// s'affiche quand même — un `filter:url()` qui ne pointe sur rien
+// EFFACERAIT l'élément.
+function pbDefs(){
+  let svg=document.getElementById('pb-defs');
+  if(svg)return svg;
+  if(!document.body)return null;
+  svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+  svg.setAttribute('id','pb-defs');
+  svg.setAttribute('aria-hidden','true');
+  svg.setAttribute('focusable','false');
+  svg.setAttribute('width','0');
+  svg.setAttribute('height','0');
+  svg.setAttribute('style','position:absolute;width:0;height:0;overflow:hidden;pointer-events:none');
+  svg.innerHTML=pbTintFilterHTML(PB_TINT)+pbTintFilterHTML(PB_TINT_B);
+  document.body.appendChild(svg);
+  return svg;
+}
+
+function pbTintTune(svg,id,rot,sat){
+  const f=svg.querySelector('#'+id);
+  if(!f)return false;
+  const r=f.querySelector('[data-pb="rot"]'),s=f.querySelector('[data-pb="sat"]');
+  if(!r||!s)return false;
+  r.setAttribute('values',rot);
+  s.setAttribute('values',sat);
+  return true;
+}
+
+// Pose les variables sur la scène et accorde les deux filtres. Tout le reste
+// est en CSS : les images et le halo lisent lum et --pb-tint, la gerbe, les
+// étincelles et le voile lisent h/hs. Repeindre en cours de séquence est
+// donc gratuit — le banc d'essai s'en sert pour comparer deux couleurs sans
+// rejouer.
 function chestBreakPaint(host,chestId){
   if(!host)return;
   const g=chestBreakGlow(chestId);
@@ -266,6 +365,16 @@ function chestBreakPaint(host,chestId){
   host.style.setProperty('--pb-lum',g.lum);
   host.style.setProperty('--pb-h',g.h);
   host.style.setProperty('--pb-hs',g.hs);
+
+  // Le filtre n'est branché QUE s'il est bien en place : --pb-tint absente,
+  // la CSS garde son repli (la rotation globale d'autrefois, marbre teinté
+  // compris) plutôt que de faire disparaître la scène.
+  const svg=pbDefs();
+  if(!svg)return;
+  if(pbTintTune(svg,PB_TINT,g.rot,g.sat))
+    host.style.setProperty('--pb-tint','url(#'+PB_TINT+')');
+  if(pbTintTune(svg,PB_TINT_B,g.rot,+(g.sat*1.15).toFixed(3)))
+    host.style.setProperty('--pb-tint-b','url(#'+PB_TINT_B+')');
 }
 
 function pbSrc(cfg,i){
