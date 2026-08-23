@@ -375,8 +375,14 @@ const TUTO_STEPS=[
     // il s'ouvre TOUT SEUL quand son délai est écoulé (voir
     // dailyChestMaybeOpen, js/economy-ui.js). L'étape reste — c'est une règle
     // du jeu qu'il faut connaître — mais sans cible à surligner.
+    // LE NOMBRE EST LU SUR LA CONSTANTE, il n'est pas écrit dans la phrase :
+    // il a valu 4, il vaut 2 (DAILY_CHEST.perPiece, js/data-pieces.js, où le
+    // rééquilibrage est expliqué), et l'Alchimiste a continué d'en promettre 4
+    // pendant tout ce temps. data-pieces.js est chargé bien avant ce fichier,
+    // la constante est donc là quand ce tableau est construit.
     text:'Rassurez-vous, je ne suis pas un monstre. Chaque jour, un coffre vous rend '+
-         '<strong>4 exemplaires de chacune</strong> de vos pièces. Vous n\'avez rien à '+
+         '<strong>'+DAILY_CHEST.perPiece+' exemplaire'+(DAILY_CHEST.perPiece>1?'s':'')+
+         ' de chacune</strong> de vos pièces. Vous n\'avez rien à '+
          'faire&nbsp;: il <strong>s\'ouvre tout seul</strong> dès qu\'il est prêt, à votre '+
          'arrivée ou en sortant d\'une partie. Vous ne pourrez jamais vous retrouver '+
          'bloqué sans armée.',

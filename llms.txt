@@ -97,7 +97,7 @@ C'est la mécanique qui distingue le plus Epic Chess des autres variantes :
 - L'**Armurerie** rassemble ce que le joueur possède : ses exemplaires de
   pièces, le coffre de réapprovisionnement quotidien et le choix de
   l'échiquier.
-- Un **coffre de réapprovisionnement quotidien** rend 4 exemplaires de
+- Un **coffre de réapprovisionnement quotidien** rend 2 exemplaires de
   chaque pièce possédée : il est donc impossible de rester définitivement
   bloqué sans armée jouable.
 
