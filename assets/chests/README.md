@@ -142,6 +142,19 @@ qui tourne, et l'explosion du Roi est bleue sans qu'on ait eu à dessiner six
 explosions. La gerbe de lumière, les étincelles et le voile blanc du flash,
 eux, sont dessinés en CSS : ils lisent directement la teinte du rang.
 
+**Ce que la clé laisse passer** — elle mesure la chaleur en valeur absolue
+(`R − B`), donc une lueur SOMBRE, dont le `R − B` est petit par construction,
+peut rester sous la rampe : la brume dans l'air et les braises qui flottent
+loin de la pièce gardent alors un soupçon de doré. Sur les quatre coffres
+équipés — blanc, jaune, orange, rouge — ça ne se voit pas, la teinte du rang
+est voisine de l'or. Ça se verra sur le violet de la Dame et le bleu du Roi le
+jour où leurs planches existeront : à ce moment-là, monter `k` et remonter `i`
+d'autant (`CHEST_BREAK_MARBLE`, `js/chest-break.js`) rattrape la lueur faible.
+Attention en revanche aux deux corrections qui semblent évidentes et ne le
+sont pas : teinter tout ce qui est sombre fait tourner le fond, qui n'est pas
+neutre, et normaliser la clé par la luminosité (un gamma avant la mesure)
+allume les creux d'ombre du marbre en rose. Les deux ont été essayées.
+
 Pour juger une couleur : `tools/chest-break-preview.html`, sélecteur
 « Teinte ». Il repeint la scène en cours sans la rejouer, et n'importe quel
 jeu de planches sert à juger n'importe quelle couleur.
