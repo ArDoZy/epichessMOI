@@ -674,33 +674,81 @@ const OPTIONAL_ASSET=/adversaires\/[a-z-]+\.png|backgrounds\/main-page\.png|ches
       throw new Error('une opacité est posée sur la boîte de la statuette : même effet qu\'un filtre ('+r.blend.opaciteBoite+')');
   });
 
-  // LES DEUX BANDEAUX NE PARLENT PLUS. Ils redisaient le nom de la voie (que
-  // l'onglet porte déjà), sa progression en toutes lettres et un compteur —
-  // trois façons d'écrire ce que la colonne et la rangée MONTRENT. Et le
-  // bouton « Diagonale de la puissance » a quitté le bas de la page : elle
-  // s'ouvre depuis la pastille de rang du menu.
+  // LES DEUX BANDEAUX NE PARLENT PLUS, ET NE DESSINENT PLUS. Ils redisaient
+  // le nom de la voie (que l'onglet porte déjà), sa progression en toutes
+  // lettres et un compteur ; puis, une fois ces trois-là retirés, il restait
+  // au-dessus de la colonne une JAUGE qui répétait une quatrième fois ce que
+  // les trente paliers cochés montrent un par un. Ne reste que le bouton
+  // « Récupérer », et sans rien à encaisser, plus de bandeau du tout. La note
+  // sous « Quêtes du jour » est partie pour la même raison : elle décrivait
+  // en trois lignes les trois cartes posées juste en dessous.
   await step('la page des récompenses ne redit plus ce qu\'elle montre',async()=>{
     const r=await page.evaluate(()=>{
       accSet('col_wins',5);accSet('col_claimed',5);accSet('tickets',0);accSet('rich_claimed',1);
       openRewardsPage('colonne');
       const colonne=document.getElementById('rw-pane-colonne');
-      const bandeauCol=colonne.querySelector('.rw-banner');
       rewardsSetTab('rangee');
       const rangee=document.getElementById('rw-pane-rangee');
+      const texteRangee=rangee.textContent;
+      // Rien à encaisser : pas de bandeau du tout, ni dans la colonne ni dans
+      // la rangée. (Relevé AVANT de se donner un palier à prendre, plus bas :
+      // le panneau est réécrit à chaque rendu.)
+      const bandeauCol=!!colonne.querySelector('.rw-banner');
+      const jaugeCol=!!colonne.querySelector('.ms-gauge');
+      // Un palier gagné et pas encore encaissé : le bandeau revient, et il ne
+      // porte QUE le bouton.
+      accSet('col_claimed',4);
+      rewardsSetTab('colonne');renderRewardsColonne();
+      const bandeauDu=document.querySelector('#rw-pane-colonne .rw-banner');
       return{
-        texteBandeauCol:bandeauCol?bandeauCol.textContent.trim():'',
-        jaugeCol:!!colonne.querySelector('.rw-banner .ms-gauge'),
-        // Rien à encaisser dans la rangée : pas de bandeau du tout.
+        bandeauCol,jaugeCol,
         bandeauRangee:!!rangee.querySelector('.rw-banner'),
+        noteQuetes:/repartent demain/.test(texteRangee),
+        bandeauDu:!!bandeauDu,
+        texteBandeauDu:bandeauDu?bandeauDu.textContent.trim():'',
+        jaugeBandeauDu:!!(bandeauDu&&bandeauDu.querySelector('.ms-gauge')),
         diagonale:!!document.getElementById('rw-goto-voie'),
         pied:document.querySelectorAll('#page-rewards .rw-foot').length,
       };
     });
-    if(r.texteBandeauCol)throw new Error('le bandeau de la colonne écrit encore : '+r.texteBandeauCol);
-    if(!r.jaugeCol)throw new Error('la jauge de la colonne a disparu avec le texte');
+    if(r.bandeauCol)throw new Error('la colonne garde un bandeau alors qu\'il n\'y a rien à encaisser');
+    if(r.jaugeCol)throw new Error('la jauge de progression est encore au-dessus de la colonne');
     if(r.bandeauRangee)throw new Error('la rangée garde un bandeau vide alors qu\'il n\'y a rien à encaisser');
+    if(r.noteQuetes)throw new Error('la note « elles repartent demain » est encore sous les quêtes');
+    if(!r.bandeauDu)throw new Error('un palier est à prendre et le bandeau « Récupérer » n\'apparaît pas');
+    if(!/Récupérer/.test(r.texteBandeauDu))
+      throw new Error('le bandeau de la colonne n\'offre pas de bouton : « '+r.texteBandeauDu+' »');
+    if(r.jaugeBandeauDu)throw new Error('la jauge est revenue dans le bandeau de la colonne');
     if(r.diagonale)throw new Error('le bouton « Diagonale de la puissance » est encore là');
     if(r.pied)throw new Error('le pied de page vide est encore là');
+  });
+
+  // LES DEUX ONGLETS RESTENT CÔTE À CÔTE, MÊME SUR UN PETIT TÉLÉPHONE. Leur
+  // largeur de base était en pixels (`flex:1 1 180px`) : sous 400 px d'écran,
+  // ils passaient l'un SOUS l'autre et cette pile prenait deux rangées de
+  // boutons pour deux voies. Toutes les dimensions de la page sont désormais
+  // relatives (pourcentages, `em`, `vw` plafonnés), et la rangée d'onglets ne
+  // se casse plus (`flex-wrap:nowrap`).
+  await step('les deux onglets des récompenses tiennent sur une seule ligne sur téléphone',async()=>{
+    await page.setViewportSize({width:320,height:640});
+    await page.evaluate(()=>openRewardsPage('colonne'));
+    await page.waitForTimeout(150);
+    const r=await page.evaluate(()=>{
+      const t=[...document.querySelectorAll('#page-rewards .rw-tab')].map(b=>b.getBoundingClientRect());
+      const largeurPage=document.getElementById('page-rewards').clientWidth;
+      return{n:t.length,
+        memeLigne:t.length===2&&Math.abs(t[0].top-t[1].top)<2,
+        cote:t.length===2&&t[1].left>=t[0].right-1,
+        debordement:t.length===2&&t[1].right>largeurPage+1,
+        largeurPage};
+    });
+    if(r.n!==2)throw new Error('la page ne montre plus deux onglets ('+r.n+')');
+    if(!r.memeLigne)throw new Error('les deux onglets ne sont pas sur la même ligne à 320 px');
+    if(!r.cote)throw new Error('le second onglet n\'est pas à droite du premier');
+    if(r.debordement)throw new Error('les onglets débordent de la page (largeur '+r.largeurPage+' px)');
+    await page.evaluate(()=>{if(typeof goToMainMenu==='function')goToMainMenu();});
+    await page.setViewportSize({width:1400,height:900});
+    await page.waitForTimeout(150);
   });
 
   // LA SÉRIE DU JOUR A UNE FIN. Elle n'en avait pas : chestForStreak plafonnait
@@ -1021,10 +1069,13 @@ const OPTIONAL_ASSET=/adversaires\/[a-z-]+\.png|backgrounds\/main-page\.png|ches
   // défilement : il ne peut pas être en position:fixed (l'animation d'entrée
   // de .page.active laisse un transform qui en ferait le bloc conteneur), il
   // est donc en position:absolute dans #page-voie, lui-même en fixed.
-  // Et c'est une BARRE COLLÉE AU BAS DE L'ÉCRAN, pas une pastille flottante :
-  // c'est la seule sortie de l'écran, elle prend toute la largeur, la hauteur
-  // d'un vrai bouton de pouce, et son bord inférieur touche celui de l'écran.
-  await step('le bouton OK de la Voie est une barre collée au bas de l\'écran',async()=>{
+  // Et c'est une PASTILLE CENTRÉE, plus une barre pleine largeur : cette
+  // barre-là, haute de 60 px et large de tout l'écran, était plus imposante
+  // que le gros bouton COMBAT du menu pour un mot de deux lettres qui ne fait
+  // que refermer la page. Elle prend maintenant environ un tiers de la
+  // largeur, la Voie passe de chaque côté, et sa taille est relative à
+  // l'écran (pourcentage, `em`, `vh`) et non en pixels.
+  await step('le bouton OK de la Voie est une pastille centrée en bas de l\'écran',async()=>{
     await page.evaluate(()=>{renderVoiePage();showPage('page-voie');});
     await page.waitForSelector('#page-voie.active',{timeout:8000});
     await page.waitForTimeout(500);
@@ -1032,46 +1083,75 @@ const OPTIONAL_ASSET=/adversaires\/[a-z-]+\.png|backgrounds\/main-page\.png|ches
       const host=document.getElementById('voie-scroll');
       const btn=document.getElementById('voie-ok');
       const vh=innerHeight;
-      const mesure=()=>{const b=btn.getBoundingClientRect();return{top:b.top,bottom:b.bottom,w:b.width,h:b.height};};
+      const mesure=()=>{const b=btn.getBoundingClientRect();
+        return{top:b.top,bottom:b.bottom,w:b.width,h:b.height,centre:b.left+b.width/2};};
       host.scrollTop=0;
       const haut=mesure();
       host.scrollTop=host.scrollHeight;              // tout en bas
       const bas=mesure();
-      // La Voie passe-t-elle DERRIÈRE le bouton ? Le point juste à côté de la
-      // pastille, à sa hauteur, doit appartenir à la zone défilante — s'il y
-      // avait encore un bandeau, il occuperait toute la largeur.
+      // La Voie passe-t-elle DE CHAQUE CÔTÉ de la pastille ? Le point au ras
+      // du bord gauche, à hauteur du bouton, ne doit PAS être le bouton.
       const b=btn.getBoundingClientRect();
       const cote=document.elementFromPoint(8,b.top+b.height/2);
-      return{haut,bas,vh,vw:innerWidth,
+      return{haut,bas,vh,
         // Largeur de RÉFÉRENCE : celle de la page, et non innerWidth — sur un
         // écran d'ordinateur, la barre de défilement en retire une dizaine de
-        // pixels que le bouton n'a aucun moyen de reprendre.
+        // pixels.
         pw:document.getElementById('page-voie').clientWidth,
         scrollable:host.scrollHeight>host.clientHeight+40,
         retourVisible:!!document.getElementById('voie-back'),
-        // Le point au ras du bord gauche, à hauteur du bouton, doit être LE
-        // BOUTON : c'est ce qui distingue une barre pleine largeur d'une
-        // pastille centrée.
-        barrePleineLargeur:cote===btn||btn.contains(cote)};
+        toucheLeBord:cote===btn||btn.contains(cote)};
     });
     if(!r.scrollable)throw new Error('la Voie ne défile pas, le test ne prouve rien');
     if(r.retourVisible)throw new Error('le bouton « Retour » est encore là');
-    // Immobile d'un bout à l'autre du défilement, et dans le bas de l'écran.
+    // Immobile d'un bout à l'autre du défilement.
     if(Math.abs(r.haut.top-r.bas.top)>1)
       throw new Error('le bouton OK bouge avec le défilement ('+r.haut.top+' → '+r.bas.top+')');
-    // COLLÉ : le bas du bouton touche le bas de l'écran, à un pixel près.
-    if(Math.abs(r.haut.bottom-r.vh)>1)
-      throw new Error('le bouton OK n\'est pas collé au bas de l\'écran (bas à '+Math.round(r.haut.bottom)+' pour une hauteur de '+r.vh+')');
-    // AGRANDI : toute la largeur, et la hauteur d'un vrai bouton de pouce.
-    if(r.haut.w<r.pw-1)
-      throw new Error('le bouton OK n\'occupe pas toute la largeur ('+Math.round(r.haut.w)+' px pour '+r.pw+' px de page)');
-    if(r.haut.h<52)
+    // DANS LE BAS DE L'ÉCRAN, sans le toucher : il flotte au-dessus du bord.
+    const marge=r.vh-r.haut.bottom;
+    if(marge<2||marge>r.vh*0.08)
+      throw new Error('le bouton OK n\'est pas posé dans le bas de l\'écran (bas à '+
+        Math.round(r.haut.bottom)+' pour une hauteur de '+r.vh+')');
+    // MODESTE : il ne prend plus toute la largeur, et il reste centré.
+    if(r.haut.w>r.pw*0.45)
+      throw new Error('le bouton OK prend encore '+Math.round(r.haut.w/r.pw*100)+' % de la largeur');
+    if(Math.abs(r.haut.centre-r.pw/2)>2)
+      throw new Error('le bouton OK n\'est pas centré (centre à '+Math.round(r.haut.centre)+
+        ' pour une page de '+r.pw+' px)');
+    // Mais toujours une vraie cible de pouce.
+    if(r.haut.h<34)
       throw new Error('le bouton OK n\'est haut que de '+Math.round(r.haut.h)+' px');
-    if(!r.barrePleineLargeur)
-      throw new Error('le bouton OK ne s\'étend pas jusqu\'au bord de l\'écran');
+    if(r.toucheLeBord)
+      throw new Error('le bouton OK s\'étend encore jusqu\'au bord de l\'écran');
     await page.click('#voie-ok');
     await page.waitForTimeout(400);
     if(await page.isVisible('#page-voie.active'))throw new Error('le bouton OK ne referme pas la Voie');
+  });
+
+  // LE BOUTON DE RÉGLAGES ARRIVE AVEC LE MENU, PAS UNE DEMI-SECONDE APRÈS.
+  // `body.main-menu` — la classe qui l'allume — exigeait qu'aucune rotation
+  // ne soit en cours : pendant les 460 ms de bascule vers la face JOUER,
+  // aucune face n'était « devant », et le bouton n'apparaissait donc qu'une
+  // fois le cube arrêté, sur un menu déjà en place. Il se règle maintenant
+  // sur la face d'ARRIVÉE de la rotation.
+  await step('le bouton de réglages apparaît en même temps que le menu principal',async()=>{
+    await page.evaluate(()=>goToMainMenu());
+    await page.waitForTimeout(200);
+    await page.click('.cube-facebar-btn[data-face="magasin"]');   // on quitte le menu
+    await page.waitForTimeout(900);
+    const ailleurs=await page.evaluate(()=>
+      getComputedStyle(document.getElementById('settings-btn')).display!=='none');
+    await page.click('.cube-facebar-btn[data-face="jouer"]');     // retour : la rotation démarre
+    await page.waitForTimeout(80);                                 // bien avant la fin des 460 ms
+    const r={ailleurs,
+      pendant:await page.evaluate(()=>
+        getComputedStyle(document.getElementById('settings-btn')).display!=='none')};
+    await page.waitForTimeout(900);
+    r.apres=await page.evaluate(()=>
+      getComputedStyle(document.getElementById('settings-btn')).display!=='none');
+    if(r.ailleurs)throw new Error('le bouton de réglages reste allumé hors du menu principal');
+    if(!r.pendant)throw new Error('le bouton de réglages attend la fin de la rotation pour s\'afficher');
+    if(!r.apres)throw new Error('le bouton de réglages n\'est pas là sur le menu principal');
   });
 
   // Les schémas de déplacement sont DÉDUITS du moteur (js/piece-moves.js) :

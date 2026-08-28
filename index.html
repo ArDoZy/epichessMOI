@@ -749,13 +749,13 @@
      et `page-voie` : ce sont les clés sur lesquelles sont accrochés le CSS,
      le tutoriel et le test de fumée, et les renommer ne changerait rien à
      l'écran. -->
-<!-- LE BOUTON « OK » EST UNE BARRE PLEINE LARGEUR, COLLÉE AU BAS DE L'ÉCRAN.
-     Il a été une petite pastille de 38 px flottant à 14 px du bord : une
-     cible étroite, posée au milieu du chemin de la Voie, qu'on manquait au
-     pouce et qui masquait le palier qu'elle recouvrait. C'est la SEULE sortie
-     de cet écran, elle a droit à toute la largeur — et elle TOUCHE le bord
-     (bottom:0), la zone sûre des téléphones à encoche étant absorbée par son
-     rembourrage intérieur (voir .voie-ok-bar dans css/style.css).
+<!-- LE BOUTON « OK » EST UNE PASTILLE CENTRÉE EN BAS DE L'ÉCRAN.
+     Il a été une barre pleine largeur et haute de 60 px, plus imposante que
+     le gros bouton COMBAT du menu pour un mot de deux lettres qui ne fait que
+     refermer la page. Il n'en prend plus qu'un tiers de la largeur — assez
+     large pour le pouce, assez discret pour ne pas voler la vedette à la
+     Voie (voir .voie-ok-bar dans css/style.css, où toutes ses dimensions sont
+     relatives : pourcentage de largeur, `em` et `vh`).
      Elle est posée PAR-DESSUS la Voie, en position:absolute dans #page-voie.
      Elle ne peut pas être en position:fixed : `.page.active` porte une
      animation d'entrée dont la dernière image laisse un `transform` posé en
@@ -782,9 +782,9 @@
      de la richesse de gauche à droite, la DIAGONALE de la puissance
      (#page-voie) en zigzag. Ouverte par le bouton « Récompenses » du menu
      principal ; remplie par renderRewardsPage() (js/rewards-ui.js).
-     Elle reprend la mise en page de la Voie : une zone défilante et le bouton
-     « OK » en barre pleine largeur collée au bas de l'écran (voir la note
-     au-dessus de #page-voie pour la raison du position:absolute). -->
+     Elle reprend la mise en page de la Voie : une zone défilante et la
+     pastille « OK » centrée en bas de l'écran (voir la note au-dessus de
+     #page-voie pour la raison du position:absolute). -->
 <div id="page-rewards" class="page">
 <div class="voie-scroll rw-scroll" id="rw-scroll">
   <div class="voie-inner rw-inner">

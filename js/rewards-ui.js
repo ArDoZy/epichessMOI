@@ -160,22 +160,23 @@ function rwColRowsHTML(){
     '</div>';
   }).join('');
 }
-// LE BANDEAU NE PARLE PLUS. Il portait le nom de la voie — que l'onglet
-// juste au-dessus dit déjà, en gros et en or —, une phrase de progression
-// (« 5 victoires · la prochaine ouvre le palier 6 ») et un compteur
-// « 5 / 30 paliers ». Trois façons d'écrire ce que la colonne elle-même
-// MONTRE : les paliers cochés, celui qui pulse, celui qui attend. Ne restent
-// que la jauge et le bouton, c'est-à-dire l'état et l'action.
+// LE BANDEAU NE PARLE PLUS — ET IL NE DESSINE PLUS NON PLUS. Il a porté le
+// nom de la voie (que l'onglet juste au-dessus dit déjà, en gros et en or),
+// une phrase de progression et un compteur « 5 / 30 paliers » ; puis, une
+// fois ces trois-là retirés, une jauge de progression au-dessus de la
+// colonne. Cette barre disait la même chose une quatrième fois, en plus
+// vague : la colonne MONTRE déjà les paliers cochés, celui qui pulse et ceux
+// qui attendent, un par un. Ne reste que le bouton, c'est-à-dire l'action —
+// et sans rien à récupérer, pas de bandeau du tout : un cadre vide n'est pas
+// une information (même règle que la rangée, plus bas).
 function renderRewardsColonne(){
   const pane=document.getElementById('rw-pane-colonne');
   if(!pane)return;
   const due=colPending();
-  const gauge=Math.round(colClaimed()/colTotal()*100);
   pane.innerHTML=
-    '<div class="rw-banner">'+
-      '<div class="rw-banner-txt"><div class="ms-gauge"><span style="width:'+gauge+'%"></span></div></div>'+
-      (due?'<button class="btn btn-gold rw-claim" id="rw-claim-col">Récupérer'+(due>1?' ('+due+')':'')+'</button>':'')+
-    '</div>'+
+    (due?'<div class="rw-banner">'+
+      '<button class="btn btn-gold rw-claim" id="rw-claim-col">Récupérer'+(due>1?' ('+due+')':'')+'</button>'+
+    '</div>':'')+
     '<div class="rw-col-strip" id="rw-col-strip">'+rwColRowsHTML()+'</div>';
   document.getElementById('rw-claim-col')?.addEventListener('click',rewardsClaimColumn);
 }
@@ -252,16 +253,20 @@ function renderRewardsRangee(){
   // les quêtes. Il ne reste donc que le bouton — et sans bouton, pas de
   // bandeau du tout : un cadre vide n'est pas une information.
   pane.innerHTML=
-    (can?'<div class="rw-banner rw-banner-solo">'+
+    (can?'<div class="rw-banner">'+
       '<button class="btn btn-gold rw-claim" id="rw-claim-rich">Récupérer</button></div>':'')+
     '<div class="rw-row-strip" id="rw-row-strip">'+rwRichCellsHTML()+'</div>'+
     (jok?'<div class="rw-joker-call">'+jokerAmountHTML(jok,1.6)+
       '<span>en attente de conversion</span>'+
       '<button class="btn btn-primary" id="rw-open-joker">Convertir</button></div>':'')+
     '<div class="rw-quests">'+
+      // Le titre suffit : la note qui le suivait (« Trois quêtes par jour,
+      // tirées sur les créatures que vous possédez. Les tickets sont versés
+      // dès la quête accomplie ; elles repartent demain. ») décrivait en
+      // trois lignes ce que les trois cartes juste en dessous montrent —
+      // elles sont trois, elles portent le logo d'une créature possédée, et
+      // chacune affiche les tickets qu'elle verse.
       '<div class="rw-sec-title">Quêtes du jour</div>'+
-      '<div class="rw-sec-note">Trois quêtes par jour, tirées sur les créatures que vous possédez. '+
-        'Les tickets sont versés dès la quête accomplie ; elles repartent demain.</div>'+
       (quests.length?quests.map(rwQuestCardHTML).join(''):'<div class="rw-sec-note">Aucune quête : jouez une première bataille.</div>')+
     '</div>';
   document.getElementById('rw-claim-rich')?.addEventListener('click',rewardsClaimRich);

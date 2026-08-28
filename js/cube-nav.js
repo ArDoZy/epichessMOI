@@ -81,6 +81,10 @@
 
   let slots=Object.assign({},CANON);
   let animating=false, locked=false, cube=null;
+  // Face qui SERA devant à la fin de la rotation en cours (null au repos).
+  // Le bouton de réglages se règle dessus et non sur la face courante : voir
+  // updateMainMenuFlag.
+  let pendingFront=null;
   // Rotation demandée pendant qu'une autre est déjà en cours : rejouée
   // immédiatement à la fin de l'animation courante (permet d'enchaîner deux
   // rotations sans avoir à attendre puis re-cliquer).
@@ -138,8 +142,18 @@
   // le porte encore : la face JOUER devant, aucune page par-dessus. Tout ce
   // qui en découle est dans la feuille de style (voir [SETTINGS]), y compris
   // la fermeture du panneau quand on s'en va.
+  // LE DRAPEAU SUIT LA FACE D'ARRIVÉE, PAS LA FACE COURANTE. Il exigeait
+  // `!animating` : pendant les 460 ms d'une rotation, aucune face n'est
+  // considérée comme devant, et le bouton de réglages n'apparaissait donc
+  // qu'une DEMI-SECONDE APRÈS le menu principal, une fois la rotation
+  // terminée — un bouton qui arrive en retard sur son propre écran. Il se
+  // règle maintenant sur `pendingFront`, la face que la rotation en cours
+  // amène : le bouton part et revient EN MÊME TEMPS que le menu, et il n'est
+  // toujours allumé que là où il doit l'être (une rotation vers la face
+  // partie l'éteint dès son premier degré).
   function updateMainMenuFlag(active){
-    const on=!!active && !animating && slots.front==='jouer';
+    const front=animating&&pendingFront?pendingFront:slots.front;
+    const on=!!active && front==='jouer';
     document.body.classList.toggle('main-menu',on);
     if(!on)document.getElementById('settings-panel')?.classList.remove('open');
   }
@@ -170,7 +184,7 @@
   function animate(kind,after){
     if(!cube)return;
     if(animating){ queuedKind=kind; return; }
-    animating=true; updateArrows();
+    animating=true; pendingFront=PERM[kind](slots).front; updateArrows();
     cube.style.transition='transform '+ROTATE_MS+'ms cubic-bezier(.22,.61,.36,1)';
     void cube.offsetWidth;
     cube.style.transform=REST+' '+CUBE_ANIM[kind];
@@ -179,7 +193,7 @@
       if(done)return; done=true;
       cube.removeEventListener('transitionend',finish);
       slots=PERM[kind](slots);   // la face amenée au front devient « front »
-      animating=false;
+      animating=false; pendingFront=null;
       settle();                  // cube revient à l'angle 0, faces réaffectées (aucun saut visuel)
       refresh();
       if(after)after();
@@ -249,7 +263,7 @@
     document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
     document.body.classList.remove('nav-overlay');
     document.body.classList.add('cube-active');
-    locked=false;
+    locked=false; pendingFront=null;
     if(typeof clearArmySelection==='function')clearArmySelection();
     slots=Object.assign({},CANON);   // disposition canonique (jouer devant, partie en haut)
     settle(); refresh();
