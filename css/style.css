@@ -1048,6 +1048,8 @@ body:not(.main-menu) #settings-panel{display:none}
    une url() relative dans une variable CSS serait résolue par rapport à ce
    fichier, donc dans css/, et ne trouverait rien. */
 .game-board{display:grid;grid-template-columns:repeat(8,1fr);width:100%;aspect-ratio:1;
+  /* position:relative : la couche des pièces (.gc-layer) se cale dessus. */
+  position:relative;
   border:1px solid var(--border2);border-radius:6px;overflow:hidden;
   background-size:100% 100%;background-repeat:no-repeat;
   box-shadow:0 12px 32px -10px rgba(0,0,0,.55),0 0 0 1px var(--border2)}
@@ -1066,6 +1068,10 @@ body:not(.main-menu) #settings-panel{display:none}
 
 .gc{aspect-ratio:1;display:flex;align-items:center;justify-content:center;cursor:pointer;
   user-select:none;position:relative;-webkit-user-drag:none;transition:box-shadow .14s}
+/* Le curseur « main ouverte » était sur la pièce ; la pièce n'est plus
+   atteignable par le pointeur, c'est donc la case qui le porte — et elle ne
+   le porte que quand elle tient une pièce jouable maintenant. */
+.gc.gc-holds{cursor:grab}
 /* Surbrillances : posées PAR-DESSUS la texture, jamais en remplacement, sinon
    la matière du plateau disparaîtrait sous chaque case jouable. */
 .gc.sel{box-shadow:inset 0 0 0 3px var(--accent2),inset 0 0 26px rgba(47,177,151,.4)}
@@ -1087,15 +1093,43 @@ body:not(.main-menu) #settings-panel{display:none}
 .gc.cap-flash{animation:captureFlash .55s ease}
 @keyframes captureFlash{0%{box-shadow:inset 0 0 0 6px rgba(255,220,180,.95),inset 0 0 40px rgba(217,85,47,.9)}100%{box-shadow:none}}
 .gc.gc-check{box-shadow:inset 0 0 0 4px var(--ember),inset 0 0 30px rgba(217,85,47,.55)}
-.gc-piece{width:86%;height:86%;display:flex;align-items:center;justify-content:center;
-  position:relative;cursor:grab;-webkit-user-drag:none;user-select:none;z-index:2;
-  filter:drop-shadow(0 3px 3px rgba(0,0,0,.5));transition:transform .12s,filter .12s}
-.gc-piece.dragging{opacity:.35}
-.gc-piece:hover{transform:scale(1.07) translateY(-2px);filter:drop-shadow(0 6px 6px rgba(0,0,0,.6))}
+/* LES PIÈCES NE SONT PLUS DANS LES CASES (voir l'en-tête de la section
+   « LE PLATEAU » dans js/game-render.js). Elles vivent sur une couche à part,
+   posée par-dessus la grille, où chacune est un nœud qui SURVIT aux coups —
+   c'est la condition pour qu'une transition CSS puisse l'animer.
+
+   La couche ne reçoit aucun clic : tout le hit-testing reste sur les 64
+   cases, qui ne bougent jamais. */
+.gc-layer{position:absolute;inset:0;pointer-events:none;z-index:2}
+
+/* Le POSITIONNEUR : une case entière (12,5 % du plateau), placée par un
+   transform que le JS écrit en pourcentages — donc sans une seule mesure en
+   pixels, et rien à recalculer au redimensionnement. Son `transform` lui est
+   réservé : tout effet visuel (survol, agonie, promotion) passe par .gc-art,
+   sinon il écraserait la position. */
+.gc-piece{position:absolute;top:0;left:0;width:12.5%;height:12.5%;
+  display:flex;align-items:center;justify-content:center;
+  -webkit-user-drag:none;user-select:none;
+  transition:transform .2s cubic-bezier(.3,.85,.4,1)}
+/* Le temps de son glissement, une pièce passe au-dessus des autres : sinon,
+   en capturant, elle disparaît sous sa victime au lieu de lui tomber dessus. */
+.gc-piece.gc-moving{z-index:3}
+.gc-piece.gc-dying{z-index:1}
+
+/* Le DESSIN : 86 % de la case, comme avant. */
+.gc-art{width:86%;height:86%;display:flex;align-items:center;justify-content:center;
+  filter:drop-shadow(0 3px 3px rgba(0,0,0,.5));transition:transform .12s,filter .12s,opacity .12s}
+.gc-art>svg{width:100%;height:100%}
+/* Le survol vivait sur .gc-piece:hover ; la couche n'étant plus survolable,
+   c'est la CASE qui pose la classe (bindBoardCell) — et c'est de toute façon
+   la bonne cible : on survole une case, pas un dessin. */
+.gc-piece.gc-hover .gc-art{transform:scale(1.07) translateY(-2px);filter:drop-shadow(0 6px 6px rgba(0,0,0,.6))}
+/* La pièce prise en main s'efface sous le fantôme qui suit le doigt. */
+.gc-piece.dragging .gc-art{opacity:.3}
 /* Pièce paralysée par une Méduse, et pièce ancrée par un Garde de Pierre :
    deux états qui doivent se voir sans lire le journal. */
-.gc-piece.pc-para{filter:grayscale(1) brightness(.6) drop-shadow(0 0 6px var(--sorcier))}
-.gc-piece.gc-anchored{filter:drop-shadow(0 0 7px var(--gold2)) drop-shadow(0 2px 2px rgba(0,0,0,.5))}
+.gc-piece.pc-para .gc-art{filter:grayscale(1) brightness(.6) drop-shadow(0 0 6px var(--sorcier))}
+.gc-piece.gc-anchored .gc-art{filter:drop-shadow(0 0 7px var(--gold2)) drop-shadow(0 2px 2px rgba(0,0,0,.5))}
 .drag-ghost{position:fixed;pointer-events:none;z-index:9999;width:64px;height:64px;
   transform:translate(-50%,-50%);opacity:.9;display:none;filter:drop-shadow(0 6px 8px rgba(0,0,0,.6))}
 .ctx-menu{position:fixed;background:var(--surface2);border:1px solid var(--border2);border-radius:13px;
@@ -3191,15 +3225,52 @@ body.cube-active:not(.nav-overlay) .notif-host{bottom:92px}
 }
 
 /* [BOARD-MOTION] ================================================
-   Le plateau est reconstruit en entier à chaque coup (innerHTML) : la pièce
-   déplacée apparaissait donc instantanément à l'arrivée, et un coup de l'IA
-   se résumait à un clignotement. On la fait GLISSER depuis sa case de
-   départ, en partant du décalage exact calculé par renderGame().
+   LE GLISSEMENT N'EST PLUS UNE ANIMATION, C'EST UNE TRANSITION.
+   Le plateau était reconstruit en entier à chaque coup : la pièce n'existait
+   plus d'un rendu à l'autre, il fallait donc lui faire rejouer un décalage
+   calculé en pixels depuis sa case d'arrivée — un trompe-l'œil qui ne
+   marchait que pour UNE pièce et UNE fois. Les pièces survivent maintenant
+   aux coups (voir js/game-render.js) : il suffit de changer leur transform,
+   la transition de .gc-piece fait le reste, et toutes celles qui bougent
+   glissent ensemble. Le roque anime ses deux pièces gratuitement.
+
+   Restent trois moments qui ne sont pas des déplacements, et qui méritent
+   chacun leur geste.
    ============================================================== */
-.gc-piece.gc-move-in{animation:gcSlide .22s cubic-bezier(.3,.85,.4,1) both}
-@keyframes gcSlide{from{transform:translate(var(--mv-dx),var(--mv-dy))}to{transform:none}}
-/* Le survol ne doit pas interrompre le glissement en cours. */
-.gc-piece.gc-move-in:hover{transform:none}
+
+/* MOURIR. Une pièce prise disparaissait d'un coup — le moment le plus
+   satisfaisant d'une partie d'échecs ne durait pas une image. Elle se
+   ratatine et bascule maintenant, en 260 ms, pendant que sa meurtrière lui
+   glisse dessus. L'animation porte sur .gc-art et jamais sur .gc-piece, dont
+   le transform tient la position. */
+@keyframes gcDie{
+  0%{opacity:1;transform:scale(1) rotate(0)}
+  35%{opacity:.9;transform:scale(1.12) rotate(-5deg)}
+  100%{opacity:0;transform:scale(.5) rotate(16deg)}
+}
+.gc-piece.gc-dying .gc-art{animation:gcDie .26s cubic-bezier(.4,0,.7,.4) both}
+
+/* NAÎTRE. Une pièce qui apparaît (début de partie, retour d'historique,
+   création par un pouvoir) monte au lieu de surgir. */
+@keyframes gcBorn{from{opacity:0;transform:scale(.7)}to{opacity:1;transform:scale(1)}}
+.gc-piece.gc-born .gc-art{animation:gcBorn .2s ease-out both}
+
+/* DEVENIR. Une promotion ne fait plus disparaître le pion pour poser une
+   Dame à sa place : c'est le MÊME nœud dont le dessin change, on peut donc
+   marquer la transformation. */
+@keyframes gcMorph{
+  0%{transform:scale(1);filter:brightness(1)}
+  40%{transform:scale(1.3);filter:brightness(2.2)}
+  100%{transform:scale(1);filter:brightness(1)}
+}
+.gc-piece .gc-art.gc-morph{animation:gcMorph .32s ease-out both}
+
+/* Mouvement réduit : les pièces se téléportent, comme avant ce chantier.
+   C'est exactement ce que demande quelqu'un qui coupe les animations. */
+@media(prefers-reduced-motion:reduce){
+  .gc-piece{transition:none}
+  .gc-piece.gc-dying .gc-art,.gc-piece.gc-born .gc-art,.gc-piece .gc-art.gc-morph{animation:none}
+}
 
 /* [A11Y] ========================================================
    Deux manques : rien ne signalait le focus clavier (le contour natif est

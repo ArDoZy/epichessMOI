@@ -336,6 +336,64 @@ l'inverse aussi.
 secousse) : les appeler séparément partout, c'est se garantir qu'un jour l'un
 des trois manquera quelque part.
 
+### 1 sexies. Le plateau persistant (`js/game-render.js`)
+
+**Avant, chaque coup reconstruisait les 64 cases.** `renderGame()` assemblait
+une chaîne de HTML et l'affectait d'un bloc à `boardEl.innerHTML` : tous les
+nœuds — cases, pièces, repères — étaient détruits et recréés à chaque
+demi-coup, à chaque sélection, à chaque retour d'historique. Trois
+conséquences, et c'étaient les trois murs du game feel :
+
+1. **Aucune animation continue n'était possible.** Une transition CSS a besoin
+   que l'élément *survive* au changement pour interpoler. Un nœud détruit
+   n'interpole rien : la pièce disparaissait d'une case et réapparaissait sur
+   l'autre. L'ancien `animateLastMove()` contournait ça en injectant un
+   décalage en pixels pour faire glisser la pièce *depuis* sa position
+   d'arrivée — un trompe-l'œil qui ne marchait que pour **une** pièce, **une**
+   fois, et jamais pour un roque (deux pièces bougent), une capture (la pièce
+   prise devait mourir), une paralysie qui pulse ou une zone du Typhon.
+2. **Le tactile en souffrait.** Un événement tactile reste attaché à l'élément
+   d'origine pendant tout le geste. Comme toucher une pièce redessinait le
+   plateau, la case touchée était détachée de l'arbre *avant* le relâchement
+   du doigt : son `touchend` ne remontait plus jusqu'à `document`. Il a fallu
+   tout un contournement pour qu'un seul appui suffise à jouer un coup.
+3. **C'était cher.** 64 cases, 32 SVG et ~256 écouteurs reposés à chaque
+   rendu, sur un téléphone d'entrée de gamme.
+
+**Ce qu'on fait maintenant** — trois fonctions, et l'architecture tient dedans :
+
+| Fonction | Rôle |
+|---|---|
+| `ensureBoardCells()` | Construit les 64 `.gc` **une fois**, avec leurs écouteurs. Ne recommence que si l'orientation change (le joueur passe aux Noirs). |
+| `paintBoardCells()` | Met à jour les **classes** des cases : sélection, cases jouables, dernier coup, échec, curseur. Aucune n'est recréée. |
+| `syncPieces()` | Le **diff** de la couche des pièces : créer, déplacer, retirer. Déplacer, c'est changer un `transform` ; la transition CSS fait le reste. |
+
+Quatre points à ne pas casser :
+
+- **Tout repose sur `cell.id`**, posé par `buildGameBoard`. Une promotion
+  remplace l'objet par `{...p, pieceId, type}` : l'id survit, donc le nœud
+  aussi — le pion **devient** une créature au lieu de disparaître pour lui
+  laisser la place. `cloneBoard()` conserve l'id (c'est un spread), ce qui
+  fait que la relecture d'historique *anime* les positions. Une pièce sans id
+  s'en voit attribuer un dans `syncPieces` : mieux vaut une identité inventée
+  qu'un diff qui recycle deux pièces l'une pour l'autre.
+- **`.gc-layer` est en `pointer-events:none`.** Tout le hit-testing reste sur
+  les 64 cases, qui ne bougent jamais — c'est ce qui fait disparaître le
+  problème (2), et pourquoi le glissé-déposé démarre depuis la **case** et non
+  depuis la pièce.
+- **Les écouteurs des cases lisent `GS`, pas une partie capturée.** Les cases
+  survivent d'une partie à l'autre : une référence figée dans une fermeture
+  piloterait le plateau d'hier.
+- **`.gc-piece` réserve son `transform` à sa position.** Tout effet visuel
+  (survol, agonie, promotion) passe par l'enfant `.gc-art`, sinon il écrase la
+  position de la pièce.
+
+Ce que ça débloque, et qui n'existait pas : les pièces prises **meurent** au
+lieu de s'évanouir, le roque anime ses deux pièces gratuitement, une promotion
+se voit, et `boardResetPieces()` vide la couche entre deux parties (les
+identifiants repartent de `p0` à chaque `buildGameBoard`, un nœud survivant
+serait recyclé pour une pièce qui n'a rien à voir).
+
 ### 2. Les logos de pièces (`js/piece-art.js`)
 
 Les émojis ont été remplacés par des silhouettes SVG. `pieceSVG(id,color)`
@@ -919,6 +977,7 @@ mais dans une version que Playwright refuse, le script le retrouve tout seul
 | Modifier le système de comptes/sauvegarde | `js/accounts.js` |
 | Modifier la page Comptes (sceau, bascule, création) | `js/account-ui.js` + `[ACCOUNT-PAGE]` de `css/style.css` |
 | Ajouter ou retoucher un bruitage | `SFX_RECIPES` dans `js/sfx.js` (rien d'autre à toucher) |
+| Changer le rendu du plateau, l'animation des pièces | `syncPieces()` / `paintBoardCells()` dans `js/game-render.js` + `[BOARD-MOTION]` de `css/style.css` |
 | Changer une vibration | `HAPTIC_PATTERNS` / `SFX_FEEL` dans `js/sfx.js` |
 | Changer la vitesse de montée en ELO | `VV_CLIMB_*` et `VV_K_STEPS` dans `js/voie.js` (relire « La courbe d'ascension ») |
 | Changer la largeur de la fenêtre d'appariement | `MP_ELO_*` dans `js/multiplayer.js` |

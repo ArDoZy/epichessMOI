@@ -416,7 +416,69 @@ const OPTIONAL_ASSET=/adversaires\/[a-z-]+\.png|backgrounds\/main-page\.png|ches
       return false;
     });
     if(!ok)throw new Error('aucun coup légal');
-    if(await page.locator('#game-board .gc-piece.gc-move-in').count()<1)throw new Error('pièce non animée');
+    // LE PLATEAU EST PERSISTANT : la pièce ne rejoue plus une animation
+    // ponctuelle, elle GLISSE parce que son transform a changé et que la
+    // transition CSS s'en charge (voir js/game-render.js). Ce qu'on vérifie
+    // ici, c'est donc l'architecture qui rend le glissement possible :
+    // une couche de pièces, un nœud par pièce, positionné en transform.
+    const anim=await page.evaluate(()=>{
+      const out=[];
+      const layer=document.querySelector('#game-board .gc-layer');
+      if(!layer)return['aucune couche de pièces'];
+      const nodes=[...layer.querySelectorAll('.gc-piece')];
+      if(nodes.length<20)out.push('trop peu de pièces sur la couche : '+nodes.length);
+      if(nodes.some(n=>!/translate3d/.test(n.style.transform)))
+        out.push('une pièce n\'est pas positionnée en transform');
+      if(nodes.some(n=>!n.dataset.pid))out.push('une pièce sans identité');
+      // Chaque identité est unique : deux pièces qui partagent un id se
+      // recycleraient l'une l'autre et le diff deviendrait faux.
+      const ids=new Set(nodes.map(n=>n.dataset.pid));
+      if(ids.size!==nodes.length)out.push('des identités de pièce en double');
+      // Les cases ne portent plus de pièce : le hit-testing doit rester sur
+      // une grille immobile.
+      if(document.querySelectorAll('#game-board .gc .gc-piece').length)
+        out.push('une pièce est encore posée dans une case');
+      if(getComputedStyle(layer).pointerEvents!=='none')
+        out.push('la couche des pièces intercepte les clics');
+      return out;
+    });
+    if(anim.length)throw new Error(anim.join(' · '));
+  });
+
+  await step('le plateau n\'est pas reconstruit à chaque coup',async()=>{
+    // C'est TOUTE la raison d'être du chantier : si les cases sont recréées,
+    // aucune transition ne peut survivre et le tactile repart en vrille (un
+    // événement tactile reste attaché à l'élément d'origine, détruit en
+    // cours de geste). On marque une case, on joue, on vérifie qu'elle est
+    // toujours là.
+    const survecu=await page.evaluate(async()=>{
+      const cell=document.querySelector('#game-board .gc');
+      if(!cell)return 'aucune case';
+      cell.dataset.temoin='1';
+      const piece=document.querySelector('#game-board .gc-piece');
+      if(piece)piece.dataset.temoin='1';
+      const col=GS.playerColor;
+      if(GS.turn!==col)await new Promise(r=>{
+        const t=setInterval(()=>{if(GS.turn===col||GS.gameOver){clearInterval(t);r();}},200);
+        setTimeout(()=>{clearInterval(t);r();},25000);
+      });
+      for(let r=0;r<8;r++)for(let c=0;c<8;c++){
+        const p=GS.board[r][c];
+        if(!p||p.color!==col)continue;
+        const mv=getLegalMoves(GS.board,r,c,GS);
+        if(!mv.length)continue;
+        GS.lastMove={from:{r,c},to:mv[0],capture:!!GS.board[mv[0].r][mv[0].c]};
+        executeGameMove({r,c},mv[0],GS);
+        const out=[];
+        if(!document.querySelector('#game-board .gc[data-temoin]'))out.push('les cases ont été recréées');
+        if(piece&&piece.parentNode&&!document.querySelector('#game-board .gc-piece[data-temoin]'))
+          out.push('les pièces ont été recréées');
+        if(document.querySelectorAll('#game-board .gc').length!==64)out.push('le plateau n\'a plus 64 cases');
+        return out.join(' · ');
+      }
+      return 'aucun coup légal';
+    });
+    if(survecu)throw new Error(survecu);
   });
 
   await step('l\'Instructeur répond',async()=>{
