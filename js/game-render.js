@@ -159,6 +159,8 @@ function ensureBoardCells(gs,boardEl,flipped){
     return;
   }
   boardEl.innerHTML='';
+  boardEl.setAttribute('role','grid');
+  boardEl.setAttribute('aria-label','Échiquier');
   _boardCells=[];_boardFlipped=flipped;_boardGS=gs;
   _pieceNodes=new Map();_pieceAt=[];
   for(let vi=0;vi<8;vi++)for(let vc=0;vc<8;vc++){
@@ -167,6 +169,16 @@ function ensureBoardCells(gs,boardEl,flipped){
     const el=document.createElement('div');
     el.className='gc '+(((r+c)%2===0)?'l':'d');
     el.dataset.r=r;el.dataset.c=c;
+    // LE PLATEAU SE JOUE AU CLAVIER. Un jeu au tour par tour est l'un des
+    // rares genres réellement jouables sans souris et sans voir parfaitement,
+    // et celui-ci ne l'était pas du tout : aucune case n'était atteignable
+    // autrement qu'au pointeur, et rien n'était annoncé.
+    // Une seule case est tabulable à la fois (« roving tabindex ») : sans
+    // cela, il faudrait soixante-quatre tabulations pour traverser le
+    // plateau. Les flèches déplacent le curseur, Entrée joue.
+    el.setAttribute('role','gridcell');
+    el.tabIndex=(vi===0&&vc===0)?0:-1;
+    el.dataset.vi=vi;el.dataset.vc=vc;
     // LES REPÈRES SONT DANS LE PLATEAU. Une colonne de chiffres à gauche et
     // une ligne de lettres en bas consommaient ~40 px que le plateau — dont
     // la dimension est bornée par la hauteur — peut prendre. Ils vont dans
@@ -248,12 +260,59 @@ function bindBoardCell(el,r,c){
   el.addEventListener('mouseenter',()=>{const n=pieceNodeAt(r,c);if(n)n.classList.add('gc-hover');});
   el.addEventListener('mouseleave',()=>{const n=pieceNodeAt(r,c);if(n)n.classList.remove('gc-hover');});
 
+  bindBoardKeys(el,r,c);
   el.addEventListener('contextmenu',e=>{if(GS)showCtxMenu(e,r,c,GS);});
   // Écrans tactiles : appui long = clic droit (js/main.js::bindLongPress).
   if(typeof bindLongPress==='function')bindLongPress(el,e=>{if(GS)showCtxMenu(e,r,c,GS);});
 }
 
 function pieceNodeAt(r,c){return (_pieceAt[r]&&_pieceAt[r][c])||null;}
+
+// Le nom parlé d'une case : « e4, Cavalier Primordial blanc ». C'est la seule
+// façon de savoir ce qu'on survole quand on ne voit pas le plateau — et c'est
+// aussi ce qui s'affiche en infobulle au pointeur.
+function cellLabel(gs,r,c){
+  const coord=FILES[c]+(8-r);
+  const cell=gs.board&&gs.board[r]&&gs.board[r][c];
+  if(!cell)return coord+', case vide';
+  const p=(typeof PIECES!=='undefined')?PIECES.find(x=>x.id===cell.pieceId):null;
+  const nom=p?p.name:(cell.pieceId||'').replace('std-','');
+  const camp=cell.color==='w'?'blanc':'noir';
+  return coord+', '+nom+' '+camp;
+}
+
+// Déplace le curseur clavier d'une case, en coordonnées VISUELLES : la flèche
+// droite va à droite de l'écran, que le joueur ait les Blancs ou les Noirs.
+function boardMoveFocus(from,dvi,dvc){
+  if(!_boardCells)return;
+  const vi=Math.max(0,Math.min(7,(+from.dataset.vi)+dvi));
+  const vc=Math.max(0,Math.min(7,(+from.dataset.vc)+dvc));
+  const next=_boardCells[vi*8+vc];
+  if(!next||next===from)return;
+  _boardCells.forEach(el=>{el.tabIndex=-1;});
+  next.tabIndex=0;
+  next.focus();
+}
+
+function bindBoardKeys(el,r,c){
+  el.addEventListener('keydown',e=>{
+    const gs=GS;if(!gs)return;
+    const pas={ArrowUp:[-1,0],ArrowDown:[1,0],ArrowLeft:[0,-1],ArrowRight:[0,1]}[e.key];
+    if(pas){e.preventDefault();boardMoveFocus(el,pas[0],pas[1]);return;}
+    if(e.key==='Enter'||e.key===' '||e.key==='Spacebar'){
+      e.preventDefault();
+      if(gs.gameOver||gs.turn!==(gs.playerColor||'w'))return;
+      if(gs.historyView!==null){gs.historyView=null;renderGame(gs);updateStatus(gs);updateHistoryNav();return;}
+      handleGameClick(r,c,gs);
+      return;
+    }
+    // Échap désélectionne : au clavier, il n'y a pas de « cliquer à côté ».
+    if(e.key==='Escape'&&gs.selected){
+      e.preventDefault();
+      gs.selected=null;gs.legalMoves=[];renderGame(gs);
+    }
+  });
+}
 
 // Met à jour les classes des 64 cases. Aucune n'est recréée : c'est tout
 // l'intérêt, et c'est ce qui rend un rendu quasi gratuit.
@@ -285,6 +344,11 @@ function paintBoardCells(gs){
     // seule chose que le pointeur peut désormais atteindre.
     if(cell&&cell.color===playerCol&&gs.turn===playerCol&&!gs.gameOver)cls+=' gc-holds';
     if(el.className!==cls)el.className=cls;
+    // Le libellé parlé suit le plateau : sans ça, une case annoncée « vide »
+    // le resterait après qu'une pièce s'y est posée.
+    const lab=cellLabel(gs,r,c)+(isAvail?(hasEnemy?', prise possible':', déplacement possible'):'');
+    if(el.getAttribute('aria-label')!==lab)el.setAttribute('aria-label',lab);
+    el.setAttribute('aria-selected',(gs.selected&&gs.selected.r===r&&gs.selected.c===c)?'true':'false');
   }
 }
 
@@ -378,6 +442,9 @@ function renderGame(gs){
   if(typeof applyBoardSkin==='function')applyBoardSkin();
 
   buildGameLabels(gs);updateCaptured(gs);updateHistoryNav();renderClocks(gs);updateTurnBars(gs);
+  // La barre d'emotes n'existe qu'en ligne, et disparaît dès que la partie
+  // est finie : on ne parle plus à quelqu'un qui n'est plus là.
+  if(typeof mpRenderEmoteBar==='function')mpRenderEmoteBar();
   // La feuille du journal est maintenant visible : c'est le seul moment où la
   // mesurer veut dire quelque chose. On repasse une image plus tard, parce
   // qu'au premier rendu la poignée n'a pas encore sa taille définitive (le

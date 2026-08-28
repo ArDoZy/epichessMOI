@@ -30,6 +30,8 @@ epic-chess/
 ├── sitemap.xml              # Une seule URL (le jeu est une SPA)
 ├── llms.txt                 # Résumé factuel du jeu pour les moteurs IA
 ├── site.webmanifest         # Métadonnées d'installation (icône, couleurs)
+├── sw.js                    # Service worker : coquille hors ligne (réseau
+│                            # d'abord pour le code, cache d'abord pour les médias)
 ├── favicon.svg              # Icône d'onglet et d'écran d'accueil : le
 │                            #  Monarque dressé dans le sceau d'alchimiste
 ├── assets/
@@ -87,6 +89,7 @@ epic-chess/
     │                          # déplacement, supprimées de data-pieces.js)
     ├── sfx.js                # Moteur de bruitages (couches, enveloppes, bruit
     │                          # filtré, variation, ducking) + retour haptique
+    ├── pwa.js                # Installation sur l'écran d'accueil + service worker
     ├── combat-music.js       # Musique de combat en boucle
     ├── cinematics.js         # Cinématiques d'entrée en combat et d'issue
     ├── game-render.js        # Rendu plateau, drag&drop, clics, historique
@@ -393,6 +396,102 @@ lieu de s'évanouir, le roque anime ses deux pièces gratuitement, une promotion
 se voit, et `boardResetPieces()` vide la couche entre deux parties (les
 identifiants repartent de `p0` à chaque `buildGameBoard`, un nœud survivant
 serait recyclé pour une pièce qui n'a rien à voir).
+
+### 1 septies. Ce que le jeu montre du joueur, et ce qu'il refuse de croire
+
+Quatre chantiers distincts, réunis ici parce qu'ils répondent tous à la même
+question : **le jeu en sait long et n'en montrait rien — ou croyait ce qu'on
+lui disait sans vérifier.**
+
+**Le profil (`js/account-ui.js`, `js/accounts.js`).** L'ELO était un nombre
+nu : le jeu enregistrait le résultat de chaque partie depuis toujours et n'en
+affichait aucune synthèse. La page Comptes montre désormais le taux de
+victoire, la meilleure série, la bande des **dix dernières parties** (une
+pastille par partie, la plus récente à gauche — c'est la réponse la plus dense
+à « est-ce que je monte ou est-ce que je coule ? ») et la **créature
+fétiche**, avec son taux de victoire réel.
+
+Deux agrégats nouveaux le permettent, et ils ne se déduisent **pas** de
+`match_history`, qui ne garde que les 30 dernières parties : une statistique
+de carrière lue sur un mois de jeu serait fausse et changerait de valeur toute
+seule.
+
+| Clé | Ce qu'elle garde |
+|---|---|
+| `piece_stats` | `{pieceId:{g,w}}` — parties et victoires par créature alignée. Une créature en double dans la même armée compte **une** partie : on mesure les parties jouées avec elle, pas les exemplaires posés. |
+| `best_streak` | La plus longue série de victoires, à vie. **Relevée après `settleAndCelebrate`** : c'est `economySettle` qui incrémente `win_streak`, la lire avant enregistrerait toujours la série de la partie précédente. |
+
+Un seuil de 5 parties protège la créature fétiche : « 100 % de victoires » sur
+une seule partie n'apprend rien et se lit comme une promesse fausse.
+
+**Les emotes (`js/multiplayer.js`).** Pendant une partie en ligne, l'adversaire
+était muet : un pseudo, un ELO, rien d'autre. Dans un jeu qui n'a plus que des
+adversaires humains, c'est la seule présence humaine qu'il restait à donner.
+Six pictogrammes, **aucun texte libre** — un champ de saisie dans un jeu
+compétitif demande une modération, un signalement et un blocage, trois
+systèmes qui n'existent pas ici. Le canal est celui des coups : une emote est
+un évènement de plus, pas une infrastructure de plus.
+
+Deux garde-fous, tous deux nécessaires : une **sourdine** (sans elle, un
+joueur qui subit un spam n'a que l'abandon comme recours) et un **débit
+maximal des deux côtés** — on limite l'envoi *et* la réception, parce qu'un
+client modifié n'a que faire de sa propre limite.
+
+⚠️ Les pictogrammes hors du plan de base s'écrivent `\u{1F62C}` et **pas**
+`ὢC` : un `\u` ne prend que quatre chiffres, et la seconde forme produit
+deux caractères parasites au lieu de l'emoji. Le test de fumée le vérifie en
+comptant les points de code.
+
+**L'armée adverse est vérifiée (`mpArmyProblem`).** Chaque camp envoyait la
+sienne par broadcast et l'autre l'installait telle quelle : rien ne contrôlait
+le budget de 24 points, la limite d'une seule Primordiale, ni même que les
+pièces existent. Un joueur qui modifiait son client pouvait se présenter avec
+cinq Grands Maîtres, et son adversaire jouait sans jamais savoir pourquoi il
+perdait. Le contraste était frappant avec les **coups**, eux revalidés
+proprement depuis toujours (`mpApplyRemoteMove` cherche le coup reçu parmi
+ceux que *notre* moteur a calculés) : la rigueur manquait à l'endroit où l'on
+peut tricher une fois pour toute la partie plutôt qu'un coup à la fois.
+
+La vérification est **locale**, donc contournable par deux clients complices —
+seul un serveur qui compose la partie fermerait vraiment la porte. Mais elle
+arrête le cas réel : un joueur seul qui trafique son navigateur contre un
+adversaire honnête.
+
+**Le plateau au clavier (`js/game-render.js`).** Un jeu au tour par tour est
+l'un des rares genres réellement jouables sans souris et sans voir
+parfaitement ; celui-ci ne l'était pas du tout. Le plateau est maintenant une
+`grid` annoncée, chaque case porte son nom parlé (« e4, Cavalier Primordial
+blanc »), les flèches déplacent un curseur, Entrée joue, Échap désélectionne.
+Une **seule case est tabulable à la fois** (*roving tabindex*) : sans cela, il
+faudrait soixante-quatre tabulations pour traverser le plateau. La barre de
+statut est une région `aria-live="polite"` — `polite` et non `assertive`,
+parce qu'une annonce de partie ne doit pas couper la lecture d'un coup.
+
+### 1 octies. L'installation sur l'écran d'accueil (`js/pwa.js`, `sw.js`)
+
+Le jeu vit dans un onglet, et un onglet se ferme : le lendemain, il n'existe
+plus nulle part dans la journée du joueur. Une icône sur l'écran d'accueil est
+le levier de rétention le moins intrusif qui existe, et le seul qui ne demande
+pas de serveur. Le manifeste existait déjà mais **n'était référencé nulle
+part** : le navigateur ne pouvait donc jamais rien proposer.
+
+**Le moment de la proposition compte plus que la proposition.** Pas à
+l'arrivée — un bandeau « installez-nous » sur le premier écran est le meilleur
+moyen de se faire fermer. Après **trois victoires**, une seule fois, refus
+définitif : la ligne reste dans les réglages pour qui change d'avis.
+
+**Le service worker est écrit pour ne jamais servir une version périmée**, ce
+qui est le seul vrai danger de cette technique :
+
+| Ce qui est demandé | Stratégie | Pourquoi |
+|---|---|---|
+| html, js, css, json | **Réseau d'abord**, cache en secours | Une correction poussée ce matin arrive ce matin, comme sans service worker. |
+| assets/, audio/, polices | **Cache d'abord** | 8 Mo qui ne changent presque jamais. Un changement demande de monter `CACHE_VERSION` — c'est le prix, il est assumé. |
+| Tout autre domaine | **On ne s'en mêle pas** | Mettre en cache une réponse de temps réel Supabase n'aurait aucun sens. |
+
+Il ne fait **pas** de notifications : elles demandent un serveur (VAPID, un
+service de push, une base d'abonnements). Le jour où le backend existera,
+c'est là qu'elles se brancheront.
 
 ### 2. Les logos de pièces (`js/piece-art.js`)
 
@@ -873,7 +972,7 @@ data-pieces.js → piece-art.js → main.js → cube-nav.js → accounts.js
 → ai-engine.js → game-flow.js → voie.js → economy-ui.js
 → rewards.js → rewards-ui.js → tuto-drill.js
 → tutorial.js
-→ account-ui.js → settings-admin.js → multiplayer.js → (script inline) initApp()
+→ pwa.js → account-ui.js → settings-admin.js → multiplayer.js → (script inline) initApp()
 ```
 
 `economy.js` doit venir après `accounts.js` (il utilise `accGet`/`accSet`) et
@@ -979,6 +1078,10 @@ mais dans une version que Playwright refuse, le script le retrouve tout seul
 | Ajouter ou retoucher un bruitage | `SFX_RECIPES` dans `js/sfx.js` (rien d'autre à toucher) |
 | Changer le rendu du plateau, l'animation des pièces | `syncPieces()` / `paintBoardCells()` dans `js/game-render.js` + `[BOARD-MOTION]` de `css/style.css` |
 | Changer une vibration | `HAPTIC_PATTERNS` / `SFX_FEEL` dans `js/sfx.js` |
+| Ajouter une emote, changer la sourdine | `MP_EMOTES` dans `js/multiplayer.js` |
+| Ajouter une statistique au profil | `accountSummary()` / `accountSealHTML()` dans `js/account-ui.js` |
+| Changer la stratégie de cache hors ligne | `sw.js` (et monter `CACHE_VERSION`) |
+| Vérifier l'UI à toutes les tailles d'écran | `node tools/ui-shots.js` |
 | Changer la vitesse de montée en ELO | `VV_CLIMB_*` et `VV_K_STEPS` dans `js/voie.js` (relire « La courbe d'ascension ») |
 | Changer la largeur de la fenêtre d'appariement | `MP_ELO_*` dans `js/multiplayer.js` |
 | Ajouter un nouveau réglage utilisateur | `index.html` (bloc `#settings-panel`) + `js/settings-admin.js` |

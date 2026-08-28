@@ -480,3 +480,37 @@ function vvSaveRankMax(v){if(vvAdmin())return;accSet('rank_max',v);}
 function vvSaveUnlocked(s){if(vvAdmin())return;accSet('unlocked_pieces',[...s]);}
 function vvLoadHistory(){return accGet('match_history',[]);}
 function vvSaveHistory(arr){accSet('match_history',arr.slice(-30));}
+
+// ----------------------------------------------------------------
+// CE QU'UN COMPTE A VÉCU
+// ----------------------------------------------------------------
+// L'ELO était un NOMBRE NU : le jeu enregistrait le résultat de chaque
+// partie et n'en montrait rien. Un joueur ne pouvait savoir ni son taux de
+// victoire, ni sa meilleure série, ni quelle créature lui réussit — c'est-à-
+// dire précisément ce qu'on vient chercher quand on regarde son profil.
+//
+// Deux agrégats suffisent, et ils tiennent en quelques octets. On ne les
+// déduit PAS de match_history, qui ne garde que les 30 dernières parties :
+// une statistique de carrière lue sur un mois de jeu serait fausse et
+// changerait de valeur toute seule au fil des parties.
+//
+//   piece_stats  {pieceId: {g, w}}  parties et victoires, par créature alignée
+//   best_streak                     la plus longue série de victoires, à vie
+function vvLoadPieceStats(){const o=accGet('piece_stats',{});return (o&&typeof o==='object')?o:{};}
+function vvNotePieceStats(pieceIds,won){
+  if(vvAdmin()||!Array.isArray(pieceIds)||!pieceIds.length)return;
+  const st=vvLoadPieceStats();
+  // Une créature alignée en double dans la même armée ne compte qu'une fois :
+  // on mesure « les parties où je l'ai jouée », pas « les exemplaires posés ».
+  new Set(pieceIds.filter(Boolean)).forEach(id=>{
+    const e=st[id]||{g:0,w:0};
+    e.g++;if(won)e.w++;
+    st[id]=e;
+  });
+  accSet('piece_stats',st);
+}
+function vvLoadBestStreak(){return accGet('best_streak',0);}
+function vvNoteStreak(n){
+  if(vvAdmin())return;
+  if(n>vvLoadBestStreak())accSet('best_streak',n);
+}

@@ -87,7 +87,36 @@ function accountSummary(username){
   const wins=accGetFor(username,'ranked_wins',
     history.filter(h=>h&&h.result==='win').length)||0;
   const pearls=accGetFor(username,'pearls',0)||0;
-  return{username,elo,peak,rank,games,wins,pearls};
+  const bestStreak=accGetFor(username,'best_streak',0)||0;
+  const pieceStats=accGetFor(username,'piece_stats',{})||{};
+  return{username,elo,peak,rank,games,wins,pearls,bestStreak,pieceStats,history};
+}
+
+// LA CRÉATURE FÉTICHE : celle qu'on aligne le plus, avec ce qu'elle rapporte
+// vraiment. C'est la statistique que réclame un joueur qui compose son armée,
+// et la seule que le jeu était en mesure de donner sans serveur.
+// Un minimum de parties est exigé : « 100 % de victoires » sur une seule
+// partie n'apprend rien à personne et se lit comme une promesse fausse.
+const ACC_FETICHE_MIN=5;
+function accountFavourite(s){
+  let best=null;
+  Object.keys(s.pieceStats||{}).forEach(id=>{
+    const e=s.pieceStats[id];
+    if(!e||e.g<ACC_FETICHE_MIN)return;
+    if(!best||e.g>best.g)best={id,g:e.g,w:e.w};
+  });
+  if(!best)return null;
+  const p=(typeof PIECES!=='undefined')?PIECES.find(x=>x.id===best.id):null;
+  if(!p)return null;
+  return{piece:p,games:best.g,wins:best.w,rate:Math.round(best.w/best.g*100)};
+}
+
+// Les dix dernières parties, de la plus récente à la plus ancienne. Une
+// pastille par partie : c'est la forme la plus dense qui reste lisible, et
+// elle dit d'un coup d'oeil si l'on est en train de monter ou de couler.
+const ACC_RECENT=10;
+function accountRecent(s){
+  return (s.history||[]).filter(h=>h&&h.ranked!==false).slice(-ACC_RECENT).reverse();
 }
 
 // Le médaillon : la première lettre du pseudo, frappée dans un disque teinté
@@ -127,10 +156,15 @@ function renderAccountPage(){
 
 // --- 1. LE SCEAU : le compte courant ---
 function accountSealHTML(s){
+  // QUATRE CHIFFRES, ET AUCUN QUI SE DÉDUISE D'UN AUTRE. « Parties » et
+  // « Victoires » côte à côte obligeaient le joueur à faire la division de
+  // tête : le taux de victoire prend la place du total de victoires, qui
+  // reste lisible dans la phrase sous les chiffres.
+  const rate=s.games?Math.round(s.wins/s.games*100):null;
   const stats=[
     {k:'Parties classées',v:s.games},
-    {k:'Victoires',       v:s.wins},
-    {k:'Perles',          v:s.pearls},
+    {k:'Victoires',       v:rate===null?'—':rate+'\u00a0%'},
+    {k:'Meilleure série',  v:s.bestStreak},
     {k:'Meilleur ELO',    v:s.peak},
   ];
   return ''+
@@ -163,12 +197,54 @@ function accountSealHTML(s){
     '<div class="acc-stats">'+
       stats.map(x=>'<div class="acc-stat"><div class="acc-stat-v">'+x.v+'</div><div class="acc-stat-k">'+x.k+'</div></div>').join('')+
     '</div>'+
+    accountFormHTML(s)+
+    accountFavouriteHTML(s)+
     // « Quitter ce compte » : le bouton que cherche quelqu'un qui veut se
     // déconnecter. Discret (btn-ghost) et sous les chiffres : ce n'est pas
     // l'action pour laquelle on vient ici, mais elle doit se trouver du
     // premier coup d'oeil quand on la cherche.
     '<button class="btn btn-ghost acc-logout" id="acc-logout">Quitter ce compte</button>'+
   '</section>';
+}
+
+// LA BANDE DE FORME : dix pastilles, la plus récente à gauche. Le jeu
+// enregistrait le résultat de chaque partie depuis toujours et n'en montrait
+// rien — or « est-ce que je monte ou est-ce que je coule » est la première
+// question qu'on se pose en ouvrant son profil, et c'est la seule à laquelle
+// une liste de chiffres ne répond pas.
+function accountFormHTML(s){
+  const recent=accountRecent(s);
+  if(!recent.length)return '';
+  const lbl={win:'Victoire',loss:'Défaite',draw:'Nulle'};
+  return ''+
+  '<div class="acc-form">'+
+    '<div class="acc-form-k">Dix dernières</div>'+
+    '<div class="acc-form-dots">'+
+      recent.map(h=>{
+        const cls=h.result==='win'?'w':h.result==='loss'?'l':'d';
+        const d=(h.delta>0?'+':'')+(h.delta||0);
+        const quand=h.date?new Date(h.date).toLocaleDateString():'';
+        return '<span class="acc-dot-'+cls+'" title="'+escH((lbl[h.result]||'')+' · '+d+' ELO'+(quand?' · '+quand:''))+'"></span>';
+      }).join('')+
+    '</div>'+
+  '</div>';
+}
+
+// LA CRÉATURE FÉTICHE. Elle répond à la question que se pose un joueur devant
+// son armée : « est-ce que celle-là me réussit ? ». Sans serveur on ne peut
+// pas la comparer aux autres joueurs, mais on peut la comparer à soi-même.
+function accountFavouriteHTML(s){
+  const f=accountFavourite(s);
+  if(!f)return '';
+  const icone=(typeof pieceIcon==='function')?pieceIcon(f.piece.id,'n'):'';
+  return ''+
+  '<div class="acc-fav">'+
+    '<span class="acc-fav-icon">'+icone+'</span>'+
+    '<div class="acc-fav-txt">'+
+      '<div class="acc-fav-name">'+escH(f.piece.name)+'</div>'+
+      '<div class="acc-fav-sub">Votre créature fétiche · '+f.games+' parties, '+f.rate+'\u00a0% de victoires</div>'+
+    '</div>'+
+  '</div>';
 }
 
 // --- 2. LES AUTRES COMPTES ---

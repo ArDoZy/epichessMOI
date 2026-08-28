@@ -376,7 +376,22 @@ function triggerEndOfGame(result){
   }
   const foeId=(!GS.multiplayer&&typeof aiCurrentOpponent==='function')?aiCurrentOpponent().id:null;
   if(foeId&&typeof advNoteResult==='function')advNoteResult(foeId,result);
-  const history=vvLoadHistory();history.push({result,oldElo,newElo,delta,date:Date.now(),aiElo,ranked:!noEloReason,opp:foeId});vvSaveHistory(history);
+  // CE QUI EST ENREGISTRÉ D'UNE PARTIE. L'entrée portait le résultat et les
+  // deux ELO ; elle porte maintenant aussi l'ARMÉE alignée et le MODE, ce qui
+  // permet à la page Comptes de dire « votre Méduse gagne 62 % du temps » ou
+  // « en ligne : 14 victoires sur 23 » plutôt qu'un simple total.
+  const armee=(currentArmyData&&Array.isArray(currentArmyData.extras))
+    ?currentArmyData.extras.slice(0,3):[];
+  const mode=GS.multiplayer?'ligne':'ia';
+  const history=vvLoadHistory();
+  history.push({result,oldElo,newElo,delta,date:Date.now(),aiElo,
+    ranked:!noEloReason,opp:foeId,army:armee,mode});
+  vvSaveHistory(history);
+  // Les agrégats de carrière ne dépendent pas des 30 dernières parties (voir
+  // vvNotePieceStats, js/accounts.js). Le tutoriel et le mode test en sont
+  // exclus : ils sortent plus haut ou n'écrivent rien.
+  if(!noEloReason&&typeof vvNotePieceStats==='function')
+    vvNotePieceStats(armee,result==='win');
   // Règlement des pièces engagées AVANT l'affichage : la cinématique montre
   // le décompte réel, pas une estimation. settleAndCelebrate (economy-ui.js)
   // enchaîne ensuite cinématique d'issue → ouverture du coffre gagné → modal.
@@ -384,6 +399,17 @@ function triggerEndOfGame(result){
   _lastSettlement=(typeof settleAndCelebrate==='function')
     ?settleAndCelebrate(result,GS,showModal)
     :(setTimeout(showModal,400),null);
+  // LA MEILLEURE SÉRIE SE RELÈVE APRÈS LE RÈGLEMENT, et pas avant : c'est
+  // economySettle (appelée par settleAndCelebrate) qui incrémente
+  // 'win_streak'. Lue plus haut, on enregistrerait toujours la série de la
+  // partie PRÉCÉDENTE — et le record n'atteindrait jamais sa vraie valeur.
+  if(!noEloReason&&typeof vvNoteStreak==='function')
+    vvNoteStreak(accGet('win_streak',0));
+  // Après trois victoires, et une seule fois, le jeu propose de s'installer
+  // sur l'écran d'accueil (voir js/pwa.js). Le moment n'est pas anodin : à
+  // l'arrivée, le visiteur n'a aucune raison d'installer quoi que ce soit ;
+  // après trois victoires, il sait ce qu'il installe.
+  if(result==='win'&&typeof pwaNoteWin==='function')pwaNoteWin();
   if(typeof renderMenuChests==='function')renderMenuChests();
   // La victoire vient de faire avancer la colonne des victoires
   // (economySettle, js/economy.js) : la pastille du menu doit le dire tout de

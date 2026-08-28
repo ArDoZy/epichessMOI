@@ -24,6 +24,10 @@
 <title>Epic Chess, variante d'échecs alchimique : composez votre armée</title>
 <meta name="description" content="Les Alchimistes ont insufflé la vie aux pièces d'échecs. Composez votre armée de créatures et affrontez les autres Alchimistes."/>
 <link rel="canonical" href="https://epichess.app/"/>
+<!-- Le manifeste n'était référencé nulle part : le navigateur ne pouvait
+     donc jamais proposer l'installation sur l'écran d'accueil, et le
+     fichier ne servait à rien. Voir js/pwa.js et sw.js. -->
+<link rel="manifest" href="/site.webmanifest"/>
 <meta name="robots" content="index,follow,max-snippet:-1,max-image-preview:large,max-video-preview:-1"/>
 <meta name="author" content="Epic Chess"/>
 <meta name="theme-color" content="#0e1216"/>
@@ -843,7 +847,11 @@
         <div class="gp-taken" id="cap-opp"></div>
       </div>
 
-      <div class="status-bar" id="game-status">En attente...</div>
+      <!-- role=status + aria-live : échec, mat et nulle sont annoncés à voix
+           haute au lieu de n'exister qu'en couleur. `polite` et non `assertive`
+           parce qu'une annonce de partie ne doit pas couper la lecture d'un
+           coup en cours. -->
+      <div class="status-bar" id="game-status" role="status" aria-live="polite" aria-atomic="true">En attente...</div>
       <div class="gs-block gs-grow">
         <div class="gsb-title">Journal des coups</div>
         <div class="history-nav">
@@ -867,6 +875,13 @@
            conséquence du jeu — annuler un coup, abandonner la partie —
            étaient les plus difficiles à viser. La taille vit maintenant dans
            .game-btns .btn (voir [GAME] dans css/style.css). -->
+      <!-- LES EMOTES (js/multiplayer.js). Elles n'apparaissent qu'en partie
+           en ligne : hors ligne, elles n'auraient personne à qui parler.
+           Six pictogrammes et aucun texte libre — un champ de saisie dans un
+           jeu compétitif demanderait une modération, un signalement et un
+           blocage, trois systèmes qui n'existent pas ici. Le dernier bouton
+           est la sourdine, le prix d'entrée de toute communication en jeu. -->
+      <div class="mp-emote-bar" id="mp-emote-bar" style="display:none"></div>
       <div class="game-btns">
         <button class="btn btn-ghost" id="game-undo">Annuler coup</button>
         <button class="btn btn-danger" id="game-quit">Abandonner</button>
@@ -1004,6 +1019,15 @@
     <span class="sp-label">Vibration</span>
     <button class="sp-toggle" id="sp-haptic" role="switch" aria-checked="true" aria-label="Vibration"><span></span></button>
   </div>
+  <!-- INSTALLER LE JEU. La ligne n'apparaît que si le navigateur dit que
+       c'est possible et que ce n'est pas déjà fait (pwaRefreshSettingsRow,
+       js/pwa.js) : un bouton qui ne fait rien est pire que pas de bouton. -->
+  <button class="sp-account-btn" id="sp-install-row" style="display:none">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M12 4v11"/><path d="M8 11.5 12 15.5 16 11.5"/><path d="M5 19h14"/>
+    </svg>
+    <span id="sp-install">Installer le jeu</span>
+  </button>
   <button class="sp-account-btn" id="sp-account">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
       <circle cx="12" cy="8.5" r="3.6"/><path d="M4.8 20a7.2 7.2 0 0 1 14.4 0"/>
@@ -1071,6 +1095,7 @@
 <script src="js/tuto-drill.js"></script>
 <script src="js/tutorial.js"></script>
 <script src="js/lore-intro.js"></script>
+<script src="js/pwa.js"></script>
 <script src="js/account-ui.js"></script>
 <script src="js/settings-admin.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>

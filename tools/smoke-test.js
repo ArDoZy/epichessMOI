@@ -247,6 +247,59 @@ const OPTIONAL_ASSET=/adversaires\/[a-z-]+\.png|backgrounds\/main-page\.png|ches
     if(await page.locator('.acc-stat').count()!==4)throw new Error('les quatre chiffres du compte ne sont pas tous là');
   });
 
+  await step('le profil montre la forme et la créature fétiche',async()=>{
+    // L'ELO était un NOMBRE NU : le jeu enregistrait le résultat de chaque
+    // partie et n'en montrait rien. On sème un passé plausible et on vérifie
+    // que la page le raconte.
+    await page.evaluate(()=>{
+      const h=[];
+      for(let i=0;i<12;i++)h.push({result:i%3===0?'loss':'win',oldElo:400+i*5,newElo:405+i*5,
+        delta:5,date:Date.now()-i*86400000,ranked:true,army:['peureux','fourmi'],mode:'ia'});
+      accSet('match_history',h);
+      accSet('piece_stats',{peureux:{g:12,w:8},fourmi:{g:3,w:3}});
+      accSet('best_streak',7);
+      accSet('ranked_games',12);accSet('ranked_wins',8);
+      renderAccountPage();
+    });
+    const bad=await page.evaluate(()=>{
+      const out=[];
+      if(document.querySelectorAll('.acc-form-dots span').length!==10)
+        out.push('la bande de forme ne montre pas dix parties');
+      const fav=document.querySelector('.acc-fav-name');
+      if(!fav)out.push('aucune créature fétiche');
+      // La Fourmi a 3 parties, sous le minimum : c'est le Peureux, 12 parties,
+      // qui doit sortir — sinon on afficherait un « 100 % » sur trois parties.
+      else if(!/Peureux/i.test(fav.textContent))out.push('fétiche inattendue : '+fav.textContent);
+      const stats=[...document.querySelectorAll('.acc-stat-k')].map(e=>e.textContent);
+      if(!stats.some(t=>/Meilleure série/.test(t)))out.push('la meilleure série n\'est pas affichée');
+      const vals=[...document.querySelectorAll('.acc-stat-v')].map(e=>e.textContent);
+      if(!vals.some(t=>/67|66/.test(t)))out.push('le taux de victoire est faux : '+vals.join(' / '));
+      if(!vals.includes('7'))out.push('la meilleure série n\'a pas la bonne valeur : '+vals.join(' / '));
+      return out;
+    });
+    if(bad.length)throw new Error(bad.join(' · '));
+  });
+
+  await step('une partie nourrit les statistiques de carrière',async()=>{
+    const bad=await page.evaluate(()=>{
+      const out=[];
+      const avant=JSON.parse(JSON.stringify(vvLoadPieceStats()));
+      vvNotePieceStats(['peureux','peureux','fourmi'],true);
+      const apres=vvLoadPieceStats();
+      // Une créature alignée en double ne compte qu'UNE partie : on mesure
+      // les parties jouées avec elle, pas les exemplaires posés.
+      if(apres.peureux.g!==avant.peureux.g+1)
+        out.push('une créature en double compte deux fois : '+avant.peureux.g+' -> '+apres.peureux.g);
+      if(apres.peureux.w!==avant.peureux.w+1)out.push('la victoire n\'est pas comptée');
+      vvNoteStreak(3);
+      if(vvLoadBestStreak()!==7)out.push('une série plus courte a écrasé le record : '+vvLoadBestStreak());
+      vvNoteStreak(11);
+      if(vvLoadBestStreak()!==11)out.push('un nouveau record n\'est pas retenu');
+      return out;
+    });
+    if(bad.length)throw new Error(bad.join(' · '));
+  });
+
   await step('le compte se renomme',async()=>{
     await page.click('#acc-rename-open');
     await page.fill('#acc-rename-input','SmokeTest');
@@ -479,6 +532,106 @@ const OPTIONAL_ASSET=/adversaires\/[a-z-]+\.png|backgrounds\/main-page\.png|ches
       return 'aucun coup légal';
     });
     if(survecu)throw new Error(survecu);
+  });
+
+  // ----------------------------------------------------------------
+  // LE PLATEAU AU CLAVIER (js/game-render.js)
+  // ----------------------------------------------------------------
+  // Un jeu au tour par tour est l'un des rares genres réellement jouables
+  // sans souris ; celui-ci ne l'était pas du tout. On vérifie les trois
+  // choses qui le rendent praticable : une seule case tabulable, les flèches
+  // qui déplacent le curseur, et un plateau annoncé.
+  await step('le plateau se parcourt et se joue au clavier',async()=>{
+    const bad=await page.evaluate(()=>{
+      const out=[];
+      const cases=[...document.querySelectorAll('#game-board .gc')];
+      if(cases.length!==64){out.push('pas 64 cases');return out;}
+      const tabulables=cases.filter(c=>c.tabIndex===0);
+      if(tabulables.length!==1)
+        out.push(tabulables.length+' cases tabulables : il en faut exactement une');
+      if(document.getElementById('game-board').getAttribute('role')!=='grid')
+        out.push('le plateau n est pas annonce comme une grille');
+      if(cases.some(c=>c.getAttribute('role')!=='gridcell'))out.push('une case sans role');
+      const occupee=cases.find(c=>GS.board[+c.dataset.r][+c.dataset.c]);
+      const lab=occupee&&occupee.getAttribute('aria-label');
+      // FILES est en capitales dans ce jeu (voir les repères du plateau) :
+      // le libellé parlé suit la même convention que ce qui est écrit.
+      if(!lab||!/^[A-Ha-h][1-8], .+/.test(lab))out.push('libelle de case inattendu : '+lab);
+      const vide=cases.find(c=>!GS.board[+c.dataset.r][+c.dataset.c]);
+      if(vide&&!/case vide/.test(vide.getAttribute('aria-label')||''))
+        out.push('une case vide ne le dit pas');
+      const bar=document.getElementById('game-status');
+      if(bar.getAttribute('aria-live')!=='polite')out.push('la barre de statut n est pas annoncee');
+      return out;
+    });
+    if(bad.length)throw new Error(bad.join(' · '));
+
+    const dep=await page.evaluate(()=>{
+      const c=[...document.querySelectorAll('#game-board .gc')].find(x=>x.tabIndex===0);
+      c.focus();
+      return c.dataset.vi+'/'+c.dataset.vc;
+    });
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('ArrowRight');
+    const arr=await page.evaluate(()=>{
+      const c=document.activeElement;
+      if(!c||!c.classList.contains('gc'))return 'hors-plateau';
+      return c.dataset.vi+'/'+c.dataset.vc;
+    });
+    if(arr==='hors-plateau')throw new Error('le curseur a quitte le plateau');
+    if(arr===dep)throw new Error('les fleches ne deplacent pas le curseur ('+dep+')');
+    const seuls=await page.evaluate(()=>
+      [...document.querySelectorAll('#game-board .gc')].filter(c=>c.tabIndex===0).length);
+    if(seuls!==1)throw new Error(seuls+' cases tabulables apres deplacement');
+  });
+
+  // ----------------------------------------------------------------
+  // LES EMOTES ET L'ARMÉE ADVERSE (js/multiplayer.js)
+  // ----------------------------------------------------------------
+  await step('les emotes ont un pictogramme lisible et une bulle',async()=>{
+    const bad=await page.evaluate(()=>{
+      const out=[];
+      if(!Array.isArray(MP_EMOTES)||MP_EMOTES.length<4){out.push('table d emotes absente');return out;}
+      MP_EMOTES.forEach(e=>{
+        if(!e.id||!e.label)out.push('emote sans identite');
+        // Un \uXXXX ne prend que quatre chiffres : un emoji hors du plan de
+        // base ecrit ainsi produit deux caracteres parasites au lieu du
+        // pictogramme. C'est exactement le piege qu'on verifie ici.
+        if([...e.glyph].length!==1)out.push('pictogramme mal echappe pour '+e.id+' : '+e.glyph);
+      });
+      mpShowEmote(MP_EMOTES[0].id,true);
+      if(!document.querySelector('#human-player-bar .mp-emote-bubble.show'))
+        out.push('la bulle du joueur ne s affiche pas');
+      mpShowEmote(MP_EMOTES[1].id,false);
+      if(!document.querySelector('#ai-player-bar .mp-emote-bubble.show'))
+        out.push('la bulle de l adversaire ne s affiche pas');
+      return out;
+    });
+    if(bad.length)throw new Error(bad.join(' · '));
+  });
+
+  await step('la sourdine et le debit maximal tiennent',async()=>{
+    const bad=await page.evaluate(()=>{
+      const out=[];
+      const bulle=()=>document.querySelector('#ai-player-bar .mp-emote-bubble');
+      mpEmoteSetMuted(true);
+      bulle().classList.remove('show');
+      mpReceiveEmote(MP_EMOTES[0].id);
+      if(bulle().classList.contains('show'))out.push('une emote passe malgre la sourdine');
+      mpEmoteSetMuted(false);
+      if(mpEmoteMuted())out.push('la sourdine ne se releve pas');
+      // Deux emotes coup sur coup : la seconde est ignoree. C'est la
+      // protection contre un client modifie, qui n a que faire de SA limite.
+      bulle().classList.remove('show');
+      mpReceiveEmote(MP_EMOTES[0].id);
+      if(!bulle().classList.contains('show'))out.push('la premiere emote n est pas passee');
+      bulle().classList.remove('show');
+      mpReceiveEmote(MP_EMOTES[1].id);
+      if(bulle().classList.contains('show'))
+        out.push('deux emotes d affilee passent : rien ne limite le debit');
+      return out;
+    });
+    if(bad.length)throw new Error(bad.join(' · '));
   });
 
   await step('l\'Instructeur répond',async()=>{
@@ -1654,6 +1807,48 @@ const OPTIONAL_ASSET=/adversaires\/[a-z-]+\.png|backgrounds\/main-page\.png|ches
       // Elle doit croître, pas sauter d'un coup à son plafond.
       if(!(mpEloWindow(0)<mpEloWindow(2)&&mpEloWindow(2)<=mpEloWindow(4)))
         out.push('la fenêtre ne s\'élargit pas progressivement');
+      return out;
+    });
+    if(bad.length)throw new Error(bad.join(' · '));
+  });
+
+  await step('une armee adverse invalide est refusee',async()=>{
+    const bad=await page.evaluate(()=>{
+      const out=[];
+      const mon=PIECES.find(p=>p.class==='Monarque');
+      const gen=PIECES.find(p=>p.class==='Général');
+      // UNE SEULE PRIMORDIALE PAR ARMÉE : le premier jet prenait les trois
+      // premières créatures du catalogue, qui en comptaient deux — le test
+      // se plaignait donc d'une règle correctement appliquée.
+      const dispo=PIECES.filter(p=>p.class!=='Monarque'&&p.class!=='Général'&&p.class!=='Primordiale');
+      const trois=dispo.slice(0,3);
+      const cols=[2,1,0];
+      const pl={};trois.forEach((p,i)=>{pl[p.id]=cols[i];});
+      const bonne={mon,gen,extras:trois.map(p=>p.id),placements:pl};
+      const souci=mpArmyProblem(bonne);
+      if(souci)out.push('une armee legitime est refusee : '+souci);
+
+      const casse=[
+        [null,'aucune armee'],
+        [Object.assign({},bonne,{extras:[trois[0].id]}),'moins de trois creatures'],
+        [Object.assign({},bonne,{extras:[trois[0].id,trois[0].id,trois[1].id]}),'un doublon'],
+        [Object.assign({},bonne,{mon:gen}),'un monarque qui n en est pas un'],
+        [Object.assign({},bonne,{extras:['piece-inexistante',trois[1].id,trois[2].id]}),'une piece inexistante'],
+        [Object.assign({},bonne,{placements:{}}),'une disposition vide'],
+      ];
+      const prim=PIECES.filter(p=>p.class==='Primordiale').slice(0,2);
+      if(prim.length===2){
+        const pl3={};pl3[prim[0].id]=2;pl3[prim[1].id]=1;pl3[trois[0].id]=0;
+        casse.push([{mon,gen,extras:[prim[0].id,prim[1].id,trois[0].id],placements:pl3},
+                    'deux Primordiales']);
+      }
+      casse.forEach(pair=>{if(!mpArmyProblem(pair[0]))out.push('accepte '+pair[1]);});
+
+      const chers=dispo.slice().sort((a,b)=>b.value-a.value).slice(0,3);
+      const pl2={};chers.forEach((p,i)=>{pl2[p.id]=cols[i];});
+      const total=mon.value+gen.value+chers.reduce((t,p)=>t+p.value,0);
+      if(total>24&&!mpArmyProblem({mon,gen,extras:chers.map(p=>p.id),placements:pl2}))
+        out.push('accepte une armee a '+total+' points');
       return out;
     });
     if(bad.length)throw new Error(bad.join(' · '));

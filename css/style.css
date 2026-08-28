@@ -452,6 +452,40 @@ body.has-acc #page-game{min-height:0}
   color:var(--muted);margin-top:5px;
 }
 
+/* --- LA BANDE DE FORME : dix parties, dix pastilles ---------------- */
+/* Une pastille par partie, la plus récente à gauche. C'est la forme la plus
+   dense qui reste lisible, et elle répond d'un coup d'oeil à la première
+   question qu'on se pose en ouvrant son profil : est-ce que je monte ou
+   est-ce que je coule ? Trois couleurs, les mêmes que partout ailleurs dans
+   le jeu — le vert de ce qui réussit, le rouge de ce qui coûte, le gris de
+   ce qui n'a rien changé. */
+.acc-form{display:flex;align-items:center;gap:12px;margin-top:16px;flex-wrap:wrap}
+.acc-form-k{
+  font-family:var(--f-ui);font-size:9.5px;letter-spacing:.5px;text-transform:uppercase;
+  color:var(--muted);flex:none;
+}
+.acc-form-dots{display:flex;gap:5px;flex-wrap:wrap}
+.acc-form-dots span{
+  width:11px;height:11px;border-radius:3px;flex:none;
+  /* La couleur seule ne suffit pas à qui la distingue mal : chaque pastille
+     porte aussi son résultat en infobulle, et le vert et le rouge n'ont pas
+     la même luminosité. */
+}
+.acc-dot-w{background:var(--success)}
+.acc-dot-l{background:var(--danger);opacity:.85}
+.acc-dot-d{background:var(--border2)}
+
+/* --- LA CRÉATURE FÉTICHE ------------------------------------------ */
+.acc-fav{
+  display:flex;align-items:center;gap:12px;margin-top:16px;padding:12px 14px;
+  background:var(--surface2);border:1px solid var(--border);border-radius:11px;
+}
+.acc-fav-icon{flex:none;width:34px;height:34px;display:grid;place-items:center}
+.acc-fav-icon .pc-icon,.acc-fav-icon .pc-svg{width:34px;height:34px}
+.acc-fav-txt{min-width:0}
+.acc-fav-name{font-family:var(--f-ui);font-size:14px;font-weight:700;color:var(--text)}
+.acc-fav-sub{font-family:var(--f-ui);font-size:11.5px;color:var(--muted);margin-top:2px}
+
 /* --- 2 & 3. LES SECTIONS ------------------------------------------ */
 .acc-logout{width:100%;margin-top:14px;font-size:12px!important;padding:10px 16px!important}
 
@@ -1039,6 +1073,51 @@ body:not(.main-menu) #settings-panel{display:none}
    camp est portée par le logo de la pièce, pas par l'opacité du texte. */
 .move-log-w,.move-log-b{flex:1;color:var(--text);display:flex;align-items:center;gap:3px}
 .move-log .pc-icon{width:15px;height:15px}
+/* --- LES EMOTES (js/multiplayer.js) --------------------------------
+   Six pictogrammes et une sourdine, sur une rangée, au-dessus des deux
+   boutons de partie. Ils ne s'affichent qu'en partie en ligne : c'est le
+   seul moment où il y a quelqu'un en face.
+   Chaque bouton est carré et fait 44 px : on les touche en pleine partie,
+   souvent d'une main, parfois vite. */
+.mp-emote-bar{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-bottom:8px}
+.mp-emote{
+  width:44px;height:44px;flex:none;border-radius:12px;cursor:pointer;padding:0;
+  border:1px solid var(--border2);background:var(--surface2);
+  font-size:20px;line-height:1;display:flex;align-items:center;justify-content:center;
+  transition:border-color .16s ease,transform .1s ease,background .16s ease;
+}
+.mp-emote:hover{border-color:var(--accent2);background:var(--surface)}
+.mp-emote:active{transform:scale(.92)}
+/* La sourdine est un interrupteur, pas une emote : elle se distingue par sa
+   sourdine visuelle, et s'allume en rouge quand elle coupe vraiment. */
+.mp-emote-mute{margin-left:auto;font-size:16px;opacity:.55}
+.mp-emote-mute[aria-checked="true"]{opacity:.55}
+.mp-emote-mute[aria-checked="false"]{opacity:1;border-color:var(--danger);color:var(--danger);
+  background:rgba(212,69,63,.12)}
+
+/* LA BULLE se pose du côté de qui l'envoie — au-dessus de son propre
+   bandeau. Sans ça, on ne sait pas qui vient de parler. */
+.gp-bar{position:relative}
+.mp-emote-bubble{
+  position:absolute;right:10px;top:-14px;z-index:5;pointer-events:none;
+  min-width:38px;height:38px;padding:0 8px;border-radius:14px;
+  display:flex;align-items:center;justify-content:center;font-size:20px;line-height:1;
+  background:var(--surface2);border:1px solid var(--border2);
+  box-shadow:0 6px 18px -6px rgba(0,0,0,.65);
+  opacity:0;transform:scale(.6) translateY(6px);
+}
+.mp-emote-bubble.show{animation:mpEmotePop 2.2s cubic-bezier(.2,.9,.3,1) both}
+@keyframes mpEmotePop{
+  0%{opacity:0;transform:scale(.6) translateY(6px)}
+  12%{opacity:1;transform:scale(1.12) translateY(0)}
+  22%{transform:scale(1) translateY(0)}
+  82%{opacity:1;transform:scale(1) translateY(0)}
+  100%{opacity:0;transform:scale(.9) translateY(-6px)}
+}
+@media(prefers-reduced-motion:reduce){
+  .mp-emote-bubble.show{animation:none;opacity:1;transform:none}
+}
+
 .game-btns{display:flex;flex-direction:column;gap:7px;margin-top:auto}
 /* Annuler un coup et abandonner une partie sont les deux actions les plus
    lourdes de conséquence du jeu ; elles portaient un style en dur qui leur
@@ -1090,6 +1169,13 @@ body:not(.main-menu) #settings-panel{display:none}
    atteignable par le pointeur, c'est donc la case qui le porte — et elle ne
    le porte que quand elle tient une pièce jouable maintenant. */
 .gc.gc-holds{cursor:grab}
+/* LE CURSEUR CLAVIER. Une case focalisée doit se voir sans ambiguïté sur les
+   deux teintes du damier et par-dessus la texture du plateau : un liseré
+   intérieur épais, dans la couleur de l'action en cours. Il ne se montre
+   qu'au clavier (:focus-visible), pour ne pas doubler la surbrillance de
+   sélection au pointeur. */
+.gc:focus-visible{outline:none;box-shadow:inset 0 0 0 3px var(--gold2),inset 0 0 0 6px rgba(0,0,0,.35)}
+.gc.sel:focus-visible{box-shadow:inset 0 0 0 3px var(--gold2),inset 0 0 0 6px var(--accent2)}
 /* Surbrillances : posées PAR-DESSUS la texture, jamais en remplacement, sinon
    la matière du plateau disparaîtrait sous chaque case jouable. */
 .gc.sel{box-shadow:inset 0 0 0 3px var(--accent2),inset 0 0 26px rgba(47,177,151,.4)}

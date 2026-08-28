@@ -336,6 +336,14 @@ function mpBindRoomHandlers(channel){
     mpTryStart();
   });
 
+  // Emotes : le seul message du canal qui ne change rien à la partie. Il n'a
+  // donc pas de numéro d'ordre et n'entre pas au journal — une emote perdue
+  // est une emote perdue, et c'est sans conséquence.
+  channel.on('broadcast',{event:'emote'},({payload})=>{
+    if(payload.senderId===MP.myId)return;
+    mpReceiveEmote(payload&&payload.id);
+  });
+
   // Revanche : chacun annonce son souhait, la partie repart quand les deux
   // l'ont fait. Les couleurs s'inversent, sinon le même camp commencerait
   // toutes les parties de la soirée.
@@ -896,6 +904,118 @@ function mpTryRematch(){
 // showNotif() est volontairement muette dans ce projet : les messages de
 // partie en ligne passent donc par la barre de statut du plateau, qui est le
 // seul endroit que le joueur regarde pendant une partie.
+// ================================================================
+// LES EMOTES : rendre l'adversaire présent
+// ================================================================
+// PENDANT UNE PARTIE EN LIGNE, L'ADVERSAIRE ÉTAIT MUET. Un pseudo, un ELO,
+// et rien d'autre : aucun moyen de saluer, de féliciter, de réagir à une
+// bêtise. C'est ce qui fait la différence entre affronter une PERSONNE et
+// affronter un pseudonyme — et dans un jeu qui n'a plus que des adversaires
+// humains, c'est la seule présence humaine qu'il reste à donner.
+//
+// Six emotes, pas une de plus, et aucun texte libre. Ce n'est pas de la
+// prudence excessive : un champ de saisie dans un jeu compétitif demande une
+// modération, un signalement et un blocage — trois systèmes qui n'existent
+// pas ici. Six pictogrammes disent l'essentiel (bonjour, bien joué, oups,
+// réfléchis, merci, dépêche-toi) sans qu'aucun ne puisse blesser.
+//
+// LE CANAL EXISTE DÉJÀ : c'est celui des coups. Une emote n'est donc pas une
+// infrastructure de plus, c'est un événement de plus — quelques lignes.
+//
+// Deux garde-fous, tous deux nécessaires :
+//   · UNE SOURDINE (mpEmoteMuted). Elle est le prix d'entrée de toute
+//     communication en jeu : sans elle, un joueur qui subit un spam n'a que
+//     l'abandon comme recours.
+//   · UN DÉBIT MAXIMAL, des deux côtés. On limite l'envoi (le joueur ne
+//     s'auto-spamme pas) ET la réception (un client modifié pourrait ignorer
+//     sa propre limite ; la nôtre, il ne l'atteint pas).
+const MP_EMOTES=[
+  {id:'salut',   glyph:'\u270B', label:'Salut'},
+  {id:'bravo',   glyph:'\u2728', label:'Bien joué'},
+  {id:'oups',    glyph:'\u{1F62C}', label:'Oups'},
+  {id:'reflechi',glyph:'\u23F3', label:'Je réfléchis'},
+  {id:'merci',   glyph:'\u{1F64F}', label:'Merci'},
+  {id:'vite',    glyph:'\u26A1', label:'Plus vite ?'},
+];
+const MP_EMOTE_COOLDOWN=2500;   // entre deux envois, côté joueur
+const MP_EMOTE_MIN_GAP=1200;    // entre deux réceptions, côté adversaire
+let _emoteLastSent=0,_emoteLastRecv=0,_emoteHideTid=null;
+
+function mpEmoteMuted(){
+  try{return localStorage.getItem('ec_emotes_muted')==='1';}catch(e){return false;}
+}
+function mpEmoteSetMuted(on){
+  try{localStorage.setItem('ec_emotes_muted',on?'1':'0');}catch(e){}
+  const b=document.getElementById('mp-emote-mute');
+  if(b)b.setAttribute('aria-checked',on?'false':'true');
+}
+
+// La bulle : elle se pose du côté de qui l'envoie — la sienne au-dessus de
+// son propre bandeau, celle de l'adversaire au-dessus du sien. Sans ça, on
+// ne sait pas qui vient de parler.
+function mpShowEmote(id,mine){
+  const e=MP_EMOTES.find(x=>x.id===id);
+  if(!e)return;
+  const host=document.getElementById(mine?'human-player-bar':'ai-player-bar');
+  if(!host)return;
+  let bulle=host.querySelector('.mp-emote-bubble');
+  if(!bulle){
+    bulle=document.createElement('div');
+    bulle.className='mp-emote-bubble';
+    host.appendChild(bulle);
+  }
+  bulle.textContent=e.glyph;
+  bulle.setAttribute('aria-label',e.label);
+  // Relancer l'animation quand deux emotes s'enchaînent.
+  bulle.classList.remove('show');void bulle.offsetWidth;
+  bulle.classList.add('show');
+  clearTimeout(bulle._tid);
+  bulle._tid=setTimeout(()=>bulle.classList.remove('show'),2200);
+  if(typeof playSound==='function')playSound('tap',{force:0.35});
+}
+
+function mpSendEmote(id){
+  if(!MP.channel||!GS||!GS.multiplayer||GS.gameOver)return;
+  const now=Date.now();
+  if(now-_emoteLastSent<MP_EMOTE_COOLDOWN)return;   // le joueur ne se spamme pas lui-même
+  _emoteLastSent=now;
+  mpShowEmote(id,true);
+  mpSend('emote',{id});
+}
+
+function mpReceiveEmote(id){
+  if(mpEmoteMuted())return;
+  const now=Date.now();
+  if(now-_emoteLastRecv<MP_EMOTE_MIN_GAP)return;    // un client modifié n'inonde pas l'écran
+  _emoteLastRecv=now;
+  mpShowEmote(id,false);
+}
+
+// La barre d'emotes n'existe QUE pendant une partie en ligne : hors ligne,
+// elle n'aurait personne à qui parler.
+function mpRenderEmoteBar(){
+  const bar=document.getElementById('mp-emote-bar');
+  if(!bar)return;
+  const on=!!(GS&&GS.multiplayer&&!GS.gameOver);
+  bar.style.display=on?'':'none';
+  if(!on||bar.dataset.built==='1')return;
+  bar.dataset.built='1';
+  bar.innerHTML=MP_EMOTES.map(e=>
+    '<button class="mp-emote" data-emote="'+e.id+'" title="'+e.label+'" aria-label="'+e.label+'">'+
+      e.glyph+'</button>').join('')+
+    '<button class="mp-emote mp-emote-mute" id="mp-emote-mute" role="switch" '+
+      'aria-checked="'+(mpEmoteMuted()?'false':'true')+'" '+
+      'title="Recevoir les emotes de l\'adversaire" aria-label="Recevoir les emotes de l\'adversaire">'+
+      '\u{1F507}</button>';
+  bar.querySelectorAll('[data-emote]').forEach(b=>{
+    b.addEventListener('click',()=>mpSendEmote(b.dataset.emote));
+  });
+  bar.querySelector('#mp-emote-mute')?.addEventListener('click',function(){
+    const recoit=this.getAttribute('aria-checked')==='true';
+    mpEmoteSetMuted(recoit);            // on coupe si l'on recevait
+  });
+}
+
 function mpGameMessage(text,cls){
   const bar=document.getElementById('game-status');
   if(bar){bar.textContent=text;bar.className='status-bar '+(cls||'');}

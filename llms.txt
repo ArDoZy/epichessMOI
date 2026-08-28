@@ -109,6 +109,9 @@ C'est la mécanique qui distingue le plus Epic Chess des autres variantes :
   du laboratoire**, une galerie d'IA nommées.
 - Un compte neuf ne possède que son **Monarque et son Général** : toutes les
   créatures s'obtiennent en jouant.
+- Le joueur consulte son **profil** depuis la page Comptes : taux de victoire,
+  meilleure série, dix dernières parties et créature fétiche, avec son taux de
+  victoire réel.
 - Un **tutoriel interactif** guide le nouveau joueur : un Alchimiste lui fait
   livrer quatre batailles contre des instructeurs faibles, où les deux camps
   ont exactement la même armée. Chaque victoire ouvre un coffre qui débloque
@@ -208,6 +211,21 @@ empêche de rester bloqué sans armée.
 Non. Le jeu se lance directement : un compte est créé automatiquement à la
 première ouverture, sans e-mail ni mot de passe. On peut le renommer, et en
 créer d'autres, depuis la page Comptes.
+
+**Peut-on communiquer avec son adversaire ?**
+Oui, par six emotes envoyées d'un tap pendant la partie (salut, bien joué,
+oups, je réfléchis, merci, plus vite). Il n'y a pas de messagerie écrite, et
+une sourdine permet de ne plus recevoir celles de l'adversaire.
+
+**Le jeu s'installe-t-il sur le téléphone ?**
+Oui. Il propose de s'ajouter à l'écran d'accueil après quelques victoires, et
+s'ouvre alors comme une application, sans barre d'adresse et même sans
+connexion pour tout ce qui ne demande pas d'adversaire.
+
+**Le jeu est-il jouable au clavier ?**
+Oui, entièrement : les flèches déplacent un curseur sur l'échiquier, Entrée
+sélectionne et joue, Échap annule la sélection. Chaque case annonce son nom et
+la créature qui l'occupe, pour les lecteurs d'écran.
 
 **Faut-il installer quelque chose ?**
 Non. Le jeu est en HTML/CSS/JavaScript pur et fonctionne dans n'importe
