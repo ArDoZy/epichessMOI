@@ -365,10 +365,12 @@ function loadAccountGlobals(){
   const defs=UNLOCK_TABLE.filter(u=>u.eloRequired===0&&!u.coffre&&u.pieceId).map(u=>u.pieceId);
   const stored=accGet('unlocked_pieces',null);
   VV_UNLOCKED=new Set(stored||defs);
-  const elo=vvLoadElo();
+  // Les déblocages suivent le SOMMET atteint, jamais le classement du
+  // moment : une mauvaise série ne doit pas retirer une créature gagnée.
+  const peak=vvLoadPeakElo();
   UNLOCK_MILESTONES.forEach(u=>{
     if(!u.pieceId||u.coffre)return;
-    if(u.eloRequired<=elo)VV_UNLOCKED.add(u.pieceId);
+    if(u.eloRequired<=peak)VV_UNLOCKED.add(u.pieceId);
   });
 }
 
@@ -398,7 +400,10 @@ function renderMenuIdentity(){
   const eloEl=document.getElementById('jouer-elo');
   if(!nameEl||!rankEl||!eloEl)return;
   if(!CUR_ACC){nameEl.textContent='';rankEl.textContent='';eloEl.textContent='';return;}
-  const elo=vvLoadElo(),rank=vvGetRank(elo);
+  // Le RANG vient du sommet atteint (il est acquis), le NOMBRE est le
+  // classement du moment (il bouge). Les deux se lisent côte à côte, et
+  // c'est exactement ce qu'ils veulent dire.
+  const elo=vvLoadElo(),rank=vvRank();
   nameEl.textContent=CUR_ACC;
   rankEl.textContent=rank.name;
   rankEl.style.color=rank.color;
@@ -420,7 +425,56 @@ function renderMenuIdentity(){
 const ADMIN_ELO=10000;
 function vvAdmin(){return typeof ADMIN_MODE!=='undefined'&&ADMIN_MODE;}
 function vvLoadElo(){return vvAdmin()?ADMIN_ELO:accGet('elo',0);}
-function vvSaveElo(v){if(vvAdmin())return;accSet('elo',v);updateCab();}
+
+// ----------------------------------------------------------------
+// DEUX NOMBRES, DEUX RÔLES : LE CLASSEMENT ET LE RANG
+// ----------------------------------------------------------------
+// `elo` est le CLASSEMENT VIVANT : il monte et il descend, et une défaite
+// coûte toujours au moins un point (voir vvCalcNewElo, js/voie.js).
+//
+// `elo_peak` est le PLUS HAUT ELO JAMAIS ATTEINT, et il ne descend jamais.
+// C'est LUI qui décide du rang affiché et de tout ce qui se débloque :
+// créatures, échiquiers, jalons de la Diagonale. Un joueur qui a touché
+// Bronze reste Bronze pour toujours, et ne reperd jamais une créature — même
+// si son classement retombe à 400.
+//
+// POURQUOI DEUX NOMBRES PLUTÔT QU'UN PLANCHER SUR L'ELO. Le plancher au
+// minimum du rang courant tenait la même promesse, mais un joueur assis
+// exactement dessus (500, 800, 1200…) ne perdait plus RIEN en cas de
+// défaite : un point de stationnement à risque zéro, avec des essais
+// illimités pour remonter. En séparant les deux, la défaite coûte toujours
+// et le rang ne se perd jamais.
+//
+// Un compte antérieur à `elo_peak` récupère son ELO courant comme sommet :
+// c'est exact, puisque l'ancien plancher l'empêchait justement d'être
+// descendu sous son rang.
+function vvLoadPeakElo(){
+  if(vvAdmin())return ADMIN_ELO;
+  const elo=accGet('elo',0);
+  const peak=accGet('elo_peak',null);
+  return (typeof peak==='number')?Math.max(peak,elo):elo;
+}
+function vvSaveElo(v){
+  if(vvAdmin())return;
+  // LE SOMMET SE LIT AVANT D'ÉCRIRE LE NOUVEL ELO. vvLoadPeakElo() retombe
+  // sur l'ELO courant quand elo_peak n'existe pas encore (comptes créés
+  // avant cette clé) : l'interroger APRÈS accSet('elo') lui faisait donc
+  // renvoyer la valeur qu'on vient d'écrire, la comparaison `v>peak` était
+  // toujours fausse, et elo_peak n'était JAMAIS enregistré. Le rang
+  // redescendait alors avec le classement — exactement ce que ce code est
+  // censé empêcher.
+  const peak=vvLoadPeakElo();
+  accSet('elo',v);
+  if(v>peak)accSet('elo_peak',v);
+  updateCab();
+}
+// LE RANG ACQUIS : la seule fonction à utiliser pour AFFICHER un rang ou
+// pour décider d'un déblocage. vvGetRank(vvLoadElo()) donnerait le rang du
+// classement du moment, qui peut être plus bas — et retirerait alors au
+// joueur un rang qu'il a gagné.
+function vvRank(){return vvGetRank(vvLoadPeakElo());}
+function vvRankIdx(){return vvGetRankIdx(vvLoadPeakElo());}
+
 function vvLoadRankMax(){return accGet('rank_max',0);}
 function vvSaveRankMax(v){if(vvAdmin())return;accSet('rank_max',v);}
 function vvSaveUnlocked(s){if(vvAdmin())return;accSet('unlocked_pieces',[...s]);}

@@ -72,11 +72,24 @@ function vvEstimateAiElo(){
 //      C'est l'équivalent des arènes de Clash Royale : la montée initiale est
 //      une pente, pas un mur.
 //
-//   3. LE PLANCHER DE RANG. On ne redescend jamais sous le minimum du rang
-//      atteint (vvGetRankFloor) : un joueur Bronze reste Bronze, quoi qu'il
-//      arrive. Ce qui est gagné est acquis, exactement comme une arène.
-//      Corollaire volontaire : à 0 ELO (plancher du rang Bois), une défaite
-//      ne coûte RIEN. Les toutes premières parties sont sans risque.
+//   3. LE RANG EST ACQUIS, L'ELO EST VIVANT. Deux nombres, deux rôles :
+//      · `elo` monte ET DESCEND. Une défaite coûte TOUJOURS au moins un
+//        point, à n'importe quel niveau (seul le zéro absolu l'arrête : un
+//        classement négatif n'a pas de sens).
+//      · `elo_peak` — le plus haut ELO jamais atteint — ne descend JAMAIS.
+//        C'est lui, et lui seul, qui décide du rang affiché et de tout ce qui
+//        se débloque : créatures, échiquiers, jalons. Un joueur Bronze reste
+//        donc Bronze pour toujours, exactement comme une arène de Clash
+//        Royale, et il ne reperd jamais une créature.
+//
+//      LA VERSION PRÉCÉDENTE PLAÇAIT LE PLANCHER SUR L'ELO LUI-MÊME, au
+//      minimum du rang courant. Elle tenait la promesse « on ne descend pas
+//      d'arène », mais au prix d'un défaut grave : un joueur assis
+//      exactement sur un plancher (500, 800, 1200…) ne perdait plus RIEN en
+//      cas de défaite. C'était un point de stationnement à risque zéro, avec
+//      des tentatives illimitées pour remonter — la pire chose qu'on puisse
+//      mettre dans un classement. Séparer les deux nombres tient la même
+//      promesse sans jamais rendre une défaite gratuite.
 //
 // Ces trois règles se lisent aussi côté joueur, sur le modal de fin de partie
 // (vvEloExplain, plus bas) : sans explication, un « +38 / -4 » ressemble à un
@@ -96,12 +109,13 @@ const VV_CLIMB_LOSS_MIN=0.15;
 // vite, puis le classement se met à résister.
 //
 // CES TROIS NOMBRES SONT LE RÉGLAGE PRINCIPAL DU JEU, et ils ont été choisis
-// par simulation. À 50 % de victoires (ce vers quoi l'appariement pousse tout
-// le monde), 1000 ELO s'atteint en une soixantaine de parties ; à 35 % — un
-// joueur qui perd deux parties sur trois — il faut environ 290 parties, mais
-// il y arrive quand même. C'est la promesse : le mur n'existe pas, seule la
-// durée change. Toucher à l'un de ces trois nombres, c'est déplacer cette
-// promesse ; refaire la simulation avant.
+// par simulation (400 tirages par point, adversaires tirés à ±200 ELO).
+// À 50 % de victoires — ce vers quoi l'appariement pousse tout le monde —
+// 1000 ELO s'atteint en 73 parties (médiane) ; à 45 %, 106 ; et même à 35 %,
+// c'est-à-dire en perdant deux parties sur trois, 100 % des simulations y
+// arrivent, en 310 parties. C'est la promesse, et elle tient : le mur
+// n'existe pas, seule la durée change. Toucher à l'un de ces trois nombres,
+// c'est déplacer cette promesse ; refaire la simulation avant.
 const VV_CLIMB_EASE=0.6;
 
 // K-facteur par nombre de parties CLASSÉES déjà jouées. Les cinq premières
@@ -162,9 +176,14 @@ function vvCalcNewElo(playerElo,aiElo,result,games){
   // La courbe d'ascension s'applique au SENS du résultat, pas au signe du
   // calcul brut : une victoire contre bien plus faible que soi donne un raw
   // minuscule mais positif, elle doit être majorée comme une victoire.
+  //
+  // UNE VICTOIRE RAPPORTE TOUJOURS AU MOINS 1 POINT, UNE DÉFAITE EN COÛTE
+  // TOUJOURS AU MOINS 1. Sans ces deux bornes, l'arrondi produit des « +0 »
+  // et des « -0 » : gagner sans rien gagner décourage, et perdre sans rien
+  // perdre transforme le classement en distributeur à essais gratuits.
   let delta;
-  if(result==='win')delta=Math.max(1,Math.round(raw*cf.gain));           // une victoire rapporte toujours au moins 1
-  else if(result==='loss')delta=Math.min(0,Math.round(raw*cf.loss));
+  if(result==='win')delta=Math.max(1,Math.round(raw*cf.gain));
+  else if(result==='loss')delta=Math.min(-1,Math.round(raw*cf.loss));
   else delta=Math.round(raw*(raw>=0?cf.gain:cf.loss));
 
   // Garde-fou : aucune partie ne peut déplacer le classement de plus que ne
@@ -172,9 +191,10 @@ function vvCalcNewElo(playerElo,aiElo,result,games){
   const cap=Math.round(VV_K_STEPS[0].k*VV_CLIMB_GAIN_MAX);
   delta=Math.max(-cap,Math.min(cap,delta));
 
-  const floor=vvGetRankFloor(playerElo);
+  // Seul plancher : le zéro absolu. Le rang, lui, ne se perd pas — il est
+  // porté par elo_peak (voir le point 3 de l'en-tête), pas par ce nombre.
   const rawNew=playerElo+delta;
-  const newElo=Math.max(floor,rawNew);
+  const newElo=Math.max(0,rawNew);
   return{
     newElo,
     delta:newElo-playerElo,
@@ -183,29 +203,28 @@ function vvCalcNewElo(playerElo,aiElo,result,games){
     climbing:cf.climbing,
     gainMult:cf.gain,
     lossMult:cf.loss,
-    floored:rawNew<floor,       // le plancher de rang a absorbé la perte
-    floor,
+    bottomed:rawNew<0,          // le zéro absolu a absorbé la perte
   };
 }
 
 // Phrase affichée sous l'écart d'ELO à la fin d'une partie. Elle ne se montre
-// que quand il s'est passé quelque chose d'inhabituel : un placement, un
-// bonus d'ascension, ou un plancher de rang qui vient d'encaisser la défaite
-// à la place du joueur. En régime normal, elle reste vide — le chiffre se
-// suffit.
-function vvEloExplain(calc,result){
+// que quand il s'est passé quelque chose que le chiffre seul n'explique pas :
+// une partie de placement, le bonus d'ascension, ou une défaite qui fait
+// descendre l'ELO sous un rang déjà acquis — le seul moment où le joueur
+// pourrait croire qu'il vient de perdre ses créatures. En régime ordinaire
+// elle reste vide.
+function vvEloExplain(calc,result,peakElo){
   if(!calc)return '';
-  // UNE DÉFAITE QUI NE COÛTE RIEN, on le dit — c'est le message le plus
-  // important de tout l'écran de fin. Deux causes possibles, et le joueur se
-  // moque de laquelle : soit le plancher de rang a absorbé la perte, soit
-  // l'amorti de l'ascension l'a réduite à zéro. Dans les deux cas la phrase
-  // est la même, parce que la promesse est la même : ce qui est acquis
-  // est acquis.
-  if(result==='loss'&&calc.delta===0){
-    const r=(typeof vvGetRank==='function')?vvGetRank(calc.floor):null;
-    return r?('Rang '+r.name+' protégé : vous ne pouvez pas redescendre plus bas.')
-            :'Rang protégé : rien de perdu.';
+  // DESCENDRE SOUS SON RANG. L'ELO peut retomber sous le seuil du rang
+  // atteint : c'est le moment où il faut dire, tout de suite, que le rang et
+  // ce qu'il a débloqué sont acquis. Sinon le joueur croit avoir tout perdu.
+  if(result==='loss'&&typeof peakElo==='number'&&typeof vvGetRank==='function'){
+    const rangAcquis=vvGetRank(peakElo);
+    if(calc.newElo<rangAcquis.min)
+      return 'Rang '+rangAcquis.name+' acquis : vos créatures et vos échiquiers restent à vous.';
   }
+  if(result==='loss'&&calc.bottomed)
+    return 'Vous êtes au bas de l\'échelle : impossible de descendre plus bas.';
   if(calc.games<VV_K_STEPS[0].games)
     return 'Partie de placement '+(calc.games+1)+'/'+VV_K_STEPS[0].games+' : elle compte double.';
   if(calc.climbing&&result==='win')
@@ -278,17 +297,33 @@ function vvCheckRewardMilestones(oldElo,newElo){
 // tout le catalogue est débloqué (voir js/accounts.js et js/economy.js).
 // Rien n'en est écrit sur le compte, on retrouve sa vraie Voie en revenant.
 function renderVoiePage(){
+  // DEUX NOMBRES, DEUX RÔLES (voir le pavé « LA COURBE D'ASCENSION » plus
+  // haut) : `elo` est le classement du moment, `peak` le sommet atteint. Le
+  // RANG et le rang suivant se lisent sur le sommet — ils sont acquis. La
+  // JAUGE, elle, part du classement du moment : c'est de là qu'il faut
+  // réellement grimper, et une jauge qui ne redescendrait jamais mentirait
+  // sur la distance restante.
   const elo=vvLoadElo();
-  const rank=vvGetRank(elo);
-  const nextRank=RANKS[vvGetRankIdx(elo)+1]||null;
-  const progress=nextRank?Math.min(100,Math.round((elo-rank.min)/(nextRank.min-rank.min)*100)):100;
+  const peak=(typeof vvLoadPeakElo==='function')?vvLoadPeakElo():elo;
+  const rank=vvGetRank(peak);
+  const nextRank=RANKS[vvGetRankIdx(peak)+1]||null;
+  const progress=nextRank
+    ?Math.max(0,Math.min(100,Math.round((elo-rank.min)/(nextRank.min-rank.min)*100)))
+    :100;
+  // Le classement est-il retombé sous le rang acquis ? C'est le seul cas où
+  // la bannière doit dire quelque chose de plus : sans phrase, un joueur
+  // Bronze qui lit « 430 ELO » croit avoir été rétrogradé.
+  const sousRang=elo<rank.min;
   // LA VOIE NE COMPTE PLUS RIEN. Elle portait quatre statistiques — parties
   // jouées, victoires, pièces débloquées, et la liste des dernières parties —
   // qui répondaient toutes à une question que personne ne vient poser ici. On
   // vient y voir CE QUI RESTE À DÉBLOQUER : le rang, la distance jusqu'au
   // suivant, et la file des créatures. Rien d'autre.
   const banner=document.getElementById('voie-elo-banner');
-  banner.innerHTML='<div class="veb-info"><div class="veb-rank-name" style="color:'+rank.color+'">'+rank.name+'</div><div class="veb-elo">'+elo+' <span>ELO</span></div><div class="veb-progress-wrap"><div class="veb-progress-bar" style="width:'+progress+'%;background:linear-gradient(90deg,'+rank.color+',var(--gold))"></div></div><div class="veb-progress-label">'+(nextRank?'Vers '+nextRank.name+' ('+nextRank.min+' ELO) · '+progress+'%':'Rang maximum atteint !')+'</div></div>';
+  const label=sousRang
+    ?'Rang '+rank.name+' acquis · remontez à '+rank.min+' ELO'
+    :(nextRank?'Vers '+nextRank.name+' ('+nextRank.min+' ELO) · '+progress+'%':'Rang maximum atteint !');
+  banner.innerHTML='<div class="veb-info"><div class="veb-rank-name" style="color:'+rank.color+'">'+rank.name+'</div><div class="veb-elo">'+elo+' <span>ELO</span></div><div class="veb-progress-wrap"><div class="veb-progress-bar" style="width:'+progress+'%;background:linear-gradient(90deg,'+rank.color+',var(--gold))"></div></div><div class="veb-progress-label'+(sousRang?' veb-below':'')+'">'+label+'</div></div>';
   const route=document.getElementById('voie-route');let html='';
   let lastRankId=null;
   // Alternance gauche/droite : un compteur À PART, incrémenté uniquement
@@ -312,17 +347,20 @@ function renderVoiePage(){
     // texte de palier — juste un petit lot versé dès que l'ELO l'atteint
     // (vvCheckRewardMilestones, appelé en fin de partie).
     if(milestone.reward){
-      const reached3=elo>=milestone.eloRequired;
+      // Un jalon FRANCHI l'est pour toujours : on le lit sur le sommet
+      // atteint, pas sur le classement du moment. Une mauvaise série ne
+      // doit pas rallumer en « verrouillé » un lot déjà encaissé.
+      const reached3=peak>=milestone.eloRequired;
       const body=milestone.reward==='pearls'
         ?(pearlAmountHTML?pearlAmountHTML(milestone.amount,1.6):milestone.amount+' perles')
         :'<span class="vm-piece-emoji">'+pieceIcon(milestone.copyId,'n')+'</span><div class="vm-piece-name">×'+milestone.qty+'</div>';
       html+='<div class="voie-milestone '+sideCls()+'"><div class="vm-card vm-reward '+(reached3?'reached':'locked-milestone')+'" style="text-align:center">'+body+'</div><div class="vm-center"><div class="vm-dot'+(reached3?' reached':'')+'"></div><div class="vm-elo-badge">'+milestone.eloRequired+' ELO</div></div><div style="flex:1;max-width:calc(50% - 40px)"></div></div>';
       return;
     }
-    if(!milestone.pieceId){const reached2=elo>=milestone.eloRequired;html+='<div class="voie-milestone '+sideCls()+'"><div class="vm-card '+(reached2?'reached':'locked-milestone')+'" style="text-align:center"><div class="vm-piece-name">'+milestone.label+'</div></div><div class="vm-center"><div class="vm-dot'+(reached2?' reached':'')+'"></div><div class="vm-elo-badge">'+milestone.eloRequired+' ELO</div></div><div style="flex:1;max-width:calc(50% - 40px)"></div></div>';return;}
+    if(!milestone.pieceId){const reached2=peak>=milestone.eloRequired;html+='<div class="voie-milestone '+sideCls()+'"><div class="vm-card '+(reached2?'reached':'locked-milestone')+'" style="text-align:center"><div class="vm-piece-name">'+milestone.label+'</div></div><div class="vm-center"><div class="vm-dot'+(reached2?' reached':'')+'"></div><div class="vm-elo-badge">'+milestone.eloRequired+' ELO</div></div><div style="flex:1;max-width:calc(50% - 40px)"></div></div>';return;}
     const pd=PIECES.find(p=>p.id===milestone.pieceId);if(!pd)return;
-    const reached=elo>=milestone.eloRequired&&VV_UNLOCKED.has(milestone.pieceId);
-    const isCurrent=!reached&&elo<milestone.eloRequired&&(idx===0||(UNLOCK_MILESTONES[idx-1]&&elo>=UNLOCK_MILESTONES[idx-1].eloRequired));
+    const reached=peak>=milestone.eloRequired&&VV_UNLOCKED.has(milestone.pieceId);
+    const isCurrent=!reached&&peak<milestone.eloRequired&&(idx===0||(UNLOCK_MILESTONES[idx-1]&&peak>=UNLOCK_MILESTONES[idx-1].eloRequired));
     const dotCls=reached?'vm-dot reached':isCurrent?'vm-dot current-milestone':'vm-dot';
     const cardCls=reached?'vm-card reached':isCurrent?'vm-card current-milestone':'vm-card locked-milestone';
     // LE JALON NE DIT PLUS QUE DEUX CHOSES : quelle créature, et à quel ELO.

@@ -990,6 +990,15 @@
        vers son identité — se renommer, créer un autre compte, passer de l'un
        à l'autre. Le rouage est le bon endroit : c'est là qu'on va quand on
        cherche à régler quelque chose sur soi plutôt que sur la partie. -->
+  <!-- VIBRATION : réglage à part du son, et c'est voulu. Quelqu'un qui joue
+       en silence dans un train veut souvent GARDER la vibration, et
+       l'inverse est vrai aussi. La ligne disparaît sur un appareil qui ne
+       sait pas vibrer (voir hapticSupported, js/sfx.js) : un interrupteur
+       qui ne commande rien est pire que pas d'interrupteur. -->
+  <div class="sp-row" id="sp-haptic-row">
+    <span class="sp-label">Vibration</span>
+    <button class="sp-toggle" id="sp-haptic" role="switch" aria-checked="true" aria-label="Vibration"><span></span></button>
+  </div>
   <button class="sp-account-btn" id="sp-account">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
       <circle cx="12" cy="8.5" r="3.6"/><path d="M4.8 20a7.2 7.2 0 0 1 14.4 0"/>
@@ -1037,6 +1046,10 @@
 <script src="js/armies.js"></script>
 <script src="js/adversaires.js"></script>
 <script src="js/combat-intro.js"></script>
+<!-- sfx.js AVANT rules-engine.js : playSound() y délègue. L'ordre n'est
+     pas strictement requis (l'appel est différé jusqu'au premier son)
+     mais il dit la dépendance. -->
+<script src="js/sfx.js"></script>
 <script src="js/rules-engine.js"></script>
 <!-- Schémas de déplacement : interroge le moteur de règles, donc APRÈS lui. -->
 <script src="js/piece-moves.js"></script>

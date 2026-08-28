@@ -300,6 +300,14 @@ function startDrag(r,c,gs,clientX,clientY){
   dragState={fromR:r,fromC:c,gs,moved:false,startX:clientX,startY:clientY,alreadySelected};
   dragGhost.innerHTML=pieceSVG(cell.pieceId,cell.color);
   dragGhost.style.left=clientX+'px';dragGhost.style.top=clientY+'px';
+  // PRENDRE UNE PIÈCE EN MAIN NE FAISAIT AUCUN BRUIT. C'est le geste le plus
+  // fréquent du jeu et le seul qui n'avait aucun retour : entre l'appui et
+  // l'affichage des cases jouables, rien ne confirmait que le jeu avait
+  // entendu. Le son est volontairement à la limite du perceptible (voir la
+  // recette 'tap', js/sfx.js) — c'est une confirmation, pas un événement — et
+  // il n'est joué QUE sur une vraie prise en main, pas quand on repose le
+  // doigt sur une pièce déjà sélectionnée.
+  if(!alreadySelected&&typeof playSound==='function')playSound('tap',{force:0.3});
   if(!alreadySelected)renderGame(gs);
 }
 function moveDrag(clientX,clientY){

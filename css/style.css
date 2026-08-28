@@ -9,6 +9,7 @@
      [AI-LEVEL]     modal de choix d'instructeur IA
      [BUILDER]      page de composition d'armée (filtres, cartes de pièces, slots)
      [ACCOUNT-PAGE] page Comptes (sceau, bascule entre comptes, création)
+     [FEEL]         secousse d'impact + interrupteur de vibration (js/sfx.js)
      [SETTINGS]     bouton + panneau réglages (thème, volume)
      [ARMIES]       pages "Mes armées" / "Armées IA"
      [COMBAT-INTRO] page d'intro combat (VS, présentation armées)
@@ -454,6 +455,14 @@ body.has-acc #page-game{min-height:0}
 /* --- 2 & 3. LES SECTIONS ------------------------------------------ */
 .acc-logout{width:100%;margin-top:14px;font-size:12px!important;padding:10px 16px!important}
 
+/* CLASSEMENT RETOMBÉ SOUS LE RANG ACQUIS. Le rang est porté par le sommet
+   d'ELO atteint (elo_peak) et ne se perd jamais ; le nombre, lui, redescend.
+   Quand les deux divergent, la légende de la jauge cesse d'annoncer le rang
+   SUIVANT — qui n'est plus la bonne cible — pour dire ce qu'il faut
+   reprendre. Elle passe au laiton : c'est la couleur de ce qui se mérite, et
+   ce rang-là est déjà mérité. */
+.veb-progress-label.veb-below{color:var(--gold);font-weight:600}
+
 .acc-sec{margin-bottom:26px}
 .acc-sec-title{
   font-family:var(--f-ui);font-size:11px;letter-spacing:1.1px;text-transform:uppercase;
@@ -809,6 +818,59 @@ body:not(.main-menu) #settings-panel{display:none}
 .sp-label{font-size:11px;font-family:var(--f-ui);color:var(--muted);text-transform:uppercase;letter-spacing:.6px;white-space:nowrap}
 .sp-slider{-webkit-appearance:none;appearance:none;width:100px;height:4px;border-radius:2px;background:var(--border2);outline:none;cursor:pointer}
 .sp-slider::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--accent2);cursor:pointer}
+
+/* [FEEL] ========================================================== */
+/* LA SECOUSSE D'IMPACT (js/sfx.js::sfxShake).
+   iOS Safari n'expose pas navigator.vibrate : sur la moitié du parc mobile,
+   l'haptique n'existe tout simplement pas. Un tremblement bref du plateau
+   rend l'impact perceptible autrement — et il est utile partout, y compris
+   là où la vibration marche : c'est la couche visuelle du même événement.
+
+   DEUX INTENSITÉS, choisies par la valeur de la pièce prise
+   (sfxCaptureForce) : prendre un pion et prendre le Grand Maître ne peuvent
+   pas secouer le plateau de la même façon.
+
+   `translate3d` et non `translate` : la couche est promue au compositeur, le
+   plateau n'est donc pas remis en page à chaque image — sur un téléphone
+   d'entrée de gamme, la différence entre 60 images et 20 par seconde. */
+@keyframes sfxShake{
+  0%,100%{transform:translate3d(0,0,0)}
+  20%{transform:translate3d(-2px,1px,0)}
+  45%{transform:translate3d(2px,-1px,0)}
+  70%{transform:translate3d(-1px,0,0)}
+}
+@keyframes sfxShakeHard{
+  0%,100%{transform:translate3d(0,0,0)}
+  12%{transform:translate3d(-4px,2px,0)}
+  28%{transform:translate3d(4px,-2px,0)}
+  44%{transform:translate3d(-3px,-1px,0)}
+  62%{transform:translate3d(3px,1px,0)}
+  80%{transform:translate3d(-1px,0,0)}
+}
+.sfx-shake{animation:sfxShake .18s cubic-bezier(.36,.07,.19,.97) both}
+.sfx-shake-hard{animation:sfxShakeHard .26s cubic-bezier(.36,.07,.19,.97) both}
+/* Le mouvement réduit couvre le vestibulaire : quelqu'un qui a demandé moins
+   de mouvement n'a pas demandé qu'on lui secoue le plateau. sfxShake() le
+   vérifie déjà en JS ; cette règle est la ceinture de la bretelle, pour le
+   cas où la classe serait posée par ailleurs. */
+@media(prefers-reduced-motion:reduce){
+  .sfx-shake,.sfx-shake-hard{animation:none}
+}
+
+/* L'INTERRUPTEUR DE VIBRATION, dans le panneau de réglages. Le seul
+   interrupteur du jeu : il emprunte la couleur d'accent quand il est allumé,
+   comme tout ce qui est « en cours » ailleurs dans l'interface. */
+.sp-toggle{
+  width:38px;height:21px;flex:none;border-radius:11px;padding:0;cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg);position:relative;
+  transition:background .18s,border-color .18s;
+}
+.sp-toggle span{
+  position:absolute;top:2px;left:2px;width:15px;height:15px;border-radius:50%;
+  background:var(--muted);transition:transform .18s,background .18s;
+}
+.sp-toggle[aria-checked="true"]{background:var(--accent-bg);border-color:var(--accent2)}
+.sp-toggle[aria-checked="true"] span{transform:translateX(17px);background:var(--accent2)}
 
 /* [ARMIES] ======================================================= */
 #page-armies{padding:clamp(16px,3vw,32px) clamp(12px,3vw,20px);min-height:100vh;background:var(--bg)}

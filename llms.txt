@@ -144,15 +144,20 @@ C'est la mécanique qui distingue le plus Epic Chess des autres variantes :
   Obsidienne (1200-1499), Argent (1500-1999), Or Légendaire (2000+).
 - Franchir un palier de rang **débloque de nouvelles créatures** et de
   nouveaux **échiquiers** : bois, pierre, acier, argent puis or.
-- **On ne redescend jamais sous le rang atteint.** Comme les arènes de Clash
-  Royale, chaque rang est un plancher : un joueur Bronze reste Bronze quoi
-  qu'il arrive. À 0 ELO, une défaite ne coûte donc rien du tout.
+- **Le rang est acquis, le classement est vivant.** L'ELO monte et descend, et
+  une défaite coûte toujours des points. Mais le rang, lui, se lit sur le plus
+  haut ELO jamais atteint : un joueur qui a touché Bronze reste Bronze pour
+  toujours et ne reperd jamais une créature ni un échiquier, même si son
+  classement retombe.
 - **La montée est conçue pour être atteignable par tous.** Sous 1000 ELO, une
   victoire rapporte davantage qu'une défaite ne coûte, et d'autant plus qu'on
   est bas : à 0 ELO une victoire vaut triple et une défaite ne coûte que 15 %
   de ce que dirait la formule Elo. Les deux se rejoignent à 1000, où le
   classement redevient un Elo ordinaire. Les cinq premières parties sont des
   parties de placement, qui déplacent le classement beaucoup plus vite.
+- **La force de l'adversaire décide de tout**, comme dans n'importe quel Elo :
+  battre plus fort que soi rapporte beaucoup, battre plus faible rapporte peu,
+  perdre contre plus fort coûte peu, perdre contre plus faible coûte cher.
 - La rareté du coffre gagné suit la **série de victoires** : 1re victoire du
   jour → Coffre Pion, 6e → Coffre Roi. La série est **quotidienne** et
   **s'arrête à son sixième coffre** : au-delà, plus aucun coffre de série ce

@@ -90,7 +90,10 @@ async function launchChromium(){
 // couvercle pour les planches (voir chestBreakReady, js/chest-break.js).
 // Leur 404 est donc un comportement voulu et non une panne, au même titre
 // que les polices Google ou le CDN Supabase quand le réseau est coupé.
-const IGNORED_CONSOLE=/ERR_TUNNEL_CONNECTION_FAILED|ERR_CONNECTION_RESET|ERR_NAME_NOT_RESOLVED|fonts\.googleapis|fonts\.gstatic|jsdelivr|supabase/;
+// ERR_CERT_AUTHORITY_INVALID vient des environnements dont le réseau passe
+// par un mandataire à certificat propre : c'est la machine de test qui
+// refuse le certificat d'une ressource externe, pas le jeu qui échoue.
+const IGNORED_CONSOLE=/ERR_TUNNEL_CONNECTION_FAILED|ERR_CONNECTION_RESET|ERR_NAME_NOT_RESOLVED|ERR_CERT_AUTHORITY_INVALID|fonts\.googleapis|fonts\.gstatic|jsdelivr|supabase/;
 const OPTIONAL_ASSET=/adversaires\/[a-z-]+\.png|backgrounds\/main-page\.png|chests\/[a-z]+\//;
 
 (async()=>{
@@ -1475,23 +1478,79 @@ const OPTIONAL_ASSET=/adversaires\/[a-z-]+\.png|backgrounds\/main-page\.png|ches
     if(bad.length)throw new Error(bad.join(' · '));
   });
 
-  await step('un rang atteint ne se reperd jamais',async()=>{
+  await step('une défaite coûte toujours des points',async()=>{
     const bad=await page.evaluate(()=>{
       const out=[];
-      // Sur le plancher d'un rang, une défaite ne coûte rien : c'est la règle
-      // des arènes. On la vérifie sur chaque plancher, pas seulement sur 0.
+      // LA RÈGLE : perdre coûte, à tous les niveaux, quel que soit
+      // l'adversaire. Le seul plancher est le zéro absolu — un classement
+      // négatif n'a pas de sens. On vérifie en particulier sur les anciens
+      // planchers de rang (500, 800, 1200…), où une défaite ne coûtait
+      // RIEN : c'était un point de stationnement sans risque.
       RANKS.forEach(r=>{
-        const c=vvCalcNewElo(r.min,r.min+400,'loss',40);
-        if(c.newElo<r.min)out.push('rang '+r.name+' : on tombe à '+c.newElo+' sous son plancher '+r.min);
-        if(c.delta!==0)out.push('rang '+r.name+' : la défaite coûte '+c.delta+' au plancher');
-        // Une défaite qui ne coûte rien DOIT s'expliquer, sinon le joueur
-        // croit à un bug. Peu importe que ce soit le plancher de rang ou
-        // l'amorti de l'ascension qui l'ait absorbée.
-        if(!vvEloExplain(c,'loss'))out.push('rang '+r.name+' : une défaite sans coût n\'est pas expliquée');
+        if(r.min===0)return;                       // le zéro absolu, seule exception
+        [r.min,r.min+1,r.min+50].forEach(e=>{
+          [-400,-200,0,200,400].forEach(d=>{
+            const c=vvCalcNewElo(e,Math.max(0,e+d),'loss',40);
+            if(c.delta>=0)out.push('à '+e+' ELO contre '+(e+d)+', la défaite rapporte '+c.delta);
+          });
+        });
       });
-      // Et jamais au-dessus du plancher on ne redescend d'un rang entier.
-      const c=vvCalcNewElo(505,2300,'loss',200);
-      if(vvGetRank(c.newElo).id!=='bronze')out.push('une défaite fait perdre le rang Bronze');
+      // Et au tout bas de l'échelle, on ne passe jamais sous zéro.
+      const bas=vvCalcNewElo(0,900,'loss',40);
+      if(bas.newElo<0)out.push('l\'ELO devient négatif : '+bas.newElo);
+      if(!vvEloExplain(bas,'loss',0))out.push('une défaite sans coût au bas de l\'échelle n\'est pas expliquée');
+      return out;
+    });
+    if(bad.length)throw new Error(bad.join(' · '));
+  });
+
+  await step('l\'écart avec l\'adversaire décide du gain et de la perte',async()=>{
+    const bad=await page.evaluate(()=>{
+      const out=[];
+      // C'est la formule Elo, et la courbe d'ascension ne doit pas la
+      // casser : battre plus fort que soi rapporte davantage, battre plus
+      // faible rapporte moins ; perdre contre plus fort coûte moins, perdre
+      // contre plus faible coûte plus.
+      [200,500,800,1200,1800].forEach(e=>{
+        const g=d=>vvCalcNewElo(e,e+d,'win',40).delta;
+        const p=d=>vvCalcNewElo(e,e+d,'loss',40).delta;
+        if(!(g(-300)<g(0)&&g(0)<g(300)))
+          out.push('à '+e+' ELO, le gain ne suit pas la force de l\'adversaire : '+g(-300)+'/'+g(0)+'/'+g(300));
+        if(!(p(-300)<p(0)&&p(0)<p(300)))
+          out.push('à '+e+' ELO, la perte ne suit pas la force de l\'adversaire : '+p(-300)+'/'+p(0)+'/'+p(300));
+      });
+      return out;
+    });
+    if(bad.length)throw new Error(bad.join(' · '));
+  });
+
+  await step('le rang et les déblocages sont acquis pour toujours',async()=>{
+    // On SORT du mode test : là-dedans vvLoadElo() vaut 10 000, vvSaveElo()
+    // n'écrit rien et tout est déjà débloqué — on ne peut donc rien y
+    // vérifier de la progression réelle (voir js/accounts.js).
+    await page.goto('http://localhost:'+PORT+'/',{waitUntil:'domcontentloaded'});
+    await page.waitForSelector('#cube-jouer-btn',{state:'visible',timeout:8000});
+    if(await page.evaluate(()=>ADMIN_MODE))throw new Error('toujours en mode test');
+    const bad=await page.evaluate(()=>{
+      const out=[];
+      // Le rang ne vit PAS sur le classement du moment mais sur le sommet
+      // atteint (elo_peak). C'est ce qui permet à l'ELO de redescendre sans
+      // que le joueur perde son rang, ses créatures ou ses échiquiers.
+      const eloAvant=vvLoadElo(),peakAvant=vvLoadPeakElo();
+      vvSaveElo(1300);                                  // on monte à Obsidienne
+      if(vvRank().id!=='obsidienne')out.push('1300 ELO ne donne pas Obsidienne : '+vvRank().id);
+      const skinsHaut=BOARD_SKINS.filter(boardSkinUnlocked).length;
+      vvSaveElo(250);                                   // puis on retombe très bas
+      if(vvLoadPeakElo()!==1300)out.push('le sommet a bougé : '+vvLoadPeakElo());
+      if(vvRank().id!=='obsidienne')out.push('le rang a été reperdu en redescendant : '+vvRank().id);
+      if(BOARD_SKINS.filter(boardSkinUnlocked).length!==skinsHaut)
+        out.push('des échiquiers se sont reverrouillés en redescendant');
+      // Et le joueur doit être PRÉVENU, sinon il croit avoir tout perdu.
+      const c=vvCalcNewElo(250,250,'loss',40);
+      if(!/acquis/.test(vvEloExplain(c,'loss',1300)))
+        out.push('descendre sous son rang n\'est pas expliqué au joueur');
+      vvSaveElo(eloAvant);
+      accSet('elo_peak',peakAvant);
       return out;
     });
     if(bad.length)throw new Error(bad.join(' · '));
@@ -1509,9 +1568,9 @@ const OPTIONAL_ASSET=/adversaires\/[a-z-]+\.png|backgrounds\/main-page\.png|ches
       for(let g=0;g<5;g++)e=vvCalcNewElo(e,e,'win',g).newElo;
       if(e<300)out.push('cinq victoires de placement ne mènent qu\'à '+e+' ELO');
       // Et la phrase d'explication doit exister quand il se passe quelque chose.
-      if(!vvEloExplain(vvCalcNewElo(0,400,'win',0),'win'))out.push('le placement n\'est pas expliqué au joueur');
-      if(!vvEloExplain(vvCalcNewElo(200,200,'loss',40),'loss'))out.push('l\'amorti des pertes n\'est pas expliqué');
-      if(vvEloExplain(vvCalcNewElo(1500,1500,'win',200),'win'))out.push('une partie ordinaire s\'explique alors qu\'il n\'y a rien à dire');
+      if(!vvEloExplain(vvCalcNewElo(0,400,'win',0),'win',0))out.push('le placement n\'est pas expliqué au joueur');
+      if(!vvEloExplain(vvCalcNewElo(200,200,'loss',40),'loss',200))out.push('l\'amorti des pertes n\'est pas expliqué');
+      if(vvEloExplain(vvCalcNewElo(1500,1500,'win',200),'win',1500))out.push('une partie ordinaire s\'explique alors qu\'il n\'y a rien à dire');
       return out;
     });
     if(bad.length)throw new Error(bad.join(' · '));
@@ -1536,6 +1595,96 @@ const OPTIONAL_ASSET=/adversaires\/[a-z-]+\.png|backgrounds\/main-page\.png|ches
       return out;
     });
     if(bad.length)throw new Error(bad.join(' · '));
+  });
+
+  // ----------------------------------------------------------------
+  // LE MOTEUR DE BRUITAGES ET L'HAPTIQUE (js/sfx.js)
+  // ----------------------------------------------------------------
+  // On ne peut pas ÉCOUTER un son dans un test. Ce qu'on peut vérifier, et
+  // qui casse en silence sinon : que chaque son du jeu a bien une recette,
+  // qu'aucune n'est un bip d'une seule couche, que la variation existe, et
+  // que jouer un son ne lève pas d'exception.
+  await step('chaque son du jeu a une recette en couches',async()=>{
+    const bad=await page.evaluate(()=>{
+      const out=[];
+      if(typeof SFX_RECIPES!=='object'){out.push('SFX_RECIPES absent');return out;}
+      // Les sons que le reste du jeu appelle par leur nom. Un playSound()
+      // sans recette est silencieux, et rien ne le signale à l'exécution.
+      ['move','capture','check','castle','promo','win','loss','draw',
+       'tap','deny','chest','loot','rank'].forEach(n=>{
+        const r=SFX_RECIPES[n];
+        if(!r){out.push('son sans recette : '+n);return;}
+        if(!Array.isArray(r.layers)||!r.layers.length){out.push(n+' : aucune couche');return;}
+        // Un son d'une seule couche est un bip — c'est exactement ce dont on
+        // sortait. Seul 'tap', volontairement minuscule, y a droit.
+        if(r.layers.length<2&&n!=='tap'&&n!=='deny')out.push(n+' : une seule couche, c\'est un bip');
+        r.layers.forEach((L,i)=>{
+          if(L.type!=='tone'&&L.type!=='noise')out.push(n+' couche '+i+' : type inconnu '+L.type);
+          if(!(L.decay>0))out.push(n+' couche '+i+' : pas d\'extinction (clic audible)');
+        });
+      });
+      return out;
+    });
+    if(bad.length)throw new Error(bad.join(' · '));
+  });
+
+  await step('la force d\'une capture suit la valeur de la pièce prise',async()=>{
+    const bad=await page.evaluate(()=>{
+      const out=[];
+      if(typeof sfxCaptureForce!=='function'){out.push('sfxCaptureForce absent');return out;}
+      const pion=sfxCaptureForce('std-pawn');
+      const gm=sfxCaptureForce('grand-maitre');
+      if(!(gm>pion))out.push('prendre le Grand Maître ne sonne pas plus fort qu\'un pion : '+gm+' vs '+pion);
+      if(pion<0.2||gm>1)out.push('force hors bornes : '+pion+' / '+gm);
+      // Une pièce inconnue ne doit jamais casser le son.
+      const inconnu=sfxCaptureForce('piece-qui-nexiste-pas');
+      if(!(inconnu>0&&inconnu<=1))out.push('force invalide pour une pièce inconnue : '+inconnu);
+      return out;
+    });
+    if(bad.length)throw new Error(bad.join(' · '));
+  });
+
+  await step('jouer un son ne lève jamais d\'exception',async()=>{
+    const bad=await page.evaluate(()=>{
+      const out=[];
+      const noms=Object.keys(SFX_RECIPES).concat(['son-inexistant']);
+      noms.forEach(n=>{
+        try{sfxFeel(n,{force:0.9});sfxFeel(n,{force:0});}
+        catch(e){out.push(n+' : '+e.message);}
+      });
+      // haptic() doit répondre proprement sur un appareil sans vibreur.
+      try{
+        if(haptic('impact')!==false&&!hapticSupported())out.push('haptic ment sur un appareil sans vibreur');
+        haptic('motif-inexistant');
+      }catch(e){out.push('haptic : '+e.message);}
+      return out;
+    });
+    if(bad.length)throw new Error(bad.join(' · '));
+  });
+
+  await step('le réglage de vibration se souvient de lui-même',async()=>{
+    await page.goto('http://localhost:'+PORT+'/',{waitUntil:'domcontentloaded'});
+    await page.waitForSelector('#cube-jouer-btn',{state:'visible',timeout:8000});
+    await page.click('#settings-btn');
+    // L'interrupteur n'est montré que sur un appareil qui sait vibrer ; sous
+    // Chromium de test, navigator.vibrate existe.
+    const visible=await page.isVisible('#sp-haptic');
+    if(!visible){
+      if(await page.evaluate(()=>hapticSupported()))
+        throw new Error('l\'interrupteur est caché alors que l\'appareil sait vibrer');
+      return;                       // pas de vibreur : rien à régler, c'est voulu
+    }
+    await page.click('#sp-haptic');
+    if(await page.getAttribute('#sp-haptic','aria-checked')!=='false')
+      throw new Error('l\'interrupteur ne s\'éteint pas');
+    await page.goto('http://localhost:'+PORT+'/',{waitUntil:'domcontentloaded'});
+    await page.waitForSelector('#cube-jouer-btn',{state:'visible',timeout:8000});
+    await page.click('#settings-btn');
+    if(await page.getAttribute('#sp-haptic','aria-checked')!=='false')
+      throw new Error('le réglage n\'a pas survécu au rechargement');
+    if(await page.evaluate(()=>haptic('impact'))!==false)
+      throw new Error('la vibration part alors qu\'elle est coupée');
+    await page.click('#sp-haptic');   // on remet en place pour les étapes suivantes
   });
 
   await browser.close();

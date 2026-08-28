@@ -71,7 +71,13 @@ function accountUIRefresh(){
 // liste sans se connecter à chacun.
 function accountSummary(username){
   const elo=accGetFor(username,'elo',0)||0;
-  const rank=(typeof vvGetRank==='function')?vvGetRank(elo):{name:'',color:'var(--muted)'};
+  // Le rang vient du SOMMET atteint : il est acquis et ne redescend jamais,
+  // même si le classement du moment est repassé dessous (voir vvLoadPeakElo,
+  // js/accounts.js). Sur un compte antérieur à elo_peak, le sommet vaut
+  // l'ELO courant — ce qui est exact, l'ancien plancher l'empêchait de
+  // descendre sous son rang.
+  const peak=Math.max(elo,accGetFor(username,'elo_peak',elo)||0);
+  const rank=(typeof vvGetRank==='function')?vvGetRank(peak):{name:'',color:'var(--muted)'};
   // ranked_games / ranked_wins comptent depuis toujours. On retombe sur
   // l'historique (30 dernières parties) pour les comptes créés avant ces deux
   // clés : c'est faux à la baisse, mais c'est mieux qu'un zéro sur un compte
@@ -81,9 +87,7 @@ function accountSummary(username){
   const wins=accGetFor(username,'ranked_wins',
     history.filter(h=>h&&h.result==='win').length)||0;
   const pearls=accGetFor(username,'pearls',0)||0;
-  const rankMaxIdx=accGetFor(username,'rank_max',0)||0;
-  const rankMax=(typeof RANKS!=='undefined'&&RANKS[rankMaxIdx])?RANKS[rankMaxIdx]:rank;
-  return{username,elo,rank,games,wins,pearls,rankMax};
+  return{username,elo,peak,rank,games,wins,pearls};
 }
 
 // Le médaillon : la première lettre du pseudo, frappée dans un disque teinté
@@ -127,7 +131,7 @@ function accountSealHTML(s){
     {k:'Parties classées',v:s.games},
     {k:'Victoires',       v:s.wins},
     {k:'Perles',          v:s.pearls},
-    {k:'Meilleur rang',   v:escH(s.rankMax.name||'—')},
+    {k:'Meilleur ELO',    v:s.peak},
   ];
   return ''+
   '<section class="acc-seal">'+

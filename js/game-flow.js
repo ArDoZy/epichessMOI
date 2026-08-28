@@ -209,7 +209,10 @@ function showArmyIntro(playerArmy,aiArmy){
 function showResultModal(result,oldElo,newElo,delta,newUnlockIds,noEloReason,eloCalc){
   setTimeout(()=>playSound(result==='win'?'win':result==='loss'?'loss':'draw'),200);
   const modal=document.getElementById('result-modal');const box=document.getElementById('result-box');
-  const rank=vvGetRank(newElo);
+  // Le rang du modal est le rang ACQUIS (sommet atteint), pas celui du
+  // classement de l'instant : une défaite qui repasse sous un seuil ne
+  // doit pas afficher une rétrogradation qui n'a pas lieu.
+  const rank=(typeof vvRank==='function')?vvRank():vvGetRank(newElo);
   box.className='result-box '+(result==='win'?'win-result':result==='loss'?'loss-result':'draw-result');
   // Plus de chevron au-dessus du titre pour une victoire ou une défaite : le
   // mot et sa couleur disent déjà tout, le triangle n'ajoutait qu'un symbole
@@ -250,7 +253,8 @@ function showResultModal(result,oldElo,newElo,delta,newUnlockIds,noEloReason,elo
   // rang qui a absorbé la défaite). Voir vvEloExplain, js/voie.js : sans
   // elle, un « +38 » puis un « -4 » passent pour un bug.
   const showNote=!!noEloReason&&noEloReason!==VV_NO_ELO_TRAINING;
-  const climbNote=(!noEloReason&&typeof vvEloExplain==='function')?vvEloExplain(eloCalc,result):'';
+  const climbNote=(!noEloReason&&typeof vvEloExplain==='function')
+    ?vvEloExplain(eloCalc,result,(typeof vvLoadPeakElo==='function')?vvLoadPeakElo():newElo):'';
   const noteText=showNote?noEloReason:climbNote;
   if(noteEl){
     noteEl.style.display=noteText?'':'none';
@@ -362,7 +366,10 @@ function triggerEndOfGame(result){
     eloCalc=vvCalcNewElo(oldElo,aiElo,result);
     newElo=eloCalc.newElo;delta=eloCalc.delta;
     if(typeof vvNoteRankedGame==='function')vvNoteRankedGame(result);
-    const newRankIdx=vvGetRankIdx(newElo);if(newRankIdx>vvLoadRankMax())vvSaveRankMax(newRankIdx);
+    // vvSaveElo (js/accounts.js) a déjà relevé elo_peak si besoin ; rank_max
+    // en découle et reste écrit pour les écrans qui le lisent.
+    const newRankIdx=(typeof vvRankIdx==='function')?vvRankIdx():vvGetRankIdx(newElo);
+    if(newRankIdx>vvLoadRankMax())vvSaveRankMax(newRankIdx);
     newUnlocks=vvCheckNewUnlocks(oldElo,newElo);
     if(typeof vvCheckRewardMilestones==='function')vvCheckRewardMilestones(oldElo,newElo);
     vvSaveElo(newElo);

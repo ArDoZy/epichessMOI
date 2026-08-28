@@ -345,7 +345,7 @@ function questNote(event,pieceId,n){
   if(earned){
     ticketAdd(earned);
     rwNotif('Quête accomplie · +'+earned+' ticket'+(earned>1?'s':''),'ok');
-    if(typeof playSound==='function')playSound('promo');
+    if(typeof playSound==='function')playSound('loot');
   }
   if(typeof rewardsRefreshUI==='function')rewardsRefreshUI();
 }
@@ -370,7 +370,7 @@ function questNotePlay(gs,pieceId){
     questsSave(qs);
     ticketAdd(tpl.tickets);
     rwNotif('Quête accomplie · +'+tpl.tickets+' tickets','ok');
-    if(typeof playSound==='function')playSound('promo');
+    if(typeof playSound==='function')playSound('loot');
   }else questsSave(qs);
   if(typeof rewardsRefreshUI==='function')rewardsRefreshUI();
 }

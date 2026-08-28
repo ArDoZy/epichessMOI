@@ -85,6 +85,8 @@ epic-chess/
     ├── piece-moves.js        # Schéma 9×9 du déplacement d'une pièce, déduit
     │                          # du moteur (il a remplacé les phrases de
     │                          # déplacement, supprimées de data-pieces.js)
+    ├── sfx.js                # Moteur de bruitages (couches, enveloppes, bruit
+    │                          # filtré, variation, ducking) + retour haptique
     ├── combat-music.js       # Musique de combat en boucle
     ├── cinematics.js         # Cinématiques d'entrée en combat et d'issue
     ├── game-render.js        # Rendu plateau, drag&drop, clics, historique
@@ -180,26 +182,60 @@ Trois mécanismes s'en chargent, tous dans `vvCalcNewElo` :
    1000 les deux multiplicateurs valent 1 et l'Elo redevient l'Elo. La
    décroissance est en `t^0.6` et non linéaire — linéairement, le bonus
    s'évaporait dès 300 ELO et la montée s'arrêtait là.
-3. **Le plancher de rang** (`vvGetRankFloor`). On ne redescend **jamais** sous
-   le minimum du rang atteint : un joueur Bronze reste Bronze, quoi qu'il
-   arrive. C'est la règle des arènes de Clash Royale. Corollaire volontaire :
-   à 0 ELO — le plancher du rang Bois — une défaite ne coûte rien, les toutes
-   premières parties sont donc sans risque.
+3. **Le rang est acquis, l'ELO est vivant** — deux nombres, deux rôles :
+   - `elo` **monte et descend**. Une défaite coûte **toujours** au moins un
+     point, à n'importe quel niveau. Seul le zéro absolu l'arrête.
+   - `elo_peak`, le plus haut ELO jamais atteint, **ne descend jamais**. C'est
+     lui, et lui seul, qui décide du rang affiché (`vvRank()`) et de tout ce
+     qui se débloque : créatures, échiquiers, jalons. Un joueur qui a touché
+     Bronze reste Bronze pour toujours et ne reperd jamais une créature, même
+     si son classement retombe à 400.
+
+   ⚠️ **La version précédente posait le plancher sur l'ELO lui-même**, au
+   minimum du rang courant. Elle tenait la même promesse, mais un joueur assis
+   exactement sur un plancher (500, 800, 1200…) **ne perdait plus rien** en cas
+   de défaite : un point de stationnement à risque zéro, avec des essais
+   illimités pour remonter — la pire chose qu'on puisse mettre dans un
+   classement. Ne pas y revenir.
+
+**L'écart avec l'adversaire décide de tout, comme dans un Elo ordinaire** : la
+courbe d'ascension multiplie le résultat de la formule, elle ne le remplace
+pas. À 500 ELO, une victoire vaut **+7** contre un adversaire 400 points plus
+faible, **+37** à niveau égal, **+67** contre un adversaire 400 points plus
+fort ; une défaite coûte **−13**, **−7** et **−1** dans les mêmes cas. Le test
+de fumée vérifie cet ordre à cinq niveaux différents.
 
 **Ces constantes sont le réglage principal du jeu et ont été choisies par
-simulation.** À 50 % de victoires (ce vers quoi l'appariement pousse tout le
-monde), 1000 ELO s'atteint en une soixantaine de parties ; à 35 % — un joueur
-qui perd deux parties sur trois — il en faut environ 290, mais **il y arrive
-quand même**. C'est la promesse : le mur n'existe pas, seule la durée change.
-Toucher à `VV_CLIMB_GAIN_MAX`, `VV_CLIMB_LOSS_MIN` ou `VV_CLIMB_EASE` déplace
-cette promesse : refaire la simulation avant, et le test de fumée la vérifie
-(`l'ascension paie plus qu'elle ne coûte sous 1000 ELO`).
+simulation** (400 tirages par point, adversaires tirés à ±200 ELO) :
+
+| Taux de victoires | Atteignent 1000 ELO | Parties (médiane) |
+|---|---|---|
+| 35 % | 100 % | 310 |
+| 45 % | 100 % | 106 |
+| 50 % | 100 % | 73 |
+| 55 % | 100 % | 55 |
+
+C'est la promesse : le mur n'existe pas, seule la durée change. Toucher à
+`VV_CLIMB_GAIN_MAX`, `VV_CLIMB_LOSS_MIN` ou `VV_CLIMB_EASE` la déplace :
+refaire la simulation avant. Quatre étapes du test de fumée la gardent
+(`l'ascension paie plus qu'elle ne coûte sous 1000 ELO`, `une défaite coûte
+toujours des points`, `l'écart avec l'adversaire décide du gain et de la
+perte`, `le rang et les déblocages sont acquis pour toujours`).
 
 Dernier point : un écart inhabituel **doit s'expliquer au joueur**. Un `+48`
-suivi d'un `-4` passe pour un bug si personne ne dit pourquoi. C'est le rôle
-de `vvEloExplain()`, dont la phrase s'affiche sous l'écart dans le modal de
-fin de partie — et qui reste **vide** en régime ordinaire, où le chiffre se
-suffit.
+suivi d'un `−2` passe pour un bug si personne ne dit pourquoi, et une chute
+sous le seuil de son propre rang fait croire qu'on vient de perdre ses
+créatures. C'est le rôle de `vvEloExplain()`, dont la phrase s'affiche sous
+l'écart dans le modal de fin de partie — et qui reste **vide** en régime
+ordinaire, où le chiffre se suffit.
+
+**Toute lecture de rang ou de déblocage passe par le sommet, jamais par
+`vvLoadElo()`.** Les points concernés : `vvRank()` / `vvRankIdx()`
+(js/accounts.js), `boardSkinUnlocked()` et `menuNextMilestoneHTML()`
+(js/economy-ui.js), `loadAccountGlobals()` (js/accounts.js),
+`renderVoiePage()` (js/voie.js), `accountSummary()` (js/account-ui.js) et le
+modal de résultat (js/game-flow.js). Un nouvel écran qui afficherait un rang
+doit s'ajouter à cette liste, sinon il rétrograde le joueur tout seul.
 
 ### 1 quater. Les comptes (`js/accounts.js`, `js/account-ui.js`)
 
@@ -250,6 +286,55 @@ Un compte créé depuis la page Comptes doit recevoir le Lore et le tutoriel
 comme un premier lancement — mais après le rechargement, plus rien ne le
 distingue d'un compte ordinaire. D'où le drapeau `ec_fresh_account_v1`, posé
 par `accountCreate` et consommé par `accountsBoot`.
+
+### 1 quinquies. Le son et l'haptique (`js/sfx.js`)
+
+**Avant, chaque son du jeu était un bip.** Un déplacement, c'était une
+sinusoïde à 440 Hz pendant 70 ms ; une capture, deux dents de scie. Un
+oscillateur nu n'a pas d'attaque, pas de corps, pas de queue, et il sonne
+*exactement* pareil à la centième capture qu'à la première. C'était le plus
+grand écart perceptif entre ce jeu et une production de studio.
+
+Un son court se fabrique en **empilant des couches**, et c'est ce que fait
+`sfxPlay()` : une **attaque** (le transitoire, presque toujours du bruit
+filtré — c'est lui qui donne l'impression de matière), un **corps** (les voix
+accordées, avec une enveloppe ADSR réelle et non une coupure sèche, qui
+produit un clic audible), une **queue** (la résonance dont l'absence
+s'entend).
+
+Trois principes font le reste :
+
+| Principe | Ce qu'il fait | Pourquoi |
+|---|---|---|
+| **Variation** | ±3 à 6 % de hauteur et de volume à chaque déclenchement | Dix captures d'affilée ne sonnent jamais identiques. C'est *le* détail qui sépare un jeu qui bipe d'un jeu qui répond. |
+| **Intensité** | `{force: 0..1}` déplace ensemble volume, hauteur et ouverture du filtre | Prendre un pion et prendre le Grand Maître (13 pts) ne peuvent pas produire le même bruit. Un simple changement de volume ne fait jamais « plus fort ». |
+| **Ducking** | Un événement fort baisse la musique de 200 ms | Sans ça, la couche musicale mange l'attaque : on entend le son, on ne le *reçoit* pas. |
+
+**Ajouter un son, c'est ajouter une entrée dans `SFX_RECIPES`, rien d'autre.**
+Le reste du jeu appelle `playSound('capture')` et n'a jamais à savoir ce que
+ça produit — c'est aussi ce qui permettra de brancher de vrais échantillons
+plus tard sans réécrire une ligne ailleurs.
+
+`playSound()` **garde son nom et sa signature** : une centaine d'appels y
+mènent depuis tout le jeu, et aucun n'a eu à changer. Le second argument est
+nouveau et facultatif. Son repli sur `playTone()` n'est pas décoratif : si
+`sfx.js` ne se charge pas, le jeu reste jouable avec du son plutôt que muet.
+
+**L'haptique n'existait nulle part** — aucun appel à `navigator.vibrate` dans
+tout le projet, sur un jeu pensé téléphone d'abord. `haptic()` ajoute **cinq
+motifs, pas un de plus** : au-delà, la vibration devient du bruit et le joueur
+coupe tout, ce qui fait perdre les cinq qui comptaient. Deux garde-fous :
+`prefers-reduced-motion` couvre aussi le vestibulaire (quelqu'un qui a demandé
+moins de mouvement n'a pas demandé qu'on lui secoue l'appareil), et **iOS
+Safari n'expose pas `navigator.vibrate`** — sur la moitié du parc mobile
+l'haptique n'existe donc pas, d'où `sfxShake()`, un tremblement bref du
+plateau qui rend l'impact perceptible autrement. Le réglage est **séparé du
+son** : jouer en silence en gardant la vibration est un usage courant, et
+l'inverse aussi.
+
+`sfxFeel(nom, opts)` déclenche les trois ensemble (son + vibration +
+secousse) : les appeler séparément partout, c'est se garantir qu'un jour l'un
+des trois manquera quelque part.
 
 ### 2. Les logos de pièces (`js/piece-art.js`)
 
@@ -725,7 +810,7 @@ data-pieces.js → piece-art.js → main.js → cube-nav.js → accounts.js
 → economy.js → ai-level-modal.js → piece-card.js → builder.js → armies.js
 → adversaires.js
 → combat-intro.js
-→ rules-engine.js → piece-moves.js → combat-music.js → cinematics.js
+→ sfx.js → rules-engine.js → piece-moves.js → combat-music.js → cinematics.js
 → game-render.js
 → ai-engine.js → game-flow.js → voie.js → economy-ui.js
 → rewards.js → rewards-ui.js → tuto-drill.js
@@ -833,6 +918,8 @@ mais dans une version que Playwright refuse, le script le retrouve tout seul
 | Régler la vitesse de rotation du cube | `js/cube-nav.js` (`ROTATE_MS`) **et** la transition de `#cube` dans `css/style.css` |
 | Modifier le système de comptes/sauvegarde | `js/accounts.js` |
 | Modifier la page Comptes (sceau, bascule, création) | `js/account-ui.js` + `[ACCOUNT-PAGE]` de `css/style.css` |
+| Ajouter ou retoucher un bruitage | `SFX_RECIPES` dans `js/sfx.js` (rien d'autre à toucher) |
+| Changer une vibration | `HAPTIC_PATTERNS` / `SFX_FEEL` dans `js/sfx.js` |
 | Changer la vitesse de montée en ELO | `VV_CLIMB_*` et `VV_K_STEPS` dans `js/voie.js` (relire « La courbe d'ascension ») |
 | Changer la largeur de la fenêtre d'appariement | `MP_ELO_*` dans `js/multiplayer.js` |
 | Ajouter un nouveau réglage utilisateur | `index.html` (bloc `#settings-panel`) + `js/settings-admin.js` |
