@@ -378,6 +378,15 @@ function renderGame(gs){
   if(typeof applyBoardSkin==='function')applyBoardSkin();
 
   buildGameLabels(gs);updateCaptured(gs);updateHistoryNav();renderClocks(gs);updateTurnBars(gs);
+  // La feuille du journal est maintenant visible : c'est le seul moment où la
+  // mesurer veut dire quelque chose. On repasse une image plus tard, parce
+  // qu'au premier rendu la poignée n'a pas encore sa taille définitive (le
+  // journal des coups s'y remplit, les polices se posent) — et --sheet-h
+  // borne la taille du plateau, une valeur trop basse le laisserait déborder.
+  gameWatchSheetHeight();
+  requestAnimationFrame(gameSyncSheetHeight);
+  clearTimeout(_sheetSettleTid);
+  _sheetSettleTid=setTimeout(gameSyncSheetHeight,260);
 }
 
 // Le bandeau du joueur au trait s'allume : indication permanente de « à qui
@@ -408,6 +417,72 @@ function renderClocks(gs){
   hEl.classList.toggle('clock-low',hTime<30000&&!gs.gameOver);
   aEl.classList.toggle('clock-low',aTime<30000&&!gs.gameOver);
 }
+
+// ----------------------------------------------------------------
+// LA PLACE QUE PREND LA FEUILLE DU JOURNAL
+// ----------------------------------------------------------------
+// Sur téléphone, le journal des coups est une feuille ancrée en bas d'écran
+// (voir [MOBILE-APP] dans css/style.css). La page réservait sa hauteur avec
+// une constante — 112 px — et c'était faux : sur un écran de 350 px, la
+// poignée en fait davantage, et « Abandonner » se retrouvait coupé en deux
+// par la feuille. Le bouton le plus définitif du jeu, à moitié inaccessible.
+//
+// On mesure donc la hauteur RÉELLE et on la publie en variable CSS. Un
+// ResizeObserver suit toute variation : rotation de l'appareil, police
+// système agrandie, apparition d'un coup dans le journal.
+// LA MESURE SE PREND QUAND LA PARTIE EST À L'ÉCRAN, PAS AU CHARGEMENT.
+// Un premier jet observait la feuille dès DOMContentLoaded : à cet instant
+// #page-game est masquée, la feuille est encore dans le flux et mesure une
+// vingtaine de pixels. C'est cette valeur-là qui partait dans --sheet-h, et
+// « Abandonner » restait coupé en deux. gameSyncSheetHeight() est donc
+// appelée depuis renderGame(), c'est-à-dire à chaque rendu de partie, plus au
+// redimensionnement et à la rotation.
+function gameSyncSheetHeight(){
+  const board=document.getElementById('game-board');
+  const btns=document.querySelector('.game-btns');
+  const sheet=document.querySelector('.gs-block.gs-grow');
+  if(!board||!btns)return;
+  const b=board.getBoundingClientRect();
+  if(b.height<=0)return;                      // la partie n'est pas à l'écran
+
+  // La feuille du journal : déployée, elle couvre volontairement la page, il
+  // n'y a rien à lui réserver.
+  const sh=(sheet&&!sheet.classList.contains('sheet-open'))
+    ?Math.round(sheet.getBoundingClientRect().height):0;
+  if(sh>0)document.documentElement.style.setProperty('--sheet-h',sh+'px');
+
+  // TOUT CE QUI N'EST PAS LE PLATEAU, MESURÉ PLUTÔT QUE DEVINÉ. La formule
+  // CSS retranchait 200 px en dur pour « le reste » : en réalité il y a le
+  // chrome du haut, le bandeau adverse, la barre de statut, le bandeau du
+  // joueur, les deux boutons de partie ET la feuille ancrée en bas — plus de
+  // 400 px sur un petit écran. D'où « Abandonner » coupé en deux par la
+  // feuille sur un téléphone de 640 px de haut.
+  //
+  // On mesure donc la somme réelle : ce qu'il y a AU-DESSUS du plateau
+  // (sa position à l'écran) plus ce qu'il y a EN DESSOUS (du bas du plateau
+  // au bas des boutons), plus la feuille, plus un peu d'air. La boucle
+  // converge d'un seul tour : réduire le plateau ne change rien à la hauteur
+  // de ce qui l'entoure.
+  const below=btns.getBoundingClientRect().bottom-b.bottom;
+  const chrome=Math.round(b.top+below+sh+12);
+  if(chrome>0&&chrome<3000)
+    document.documentElement.style.setProperty('--game-chrome',chrome+'px');
+}
+let _sheetRO=null,_sheetSettleTid=null;
+function gameWatchSheetHeight(){
+  const sheet=document.querySelector('.gs-block.gs-grow');
+  if(!sheet)return;
+  // Le ResizeObserver reste : il rattrape ce que renderGame ne voit pas —
+  // une police système agrandie, un coup qui rallonge la poignée.
+  if(!_sheetRO&&typeof ResizeObserver==='function'){
+    _sheetRO=new ResizeObserver(gameSyncSheetHeight);
+    _sheetRO.observe(sheet);
+  }
+  gameSyncSheetHeight();
+}
+document.addEventListener('DOMContentLoaded',gameWatchSheetHeight);
+window.addEventListener('resize',gameSyncSheetHeight);
+window.addEventListener('orientationchange',()=>setTimeout(gameSyncSheetHeight,120));
 
 function buildGameLabels(gs){
   // Les repères vivent maintenant DANS les cases de bord : il n'y a plus de

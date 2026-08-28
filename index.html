@@ -862,9 +862,14 @@
         <div class="gp-taken" id="cap-me"></div>
       </div>
 
+      <!-- Les deux styles en dur (font-size:11px;padding:8px) donnaient des
+           boutons de 30 px de haut : les deux actions les plus lourdes de
+           conséquence du jeu — annuler un coup, abandonner la partie —
+           étaient les plus difficiles à viser. La taille vit maintenant dans
+           .game-btns .btn (voir [GAME] dans css/style.css). -->
       <div class="game-btns">
-        <button class="btn btn-ghost" id="game-undo" style="font-size:11px;padding:8px">Annuler coup</button>
-        <button class="btn btn-danger" id="game-quit" style="font-size:11px;padding:8px">Abandonner</button>
+        <button class="btn btn-ghost" id="game-undo">Annuler coup</button>
+        <button class="btn btn-danger" id="game-quit">Abandonner</button>
       </div>
     </aside>
   </div>

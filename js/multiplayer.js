@@ -317,6 +317,17 @@ function mpBindRoomHandlers(channel){
   // cas où notre premier envoi est parti avant que l'autre camp n'écoute.
   channel.on('broadcast',{event:'army'},({payload})=>{
     if(payload.senderId===MP.myId||MP.started)return;
+    // ON NE JOUE PAS CONTRE UNE ARMÉE QUI N'EN EST PAS UNE. Voir
+    // mpArmyProblem plus haut : mieux vaut refuser la partie que la jouer
+    // perdue d'avance sans le savoir.
+    const souci=mpArmyProblem(payload.army);
+    if(souci){
+      mpStatus('Partie refusée : l\'armée de votre adversaire n\'est pas valide ('+souci+').','err');
+      if(typeof showNotif==='function')
+        showNotif('Armée adverse invalide : '+souci+'. La partie ne peut pas démarrer.','err');
+      mpLeave();
+      return;
+    }
     MP.oppArmy=payload.army;
     MP.oppId=payload.senderId;
     MP.oppName=(payload.card&&payload.card.name)||'Adversaire';
@@ -449,6 +460,82 @@ function mpBindRoomHandlers(channel){
       mpSendArmy();
     }
   });
+}
+
+// ----------------------------------------------------------------
+// L'ARMÉE ADVERSE EST VÉRIFIÉE, PAS CRUE SUR PAROLE
+// ----------------------------------------------------------------
+// Chaque camp envoyait son armée par broadcast et l'autre l'installait telle
+// quelle. RIEN ne contrôlait le budget de 24 points, la limite d'une seule
+// Primordiale, ni même que les pièces existent : un joueur qui modifiait son
+// client pouvait se présenter avec cinq Grands Maîtres, et son adversaire
+// jouait la partie sans jamais savoir pourquoi il perdait.
+//
+// Le contraste était frappant avec les COUPS, eux revalidés proprement :
+// mpApplyRemoteMove cherche le coup reçu parmi ceux que NOTRE moteur a
+// calculés (voir plus bas). La même rigueur manquait à l'entrée de partie —
+// c'est-à-dire à l'endroit où l'on peut tricher une fois pour toute la
+// partie plutôt qu'un coup à la fois.
+//
+// On applique donc à l'armée reçue exactement les règles du builder
+// (js/builder.js) : 1 Monarque, 1 Général, 3 créatures, 24 points, une seule
+// Primordiale. C'est une vérification LOCALE, donc contournable par deux
+// clients complices — seul un serveur qui compose la partie lui-même
+// fermerait vraiment la porte (voir README, « L'appariement en ligne »).
+// Mais elle arrête le cas réel : un joueur seul qui trafique son navigateur
+// contre un adversaire honnête.
+
+const MP_ARMY_BUDGET=24;   // même valeur que le builder ; s'ils divergent, une
+                           // armée légitime serait refusée en ligne.
+
+// Renvoie null si l'armée est jouable, sinon la raison — écrite pour être
+// montrée telle quelle au joueur, qui n'a rien fait de mal et mérite de
+// savoir pourquoi sa partie ne démarre pas.
+function mpArmyProblem(army){
+  if(!army||typeof army!=='object')return 'aucune armée reçue';
+  const find=v=>{
+    if(!v)return null;
+    const id=(typeof v==='string')?v:v.id;
+    return PIECES.find(p=>p.id===id)||null;
+  };
+  const mon=find(army.mon), gen=find(army.gen);
+  if(!mon)return 'son Monarque n\'existe pas';
+  if(!gen)return 'son Général n\'existe pas';
+  if(mon.class!=='Monarque')return 'sa première pièce n\'est pas un Monarque';
+  if(gen.class!=='Général')return 'sa deuxième pièce n\'est pas un Général';
+
+  const extras=Array.isArray(army.extras)?army.extras:null;
+  if(!extras||extras.length!==3)return 'son armée ne compte pas 3 créatures';
+  const pieces=extras.map(find);
+  if(pieces.some(p=>!p))return 'une de ses créatures n\'existe pas';
+  if(pieces.some(p=>p.class==='Monarque'||p.class==='Général'))
+    return 'il aligne un Monarque ou un Général comme créature';
+
+  // Une même créature ne peut pas occuper deux des trois emplacements : le
+  // builder les décoche l'un après l'autre, il n'y a pas de doublon possible.
+  const ids=new Set(extras.map(x=>(typeof x==='string')?x:x.id));
+  if(ids.size!==3)return 'il aligne deux fois la même créature';
+
+  if(pieces.filter(p=>p.class==='Primordiale').length>1)
+    return 'il aligne plus d\'une Primordiale';
+
+  const total=mon.value+gen.value+pieces.reduce((t,p)=>t+p.value,0);
+  if(total>MP_ARMY_BUDGET)return 'son armée vaut '+total+' points au lieu de '+MP_ARMY_BUDGET+' au maximum';
+
+  // Les placements décident des colonnes de départ (voir buildGameBoard,
+  // js/game-flow.js) : hors du plateau ou en double, le plateau se
+  // construirait de travers ou perdrait une pièce en chemin.
+  const pl=army.placements;
+  if(!pl||typeof pl!=='object')return 'son armée n\'a pas de disposition';
+  const cols=[];
+  for(const id of ids){
+    const c=pl[id];
+    if(typeof c!=='number'||!Number.isInteger(c)||c<0||c>7)
+      return 'une de ses créatures est placée hors du plateau';
+    if(cols.includes(c))return 'deux de ses créatures partent de la même case';
+    cols.push(c);
+  }
+  return null;
 }
 
 function mpSendArmy(){
