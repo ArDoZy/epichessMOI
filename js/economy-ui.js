@@ -536,7 +536,7 @@ function dailyChestBusy(){
     (el.classList.contains('show')||el.classList.contains('active')||
      el.style.display==='flex');};
   if(shown('result-modal')||shown('chest-modal')||shown('confirm-modal')||
-     shown('mp-modal')||shown('lore-intro')||shown('pseudo-gate')||
+     shown('mp-modal')||shown('lore-intro')||shown('page-account')||
      shown('streak-modal')||shown('joker-modal'))return true;
   return false;
 }

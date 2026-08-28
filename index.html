@@ -180,37 +180,16 @@
      js/cube-nav.js) : partout ailleurs il ne servait qu'à réserver une bande
      vide au-dessus du titre. -->
 
-<!-- CHOIX DU PSEUDO, À LA TOUTE PREMIÈRE VISITE UNIQUEMENT.
-     IL N'Y A PLUS DE PAGE DE CONNEXION. C'en était une (#page-login, avec la
-     classe `active` posée directement dans ce fichier), et comme elle était
-     donc affichée dès le premier octet de HTML, on la voyait CLIGNOTER à
-     chaque ouverture du jeu — le temps que les scripts se chargent et que le
-     compte enregistré soit reconnu (accountsBoot, js/accounts.js).
-     C'est maintenant un simple voile masqué par défaut (`display:none` en
-     dur ci-dessous, comme #lore-intro), que accountsBoot n'affiche QUE s'il
-     n'y a aucun pseudo enregistré. Un joueur qui revient ne le voit jamais,
-     pas même une image. -->
-<div class="pseudo-gate" id="pseudo-gate" style="display:none">
-  <div class="login-wrap">
-    <!-- L'emblème (le sceau d'alchimiste) est injecté par mountEmblems()
-         dans js/main.js : un seul tracé, tous les emplacements. La classe
-         `game-emblem` est le crochet, `login-emblem` ne règle que la taille. -->
-    <div class="login-logo"><div class="game-emblem login-emblem"></div><h1>EPIC CHESS</h1><p>Les Alchimistes ont insufflé la vie aux pièces d'échecs. Composez votre armée de créatures et affrontez les autres Alchimistes.</p></div>
-    <!-- UN SEUL COMPTE, toujours connecté : pas de mot de passe, pas de
-         changement de compte, pas de déconnexion (voir js/accounts.js). -->
-    <div class="login-card">
-      <div class="lbl">Choisissez votre pseudo</div>
-      <div class="iform">
-        <input class="linput" id="reg-u" type="text" placeholder="Pseudo (2–20 caractères)" maxlength="20" autocomplete="off">
-        <button class="btn btn-primary" id="btn-reg">Commencer</button>
-      </div>
-    </div>
-
-    <!-- Le texte de présentation et la FAQ indexable sont sur /info
-         (info.html), atteignable par ce bouton « i » discret. -->
-    <a class="login-info-btn" id="login-info-btn" href="/info" title="À propos d'Epic Chess" aria-label="À propos d'Epic Chess">i</a>
-  </div>
-</div>
+<!-- IL N'Y A PLUS AUCUN ÉCRAN AVANT LE JEU.
+     Ici se trouvaient successivement une page de connexion (#page-login) puis
+     un voile de choix du pseudo (#pseudo-gate) : dans les deux cas un
+     formulaire posé entre quelqu'un qui vient d'ouvrir le lien et le jeu
+     qu'il est venu voir. La première ouverture crée maintenant elle-même un
+     compte au nom d'Alchimiste tiré au sort et entre directement dans le
+     Lore puis le tutoriel (accountsBoot, js/accounts.js).
+     Le joueur se renomme, crée d'autres comptes et bascule entre eux depuis
+     la page Comptes (#page-account, js/account-ui.js), ouverte par la ligne
+     « Compte » du panneau de réglages. -->
 
 <!-- Le modal de choix d'instructeur a disparu : il n'y a plus qu'un seul
      adversaire IA, à pleine puissance (voir INSTRUCTOR dans data-pieces.js).
@@ -776,6 +755,25 @@
 <button class="btn btn-gold voie-ok-bar" id="voie-ok">OK</button>
 </div>
 
+<!-- PAGE COMPTES : l'identité du joueur (js/account-ui.js).
+     Ouverte par la ligne « Compte » du panneau de réglages. Elle reprend la
+     mise en page de la Voie (zone défilante + pastille « OK » en bas) pour
+     que toutes les pages secondaires se ferment du même geste.
+     Le corps (#account-body) est entièrement produit par
+     renderAccountPage() : rien de son contenu ne vit ici. -->
+<div id="page-account" class="page">
+<div class="voie-scroll" id="account-scroll">
+  <div class="voie-inner acc-inner">
+    <div class="voie-hdr"><div class="voie-title">Comptes</div></div>
+    <div id="account-body"></div>
+    <p class="acc-foot">Les comptes vivent dans ce navigateur, sur cet appareil.
+      Ils ne sont envoyés nulle part — et ils disparaissent si vous effacez les
+      données du site.</p>
+  </div>
+</div>
+<button class="btn btn-gold voie-ok-bar" id="acc-close">OK</button>
+</div>
+
 <!-- PAGE RÉCOMPENSES : les deux voies qui ne dépendent pas de l'ELO.
      L'échiquier a trois lignes, le jeu a trois voies, et chacune se lit dans
      le sens de la sienne — la COLONNE des victoires de haut en bas, la RANGÉE
@@ -987,6 +985,17 @@
     <span class="sp-label">Bruitages</span>
     <input type="range" class="sp-slider" id="sp-sfx-vol" min="0" max="1" step="0.05" value="1">
   </div>
+  <!-- LE COMPTE EST ICI ET NULLE PART AILLEURS. Le jeu ne demande plus de
+       pseudo au démarrage (voir js/accounts.js) : c'est donc le seul chemin
+       vers son identité — se renommer, créer un autre compte, passer de l'un
+       à l'autre. Le rouage est le bon endroit : c'est là qu'on va quand on
+       cherche à régler quelque chose sur soi plutôt que sur la partie. -->
+  <button class="sp-account-btn" id="sp-account">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="12" cy="8.5" r="3.6"/><path d="M4.8 20a7.2 7.2 0 0 1 14.4 0"/>
+    </svg>
+    <span>Compte</span>
+  </button>
 </div>
 
 <!-- ================================================================
@@ -1044,6 +1053,7 @@
 <script src="js/tuto-drill.js"></script>
 <script src="js/tutorial.js"></script>
 <script src="js/lore-intro.js"></script>
+<script src="js/account-ui.js"></script>
 <script src="js/settings-admin.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/multiplayer.js"></script>

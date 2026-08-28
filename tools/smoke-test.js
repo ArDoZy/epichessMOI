@@ -119,19 +119,22 @@ const OPTIONAL_ASSET=/adversaires\/[a-z-]+\.png|backgrounds\/main-page\.png|ches
   console.log('\nEpic Chess · test de fumée\n');
   await page.goto('http://localhost:'+PORT+'/',{waitUntil:'domcontentloaded'});
 
-  // PREMIÈRE VISITE : le voile de choix du pseudo s'affiche. Il n'y a plus de
-  // page de connexion — c'était une page marquée `active` dans le HTML, donc
-  // visible dès le premier octet, et qui CLIGNOTAIT à chaque ouverture du jeu
-  // avant que le compte enregistré soit reconnu. Ce voile est masqué en dur et
-  // n'est montré que faute de pseudo (accountsBoot, js/accounts.js) — l'étape
-  // « le jeu reprend sans voile » plus bas vérifie l'autre moitié.
-  await step('le choix du pseudo s\'affiche à la première visite',async()=>{
-    await page.waitForSelector('#pseudo-gate.show',{timeout:8000});
+  // PREMIÈRE VISITE : AUCUN ÉCRAN AVANT LE JEU. Il y a eu successivement une
+  // page de connexion puis un voile de choix du pseudo ; les deux posaient un
+  // formulaire entre le visiteur et le jeu. La première ouverture crée
+  // maintenant elle-même un compte d'Alchimiste et entre dans le Lore
+  // (accountsBoot, js/accounts.js). C'est la première chose que voit un
+  // nouveau joueur : si elle casse, plus personne n'atteint le jeu.
+  await step('la première visite entre directement dans le jeu',async()=>{
+    await page.waitForSelector('#lore-intro',{state:'visible',timeout:8000});
     if(await page.locator('#page-login').count())throw new Error('la page de connexion existe encore');
-  });
-
-  await step('l\'emblème est injecté',async()=>{
-    if(await page.locator('.login-emblem svg.emblem').count()!==1)throw new Error('emblème absent');
+    if(await page.locator('#pseudo-gate').count())throw new Error('le voile de pseudo existe encore');
+    const acc=await page.evaluate(()=>CUR_ACC);
+    if(!acc)throw new Error('aucun compte créé à la première ouverture');
+    if(!/^(Alchimiste|Apprenti|Adepte|Souffleur|Artisan|Disciple) \d{4}$/.test(acc))
+      throw new Error('pseudo d\'ouverture inattendu : '+acc);
+    const list=await page.evaluate(()=>accountsList());
+    if(list.length!==1||list[0]!==acc)throw new Error('la liste des comptes ne contient pas le compte créé');
   });
 
   // L'EMBLÈME EST PARTOUT OÙ LE JEU SE PRÉSENTE. Il n'a longtemps vécu que
@@ -145,7 +148,9 @@ const OPTIONAL_ASSET=/adversaires\/[a-z-]+\.png|backgrounds\/main-page\.png|ches
     const bad=await page.evaluate(()=>{
       const out=[];
       const slots=[...document.querySelectorAll('.game-emblem')];
-      ['login-emblem','menu-emblem'].forEach(cls=>{
+      // .login-emblem a disparu avec le voile de choix du pseudo : il n'y a
+      // plus d'écran avant le jeu (voir js/accounts.js).
+      ['menu-emblem'].forEach(cls=>{
         if(!slots.some(el=>el.classList.contains(cls)))out.push('emplacement manquant : .'+cls);
       });
       slots.forEach(el=>{
@@ -168,20 +173,6 @@ const OPTIONAL_ASSET=/adversaires\/[a-z-]+\.png|backgrounds\/main-page\.png|ches
     const src=(man.icons||[]).map(i=>i.src);
     if(!src.includes(href))throw new Error('le manifeste pointe '+src.join(',')+' au lieu de '+href);
     if(man.orientation!=='portrait')throw new Error('le manifeste n\'impose plus le portrait');
-  });
-
-  await step('un refus de création de compte est expliqué',async()=>{
-    await page.fill('#reg-u','a');
-    await page.click('#btn-reg');
-    const t=await page.locator('.notif').first().textContent({timeout:3000});
-    if(!/Pseudo/.test(t))throw new Error('message inattendu : '+t);
-  });
-
-  await step('un compte se crée et le voile se referme',async()=>{
-    await page.fill('#reg-u','SmokeTest');
-    await page.click('#btn-reg');
-    await page.waitForSelector('#lore-intro',{state:'visible',timeout:8000});
-    if(await page.isVisible('#pseudo-gate'))throw new Error('le voile de pseudo reste affiché après création');
   });
 
   // LE LORE, EN QUATRE PAGES (js/lore-intro.js). C'est le tout premier écran
@@ -222,22 +213,121 @@ const OPTIONAL_ASSET=/adversaires\/[a-z-]+\.png|backgrounds\/main-page\.png|ches
       throw new Error('le coffre du jour est encore dû après son ouverture');
   });
 
-  // L'AUTRE MOITIÉ DU CORRECTIF : à la RÉOUVERTURE, le voile ne doit jamais
-  // apparaître, pas même le temps d'une image. On le vérifie deux fois : sur
-  // le HTML brut servi (l'élément part masqué, donc rien ne peut clignoter
-  // avant que les scripts tournent) et sur la page une fois lancée.
-  await step('à la réouverture, aucun voile de connexion ne clignote',async()=>{
+  // À LA RÉOUVERTURE : rien ne clignote et le compte est repris. Aucune page
+  // ne doit être marquée `active` dans le HTML servi — c'est ce qui faisait
+  // apparaître l'ancienne page de connexion avant même que les scripts
+  // tournent.
+  await step('à la réouverture, le compte est repris sans écran intermédiaire',async()=>{
     const brut=await (await fetch('http://localhost:'+PORT+'/')).text();
-    const balise=(brut.match(/<div class="pseudo-gate"[^>]*>/)||[''])[0];
-    if(!balise)throw new Error('#pseudo-gate absent du HTML servi');
-    if(!/display:\s*none/.test(balise))
-      throw new Error('le voile n\'est pas masqué dans le HTML : il clignotera ('+balise+')');
     if(/class="page active"/.test(brut))
       throw new Error('une page est encore marquée active dans le HTML servi');
+    const avant=await page.evaluate(()=>CUR_ACC);
     await page.goto('http://localhost:'+PORT+'/',{waitUntil:'domcontentloaded'});
     await page.waitForSelector('#cube-jouer-btn',{state:'visible',timeout:8000});
-    if(await page.isVisible('#pseudo-gate'))throw new Error('le voile s\'affiche alors qu\'un pseudo est enregistré');
-    if(!await page.evaluate(()=>CUR_ACC==='SmokeTest'))throw new Error('le compte enregistré n\'est pas repris');
+    if(await page.evaluate(()=>CUR_ACC)!==avant)throw new Error('le compte enregistré n\'est pas repris');
+    if(await page.evaluate(()=>document.querySelectorAll('.page.active').length))
+      throw new Error('une page secondaire couvre le menu à la réouverture');
+  });
+
+  // ----------------------------------------------------------------
+  // LA PAGE COMPTES (js/account-ui.js)
+  // ----------------------------------------------------------------
+  // C'est le seul chemin vers son identité depuis que le jeu ne demande plus
+  // de pseudo au démarrage : renommer, créer, basculer, supprimer.
+  await step('la page Comptes s\'ouvre depuis les réglages',async()=>{
+    await page.click('#settings-btn');
+    await page.click('#sp-account');
+    await page.waitForSelector('#page-account.active',{timeout:5000});
+    const nom=await page.textContent('.acc-name');
+    if(nom.trim()!==await page.evaluate(()=>CUR_ACC))
+      throw new Error('le sceau n\'affiche pas le compte courant : '+nom);
+    if(await page.locator('.acc-stat').count()!==4)throw new Error('les quatre chiffres du compte ne sont pas tous là');
+  });
+
+  await step('le compte se renomme',async()=>{
+    await page.click('#acc-rename-open');
+    await page.fill('#acc-rename-input','SmokeTest');
+    await page.click('#acc-rename-ok');
+    await page.waitForTimeout(200);
+    if(await page.evaluate(()=>CUR_ACC)!=='SmokeTest')throw new Error('le renommage n\'a pas pris');
+    // Le renommage recopie les clés mc_p_<pseudo>_* : la progression doit
+    // suivre le nouveau nom, sinon le joueur perd tout en se renommant.
+    const armees=await page.evaluate(()=>accGetFor('SmokeTest','armies',null));
+    if(!armees||!armees.length)throw new Error('les données n\'ont pas suivi le renommage');
+    if(!await page.evaluate(()=>accountsList().includes('SmokeTest')))
+      throw new Error('la liste des comptes garde l\'ancien pseudo');
+  });
+
+  await step('« quitter ce compte » annonce où il emmène',async()=>{
+    // Le « se déconnecter » du jeu. Il ne doit JAMAIS mener à un écran de
+    // connexion (il n'y en a pas) ni supprimer quoi que ce soit : il pose le
+    // joueur sur une autre identité jouable, le compte quitté restant intact.
+    await page.click('#acc-logout');
+    const msg=await page.textContent('#confirm-msg');
+    if(!/Quitter/.test(msg))throw new Error('confirmation inattendue : '+msg);
+    if(!/seul compte/.test(msg))throw new Error('le seul compte de l\'appareil n\'est pas annoncé comme tel : '+msg);
+    await page.click('#confirm-cancel');
+    if(await page.evaluate(()=>CUR_ACC)!=='SmokeTest')throw new Error('annuler a quand même changé de compte');
+    if(!await page.evaluate(()=>accountsList().includes('SmokeTest')))
+      throw new Error('le compte a disparu de la liste sur une simple annulation');
+  });
+
+  await step('un pseudo déjà pris est refusé',async()=>{
+    // Les notifications s'empilent : lire « la première » renverrait celle de
+    // l'étape précédente. On attend celle qui porte le message attendu, et
+    // c'est son absence au bout de 3 s qui fait échouer l'étape.
+    await page.fill('#acc-new-input','SmokeTest');
+    await page.click('#acc-new-ok');
+    await page.waitForFunction(
+      ()=>[...document.querySelectorAll('.notif')].some(n=>/déjà ce pseudo/.test(n.textContent)),
+      null,{timeout:3000});
+    if(await page.locator('#confirm-modal.show').count())
+      throw new Error('un pseudo refusé ouvre quand même la confirmation');
+  });
+
+  await step('un second compte se crée et devient le compte courant',async()=>{
+    await page.fill('#acc-new-input','SmokeDeux');
+    await page.click('#acc-new-ok');
+    await page.click('#confirm-ok');
+    // accountCreate recharge la page (voir l'en-tête de js/accounts.js). Il
+    // FAUT attendre la fin du chargement avant d'interroger la page :
+    // pendant la navigation, le contexte d'exécution est un document vierge
+    // où aucun script du jeu n'existe encore.
+    await page.waitForLoadState('load');
+    await page.waitForFunction(()=>typeof CUR_ACC!=='undefined'&&CUR_ACC==='SmokeDeux',null,{timeout:10000});
+    const list=await page.evaluate(()=>accountsList());
+    if(!list.includes('SmokeTest')||!list.includes('SmokeDeux'))
+      throw new Error('les deux comptes ne cohabitent pas : '+list.join(','));
+    // Un compte neuf repart de zéro : c'est toute la promesse de la page.
+    if(await page.evaluate(()=>vvLoadElo())!==0)throw new Error('le compte neuf ne part pas de 0 ELO');
+    // Et il reçoit le Lore, comme un premier lancement.
+    await page.waitForSelector('#lore-intro',{state:'visible',timeout:8000});
+  });
+
+  await step('on revient sur le premier compte',async()=>{
+    for(let i=0;i<4;i++){await page.click('#lore-next');await page.waitForTimeout(520);}
+    await page.waitForSelector('#tuto-root.show',{timeout:8000});
+    await page.click('#tuto-skip');
+    await page.click('#confirm-ok');
+    await page.waitForSelector('#tuto-root.show',{state:'hidden',timeout:8000});
+    // Le coffre quotidien s'ouvre de lui-même à la sortie du tutoriel : on le
+    // laisse se terminer, sinon il couvre la page Comptes.
+    if(await page.isVisible('#chest-modal.show')){
+      await page.click('#chest-visual');
+      for(let i=0;i<40&&await page.isVisible('#chest-modal.show');i++){
+        await page.waitForTimeout(650);await page.click('#chest-visual');
+      }
+    }
+    await page.click('#settings-btn');
+    await page.click('#sp-account');
+    await page.waitForSelector('#page-account.active',{timeout:5000});
+    await page.click('[data-switch="SmokeTest"]');
+    await page.click('#confirm-ok');
+    await page.waitForLoadState('load');
+    await page.waitForFunction(()=>typeof CUR_ACC!=='undefined'&&CUR_ACC==='SmokeTest',null,{timeout:10000});
+    // La bascule doit rendre au compte SA progression, pas celle de l'autre.
+    if(await page.evaluate(()=>savedArmies.length)<1)
+      throw new Error('le compte repris a perdu son armée');
   });
 
 
@@ -1350,6 +1440,99 @@ const OPTIONAL_ASSET=/adversaires\/[a-z-]+\.png|backgrounds\/main-page\.png|ches
       if(localStorage.getItem(accKey(CUR_ACC,'inventory'))&&
          JSON.parse(localStorage.getItem(accKey(CUR_ACC,'inventory')))[PIECES[0].id]===999)
         out.push('l inventaire du mode test a ete enregistre');
+      return out;
+    });
+    if(bad.length)throw new Error(bad.join(' · '));
+  });
+
+  // ----------------------------------------------------------------
+  // LA COURBE D'ASCENSION (vvCalcNewElo, js/voie.js)
+  // ----------------------------------------------------------------
+  // C'est le réglage principal du jeu : monter vite jusqu'à 1000, se battre
+  // après. Les trois règles se vérifient sur des cas nommés plutôt que sur
+  // des valeurs exactes — les constantes bougeront, la promesse non.
+  await step('l\'ascension paie plus qu\'elle ne coûte sous 1000 ELO',async()=>{
+    const bad=await page.evaluate(()=>{
+      const out=[];
+      // Duel équilibré à différents niveaux, hors parties de placement.
+      const at=e=>({
+        win :vvCalcNewElo(e,e,'win',40).delta,
+        loss:vvCalcNewElo(e,e,'loss',40).delta,
+      });
+      const bas=at(100),milieu=at(700),haut=at(1400);
+      if(bas.win<=Math.abs(bas.loss)*2)
+        out.push('à 100 ELO la victoire ne domine pas la défaite : +'+bas.win+' / '+bas.loss);
+      if(milieu.win<=Math.abs(milieu.loss))
+        out.push('à 700 ELO la victoire ne domine plus : +'+milieu.win+' / '+milieu.loss);
+      // Au-delà du seuil, l'Elo redevient symétrique.
+      if(haut.win!==Math.abs(haut.loss))
+        out.push('au-dessus de 1000 ELO l\'Elo n\'est pas symétrique : +'+haut.win+' / '+haut.loss);
+      // Le bonus décroît : il doit être strictement plus faible en montant.
+      if(!(at(100).win>at(500).win&&at(500).win>at(900).win))
+        out.push('le bonus d\'ascension ne décroît pas avec l\'ELO');
+      return out;
+    });
+    if(bad.length)throw new Error(bad.join(' · '));
+  });
+
+  await step('un rang atteint ne se reperd jamais',async()=>{
+    const bad=await page.evaluate(()=>{
+      const out=[];
+      // Sur le plancher d'un rang, une défaite ne coûte rien : c'est la règle
+      // des arènes. On la vérifie sur chaque plancher, pas seulement sur 0.
+      RANKS.forEach(r=>{
+        const c=vvCalcNewElo(r.min,r.min+400,'loss',40);
+        if(c.newElo<r.min)out.push('rang '+r.name+' : on tombe à '+c.newElo+' sous son plancher '+r.min);
+        if(c.delta!==0)out.push('rang '+r.name+' : la défaite coûte '+c.delta+' au plancher');
+        // Une défaite qui ne coûte rien DOIT s'expliquer, sinon le joueur
+        // croit à un bug. Peu importe que ce soit le plancher de rang ou
+        // l'amorti de l'ascension qui l'ait absorbée.
+        if(!vvEloExplain(c,'loss'))out.push('rang '+r.name+' : une défaite sans coût n\'est pas expliquée');
+      });
+      // Et jamais au-dessus du plancher on ne redescend d'un rang entier.
+      const c=vvCalcNewElo(505,2300,'loss',200);
+      if(vvGetRank(c.newElo).id!=='bronze')out.push('une défaite fait perdre le rang Bronze');
+      return out;
+    });
+    if(bad.length)throw new Error(bad.join(' · '));
+  });
+
+  await step('les cinq premières parties placent le joueur',async()=>{
+    const bad=await page.evaluate(()=>{
+      const out=[];
+      const placement=vvCalcNewElo(0,400,'win',0).k;
+      const routine=vvCalcNewElo(0,400,'win',100).k;
+      if(!(placement>routine*2))out.push('le K de placement ('+placement+') ne domine pas celui de routine ('+routine+')');
+      if(vvCalcNewElo(2100,2100,'win',500).k>=routine)out.push('le K ne se resserre pas en haut du classement');
+      // Un compte neuf doit franchir le premier rang en quelques parties.
+      let e=0;
+      for(let g=0;g<5;g++)e=vvCalcNewElo(e,e,'win',g).newElo;
+      if(e<300)out.push('cinq victoires de placement ne mènent qu\'à '+e+' ELO');
+      // Et la phrase d'explication doit exister quand il se passe quelque chose.
+      if(!vvEloExplain(vvCalcNewElo(0,400,'win',0),'win'))out.push('le placement n\'est pas expliqué au joueur');
+      if(!vvEloExplain(vvCalcNewElo(200,200,'loss',40),'loss'))out.push('l\'amorti des pertes n\'est pas expliqué');
+      if(vvEloExplain(vvCalcNewElo(1500,1500,'win',200),'win'))out.push('une partie ordinaire s\'explique alors qu\'il n\'y a rien à dire');
+      return out;
+    });
+    if(bad.length)throw new Error(bad.join(' · '));
+  });
+
+  // ----------------------------------------------------------------
+  // LA FENÊTRE D'APPARIEMENT (mpEloWindow, js/multiplayer.js)
+  // ----------------------------------------------------------------
+  // Personne n'attend sur un écran de recherche : la fenêtre doit être
+  // grande ouverte AVANT dix secondes, et ne jamais devenir infinie.
+  await step('la fenêtre d\'appariement s\'ouvre en moins de dix secondes',async()=>{
+    const bad=await page.evaluate(()=>{
+      const out=[];
+      if(mpEloWindow(0)<150)out.push('la fenêtre de départ est trop étroite : ±'+mpEloWindow(0));
+      if(mpEloWindow(10)<MP_ELO_MAX)out.push('après 10 s la fenêtre n\'est qu\'à ±'+mpEloWindow(10));
+      if(mpEloWindow(600)!==MP_ELO_MAX)out.push('la fenêtre dépasse son plafond : ±'+mpEloWindow(600));
+      if(!isFinite(mpEloWindow(99999)))out.push('la fenêtre redevient infinie : un débutant peut tomber contre n\'importe qui');
+      if(MP_ELO_MAX>600)out.push('le plafond dépasse ±600 ELO : '+MP_ELO_MAX);
+      // Elle doit croître, pas sauter d'un coup à son plafond.
+      if(!(mpEloWindow(0)<mpEloWindow(2)&&mpEloWindow(2)<=mpEloWindow(4)))
+        out.push('la fenêtre ne s\'élargit pas progressivement');
       return out;
     });
     if(bad.length)throw new Error(bad.join(' · '));

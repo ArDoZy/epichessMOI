@@ -67,7 +67,11 @@ epic-chess/
     ├── cube-nav.js           # Navigation principale par cube 3D (CSS). Déplace
     │                          # armées/partie/armurerie dans les faces (la face
     │                          # de gauche est libre, en attente de contenu).
-    ├── accounts.js           # Comptes locaux (localStorage), connexion
+    ├── accounts.js           # Comptes locaux (localStorage) : plusieurs par
+    │                          # appareil, création automatique au premier
+    │                          # lancement, bascule/renommage/suppression
+    ├── account-ui.js         # Page "Comptes" (#page-account) : sceau du compte
+    │                          # courant, bascule entre comptes, création
     ├── economy.js            # Possession des pièces, mise en jeu, coffres, séries
     ├── ai-level-modal.js     # Réduit à selectedAILevel/selectedTimeControl
     ├── piece-card.js         # LA carte de pièce (format portrait : logo, nom,
@@ -154,6 +158,98 @@ Trois règles à ne pas casser :
   prises), `updateStatus()` (échec et mat), `economyOnPromotion()` (promotion)
   et `economySettle()` (victoire). Les coups de l'ADVERSAIRE passent par les
   mêmes fonctions : le filtre sur la couleur du joueur est indispensable.
+
+### 1 ter. La courbe d'ascension : l'ELO (`js/voie.js::vvCalcNewElo`)
+
+**Epic Chess n'est pas un tournoi, c'est une aventure.** Un compte neuf part
+de 0 et doit pouvoir atteindre **1000 ELO** sans être un joueur d'échecs :
+c'est là que se trouvent la plupart des créatures et des échiquiers, donc là
+que se trouve le jeu. Un Elo pur ne fait pas ça — il place chacun autour de sa
+vraie force et y laisse la moitié des joueurs sous 800 à vie.
+
+Trois mécanismes s'en chargent, tous dans `vvCalcNewElo` :
+
+1. **K dégressif** (`VV_K_STEPS`). Le K-facteur mesure de combien une partie
+   déplace le classement : 60 pour les **cinq parties de placement**, puis 48,
+   40, 32, 24 en régime de croisière, et 16 au-dessus de 2000 ELO — un
+   classement de haut de tableau doit être stable, sinon il ne veut plus rien
+   dire.
+2. **La courbe d'ascension** (`VV_CLIMB_*`). Sous 1000 ELO, les gains sont
+   majorés et les pertes amorties, d'autant plus fortement qu'on est bas : à
+   0 ELO une victoire vaut **triple** et une défaite ne coûte que **15 %** ; à
+   1000 les deux multiplicateurs valent 1 et l'Elo redevient l'Elo. La
+   décroissance est en `t^0.6` et non linéaire — linéairement, le bonus
+   s'évaporait dès 300 ELO et la montée s'arrêtait là.
+3. **Le plancher de rang** (`vvGetRankFloor`). On ne redescend **jamais** sous
+   le minimum du rang atteint : un joueur Bronze reste Bronze, quoi qu'il
+   arrive. C'est la règle des arènes de Clash Royale. Corollaire volontaire :
+   à 0 ELO — le plancher du rang Bois — une défaite ne coûte rien, les toutes
+   premières parties sont donc sans risque.
+
+**Ces constantes sont le réglage principal du jeu et ont été choisies par
+simulation.** À 50 % de victoires (ce vers quoi l'appariement pousse tout le
+monde), 1000 ELO s'atteint en une soixantaine de parties ; à 35 % — un joueur
+qui perd deux parties sur trois — il en faut environ 290, mais **il y arrive
+quand même**. C'est la promesse : le mur n'existe pas, seule la durée change.
+Toucher à `VV_CLIMB_GAIN_MAX`, `VV_CLIMB_LOSS_MIN` ou `VV_CLIMB_EASE` déplace
+cette promesse : refaire la simulation avant, et le test de fumée la vérifie
+(`l'ascension paie plus qu'elle ne coûte sous 1000 ELO`).
+
+Dernier point : un écart inhabituel **doit s'expliquer au joueur**. Un `+48`
+suivi d'un `-4` passe pour un bug si personne ne dit pourquoi. C'est le rôle
+de `vvEloExplain()`, dont la phrase s'affiche sous l'écart dans le modal de
+fin de partie — et qui reste **vide** en régime ordinaire, où le chiffre se
+suffit.
+
+### 1 quater. Les comptes (`js/accounts.js`, `js/account-ui.js`)
+
+**Il n'y a plus aucun écran avant le jeu.** Le jeu s'est ouvert successivement
+sur une page de connexion puis sur un voile « Choisissez votre pseudo » :
+dans les deux cas un formulaire posé entre quelqu'un qui vient de cliquer sur
+un lien et le jeu qu'il est venu voir — c'est-à-dire le moment exact où l'on
+perd un visiteur, pour une information qui ne sert à rien tant qu'on n'a pas
+joué. La **première ouverture crée elle-même un compte** au nom d'Alchimiste
+tiré au sort (`accountsGuestName`) et entre directement dans le Lore puis le
+tutoriel.
+
+Le joueur gère ensuite son identité depuis la **page Comptes**
+(`#page-account`), ouverte par la ligne « Compte » du panneau de réglages :
+se renommer, créer un autre compte, basculer entre eux, en supprimer un.
+
+Trois choses à savoir avant d'y toucher :
+
+- **Le stockage était déjà multi-comptes.** Toutes les données de jeu sont
+  préfixées par le pseudo (`accGet`/`accSet` → `mc_p_<pseudo>_<clé>`) :
+  plusieurs comptes cohabitent sans qu'une seule ligne du reste du jeu ait à
+  le savoir. `accGetFor(pseudo, clé)` lit un **autre** compte que le courant,
+  en lecture seule — c'est ce qui permet à la page Comptes d'afficher le rang
+  et l'ELO de chaque compte sans s'y connecter.
+- **Changer de compte recharge la page**, délibérément. Une trentaine de
+  variables globales (`savedArmies`, `VV_UNLOCKED`, l'inventaire, l'état du
+  tutoriel, les récompenses, le cube…) portent l'état du compte courant : les
+  remettre à zéro une par une, c'est se condamner à en oublier une le jour où
+  l'on en ajoutera une trente-et-unième. Renommer, en revanche, ne recharge
+  pas : seul le préfixe de stockage bouge, rien en mémoire ne change.
+- **On ne devine pas un compte en balayant les clés.** Les clés de jeu
+  contiennent elles-mêmes des tirets bas (`unlocked_pieces`, `win_streak`,
+  `match_history`…) : il est impossible de savoir où finit le pseudo et où
+  commence la clé. Un tel balayage inventerait des comptes fantômes. La liste
+  fait autorité (`ec_accounts_v2`).
+
+**« Se déconnecter » n'existe pas, et c'est volontaire.** Il n'y a pas de
+connexion : rien à oublier, aucun mot de passe, aucune session. Ce que cherche
+quelqu'un qui appuie sur ce bouton, c'est *arrêter de jouer sous ce nom* — pour
+prêter l'appareil ou pour recommencer autrement. `accountLogout()` fait donc
+exactement ça et rien d'autre : il pose le joueur sur le compte utilisé juste
+avant, ou sur un nouveau compte d'Alchimiste s'il n'y en a pas d'autre. Le
+compte quitté **reste intact** dans la liste — « quitter » n'est jamais
+« supprimer », qui a son propre bouton et sa propre confirmation. Le ramener
+sur un écran de connexion rouvrirait le mur que le jeu vient de supprimer.
+
+Un compte créé depuis la page Comptes doit recevoir le Lore et le tutoriel
+comme un premier lancement — mais après le rechargement, plus rien ne le
+distingue d'un compte ordinaire. D'où le drapeau `ec_fresh_account_v1`, posé
+par `accountCreate` et consommé par `accountsBoot`.
 
 ### 2. Les logos de pièces (`js/piece-art.js`)
 
@@ -504,8 +600,15 @@ même calcul au même moment, alors que leurs horloges ne sont pas synchronisée
 
 Le nouveau tient en quatre règles :
 
-1. **Fenêtre de niveau qui s'élargit** : ±120 ELO au départ, +120 toutes les
-   8 secondes, ouverte à tous au bout de 48 (`mpEloWindow`).
+1. **Fenêtre de niveau qui s'élargit vite, et se referme sur ±600** :
+   ±200 ELO au départ, +200 toutes les 2 secondes, plafonnée à **±600**
+   atteints au bout de 4 secondes (`mpEloWindow`). Elle ne devient **jamais**
+   infinie : personne n'attend dix secondes sur un écran de recherche, et
+   dans un jeu où perdre coûte l'armée engagée, jeter un débutant contre un
+   joueur de 1800 est pire que ne pas trouver de partie. Avec la courbe
+   d'ascension, la quasi-totalité des comptes vit entre 0 et 1000 ELO :
+   ±600 y couvre presque tout le monde. Le jour où la population s'étale,
+   c'est `MP_ELO_MAX` qu'il faudra revoir.
 2. **Un seul décideur** : le joueur qui attend depuis le plus longtemps
    choisit, parmi les candidats de sa fenêtre, le plus proche en ELO. Les
    autres ne calculent rien, ils répondent — plus aucun accord d'horloge
@@ -599,7 +702,6 @@ règlent que la taille et l'encre. Trois emplacements aujourd'hui :
 
 | Classe | Écran | Particularité |
 |---|---|---|
-| `login-emblem` | voile de choix du pseudo | première visite seulement |
 | `menu-emblem` | menu principal, au-dessus du pseudo | sa hauteur est `--menu-emblem-h`, dont dépend le retrait de `.jouer-menu` |
 | `intro-emblem` | parchemin d'accueil | repeint à l'encre du parchemin (#6b4f1e) : le laiton sur beige est illisible |
 
@@ -607,9 +709,11 @@ règlent que la taille et l'encre. Trois emplacements aujourd'hui :
 sur `favicon.svg`, pour qu'il ne puisse pas diverger d'une copie de tracé.
 
 Ajouter un emplacement, c'est poser une `<div class="game-emblem …">` — rien
-d'autre. L'emblème n'a longtemps vécu que dans le voile de pseudo, c'est-à-dire
-sur un écran qu'un joueur ayant déjà un compte ne revoit jamais : le refondre
-ne se voyait alors nulle part.
+d'autre. L'emblème n'a longtemps vécu que dans le voile de choix du pseudo,
+c'est-à-dire sur un écran qu'un joueur ayant déjà un compte ne revoyait jamais :
+le refondre ne se voyait alors nulle part. Ce voile a disparu (voir la section
+sur les comptes) et l'emblème est passé sur le menu principal, où il est vu à
+chaque ouverture.
 
 ## Ordre de chargement (`index.html`, en bas de page)
 
@@ -626,7 +730,7 @@ data-pieces.js → piece-art.js → main.js → cube-nav.js → accounts.js
 → ai-engine.js → game-flow.js → voie.js → economy-ui.js
 → rewards.js → rewards-ui.js → tuto-drill.js
 → tutorial.js
-→ settings-admin.js → multiplayer.js → (script inline) initApp()
+→ account-ui.js → settings-admin.js → multiplayer.js → (script inline) initApp()
 ```
 
 `economy.js` doit venir après `accounts.js` (il utilise `accGet`/`accSet`) et
@@ -728,6 +832,9 @@ mais dans une version que Playwright refuse, le script le retrouve tout seul
 | Modifier le bloc pseudo/rang/ELO du menu principal | `renderMenuIdentity()` dans `js/accounts.js` + `[MENU]` de `css/style.css` |
 | Régler la vitesse de rotation du cube | `js/cube-nav.js` (`ROTATE_MS`) **et** la transition de `#cube` dans `css/style.css` |
 | Modifier le système de comptes/sauvegarde | `js/accounts.js` |
+| Modifier la page Comptes (sceau, bascule, création) | `js/account-ui.js` + `[ACCOUNT-PAGE]` de `css/style.css` |
+| Changer la vitesse de montée en ELO | `VV_CLIMB_*` et `VV_K_STEPS` dans `js/voie.js` (relire « La courbe d'ascension ») |
+| Changer la largeur de la fenêtre d'appariement | `MP_ELO_*` dans `js/multiplayer.js` |
 | Ajouter un nouveau réglage utilisateur | `index.html` (bloc `#settings-panel`) + `js/settings-admin.js` |
 | Modifier la présentation ou la FAQ publiques | `info.html` (texte visible **et** JSON-LD `FAQPage`) |
 | Changer les modes qui rapportent de l'ELO | `js/voie.js` (`vvNoEloReason`) |

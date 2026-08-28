@@ -969,11 +969,20 @@ function mpLeave(){
 // clients pouvaient se croire tous les deux « le plus ancien ».
 //
 // -- CE QU'IL FAIT MAINTENANT ---------------------------------------------
-//   1. FENÊTRE DE NIVEAU QUI S'ÉLARGIT. On cherche d'abord un adversaire à
-//      ±120 ELO ; toutes les 8 secondes la fenêtre s'élargit de 120, et au
-//      bout de 48 secondes on accepte n'importe qui. Personne n'attend
-//      indéfiniment, et personne n'est jeté d'emblée contre trois rangs
-//      au-dessus.
+//   1. FENÊTRE DE NIVEAU QUI S'ÉLARGIT VITE. On cherche d'abord un adversaire
+//      à ±200 ELO, puis la fenêtre s'élargit de 200 toutes les 2 secondes
+//      jusqu'à son maximum de ±600, atteint au bout de 4 secondes.
+//      PERSONNE N'ATTEND SUR UN ÉCRAN DE RECHERCHE. Une fenêtre qui met
+//      quarante secondes à s'ouvrir suppose une population de joueurs qui
+//      n'existe pas encore : le joueur ferme l'onglet avant. On préfère donc
+//      ouvrir en quatre secondes et s'arrêter à ±600.
+//      ±600 EST UN PLAFOND VOLONTAIRE, ET IL NE S'OUVRE JAMAIS. La fenêtre
+//      n'a plus de mode « tout le monde convient » : dans un jeu où perdre
+//      coûte l'armée engagée, jeter un joueur à 100 ELO contre un joueur à
+//      1800 est pire que ne pas trouver de partie. Avec la courbe
+//      d'ascension (js/voie.js), la quasi-totalité des comptes vit entre 0 et
+//      1000 : ±600 y couvre presque tout le monde. Le jour où la population
+//      s'étale, c'est MP_ELO_MAX qu'il faudra revoir, pas ce raisonnement.
 //   2. UN SEUL DÉCIDEUR. Le joueur qui attend depuis le plus longtemps est le
 //      « chercheur » : lui seul choisit, parmi les candidats dans sa fenêtre,
 //      le plus proche en ELO, et il l'annonce. Les autres ne calculent rien,
@@ -995,16 +1004,16 @@ function mpLeave(){
 const MP_LOBBY='epichess-lobby-v2';
 const MP_TICK_MS=1000;        // battement de ré-évaluation et d'affichage
 const MP_ACK_MS=3500;         // délai avant d'abandonner une proposition
-const MP_ELO_BASE=120;        // fenêtre de départ, en points d'ELO
-const MP_ELO_STEP=120;        // élargissement…
-const MP_ELO_EVERY=8;         // …toutes les 8 secondes
-const MP_ELO_OPEN=48;         // au-delà : plus aucune fenêtre
+const MP_ELO_BASE=200;        // fenêtre de départ, en points d'ELO
+const MP_ELO_STEP=200;        // élargissement…
+const MP_ELO_EVERY=2;         // …toutes les 2 secondes
+const MP_ELO_MAX=600;         // plafond définitif : la fenêtre ne s'ouvre jamais au-delà
 
-// Fenêtre d'ELO acceptée après `waitS` secondes d'attente. Infinity = tout le
-// monde convient.
+// Fenêtre d'ELO acceptée après `waitS` secondes d'attente. Bornée à
+// MP_ELO_MAX : contrairement à la version précédente, elle ne devient jamais
+// infinie (voir le point 1 ci-dessus).
 function mpEloWindow(waitS){
-  if(waitS>=MP_ELO_OPEN)return Infinity;
-  return MP_ELO_BASE+Math.floor(waitS/MP_ELO_EVERY)*MP_ELO_STEP;
+  return Math.min(MP_ELO_MAX,MP_ELO_BASE+Math.floor(waitS/MP_ELO_EVERY)*MP_ELO_STEP);
 }
 
 // Liste des joueurs présents dans le salon d'attente, la nôtre comprise.

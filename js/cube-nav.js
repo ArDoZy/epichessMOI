@@ -303,6 +303,13 @@
     updateArrows();
   }
   window.cubeOnShowPage=cubeOnShowPage;
+  // Une partie est-elle réellement à l'écran ? `locked` est vrai pendant une
+  // partie (le cube refuse alors de tourner), et la face partie est au front.
+  // Exposé pour la page Comptes, qui refuse de changer de compte en pleine
+  // partie (accountBusy, js/account-ui.js) : l'objet GS, lui, survit à la fin
+  // d'une partie et ne dit donc rien sur ce que le joueur est en train de
+  // faire.
+  window.cubeIsInGame=function(){return locked&&slots.front==='game';};
 
   // ---- Bouton COMBAT ---------------------------------------------
   // COMBAT = affronter un autre JOUEUR : c'est l'action principale du jeu,

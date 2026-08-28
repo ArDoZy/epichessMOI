@@ -206,7 +206,7 @@ function showArmyIntro(playerArmy,aiArmy){
 // noEloReason : renseigné quand la partie n'était pas classée (voir
 // vvNoEloReason dans voie.js). La ligne « ancien → nouveau ELO » laisse alors
 // la place à la raison : afficher « 0 → 0 · +0 » ferait croire à un bug.
-function showResultModal(result,oldElo,newElo,delta,newUnlockIds,noEloReason){
+function showResultModal(result,oldElo,newElo,delta,newUnlockIds,noEloReason,eloCalc){
   setTimeout(()=>playSound(result==='win'?'win':result==='loss'?'loss':'draw'),200);
   const modal=document.getElementById('result-modal');const box=document.getElementById('result-box');
   const rank=vvGetRank(newElo);
@@ -244,8 +244,19 @@ function showResultModal(result,oldElo,newElo,delta,newUnlockIds,noEloReason){
   // de partie : l'Alchimiste vient de dire que c'est un entraînement. La ligne
   // d'ELO disparaît, la phrase aussi. Le mode admin, lui, garde sa mention :
   // elle rappelle où l'on se trouve.
+  // La ligne sous l'ELO porte DEUX choses selon le cas : la raison pour
+  // laquelle la partie n'est pas classée, ou — quand elle l'est — ce qui
+  // explique un écart inhabituel (placement, bonus d'ascension, plancher de
+  // rang qui a absorbé la défaite). Voir vvEloExplain, js/voie.js : sans
+  // elle, un « +38 » puis un « -4 » passent pour un bug.
   const showNote=!!noEloReason&&noEloReason!==VV_NO_ELO_TRAINING;
-  if(noteEl){noteEl.style.display=showNote?'':'none';noteEl.textContent=showNote?noEloReason:'';}
+  const climbNote=(!noEloReason&&typeof vvEloExplain==='function')?vvEloExplain(eloCalc,result):'';
+  const noteText=showNote?noEloReason:climbNote;
+  if(noteEl){
+    noteEl.style.display=noteText?'':'none';
+    noteEl.textContent=noteText;
+    noteEl.classList.toggle('result-elo-climb',!showNote&&!!climbNote);
+  }
   document.getElementById('result-rank-name').textContent=rank.name+' · '+newElo+' ELO';
   const unlockSec=document.getElementById('unlock-section');
   if(newUnlockIds&&newUnlockIds.length>0){
@@ -342,10 +353,15 @@ function triggerEndOfGame(result){
   // Le reste de la fin de partie est inchangé : la série de victoires, les
   // coffres et le règlement des pièces engagées valent dans tous les modes.
   const noEloReason=(typeof vvNoEloReason==='function')?vvNoEloReason(GS):null;
-  let newElo=oldElo,delta=0,newUnlocks=[];
+  let newElo=oldElo,delta=0,newUnlocks=[],eloCalc=null;
   if(!noEloReason){
-    const calc=vvCalcNewElo(oldElo,aiElo,result);
-    newElo=calc.newElo;delta=calc.delta;
+    // vvCalcNewElo lit le compteur de parties classées pour choisir son
+    // K-facteur : on l'appelle AVANT vvNoteRankedGame(), sinon la première
+    // partie du compte serait déjà comptée comme jouée et perdrait son K de
+    // placement.
+    eloCalc=vvCalcNewElo(oldElo,aiElo,result);
+    newElo=eloCalc.newElo;delta=eloCalc.delta;
+    if(typeof vvNoteRankedGame==='function')vvNoteRankedGame(result);
     const newRankIdx=vvGetRankIdx(newElo);if(newRankIdx>vvLoadRankMax())vvSaveRankMax(newRankIdx);
     newUnlocks=vvCheckNewUnlocks(oldElo,newElo);
     if(typeof vvCheckRewardMilestones==='function')vvCheckRewardMilestones(oldElo,newElo);
@@ -357,7 +373,7 @@ function triggerEndOfGame(result){
   // Règlement des pièces engagées AVANT l'affichage : la cinématique montre
   // le décompte réel, pas une estimation. settleAndCelebrate (economy-ui.js)
   // enchaîne ensuite cinématique d'issue → ouverture du coffre gagné → modal.
-  const showModal=()=>showResultModal(result,oldElo,newElo,delta,newUnlocks,noEloReason);
+  const showModal=()=>showResultModal(result,oldElo,newElo,delta,newUnlocks,noEloReason,eloCalc);
   _lastSettlement=(typeof settleAndCelebrate==='function')
     ?settleAndCelebrate(result,GS,showModal)
     :(setTimeout(showModal,400),null);

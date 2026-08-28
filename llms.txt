@@ -140,10 +140,19 @@ C'est la mécanique qui distingue le plus Epic Chess des autres variantes :
   Victoires** (une victoire = un palier) et la **Rangée de la Richesse**
   (des perles payées avec les tickets des quêtes).
 - La **Diagonale de la Puissance** suit l'ELO du joueur à travers **7 rangs** :
-  Poussière (0-199), Pierre (200-499), Bronze (500-849), Acier (850-1299),
-  Obsidienne (1300-1799), Argent (1800-2399), Or Légendaire (2400+).
+  Bois (0-199), Pierre (200-499), Bronze (500-799), Acier (800-1199),
+  Obsidienne (1200-1499), Argent (1500-1999), Or Légendaire (2000+).
 - Franchir un palier de rang **débloque de nouvelles créatures** et de
   nouveaux **échiquiers** : bois, pierre, acier, argent puis or.
+- **On ne redescend jamais sous le rang atteint.** Comme les arènes de Clash
+  Royale, chaque rang est un plancher : un joueur Bronze reste Bronze quoi
+  qu'il arrive. À 0 ELO, une défaite ne coûte donc rien du tout.
+- **La montée est conçue pour être atteignable par tous.** Sous 1000 ELO, une
+  victoire rapporte davantage qu'une défaite ne coûte, et d'autant plus qu'on
+  est bas : à 0 ELO une victoire vaut triple et une défaite ne coûte que 15 %
+  de ce que dirait la formule Elo. Les deux se rejoignent à 1000, où le
+  classement redevient un Elo ordinaire. Les cinq premières parties sont des
+  parties de placement, qui déplacent le classement beaucoup plus vite.
 - La rareté du coffre gagné suit la **série de victoires** : 1re victoire du
   jour → Coffre Pion, 6e → Coffre Roi. La série est **quotidienne** et
   **s'arrête à son sixième coffre** : au-delà, plus aucun coffre de série ce
@@ -162,8 +171,15 @@ C'est la mécanique qui distingue le plus Epic Chess des autres variantes :
 ## Confidentialité
 
 Les comptes sont créés et stockés **localement dans le navigateur**
-(localStorage). Aucune adresse e-mail n'est demandée, aucune donnée n'est
-envoyée à un serveur, et le jeu ne contient ni publicité ni traqueur.
+(localStorage). Aucune adresse e-mail n'est demandée, aucun mot de passe,
+aucune donnée n'est envoyée à un serveur, et le jeu ne contient ni publicité
+ni traqueur.
+
+**Il n'y a aucun écran d'inscription** : la première ouverture crée elle-même
+un compte au nom d'Alchimiste tiré au sort et entre directement dans le jeu.
+Le joueur se renomme quand il le souhaite depuis la page Comptes (accessible
+par le bouton de réglages), où il peut aussi créer plusieurs comptes sur le
+même appareil et passer de l'un à l'autre.
 
 ## Questions fréquentes
 
@@ -182,6 +198,11 @@ parties privées entre amis via un code à quatre caractères.
 Tous les exemplaires de pièces engagés dans cette partie. Une victoire ne
 coûte que les pièces capturées. Un coffre quotidien de réapprovisionnement
 empêche de rester bloqué sans armée.
+
+**Faut-il créer un compte pour jouer ?**
+Non. Le jeu se lance directement : un compte est créé automatiquement à la
+première ouverture, sans e-mail ni mot de passe. On peut le renommer, et en
+créer d'autres, depuis la page Comptes.
 
 **Faut-il installer quelque chose ?**
 Non. Le jeu est en HTML/CSS/JavaScript pur et fonctionne dans n'importe
