@@ -323,7 +323,11 @@ function renderVoiePage(){
   const label=sousRang
     ?'Rang '+rank.name+' acquis · remontez à '+rank.min+' ELO'
     :(nextRank?'Vers '+nextRank.name+' ('+nextRank.min+' ELO) · '+progress+'%':'Rang maximum atteint !');
-  banner.innerHTML='<div class="veb-info"><div class="veb-rank-name" style="color:'+rank.color+'">'+rank.name+'</div><div class="veb-elo">'+elo+' <span>ELO</span></div><div class="veb-progress-wrap"><div class="veb-progress-bar" style="width:'+progress+'%;background:linear-gradient(90deg,'+rank.color+',var(--gold))"></div></div><div class="veb-progress-label'+(sousRang?' veb-below':'')+'">'+label+'</div></div>';
+  // LE MÉDAILLON DU RANG (rankMedalHTML, js/main.js) : la planche
+  // assets/ranks/<id>.png est facultative, et l'<img> se retire d'elle-même
+  // si le fichier manque — le bandeau retrouve alors exactement la mise en
+  // page qu'il avait avant que les médaillons existent.
+  banner.innerHTML=rankMedalHTML(rank.id,'rm-lg')+'<div class="veb-info"><div class="veb-rank-name" style="color:'+rank.color+'">'+rank.name+'</div><div class="veb-elo">'+elo+' <span>ELO</span></div><div class="veb-progress-wrap"><div class="veb-progress-bar" style="width:'+progress+'%;background:linear-gradient(90deg,'+rank.color+',var(--gold))"></div></div><div class="veb-progress-label'+(sousRang?' veb-below':'')+'">'+label+'</div></div>';
   const route=document.getElementById('voie-route');let html='';
   let lastRankId=null;
   // Alternance gauche/droite : un compteur À PART, incrémenté uniquement
@@ -341,7 +345,7 @@ function renderVoiePage(){
     // jalon suivant (Preux Chevalier, 50 ELO), premier jalon non-`starter`.
     if(!milestone.starter){
       const mRank=vvGetRank(milestone.eloRequired);
-      if(mRank.id!==lastRankId){lastRankId=mRank.id;html+='<div class="vm-rank-section"><div class="vm-rank-bar"><span class="vm-rank-label" style="color:'+mRank.color+'">'+mRank.name+'</span><span class="vm-rank-range">'+mRank.min+'–'+(mRank.max===9999?'∞':mRank.max)+' ELO</span></div></div>';}
+      if(mRank.id!==lastRankId){lastRankId=mRank.id;html+='<div class="vm-rank-section"><div class="vm-rank-bar">'+rankMedalHTML(mRank.id,'rm-sm')+'<span class="vm-rank-label" style="color:'+mRank.color+'">'+mRank.name+'</span><span class="vm-rank-range">'+mRank.min+'–'+(mRank.max===9999?'∞':mRank.max)+' ELO</span></div></div>';}
     }
     // Jalon de récompense (perles / exemplaires) : ni pièce à débloquer, ni
     // texte de palier — juste un petit lot versé dès que l'ELO l'atteint

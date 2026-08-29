@@ -281,6 +281,29 @@ const TRASH_ICON='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" str
 const fmtDate=ts=>{const d=new Date(ts);return d.toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});};
 
 // ----------------------------------------------------------------
+// LE MÉDAILLON D'UN RANG
+// ----------------------------------------------------------------
+// Sept rangs (RANKS, js/data-pieces.js), sept planches facultatives dans
+// assets/ranks/<id>.png. Trois pages l'affichent : le bandeau d'ELO de la
+// Diagonale, ses bandeaux de rang, et la fenêtre de fin de partie.
+//
+// Le repli suit celui des portraits d'adversaires (advPortraitPath,
+// js/adversaires.js) et pour la même raison : tester l'existence du fichier
+// à l'avance demanderait une requête par rang à chaque ouverture de page. On
+// pose donc l'<img> et on la RETIRE si elle ne charge pas — c'est la seule
+// forme de repli qui ne laisse pas de trou. Une taille fixe dans le CSS,
+// elle, réserverait ses 26 px même sans image, et le bandeau de rang
+// garderait un vide inexplicable à gauche de son nom.
+//
+// `cls` donne la taille : 'rm-lg' (52 px, bandeau d'ELO), 'rm-md' (30 px,
+// fin de partie), 'rm-sm' (26 px, bandeaux de la route).
+function rankMedalHTML(rankId,cls){
+  if(!rankId)return '';
+  return '<img class="rank-medal '+(cls||'rm-sm')+'" alt="" aria-hidden="true"'+
+    ' src="assets/ranks/'+rankId+'.png" onerror="this.remove()">';
+}
+
+// ----------------------------------------------------------------
 // NOTIFICATIONS
 // ----------------------------------------------------------------
 // showNotif() était devenue une fonction vide. Or c'est le SEUL retour du jeu

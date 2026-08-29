@@ -34,13 +34,30 @@ epic-chess/
 │                            # d'abord pour le code, cache d'abord pour les médias)
 ├── favicon.svg              # Icône d'onglet et d'écran d'accueil : le
 │                            #  Monarque dressé dans le sceau d'alchimiste
-├── assets/
-│   ├── adversaires/         # FACULTATIF : <id>.png, un portrait par
-│   │                        #  adversaire. Absent = sceau SVG procédural.
-│   ├── backgrounds/
-│   │   ├── main-page.png    # FACULTATIF : fond du menu principal
-│   │   └── duel-wait.png    # Toile de l'écran d'attente d'un duel en ligne.
-│   │                        #  La remplacer suffit : rien à coder.
+├── assets/                  # TOUT y est FACULTATIF sauf boards/ : une image
+│   │                        #  absente ne fait qu'un 404 silencieux, et le
+│   │                        #  décor dessiné en CSS reprend la main. Le
+│   │                        #  catalogue complet (chemins, dimensions et le
+│   │                        #  prompt de chaque planche) est dans
+│   │                        #  assets/PROMPTS.md ; le câblage est en un seul
+│   │                        #  endroit, la section [ART] de css/style.css.
+│   ├── PROMPTS.md           # Les ~60 planches du décor et leurs prompts
+│   ├── adversaires/         # <id>.png, un portrait par adversaire.
+│   │                        #  Absent = sceau SVG procédural.
+│   ├── backgrounds/         # Un fond par écran (menu, faces du cube, pages,
+│   │                        #  Lore, table sous le plateau). Affichés à
+│   │                        #  26–44 %, centre éteint au masque radial.
+│   ├── banners/             # Bandeaux de titre de page (le texte reste du
+│   │                        #  texte : la planche ne porte aucun mot)
+│   ├── ui/                  # Cadre du plateau, ornement d'angle, socle, et
+│   │                        #  les deux textures de métal des boutons
+│   ├── fx/                  # Halos, ondes, braises, éclats — TOUS sur fond
+│   │                        #  noir, fondus en `screen` (transparence
+│   │                        #  gratuite, cf. le halo des coffres)
+│   ├── ranks/               # <id du rang>.png, sept médaillons, posés par
+│   │                        #  rankMedalHTML() (js/main.js) : aucune liste
+│   │                        #  à tenir à jour.
+│   ├── chests/              # Les planches de destruction des coffres
 │   └── boards/              # Textures d'échiquier en SVG procédural
 │       ├── bois.svg          # (générées par tools/gen-boards.js, ne pas
 │       ├── pierre.svg        #  éditer à la main : relancer le script)
@@ -55,6 +72,10 @@ epic-chess/
 │                                   # Supabase gratuit de se mettre en veille
 ├── tools/
 │   ├── gen-boards.js        # Générateur des textures d'échiquier (node)
+│   ├── opt-images.js        # Convertit les planches du décor en .webp ET
+│   │                        #  repointe les url() de css/style.css dessus
+│   │                        #  (sans la seconde moitié, convertir éteindrait
+│   │                        #  le décor en silence)
 │   ├── ai-bench.js          # Autopartie entre adversaires : vérifie que
 │   │                        #  l'échelle de force tient (voir plus bas)
 │   └── smoke-test.js        # `npm test` : rejoue tout le parcours du jeu
@@ -113,6 +134,60 @@ epic-chess/
 ```
 
 ## Les systèmes à comprendre avant d'éditer
+
+### 0. Le décor : la palette, et les planches qui s'y posent (`[THEME]`, `[ART]`)
+
+Deux choses tiennent l'apparence du jeu, et elles sont chacune à UN seul
+endroit de `css/style.css`.
+
+**La palette, dans `[THEME]`.** Trois rôles étanches, et c'est ce qui rend
+l'interface lisible d'un coup d'œil : des SURFACES froides et neutres
+(ardoise) qui ne réclament aucune attention, une COULEUR VIVE unique
+(`--accent2`, un vert-de-gris de cuivre oxydé) réservée à l'action en
+cours, et un LAITON (`--gold`) réservé à ce qui se mérite. Ces trois rôles
+ne se mélangent jamais.
+
+La v3 avait raison sur les rôles et tort d'un cran sur la LUMIÈRE : le fond
+descendait à `#0e1216`, à trois points du noir, et l'écart avec les
+surfaces — neuf points — ne se voyait plus dès qu'un téléphone baissait sa
+luminosité. Tout est remonté d'un cran, **sans changer un seul rôle** :
+l'atelier passe de la nuit noire au soir éclairé à la lampe. C'est aussi ce
+qui rend les images possibles — une illustration posée sur `#0e1216` doit
+être éteinte à 30 % d'opacité pour ne pas trouer l'écran, autant ne pas la
+dessiner.
+
+**Les planches, dans `[ART]`.** Une soixantaine d'emplacements d'images
+sont câblés — fonds d'écran, bannières de titre, cadre du plateau,
+ornements, médaillons de rang, effets. **Aucun fichier n'est requis** :
+c'est la règle des portraits d'adversaires, généralisée. Une image absente
+ne produit qu'un 404 silencieux, la règle CSS retombe sur le décor dessiné
+en dégradés, et il n'y a rien à décommenter ni aucune liste à tenir à jour
+— déposer le fichier au bon chemin suffit à l'allumer.
+
+D'où la contrainte qui gouverne toute la section : **on n'ajoute jamais une
+image en `<img>`.** Une balise `<img>` dont le fichier manque affiche
+l'icône d'image cassée du navigateur ; un `background-image` qui manque
+n'affiche rien. Tout y est donc en `background-image`, en `border-image` ou
+en `mask-image` — et c'est aussi pourquoi le cadre du plateau est posé en
+surimpression plutôt qu'en `border-image` : cette dernière aurait exigé une
+`border` de 14 px qui, elle, existe même sans le fichier.
+
+Deux procédés valent d'être connus avant d'ajouter un effet :
+
+- **le fond noir fondu en `screen`** — tous les effets de `assets/fx/` sont
+  dessinés sur noir, et `mix-blend-mode:screen` fait disparaître ce noir. De
+  la transparence gratuite : pas de canal alpha, pas de liseré autour du
+  halo, un fichier trois fois plus léger. C'est déjà le procédé du halo des
+  coffres ;
+- **`z-index:-1` plutôt que `0`** pour les couches de fond — dans un
+  contexte d'empilement, un enfant de z-index négatif se peint juste
+  au-dessus du fond de l'élément qui ouvre le contexte, donc SOUS tout le
+  contenu, sans qu'on ait à relever le z-index de quoi que ce soit.
+
+Le catalogue des soixante planches — chemin, dimensions, format, et le
+prompt à donner à un générateur d'images — est dans
+**`assets/PROMPTS.md`**. `tools/opt-images.js` les convertit ensuite en
+`.webp` et repointe les `url()` du CSS dessus.
 
 ### 1. L'économie des pièces (`js/economy.js`)
 
@@ -1046,6 +1121,9 @@ mais dans une version que Playwright refuse, le script le retrouve tout seul
 | Modifier le moteur lui-même (évaluation, recherche) | `js/ai-engine.js` (`evalBoard`, `evalPowers`, `minimax`, `aiSearchRoot`, `aiPickMove`) |
 | Changer la façon dont un style se joue | `STYLE_W` dans `js/ai-engine.js` (évaluation) + `ARMY_STYLE_CLASS` dans `js/armies.js` (composition) |
 | Ajouter un portrait d'adversaire | déposer `assets/adversaires/<id>.png` — rien à déclarer |
+| Ajouter une image de décor (fond, bannière, effet, médaillon de rang) | déposer le fichier au chemin que donne `assets/PROMPTS.md` — rien à déclarer. L'emplacement est déjà câblé dans la section `[ART]` de `css/style.css` |
+| Câbler un NOUVEL emplacement d'image | section `[ART]` de `css/style.css`, en `background-image` (jamais en `<img>` : une image manquante y afficherait l'icône de fichier cassé), puis décrire la planche dans `assets/PROMPTS.md` |
+| Éclaircir ou assombrir tout le jeu | le bloc `:root` de `[THEME]` dans `css/style.css` — les trois rôles (surface / accent / laiton) ne doivent pas s'y mélanger |
 | Changer le contenu ou la rareté des coffres | `js/data-pieces.js` (`CHESTS`, `DAILY_CHEST`) + `js/economy.js` (`chestRoll`) |
 | Changer à quoi ressemble un coffre (partout : série, colonne, Magasin) | `chestVisual()` dans `js/economy-ui.js` — il rend la **statuette** (première planche de la séquence de bris) dès qu'un coffre en a une, sinon le coffre à couvercle dessiné en CSS |
 | Changer les perles (gains en coffre, prix d'achat) | `js/data-pieces.js` (`CHEST_PEARLS`) + `js/economy.js` (`chestRoll`, `pearlBuyChest`) + `renderMenuChests()` dans `js/economy-ui.js` |

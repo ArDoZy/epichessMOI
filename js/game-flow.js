@@ -262,6 +262,12 @@ function showResultModal(result,oldElo,newElo,delta,newUnlockIds,noEloReason,elo
     noteEl.classList.toggle('result-elo-climb',!showNote&&!!climbNote);
   }
   document.getElementById('result-rank-name').textContent=rank.name+' · '+newElo+' ELO';
+  // Le médaillon du rang (rankMedalHTML, js/main.js). La planche
+  // assets/ranks/<id>.png est facultative : l'<img> se retire d'elle-même si
+  // le fichier manque, et la ligne retrouve la mise en page qu'elle avait
+  // avant que les médaillons existent.
+  const rankIcon=document.getElementById('result-rank-icon');
+  if(rankIcon)rankIcon.innerHTML=rankMedalHTML(rank.id,'rm-md');
   const unlockSec=document.getElementById('unlock-section');
   if(newUnlockIds&&newUnlockIds.length>0){
     const pid=newUnlockIds[0];const pd=PIECES.find(p=>p.id===pid);

@@ -16,6 +16,15 @@ ici ni dans le code.
 - Fond sombre. La vignette n'a pas de cadre et se pose sur `--surface` :
   un fond clair ferait une tache blanche dans l'interface.
 
+> **La charte graphique du jeu a changé** : l'atelier n'est plus une nuit
+> noire mais un soir éclairé à la lampe (voir `[THEME]` dans
+> `css/style.css`). Le prompt de base ci-dessous a été écrit pour l'ancienne
+> palette. Le bloc de style à jour — celui qui vaut pour les soixante
+> planches du jeu, portraits compris — est en tête de
+> **`assets/PROMPTS.md`** : le coller une fois en début de conversation
+> suffit, les douze sujets du tableau ci-dessous restent valables tels
+> quels.
+
 ## Prompt de base
 
 À coller tel quel dans ChatGPT / Midjourney / une autre IA d'image, en
@@ -49,7 +58,11 @@ SUJET : …
 
 ## Autres images facultatives
 
-- `../backgrounds/main-page.png` — fond du menu principal, 2560×1440, PNG. Le
-  **centre doit rester vide et sombre** : l'emblème, le titre et le bouton
-  COMBAT s'y posent, et un masque radial éteint l'image au milieu (voir
-  `[LAB-BG]` dans css/style.css).
+Ce dossier n'est plus le seul : une soixantaine d'emplacements d'images sont
+câblés dans le jeu (fonds d'écran, bannières de titre, cadre du plateau,
+ornements, médaillons de rang, effets), tous sur le même principe qu'ici —
+déposer le fichier au bon chemin suffit, une image absente ne fait qu'un 404
+silencieux.
+
+Le catalogue complet, avec les prompts : **`assets/PROMPTS.md`**.
+Le câblage : section `[ART]` de `css/style.css`.
