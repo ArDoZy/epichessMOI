@@ -28,8 +28,14 @@
 // En mode test, vvLoadElo() renvoie 10 000 : tous les échiquiers sont donc
 // ouverts, sans qu'aucune règle ait à connaître le mode test (voir
 // js/accounts.js).
+// UN ÉCHIQUIER GAGNÉ NE SE REPERD PAS. On lit le SOMMET d'ELO atteint
+// (vvLoadPeakElo, js/accounts.js) et non le classement du moment : sinon une
+// mauvaise série reprendrait au joueur l'échiquier d'acier qu'il a mis
+// trois semaines à ouvrir, ce qui n'a aucun sens et se verrait immédiatement.
 function boardSkinUnlocked(skin){
-  return (typeof vvLoadElo==='function'?vvLoadElo():0)>=skin.eloRequired;
+  const peak=(typeof vvLoadPeakElo==='function')?vvLoadPeakElo()
+            :(typeof vvLoadElo==='function'?vvLoadElo():0);
+  return peak>=skin.eloRequired;
 }
 function bestUnlockedSkin(){
   const ok=BOARD_SKINS.filter(boardSkinUnlocked);
@@ -175,9 +181,13 @@ document.getElementById('streak-modal')?.addEventListener('click',e=>{
 function menuNextMilestoneHTML(){
   if(typeof UNLOCK_MILESTONES==='undefined')return '';
   const elo=(typeof vvLoadElo==='function')?vvLoadElo():0;
-  // Le prochain jalon est le premier au-dessus de l'ELO courant : la table est
-  // déjà triée par eloRequired (voir data-pieces.js).
-  const next=UNLOCK_MILESTONES.find(u=>u.eloRequired>elo);
+  // DEUX NOMBRES ICI, ET ILS NE JOUENT PAS LE MÊME RÔLE.
+  // Le prochain jalon se cherche au-dessus du SOMMET atteint (`peak`) : un
+  // jalon déjà franchi est encaissé pour toujours, le reproposer serait
+  // mentir. Mais la DISTANCE et la jauge se mesurent depuis le classement
+  // du moment (`elo`) : c'est de là qu'il faut réellement grimper.
+  const peak=(typeof vvLoadPeakElo==='function')?vvLoadPeakElo():elo;
+  const next=UNLOCK_MILESTONES.find(u=>u.eloRequired>peak);
   if(!next){
     return '<div class="ms-title">Diagonale de la Puissance</div>'+
       '<div class="ms-sub">Tous les paliers sont franchis. Il ne reste que le classement.</div>';
@@ -186,7 +196,7 @@ function menuNextMilestoneHTML(){
   // une barre presque pleine ne bouge plus visiblement d'un palier à l'autre
   // en haut de l'échelle (1700 → 2000 ELO se lit comme 85 % → 100 %).
   let from=0;
-  UNLOCK_MILESTONES.forEach(u=>{if(u.eloRequired<=elo&&u.eloRequired>from)from=u.eloRequired;});
+  UNLOCK_MILESTONES.forEach(u=>{if(u.eloRequired<=peak&&u.eloRequired>from)from=u.eloRequired;});
   const span=Math.max(1,next.eloRequired-from);
   const pct=Math.max(0,Math.min(100,Math.round((elo-from)/span*100)));
   // Trois natures de jalon, comme sur la Voie (voir renderVoiePage) : une
@@ -212,7 +222,7 @@ function menuNextMilestoneHTML(){
       (visuel?'<span class="ms-next-icon">'+visuel+'</span>':'')+
       '<div class="ms-next-txt">'+
         '<div class="ms-next-name">'+escH(nom)+'</div>'+
-        '<div class="ms-next-elo">'+next.eloRequired+' ELO · encore '+(next.eloRequired-elo)+'</div>'+
+        '<div class="ms-next-elo">'+next.eloRequired+' ELO · encore '+Math.max(0,next.eloRequired-elo)+'</div>'+
       '</div>'+
     '</div>'+
     '<div class="ms-gauge"><span style="width:'+pct+'%"></span></div>';
@@ -415,7 +425,8 @@ function buyChestFromShop(chestId){
   }
   showConfirmModal('Acheter un '+chest.name+' pour '+price+' perles ?',()=>{
     if(!pearlBuyChest(chest.id))return;
-    if(typeof playSound==='function')playSound('promo');
+    // Un achat n'est pas une promotion de pion : c'est un coffre qui arrive.
+    if(typeof playSound==='function')playSound('loot');
     // Cérémonie d'ouverture normale : un Coffre Pion acheté ici se BRISE
     // exactement comme un Coffre Pion gagné (js/chest-break.js).
     chestOpenNow(chest.id,renderMagasinPage);
@@ -536,7 +547,7 @@ function dailyChestBusy(){
     (el.classList.contains('show')||el.classList.contains('active')||
      el.style.display==='flex');};
   if(shown('result-modal')||shown('chest-modal')||shown('confirm-modal')||
-     shown('mp-modal')||shown('lore-intro')||shown('pseudo-gate')||
+     shown('mp-modal')||shown('lore-intro')||shown('page-account')||
      shown('streak-modal')||shown('joker-modal'))return true;
   return false;
 }
@@ -655,7 +666,10 @@ function chestCeremonyOpen(){
   const modal=document.getElementById('chest-modal');
   modal.classList.add('opening');
   document.getElementById('chest-hint').textContent='';
-  if(typeof playSound==='function')playSound('promo');
+  // LE COFFRE SE FEND : bois qui casse puis souffle, et le plateau tremble.
+  // C'est le moment le plus attendu du jeu, il ne peut pas emprunter le son
+  // d'une promotion de pion.
+  if(typeof playSound==='function')playSound('chest',{force:0.85,shakeEl:modal});
   // Le couvercle s'anime (lidOpen, css/style.css) avant que quoi que ce soit
   // ne se révèle : la première récompense n'apparaît qu'une fois le coffre
   // visuellement ouvert.
@@ -671,7 +685,9 @@ function chestRevealNext(){
   st.idx++;
   if(st.idx>=st.lots.length){chestCeremonyClose();return;}
   const l=st.lots[st.idx],last=st.idx===st.lots.length-1;
-  if(typeof playSound==='function')playSound('promo');
+  // Un lot révélé : clair et court. Il se répète lot après lot, il reste
+  // donc plus léger que l'ouverture elle-même.
+  if(typeof playSound==='function')playSound('loot');
   // Un BON lot (double quantité, tirage favorable — voir chestLuckyChance
   // dans js/economy.js) se signale : sans marque, on ne distingue pas un
   // coup de chance d'un tirage moyen, et la moitié du plaisir passe à côté.

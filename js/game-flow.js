@@ -206,10 +206,13 @@ function showArmyIntro(playerArmy,aiArmy){
 // noEloReason : renseigné quand la partie n'était pas classée (voir
 // vvNoEloReason dans voie.js). La ligne « ancien → nouveau ELO » laisse alors
 // la place à la raison : afficher « 0 → 0 · +0 » ferait croire à un bug.
-function showResultModal(result,oldElo,newElo,delta,newUnlockIds,noEloReason){
+function showResultModal(result,oldElo,newElo,delta,newUnlockIds,noEloReason,eloCalc){
   setTimeout(()=>playSound(result==='win'?'win':result==='loss'?'loss':'draw'),200);
   const modal=document.getElementById('result-modal');const box=document.getElementById('result-box');
-  const rank=vvGetRank(newElo);
+  // Le rang du modal est le rang ACQUIS (sommet atteint), pas celui du
+  // classement de l'instant : une défaite qui repasse sous un seuil ne
+  // doit pas afficher une rétrogradation qui n'a pas lieu.
+  const rank=(typeof vvRank==='function')?vvRank():vvGetRank(newElo);
   box.className='result-box '+(result==='win'?'win-result':result==='loss'?'loss-result':'draw-result');
   // Plus de chevron au-dessus du titre pour une victoire ou une défaite : le
   // mot et sa couleur disent déjà tout, le triangle n'ajoutait qu'un symbole
@@ -244,8 +247,20 @@ function showResultModal(result,oldElo,newElo,delta,newUnlockIds,noEloReason){
   // de partie : l'Alchimiste vient de dire que c'est un entraînement. La ligne
   // d'ELO disparaît, la phrase aussi. Le mode admin, lui, garde sa mention :
   // elle rappelle où l'on se trouve.
+  // La ligne sous l'ELO porte DEUX choses selon le cas : la raison pour
+  // laquelle la partie n'est pas classée, ou — quand elle l'est — ce qui
+  // explique un écart inhabituel (placement, bonus d'ascension, plancher de
+  // rang qui a absorbé la défaite). Voir vvEloExplain, js/voie.js : sans
+  // elle, un « +38 » puis un « -4 » passent pour un bug.
   const showNote=!!noEloReason&&noEloReason!==VV_NO_ELO_TRAINING;
-  if(noteEl){noteEl.style.display=showNote?'':'none';noteEl.textContent=showNote?noEloReason:'';}
+  const climbNote=(!noEloReason&&typeof vvEloExplain==='function')
+    ?vvEloExplain(eloCalc,result,(typeof vvLoadPeakElo==='function')?vvLoadPeakElo():newElo):'';
+  const noteText=showNote?noEloReason:climbNote;
+  if(noteEl){
+    noteEl.style.display=noteText?'':'none';
+    noteEl.textContent=noteText;
+    noteEl.classList.toggle('result-elo-climb',!showNote&&!!climbNote);
+  }
   document.getElementById('result-rank-name').textContent=rank.name+' · '+newElo+' ELO';
   const unlockSec=document.getElementById('unlock-section');
   if(newUnlockIds&&newUnlockIds.length>0){
@@ -342,25 +357,59 @@ function triggerEndOfGame(result){
   // Le reste de la fin de partie est inchangé : la série de victoires, les
   // coffres et le règlement des pièces engagées valent dans tous les modes.
   const noEloReason=(typeof vvNoEloReason==='function')?vvNoEloReason(GS):null;
-  let newElo=oldElo,delta=0,newUnlocks=[];
+  let newElo=oldElo,delta=0,newUnlocks=[],eloCalc=null;
   if(!noEloReason){
-    const calc=vvCalcNewElo(oldElo,aiElo,result);
-    newElo=calc.newElo;delta=calc.delta;
-    const newRankIdx=vvGetRankIdx(newElo);if(newRankIdx>vvLoadRankMax())vvSaveRankMax(newRankIdx);
+    // vvCalcNewElo lit le compteur de parties classées pour choisir son
+    // K-facteur : on l'appelle AVANT vvNoteRankedGame(), sinon la première
+    // partie du compte serait déjà comptée comme jouée et perdrait son K de
+    // placement.
+    eloCalc=vvCalcNewElo(oldElo,aiElo,result);
+    newElo=eloCalc.newElo;delta=eloCalc.delta;
+    if(typeof vvNoteRankedGame==='function')vvNoteRankedGame(result);
+    // vvSaveElo (js/accounts.js) a déjà relevé elo_peak si besoin ; rank_max
+    // en découle et reste écrit pour les écrans qui le lisent.
+    const newRankIdx=(typeof vvRankIdx==='function')?vvRankIdx():vvGetRankIdx(newElo);
+    if(newRankIdx>vvLoadRankMax())vvSaveRankMax(newRankIdx);
     newUnlocks=vvCheckNewUnlocks(oldElo,newElo);
     if(typeof vvCheckRewardMilestones==='function')vvCheckRewardMilestones(oldElo,newElo);
     vvSaveElo(newElo);
   }
   const foeId=(!GS.multiplayer&&typeof aiCurrentOpponent==='function')?aiCurrentOpponent().id:null;
   if(foeId&&typeof advNoteResult==='function')advNoteResult(foeId,result);
-  const history=vvLoadHistory();history.push({result,oldElo,newElo,delta,date:Date.now(),aiElo,ranked:!noEloReason,opp:foeId});vvSaveHistory(history);
+  // CE QUI EST ENREGISTRÉ D'UNE PARTIE. L'entrée portait le résultat et les
+  // deux ELO ; elle porte maintenant aussi l'ARMÉE alignée et le MODE, ce qui
+  // permet à la page Comptes de dire « votre Méduse gagne 62 % du temps » ou
+  // « en ligne : 14 victoires sur 23 » plutôt qu'un simple total.
+  const armee=(currentArmyData&&Array.isArray(currentArmyData.extras))
+    ?currentArmyData.extras.slice(0,3):[];
+  const mode=GS.multiplayer?'ligne':'ia';
+  const history=vvLoadHistory();
+  history.push({result,oldElo,newElo,delta,date:Date.now(),aiElo,
+    ranked:!noEloReason,opp:foeId,army:armee,mode});
+  vvSaveHistory(history);
+  // Les agrégats de carrière ne dépendent pas des 30 dernières parties (voir
+  // vvNotePieceStats, js/accounts.js). Le tutoriel et le mode test en sont
+  // exclus : ils sortent plus haut ou n'écrivent rien.
+  if(!noEloReason&&typeof vvNotePieceStats==='function')
+    vvNotePieceStats(armee,result==='win');
   // Règlement des pièces engagées AVANT l'affichage : la cinématique montre
   // le décompte réel, pas une estimation. settleAndCelebrate (economy-ui.js)
   // enchaîne ensuite cinématique d'issue → ouverture du coffre gagné → modal.
-  const showModal=()=>showResultModal(result,oldElo,newElo,delta,newUnlocks,noEloReason);
+  const showModal=()=>showResultModal(result,oldElo,newElo,delta,newUnlocks,noEloReason,eloCalc);
   _lastSettlement=(typeof settleAndCelebrate==='function')
     ?settleAndCelebrate(result,GS,showModal)
     :(setTimeout(showModal,400),null);
+  // LA MEILLEURE SÉRIE SE RELÈVE APRÈS LE RÈGLEMENT, et pas avant : c'est
+  // economySettle (appelée par settleAndCelebrate) qui incrémente
+  // 'win_streak'. Lue plus haut, on enregistrerait toujours la série de la
+  // partie PRÉCÉDENTE — et le record n'atteindrait jamais sa vraie valeur.
+  if(!noEloReason&&typeof vvNoteStreak==='function')
+    vvNoteStreak(accGet('win_streak',0));
+  // Après trois victoires, et une seule fois, le jeu propose de s'installer
+  // sur l'écran d'accueil (voir js/pwa.js). Le moment n'est pas anodin : à
+  // l'arrivée, le visiteur n'a aucune raison d'installer quoi que ce soit ;
+  // après trois victoires, il sait ce qu'il installe.
+  if(result==='win'&&typeof pwaNoteWin==='function')pwaNoteWin();
   if(typeof renderMenuChests==='function')renderMenuChests();
   // La victoire vient de faire avancer la colonne des victoires
   // (economySettle, js/economy.js) : la pastille du menu doit le dire tout de

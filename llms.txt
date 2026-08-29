@@ -109,6 +109,9 @@ C'est la mécanique qui distingue le plus Epic Chess des autres variantes :
   du laboratoire**, une galerie d'IA nommées.
 - Un compte neuf ne possède que son **Monarque et son Général** : toutes les
   créatures s'obtiennent en jouant.
+- Le joueur consulte son **profil** depuis la page Comptes : taux de victoire,
+  meilleure série, dix dernières parties et créature fétiche, avec son taux de
+  victoire réel.
 - Un **tutoriel interactif** guide le nouveau joueur : un Alchimiste lui fait
   livrer quatre batailles contre des instructeurs faibles, où les deux camps
   ont exactement la même armée. Chaque victoire ouvre un coffre qui débloque
@@ -140,10 +143,24 @@ C'est la mécanique qui distingue le plus Epic Chess des autres variantes :
   Victoires** (une victoire = un palier) et la **Rangée de la Richesse**
   (des perles payées avec les tickets des quêtes).
 - La **Diagonale de la Puissance** suit l'ELO du joueur à travers **7 rangs** :
-  Poussière (0-199), Pierre (200-499), Bronze (500-849), Acier (850-1299),
-  Obsidienne (1300-1799), Argent (1800-2399), Or Légendaire (2400+).
+  Bois (0-199), Pierre (200-499), Bronze (500-799), Acier (800-1199),
+  Obsidienne (1200-1499), Argent (1500-1999), Or Légendaire (2000+).
 - Franchir un palier de rang **débloque de nouvelles créatures** et de
   nouveaux **échiquiers** : bois, pierre, acier, argent puis or.
+- **Le rang est acquis, le classement est vivant.** L'ELO monte et descend, et
+  une défaite coûte toujours des points. Mais le rang, lui, se lit sur le plus
+  haut ELO jamais atteint : un joueur qui a touché Bronze reste Bronze pour
+  toujours et ne reperd jamais une créature ni un échiquier, même si son
+  classement retombe.
+- **La montée est conçue pour être atteignable par tous.** Sous 1000 ELO, une
+  victoire rapporte davantage qu'une défaite ne coûte, et d'autant plus qu'on
+  est bas : à 0 ELO une victoire vaut triple et une défaite ne coûte que 15 %
+  de ce que dirait la formule Elo. Les deux se rejoignent à 1000, où le
+  classement redevient un Elo ordinaire. Les cinq premières parties sont des
+  parties de placement, qui déplacent le classement beaucoup plus vite.
+- **La force de l'adversaire décide de tout**, comme dans n'importe quel Elo :
+  battre plus fort que soi rapporte beaucoup, battre plus faible rapporte peu,
+  perdre contre plus fort coûte peu, perdre contre plus faible coûte cher.
 - La rareté du coffre gagné suit la **série de victoires** : 1re victoire du
   jour → Coffre Pion, 6e → Coffre Roi. La série est **quotidienne** et
   **s'arrête à son sixième coffre** : au-delà, plus aucun coffre de série ce
@@ -162,8 +179,15 @@ C'est la mécanique qui distingue le plus Epic Chess des autres variantes :
 ## Confidentialité
 
 Les comptes sont créés et stockés **localement dans le navigateur**
-(localStorage). Aucune adresse e-mail n'est demandée, aucune donnée n'est
-envoyée à un serveur, et le jeu ne contient ni publicité ni traqueur.
+(localStorage). Aucune adresse e-mail n'est demandée, aucun mot de passe,
+aucune donnée n'est envoyée à un serveur, et le jeu ne contient ni publicité
+ni traqueur.
+
+**Il n'y a aucun écran d'inscription** : la première ouverture crée elle-même
+un compte au nom d'Alchimiste tiré au sort et entre directement dans le jeu.
+Le joueur se renomme quand il le souhaite depuis la page Comptes (accessible
+par le bouton de réglages), où il peut aussi créer plusieurs comptes sur le
+même appareil et passer de l'un à l'autre.
 
 ## Questions fréquentes
 
@@ -182,6 +206,26 @@ parties privées entre amis via un code à quatre caractères.
 Tous les exemplaires de pièces engagés dans cette partie. Une victoire ne
 coûte que les pièces capturées. Un coffre quotidien de réapprovisionnement
 empêche de rester bloqué sans armée.
+
+**Faut-il créer un compte pour jouer ?**
+Non. Le jeu se lance directement : un compte est créé automatiquement à la
+première ouverture, sans e-mail ni mot de passe. On peut le renommer, et en
+créer d'autres, depuis la page Comptes.
+
+**Peut-on communiquer avec son adversaire ?**
+Oui, par six emotes envoyées d'un tap pendant la partie (salut, bien joué,
+oups, je réfléchis, merci, plus vite). Il n'y a pas de messagerie écrite, et
+une sourdine permet de ne plus recevoir celles de l'adversaire.
+
+**Le jeu s'installe-t-il sur le téléphone ?**
+Oui. Il propose de s'ajouter à l'écran d'accueil après quelques victoires, et
+s'ouvre alors comme une application, sans barre d'adresse et même sans
+connexion pour tout ce qui ne demande pas d'adversaire.
+
+**Le jeu est-il jouable au clavier ?**
+Oui, entièrement : les flèches déplacent un curseur sur l'échiquier, Entrée
+sélectionne et joue, Échap annule la sélection. Chaque case annonce son nom et
+la créature qui l'occupe, pour les lecteurs d'écran.
 
 **Faut-il installer quelque chose ?**
 Non. Le jeu est en HTML/CSS/JavaScript pur et fonctionne dans n'importe

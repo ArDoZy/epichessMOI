@@ -8,6 +8,8 @@
      [ACCOUNTS]     page de connexion, liste comptes, modal mot de passe, cab (barre compte)
      [AI-LEVEL]     modal de choix d'instructeur IA
      [BUILDER]      page de composition d'armée (filtres, cartes de pièces, slots)
+     [ACCOUNT-PAGE] page Comptes (sceau, bascule entre comptes, création)
+     [FEEL]         secousse d'impact + interrupteur de vibration (js/sfx.js)
      [SETTINGS]     bouton + panneau réglages (thème, volume)
      [ARMIES]       pages "Mes armées" / "Armées IA"
      [COMBAT-INTRO] page d'intro combat (VS, présentation armées)
@@ -378,6 +380,205 @@ body.has-acc #page-combat{padding-top:calc(var(--chrome-h) + var(--safe-t))}
    rendant « Annuler coup »/« Abandonner » inatteignables en bas. */
 body.has-acc #page-game{min-height:0}
 
+/* [ACCOUNT-PAGE] ================================================== */
+/* La page Comptes (#page-account, js/account-ui.js). Trois blocs empilés :
+   le SCEAU du compte courant, la liste des autres comptes, et la création.
+   Elle emprunte la carrosserie de la Voie (.voie-scroll / .voie-inner /
+   .voie-ok-bar) : toutes les pages secondaires se ferment ainsi du même
+   geste, il n'y a donc rien à réapprendre.
+
+   Une seule couleur porte de l'information ici : celle du RANG. Elle teinte
+   le médaillon et le nom du rang, et rien d'autre — un compte se lit à son
+   rang avant de se lire à son pseudo. Le laiton (--gold) reste réservé au
+   titre de la page et au bouton de sortie, comme sur la Voie. */
+.acc-inner{padding-bottom:24px}
+
+/* --- LE MÉDAILLON : initiale frappée aux couleurs du rang --------- */
+/* --medal-c est posé en style inline par accountMedallion() : c'est la
+   couleur du rang, et c'est la seule chose qui distingue deux médaillons. */
+.acc-medal{
+  --medal-c:var(--muted);
+  flex:none;display:grid;place-items:center;width:46px;height:46px;border-radius:50%;
+  /* Le repli sans color-mix() est déclaré d'abord : un navigateur qui ne
+     connaît pas la fonction ignore les deux lignes suivantes et garde un
+     médaillon neutre mais correct, au lieu d'une bordure `currentColor` et
+     d'un fond disparu. */
+  background:var(--surface2);
+  border:1.5px solid var(--border2);
+  background:radial-gradient(circle at 35% 28%,color-mix(in srgb,var(--medal-c) 34%,transparent),transparent 68%),var(--surface2);
+  border-color:color-mix(in srgb,var(--medal-c) 55%,var(--border));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.06);
+}
+.acc-medal-letter{
+  font-family:var(--f-title);font-size:19px;font-weight:700;line-height:1;
+  color:var(--medal-c);text-transform:uppercase;
+}
+.acc-medal-lg{width:76px;height:76px;border-width:2px}
+.acc-medal-lg .acc-medal-letter{font-size:32px}
+
+/* --- 1. LE SCEAU : le compte courant ------------------------------ */
+.acc-seal{
+  background:var(--surface);border:1px solid var(--border);border-radius:16px;
+  padding:22px;margin-bottom:26px;position:relative;overflow:hidden;
+}
+.acc-seal::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--gold);opacity:.5}
+.acc-seal-top{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+.acc-seal-id{flex:1 1 200px;min-width:0}
+.acc-name-line{display:flex;align-items:center;gap:8px;min-width:0}
+.acc-name{
+  font-family:var(--f-display);font-size:clamp(19px,4.6vw,26px);font-weight:900;
+  color:var(--text);margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;
+}
+.acc-rank-line{display:flex;align-items:center;gap:8px;margin-top:5px;font-family:var(--f-ui);font-size:13px}
+.acc-rank{font-weight:700;letter-spacing:.3px}
+.acc-dot{width:3px;height:3px;border-radius:50%;background:var(--border2);flex:none}
+.acc-elo{color:var(--muted);font-variant-numeric:tabular-nums}
+
+/* Les quatre chiffres du compte. Une grille de 4 sur ordinateur, de 2 sur
+   téléphone (voir [MOBILE-APP] plus bas) : à 4 colonnes sous 400 px,
+   « Meilleur rang » se coupait en trois lignes. */
+.acc-stats{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:1px;margin-top:20px;
+  background:var(--border);border:1px solid var(--border);border-radius:10px;overflow:hidden;
+}
+.acc-stat{background:var(--surface2);padding:12px 8px;text-align:center;min-width:0}
+.acc-stat-v{
+  font-family:var(--f-title);font-size:19px;font-weight:700;color:var(--text);
+  font-variant-numeric:tabular-nums;line-height:1.1;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.acc-stat-k{
+  font-family:var(--f-ui);font-size:9.5px;letter-spacing:.5px;text-transform:uppercase;
+  color:var(--muted);margin-top:5px;
+}
+
+/* --- LA BANDE DE FORME : dix parties, dix pastilles ---------------- */
+/* Une pastille par partie, la plus récente à gauche. C'est la forme la plus
+   dense qui reste lisible, et elle répond d'un coup d'oeil à la première
+   question qu'on se pose en ouvrant son profil : est-ce que je monte ou
+   est-ce que je coule ? Trois couleurs, les mêmes que partout ailleurs dans
+   le jeu — le vert de ce qui réussit, le rouge de ce qui coûte, le gris de
+   ce qui n'a rien changé. */
+.acc-form{display:flex;align-items:center;gap:12px;margin-top:16px;flex-wrap:wrap}
+.acc-form-k{
+  font-family:var(--f-ui);font-size:9.5px;letter-spacing:.5px;text-transform:uppercase;
+  color:var(--muted);flex:none;
+}
+.acc-form-dots{display:flex;gap:5px;flex-wrap:wrap}
+.acc-form-dots span{
+  width:11px;height:11px;border-radius:3px;flex:none;
+  /* La couleur seule ne suffit pas à qui la distingue mal : chaque pastille
+     porte aussi son résultat en infobulle, et le vert et le rouge n'ont pas
+     la même luminosité. */
+}
+.acc-dot-w{background:var(--success)}
+.acc-dot-l{background:var(--danger);opacity:.85}
+.acc-dot-d{background:var(--border2)}
+
+/* --- LA CRÉATURE FÉTICHE ------------------------------------------ */
+.acc-fav{
+  display:flex;align-items:center;gap:12px;margin-top:16px;padding:12px 14px;
+  background:var(--surface2);border:1px solid var(--border);border-radius:11px;
+}
+.acc-fav-icon{flex:none;width:34px;height:34px;display:grid;place-items:center}
+.acc-fav-icon .pc-icon,.acc-fav-icon .pc-svg{width:34px;height:34px}
+.acc-fav-txt{min-width:0}
+.acc-fav-name{font-family:var(--f-ui);font-size:14px;font-weight:700;color:var(--text)}
+.acc-fav-sub{font-family:var(--f-ui);font-size:11.5px;color:var(--muted);margin-top:2px}
+
+/* --- 2 & 3. LES SECTIONS ------------------------------------------ */
+.acc-logout{width:100%;margin-top:14px;font-size:12px!important;padding:10px 16px!important}
+
+/* CLASSEMENT RETOMBÉ SOUS LE RANG ACQUIS. Le rang est porté par le sommet
+   d'ELO atteint (elo_peak) et ne se perd jamais ; le nombre, lui, redescend.
+   Quand les deux divergent, la légende de la jauge cesse d'annoncer le rang
+   SUIVANT — qui n'est plus la bonne cible — pour dire ce qu'il faut
+   reprendre. Elle passe au laiton : c'est la couleur de ce qui se mérite, et
+   ce rang-là est déjà mérité. */
+.veb-progress-label.veb-below{color:var(--gold);font-weight:600}
+
+.acc-sec{margin-bottom:26px}
+.acc-sec-title{
+  font-family:var(--f-ui);font-size:11px;letter-spacing:1.1px;text-transform:uppercase;
+  color:var(--muted);font-weight:600;margin:0 0 12px;
+}
+.acc-hint,.acc-empty{font-family:var(--f-ui);font-size:12.5px;line-height:1.55;color:var(--muted);margin:0 0 12px}
+.acc-empty{
+  background:var(--surface);border:1px dashed var(--border2);border-radius:12px;
+  padding:14px 16px;margin-bottom:0;
+}
+
+.acc-list{display:flex;flex-direction:column;gap:10px}
+.acc-row{display:flex;align-items:stretch;gap:8px}
+/* La ligne entière est le bouton de bascule : sur téléphone, une cible de
+   56 px de haut sur toute la largeur vaut mieux qu'un chevron de 20 px. */
+.acc-row-main{
+  flex:1;min-width:0;display:flex;align-items:center;gap:13px;
+  background:var(--surface);border:1px solid var(--border);border-radius:12px;
+  padding:11px 14px;cursor:pointer;text-align:left;color:var(--text);
+  font-family:var(--f-ui);transition:border-color .18s,background .18s,transform .12s;
+}
+.acc-row-main:hover{border-color:var(--accent2);background:var(--surface2)}
+.acc-row-main:active{transform:scale(.99)}
+.acc-row-id{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.acc-row-name{font-size:15px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.acc-row-sub{font-size:11.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.acc-row-go{flex:none;width:18px;height:18px;color:var(--border2);transition:color .18s}
+.acc-row-go svg{width:100%;height:100%;display:block}
+.acc-row-main:hover .acc-row-go{color:var(--accent2)}
+
+/* --- CHAMPS ET BOUTONS COMMUNS À LA PAGE -------------------------- */
+.acc-rename-row,.acc-create-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.acc-input{
+  flex:1 1 180px;min-width:0;background:var(--bg);border:1px solid var(--border2);border-radius:9px;
+  padding:10px 13px;color:var(--text);font-family:var(--f-ui);font-size:15px;outline:none;
+  transition:border-color .18s;
+}
+.acc-input:focus{border-color:var(--accent2)}
+.acc-input::placeholder{color:var(--muted)}
+.acc-mini-btn{font-size:12px!important;padding:12px 16px!important;min-height:44px;flex:none}
+
+/* Bouton porteur d'une seule icône : renommer, supprimer. */
+.acc-icon-btn{
+  flex:none;width:42px;height:42px;display:grid;place-items:center;
+  border:1px solid var(--border2);border-radius:9px;background:transparent;
+  color:var(--muted);cursor:pointer;padding:0;transition:color .18s,border-color .18s,background .18s;
+}
+.acc-icon-btn svg{width:17px;height:17px;display:block}
+.acc-icon-btn:hover{color:var(--accent2);border-color:var(--accent2);background:var(--accent-bg)}
+/* La corbeille est la seule action irréversible de la page : elle est la
+   seule à virer au rouge, et seulement au survol — en rouge permanent, elle
+   attirerait l'oeil avant le compte lui-même. */
+.acc-del{align-self:stretch;height:auto}
+.acc-del:hover{color:var(--danger);border-color:var(--danger);background:rgba(212,69,63,.1)}
+
+@media(max-width:520px){
+  /* Quatre colonnes sous 520 px coupaient « Meilleur rang » en trois lignes
+     et « Parties classées » en deux : deux colonnes rendent les quatre
+     chiffres lisibles d'un coup d'oeil, ce qui est tout leur intérêt. */
+  .acc-stats{grid-template-columns:repeat(2,1fr)}
+  .acc-medal-lg{width:64px;height:64px}
+  .acc-medal-lg .acc-medal-letter{font-size:27px}
+}
+
+.acc-foot{
+  font-family:var(--f-ui);font-size:11px;line-height:1.6;color:var(--muted);
+  border-top:1px solid var(--border);padding-top:14px;margin:8px 0 0;max-width:60ch;
+}
+
+/* La ligne « Compte » du panneau de réglages : un bouton pleine largeur sous
+   le curseur de son, séparé de lui par un filet — ce n'est pas un réglage de
+   plus, c'est une porte vers une autre page. */
+.sp-account-btn{
+  display:flex;align-items:center;gap:9px;width:100%;margin-top:12px;padding:9px 10px;
+  border:1px solid var(--border2);border-top-color:var(--border2);border-radius:9px;
+  background:transparent;color:var(--text);font-family:var(--f-ui);font-size:12px;
+  font-weight:600;cursor:pointer;transition:border-color .18s,color .18s,background .18s;
+}
+.sp-account-btn svg{width:16px;height:16px;flex:none;color:var(--muted);transition:color .18s}
+.sp-account-btn:hover{border-color:var(--accent2);color:var(--accent2);background:var(--accent-bg)}
+.sp-account-btn:hover svg{color:var(--accent2)}
+
 /* [AI-LEVEL] ======================================================= */
 .ai-lvl-modal{position:fixed;inset:0;background:rgba(0,0,0,.88);display:flex;align-items:center;justify-content:center;z-index:4500;visibility:hidden}
 .ai-lvl-modal.show{visibility:visible}
@@ -649,8 +850,75 @@ body:not(.main-menu) #settings-panel{display:none}
 .sp-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;font-family:var(--f-ui);font-size:11px;color:var(--text)}
 .sp-row:last-child{margin-bottom:0}
 .sp-label{font-size:11px;font-family:var(--f-ui);color:var(--muted);text-transform:uppercase;letter-spacing:.6px;white-space:nowrap}
-.sp-slider{-webkit-appearance:none;appearance:none;width:100px;height:4px;border-radius:2px;background:var(--border2);outline:none;cursor:pointer}
+/* LE RAIL FAIT 4 px, LA ZONE DE SAISIE EN FAIT 36. Un curseur de 4 px de
+   haut se rate au doigt une fois sur deux : on garde le rail fin (c'est ce
+   qu'on veut voir) en le dessinant dans un élément haut et transparent
+   (background-clip:content-box + rembourrage vertical). */
+.sp-slider{-webkit-appearance:none;appearance:none;width:100px;height:36px;
+  padding:16px 0;box-sizing:border-box;background:var(--border2);
+  background-clip:content-box;border-radius:2px;outline:none;cursor:pointer}
 .sp-slider::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--accent2);cursor:pointer}
+
+/* [FEEL] ========================================================== */
+/* LA SECOUSSE D'IMPACT (js/sfx.js::sfxShake).
+   iOS Safari n'expose pas navigator.vibrate : sur la moitié du parc mobile,
+   l'haptique n'existe tout simplement pas. Un tremblement bref du plateau
+   rend l'impact perceptible autrement — et il est utile partout, y compris
+   là où la vibration marche : c'est la couche visuelle du même événement.
+
+   DEUX INTENSITÉS, choisies par la valeur de la pièce prise
+   (sfxCaptureForce) : prendre un pion et prendre le Grand Maître ne peuvent
+   pas secouer le plateau de la même façon.
+
+   `translate3d` et non `translate` : la couche est promue au compositeur, le
+   plateau n'est donc pas remis en page à chaque image — sur un téléphone
+   d'entrée de gamme, la différence entre 60 images et 20 par seconde. */
+@keyframes sfxShake{
+  0%,100%{transform:translate3d(0,0,0)}
+  20%{transform:translate3d(-2px,1px,0)}
+  45%{transform:translate3d(2px,-1px,0)}
+  70%{transform:translate3d(-1px,0,0)}
+}
+@keyframes sfxShakeHard{
+  0%,100%{transform:translate3d(0,0,0)}
+  12%{transform:translate3d(-4px,2px,0)}
+  28%{transform:translate3d(4px,-2px,0)}
+  44%{transform:translate3d(-3px,-1px,0)}
+  62%{transform:translate3d(3px,1px,0)}
+  80%{transform:translate3d(-1px,0,0)}
+}
+.sfx-shake{animation:sfxShake .18s cubic-bezier(.36,.07,.19,.97) both}
+.sfx-shake-hard{animation:sfxShakeHard .26s cubic-bezier(.36,.07,.19,.97) both}
+/* Le mouvement réduit couvre le vestibulaire : quelqu'un qui a demandé moins
+   de mouvement n'a pas demandé qu'on lui secoue le plateau. sfxShake() le
+   vérifie déjà en JS ; cette règle est la ceinture de la bretelle, pour le
+   cas où la classe serait posée par ailleurs. */
+@media(prefers-reduced-motion:reduce){
+  .sfx-shake,.sfx-shake-hard{animation:none}
+}
+
+/* L'INTERRUPTEUR DE VIBRATION, dans le panneau de réglages. Le seul
+   interrupteur du jeu : il emprunte la couleur d'accent quand il est allumé,
+   comme tout ce qui est « en cours » ailleurs dans l'interface. */
+/* L'INTERRUPTEUR EST DESSINÉ PETIT ET TOUCHÉ GRAND. Le rectangle visible
+   fait 44×24 — la proportion d'un interrupteur —, mais la zone sensible
+   descend à 44 px de haut grâce au rembourrage transparent : on ne rate pas
+   le seul interrupteur du jeu parce qu'il est joli. */
+.sp-toggle{
+  width:44px;height:44px;flex:none;padding:10px 0;box-sizing:border-box;
+  border:none;background:transparent;cursor:pointer;position:relative;
+}
+.sp-toggle::before{
+  content:'';position:absolute;left:0;top:10px;width:44px;height:24px;border-radius:12px;
+  border:1px solid var(--border2);background:var(--bg);
+  transition:background .18s,border-color .18s;
+}
+.sp-toggle span{
+  position:absolute;top:13px;left:3px;width:18px;height:18px;border-radius:50%;
+  background:var(--muted);transition:transform .18s,background .18s;z-index:1;
+}
+.sp-toggle[aria-checked="true"]::before{background:var(--accent-bg);border-color:var(--accent2)}
+.sp-toggle[aria-checked="true"] span{transform:translateX(20px);background:var(--accent2)}
 
 /* [ARMIES] ======================================================= */
 #page-armies{padding:clamp(16px,3vw,32px) clamp(12px,3vw,20px);min-height:100vh;background:var(--bg)}
@@ -805,7 +1073,56 @@ body:not(.main-menu) #settings-panel{display:none}
    camp est portée par le logo de la pièce, pas par l'opacité du texte. */
 .move-log-w,.move-log-b{flex:1;color:var(--text);display:flex;align-items:center;gap:3px}
 .move-log .pc-icon{width:15px;height:15px}
+/* --- LES EMOTES (js/multiplayer.js) --------------------------------
+   Six pictogrammes et une sourdine, sur une rangée, au-dessus des deux
+   boutons de partie. Ils ne s'affichent qu'en partie en ligne : c'est le
+   seul moment où il y a quelqu'un en face.
+   Chaque bouton est carré et fait 44 px : on les touche en pleine partie,
+   souvent d'une main, parfois vite. */
+.mp-emote-bar{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-bottom:8px}
+.mp-emote{
+  width:44px;height:44px;flex:none;border-radius:12px;cursor:pointer;padding:0;
+  border:1px solid var(--border2);background:var(--surface2);
+  font-size:20px;line-height:1;display:flex;align-items:center;justify-content:center;
+  transition:border-color .16s ease,transform .1s ease,background .16s ease;
+}
+.mp-emote:hover{border-color:var(--accent2);background:var(--surface)}
+.mp-emote:active{transform:scale(.92)}
+/* La sourdine est un interrupteur, pas une emote : elle se distingue par sa
+   sourdine visuelle, et s'allume en rouge quand elle coupe vraiment. */
+.mp-emote-mute{margin-left:auto;font-size:16px;opacity:.55}
+.mp-emote-mute[aria-checked="true"]{opacity:.55}
+.mp-emote-mute[aria-checked="false"]{opacity:1;border-color:var(--danger);color:var(--danger);
+  background:rgba(212,69,63,.12)}
+
+/* LA BULLE se pose du côté de qui l'envoie — au-dessus de son propre
+   bandeau. Sans ça, on ne sait pas qui vient de parler. */
+.gp-bar{position:relative}
+.mp-emote-bubble{
+  position:absolute;right:10px;top:-14px;z-index:5;pointer-events:none;
+  min-width:38px;height:38px;padding:0 8px;border-radius:14px;
+  display:flex;align-items:center;justify-content:center;font-size:20px;line-height:1;
+  background:var(--surface2);border:1px solid var(--border2);
+  box-shadow:0 6px 18px -6px rgba(0,0,0,.65);
+  opacity:0;transform:scale(.6) translateY(6px);
+}
+.mp-emote-bubble.show{animation:mpEmotePop 2.2s cubic-bezier(.2,.9,.3,1) both}
+@keyframes mpEmotePop{
+  0%{opacity:0;transform:scale(.6) translateY(6px)}
+  12%{opacity:1;transform:scale(1.12) translateY(0)}
+  22%{transform:scale(1) translateY(0)}
+  82%{opacity:1;transform:scale(1) translateY(0)}
+  100%{opacity:0;transform:scale(.9) translateY(-6px)}
+}
+@media(prefers-reduced-motion:reduce){
+  .mp-emote-bubble.show{animation:none;opacity:1;transform:none}
+}
+
 .game-btns{display:flex;flex-direction:column;gap:7px;margin-top:auto}
+/* Annuler un coup et abandonner une partie sont les deux actions les plus
+   lourdes de conséquence du jeu ; elles portaient un style en dur qui leur
+   donnait 30 px de haut. Une cible tactile pleine, comme partout ailleurs. */
+.game-btns .btn{min-height:44px;font-size:12.5px;padding:11px 12px}
 .history-nav{display:flex;gap:6px;justify-content:center;margin-bottom:6px}
 /* 44 × 44 : les quatre commandes faisaient 25 px de haut sur 5 px d'écart,
    très en dessous du seuil tactile confortable. */
@@ -828,6 +1145,8 @@ body:not(.main-menu) #settings-panel{display:none}
    une url() relative dans une variable CSS serait résolue par rapport à ce
    fichier, donc dans css/, et ne trouverait rien. */
 .game-board{display:grid;grid-template-columns:repeat(8,1fr);width:100%;aspect-ratio:1;
+  /* position:relative : la couche des pièces (.gc-layer) se cale dessus. */
+  position:relative;
   border:1px solid var(--border2);border-radius:6px;overflow:hidden;
   background-size:100% 100%;background-repeat:no-repeat;
   box-shadow:0 12px 32px -10px rgba(0,0,0,.55),0 0 0 1px var(--border2)}
@@ -846,6 +1165,17 @@ body:not(.main-menu) #settings-panel{display:none}
 
 .gc{aspect-ratio:1;display:flex;align-items:center;justify-content:center;cursor:pointer;
   user-select:none;position:relative;-webkit-user-drag:none;transition:box-shadow .14s}
+/* Le curseur « main ouverte » était sur la pièce ; la pièce n'est plus
+   atteignable par le pointeur, c'est donc la case qui le porte — et elle ne
+   le porte que quand elle tient une pièce jouable maintenant. */
+.gc.gc-holds{cursor:grab}
+/* LE CURSEUR CLAVIER. Une case focalisée doit se voir sans ambiguïté sur les
+   deux teintes du damier et par-dessus la texture du plateau : un liseré
+   intérieur épais, dans la couleur de l'action en cours. Il ne se montre
+   qu'au clavier (:focus-visible), pour ne pas doubler la surbrillance de
+   sélection au pointeur. */
+.gc:focus-visible{outline:none;box-shadow:inset 0 0 0 3px var(--gold2),inset 0 0 0 6px rgba(0,0,0,.35)}
+.gc.sel:focus-visible{box-shadow:inset 0 0 0 3px var(--gold2),inset 0 0 0 6px var(--accent2)}
 /* Surbrillances : posées PAR-DESSUS la texture, jamais en remplacement, sinon
    la matière du plateau disparaîtrait sous chaque case jouable. */
 .gc.sel{box-shadow:inset 0 0 0 3px var(--accent2),inset 0 0 26px rgba(47,177,151,.4)}
@@ -867,15 +1197,43 @@ body:not(.main-menu) #settings-panel{display:none}
 .gc.cap-flash{animation:captureFlash .55s ease}
 @keyframes captureFlash{0%{box-shadow:inset 0 0 0 6px rgba(255,220,180,.95),inset 0 0 40px rgba(217,85,47,.9)}100%{box-shadow:none}}
 .gc.gc-check{box-shadow:inset 0 0 0 4px var(--ember),inset 0 0 30px rgba(217,85,47,.55)}
-.gc-piece{width:86%;height:86%;display:flex;align-items:center;justify-content:center;
-  position:relative;cursor:grab;-webkit-user-drag:none;user-select:none;z-index:2;
-  filter:drop-shadow(0 3px 3px rgba(0,0,0,.5));transition:transform .12s,filter .12s}
-.gc-piece.dragging{opacity:.35}
-.gc-piece:hover{transform:scale(1.07) translateY(-2px);filter:drop-shadow(0 6px 6px rgba(0,0,0,.6))}
+/* LES PIÈCES NE SONT PLUS DANS LES CASES (voir l'en-tête de la section
+   « LE PLATEAU » dans js/game-render.js). Elles vivent sur une couche à part,
+   posée par-dessus la grille, où chacune est un nœud qui SURVIT aux coups —
+   c'est la condition pour qu'une transition CSS puisse l'animer.
+
+   La couche ne reçoit aucun clic : tout le hit-testing reste sur les 64
+   cases, qui ne bougent jamais. */
+.gc-layer{position:absolute;inset:0;pointer-events:none;z-index:2}
+
+/* Le POSITIONNEUR : une case entière (12,5 % du plateau), placée par un
+   transform que le JS écrit en pourcentages — donc sans une seule mesure en
+   pixels, et rien à recalculer au redimensionnement. Son `transform` lui est
+   réservé : tout effet visuel (survol, agonie, promotion) passe par .gc-art,
+   sinon il écraserait la position. */
+.gc-piece{position:absolute;top:0;left:0;width:12.5%;height:12.5%;
+  display:flex;align-items:center;justify-content:center;
+  -webkit-user-drag:none;user-select:none;
+  transition:transform .2s cubic-bezier(.3,.85,.4,1)}
+/* Le temps de son glissement, une pièce passe au-dessus des autres : sinon,
+   en capturant, elle disparaît sous sa victime au lieu de lui tomber dessus. */
+.gc-piece.gc-moving{z-index:3}
+.gc-piece.gc-dying{z-index:1}
+
+/* Le DESSIN : 86 % de la case, comme avant. */
+.gc-art{width:86%;height:86%;display:flex;align-items:center;justify-content:center;
+  filter:drop-shadow(0 3px 3px rgba(0,0,0,.5));transition:transform .12s,filter .12s,opacity .12s}
+.gc-art>svg{width:100%;height:100%}
+/* Le survol vivait sur .gc-piece:hover ; la couche n'étant plus survolable,
+   c'est la CASE qui pose la classe (bindBoardCell) — et c'est de toute façon
+   la bonne cible : on survole une case, pas un dessin. */
+.gc-piece.gc-hover .gc-art{transform:scale(1.07) translateY(-2px);filter:drop-shadow(0 6px 6px rgba(0,0,0,.6))}
+/* La pièce prise en main s'efface sous le fantôme qui suit le doigt. */
+.gc-piece.dragging .gc-art{opacity:.3}
 /* Pièce paralysée par une Méduse, et pièce ancrée par un Garde de Pierre :
    deux états qui doivent se voir sans lire le journal. */
-.gc-piece.pc-para{filter:grayscale(1) brightness(.6) drop-shadow(0 0 6px var(--sorcier))}
-.gc-piece.gc-anchored{filter:drop-shadow(0 0 7px var(--gold2)) drop-shadow(0 2px 2px rgba(0,0,0,.5))}
+.gc-piece.pc-para .gc-art{filter:grayscale(1) brightness(.6) drop-shadow(0 0 6px var(--sorcier))}
+.gc-piece.gc-anchored .gc-art{filter:drop-shadow(0 0 7px var(--gold2)) drop-shadow(0 2px 2px rgba(0,0,0,.5))}
 .drag-ghost{position:fixed;pointer-events:none;z-index:9999;width:64px;height:64px;
   transform:translate(-50%,-50%);opacity:.9;display:none;filter:drop-shadow(0 6px 8px rgba(0,0,0,.6))}
 .ctx-menu{position:fixed;background:var(--surface2);border:1px solid var(--border2);border-radius:13px;
@@ -945,6 +1303,16 @@ body:not(.main-menu) #settings-panel{display:none}
    js/game-flow.js. */
 .result-elo-note{margin:14px 0;font-family:var(--f-ui);font-size:12px;letter-spacing:.6px;
   color:var(--muted);background:var(--bg);border:1px dashed var(--border2);border-radius:8px;padding:9px 14px}
+/* La MÊME ligne porte deux choses opposées : « cette partie ne compte pas »
+   (en retrait, pointillés) et « cette partie a compté DOUBLE » (un cadeau).
+   La seconde ne peut pas se dire en gris pointillé : elle explique un +48 que
+   le joueur, sinon, prend pour un bug. Elle passe donc au vert-de-gris plein,
+   la couleur de ce qui vient d'arriver de bien (voir vvEloExplain,
+   js/voie.js). */
+.result-elo-note.result-elo-climb{
+  border-style:solid;border-color:var(--accent);color:var(--accent2);
+  background:var(--accent-bg);letter-spacing:.3px;
+}
 .result-rank-row{display:flex;align-items:center;justify-content:center;gap:8px;margin:10px 0 18px;font-family:var(--f-ui);font-size:13px;background:var(--bg);border-radius:8px;padding:8px 16px;border:1px solid var(--border)}
 .result-rank-icon{font-size:22px}.result-rank-name{font-weight:700;color:var(--text)}
 .unlock-section{margin-top:18px;padding:16px;border-radius:12px;background:linear-gradient(135deg,rgba(201,168,76,.08),rgba(122,31,43,.08));border:1px solid rgba(201,168,76,.3);animation:unlockGlow .8s ease both .3s}
@@ -988,6 +1356,12 @@ body:not(.main-menu) #settings-panel{display:none}
    est déjà exactement celle de la zone visible : il n'y a rien à imposer. */
 #page-voie{padding:0;background:var(--bg)}
 #page-voie.active{display:flex;flex-direction:column;overflow:hidden}
+/* La page Comptes (#page-account) emprunte exactement la même carrosserie :
+   colonne flex pleine hauteur, zone défilante, pastille OK en bas. Elle est
+   listée ici plutôt que dupliquée dans [ACCOUNT-PAGE] pour que ces deux
+   pages ne puissent pas diverger sans qu'on le voie. */
+#page-account{padding:0;background:var(--bg)}
+#page-account.active{display:flex;flex-direction:column;overflow:hidden}
 /* Le rembourrage du bas dégage la hauteur de la pastille « OK » (8 % de la
    hauteur de l'écran + zone sûre) plus une marge de respiration : le dernier
    palier de la Voie doit pouvoir être lu en entier, pas finir sous le bouton.
@@ -1345,7 +1719,9 @@ body.light .cube-facebar-btn:hover{background:#fff}
   .cube-arrow-vert{width:52px;height:34px}
   #cube-arrow-down{bottom:calc(12px + var(--safe-b))}
   .cube-facebar{bottom:calc(12px + var(--safe-b));gap:2px;padding:4px}
-  .cube-facebar-btn{width:34px;height:34px;border-radius:9px}
+  /* 34 px était sous le seuil tactile, sur une barre qu'on utilise pour
+     naviguer entre les quatre faces — donc en permanence. */
+  .cube-facebar-btn{width:42px;height:42px;border-radius:11px}
 }
 /* [DRILL] ======================================================
    Exercice de déplacement (js/tuto-drill.js) : une pièce seule, cinq
@@ -2106,7 +2482,10 @@ body.light .pmv-dark{background:#c3bdae}
    (c'est un état à consulter, pas l'action principale), mais assez présent
    pour qu'on sache qu'il s'ouvre. */
 .jouer-streak{display:inline-flex;align-items:center;gap:8px;cursor:pointer;
-  padding:9px 18px;border-radius:999px;
+  /* 12 px de retrait vertical et non 9 : la pastille mesurait 35 px de haut,
+     juste sous le seuil des 44 px recommandés pour une cible tactile — et
+     c'est un des deux boutons les plus touchés du jeu. */
+  padding:12px 18px;min-height:44px;border-radius:999px;
   border:1px solid var(--border2);background:rgba(255,255,255,.05);
   backdrop-filter:blur(10px);color:var(--muted);
   font-family:var(--f-ui);font-size:12px;font-weight:650;
@@ -2133,7 +2512,7 @@ body.light .pmv-dark{background:#c3bdae}
 .streak-head>div:first-child{flex:1;min-width:0}
 .streak-title{font-family:var(--f-display);font-size:20px;font-weight:900;color:var(--gold2)}
 .streak-sub{font-family:var(--f-ui);font-size:11.5px;line-height:1.45;color:var(--muted);margin-top:4px}
-.streak-close{flex:0 0 auto;width:32px;height:32px;border-radius:9px;cursor:pointer;
+.streak-close{flex:0 0 auto;width:42px;height:42px;border-radius:11px;cursor:pointer;
   border:1px solid var(--border2);background:transparent;color:var(--muted);
   display:flex;align-items:center;justify-content:center;padding:0;transition:all .16s ease}
 .streak-close svg{width:15px;height:15px}
@@ -2273,7 +2652,11 @@ body.light .pmv-dark{background:#c3bdae}
    de boutons pour deux voies — la moitié de la hauteur utile d'un téléphone
    dépensée avant le premier palier. */
 .rw-tabs{display:flex;gap:2.5%;flex-wrap:nowrap}
-.rw-tab{flex:1 1 50%;min-width:0;cursor:pointer;padding:.8em 2%;border-radius:.85em;
+/* min-height : sur un écran de 350 px, `padding:.8em` sur une police en
+   min(3.1vw,12px) donnait un onglet de 33 px. La hauteur ne peut pas
+   dépendre d'une police qui rétrécit avec l'écran. */
+.rw-tab{flex:1 1 50%;min-width:0;cursor:pointer;padding:.8em 2%;min-height:44px;
+  display:flex;align-items:center;justify-content:center;border-radius:.85em;
   border:1px solid var(--border2);background:var(--surface);color:var(--muted);
   font-family:var(--f-ui);font-size:min(3.1vw,12px);font-weight:700;letter-spacing:.04em;
   line-height:1.25;
@@ -2329,6 +2712,17 @@ body.light .pmv-dark{background:#c3bdae}
 .rw-step-sub{font-family:var(--f-ui);font-size:min(3vw,11px);color:var(--muted);margin-top:.2em;letter-spacing:.03em}
 .rw-mark-next{font-size:min(2.2vw,9px);letter-spacing:.07em;text-transform:uppercase;color:var(--gold2);
   border:1px solid rgba(193,154,69,.45);border-radius:999px;padding:.45em .8em;text-align:center}
+/* LE LIBELLÉ PASSE SOUS LA RANGÉE QUAND ELLE EST ÉTROITE. Sur un écran de
+   350 px, la rangée dispose d'environ 190 px pour son texte une fois le
+   numéro et la vignette placés ; « Prochaine victoire » en prenait 120, si
+   bien que « Coffre Pion » se coupait en deux lignes et « Victoire n° 1 »
+   aussi — la seule rangée mise en avant était la seule illisible.
+   Les marques sont en `flex:0 0 auto` (voir .streak-mark) : elles ne
+   rétrécissent pas, il faut donc leur donner leur propre ligne. */
+@media(max-width:430px){
+  .rw-step{flex-wrap:wrap}
+  .rw-step .rw-mark-next,.rw-step .streak-mark-next{flex:1 0 100%;order:9;margin-top:.55em}
+}
 
 /* Les quatre états, communs à la colonne et à la rangée. */
 .rw-got{border-color:rgba(255,255,255,.16)}
@@ -2665,9 +3059,20 @@ body.light .gp-bar.gp-turn{background:linear-gradient(90deg,var(--accent-bg),var
   /* `flex:1` vaut `flex-basis:0` : en colonne, et sans hauteur à distribuer,
      .game-main retombait à zéro et son overflow:hidden rognait le plateau aux
      rangées 8 à 4. Elle reprend sa hauteur naturelle. */
+  /* LE PLATEAU CÈDE LA PLACE, PAS LES BOUTONS. La réserve valait 200 px en
+     dur, alors que le reste de la colonne en occupe bien davantage : deux
+     bandeaux de 40 px, la barre de statut, les deux boutons de partie, et
+     surtout la feuille du journal ancrée en bas (--sheet-h, mesurée par
+     gameSyncSheetHeight dans js/game-render.js). Sur un écran de 640 px de
+     haut, « Abandonner » se retrouvait donc coupé en deux par la feuille.
+     Le plateau rétrécit maintenant de ce qu'il faut — et seulement sur les
+     écrans courts : à partir d'environ 800 px de haut, c'est la largeur qui
+     borne, la taille du plateau ne change pas d'un pixel.
+     Le plancher de 200 px évite qu'un écran minuscule ne réduise l'échiquier
+     à un timbre : là, mieux vaut défiler. */
   .game-main{flex:0 0 auto;overflow:visible;justify-content:flex-start;min-height:0;
     padding:0;gap:6px;
-    --bsz:min(calc(100vw - 20px),calc(100dvh - var(--chrome-h) - var(--safe-t) - 200px))}
+    --bsz:max(200px,min(calc(100vw - 20px),calc(100dvh - var(--game-chrome,420px))))}
 
   /* --- Le bandeau joueur : UNE rangée de 40 px --- */
   .gp-bar{flex-wrap:nowrap;min-height:40px;padding:0 8px;gap:7px;border-radius:12px}
@@ -2735,9 +3140,18 @@ body.light .gp-bar.gp-turn{background:linear-gradient(90deg,var(--accent-bg),var
      bandeau du joueur : ce sont des actions rares, on les atteint en
      défilant. La feuille passe par-dessus quand on la déploie, c'est le
      propre d'une feuille.
-     La page réserve la hauteur de la poignée repliée, sinon celle-ci
-     recouvrirait la fin du contenu. */
-  .game-wrap{padding-bottom:calc(112px + var(--safe-b))}
+
+     LA PAGE RÉSERVE LA HAUTEUR RÉELLE DE LA POIGNÉE, PAS UNE CONSTANTE.
+     Elle valait 112 px en dur : sur un écran de 350 px de large, la poignée
+     en fait davantage (les quatre commandes de relecture y tiennent moins à
+     l'aise), et « Abandonner » se retrouvait coupé en deux par la feuille —
+     le bouton le plus définitif du jeu, à moitié inaccessible.
+     --sheet-h est mesurée à l'exécution par gameWatchSheetHeight()
+     (js/game-render.js) et suit toute variation : rotation, changement de
+     taille de police du système, apparition d'un coup dans le journal.
+     Le repli garde l'ancienne valeur, pour le cas où le script ne serait pas
+     encore passé. */
+  .game-wrap{padding-bottom:calc(var(--sheet-h,112px) + 14px)}
   /* Un voile derrière la feuille déployée : il dit qu'on est « dans » le
      journal, et un appui dessus le referme. */
   .sheet-scrim{position:fixed;inset:0;z-index:55;background:rgba(4,7,9,.5);
@@ -2955,15 +3369,52 @@ body.cube-active:not(.nav-overlay) .notif-host{bottom:92px}
 }
 
 /* [BOARD-MOTION] ================================================
-   Le plateau est reconstruit en entier à chaque coup (innerHTML) : la pièce
-   déplacée apparaissait donc instantanément à l'arrivée, et un coup de l'IA
-   se résumait à un clignotement. On la fait GLISSER depuis sa case de
-   départ, en partant du décalage exact calculé par renderGame().
+   LE GLISSEMENT N'EST PLUS UNE ANIMATION, C'EST UNE TRANSITION.
+   Le plateau était reconstruit en entier à chaque coup : la pièce n'existait
+   plus d'un rendu à l'autre, il fallait donc lui faire rejouer un décalage
+   calculé en pixels depuis sa case d'arrivée — un trompe-l'œil qui ne
+   marchait que pour UNE pièce et UNE fois. Les pièces survivent maintenant
+   aux coups (voir js/game-render.js) : il suffit de changer leur transform,
+   la transition de .gc-piece fait le reste, et toutes celles qui bougent
+   glissent ensemble. Le roque anime ses deux pièces gratuitement.
+
+   Restent trois moments qui ne sont pas des déplacements, et qui méritent
+   chacun leur geste.
    ============================================================== */
-.gc-piece.gc-move-in{animation:gcSlide .22s cubic-bezier(.3,.85,.4,1) both}
-@keyframes gcSlide{from{transform:translate(var(--mv-dx),var(--mv-dy))}to{transform:none}}
-/* Le survol ne doit pas interrompre le glissement en cours. */
-.gc-piece.gc-move-in:hover{transform:none}
+
+/* MOURIR. Une pièce prise disparaissait d'un coup — le moment le plus
+   satisfaisant d'une partie d'échecs ne durait pas une image. Elle se
+   ratatine et bascule maintenant, en 260 ms, pendant que sa meurtrière lui
+   glisse dessus. L'animation porte sur .gc-art et jamais sur .gc-piece, dont
+   le transform tient la position. */
+@keyframes gcDie{
+  0%{opacity:1;transform:scale(1) rotate(0)}
+  35%{opacity:.9;transform:scale(1.12) rotate(-5deg)}
+  100%{opacity:0;transform:scale(.5) rotate(16deg)}
+}
+.gc-piece.gc-dying .gc-art{animation:gcDie .26s cubic-bezier(.4,0,.7,.4) both}
+
+/* NAÎTRE. Une pièce qui apparaît (début de partie, retour d'historique,
+   création par un pouvoir) monte au lieu de surgir. */
+@keyframes gcBorn{from{opacity:0;transform:scale(.7)}to{opacity:1;transform:scale(1)}}
+.gc-piece.gc-born .gc-art{animation:gcBorn .2s ease-out both}
+
+/* DEVENIR. Une promotion ne fait plus disparaître le pion pour poser une
+   Dame à sa place : c'est le MÊME nœud dont le dessin change, on peut donc
+   marquer la transformation. */
+@keyframes gcMorph{
+  0%{transform:scale(1);filter:brightness(1)}
+  40%{transform:scale(1.3);filter:brightness(2.2)}
+  100%{transform:scale(1);filter:brightness(1)}
+}
+.gc-piece .gc-art.gc-morph{animation:gcMorph .32s ease-out both}
+
+/* Mouvement réduit : les pièces se téléportent, comme avant ce chantier.
+   C'est exactement ce que demande quelqu'un qui coupe les animations. */
+@media(prefers-reduced-motion:reduce){
+  .gc-piece{transition:none}
+  .gc-piece.gc-dying .gc-art,.gc-piece.gc-born .gc-art,.gc-piece .gc-art.gc-morph{animation:none}
+}
 
 /* [A11Y] ========================================================
    Deux manques : rien ne signalait le focus clavier (le contour natif est

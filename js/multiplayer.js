@@ -317,12 +317,31 @@ function mpBindRoomHandlers(channel){
   // cas où notre premier envoi est parti avant que l'autre camp n'écoute.
   channel.on('broadcast',{event:'army'},({payload})=>{
     if(payload.senderId===MP.myId||MP.started)return;
+    // ON NE JOUE PAS CONTRE UNE ARMÉE QUI N'EN EST PAS UNE. Voir
+    // mpArmyProblem plus haut : mieux vaut refuser la partie que la jouer
+    // perdue d'avance sans le savoir.
+    const souci=mpArmyProblem(payload.army);
+    if(souci){
+      mpStatus('Partie refusée : l\'armée de votre adversaire n\'est pas valide ('+souci+').','err');
+      if(typeof showNotif==='function')
+        showNotif('Armée adverse invalide : '+souci+'. La partie ne peut pas démarrer.','err');
+      mpLeave();
+      return;
+    }
     MP.oppArmy=payload.army;
     MP.oppId=payload.senderId;
     MP.oppName=(payload.card&&payload.card.name)||'Adversaire';
     MP.oppElo=(payload.card&&typeof payload.card.elo==='number')?payload.card.elo:null;
     mpSendArmy();
     mpTryStart();
+  });
+
+  // Emotes : le seul message du canal qui ne change rien à la partie. Il n'a
+  // donc pas de numéro d'ordre et n'entre pas au journal — une emote perdue
+  // est une emote perdue, et c'est sans conséquence.
+  channel.on('broadcast',{event:'emote'},({payload})=>{
+    if(payload.senderId===MP.myId)return;
+    mpReceiveEmote(payload&&payload.id);
   });
 
   // Revanche : chacun annonce son souhait, la partie repart quand les deux
@@ -449,6 +468,82 @@ function mpBindRoomHandlers(channel){
       mpSendArmy();
     }
   });
+}
+
+// ----------------------------------------------------------------
+// L'ARMÉE ADVERSE EST VÉRIFIÉE, PAS CRUE SUR PAROLE
+// ----------------------------------------------------------------
+// Chaque camp envoyait son armée par broadcast et l'autre l'installait telle
+// quelle. RIEN ne contrôlait le budget de 24 points, la limite d'une seule
+// Primordiale, ni même que les pièces existent : un joueur qui modifiait son
+// client pouvait se présenter avec cinq Grands Maîtres, et son adversaire
+// jouait la partie sans jamais savoir pourquoi il perdait.
+//
+// Le contraste était frappant avec les COUPS, eux revalidés proprement :
+// mpApplyRemoteMove cherche le coup reçu parmi ceux que NOTRE moteur a
+// calculés (voir plus bas). La même rigueur manquait à l'entrée de partie —
+// c'est-à-dire à l'endroit où l'on peut tricher une fois pour toute la
+// partie plutôt qu'un coup à la fois.
+//
+// On applique donc à l'armée reçue exactement les règles du builder
+// (js/builder.js) : 1 Monarque, 1 Général, 3 créatures, 24 points, une seule
+// Primordiale. C'est une vérification LOCALE, donc contournable par deux
+// clients complices — seul un serveur qui compose la partie lui-même
+// fermerait vraiment la porte (voir README, « L'appariement en ligne »).
+// Mais elle arrête le cas réel : un joueur seul qui trafique son navigateur
+// contre un adversaire honnête.
+
+const MP_ARMY_BUDGET=24;   // même valeur que le builder ; s'ils divergent, une
+                           // armée légitime serait refusée en ligne.
+
+// Renvoie null si l'armée est jouable, sinon la raison — écrite pour être
+// montrée telle quelle au joueur, qui n'a rien fait de mal et mérite de
+// savoir pourquoi sa partie ne démarre pas.
+function mpArmyProblem(army){
+  if(!army||typeof army!=='object')return 'aucune armée reçue';
+  const find=v=>{
+    if(!v)return null;
+    const id=(typeof v==='string')?v:v.id;
+    return PIECES.find(p=>p.id===id)||null;
+  };
+  const mon=find(army.mon), gen=find(army.gen);
+  if(!mon)return 'son Monarque n\'existe pas';
+  if(!gen)return 'son Général n\'existe pas';
+  if(mon.class!=='Monarque')return 'sa première pièce n\'est pas un Monarque';
+  if(gen.class!=='Général')return 'sa deuxième pièce n\'est pas un Général';
+
+  const extras=Array.isArray(army.extras)?army.extras:null;
+  if(!extras||extras.length!==3)return 'son armée ne compte pas 3 créatures';
+  const pieces=extras.map(find);
+  if(pieces.some(p=>!p))return 'une de ses créatures n\'existe pas';
+  if(pieces.some(p=>p.class==='Monarque'||p.class==='Général'))
+    return 'il aligne un Monarque ou un Général comme créature';
+
+  // Une même créature ne peut pas occuper deux des trois emplacements : le
+  // builder les décoche l'un après l'autre, il n'y a pas de doublon possible.
+  const ids=new Set(extras.map(x=>(typeof x==='string')?x:x.id));
+  if(ids.size!==3)return 'il aligne deux fois la même créature';
+
+  if(pieces.filter(p=>p.class==='Primordiale').length>1)
+    return 'il aligne plus d\'une Primordiale';
+
+  const total=mon.value+gen.value+pieces.reduce((t,p)=>t+p.value,0);
+  if(total>MP_ARMY_BUDGET)return 'son armée vaut '+total+' points au lieu de '+MP_ARMY_BUDGET+' au maximum';
+
+  // Les placements décident des colonnes de départ (voir buildGameBoard,
+  // js/game-flow.js) : hors du plateau ou en double, le plateau se
+  // construirait de travers ou perdrait une pièce en chemin.
+  const pl=army.placements;
+  if(!pl||typeof pl!=='object')return 'son armée n\'a pas de disposition';
+  const cols=[];
+  for(const id of ids){
+    const c=pl[id];
+    if(typeof c!=='number'||!Number.isInteger(c)||c<0||c>7)
+      return 'une de ses créatures est placée hors du plateau';
+    if(cols.includes(c))return 'deux de ses créatures partent de la même case';
+    cols.push(c);
+  }
+  return null;
 }
 
 function mpSendArmy(){
@@ -809,6 +904,118 @@ function mpTryRematch(){
 // showNotif() est volontairement muette dans ce projet : les messages de
 // partie en ligne passent donc par la barre de statut du plateau, qui est le
 // seul endroit que le joueur regarde pendant une partie.
+// ================================================================
+// LES EMOTES : rendre l'adversaire présent
+// ================================================================
+// PENDANT UNE PARTIE EN LIGNE, L'ADVERSAIRE ÉTAIT MUET. Un pseudo, un ELO,
+// et rien d'autre : aucun moyen de saluer, de féliciter, de réagir à une
+// bêtise. C'est ce qui fait la différence entre affronter une PERSONNE et
+// affronter un pseudonyme — et dans un jeu qui n'a plus que des adversaires
+// humains, c'est la seule présence humaine qu'il reste à donner.
+//
+// Six emotes, pas une de plus, et aucun texte libre. Ce n'est pas de la
+// prudence excessive : un champ de saisie dans un jeu compétitif demande une
+// modération, un signalement et un blocage — trois systèmes qui n'existent
+// pas ici. Six pictogrammes disent l'essentiel (bonjour, bien joué, oups,
+// réfléchis, merci, dépêche-toi) sans qu'aucun ne puisse blesser.
+//
+// LE CANAL EXISTE DÉJÀ : c'est celui des coups. Une emote n'est donc pas une
+// infrastructure de plus, c'est un événement de plus — quelques lignes.
+//
+// Deux garde-fous, tous deux nécessaires :
+//   · UNE SOURDINE (mpEmoteMuted). Elle est le prix d'entrée de toute
+//     communication en jeu : sans elle, un joueur qui subit un spam n'a que
+//     l'abandon comme recours.
+//   · UN DÉBIT MAXIMAL, des deux côtés. On limite l'envoi (le joueur ne
+//     s'auto-spamme pas) ET la réception (un client modifié pourrait ignorer
+//     sa propre limite ; la nôtre, il ne l'atteint pas).
+const MP_EMOTES=[
+  {id:'salut',   glyph:'\u270B', label:'Salut'},
+  {id:'bravo',   glyph:'\u2728', label:'Bien joué'},
+  {id:'oups',    glyph:'\u{1F62C}', label:'Oups'},
+  {id:'reflechi',glyph:'\u23F3', label:'Je réfléchis'},
+  {id:'merci',   glyph:'\u{1F64F}', label:'Merci'},
+  {id:'vite',    glyph:'\u26A1', label:'Plus vite ?'},
+];
+const MP_EMOTE_COOLDOWN=2500;   // entre deux envois, côté joueur
+const MP_EMOTE_MIN_GAP=1200;    // entre deux réceptions, côté adversaire
+let _emoteLastSent=0,_emoteLastRecv=0,_emoteHideTid=null;
+
+function mpEmoteMuted(){
+  try{return localStorage.getItem('ec_emotes_muted')==='1';}catch(e){return false;}
+}
+function mpEmoteSetMuted(on){
+  try{localStorage.setItem('ec_emotes_muted',on?'1':'0');}catch(e){}
+  const b=document.getElementById('mp-emote-mute');
+  if(b)b.setAttribute('aria-checked',on?'false':'true');
+}
+
+// La bulle : elle se pose du côté de qui l'envoie — la sienne au-dessus de
+// son propre bandeau, celle de l'adversaire au-dessus du sien. Sans ça, on
+// ne sait pas qui vient de parler.
+function mpShowEmote(id,mine){
+  const e=MP_EMOTES.find(x=>x.id===id);
+  if(!e)return;
+  const host=document.getElementById(mine?'human-player-bar':'ai-player-bar');
+  if(!host)return;
+  let bulle=host.querySelector('.mp-emote-bubble');
+  if(!bulle){
+    bulle=document.createElement('div');
+    bulle.className='mp-emote-bubble';
+    host.appendChild(bulle);
+  }
+  bulle.textContent=e.glyph;
+  bulle.setAttribute('aria-label',e.label);
+  // Relancer l'animation quand deux emotes s'enchaînent.
+  bulle.classList.remove('show');void bulle.offsetWidth;
+  bulle.classList.add('show');
+  clearTimeout(bulle._tid);
+  bulle._tid=setTimeout(()=>bulle.classList.remove('show'),2200);
+  if(typeof playSound==='function')playSound('tap',{force:0.35});
+}
+
+function mpSendEmote(id){
+  if(!MP.channel||!GS||!GS.multiplayer||GS.gameOver)return;
+  const now=Date.now();
+  if(now-_emoteLastSent<MP_EMOTE_COOLDOWN)return;   // le joueur ne se spamme pas lui-même
+  _emoteLastSent=now;
+  mpShowEmote(id,true);
+  mpSend('emote',{id});
+}
+
+function mpReceiveEmote(id){
+  if(mpEmoteMuted())return;
+  const now=Date.now();
+  if(now-_emoteLastRecv<MP_EMOTE_MIN_GAP)return;    // un client modifié n'inonde pas l'écran
+  _emoteLastRecv=now;
+  mpShowEmote(id,false);
+}
+
+// La barre d'emotes n'existe QUE pendant une partie en ligne : hors ligne,
+// elle n'aurait personne à qui parler.
+function mpRenderEmoteBar(){
+  const bar=document.getElementById('mp-emote-bar');
+  if(!bar)return;
+  const on=!!(GS&&GS.multiplayer&&!GS.gameOver);
+  bar.style.display=on?'':'none';
+  if(!on||bar.dataset.built==='1')return;
+  bar.dataset.built='1';
+  bar.innerHTML=MP_EMOTES.map(e=>
+    '<button class="mp-emote" data-emote="'+e.id+'" title="'+e.label+'" aria-label="'+e.label+'">'+
+      e.glyph+'</button>').join('')+
+    '<button class="mp-emote mp-emote-mute" id="mp-emote-mute" role="switch" '+
+      'aria-checked="'+(mpEmoteMuted()?'false':'true')+'" '+
+      'title="Recevoir les emotes de l\'adversaire" aria-label="Recevoir les emotes de l\'adversaire">'+
+      '\u{1F507}</button>';
+  bar.querySelectorAll('[data-emote]').forEach(b=>{
+    b.addEventListener('click',()=>mpSendEmote(b.dataset.emote));
+  });
+  bar.querySelector('#mp-emote-mute')?.addEventListener('click',function(){
+    const recoit=this.getAttribute('aria-checked')==='true';
+    mpEmoteSetMuted(recoit);            // on coupe si l'on recevait
+  });
+}
+
 function mpGameMessage(text,cls){
   const bar=document.getElementById('game-status');
   if(bar){bar.textContent=text;bar.className='status-bar '+(cls||'');}
@@ -969,11 +1176,20 @@ function mpLeave(){
 // clients pouvaient se croire tous les deux « le plus ancien ».
 //
 // -- CE QU'IL FAIT MAINTENANT ---------------------------------------------
-//   1. FENÊTRE DE NIVEAU QUI S'ÉLARGIT. On cherche d'abord un adversaire à
-//      ±120 ELO ; toutes les 8 secondes la fenêtre s'élargit de 120, et au
-//      bout de 48 secondes on accepte n'importe qui. Personne n'attend
-//      indéfiniment, et personne n'est jeté d'emblée contre trois rangs
-//      au-dessus.
+//   1. FENÊTRE DE NIVEAU QUI S'ÉLARGIT VITE. On cherche d'abord un adversaire
+//      à ±200 ELO, puis la fenêtre s'élargit de 200 toutes les 2 secondes
+//      jusqu'à son maximum de ±600, atteint au bout de 4 secondes.
+//      PERSONNE N'ATTEND SUR UN ÉCRAN DE RECHERCHE. Une fenêtre qui met
+//      quarante secondes à s'ouvrir suppose une population de joueurs qui
+//      n'existe pas encore : le joueur ferme l'onglet avant. On préfère donc
+//      ouvrir en quatre secondes et s'arrêter à ±600.
+//      ±600 EST UN PLAFOND VOLONTAIRE, ET IL NE S'OUVRE JAMAIS. La fenêtre
+//      n'a plus de mode « tout le monde convient » : dans un jeu où perdre
+//      coûte l'armée engagée, jeter un joueur à 100 ELO contre un joueur à
+//      1800 est pire que ne pas trouver de partie. Avec la courbe
+//      d'ascension (js/voie.js), la quasi-totalité des comptes vit entre 0 et
+//      1000 : ±600 y couvre presque tout le monde. Le jour où la population
+//      s'étale, c'est MP_ELO_MAX qu'il faudra revoir, pas ce raisonnement.
 //   2. UN SEUL DÉCIDEUR. Le joueur qui attend depuis le plus longtemps est le
 //      « chercheur » : lui seul choisit, parmi les candidats dans sa fenêtre,
 //      le plus proche en ELO, et il l'annonce. Les autres ne calculent rien,
@@ -995,16 +1211,16 @@ function mpLeave(){
 const MP_LOBBY='epichess-lobby-v2';
 const MP_TICK_MS=1000;        // battement de ré-évaluation et d'affichage
 const MP_ACK_MS=3500;         // délai avant d'abandonner une proposition
-const MP_ELO_BASE=120;        // fenêtre de départ, en points d'ELO
-const MP_ELO_STEP=120;        // élargissement…
-const MP_ELO_EVERY=8;         // …toutes les 8 secondes
-const MP_ELO_OPEN=48;         // au-delà : plus aucune fenêtre
+const MP_ELO_BASE=200;        // fenêtre de départ, en points d'ELO
+const MP_ELO_STEP=200;        // élargissement…
+const MP_ELO_EVERY=2;         // …toutes les 2 secondes
+const MP_ELO_MAX=600;         // plafond définitif : la fenêtre ne s'ouvre jamais au-delà
 
-// Fenêtre d'ELO acceptée après `waitS` secondes d'attente. Infinity = tout le
-// monde convient.
+// Fenêtre d'ELO acceptée après `waitS` secondes d'attente. Bornée à
+// MP_ELO_MAX : contrairement à la version précédente, elle ne devient jamais
+// infinie (voir le point 1 ci-dessus).
 function mpEloWindow(waitS){
-  if(waitS>=MP_ELO_OPEN)return Infinity;
-  return MP_ELO_BASE+Math.floor(waitS/MP_ELO_EVERY)*MP_ELO_STEP;
+  return Math.min(MP_ELO_MAX,MP_ELO_BASE+Math.floor(waitS/MP_ELO_EVERY)*MP_ELO_STEP);
 }
 
 // Liste des joueurs présents dans le salon d'attente, la nôtre comprise.

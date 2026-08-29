@@ -275,7 +275,8 @@ function renderRewardsRangee(){
 function rewardsClaimRich(){
   const got=richClaimNext();
   if(!got){renderRewardsRangee();return;}
-  if(typeof playSound==='function')playSound('promo');
+  // Un palier franchi : la fanfare de l'interface, la seule.
+  if(typeof playSound==='function')playSound('rank');
   if(typeof showNotif==='function')showNotif('+'+got.pearls+' perles','ok');
   renderRewardsPage();
   if(typeof updAll==='function')updAll();
@@ -327,6 +328,8 @@ function jokerPick(pieceId){
   showConfirmModal('Convertir '+n+' joker'+(n>1?'s':'')+' en '+n+' '+p.name+' ?',()=>{
     const got=jokerConvert(pieceId);
     if(!got)return;
+    // Un joker devient une créature : c'est bien une naissance, 'promo' est
+    // ici le bon son et non un emprunt.
     if(typeof playSound==='function')playSound('promo');
     if(typeof showNotif==='function')showNotif('+'+got+' '+p.name,'ok');
     closeJokerModal();

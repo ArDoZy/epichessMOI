@@ -8,7 +8,8 @@
 // adresse, mais n'a plus d'entrée dans ce panneau.
 //
 // Dépendances : main.js (ADMIN_MODE),
-// rules-engine.js (_soundEnabled), combat-music.js (window._musicGain).
+// rules-engine.js (_soundEnabled), combat-music.js (window._musicGain),
+// sfx.js (hapticSetEnabled, hapticSupported, haptic).
 //
 // Si vous ajoutez un nouveau réglage : ajoutez sa ligne .sp-row dans
 // index.html (section #settings-panel) et son listener ici.
@@ -57,10 +58,34 @@ function applySfxVol(v){
   const sfx=document.getElementById('sp-sfx-vol');
   sfx.addEventListener('input',function(){applySfxVol(parseFloat(this.value));savePrefs({sfx:_sfxVol});});
 
+  // -- VIBRATION ---------------------------------------------------------
+  // Réglage SÉPARÉ du son : jouer en silence et garder la vibration est un
+  // usage courant (transports), l'inverse aussi (quelqu'un que la vibration
+  // agace). Les regrouper obligerait à sacrifier l'un pour l'autre.
+  const hap=document.getElementById('sp-haptic');
+  const hapRow=document.getElementById('sp-haptic-row');
+  // Un appareil qui ne sait pas vibrer ne doit pas montrer l'interrupteur :
+  // un réglage qui ne commande rien est pire que pas de réglage.
+  if(hapRow&&typeof hapticSupported==='function'&&!hapticSupported())hapRow.style.display='none';
+  if(hap){
+    hap.addEventListener('click',()=>{
+      const on=hap.getAttribute('aria-checked')!=='true';
+      hap.setAttribute('aria-checked',on?'true':'false');
+      if(typeof hapticSetEnabled==='function')hapticSetEnabled(on);
+      savePrefs({haptic:on});
+      // On fait sentir le réglage au moment où on l'allume : c'est la seule
+      // façon de savoir ce qu'on vient d'activer.
+      if(on&&typeof haptic==='function')haptic('place');
+    });
+  }
+
   // Restitution au chargement : le panneau doit montrer ce qui est réellement
-  // appliqué, sinon le curseur ment dès la seconde visite.
+  // appliqué, sinon les réglages mentent dès la seconde visite.
   const prefs=loadPrefs();
   if(typeof prefs.sfx==='number'){applySfxVol(prefs.sfx);sfx.value=_sfxVol;}
+  const hapOn=(typeof prefs.haptic==='boolean')?prefs.haptic:true;
+  if(typeof hapticSetEnabled==='function')hapticSetEnabled(hapOn);
+  if(hap)hap.setAttribute('aria-checked',hapOn?'true':'false');
 })();
 
 // Le mode test (bac à sable : tout le catalogue, 10 000 ELO, perles

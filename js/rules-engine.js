@@ -561,8 +561,14 @@ function executeGameMove(from,to,gs){
     else{gs.pendingPromo={from,to,p};showPromoModal(gs);return;}
   }else{
     // Son du déplacement normal
+    // L'INTENSITÉ SUIT LA VALEUR DE LA PIÈCE PRISE. Prendre un pion et
+    // prendre le Grand Maître (13 points) produisaient exactement le même
+    // bruit : le moment le plus satisfaisant d'une partie d'échecs ne disait
+    // rien de ce qui venait de se passer. sfxCaptureForce (js/sfx.js) en
+    // tire un chiffre de 0,28 à 1 qui déplace ensemble le volume, la
+    // hauteur, la brillance, la vibration et la secousse du plateau.
     if(to.castle)playSound('castle');
-    else if(captured)playSound('capture');
+    else if(captured)playSound('capture',{force:(typeof sfxCaptureForce==='function')?sfxCaptureForce(captured.pieceId):0.5});
     else playSound('move');
     // Enregistrer le coup dans l'historique de positions (pour détecter les allers-retours IA)
     gs.lastMoveHistory=gs.lastMoveHistory||[];
@@ -607,42 +613,27 @@ function playTone(freq,type,duration,volume,fadeOut){
   osc.start(ctx.currentTime);osc.stop(ctx.currentTime+duration);
 }
 
-function playSound(type){
+// ----------------------------------------------------------------
+// LE POINT D'ENTRÉE UNIQUE DES BRUITAGES
+// ----------------------------------------------------------------
+// playSound() était un empilement de playTone() : une sinusoïde à 440 Hz
+// pour un déplacement, deux dents de scie pour une capture. Des bips. Le
+// moteur vit maintenant dans js/sfx.js — couches, enveloppes, bruit filtré,
+// variation de hauteur, ducking de la musique et retour haptique — et cette
+// fonction n'est plus que le guichet qui y mène.
+//
+// ELLE GARDE SON NOM ET SA SIGNATURE : une centaine d'appels y mènent depuis
+// tout le jeu, et aucun n'a eu à changer. Le second argument est nouveau et
+// facultatif : {force} 0..1 dit la VIOLENCE de l'événement (prendre un pion
+// n'est pas prendre le Grand Maître), {shakeEl} l'élément à faire trembler.
+//
+// Le repli sur playTone() n'est pas décoratif : si js/sfx.js ne s'est pas
+// chargé, le jeu doit rester jouable avec du son plutôt que muet.
+function playSound(type,opts){
   if(!_soundEnabled)return;
+  if(typeof sfxFeel==='function'){sfxFeel(type,opts);return;}
   const ctx=getAudioCtx();if(!ctx)return;
-  switch(type){
-    case 'move':{
-      playTone(440,'sine',0.07,0.28,true);
-      break;}
-    case 'capture':{
-      playTone(180,'sawtooth',0.04,0.48,true);
-      setTimeout(()=>playTone(120,'sawtooth',0.08,0.32,true),30);
-      break;}
-    case 'check':{
-      playTone(660,'square',0.06,0.38,true);
-      setTimeout(()=>playTone(880,'square',0.08,0.38,true),80);
-      break;}
-    case 'win':{
-      [523,659,784,1047].forEach((f,i)=>setTimeout(()=>playTone(f,'sine',0.18,0.45,true),i*120));
-      break;}
-    case 'loss':{
-      [440,370,294,220].forEach((f,i)=>setTimeout(()=>playTone(f,'triangle',0.22,0.40,true),i*130));
-      break;}
-    case 'draw':{
-      playTone(330,'sine',0.12,0.35,true);
-      setTimeout(()=>playTone(330,'sine',0.12,0.35,true),180);
-      break;}
-    case 'castle':{
-      playTone(523,'sine',0.06,0.32,true);
-      setTimeout(()=>playTone(659,'sine',0.09,0.32,true),70);
-      break;}
-    case 'promo':{
-      [523,659,784,1047,1319].forEach((f,i)=>setTimeout(()=>playTone(f,'sine',0.14,0.40,true),i*80));
-      break;}
-    case 'error':{
-      playTone(200,'sawtooth',0.12,0.35,true);
-      break;}
-  }
+  playTone(type==='capture'?180:440,'sine',0.08,0.3,true);
 }
 
 function initAudioOnInteraction(){

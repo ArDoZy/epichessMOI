@@ -24,6 +24,10 @@
 <title>Epic Chess, variante d'échecs alchimique : composez votre armée</title>
 <meta name="description" content="Les Alchimistes ont insufflé la vie aux pièces d'échecs. Composez votre armée de créatures et affrontez les autres Alchimistes."/>
 <link rel="canonical" href="https://epichess.app/"/>
+<!-- Le manifeste n'était référencé nulle part : le navigateur ne pouvait
+     donc jamais proposer l'installation sur l'écran d'accueil, et le
+     fichier ne servait à rien. Voir js/pwa.js et sw.js. -->
+<link rel="manifest" href="/site.webmanifest"/>
 <meta name="robots" content="index,follow,max-snippet:-1,max-image-preview:large,max-video-preview:-1"/>
 <meta name="author" content="Epic Chess"/>
 <meta name="theme-color" content="#0e1216"/>
@@ -180,37 +184,16 @@
      js/cube-nav.js) : partout ailleurs il ne servait qu'à réserver une bande
      vide au-dessus du titre. -->
 
-<!-- CHOIX DU PSEUDO, À LA TOUTE PREMIÈRE VISITE UNIQUEMENT.
-     IL N'Y A PLUS DE PAGE DE CONNEXION. C'en était une (#page-login, avec la
-     classe `active` posée directement dans ce fichier), et comme elle était
-     donc affichée dès le premier octet de HTML, on la voyait CLIGNOTER à
-     chaque ouverture du jeu — le temps que les scripts se chargent et que le
-     compte enregistré soit reconnu (accountsBoot, js/accounts.js).
-     C'est maintenant un simple voile masqué par défaut (`display:none` en
-     dur ci-dessous, comme #lore-intro), que accountsBoot n'affiche QUE s'il
-     n'y a aucun pseudo enregistré. Un joueur qui revient ne le voit jamais,
-     pas même une image. -->
-<div class="pseudo-gate" id="pseudo-gate" style="display:none">
-  <div class="login-wrap">
-    <!-- L'emblème (le sceau d'alchimiste) est injecté par mountEmblems()
-         dans js/main.js : un seul tracé, tous les emplacements. La classe
-         `game-emblem` est le crochet, `login-emblem` ne règle que la taille. -->
-    <div class="login-logo"><div class="game-emblem login-emblem"></div><h1>EPIC CHESS</h1><p>Les Alchimistes ont insufflé la vie aux pièces d'échecs. Composez votre armée de créatures et affrontez les autres Alchimistes.</p></div>
-    <!-- UN SEUL COMPTE, toujours connecté : pas de mot de passe, pas de
-         changement de compte, pas de déconnexion (voir js/accounts.js). -->
-    <div class="login-card">
-      <div class="lbl">Choisissez votre pseudo</div>
-      <div class="iform">
-        <input class="linput" id="reg-u" type="text" placeholder="Pseudo (2–20 caractères)" maxlength="20" autocomplete="off">
-        <button class="btn btn-primary" id="btn-reg">Commencer</button>
-      </div>
-    </div>
-
-    <!-- Le texte de présentation et la FAQ indexable sont sur /info
-         (info.html), atteignable par ce bouton « i » discret. -->
-    <a class="login-info-btn" id="login-info-btn" href="/info" title="À propos d'Epic Chess" aria-label="À propos d'Epic Chess">i</a>
-  </div>
-</div>
+<!-- IL N'Y A PLUS AUCUN ÉCRAN AVANT LE JEU.
+     Ici se trouvaient successivement une page de connexion (#page-login) puis
+     un voile de choix du pseudo (#pseudo-gate) : dans les deux cas un
+     formulaire posé entre quelqu'un qui vient d'ouvrir le lien et le jeu
+     qu'il est venu voir. La première ouverture crée maintenant elle-même un
+     compte au nom d'Alchimiste tiré au sort et entre directement dans le
+     Lore puis le tutoriel (accountsBoot, js/accounts.js).
+     Le joueur se renomme, crée d'autres comptes et bascule entre eux depuis
+     la page Comptes (#page-account, js/account-ui.js), ouverte par la ligne
+     « Compte » du panneau de réglages. -->
 
 <!-- Le modal de choix d'instructeur a disparu : il n'y a plus qu'un seul
      adversaire IA, à pleine puissance (voir INSTRUCTOR dans data-pieces.js).
@@ -776,6 +759,25 @@
 <button class="btn btn-gold voie-ok-bar" id="voie-ok">OK</button>
 </div>
 
+<!-- PAGE COMPTES : l'identité du joueur (js/account-ui.js).
+     Ouverte par la ligne « Compte » du panneau de réglages. Elle reprend la
+     mise en page de la Voie (zone défilante + pastille « OK » en bas) pour
+     que toutes les pages secondaires se ferment du même geste.
+     Le corps (#account-body) est entièrement produit par
+     renderAccountPage() : rien de son contenu ne vit ici. -->
+<div id="page-account" class="page">
+<div class="voie-scroll" id="account-scroll">
+  <div class="voie-inner acc-inner">
+    <div class="voie-hdr"><div class="voie-title">Comptes</div></div>
+    <div id="account-body"></div>
+    <p class="acc-foot">Les comptes vivent dans ce navigateur, sur cet appareil.
+      Ils ne sont envoyés nulle part — et ils disparaissent si vous effacez les
+      données du site.</p>
+  </div>
+</div>
+<button class="btn btn-gold voie-ok-bar" id="acc-close">OK</button>
+</div>
+
 <!-- PAGE RÉCOMPENSES : les deux voies qui ne dépendent pas de l'ELO.
      L'échiquier a trois lignes, le jeu a trois voies, et chacune se lit dans
      le sens de la sienne — la COLONNE des victoires de haut en bas, la RANGÉE
@@ -845,7 +847,11 @@
         <div class="gp-taken" id="cap-opp"></div>
       </div>
 
-      <div class="status-bar" id="game-status">En attente...</div>
+      <!-- role=status + aria-live : échec, mat et nulle sont annoncés à voix
+           haute au lieu de n'exister qu'en couleur. `polite` et non `assertive`
+           parce qu'une annonce de partie ne doit pas couper la lecture d'un
+           coup en cours. -->
+      <div class="status-bar" id="game-status" role="status" aria-live="polite" aria-atomic="true">En attente...</div>
       <div class="gs-block gs-grow">
         <div class="gsb-title">Journal des coups</div>
         <div class="history-nav">
@@ -864,9 +870,21 @@
         <div class="gp-taken" id="cap-me"></div>
       </div>
 
+      <!-- Les deux styles en dur (font-size:11px;padding:8px) donnaient des
+           boutons de 30 px de haut : les deux actions les plus lourdes de
+           conséquence du jeu — annuler un coup, abandonner la partie —
+           étaient les plus difficiles à viser. La taille vit maintenant dans
+           .game-btns .btn (voir [GAME] dans css/style.css). -->
+      <!-- LES EMOTES (js/multiplayer.js). Elles n'apparaissent qu'en partie
+           en ligne : hors ligne, elles n'auraient personne à qui parler.
+           Six pictogrammes et aucun texte libre — un champ de saisie dans un
+           jeu compétitif demanderait une modération, un signalement et un
+           blocage, trois systèmes qui n'existent pas ici. Le dernier bouton
+           est la sourdine, le prix d'entrée de toute communication en jeu. -->
+      <div class="mp-emote-bar" id="mp-emote-bar" style="display:none"></div>
       <div class="game-btns">
-        <button class="btn btn-ghost" id="game-undo" style="font-size:11px;padding:8px">Annuler coup</button>
-        <button class="btn btn-danger" id="game-quit" style="font-size:11px;padding:8px">Abandonner</button>
+        <button class="btn btn-ghost" id="game-undo">Annuler coup</button>
+        <button class="btn btn-danger" id="game-quit">Abandonner</button>
       </div>
     </aside>
   </div>
@@ -987,6 +1005,35 @@
     <span class="sp-label">Bruitages</span>
     <input type="range" class="sp-slider" id="sp-sfx-vol" min="0" max="1" step="0.05" value="1">
   </div>
+  <!-- LE COMPTE EST ICI ET NULLE PART AILLEURS. Le jeu ne demande plus de
+       pseudo au démarrage (voir js/accounts.js) : c'est donc le seul chemin
+       vers son identité — se renommer, créer un autre compte, passer de l'un
+       à l'autre. Le rouage est le bon endroit : c'est là qu'on va quand on
+       cherche à régler quelque chose sur soi plutôt que sur la partie. -->
+  <!-- VIBRATION : réglage à part du son, et c'est voulu. Quelqu'un qui joue
+       en silence dans un train veut souvent GARDER la vibration, et
+       l'inverse est vrai aussi. La ligne disparaît sur un appareil qui ne
+       sait pas vibrer (voir hapticSupported, js/sfx.js) : un interrupteur
+       qui ne commande rien est pire que pas d'interrupteur. -->
+  <div class="sp-row" id="sp-haptic-row">
+    <span class="sp-label">Vibration</span>
+    <button class="sp-toggle" id="sp-haptic" role="switch" aria-checked="true" aria-label="Vibration"><span></span></button>
+  </div>
+  <!-- INSTALLER LE JEU. La ligne n'apparaît que si le navigateur dit que
+       c'est possible et que ce n'est pas déjà fait (pwaRefreshSettingsRow,
+       js/pwa.js) : un bouton qui ne fait rien est pire que pas de bouton. -->
+  <button class="sp-account-btn" id="sp-install-row" style="display:none">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M12 4v11"/><path d="M8 11.5 12 15.5 16 11.5"/><path d="M5 19h14"/>
+    </svg>
+    <span id="sp-install">Installer le jeu</span>
+  </button>
+  <button class="sp-account-btn" id="sp-account">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="12" cy="8.5" r="3.6"/><path d="M4.8 20a7.2 7.2 0 0 1 14.4 0"/>
+    </svg>
+    <span>Compte</span>
+  </button>
 </div>
 
 <!-- ================================================================
@@ -1028,6 +1075,10 @@
 <script src="js/armies.js"></script>
 <script src="js/adversaires.js"></script>
 <script src="js/combat-intro.js"></script>
+<!-- sfx.js AVANT rules-engine.js : playSound() y délègue. L'ordre n'est
+     pas strictement requis (l'appel est différé jusqu'au premier son)
+     mais il dit la dépendance. -->
+<script src="js/sfx.js"></script>
 <script src="js/rules-engine.js"></script>
 <!-- Schémas de déplacement : interroge le moteur de règles, donc APRÈS lui. -->
 <script src="js/piece-moves.js"></script>
@@ -1044,6 +1095,8 @@
 <script src="js/tuto-drill.js"></script>
 <script src="js/tutorial.js"></script>
 <script src="js/lore-intro.js"></script>
+<script src="js/pwa.js"></script>
+<script src="js/account-ui.js"></script>
 <script src="js/settings-admin.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/multiplayer.js"></script>

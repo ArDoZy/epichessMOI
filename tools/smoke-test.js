@@ -90,7 +90,10 @@ async function launchChromium(){
 // couvercle pour les planches (voir chestBreakReady, js/chest-break.js).
 // Leur 404 est donc un comportement voulu et non une panne, au même titre
 // que les polices Google ou le CDN Supabase quand le réseau est coupé.
-const IGNORED_CONSOLE=/ERR_TUNNEL_CONNECTION_FAILED|ERR_CONNECTION_RESET|ERR_NAME_NOT_RESOLVED|fonts\.googleapis|fonts\.gstatic|jsdelivr|supabase/;
+// ERR_CERT_AUTHORITY_INVALID vient des environnements dont le réseau passe
+// par un mandataire à certificat propre : c'est la machine de test qui
+// refuse le certificat d'une ressource externe, pas le jeu qui échoue.
+const IGNORED_CONSOLE=/ERR_TUNNEL_CONNECTION_FAILED|ERR_CONNECTION_RESET|ERR_NAME_NOT_RESOLVED|ERR_CERT_AUTHORITY_INVALID|fonts\.googleapis|fonts\.gstatic|jsdelivr|supabase/;
 const OPTIONAL_ASSET=/adversaires\/[a-z-]+\.png|backgrounds\/main-page\.png|chests\/[a-z]+\//;
 
 (async()=>{
@@ -119,19 +122,22 @@ const OPTIONAL_ASSET=/adversaires\/[a-z-]+\.png|backgrounds\/main-page\.png|ches
   console.log('\nEpic Chess · test de fumée\n');
   await page.goto('http://localhost:'+PORT+'/',{waitUntil:'domcontentloaded'});
 
-  // PREMIÈRE VISITE : le voile de choix du pseudo s'affiche. Il n'y a plus de
-  // page de connexion — c'était une page marquée `active` dans le HTML, donc
-  // visible dès le premier octet, et qui CLIGNOTAIT à chaque ouverture du jeu
-  // avant que le compte enregistré soit reconnu. Ce voile est masqué en dur et
-  // n'est montré que faute de pseudo (accountsBoot, js/accounts.js) — l'étape
-  // « le jeu reprend sans voile » plus bas vérifie l'autre moitié.
-  await step('le choix du pseudo s\'affiche à la première visite',async()=>{
-    await page.waitForSelector('#pseudo-gate.show',{timeout:8000});
+  // PREMIÈRE VISITE : AUCUN ÉCRAN AVANT LE JEU. Il y a eu successivement une
+  // page de connexion puis un voile de choix du pseudo ; les deux posaient un
+  // formulaire entre le visiteur et le jeu. La première ouverture crée
+  // maintenant elle-même un compte d'Alchimiste et entre dans le Lore
+  // (accountsBoot, js/accounts.js). C'est la première chose que voit un
+  // nouveau joueur : si elle casse, plus personne n'atteint le jeu.
+  await step('la première visite entre directement dans le jeu',async()=>{
+    await page.waitForSelector('#lore-intro',{state:'visible',timeout:8000});
     if(await page.locator('#page-login').count())throw new Error('la page de connexion existe encore');
-  });
-
-  await step('l\'emblème est injecté',async()=>{
-    if(await page.locator('.login-emblem svg.emblem').count()!==1)throw new Error('emblème absent');
+    if(await page.locator('#pseudo-gate').count())throw new Error('le voile de pseudo existe encore');
+    const acc=await page.evaluate(()=>CUR_ACC);
+    if(!acc)throw new Error('aucun compte créé à la première ouverture');
+    if(!/^(Alchimiste|Apprenti|Adepte|Souffleur|Artisan|Disciple) \d{4}$/.test(acc))
+      throw new Error('pseudo d\'ouverture inattendu : '+acc);
+    const list=await page.evaluate(()=>accountsList());
+    if(list.length!==1||list[0]!==acc)throw new Error('la liste des comptes ne contient pas le compte créé');
   });
 
   // L'EMBLÈME EST PARTOUT OÙ LE JEU SE PRÉSENTE. Il n'a longtemps vécu que
@@ -145,7 +151,9 @@ const OPTIONAL_ASSET=/adversaires\/[a-z-]+\.png|backgrounds\/main-page\.png|ches
     const bad=await page.evaluate(()=>{
       const out=[];
       const slots=[...document.querySelectorAll('.game-emblem')];
-      ['login-emblem','menu-emblem'].forEach(cls=>{
+      // .login-emblem a disparu avec le voile de choix du pseudo : il n'y a
+      // plus d'écran avant le jeu (voir js/accounts.js).
+      ['menu-emblem'].forEach(cls=>{
         if(!slots.some(el=>el.classList.contains(cls)))out.push('emplacement manquant : .'+cls);
       });
       slots.forEach(el=>{
@@ -168,20 +176,6 @@ const OPTIONAL_ASSET=/adversaires\/[a-z-]+\.png|backgrounds\/main-page\.png|ches
     const src=(man.icons||[]).map(i=>i.src);
     if(!src.includes(href))throw new Error('le manifeste pointe '+src.join(',')+' au lieu de '+href);
     if(man.orientation!=='portrait')throw new Error('le manifeste n\'impose plus le portrait');
-  });
-
-  await step('un refus de création de compte est expliqué',async()=>{
-    await page.fill('#reg-u','a');
-    await page.click('#btn-reg');
-    const t=await page.locator('.notif').first().textContent({timeout:3000});
-    if(!/Pseudo/.test(t))throw new Error('message inattendu : '+t);
-  });
-
-  await step('un compte se crée et le voile se referme',async()=>{
-    await page.fill('#reg-u','SmokeTest');
-    await page.click('#btn-reg');
-    await page.waitForSelector('#lore-intro',{state:'visible',timeout:8000});
-    if(await page.isVisible('#pseudo-gate'))throw new Error('le voile de pseudo reste affiché après création');
   });
 
   // LE LORE, EN QUATRE PAGES (js/lore-intro.js). C'est le tout premier écran
@@ -222,22 +216,174 @@ const OPTIONAL_ASSET=/adversaires\/[a-z-]+\.png|backgrounds\/main-page\.png|ches
       throw new Error('le coffre du jour est encore dû après son ouverture');
   });
 
-  // L'AUTRE MOITIÉ DU CORRECTIF : à la RÉOUVERTURE, le voile ne doit jamais
-  // apparaître, pas même le temps d'une image. On le vérifie deux fois : sur
-  // le HTML brut servi (l'élément part masqué, donc rien ne peut clignoter
-  // avant que les scripts tournent) et sur la page une fois lancée.
-  await step('à la réouverture, aucun voile de connexion ne clignote',async()=>{
+  // À LA RÉOUVERTURE : rien ne clignote et le compte est repris. Aucune page
+  // ne doit être marquée `active` dans le HTML servi — c'est ce qui faisait
+  // apparaître l'ancienne page de connexion avant même que les scripts
+  // tournent.
+  await step('à la réouverture, le compte est repris sans écran intermédiaire',async()=>{
     const brut=await (await fetch('http://localhost:'+PORT+'/')).text();
-    const balise=(brut.match(/<div class="pseudo-gate"[^>]*>/)||[''])[0];
-    if(!balise)throw new Error('#pseudo-gate absent du HTML servi');
-    if(!/display:\s*none/.test(balise))
-      throw new Error('le voile n\'est pas masqué dans le HTML : il clignotera ('+balise+')');
     if(/class="page active"/.test(brut))
       throw new Error('une page est encore marquée active dans le HTML servi');
+    const avant=await page.evaluate(()=>CUR_ACC);
     await page.goto('http://localhost:'+PORT+'/',{waitUntil:'domcontentloaded'});
     await page.waitForSelector('#cube-jouer-btn',{state:'visible',timeout:8000});
-    if(await page.isVisible('#pseudo-gate'))throw new Error('le voile s\'affiche alors qu\'un pseudo est enregistré');
-    if(!await page.evaluate(()=>CUR_ACC==='SmokeTest'))throw new Error('le compte enregistré n\'est pas repris');
+    if(await page.evaluate(()=>CUR_ACC)!==avant)throw new Error('le compte enregistré n\'est pas repris');
+    if(await page.evaluate(()=>document.querySelectorAll('.page.active').length))
+      throw new Error('une page secondaire couvre le menu à la réouverture');
+  });
+
+  // ----------------------------------------------------------------
+  // LA PAGE COMPTES (js/account-ui.js)
+  // ----------------------------------------------------------------
+  // C'est le seul chemin vers son identité depuis que le jeu ne demande plus
+  // de pseudo au démarrage : renommer, créer, basculer, supprimer.
+  await step('la page Comptes s\'ouvre depuis les réglages',async()=>{
+    await page.click('#settings-btn');
+    await page.click('#sp-account');
+    await page.waitForSelector('#page-account.active',{timeout:5000});
+    const nom=await page.textContent('.acc-name');
+    if(nom.trim()!==await page.evaluate(()=>CUR_ACC))
+      throw new Error('le sceau n\'affiche pas le compte courant : '+nom);
+    if(await page.locator('.acc-stat').count()!==4)throw new Error('les quatre chiffres du compte ne sont pas tous là');
+  });
+
+  await step('le profil montre la forme et la créature fétiche',async()=>{
+    // L'ELO était un NOMBRE NU : le jeu enregistrait le résultat de chaque
+    // partie et n'en montrait rien. On sème un passé plausible et on vérifie
+    // que la page le raconte.
+    await page.evaluate(()=>{
+      const h=[];
+      for(let i=0;i<12;i++)h.push({result:i%3===0?'loss':'win',oldElo:400+i*5,newElo:405+i*5,
+        delta:5,date:Date.now()-i*86400000,ranked:true,army:['peureux','fourmi'],mode:'ia'});
+      accSet('match_history',h);
+      accSet('piece_stats',{peureux:{g:12,w:8},fourmi:{g:3,w:3}});
+      accSet('best_streak',7);
+      accSet('ranked_games',12);accSet('ranked_wins',8);
+      renderAccountPage();
+    });
+    const bad=await page.evaluate(()=>{
+      const out=[];
+      if(document.querySelectorAll('.acc-form-dots span').length!==10)
+        out.push('la bande de forme ne montre pas dix parties');
+      const fav=document.querySelector('.acc-fav-name');
+      if(!fav)out.push('aucune créature fétiche');
+      // La Fourmi a 3 parties, sous le minimum : c'est le Peureux, 12 parties,
+      // qui doit sortir — sinon on afficherait un « 100 % » sur trois parties.
+      else if(!/Peureux/i.test(fav.textContent))out.push('fétiche inattendue : '+fav.textContent);
+      const stats=[...document.querySelectorAll('.acc-stat-k')].map(e=>e.textContent);
+      if(!stats.some(t=>/Meilleure série/.test(t)))out.push('la meilleure série n\'est pas affichée');
+      const vals=[...document.querySelectorAll('.acc-stat-v')].map(e=>e.textContent);
+      if(!vals.some(t=>/67|66/.test(t)))out.push('le taux de victoire est faux : '+vals.join(' / '));
+      if(!vals.includes('7'))out.push('la meilleure série n\'a pas la bonne valeur : '+vals.join(' / '));
+      return out;
+    });
+    if(bad.length)throw new Error(bad.join(' · '));
+  });
+
+  await step('une partie nourrit les statistiques de carrière',async()=>{
+    const bad=await page.evaluate(()=>{
+      const out=[];
+      const avant=JSON.parse(JSON.stringify(vvLoadPieceStats()));
+      vvNotePieceStats(['peureux','peureux','fourmi'],true);
+      const apres=vvLoadPieceStats();
+      // Une créature alignée en double ne compte qu'UNE partie : on mesure
+      // les parties jouées avec elle, pas les exemplaires posés.
+      if(apres.peureux.g!==avant.peureux.g+1)
+        out.push('une créature en double compte deux fois : '+avant.peureux.g+' -> '+apres.peureux.g);
+      if(apres.peureux.w!==avant.peureux.w+1)out.push('la victoire n\'est pas comptée');
+      vvNoteStreak(3);
+      if(vvLoadBestStreak()!==7)out.push('une série plus courte a écrasé le record : '+vvLoadBestStreak());
+      vvNoteStreak(11);
+      if(vvLoadBestStreak()!==11)out.push('un nouveau record n\'est pas retenu');
+      return out;
+    });
+    if(bad.length)throw new Error(bad.join(' · '));
+  });
+
+  await step('le compte se renomme',async()=>{
+    await page.click('#acc-rename-open');
+    await page.fill('#acc-rename-input','SmokeTest');
+    await page.click('#acc-rename-ok');
+    await page.waitForTimeout(200);
+    if(await page.evaluate(()=>CUR_ACC)!=='SmokeTest')throw new Error('le renommage n\'a pas pris');
+    // Le renommage recopie les clés mc_p_<pseudo>_* : la progression doit
+    // suivre le nouveau nom, sinon le joueur perd tout en se renommant.
+    const armees=await page.evaluate(()=>accGetFor('SmokeTest','armies',null));
+    if(!armees||!armees.length)throw new Error('les données n\'ont pas suivi le renommage');
+    if(!await page.evaluate(()=>accountsList().includes('SmokeTest')))
+      throw new Error('la liste des comptes garde l\'ancien pseudo');
+  });
+
+  await step('« quitter ce compte » annonce où il emmène',async()=>{
+    // Le « se déconnecter » du jeu. Il ne doit JAMAIS mener à un écran de
+    // connexion (il n'y en a pas) ni supprimer quoi que ce soit : il pose le
+    // joueur sur une autre identité jouable, le compte quitté restant intact.
+    await page.click('#acc-logout');
+    const msg=await page.textContent('#confirm-msg');
+    if(!/Quitter/.test(msg))throw new Error('confirmation inattendue : '+msg);
+    if(!/seul compte/.test(msg))throw new Error('le seul compte de l\'appareil n\'est pas annoncé comme tel : '+msg);
+    await page.click('#confirm-cancel');
+    if(await page.evaluate(()=>CUR_ACC)!=='SmokeTest')throw new Error('annuler a quand même changé de compte');
+    if(!await page.evaluate(()=>accountsList().includes('SmokeTest')))
+      throw new Error('le compte a disparu de la liste sur une simple annulation');
+  });
+
+  await step('un pseudo déjà pris est refusé',async()=>{
+    // Les notifications s'empilent : lire « la première » renverrait celle de
+    // l'étape précédente. On attend celle qui porte le message attendu, et
+    // c'est son absence au bout de 3 s qui fait échouer l'étape.
+    await page.fill('#acc-new-input','SmokeTest');
+    await page.click('#acc-new-ok');
+    await page.waitForFunction(
+      ()=>[...document.querySelectorAll('.notif')].some(n=>/déjà ce pseudo/.test(n.textContent)),
+      null,{timeout:3000});
+    if(await page.locator('#confirm-modal.show').count())
+      throw new Error('un pseudo refusé ouvre quand même la confirmation');
+  });
+
+  await step('un second compte se crée et devient le compte courant',async()=>{
+    await page.fill('#acc-new-input','SmokeDeux');
+    await page.click('#acc-new-ok');
+    await page.click('#confirm-ok');
+    // accountCreate recharge la page (voir l'en-tête de js/accounts.js). Il
+    // FAUT attendre la fin du chargement avant d'interroger la page :
+    // pendant la navigation, le contexte d'exécution est un document vierge
+    // où aucun script du jeu n'existe encore.
+    await page.waitForLoadState('load');
+    await page.waitForFunction(()=>typeof CUR_ACC!=='undefined'&&CUR_ACC==='SmokeDeux',null,{timeout:10000});
+    const list=await page.evaluate(()=>accountsList());
+    if(!list.includes('SmokeTest')||!list.includes('SmokeDeux'))
+      throw new Error('les deux comptes ne cohabitent pas : '+list.join(','));
+    // Un compte neuf repart de zéro : c'est toute la promesse de la page.
+    if(await page.evaluate(()=>vvLoadElo())!==0)throw new Error('le compte neuf ne part pas de 0 ELO');
+    // Et il reçoit le Lore, comme un premier lancement.
+    await page.waitForSelector('#lore-intro',{state:'visible',timeout:8000});
+  });
+
+  await step('on revient sur le premier compte',async()=>{
+    for(let i=0;i<4;i++){await page.click('#lore-next');await page.waitForTimeout(520);}
+    await page.waitForSelector('#tuto-root.show',{timeout:8000});
+    await page.click('#tuto-skip');
+    await page.click('#confirm-ok');
+    await page.waitForSelector('#tuto-root.show',{state:'hidden',timeout:8000});
+    // Le coffre quotidien s'ouvre de lui-même à la sortie du tutoriel : on le
+    // laisse se terminer, sinon il couvre la page Comptes.
+    if(await page.isVisible('#chest-modal.show')){
+      await page.click('#chest-visual');
+      for(let i=0;i<40&&await page.isVisible('#chest-modal.show');i++){
+        await page.waitForTimeout(650);await page.click('#chest-visual');
+      }
+    }
+    await page.click('#settings-btn');
+    await page.click('#sp-account');
+    await page.waitForSelector('#page-account.active',{timeout:5000});
+    await page.click('[data-switch="SmokeTest"]');
+    await page.click('#confirm-ok');
+    await page.waitForLoadState('load');
+    await page.waitForFunction(()=>typeof CUR_ACC!=='undefined'&&CUR_ACC==='SmokeTest',null,{timeout:10000});
+    // La bascule doit rendre au compte SA progression, pas celle de l'autre.
+    if(await page.evaluate(()=>savedArmies.length)<1)
+      throw new Error('le compte repris a perdu son armée');
   });
 
 
@@ -323,7 +469,169 @@ const OPTIONAL_ASSET=/adversaires\/[a-z-]+\.png|backgrounds\/main-page\.png|ches
       return false;
     });
     if(!ok)throw new Error('aucun coup légal');
-    if(await page.locator('#game-board .gc-piece.gc-move-in').count()<1)throw new Error('pièce non animée');
+    // LE PLATEAU EST PERSISTANT : la pièce ne rejoue plus une animation
+    // ponctuelle, elle GLISSE parce que son transform a changé et que la
+    // transition CSS s'en charge (voir js/game-render.js). Ce qu'on vérifie
+    // ici, c'est donc l'architecture qui rend le glissement possible :
+    // une couche de pièces, un nœud par pièce, positionné en transform.
+    const anim=await page.evaluate(()=>{
+      const out=[];
+      const layer=document.querySelector('#game-board .gc-layer');
+      if(!layer)return['aucune couche de pièces'];
+      const nodes=[...layer.querySelectorAll('.gc-piece')];
+      if(nodes.length<20)out.push('trop peu de pièces sur la couche : '+nodes.length);
+      if(nodes.some(n=>!/translate3d/.test(n.style.transform)))
+        out.push('une pièce n\'est pas positionnée en transform');
+      if(nodes.some(n=>!n.dataset.pid))out.push('une pièce sans identité');
+      // Chaque identité est unique : deux pièces qui partagent un id se
+      // recycleraient l'une l'autre et le diff deviendrait faux.
+      const ids=new Set(nodes.map(n=>n.dataset.pid));
+      if(ids.size!==nodes.length)out.push('des identités de pièce en double');
+      // Les cases ne portent plus de pièce : le hit-testing doit rester sur
+      // une grille immobile.
+      if(document.querySelectorAll('#game-board .gc .gc-piece').length)
+        out.push('une pièce est encore posée dans une case');
+      if(getComputedStyle(layer).pointerEvents!=='none')
+        out.push('la couche des pièces intercepte les clics');
+      return out;
+    });
+    if(anim.length)throw new Error(anim.join(' · '));
+  });
+
+  await step('le plateau n\'est pas reconstruit à chaque coup',async()=>{
+    // C'est TOUTE la raison d'être du chantier : si les cases sont recréées,
+    // aucune transition ne peut survivre et le tactile repart en vrille (un
+    // événement tactile reste attaché à l'élément d'origine, détruit en
+    // cours de geste). On marque une case, on joue, on vérifie qu'elle est
+    // toujours là.
+    const survecu=await page.evaluate(async()=>{
+      const cell=document.querySelector('#game-board .gc');
+      if(!cell)return 'aucune case';
+      cell.dataset.temoin='1';
+      const piece=document.querySelector('#game-board .gc-piece');
+      if(piece)piece.dataset.temoin='1';
+      const col=GS.playerColor;
+      if(GS.turn!==col)await new Promise(r=>{
+        const t=setInterval(()=>{if(GS.turn===col||GS.gameOver){clearInterval(t);r();}},200);
+        setTimeout(()=>{clearInterval(t);r();},25000);
+      });
+      for(let r=0;r<8;r++)for(let c=0;c<8;c++){
+        const p=GS.board[r][c];
+        if(!p||p.color!==col)continue;
+        const mv=getLegalMoves(GS.board,r,c,GS);
+        if(!mv.length)continue;
+        GS.lastMove={from:{r,c},to:mv[0],capture:!!GS.board[mv[0].r][mv[0].c]};
+        executeGameMove({r,c},mv[0],GS);
+        const out=[];
+        if(!document.querySelector('#game-board .gc[data-temoin]'))out.push('les cases ont été recréées');
+        if(piece&&piece.parentNode&&!document.querySelector('#game-board .gc-piece[data-temoin]'))
+          out.push('les pièces ont été recréées');
+        if(document.querySelectorAll('#game-board .gc').length!==64)out.push('le plateau n\'a plus 64 cases');
+        return out.join(' · ');
+      }
+      return 'aucun coup légal';
+    });
+    if(survecu)throw new Error(survecu);
+  });
+
+  // ----------------------------------------------------------------
+  // LE PLATEAU AU CLAVIER (js/game-render.js)
+  // ----------------------------------------------------------------
+  // Un jeu au tour par tour est l'un des rares genres réellement jouables
+  // sans souris ; celui-ci ne l'était pas du tout. On vérifie les trois
+  // choses qui le rendent praticable : une seule case tabulable, les flèches
+  // qui déplacent le curseur, et un plateau annoncé.
+  await step('le plateau se parcourt et se joue au clavier',async()=>{
+    const bad=await page.evaluate(()=>{
+      const out=[];
+      const cases=[...document.querySelectorAll('#game-board .gc')];
+      if(cases.length!==64){out.push('pas 64 cases');return out;}
+      const tabulables=cases.filter(c=>c.tabIndex===0);
+      if(tabulables.length!==1)
+        out.push(tabulables.length+' cases tabulables : il en faut exactement une');
+      if(document.getElementById('game-board').getAttribute('role')!=='grid')
+        out.push('le plateau n est pas annonce comme une grille');
+      if(cases.some(c=>c.getAttribute('role')!=='gridcell'))out.push('une case sans role');
+      const occupee=cases.find(c=>GS.board[+c.dataset.r][+c.dataset.c]);
+      const lab=occupee&&occupee.getAttribute('aria-label');
+      // FILES est en capitales dans ce jeu (voir les repères du plateau) :
+      // le libellé parlé suit la même convention que ce qui est écrit.
+      if(!lab||!/^[A-Ha-h][1-8], .+/.test(lab))out.push('libelle de case inattendu : '+lab);
+      const vide=cases.find(c=>!GS.board[+c.dataset.r][+c.dataset.c]);
+      if(vide&&!/case vide/.test(vide.getAttribute('aria-label')||''))
+        out.push('une case vide ne le dit pas');
+      const bar=document.getElementById('game-status');
+      if(bar.getAttribute('aria-live')!=='polite')out.push('la barre de statut n est pas annoncee');
+      return out;
+    });
+    if(bad.length)throw new Error(bad.join(' · '));
+
+    const dep=await page.evaluate(()=>{
+      const c=[...document.querySelectorAll('#game-board .gc')].find(x=>x.tabIndex===0);
+      c.focus();
+      return c.dataset.vi+'/'+c.dataset.vc;
+    });
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('ArrowRight');
+    const arr=await page.evaluate(()=>{
+      const c=document.activeElement;
+      if(!c||!c.classList.contains('gc'))return 'hors-plateau';
+      return c.dataset.vi+'/'+c.dataset.vc;
+    });
+    if(arr==='hors-plateau')throw new Error('le curseur a quitte le plateau');
+    if(arr===dep)throw new Error('les fleches ne deplacent pas le curseur ('+dep+')');
+    const seuls=await page.evaluate(()=>
+      [...document.querySelectorAll('#game-board .gc')].filter(c=>c.tabIndex===0).length);
+    if(seuls!==1)throw new Error(seuls+' cases tabulables apres deplacement');
+  });
+
+  // ----------------------------------------------------------------
+  // LES EMOTES ET L'ARMÉE ADVERSE (js/multiplayer.js)
+  // ----------------------------------------------------------------
+  await step('les emotes ont un pictogramme lisible et une bulle',async()=>{
+    const bad=await page.evaluate(()=>{
+      const out=[];
+      if(!Array.isArray(MP_EMOTES)||MP_EMOTES.length<4){out.push('table d emotes absente');return out;}
+      MP_EMOTES.forEach(e=>{
+        if(!e.id||!e.label)out.push('emote sans identite');
+        // Un \uXXXX ne prend que quatre chiffres : un emoji hors du plan de
+        // base ecrit ainsi produit deux caracteres parasites au lieu du
+        // pictogramme. C'est exactement le piege qu'on verifie ici.
+        if([...e.glyph].length!==1)out.push('pictogramme mal echappe pour '+e.id+' : '+e.glyph);
+      });
+      mpShowEmote(MP_EMOTES[0].id,true);
+      if(!document.querySelector('#human-player-bar .mp-emote-bubble.show'))
+        out.push('la bulle du joueur ne s affiche pas');
+      mpShowEmote(MP_EMOTES[1].id,false);
+      if(!document.querySelector('#ai-player-bar .mp-emote-bubble.show'))
+        out.push('la bulle de l adversaire ne s affiche pas');
+      return out;
+    });
+    if(bad.length)throw new Error(bad.join(' · '));
+  });
+
+  await step('la sourdine et le debit maximal tiennent',async()=>{
+    const bad=await page.evaluate(()=>{
+      const out=[];
+      const bulle=()=>document.querySelector('#ai-player-bar .mp-emote-bubble');
+      mpEmoteSetMuted(true);
+      bulle().classList.remove('show');
+      mpReceiveEmote(MP_EMOTES[0].id);
+      if(bulle().classList.contains('show'))out.push('une emote passe malgre la sourdine');
+      mpEmoteSetMuted(false);
+      if(mpEmoteMuted())out.push('la sourdine ne se releve pas');
+      // Deux emotes coup sur coup : la seconde est ignoree. C'est la
+      // protection contre un client modifie, qui n a que faire de SA limite.
+      bulle().classList.remove('show');
+      mpReceiveEmote(MP_EMOTES[0].id);
+      if(!bulle().classList.contains('show'))out.push('la premiere emote n est pas passee');
+      bulle().classList.remove('show');
+      mpReceiveEmote(MP_EMOTES[1].id);
+      if(bulle().classList.contains('show'))
+        out.push('deux emotes d affilee passent : rien ne limite le debit');
+      return out;
+    });
+    if(bad.length)throw new Error(bad.join(' · '));
   });
 
   await step('l\'Instructeur répond',async()=>{
@@ -1353,6 +1661,287 @@ const OPTIONAL_ASSET=/adversaires\/[a-z-]+\.png|backgrounds\/main-page\.png|ches
       return out;
     });
     if(bad.length)throw new Error(bad.join(' · '));
+  });
+
+  // ----------------------------------------------------------------
+  // LA COURBE D'ASCENSION (vvCalcNewElo, js/voie.js)
+  // ----------------------------------------------------------------
+  // C'est le réglage principal du jeu : monter vite jusqu'à 1000, se battre
+  // après. Les trois règles se vérifient sur des cas nommés plutôt que sur
+  // des valeurs exactes — les constantes bougeront, la promesse non.
+  await step('l\'ascension paie plus qu\'elle ne coûte sous 1000 ELO',async()=>{
+    const bad=await page.evaluate(()=>{
+      const out=[];
+      // Duel équilibré à différents niveaux, hors parties de placement.
+      const at=e=>({
+        win :vvCalcNewElo(e,e,'win',40).delta,
+        loss:vvCalcNewElo(e,e,'loss',40).delta,
+      });
+      const bas=at(100),milieu=at(700),haut=at(1400);
+      if(bas.win<=Math.abs(bas.loss)*2)
+        out.push('à 100 ELO la victoire ne domine pas la défaite : +'+bas.win+' / '+bas.loss);
+      if(milieu.win<=Math.abs(milieu.loss))
+        out.push('à 700 ELO la victoire ne domine plus : +'+milieu.win+' / '+milieu.loss);
+      // Au-delà du seuil, l'Elo redevient symétrique.
+      if(haut.win!==Math.abs(haut.loss))
+        out.push('au-dessus de 1000 ELO l\'Elo n\'est pas symétrique : +'+haut.win+' / '+haut.loss);
+      // Le bonus décroît : il doit être strictement plus faible en montant.
+      if(!(at(100).win>at(500).win&&at(500).win>at(900).win))
+        out.push('le bonus d\'ascension ne décroît pas avec l\'ELO');
+      return out;
+    });
+    if(bad.length)throw new Error(bad.join(' · '));
+  });
+
+  await step('une défaite coûte toujours des points',async()=>{
+    const bad=await page.evaluate(()=>{
+      const out=[];
+      // LA RÈGLE : perdre coûte, à tous les niveaux, quel que soit
+      // l'adversaire. Le seul plancher est le zéro absolu — un classement
+      // négatif n'a pas de sens. On vérifie en particulier sur les anciens
+      // planchers de rang (500, 800, 1200…), où une défaite ne coûtait
+      // RIEN : c'était un point de stationnement sans risque.
+      RANKS.forEach(r=>{
+        if(r.min===0)return;                       // le zéro absolu, seule exception
+        [r.min,r.min+1,r.min+50].forEach(e=>{
+          [-400,-200,0,200,400].forEach(d=>{
+            const c=vvCalcNewElo(e,Math.max(0,e+d),'loss',40);
+            if(c.delta>=0)out.push('à '+e+' ELO contre '+(e+d)+', la défaite rapporte '+c.delta);
+          });
+        });
+      });
+      // Et au tout bas de l'échelle, on ne passe jamais sous zéro.
+      const bas=vvCalcNewElo(0,900,'loss',40);
+      if(bas.newElo<0)out.push('l\'ELO devient négatif : '+bas.newElo);
+      if(!vvEloExplain(bas,'loss',0))out.push('une défaite sans coût au bas de l\'échelle n\'est pas expliquée');
+      return out;
+    });
+    if(bad.length)throw new Error(bad.join(' · '));
+  });
+
+  await step('l\'écart avec l\'adversaire décide du gain et de la perte',async()=>{
+    const bad=await page.evaluate(()=>{
+      const out=[];
+      // C'est la formule Elo, et la courbe d'ascension ne doit pas la
+      // casser : battre plus fort que soi rapporte davantage, battre plus
+      // faible rapporte moins ; perdre contre plus fort coûte moins, perdre
+      // contre plus faible coûte plus.
+      [200,500,800,1200,1800].forEach(e=>{
+        const g=d=>vvCalcNewElo(e,e+d,'win',40).delta;
+        const p=d=>vvCalcNewElo(e,e+d,'loss',40).delta;
+        if(!(g(-300)<g(0)&&g(0)<g(300)))
+          out.push('à '+e+' ELO, le gain ne suit pas la force de l\'adversaire : '+g(-300)+'/'+g(0)+'/'+g(300));
+        if(!(p(-300)<p(0)&&p(0)<p(300)))
+          out.push('à '+e+' ELO, la perte ne suit pas la force de l\'adversaire : '+p(-300)+'/'+p(0)+'/'+p(300));
+      });
+      return out;
+    });
+    if(bad.length)throw new Error(bad.join(' · '));
+  });
+
+  await step('le rang et les déblocages sont acquis pour toujours',async()=>{
+    // On SORT du mode test : là-dedans vvLoadElo() vaut 10 000, vvSaveElo()
+    // n'écrit rien et tout est déjà débloqué — on ne peut donc rien y
+    // vérifier de la progression réelle (voir js/accounts.js).
+    await page.goto('http://localhost:'+PORT+'/',{waitUntil:'domcontentloaded'});
+    await page.waitForSelector('#cube-jouer-btn',{state:'visible',timeout:8000});
+    if(await page.evaluate(()=>ADMIN_MODE))throw new Error('toujours en mode test');
+    const bad=await page.evaluate(()=>{
+      const out=[];
+      // Le rang ne vit PAS sur le classement du moment mais sur le sommet
+      // atteint (elo_peak). C'est ce qui permet à l'ELO de redescendre sans
+      // que le joueur perde son rang, ses créatures ou ses échiquiers.
+      const eloAvant=vvLoadElo(),peakAvant=vvLoadPeakElo();
+      vvSaveElo(1300);                                  // on monte à Obsidienne
+      if(vvRank().id!=='obsidienne')out.push('1300 ELO ne donne pas Obsidienne : '+vvRank().id);
+      const skinsHaut=BOARD_SKINS.filter(boardSkinUnlocked).length;
+      vvSaveElo(250);                                   // puis on retombe très bas
+      if(vvLoadPeakElo()!==1300)out.push('le sommet a bougé : '+vvLoadPeakElo());
+      if(vvRank().id!=='obsidienne')out.push('le rang a été reperdu en redescendant : '+vvRank().id);
+      if(BOARD_SKINS.filter(boardSkinUnlocked).length!==skinsHaut)
+        out.push('des échiquiers se sont reverrouillés en redescendant');
+      // Et le joueur doit être PRÉVENU, sinon il croit avoir tout perdu.
+      const c=vvCalcNewElo(250,250,'loss',40);
+      if(!/acquis/.test(vvEloExplain(c,'loss',1300)))
+        out.push('descendre sous son rang n\'est pas expliqué au joueur');
+      vvSaveElo(eloAvant);
+      accSet('elo_peak',peakAvant);
+      return out;
+    });
+    if(bad.length)throw new Error(bad.join(' · '));
+  });
+
+  await step('les cinq premières parties placent le joueur',async()=>{
+    const bad=await page.evaluate(()=>{
+      const out=[];
+      const placement=vvCalcNewElo(0,400,'win',0).k;
+      const routine=vvCalcNewElo(0,400,'win',100).k;
+      if(!(placement>routine*2))out.push('le K de placement ('+placement+') ne domine pas celui de routine ('+routine+')');
+      if(vvCalcNewElo(2100,2100,'win',500).k>=routine)out.push('le K ne se resserre pas en haut du classement');
+      // Un compte neuf doit franchir le premier rang en quelques parties.
+      let e=0;
+      for(let g=0;g<5;g++)e=vvCalcNewElo(e,e,'win',g).newElo;
+      if(e<300)out.push('cinq victoires de placement ne mènent qu\'à '+e+' ELO');
+      // Et la phrase d'explication doit exister quand il se passe quelque chose.
+      if(!vvEloExplain(vvCalcNewElo(0,400,'win',0),'win',0))out.push('le placement n\'est pas expliqué au joueur');
+      if(!vvEloExplain(vvCalcNewElo(200,200,'loss',40),'loss',200))out.push('l\'amorti des pertes n\'est pas expliqué');
+      if(vvEloExplain(vvCalcNewElo(1500,1500,'win',200),'win',1500))out.push('une partie ordinaire s\'explique alors qu\'il n\'y a rien à dire');
+      return out;
+    });
+    if(bad.length)throw new Error(bad.join(' · '));
+  });
+
+  // ----------------------------------------------------------------
+  // LA FENÊTRE D'APPARIEMENT (mpEloWindow, js/multiplayer.js)
+  // ----------------------------------------------------------------
+  // Personne n'attend sur un écran de recherche : la fenêtre doit être
+  // grande ouverte AVANT dix secondes, et ne jamais devenir infinie.
+  await step('la fenêtre d\'appariement s\'ouvre en moins de dix secondes',async()=>{
+    const bad=await page.evaluate(()=>{
+      const out=[];
+      if(mpEloWindow(0)<150)out.push('la fenêtre de départ est trop étroite : ±'+mpEloWindow(0));
+      if(mpEloWindow(10)<MP_ELO_MAX)out.push('après 10 s la fenêtre n\'est qu\'à ±'+mpEloWindow(10));
+      if(mpEloWindow(600)!==MP_ELO_MAX)out.push('la fenêtre dépasse son plafond : ±'+mpEloWindow(600));
+      if(!isFinite(mpEloWindow(99999)))out.push('la fenêtre redevient infinie : un débutant peut tomber contre n\'importe qui');
+      if(MP_ELO_MAX>600)out.push('le plafond dépasse ±600 ELO : '+MP_ELO_MAX);
+      // Elle doit croître, pas sauter d'un coup à son plafond.
+      if(!(mpEloWindow(0)<mpEloWindow(2)&&mpEloWindow(2)<=mpEloWindow(4)))
+        out.push('la fenêtre ne s\'élargit pas progressivement');
+      return out;
+    });
+    if(bad.length)throw new Error(bad.join(' · '));
+  });
+
+  await step('une armee adverse invalide est refusee',async()=>{
+    const bad=await page.evaluate(()=>{
+      const out=[];
+      const mon=PIECES.find(p=>p.class==='Monarque');
+      const gen=PIECES.find(p=>p.class==='Général');
+      // UNE SEULE PRIMORDIALE PAR ARMÉE : le premier jet prenait les trois
+      // premières créatures du catalogue, qui en comptaient deux — le test
+      // se plaignait donc d'une règle correctement appliquée.
+      const dispo=PIECES.filter(p=>p.class!=='Monarque'&&p.class!=='Général'&&p.class!=='Primordiale');
+      const trois=dispo.slice(0,3);
+      const cols=[2,1,0];
+      const pl={};trois.forEach((p,i)=>{pl[p.id]=cols[i];});
+      const bonne={mon,gen,extras:trois.map(p=>p.id),placements:pl};
+      const souci=mpArmyProblem(bonne);
+      if(souci)out.push('une armee legitime est refusee : '+souci);
+
+      const casse=[
+        [null,'aucune armee'],
+        [Object.assign({},bonne,{extras:[trois[0].id]}),'moins de trois creatures'],
+        [Object.assign({},bonne,{extras:[trois[0].id,trois[0].id,trois[1].id]}),'un doublon'],
+        [Object.assign({},bonne,{mon:gen}),'un monarque qui n en est pas un'],
+        [Object.assign({},bonne,{extras:['piece-inexistante',trois[1].id,trois[2].id]}),'une piece inexistante'],
+        [Object.assign({},bonne,{placements:{}}),'une disposition vide'],
+      ];
+      const prim=PIECES.filter(p=>p.class==='Primordiale').slice(0,2);
+      if(prim.length===2){
+        const pl3={};pl3[prim[0].id]=2;pl3[prim[1].id]=1;pl3[trois[0].id]=0;
+        casse.push([{mon,gen,extras:[prim[0].id,prim[1].id,trois[0].id],placements:pl3},
+                    'deux Primordiales']);
+      }
+      casse.forEach(pair=>{if(!mpArmyProblem(pair[0]))out.push('accepte '+pair[1]);});
+
+      const chers=dispo.slice().sort((a,b)=>b.value-a.value).slice(0,3);
+      const pl2={};chers.forEach((p,i)=>{pl2[p.id]=cols[i];});
+      const total=mon.value+gen.value+chers.reduce((t,p)=>t+p.value,0);
+      if(total>24&&!mpArmyProblem({mon,gen,extras:chers.map(p=>p.id),placements:pl2}))
+        out.push('accepte une armee a '+total+' points');
+      return out;
+    });
+    if(bad.length)throw new Error(bad.join(' · '));
+  });
+
+  // ----------------------------------------------------------------
+  // LE MOTEUR DE BRUITAGES ET L'HAPTIQUE (js/sfx.js)
+  // ----------------------------------------------------------------
+  // On ne peut pas ÉCOUTER un son dans un test. Ce qu'on peut vérifier, et
+  // qui casse en silence sinon : que chaque son du jeu a bien une recette,
+  // qu'aucune n'est un bip d'une seule couche, que la variation existe, et
+  // que jouer un son ne lève pas d'exception.
+  await step('chaque son du jeu a une recette en couches',async()=>{
+    const bad=await page.evaluate(()=>{
+      const out=[];
+      if(typeof SFX_RECIPES!=='object'){out.push('SFX_RECIPES absent');return out;}
+      // Les sons que le reste du jeu appelle par leur nom. Un playSound()
+      // sans recette est silencieux, et rien ne le signale à l'exécution.
+      ['move','capture','check','castle','promo','win','loss','draw',
+       'tap','deny','chest','loot','rank'].forEach(n=>{
+        const r=SFX_RECIPES[n];
+        if(!r){out.push('son sans recette : '+n);return;}
+        if(!Array.isArray(r.layers)||!r.layers.length){out.push(n+' : aucune couche');return;}
+        // Un son d'une seule couche est un bip — c'est exactement ce dont on
+        // sortait. Seul 'tap', volontairement minuscule, y a droit.
+        if(r.layers.length<2&&n!=='tap'&&n!=='deny')out.push(n+' : une seule couche, c\'est un bip');
+        r.layers.forEach((L,i)=>{
+          if(L.type!=='tone'&&L.type!=='noise')out.push(n+' couche '+i+' : type inconnu '+L.type);
+          if(!(L.decay>0))out.push(n+' couche '+i+' : pas d\'extinction (clic audible)');
+        });
+      });
+      return out;
+    });
+    if(bad.length)throw new Error(bad.join(' · '));
+  });
+
+  await step('la force d\'une capture suit la valeur de la pièce prise',async()=>{
+    const bad=await page.evaluate(()=>{
+      const out=[];
+      if(typeof sfxCaptureForce!=='function'){out.push('sfxCaptureForce absent');return out;}
+      const pion=sfxCaptureForce('std-pawn');
+      const gm=sfxCaptureForce('grand-maitre');
+      if(!(gm>pion))out.push('prendre le Grand Maître ne sonne pas plus fort qu\'un pion : '+gm+' vs '+pion);
+      if(pion<0.2||gm>1)out.push('force hors bornes : '+pion+' / '+gm);
+      // Une pièce inconnue ne doit jamais casser le son.
+      const inconnu=sfxCaptureForce('piece-qui-nexiste-pas');
+      if(!(inconnu>0&&inconnu<=1))out.push('force invalide pour une pièce inconnue : '+inconnu);
+      return out;
+    });
+    if(bad.length)throw new Error(bad.join(' · '));
+  });
+
+  await step('jouer un son ne lève jamais d\'exception',async()=>{
+    const bad=await page.evaluate(()=>{
+      const out=[];
+      const noms=Object.keys(SFX_RECIPES).concat(['son-inexistant']);
+      noms.forEach(n=>{
+        try{sfxFeel(n,{force:0.9});sfxFeel(n,{force:0});}
+        catch(e){out.push(n+' : '+e.message);}
+      });
+      // haptic() doit répondre proprement sur un appareil sans vibreur.
+      try{
+        if(haptic('impact')!==false&&!hapticSupported())out.push('haptic ment sur un appareil sans vibreur');
+        haptic('motif-inexistant');
+      }catch(e){out.push('haptic : '+e.message);}
+      return out;
+    });
+    if(bad.length)throw new Error(bad.join(' · '));
+  });
+
+  await step('le réglage de vibration se souvient de lui-même',async()=>{
+    await page.goto('http://localhost:'+PORT+'/',{waitUntil:'domcontentloaded'});
+    await page.waitForSelector('#cube-jouer-btn',{state:'visible',timeout:8000});
+    await page.click('#settings-btn');
+    // L'interrupteur n'est montré que sur un appareil qui sait vibrer ; sous
+    // Chromium de test, navigator.vibrate existe.
+    const visible=await page.isVisible('#sp-haptic');
+    if(!visible){
+      if(await page.evaluate(()=>hapticSupported()))
+        throw new Error('l\'interrupteur est caché alors que l\'appareil sait vibrer');
+      return;                       // pas de vibreur : rien à régler, c'est voulu
+    }
+    await page.click('#sp-haptic');
+    if(await page.getAttribute('#sp-haptic','aria-checked')!=='false')
+      throw new Error('l\'interrupteur ne s\'éteint pas');
+    await page.goto('http://localhost:'+PORT+'/',{waitUntil:'domcontentloaded'});
+    await page.waitForSelector('#cube-jouer-btn',{state:'visible',timeout:8000});
+    await page.click('#settings-btn');
+    if(await page.getAttribute('#sp-haptic','aria-checked')!=='false')
+      throw new Error('le réglage n\'a pas survécu au rechargement');
+    if(await page.evaluate(()=>haptic('impact'))!==false)
+      throw new Error('la vibration part alors qu\'elle est coupée');
+    await page.click('#sp-haptic');   // on remet en place pour les étapes suivantes
   });
 
   await browser.close();
