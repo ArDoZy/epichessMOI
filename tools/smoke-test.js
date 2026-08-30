@@ -320,6 +320,24 @@ const OPTIONAL_ASSET=/adversaires\/[a-z-]+\.png|backgrounds\/main-page\.png|ches
       throw new Error('la liste des comptes garde l\'ancien pseudo');
   });
 
+  // SUPPRIMER SE CONFIRME, CHANGER DE COMPTE NON. On ne fait confirmer que ce
+  // qui se perd — et la confirmation de suppression ne récite plus l'inventaire
+  // du compte (« ses 13 parties classées, ses créatures et ses 903 perles ») :
+  // trois chiffres à lire au moment où l'on veut juste savoir si on appuie.
+  await step('la suppression d\'un compte se confirme sans réciter son inventaire',async()=>{
+    const msg=await page.evaluate(()=>{
+      accountAskDelete('SmokeTest');
+      return document.getElementById('confirm-msg').textContent;
+    });
+    if(!/Supprimer définitivement/.test(msg))throw new Error('confirmation inattendue : '+msg);
+    if(/perles|parties|créatures/i.test(msg))
+      throw new Error('la confirmation récite encore l\'inventaire : '+msg);
+    await page.click('#confirm-cancel');
+    await page.waitForTimeout(200);
+    if(!await page.evaluate(()=>accountsList().includes('SmokeTest')))
+      throw new Error('le compte a disparu sur une simple annulation');
+  });
+
   await step('un pseudo déjà pris est refusé',async()=>{
     // Les notifications s'empilent : lire « la première » renverrait celle de
     // l'étape précédente. On attend celle qui porte le message attendu, et
@@ -369,8 +387,9 @@ const OPTIONAL_ASSET=/adversaires\/[a-z-]+\.png|backgrounds\/main-page\.png|ches
     await page.click('#settings-btn');
     await page.click('#sp-account');
     await page.waitForSelector('#page-account.active',{timeout:5000});
+    // Changer de compte ne se confirme plus : rien n'est perdu, et la ligne
+    // qu'on touche porte déjà le nom, le rang et l'ELO du compte visé.
     await page.click('[data-switch="SmokeTest"]');
-    await page.click('#confirm-ok');
     await page.waitForLoadState('load');
     await page.waitForFunction(()=>typeof CUR_ACC!=='undefined'&&CUR_ACC==='SmokeTest',null,{timeout:10000});
     // La bascule doit rendre au compte SA progression, pas celle de l'autre.
@@ -1351,6 +1370,11 @@ const OPTIONAL_ASSET=/adversaires\/[a-z-]+\.png|backgrounds\/main-page\.png|ches
         pw:document.getElementById('page-voie').clientWidth,
         scrollable:host.scrollHeight>host.clientHeight+40,
         retourVisible:!!document.getElementById('voie-back'),
+        // La pastille reste une PASTILLE : quatre coins ronds. Ils ont été
+        // équerrés en bas pour « épouser le bord de l'écran », ce qui en
+        // faisait un onglet mal coupé — descendre le bouton ne veut pas dire
+        // le déformer.
+        coins:getComputedStyle(btn).borderRadius,
         toucheLeBord:cote===btn||btn.contains(cote)};
     });
     if(!r.scrollable)throw new Error('la Voie ne défile pas, le test ne prouve rien');
@@ -1376,6 +1400,10 @@ const OPTIONAL_ASSET=/adversaires\/[a-z-]+\.png|backgrounds\/main-page\.png|ches
       throw new Error('le bouton OK n\'est haut que de '+Math.round(r.haut.h)+' px');
     if(r.toucheLeBord)
       throw new Error('le bouton OK s\'étend encore jusqu\'au bord de l\'écran');
+    // Une seule valeur de rayon = quatre coins identiques. Deux valeurs ou
+    // plus, et l'un des coins a été équerré.
+    if(r.coins.trim().split(/[\s/]+/).filter(Boolean).length!==1)
+      throw new Error('le bouton OK n\'est plus une pastille : border-radius « '+r.coins+' »');
     await page.click('#voie-ok');
     await page.waitForTimeout(400);
     if(await page.isVisible('#page-voie.active'))throw new Error('le bouton OK ne referme pas la Voie');
@@ -1405,6 +1433,49 @@ const OPTIONAL_ASSET=/adversaires\/[a-z-]+\.png|backgrounds\/main-page\.png|ches
     if(r.ailleurs)throw new Error('le bouton de réglages reste allumé hors du menu principal');
     if(!r.pendant)throw new Error('le bouton de réglages attend la fin de la rotation pour s\'afficher');
     if(!r.apres)throw new Error('le bouton de réglages n\'est pas là sur le menu principal');
+  });
+
+  // LE COMPTE EST LA PREMIÈRE LIGNE DU PANNEAU. Il était sous les deux
+  // curseurs de volume : chercher son identité demandait de descendre deux
+  // réglages qu'on ne venait pas voir. Le panneau se lit maintenant de haut en
+  // bas — les portes, puis les réglages.
+  await step('les réglages ouvrent sur le Compte, puis les volumes',async()=>{
+    await page.click('#settings-btn');
+    await page.waitForTimeout(250);
+    const r=await page.evaluate(()=>{
+      const panel=document.getElementById('settings-panel');
+      const ordre=[...panel.children].filter(el=>el.nodeType===1&&getComputedStyle(el).display!=='none')
+        .map(el=>el.id||el.querySelector('.sp-label')?.textContent||'?');
+      const y=id=>document.getElementById(id).getBoundingClientRect().top;
+      return{ordre,compte:y('sp-account'),sfx:y('sp-sfx-vol'),musique:y('sp-music-vol')};
+    });
+    if(!(r.compte<r.sfx))throw new Error('« Compte » n\'est pas au-dessus de « Bruitages » : '+r.ordre.join(' / '));
+    if(!(r.sfx<r.musique))throw new Error('« Musique » passe avant « Bruitages » : '+r.ordre.join(' / '));
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(200);
+  });
+
+  // LE LOGO DE LA FICHE EST CENTRÉ DANS SON CADRE. Le 76 % s'appliquait deux
+  // fois — à la boîte de l'icône ET au SVG imbriqué —, et comme la boîte est
+  // un inline-block, le dessin se collait à sa gauche : cinq pixels de décalage
+  // dans un carré de 58, visibles au premier coup d'œil.
+  await step('le logo de la fiche de pièce est centré dans son cadre',async()=>{
+    const r=await page.evaluate(()=>{
+      openPieceSheet('dame');
+      const logo=document.getElementById('psheet-logo');
+      const svg=logo.querySelector('svg');
+      if(!svg)return null;
+      const lb=logo.getBoundingClientRect(),sb=svg.getBoundingClientRect();
+      closePieceSheet();
+      return{dx:(sb.left+sb.width/2)-(lb.left+lb.width/2),
+             dy:(sb.top+sb.height/2)-(lb.top+lb.height/2),cadre:lb.width,dessin:sb.width};
+    });
+    if(!r)throw new Error('aucun logo dans la fiche de pièce');
+    if(Math.abs(r.dx)>1)throw new Error('logo décalé de '+r.dx.toFixed(1)+' px horizontalement');
+    if(Math.abs(r.dy)>1)throw new Error('logo décalé de '+r.dy.toFixed(1)+' px verticalement');
+    // Et il remplit bien son cadre : un dessin deux fois trop petit serait le
+    // symptôme du double pourcentage, même une fois recentré.
+    if(r.dessin<r.cadre*0.6)throw new Error('le logo ne fait que '+Math.round(r.dessin/r.cadre*100)+' % du cadre');
   });
 
   // Les schémas de déplacement sont DÉDUITS du moteur (js/piece-moves.js) :
@@ -1482,6 +1553,142 @@ const OPTIONAL_ASSET=/adversaires\/[a-z-]+\.png|backgrounds\/main-page\.png|ches
       return out;
     });
     if(bad.length)throw new Error(bad.join(' · '));
+  });
+
+  // LA NOTATION DU JOURNAL. Il disait les DEUX cases (« ♞e1–f3 »), ce qu'aucune
+  // notation d'échecs n'écrit : la case de départ ne sert à rien tant qu'une
+  // seule pièce peut atteindre l'arrivée. Elle ne revient donc que pour lever
+  // une ambiguïté — colonne, sinon rangée, sinon la case entière —, et un pion
+  // qui capture garde toujours sa colonne, comme le veut la règle officielle.
+  // Les positions sont posées à la main : c'est la seule façon de provoquer à
+  // coup sûr les quatre cas.
+  await step('le journal note en algébrique, et ne désambiguïse que s\'il le faut',async()=>{
+    const lus=await page.evaluate(()=>{
+      const vide=()=>Array.from({length:8},()=>Array(8).fill(null));
+      const pose=(b,r,c,pieceId,color,type)=>{
+        const cell={type:type||'n',color,pieceId,emoji:'',hasMoved:true,isKing:type==='k',id:pieceId+r+c};
+        b[r][c]=cell;return cell;
+      };
+      const rois=b=>{pose(b,7,4,'roi','w','k');pose(b,0,4,'roi','b','k');};
+      const jouer=(b,from,to)=>{
+        GS.board=b;GS.movePairs=[];GS.history=[];GS.turn=b[from.r][from.c].color;
+        GS.gameOver=false;GS.pendingPromo=null;
+        executeGameMove(from,to,GS);
+        GS.gameOver=true;
+        const el=document.createElement('div');
+        el.innerHTML=GS.movePairs.map(p=>p[0]).join('');
+        return el.textContent.trim();
+      };
+      const out={};
+      let b=vide();rois(b);pose(b,7,1,'cavalier-primordial','w');
+      out.seul=jouer(b,{r:7,c:1},{r:5,c:2});
+      b=vide();rois(b);pose(b,7,1,'cavalier-primordial','w');pose(b,7,3,'cavalier-primordial','w');
+      out.colonne=jouer(b,{r:7,c:1},{r:5,c:2});
+      b=vide();rois(b);
+      pose(b,7,1,'cavalier-primordial','w');pose(b,7,3,'cavalier-primordial','w');pose(b,3,1,'cavalier-primordial','w');
+      out.case=jouer(b,{r:7,c:1},{r:5,c:2});
+      b=vide();rois(b);pose(b,7,0,'tour-primordiale','w','r');pose(b,3,0,'tour-primordiale','w','r');
+      out.rangee=jouer(b,{r:7,c:0},{r:5,c:0});
+      b=vide();rois(b);pose(b,4,4,'std-pawn','w','p');pose(b,3,3,'tour-primordiale','b','r');
+      out.prisePion=jouer(b,{r:4,c:4},{r:3,c:3});
+      return out;
+    });
+    const attendu={seul:'c3',colonne:'bc3',case:'b1c3',rangee:'1a3',prisePion:'e×d5'};
+    Object.keys(attendu).forEach(k=>{
+      if(lus[k]!==attendu[k])
+        throw new Error('notation « '+k+' » : « '+lus[k]+' » au lieu de « '+attendu[k]+' »');
+    });
+  });
+
+  // LES DEUX ÉTATS DU TOUR SE LISENT AU MÊME ENDROIT. « À votre tour » était
+  // masqué sur téléphone : la barre ne montrait jamais qu'une moitié de la
+  // question, et le joueur n'avait rien à lire au moment où c'était à lui.
+  await step('la barre de statut annonce les deux tours',async()=>{
+    const r=await page.evaluate(()=>{
+      const bar=document.getElementById('game-status');
+      const lire=()=>({txt:bar.textContent,vu:getComputedStyle(bar).display!=='none'});
+      GS.gameOver=false;GS.historyView=null;
+      GS.playerColor='w';GS.aiColor='b';
+      GS.turn='w';updateStatus(GS);const moi=lire();
+      GS.turn='b';updateStatus(GS);const lui=lire();
+      GS.gameOver=true;
+      return{moi,lui};
+    });
+    if(!/À votre tour/.test(r.moi.txt))throw new Error('tour du joueur : « '+r.moi.txt+' »');
+    if(!r.moi.vu)throw new Error('« À votre tour » est masqué');
+    if(!/Au tour de votre adversaire/.test(r.lui.txt))throw new Error('tour adverse : « '+r.lui.txt+' »');
+    if(!r.lui.vu)throw new Error('« Au tour de votre adversaire » est masqué');
+  });
+
+  // LA FOURMI SE PROMEUT, ET ON NE SE PROMEUT PAS EN FOURMI. Son pouvoir était
+  // l'inverse exact (« ne peut pas reculer, même si elle atteint l'autre côté
+  // de l'échiquier ») : elle traversait tout le plateau pour finir clouée.
+  // Les deux moitiés de la règle se tiennent — une créature qui se promeut ne
+  // peut pas être le LOT d'une promotion, sinon la promotion serait à refaire
+  // au coup suivant, sur la case même où elle vient d'arriver.
+  await step('la Fourmi se promeut, et ne peut pas être choisie en promotion',async()=>{
+    const r=await page.evaluate(()=>{
+      const vide=()=>Array.from({length:8},()=>Array(8).fill(null));
+      const pose=(b,r,c,pieceId,color,type)=>{
+        b[r][c]={type:type||'p',color,pieceId,emoji:'',hasMoved:true,isKing:type==='k',id:pieceId+r+c};
+      };
+      const rois=b=>{pose(b,7,4,'roi','w','k');pose(b,0,4,'roi','b','k');};
+      const out={data:PIECES.find(p=>p.id==='fourmi').ability};
+      // Côté joueur : la fenêtre de promotion s'ouvre, sans la Fourmi dedans.
+      let b=vide();rois(b);pose(b,1,3,'fourmi','w','p');
+      GS.board=b;GS.movePairs=[];GS.history=[];GS.turn='w';GS.gameOver=false;GS.pendingPromo=null;
+      GS.playerColor='w';GS.aiColor='b';
+      GS.playerArmy={extras:['fourmi','meduse'],gen:{id:'dame'}};
+      executeGameMove({r:1,c:3},{r:0,c:3},GS);
+      out.modal=document.getElementById('promo-modal').classList.contains('active');
+      out.choix=[...document.querySelectorAll('#promo-modal .promo-piece-lbl')].map(e=>e.textContent);
+      document.getElementById('promo-modal').classList.remove('active');
+      GS.pendingPromo=null;
+      // Côté adversaire : promotion automatique, jamais en Fourmi non plus.
+      b=vide();rois(b);pose(b,1,3,'fourmi','w','p');
+      GS.board=b;GS.movePairs=[];GS.history=[];GS.turn='w';GS.gameOver=false;
+      GS.playerColor='b';GS.aiColor='w';
+      GS.aiArmy={extras:['fourmi','meduse'],gen:{id:'dame'}};
+      executeGameMove({r:1,c:3},{r:0,c:3},GS);
+      out.ia=GS.board[0][3]&&GS.board[0][3].pieceId;
+      // Le pion, lui, se promeut comme avant.
+      b=vide();rois(b);pose(b,1,2,'std-pawn','w','p');
+      GS.board=b;GS.movePairs=[];GS.history=[];GS.turn='w';GS.gameOver=false;
+      executeGameMove({r:1,c:2},{r:0,c:2},GS);
+      out.pion=GS.board[0][2]&&GS.board[0][2].pieceId;
+      GS.gameOver=true;
+      return out;
+    });
+    if(!/promeut/i.test(r.data))throw new Error('le pouvoir de la Fourmi dit encore : '+r.data);
+    if(!r.modal)throw new Error('la Fourmi arrivée au bout n\'ouvre pas la promotion');
+    if(!r.choix.length)throw new Error('aucun choix de promotion proposé');
+    if(r.choix.some(t=>/Fourmi/i.test(t)))throw new Error('la Fourmi est proposée en promotion : '+r.choix.join(','));
+    if(r.ia==='fourmi')throw new Error('l\'adversaire se promeut en Fourmi');
+    if(r.ia==='std-pawn')throw new Error('la Fourmi de l\'adversaire ne se promeut pas');
+    if(r.pion==='std-pawn')throw new Error('le pion ne se promeut plus');
+  });
+
+  // Les valeurs de PIECES sont le budget du builder : une valeur qui bouge
+  // change toutes les compositions possibles. Celles qu'on fixe à la main se
+  // vérifient donc à la main.
+  // L'ÉCRAN DE FIN DE PARTIE NE REDIT PLUS L'ELO. Il portait, sous la ligne
+  // « 213 → 218 · +5 », une deuxième ligne « Pierre · 218 ELO » : le même
+  // nombre, en plus long. Et sous elle, pour les cinq premières parties, une
+  // note « Partie de placement 2/5 : elle compte double ».
+  await step('l\'écran de fin de partie ne redit pas l\'ELO',async()=>{
+    const r=await page.evaluate(()=>({
+      rang:!!document.getElementById('result-rank-name'),
+      ligneElo:!!document.getElementById('result-elo-after'),
+      note:!!document.getElementById('result-elo-note'),
+    }));
+    if(r.rang)throw new Error('la ligne de rang est encore sur l\'écran de fin de partie');
+    if(!r.ligneElo)throw new Error('la ligne d\'ELO a disparu avec elle');
+    if(!r.note)throw new Error('la ligne d\'explication a disparu : elle sert encore à l\'ascension');
+  });
+
+  await step('l\'Empereur vaut 8 points',async()=>{
+    const v=await page.evaluate(()=>PIECES.find(p=>p.id==='empereur').value);
+    if(v!==8)throw new Error('Empereur à '+v+' points au lieu de 8');
   });
 
   // LES POUVOIRS, un par un. Ils sont ce que le jeu a de particulier et ce
@@ -1763,8 +1970,13 @@ const OPTIONAL_ASSET=/adversaires\/[a-z-]+\.png|backgrounds\/main-page\.png|ches
       let e=0;
       for(let g=0;g<5;g++)e=vvCalcNewElo(e,e,'win',g).newElo;
       if(e<300)out.push('cinq victoires de placement ne mènent qu\'à '+e+' ELO');
-      // Et la phrase d'explication doit exister quand il se passe quelque chose.
-      if(!vvEloExplain(vvCalcNewElo(0,400,'win',0),'win',0))out.push('le placement n\'est pas expliqué au joueur');
+      // Et la phrase d'explication doit exister quand il se passe quelque chose
+      // — SAUF pour les parties de placement, qui ne s'annoncent plus : elles
+      // ajoutaient une règle à retenir aux cinq premières parties, celles où
+      // le joueur découvre déjà tout le reste.
+      if(/placement/i.test(vvEloExplain(vvCalcNewElo(1200,1200,'win',0),'win',1200)||''))
+        out.push('les parties de placement s\'annoncent encore');
+      if(!vvEloExplain(vvCalcNewElo(0,400,'win',0),'win',0))out.push('le bonus d\'ascension n\'est pas expliqué');
       if(!vvEloExplain(vvCalcNewElo(200,200,'loss',40),'loss',200))out.push('l\'amorti des pertes n\'est pas expliqué');
       if(vvEloExplain(vvCalcNewElo(1500,1500,'win',200),'win',1500))out.push('une partie ordinaire s\'explique alors qu\'il n\'y a rien à dire');
       return out;
@@ -1788,6 +2000,23 @@ const OPTIONAL_ASSET=/adversaires\/[a-z-]+\.png|backgrounds\/main-page\.png|ches
       // Elle doit croître, pas sauter d'un coup à son plafond.
       if(!(mpEloWindow(0)<mpEloWindow(2)&&mpEloWindow(2)<=mpEloWindow(4)))
         out.push('la fenêtre ne s\'élargit pas progressivement');
+      // ET ELLE NE S'EXPLIQUE PAS AU JOUEUR QUI ATTEND. « On cherche d'abord un
+      // adversaire de votre niveau, puis on élargit » était la première chose
+      // affichée sous le radar : une règle d'appariement à lire pour patienter.
+      // La note dit ce qui se passe, un point.
+      const note=document.getElementById('mp-search-note');
+      if(!note)out.push('la note de recherche a disparu');
+      else{
+        if(/élargit|niveau/i.test(note.textContent))
+          out.push('la note explique encore la fenêtre d\'appariement : « '+note.textContent.trim()+' »');
+        if(!note.textContent.trim())out.push('la note de recherche est vide');
+        // Et ce qu'elle dit au premier instant est déjà ce que mpRenderSearch
+        // écrira : pas de phrase intermédiaire à voir passer.
+        const avant=note.textContent.trim();
+        mpRenderSearch(0,0,0);
+        if(note.textContent.trim()!==avant)
+          out.push('la note change dès le premier battement : « '+avant+' » puis « '+note.textContent.trim()+' »');
+      }
       return out;
     });
     if(bad.length)throw new Error(bad.join(' · '));

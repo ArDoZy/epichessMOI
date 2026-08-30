@@ -392,22 +392,28 @@ function accountBusy(){
   return false;
 }
 
+// CHANGER DE COMPTE NE SE CONFIRME PLUS. La confirmation annonçait le rang et
+// l'ELO du compte visé et promettait que l'actuel serait conservé : trois
+// choses que la ligne qu'on vient de toucher affiche déjà, pour une action qui
+// ne détruit rien et se défait en touchant la ligne d'à côté. On ne fait
+// confirmer que ce qui se perd — c'est ce qui donne son poids à la
+// confirmation de suppression, juste en dessous.
+//
+// Le refus en pleine partie, lui, reste (accountBusy) : celui-là abandonnerait
+// vraiment quelque chose.
 function accountAskSwitch(username){
   if(!username||accountBusy())return;
-  const s=accountSummary(username);
-  showConfirmModal(
-    'Passer sur le compte « '+username+' » ('+s.rank.name+' · '+s.elo+' ELO) ? '+
-    'Le compte '+CUR_ACC+' est conservé, vous pourrez y revenir.',
-    ()=>accountSwitch(username),
-    {okLabel:'Changer de compte',okClass:'btn-primary'});
+  accountSwitch(username);
 }
 
 function accountAskDelete(username){
   if(!username)return;
-  const s=accountSummary(username);
+  // L'INVENTAIRE DU COMPTE N'EST PAS RÉCITÉ. « Ses 13 parties classées, ses
+  // créatures et ses 903 perles seront perdues » : trois chiffres à lire au
+  // moment où l'on veut juste savoir si on appuie ou non. « Définitivement » et
+  // « irréversible » disent tout ce qu'il faut savoir pour décider.
   showConfirmModal(
-    'Supprimer définitivement « '+username+' » ? Ses '+s.games+' parties classées, '+
-    'ses créatures et ses '+s.pearls+' perles seront perdues. Cette action est irréversible.',
+    'Supprimer définitivement « '+username+' » ? Cette action est irréversible.',
     ()=>{
       accountDelete(username);
       showNotif('Compte « '+username+' » supprimé.','ok');

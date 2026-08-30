@@ -300,14 +300,20 @@ Trois choses à savoir avant d'y toucher :
   fait autorité (`ec_accounts_v2`).
 
 **« Se déconnecter » n'existe pas, et c'est volontaire.** Il n'y a pas de
-connexion : rien à oublier, aucun mot de passe, aucune session. Ce que cherche
-quelqu'un qui appuie sur ce bouton, c'est *arrêter de jouer sous ce nom* — pour
-prêter l'appareil ou pour recommencer autrement. `accountLogout()` fait donc
-exactement ça et rien d'autre : il pose le joueur sur le compte utilisé juste
-avant, ou sur un nouveau compte d'Alchimiste s'il n'y en a pas d'autre. Le
-compte quitté **reste intact** dans la liste — « quitter » n'est jamais
-« supprimer », qui a son propre bouton et sa propre confirmation. Le ramener
-sur un écran de connexion rouvrirait le mur que le jeu vient de supprimer.
+connexion : rien à oublier, aucun mot de passe, aucune session. Le bouton a
+existé (`accountLogout()`) ; il posait le joueur sur une autre identité, faute
+d'écran de connexion où le renvoyer. Il est parti : quitter un compte n'est
+rien d'autre que passer sur un autre, ce que la liste « Changer de compte »
+fait déjà d'un geste — et mieux, puisqu'on y choisit lequel.
+
+**ON NE FAIT CONFIRMER QUE CE QUI SE PERD.** Changer de compte ne détruit rien
+et se défait en touchant la ligne d'à côté : `accountAskSwitch()` bascule
+directement. Supprimer, oui — et la confirmation ne récite plus l'inventaire du
+compte (« ses 13 parties classées, ses créatures et ses 903 perles ») : trois
+chiffres à lire au moment où l'on veut juste savoir si on appuie.
+« Définitivement » et « irréversible » suffisent à décider. Le seul refus qui
+reste sur la bascule est `accountBusy()`, en pleine partie : celui-là
+abandonnerait vraiment quelque chose.
 
 Un compte créé depuis la page Comptes doit recevoir le Lore et le tutoriel
 comme un premier lancement — mais après le rechargement, plus rien ne le
@@ -362,6 +368,29 @@ l'inverse aussi.
 `sfxFeel(nom, opts)` déclenche les trois ensemble (son + vibration +
 secousse) : les appeler séparément partout, c'est se garantir qu'un jour l'un
 des trois manquera quelque part.
+
+### 1 quinquies bis. La notation du journal (`js/rules-engine.js`)
+
+Le journal disait les deux cases, « ♞e1–f3 ». C'est une redondance qu'aucune
+notation d'échecs n'écrit : la case de départ ne sert à rien tant qu'une seule
+pièce peut atteindre l'arrivée. On note donc **la pièce puis la case
+d'arrivée**, la LETTRE de la pièce étant remplacée par son **logo** — sur un
+jeu où les pièces sont des créatures, « M » ou « G » ne désignerait rien
+(Méduse, Grand Maître ? Garde d'Eau, de Feu, de Pierre ?).
+
+La case de départ revient **quand, et seulement quand**, deux créatures du même
+logo pouvaient aller sur la même case : colonne si elle suffit, sinon rangée,
+sinon les deux (`mlDisambiguation`). Un pion qui capture garde toujours sa
+colonne, comme le veut la règle officielle. Deux pièces sont « du même logo »
+au sens de `PIECE_ART_ALIAS` : une Dame de départ et une Dame de promotion ont
+deux identifiants et un seul dessin.
+
+**Le piège** : `recordMove()` est appelée APRÈS la mutation du plateau —
+chercher les rivales sur `gs.board` échouerait, la case d'arrivée étant
+désormais occupée. `executeGameMove()` empile juste avant de jouer un
+instantané complet dans `gs.history` : c'est lui qu'on interroge, avec ses
+états spéciaux (paralysie, protection) recalculés dessus, pour que la question
+posée soit bien « qui POUVAIT y aller ? ».
 
 ### 1 sexies. Le plateau persistant (`js/game-render.js`)
 
@@ -1081,6 +1110,8 @@ mais dans une version que Playwright refuse, le script le retrouve tout seul
 | Changer une couleur, un style, l'apparence d'une page | `css/style.css` (cherche le tag `[NOM-DE-PAGE]` en commentaire) |
 | Ajouter/modifier une pièce (valeur, emoji, pouvoir) | `js/data-pieces.js` (tableau `PIECES`) — le déplacement, lui, ne s'y écrit plus : il est dessiné par `js/piece-moves.js` à partir du moteur |
 | Changer les règles de mouvement d'une pièce existante ou en ajouter une | `js/rules-engine.js` (fonction `generateMovesRaw`, + `isSquareAttackedSimple` si elle peut mettre en échec). Le schéma affiché sur les cartes et les fiches suit tout seul |
+| Changer la notation du journal des coups | `recordMove` / `mlDisambiguation` dans `js/rules-engine.js` (+ `.ml-*` dans `css/style.css`) |
+| Changer ce qui se promeut en arrivant au bout | `PROMOTING_IDS` dans `js/data-pieces.js` — `showPromoModal`, l'IA et le multijoueur excluent tous les trois ces pièces de la LISTE des promotions possibles |
 | Changer le calcul d'ELO, les rangs, les paliers de déblocage | `js/voie.js` (calcul) + `js/data-pieces.js` (table `UNLOCK_TABLE`/`RANKS`) |
 | Ajouter / régler un adversaire (niveau, style, lore) | `js/data-pieces.js` (`AI_OPPONENTS`), puis `node tools/ai-bench.js` pour vérifier l'échelle |
 | Modifier le moteur lui-même (évaluation, recherche) | `js/ai-engine.js` (`evalBoard`, `evalPowers`, `minimax`, `aiSearchRoot`, `aiPickMove`) |
@@ -1124,7 +1155,8 @@ mais dans une version que Playwright refuse, le script le retrouve tout seul
 | Vérifier l'UI à toutes les tailles d'écran | `node tools/ui-shots.js` |
 | Changer la vitesse de montée en ELO | `VV_CLIMB_*` et `VV_K_STEPS` dans `js/voie.js` (relire « La courbe d'ascension ») |
 | Changer la largeur de la fenêtre d'appariement | `MP_ELO_*` dans `js/multiplayer.js` |
-| Ajouter un nouveau réglage utilisateur | `index.html` (bloc `#settings-panel`) + `js/settings-admin.js` |
+| Ajouter un nouveau réglage utilisateur | `index.html` (bloc `#settings-panel`, sous les deux boutons « Compte » / « Installer ») + `js/settings-admin.js` |
+| Changer ce que dit la barre de statut d'une partie | `updateStatus()` dans `js/game-render.js` (+ `.status-bar` dans `css/style.css`) |
 | Modifier la présentation ou la FAQ publiques | `info.html` (texte visible **et** JSON-LD `FAQPage`) |
 | Changer les modes qui rapportent de l'ELO | `js/voie.js` (`vvNoEloReason`) |
 | Changer ce que contient un coffre | `CHESTS` (`total`) et `CHEST_PEARLS` dans `js/data-pieces.js` + `chestRoll` dans `js/economy.js` |

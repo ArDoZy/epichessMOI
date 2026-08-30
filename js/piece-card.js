@@ -54,8 +54,11 @@ const POWER_ICONS={
   empereur:'<path d="M4 20l4-1 11-11 1-4-4 1L5 16z"/><path d="M6 18l-2 2"/><path d="M14 6l4 4"/>',
   // Domination (Grand Maître) : une couronne qui pèse sur une barre.
   'grand-maitre':'<path d="M4 8l3 3 5-6 5 6 3-3v8H4z"/><path d="M4 19h16"/>',
-  // Obstination (Fourmi) : une flèche qui ne va que vers l'avant.
-  fourmi:'<path d="M12 20V5"/><path d="M6 11l6-6 6 6"/><path d="M5 21h14"/>',
+  // Promotion (Fourmi) : une flèche qui monte JUSQU'À la dernière rangée, la
+  // barre du haut. Elle a longtemps pointé vers le haut au-dessus d'un socle,
+  // pour dire l'inverse (« ne peut pas reculer ») ; le socle est passé en
+  // travers du sommet, qui est maintenant la ligne d'arrivée.
+  fourmi:'<path d="M5 4h14"/><path d="M12 21V8"/><path d="M6 14l6-6 6 6"/>',
   // Cuirasse (Preux Chevalier) : un écu.
   'preux-chevalier':'<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/>',
   // Charge (Éléphant de guerre) : trois traits de vitesse et une pointe.

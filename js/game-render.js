@@ -806,7 +806,6 @@ function updateStatus(gs){
   const check=isInCheckSimple(t,gs.board);
   const hasLegal=hasLegalMovesForColor(t,gs.board,gs);
   const playerCol=gs.playerColor||'w';
-  const aiCol=gs.aiColor||'b';
   // Le jeu n'a plus « une IA » mais UN adversaire nommé : l'Instructeur (ou
   // l'instructeur du tutoriel en cours). Le dire par son nom, partout.
   const oppLabel=gs.multiplayer?'Votre adversaire':((gs.tuto&&gs.tuto.name)||
@@ -847,12 +846,23 @@ function updateStatus(gs){
   // l'on joue. Deux phrases, toujours les mêmes, se lisent d'un coup d'œil au
   // milieu d'une partie — le nom de l'adversaire, lui, est déjà en haut de
   // l'écran.
+  //
+  // LES DEUX PHRASES S'AFFICHENT, TOUJOURS ET PARTOUT. « À votre tour » était
+  // masqué sur téléphone (voir .status-bar.ok dans css/style.css) : la barre
+  // ne disait jamais que l'attente, et le joueur n'avait rien à lire au moment
+  // où c'était à lui de jouer. Une ligne qui ne s'allume que la moitié du
+  // temps n'est pas un repère.
+  //
+  // Le camp au trait se compare à CELUI DU JOUEUR et non à celui de l'IA :
+  // c'est la même chose dans une partie contre le laboratoire, mais `aiColor`
+  // ne veut rien dire face à un autre joueur.
   const TURN_YOU='À votre tour';
   const TURN_OPP='Au tour de votre adversaire';
-  if(check){bar.textContent='Échec ! '+(t===playerCol?TURN_YOU:TURN_OPP);bar.className='status-bar check';playSound('check');}
+  const myTurn=(t===playerCol);
+  if(check){bar.textContent='Échec ! '+(myTurn?TURN_YOU:TURN_OPP);bar.className='status-bar check';playSound('check');}
   else{
-    bar.textContent=(t===aiCol)?TURN_OPP:TURN_YOU;
-    bar.className='status-bar '+(t===aiCol?'thinking':'ok');
+    bar.textContent=myTurn?TURN_YOU:TURN_OPP;
+    bar.className='status-bar '+(myTurn?'ok':'thinking');
   }
 }
 

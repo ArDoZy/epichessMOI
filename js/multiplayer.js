@@ -1033,7 +1033,11 @@ function mpOppColor(){return MP.myColor==='w'?'b':'w';}
 // pas se promouvoir en une pièce qu'il ne possède pas.
 function mpAllowedPromotions(){
   const army=GS.aiArmy;const allowed=[];
-  (army?.extras||[]).forEach(id=>{const p=PIECES.find(x=>x.id===id);if(p)allowed.push({type:p.pieceType||'q',emoji:p.emoji,pieceId:p.id});});
+  // Une créature qui se promeut elle-même n'est pas un lot de promotion (voir
+  // PROMOTING_IDS, js/data-pieces.js) : l'adversaire ne peut pas la choisir
+  // chez lui, on ne l'accepte donc pas ici non plus.
+  (army?.extras||[]).forEach(id=>{const p=PIECES.find(x=>x.id===id);
+    if(p&&!pieceCanPromote(p.id))allowed.push({type:p.pieceType||'q',emoji:p.emoji,pieceId:p.id});});
   const gen=army?.gen?.id?PIECES.find(p=>p.id===army.gen.id):null;
   if(gen)allowed.push({type:gen.pieceType||'q',emoji:gen.emoji,pieceId:gen.id});
   [['q','♕','dame-promo'],['r','♖','tour-promo'],['b','♗','fou-promo'],['n','♘','cav-promo']].forEach(([t,e,id])=>allowed.push({type:t,emoji:e,pieceId:id}));
@@ -1071,7 +1075,7 @@ function mpApplyRemoteMove(from,to,promo){
 
   // Une promotion doit être accompagnée d'un choix valide, sinon la modal de
   // promotion s'ouvrirait chez le mauvais joueur.
-  const isPromo=TRUE_PAWN_IDS.has(piece.pieceId)&&(move.r===0||move.r===7);
+  const isPromo=pieceCanPromote(piece.pieceId)&&(move.r===0||move.r===7);
   let safePromo=null;
   if(isPromo){
     safePromo=mpSanitizePromo(promo);

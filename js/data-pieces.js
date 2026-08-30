@@ -336,7 +336,7 @@ const DAILY_REWARDS=[
 // paraphrase son déplacement.
 const PIECES=[
   {id:'roi',name:'Roi',emoji:'👑',class:'Monarque',value:3,qty:1,pieceType:'k',ability:null},
-  {id:'empereur',name:'Empereur',emoji:'⚜️',class:'Monarque',value:7,qty:1,pieceType:'k',ability:'Espadon : Met en échecs le roi adverse en l\'attaquant en cavalier'},
+  {id:'empereur',name:'Empereur',emoji:'⚜️',class:'Monarque',value:8,qty:1,pieceType:'k',ability:'Espadon : Met en échecs le roi adverse en l\'attaquant en cavalier'},
   {id:'amazone',name:'Amazone',emoji:'🏹',class:'Général',value:7,qty:1,pieceType:'q',ability:null},
   // Le Chevaucheur de Rhinocéros s'appelle désormais le Centaure. L'IDENTIFIANT
   // reste 'chevaucheur-rhinoceros' : c'est la clé sous laquelle les armées, les
@@ -348,7 +348,7 @@ const PIECES=[
   {id:'cavalier-primordial',name:'Cavalier Primordial',emoji:'♞',class:'Primordiale',value:3,qty:2,pieceType:'n',ability:null},
   {id:'fou-primordial',name:'Fou Primordial',emoji:'♝',class:'Primordiale',value:3,qty:2,pieceType:'b',ability:null},
   {id:'tour-primordiale',name:'Tour Primordiale',emoji:'♜',class:'Primordiale',value:5,qty:2,pieceType:'r',ability:null},
-  {id:'fourmi',name:'Fourmi',emoji:'🐜',class:'Brute',value:2,qty:2,pieceType:'p',ability:'Obstination : Ne peut pas reculer, même si elle atteint l\'autre côté de l\'échiquier'},
+  {id:'fourmi',name:'Fourmi',emoji:'🐜',class:'Brute',value:2,qty:2,pieceType:'p',ability:'Promotion : Se promeut si elle arrive sur la dernière rangée'},
   {id:'preux-chevalier',name:'Preux Chevalier',emoji:'🛡️',class:'Brute',value:3,qty:2,pieceType:'r',ability:'Cuirasse : Les pions adverses ne peuvent pas le capturer'},
   {id:'dresseur-elephant',name:'Éléphant de guerre',emoji:'🐘',class:'Brute',value:3,qty:2,pieceType:'r',ability:'Charge : Détruit toutes les pièces ennemies sur son passage'},
   // LES TROIS GARDES : les premières créatures du jeu, et les plus simples à
@@ -372,6 +372,20 @@ const PIECES=[
 // du Grand Maître ne les concernent.
 const TRUE_PAWN_IDS=new Set(['std-pawn']);
 function isTruePawn(cell){return !!cell&&TRUE_PAWN_IDS.has(cell.pieceId);}
+
+// CE QUI SE PROMEUT EN ARRIVANT AU BOUT. Le pion, bien sûr — et la FOURMI,
+// dont c'est désormais tout le pouvoir. Elle a longtemps porté l'inverse
+// (« Obstination : ne peut pas reculer, même si elle atteint l'autre côté de
+// l'échiquier ») : une créature qui traversait tout le plateau pour finir
+// clouée dans un coin, ce qui se lisait comme une punition d'avoir avancé.
+//
+// SE PROMOUVOIR EN FOURMI EST DONC EXCLU (voir showPromoModal,
+// js/rules-engine.js) : le lot d'une promotion serait une pièce qui n'attend
+// que de se promouvoir à son tour, sur la case même où elle vient d'arriver.
+// C'est aussi pourquoi cet ensemble n'est PAS `TRUE_PAWN_IDS` : la Fourmi
+// reste tout sauf un pion pour le reste des règles.
+const PROMOTING_IDS=new Set(['std-pawn','fourmi']);
+function pieceCanPromote(pieceId){return PROMOTING_IDS.has(pieceId);}
 const CLASS_ORDER={Monarque:1,Général:2,Primordiale:3,Brute:4,Sorcier:5};
 // Couleurs partagées par classe de pièce : utilisées par le menu contextuel factorisé
 const CLASS_COLOR_VARS={Monarque:'var(--monarque)',Général:'var(--general)',Primordiale:'var(--primordiale)',Brute:'var(--brute)',Sorcier:'var(--sorcier)'};

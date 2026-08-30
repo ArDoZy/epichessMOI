@@ -213,11 +213,15 @@
 
     <div id="mp-screen-quick">
       <div class="mp-radar"><span></span><span></span><span></span></div>
-      <!-- La note ne dit plus que la FENÊTRE DE NIVEAU en cours d'ouverture.
-           Elle annonçait aussi « Personne d'autre en attente pour l'instant » :
-           apprendre qu'on est seul en ligne pendant qu'on attend n'aide en
-           rien et décourage d'attendre. Remplie par mpRenderSearch(). -->
-      <div class="mp-search-note" id="mp-search-note">On cherche d'abord un adversaire de votre niveau, puis on élargit.</div>
+      <!-- LA NOTE DIT CE QUI SE PASSE, ET RIEN D'AUTRE. Elle a annoncé
+           « Personne d'autre en attente pour l'instant » (apprendre qu'on est
+           seul en ligne pendant qu'on attend n'aide en rien), puis « On
+           cherche d'abord un adversaire de votre niveau, puis on élargit » —
+           une règle d'appariement que le joueur n'a pas à connaître pour
+           attendre, et qui restait affichée le temps que mpRenderSearch()
+           passe. Le texte d'origine est donc DÉJÀ celui de la recherche : la
+           première image est la bonne. -->
+      <div class="mp-search-note" id="mp-search-note">Recherche d'adversaire en cours</div>
     </div>
 
     <!-- TIPS D'ATTENTE : rempli par mpRenderTip() (js/multiplayer.js) et
@@ -894,7 +898,7 @@
 <div class="promo-modal" id="promo-modal"><div class="promo-box"><div class="promo-title">Choisir la promotion</div><div class="promo-pieces-row" id="promo-box"></div></div></div>
 <!-- Le badge « Admin » flottant a disparu : le mode admin est désormais
      l'adresse /test, ouverte depuis les réglages (js/settings-admin.js). -->
-<div class="result-modal" id="result-modal"><div class="result-box" id="result-box"><button id="result-close-btn" style="position:absolute;top:12px;right:14px;background:transparent;border:none;cursor:pointer;color:var(--muted);font-size:22px;line-height:1;font-family:inherit;transition:color .15s;z-index:1" title="Fermer et analyser la partie">✕</button><span class="result-icon" id="result-icon"></span><div class="result-title" id="result-title"></div><div class="result-foe" id="result-foe" style="display:none"></div><div class="result-elo-row"><span class="result-elo-before" id="result-elo-before"></span><span class="result-elo-arrow">→</span><span class="result-elo-after" id="result-elo-after"></span><span class="result-elo-delta" id="result-elo-delta"></span></div><div class="result-elo-note" id="result-elo-note" style="display:none"></div><div class="result-rank-row"><span class="result-rank-icon" id="result-rank-icon"></span><span class="result-rank-name" id="result-rank-name"></span></div><div class="unlock-section" id="unlock-section" style="display:none"><div class="unlock-title">Nouvelle pièce débloquée !</div><span class="unlock-piece-emoji" id="unlock-piece-emoji"></span><div class="unlock-piece-name" id="unlock-piece-name"></div><div class="unlock-piece-class" id="unlock-piece-class"></div><div class="unlock-piece-ability" id="unlock-piece-ability"></div></div><div style="display:flex;flex-direction:column;gap:8px;margin-top:20px"><button class="btn btn-gold" style="width:100%" id="result-continue">Continuer</button><div style="display:flex;gap:8px"><button class="btn btn-primary" style="flex:1" id="result-rejouer">↺ Rejouer</button><button class="btn btn-ghost" style="flex:1;border-color:var(--accent2);color:var(--accent2)" id="result-revanche">Revanche</button></div></div></div></div>
+<div class="result-modal" id="result-modal"><div class="result-box" id="result-box"><button id="result-close-btn" style="position:absolute;top:12px;right:14px;background:transparent;border:none;cursor:pointer;color:var(--muted);font-size:22px;line-height:1;font-family:inherit;transition:color .15s;z-index:1" title="Fermer et analyser la partie">✕</button><span class="result-icon" id="result-icon"></span><div class="result-title" id="result-title"></div><div class="result-foe" id="result-foe" style="display:none"></div><div class="result-elo-row"><span class="result-elo-before" id="result-elo-before"></span><span class="result-elo-arrow">→</span><span class="result-elo-after" id="result-elo-after"></span><span class="result-elo-delta" id="result-elo-delta"></span></div><div class="result-elo-note" id="result-elo-note" style="display:none"></div><div class="unlock-section" id="unlock-section" style="display:none"><div class="unlock-title">Nouvelle pièce débloquée !</div><span class="unlock-piece-emoji" id="unlock-piece-emoji"></span><div class="unlock-piece-name" id="unlock-piece-name"></div><div class="unlock-piece-class" id="unlock-piece-class"></div><div class="unlock-piece-ability" id="unlock-piece-ability"></div></div><div style="display:flex;flex-direction:column;gap:8px;margin-top:20px"><button class="btn btn-gold" style="width:100%" id="result-continue">Continuer</button><div style="display:flex;gap:8px"><button class="btn btn-primary" style="flex:1" id="result-rejouer">↺ Rejouer</button><button class="btn btn-ghost" style="flex:1;border-color:var(--accent2);color:var(--accent2)" id="result-revanche">Revanche</button></div></div></div></div>
 <!-- CÉRÉMONIE D'OUVERTURE DE COFFRE (js/economy-ui.js) -->
 <div class="chest-modal" id="chest-modal">
   <div class="chest-stage">
@@ -993,6 +997,31 @@
   </svg>
 </button>
 <div id="settings-panel">
+  <!-- LE COMPTE EN PREMIER, PARCE QU'IL EST LA RAISON PRINCIPALE D'OUVRIR CE
+       PANNEAU. Il était tout en bas, sous deux curseurs de volume qu'on règle
+       une fois pour toutes : chercher son identité demandait donc de lire deux
+       réglages qu'on ne venait pas voir. Le jeu ne demande plus de pseudo au
+       démarrage (voir js/accounts.js) — c'est le SEUL chemin vers son
+       identité : se renommer, créer un autre compte, passer de l'un à
+       l'autre. Le rouage est le bon endroit, la première ligne est la bonne
+       place. -->
+  <button class="sp-account-btn" id="sp-account">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="12" cy="8.5" r="3.6"/><path d="M4.8 20a7.2 7.2 0 0 1 14.4 0"/>
+    </svg>
+    <span>Compte</span>
+  </button>
+  <!-- INSTALLER LE JEU. La ligne n'apparaît que si le navigateur dit que
+       c'est possible et que ce n'est pas déjà fait (pwaRefreshSettingsRow,
+       js/pwa.js) : un bouton qui ne fait rien est pire que pas de bouton.
+       Elle suit le Compte : ce sont les deux PORTES du panneau, les curseurs
+       en dessous étant les réglages proprement dits. -->
+  <button class="sp-account-btn" id="sp-install-row" style="display:none">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M12 4v11"/><path d="M8 11.5 12 15.5 16 11.5"/><path d="M5 19h14"/>
+    </svg>
+    <span id="sp-install">Installer le jeu</span>
+  </button>
   <!-- DEUX CURSEURS DE SON, ET ILS NE COMMANDENT PAS LA MÊME CHOSE. Il n'y en
        a eu qu'un, « Bruitages », qui pilotait aussi la musique à un facteur
        fixe près : couper la musique de combat sans perdre le bruit des pièces
@@ -1001,7 +1030,9 @@
        combat (window._musicGain, js/combat-music.js), « Bruitages » qu'aux
        sons de jeu. Le jeu n'a plus qu'un thème (sombre), il n'y a donc pas de
        mode clair à proposer, et le mode test s'atteint par son adresse
-       (/?test), pas par un bouton ici. -->
+       (/?test), pas par un bouton ici.
+       PLUS D'INTERRUPTEUR DE VIBRATION non plus : elle est TOUJOURS active
+       (voir hapticSetEnabled, js/sfx.js). -->
   <div class="sp-row">
     <span class="sp-label">Bruitages</span>
     <input type="range" class="sp-slider" id="sp-sfx-vol" min="0" max="1" step="0.05" value="1">
@@ -1010,32 +1041,6 @@
     <span class="sp-label">Musique</span>
     <input type="range" class="sp-slider" id="sp-music-vol" min="0" max="1" step="0.05" value="0.5">
   </div>
-  <!-- LE COMPTE EST ICI ET NULLE PART AILLEURS. Le jeu ne demande plus de
-       pseudo au démarrage (voir js/accounts.js) : c'est donc le seul chemin
-       vers son identité — se renommer, créer un autre compte, passer de l'un
-       à l'autre. Le rouage est le bon endroit : c'est là qu'on va quand on
-       cherche à régler quelque chose sur soi plutôt que sur la partie. -->
-  <!-- PLUS D'INTERRUPTEUR DE VIBRATION. Elle est TOUJOURS active (voir
-       hapticSetEnabled, js/sfx.js) : c'est une réponse au doigt, pas un
-       effet, et sur un appareil qui ne sait pas vibrer elle retombe déjà
-       toute seule sur son repli visuel (HAPTIC_FALLBACK_CLASS). Un réglage
-       de plus pour cinq motifs de 10 ms ne valait pas la ligne qu'il
-       occupait au-dessus du Compte. -->
-  <!-- INSTALLER LE JEU. La ligne n'apparaît que si le navigateur dit que
-       c'est possible et que ce n'est pas déjà fait (pwaRefreshSettingsRow,
-       js/pwa.js) : un bouton qui ne fait rien est pire que pas de bouton. -->
-  <button class="sp-account-btn" id="sp-install-row" style="display:none">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-      <path d="M12 4v11"/><path d="M8 11.5 12 15.5 16 11.5"/><path d="M5 19h14"/>
-    </svg>
-    <span id="sp-install">Installer le jeu</span>
-  </button>
-  <button class="sp-account-btn" id="sp-account">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-      <circle cx="12" cy="8.5" r="3.6"/><path d="M4.8 20a7.2 7.2 0 0 1 14.4 0"/>
-    </svg>
-    <span>Compte</span>
-  </button>
 </div>
 
 <!-- ================================================================

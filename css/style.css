@@ -560,15 +560,21 @@ body.has-acc #page-game{min-height:0}
   .acc-medal-lg .acc-medal-letter{font-size:27px}
 }
 
-/* La ligne « Compte » du panneau de réglages : un bouton pleine largeur sous
-   le curseur de son, séparé de lui par un filet — ce n'est pas un réglage de
-   plus, c'est une porte vers une autre page. */
+/* Les lignes « Compte » et « Installer le jeu » : des boutons pleine largeur
+   EN TÊTE du panneau — ce ne sont pas des réglages de plus, ce sont des portes
+   vers autre chose, et le Compte est la raison principale d'ouvrir le rouage.
+   Ils étaient sous les curseurs de volume : on descendait deux réglages qu'on
+   ne venait pas voir avant d'atteindre son identité. */
 .sp-account-btn{
-  display:flex;align-items:center;gap:9px;width:100%;margin-top:12px;padding:9px 10px;
-  border:1px solid var(--border2);border-top-color:var(--border2);border-radius:9px;
+  display:flex;align-items:center;gap:9px;width:100%;margin-bottom:10px;padding:9px 10px;
+  border:1px solid var(--border2);border-radius:9px;
   background:transparent;color:var(--text);font-family:var(--f-ui);font-size:12px;
   font-weight:600;cursor:pointer;transition:border-color .18s,color .18s,background .18s;
 }
+/* Le filet qui sépare les portes des réglages proprement dits. Il se pose sur
+   la PREMIÈRE ligne de réglage qui suit un bouton, pour que le panneau reste
+   correct quand « Installer le jeu » est masqué (le cas courant). */
+.sp-account-btn+.sp-row{border-top:1px solid var(--border);padding-top:12px}
 .sp-account-btn svg{width:16px;height:16px;flex:none;color:var(--muted);transition:color .18s}
 .sp-account-btn:hover{border-color:var(--accent2);color:var(--accent2);background:var(--accent-bg)}
 .sp-account-btn:hover svg{color:var(--accent2)}
@@ -1289,8 +1295,9 @@ body:not(.main-menu) #settings-panel{display:none}
   border-style:solid;border-color:var(--accent);color:var(--accent2);
   background:var(--accent-bg);letter-spacing:.3px;
 }
-.result-rank-row{display:flex;align-items:center;justify-content:center;gap:8px;margin:10px 0 18px;font-family:var(--f-ui);font-size:13px;background:var(--bg);border-radius:8px;padding:8px 16px;border:1px solid var(--border)}
-.result-rank-icon{font-size:22px}.result-rank-name{font-weight:700;color:var(--text)}
+/* La ligne de rang (« Pierre · 218 ELO ») a quitté l'écran de fin de partie :
+   elle redisait, en plus long, le nombre que la ligne d'ELO juste au-dessus
+   venait d'afficher avec son écart. */
 .unlock-section{margin-top:18px;padding:16px;border-radius:12px;background:linear-gradient(135deg,rgba(201,168,76,.08),rgba(122,31,43,.08));border:1px solid rgba(201,168,76,.3);animation:unlockGlow .8s ease both .3s}
 @keyframes unlockGlow{from{transform:scale(.92);opacity:0}to{transform:scale(1);opacity:1}}
 .unlock-title{font-family:var(--f-ui);font-size:11px;color:var(--gold);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px}
@@ -1423,12 +1430,12 @@ body:not(.main-menu) #settings-panel{display:none}
    TOUT EST RELATIF : largeur en pourcentage de l'écran, hauteur et rondeur en
    `em` — la pastille garde les mêmes proportions d'un petit téléphone à une
    tablette.
-   ELLE EST COLLÉE AU BAS DE L'ÉCRAN, et plus posée à 2 vh au-dessus. Ce
-   retrait la laissait flotter au milieu d'une bande vide, et sur un grand
-   écran elle avait l'air d'avoir glissé du contenu ; il ne reste que la zone
-   sûre (var(--safe-b)), c'est-à-dire l'espace que le matériel réclame et rien
-   de plus. Les coins du bas s'équerrent : une pastille posée SUR le bord de
-   l'écran doit épouser ce bord, sinon elle ne se lit pas comme collée.
+   ELLE EST COLLÉE AU BAS DE L'ÉCRAN, et plus posée à 2 vh au-dessus : il ne
+   reste que la zone sûre (var(--safe-b)), l'espace que le matériel réclame et
+   rien de plus. C'est un DÉPLACEMENT, pas une déformation — la pastille garde
+   ses quatre coins ronds. Ils avaient été équerrés en bas pour « épouser le
+   bord » : le bouton cessait d'être une pastille et devenait un onglet mal
+   coupé, ce qui n'était demandé nulle part.
    Elle reste en position:absolute (et non fixed) pour la raison expliquée
    dans index.html : l'animation d'entrée de .page.active laisse un transform
    permanent sur la page, qui ferait d'elle le bloc conteneur du fixed.
@@ -1437,7 +1444,7 @@ body:not(.main-menu) #settings-panel{display:none}
 .voie-ok-bar{position:absolute;left:50%;bottom:var(--safe-b);
   transform:translateX(-50%);z-index:5;
   width:34%;min-width:6em;max-width:14em;
-  margin:0;padding:.75em 1em;border-radius:999px 999px 0 0;
+  margin:0;padding:.75em 1em;border-radius:999px;
   font-family:var(--f-ui);font-weight:800;font-size:min(4.2vw,16px);letter-spacing:.09em;
   box-shadow:inset 0 .1em 0 rgba(255,240,205,.55),inset 0 -.18em 0 rgba(0,0,0,.28),
              0 .45em 1.1em -.35em rgba(0,0,0,.75)}
@@ -3110,10 +3117,13 @@ body.light .gp-bar.gp-turn{background:linear-gradient(90deg,var(--accent-bg),var
   #ai-player-bar.gp-turn{box-shadow:inset 0 -2px 0 var(--accent2)}
   #human-player-bar.gp-turn{box-shadow:inset 0 2px 0 var(--accent2)}
 
-  /* « À vous de jouer » occupait 64 px pleine largeur pour redire ce que le
-     bandeau allumé dit déjà. La barre de statut ne reste que pour
-     l'exceptionnel : échec, mat, nulle, réflexion de l'adversaire. */
-  .status-bar.ok{display:none}
+  /* LES DEUX ÉTATS DU TOUR SE LISENT AU MÊME ENDROIT. « À votre tour » était
+     masqué sur téléphone (`.status-bar.ok{display:none}`), au motif que le
+     bandeau allumé le disait déjà : la barre ne montrait donc jamais qu'une
+     moitié de la question, « Au tour de votre adversaire », et le joueur
+     n'avait aucune phrase à attendre quand c'était à lui. Les deux
+     indications occupent maintenant la même ligne, à tour de rôle — c'est
+     précisément ce qui en fait un repère. */
 
   /* Même piège que .game-main : sous `display:contents`, .gs-grow devient un
      enfant direct de la colonne, où `flex:1` vaut `flex-basis:0`. Le bloc
@@ -3637,9 +3647,10 @@ body.light .cube-face[data-face="jouer"] .face-viewport::before{opacity:.14}
    Tailles en chiffres tabulaires pour que les colonnes ne dansent pas.
    ============================================================== */
 .move-log-w,.move-log-b{font-variant-numeric:tabular-nums;font-size:13px;white-space:nowrap}
-.ml-from{opacity:.55;letter-spacing:.3px}
+/* La colonne (ou la rangée) de départ, quand elle est nécessaire pour lever
+   une ambiguïté : en retrait de la case d'arrivée, qui est l'information. */
+.ml-dis{opacity:.62;letter-spacing:.3px}
 .ml-sq{font-weight:700;letter-spacing:.3px}
-.ml-dash{opacity:.35;margin:0 1px}
 .ml-x{color:var(--ember);font-weight:700;margin:0 1px}
 .ml-mark{color:var(--gold);font-weight:800;margin-left:1px}
 .ml-flag{font-family:var(--f-ui);font-size:7.5px;letter-spacing:.6px;text-transform:uppercase;
@@ -3807,7 +3818,14 @@ body.light .adv-advised{color:#f6f5f1}
   display:flex;align-items:center;justify-content:center;border-radius:14px;
   background:color-mix(in srgb,var(--pcls) 12%,transparent);
   border:1px solid color-mix(in srgb,var(--pcls) 34%,transparent)}
-.psheet-logo .pc-icon,.psheet-logo .pc-svg{width:76%;height:76%}
+/* LE 76 % NE DOIT S'APPLIQUER QU'UNE FOIS. La règle visait `.pc-icon` ET
+   `.pc-svg` ; or pieceIcon() imbrique le second DANS le premier, et les deux
+   sélecteurs s'appliquaient l'un après l'autre : le dessin ne faisait plus que
+   58 % du cadre (0,76²) et, `.pc-icon` étant un inline-block, il se collait à
+   SA GAUCHE — le logo paraissait décalé de 5 px dans son carré. Le combinateur
+   enfant ne matche donc plus le SVG imbriqué, qui reprend le 100 % de
+   `.pc-icon .pc-svg` et remplit exactement son parent centré. */
+.psheet-logo>.pc-icon,.psheet-logo>.pc-svg{width:76%;height:76%}
 .psheet-id{flex:1;min-width:0}
 .psheet-name{font-family:var(--f-title);font-weight:800;line-height:1.15;
   font-size:clamp(16px,5vw,22px);color:var(--text)}
