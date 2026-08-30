@@ -196,8 +196,8 @@ const SCREENS=[
                                        aiArmyData=generateAIArmy(20,{});
                                        showPage('page-game');startGame(false,false,null);});
                                      await p.waitForTimeout(3000);}},
-  {name:'13-serie',     go:async p=>{await p.evaluate(()=>{goToMainMenu();});await p.waitForTimeout(600);
-                                     await p.click('#jouer-streak').catch(()=>{});await p.waitForTimeout(500);}},
+  {name:'13-journaliere',go:async p=>{await p.evaluate(()=>{goToMainMenu();});await p.waitForTimeout(600);
+                                     await p.click('#jouer-daily').catch(()=>{});await p.waitForTimeout(500);}},
 ];
 
 (async()=>{

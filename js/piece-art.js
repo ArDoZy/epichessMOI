@@ -107,20 +107,6 @@ const PIECE_ART={
     '<path class="l" d="M33 42h34M32 69h36"/>',
 
   // ---- Brutes ----------------------------------------------------
-  // LE PEUREUX. Tout est dans la posture : deux mains levées de part et
-  // d'autre de la tête, des épaules remontées jusqu'aux oreilles, des yeux
-  // beaucoup trop grands et une bouche qui tremble. Aucune arme, aucune
-  // pointe : à la taille d'une case, c'est la seule silhouette du jeu qui
-  // recule au lieu d'avancer.
-  'peureux':
-    '<path class="b" d="M25 47c-6-6-10-14-12-22 5-1 10 2 13 7z"/>'+
-    '<path class="b" d="M75 47c6-6 10-14 12-22-5-1-10 2-13 7z"/>'+
-    '<path class="b" d="M50 18c-16 0-27 12-27 28 0 13 4 24 8 34h38c4-10 8-21 8-34 0-16-11-28-27-28z"/>'+
-    '<ellipse class="k" cx="40" cy="45" rx="6" ry="7.5"/>'+
-    '<ellipse class="k" cx="60" cy="45" rx="6" ry="7.5"/>'+
-    '<path class="l" d="M42 66c2.7-4 5.3 4 8 0s5.3 4 8 0"/>'+
-    '<path class="l" d="M13 32c-3-2-5-5-6-9M87 32c3-2 5-5 6-9"/>',
-
   'fourmi':
     '<path class="l" d="M43 14c-5-8-11-12-17-10M57 14c5-8 11-12 17-10"/>'+
     '<path class="l" d="M40 39 22 31M40 47H20M40 55l-18 9M60 39l18-8M60 47h20M60 55l18 9"/>'+
@@ -140,6 +126,24 @@ const PIECE_ART={
     '<path class="b" d="M44 60c0 13-1 23 4 29 6 7 15 5 18-2l-9-3c-1 4-5 4-6-1-2-6-1-15-1-23z"/>'+
     '<path class="b" d="M36 63c-3 7-3 13 0 18l5-2c-2-5-2-11 0-15z"/>'+
     '<circle class="k" cx="39" cy="40" r="3.5"/><circle class="k" cx="61" cy="40" r="3.5"/>',
+
+  // LES TROIS GARDES SE LISENT COMME UNE FAMILLE : même silhouette de sentinelle
+  // casquée, même paire d'yeux, et une SEULE chose qui change — l'emblème gravé
+  // sur le plastron, qui est exactement le déplacement de la pièce. La croix
+  // pour l'Eau (les quatre orthogonales), le sautoir pour le Feu (les quatre
+  // diagonales), l'étoile à huit branches pour la Pierre (les deux à la fois).
+  // On peut donc deviner le coup d'une créature en regardant sa case.
+  'garde-eau':
+    '<path class="b" d="M50 6c-9 6-16 15-16 23a16 16 0 0 0 32 0c0-8-7-17-16-23z"/>'+
+    '<path class="b" d="M26 46h48l4 36H22z"/>'+
+    '<path class="l" d="M50 55v18M41 64h18"/>'+
+    '<circle class="k" cx="43" cy="30" r="3.2"/><circle class="k" cx="57" cy="30" r="3.2"/>',
+
+  'garde-feu':
+    '<path class="b" d="M50 5c-4 9-11 13-13 21a16 16 0 0 0 26 12c4-4 5-9 3-15-2-7-11-11-16-18z"/>'+
+    '<path class="b" d="M26 46h48l4 36H22z"/>'+
+    '<path class="l" d="M43 57l14 14M57 57L43 71"/>'+
+    '<circle class="k" cx="43" cy="30" r="3.2"/><circle class="k" cx="57" cy="30" r="3.2"/>',
 
   'garde-pierre':
     '<path class="b" d="M23 82l3-35 11-16 13-8 13 8 11 16 3 35z"/>'+

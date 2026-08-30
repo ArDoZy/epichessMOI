@@ -1,5 +1,5 @@
 // ================================================================
-// REWARDS.JS : les deux nouvelles voies de récompenses
+// REWARDS.JS : la récompense journalière et les deux voies de progression
 // ================================================================
 // L'échiquier a trois lignes, le jeu a trois voies de progression, et chacune
 // porte le nom de la sienne :
@@ -12,12 +12,15 @@
 //   · la RANGÉE DE LA RICHESSE (ici) : vingt-cinq paliers de perles, payés en
 //     TICKETS, et les tickets s'obtiennent en accomplissant des quêtes.
 //
-// POURQUOI LA COLONNE EXISTE. La série du jour s'arrête à son sixième coffre
-// (chestForStreak, js/data-pieces.js) : au-delà, une victoire ne rapportait
-// plus rien du tout — auparavant elle redonnait un Coffre Roi à l'infini, ce
-// qui vidait de son sens tout le reste de l'échelle. La colonne prend le
-// relais : elle avance d'un cran à CHAQUE victoire, série du jour terminée ou
-// non, et elle a une fin (trente paliers, une seule fois par compte).
+// À CÔTÉ DES TROIS VOIES, LA RÉCOMPENSE JOURNALIÈRE (plus bas dans ce
+// fichier) : un lot par jour, dans un cycle de trente qui recommence
+// indéfiniment (DAILY_REWARDS, js/data-pieces.js). Elle ne demande RIEN — ni
+// victoire, ni quête : juste de revenir.
+//
+// POURQUOI LA COLONNE EXISTE. Elle avance d'un cran à CHAQUE victoire, sans
+// verrou quotidien et sans qu'une défaite n'y touche, et elle a une fin
+// (trente paliers, une seule fois par compte). C'est la voie de celui qui
+// gagne, là où la journalière est celle de celui qui revient.
 //
 // POURQUOI LA RANGÉE EXISTE. Tout ce qui rapporte se gagne au tableau
 // d'affichage : gagner, gagner encore, gagner d'affilée. La rangée récompense
@@ -42,6 +45,8 @@
 //   rich_claimed   paliers de la rangée déjà encaissés
 //   quests_day     jour des quêtes en cours (clé locale, voir todayKey)
 //   quests         les trois quêtes du jour : {id, pieceId, prog, done}
+//   dr_idx         position dans le cycle de la récompense journalière
+//   dr_day         jour de la dernière récompense journalière encaissée
 // ================================================================
 
 // Le mode test (/?test) LIT la progression réelle mais n'en écrit jamais une
@@ -50,6 +55,58 @@ function rewardsAdmin(){return typeof economyAdmin==='function'&&economyAdmin();
 function rwGet(k,fb){return (typeof accGet==='function')?accGet(k,fb):fb;}
 function rwSet(k,v){if(rewardsAdmin())return;if(typeof accSet==='function')accSet(k,v);}
 function rwNotif(msg,type){if(typeof showNotif==='function')showNotif(msg,type||'ok');}
+
+// ----------------------------------------------------------------
+// LA RÉCOMPENSE JOURNALIÈRE : un lot par jour, un cycle sans fin
+// ----------------------------------------------------------------
+// Elle remplace la SÉRIE DU JOUR, qui exigeait six victoires d'affilée dans la
+// journée et qu'une seule défaite refermait jusqu'au lendemain.
+//
+// Ici il n'y a rien à réussir : le lot du jour se prend, et le cycle avance
+// d'un cran. Le contenu et l'ordre du cycle sont dans DAILY_REWARDS
+// (js/data-pieces.js), et il RECOMMENCE indéfiniment — d'où le modulo.
+//
+// `dr_idx` compte les récompenses ENCAISSÉES, pas les jours écoulés : un
+// joueur qui saute trois jours ne saute pas trois lots, il reprend le cycle là
+// où il l'avait laissé. `dr_day` est le seul verrou : un lot par jour local
+// (todayKey, js/economy.js — la même horloge que les quêtes et le coffre de
+// réapprovisionnement, pour que tout le quotidien du jeu bascule ensemble).
+function dailyRewardTotal(){return (typeof DAILY_REWARDS!=='undefined')?DAILY_REWARDS.length:0;}
+function dailyRewardIdx(){const n=rwGet('dr_idx',0);return Math.max(0,typeof n==='number'?n:0);}
+// Le lot d'un rang donné du cycle, quel que soit le nombre de tours déjà faits.
+function dailyRewardStep(i){
+  const t=dailyRewardTotal();
+  if(!t)return null;
+  return DAILY_REWARDS[((i%t)+t)%t];
+}
+// Le rang courant DANS le cycle (0 à 29) : c'est lui que la fenêtre met en
+// avant, et c'est le lot que la journée d'aujourd'hui donne.
+function dailyRewardCursor(){const t=dailyRewardTotal();return t?dailyRewardIdx()%t:0;}
+// Combien de tours complets ont été bouclés : la fenêtre l'affiche (« cycle
+// n° 3 »), sinon revenir au Coffre Pion après trente jours se lit comme une
+// remise à zéro.
+function dailyRewardCycle(){const t=dailyRewardTotal();return t?Math.floor(dailyRewardIdx()/t)+1:1;}
+function dailyRewardAvailable(){
+  if(typeof CUR_ACC!=='undefined'&&!CUR_ACC)return false;
+  if(!dailyRewardTotal())return false;
+  const day=(typeof todayKey==='function')?todayKey():'';
+  return rwGet('dr_day',null)!==day;
+}
+// Encaisse le lot du jour et renvoie sa description ({idx, chest|pearls|jokers}),
+// ou null s'il a déjà été pris aujourd'hui. Comme pour la colonne, le lot n'est
+// PAS versé ici : c'est l'interface qui ouvre le coffre, verse les perles ou
+// ouvre la fenêtre des jokers, pour que ce qui est montré soit exactement ce
+// qui est reçu.
+function dailyRewardClaim(){
+  if(!dailyRewardAvailable())return null;
+  const idx=dailyRewardCursor();
+  const step=dailyRewardStep(idx);
+  if(!step)return null;
+  const day=(typeof todayKey==='function')?todayKey():'';
+  rwSet('dr_day',day);
+  rwSet('dr_idx',dailyRewardIdx()+1);
+  return{idx,...step};
+}
 
 // ----------------------------------------------------------------
 // LA COLONNE DES VICTOIRES : trente paliers, un par victoire
@@ -155,23 +212,28 @@ function jokerConvert(pieceId){
 // ----------------------------------------------------------------
 // LA RANGÉE DE LA RICHESSE : vingt-cinq paliers de perles
 // ----------------------------------------------------------------
-// Cinq tranches de cinq paliers : 5, 10, 15, 20 puis 25 perles. On n'y avance
-// pas en gagnant mais en accomplissant des QUÊTES, qui donnent des tickets ;
-// chaque palier coûte un nombre de tickets, croissant par tranche.
+// Cinq tranches de cinq paliers : 2, 3, 4, 5 puis 6 perles. On n'y avance pas
+// en gagnant mais en accomplissant des QUÊTES, qui donnent des tickets ; chaque
+// palier coûte un nombre de tickets, croissant par tranche.
 //
-// L'ÉCONOMIE, EN TROIS NOMBRES. La rangée entière rend 375 perles, soit un
-// Coffre Tour et demi (250 perles), et coûte 130 tickets. Les trois quêtes du
-// jour rapportent entre 2 et 5 tickets chacune, soit une dizaine par jour si
-// on les fait toutes : la rangée se termine en deux semaines de jeu régulier,
-// et le premier palier tombe dès la première quête accomplie (3 tickets).
-// C'est une voie d'appoint, pas une deuxième source de coffres : toucher à ces
-// nombres, c'est refaire ce calcul.
+// L'ÉCONOMIE, EN TROIS NOMBRES. La rangée entière rend 100 perles — soit deux
+// Coffres Tour et demi, à 40 perles pièce — et coûte 130 tickets. Les trois
+// quêtes du jour rapportent entre 2 et 5 tickets chacune, soit une dizaine par
+// jour si on les fait toutes : la rangée se termine en deux semaines de jeu
+// régulier, et le premier palier tombe dès la première quête accomplie
+// (3 tickets). C'est une voie d'appoint, pas une deuxième source de coffres :
+// toucher à ces nombres, c'est refaire ce calcul.
+//
+// LES MONTANTS ONT SUIVI LES PRIX. Ils valaient 5 à 25 perles quand un Coffre
+// Tour en coûtait 250 ; l'échelle des perles a été divisée par dix avec celle
+// des coffres (voir CHEST_PEARLS, js/data-pieces.js), et laisser la rangée à
+// 375 perles en aurait fait, à elle seule, près de quatre Coffres Roi.
 const WEALTH_TIERS=[
-  {pearls:5, cost:3},
-  {pearls:10,cost:4},
-  {pearls:15,cost:5},
-  {pearls:20,cost:6},
-  {pearls:25,cost:8},
+  {pearls:2,cost:3},
+  {pearls:3,cost:4},
+  {pearls:4,cost:5},
+  {pearls:5,cost:6},
+  {pearls:6,cost:8},
 ];
 const WEALTH_ROW=(()=>{
   const rows=[];
@@ -421,11 +483,12 @@ function questNoteCheck(gs,defColor,isMate){
 // ----------------------------------------------------------------
 // CE QUE LE MENU DOIT MONTRER
 // ----------------------------------------------------------------
-// Nombre de récompenses qui ATTENDENT le joueur, toutes voies confondues :
-// c'est la pastille posée sur le bouton « Récompenses » du menu principal.
+// IL N'Y A PLUS DE TOTAL, PARCE QU'IL N'Y A PLUS UN SEUL BOUTON. Le menu
+// portait « Récompenses » et une pastille qui additionnait les deux voies :
+// elle disait qu'il y avait quelque chose quelque part, sans dire où. Chaque
+// voie a maintenant son bouton et sa pastille (renderRewardsBadge,
+// js/rewards-ui.js), chacune alimentée par l'état de SA voie — la journalière
+// par dailyRewardAvailable(), la colonne par colPending(), la rangée par
+// richCanClaim() et jokerBalance().
 // Une pastille qui ne s'allume que quand il y a vraiment quelque chose à
 // prendre est un rappel ; une pastille toujours allumée est un décor.
-function rewardsPending(){
-  if(typeof CUR_ACC!=='undefined'&&!CUR_ACC)return 0;
-  return colPending()+(richCanClaim()?1:0)+(jokerBalance()?1:0);
-}

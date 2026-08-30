@@ -124,9 +124,10 @@ function playOutcomeCinematic(result,report,onDone){
   let boxes=tally('Pièces perdues',report&&report.lost,'tally-loss','Aucune perte');
   if(report&&Object.keys(report.gained||{}).length)
     boxes+=tally('Créées par promotion',report.gained,'tally-gain','—');
-  if(report&&report.chest)
-    boxes+='<div class="tally-box tally-gain"><div class="tally-lbl">Série de '+report.streak+' · récompense</div>'+
-      '<div class="tally-row"><span style="font-family:Cinzel,serif;font-size:13px;color:var(--gold2)">'+report.chest.name+'</span></div></div>';
+  // IL N'Y A PLUS DE COFFRE DE SÉRIE À ANNONCER ICI. Une victoire donnait un
+  // coffre selon la série du jour ; elle fait maintenant avancer la COLONNE
+  // DES VICTOIRES (js/rewards.js), dont le palier s'encaisse à la main sur sa
+  // page. Ce n'est donc plus un gain de fin de partie à récapituler.
 
   // Braises pour une défaite, poussière d'or pour une victoire.
   const moteColor=result==='win'?'#e6c576':result==='loss'?'#d9552f':'#8698a1';

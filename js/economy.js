@@ -19,17 +19,21 @@
 // ne se possèdent pas : ils sont fournis à chaque partie. Sans cela, une
 // partie perdue coûterait huit pions et le jeu deviendrait injouable.
 //
-// FILET DE SÉCURITÉ : une victoire donne un coffre, dont la rareté suit la
-// SÉRIE de victoires (1re = Pion ... 6e = Roi, et RIEN au-delà : la série du
-// jour est alors terminée) ; une défaite remet la série à zéro et la ferme
-// jusqu'au lendemain, où elle repart du Coffre Pion. Les victoires que la
-// série ne récompense plus font avancer la COLONNE DES VICTOIRES
-// (js/rewards.js), qui n'a pas de limite quotidienne. Et une fois par jour, le
-// coffre de réapprovisionnement rend des exemplaires de chaque pièce possédée
-// (DAILY_CHEST.perPiece), ce qui rend impossible de rester bloqué sans armée
-// jouable.
+// FILET DE SÉCURITÉ : une victoire fait avancer la COLONNE DES VICTOIRES
+// (js/rewards.js), qui donne un coffre ou des jokers à chaque palier et ne se
+// referme jamais ; la RÉCOMPENSE JOURNALIÈRE (même fichier) en donne un lot par
+// jour, sans rien exiger. Et une fois par jour, le coffre de
+// réapprovisionnement rend des exemplaires de chaque pièce possédée dont le
+// stock est bas (DAILY_CHEST), ce qui rend impossible de rester bloqué sans
+// armée jouable.
 //
-// Dépendances : data-pieces.js (PIECES, CHESTS, DAILY_CHEST, chestForStreak),
+// LA « SÉRIE DU JOUR » N'EXISTE PLUS. Une victoire donnait un coffre dont la
+// rareté suivait la série (1re = Pion … 6e = Roi), et une défaite refermait la
+// série jusqu'au lendemain : elle ne donnait rien à qui passe faire une
+// partie, et punissait qui en fait dix. `win_streak` survit comme simple
+// statistique (« Meilleure série » sur la fiche de compte).
+//
+// Dépendances : data-pieces.js (PIECES, CHESTS, DAILY_CHEST),
 // accounts.js (accGet/accSet, VV_UNLOCKED, vvSaveUnlocked).
 // Utilisé par : game-flow.js (engagement/règlement),
 // armies.js et builder.js (armée jouable ou non), economy-ui.js (affichage).
@@ -97,9 +101,15 @@ function invOwnedIds(){
   return [...ids];
 }
 
-// Dotation d'un compte neuf : de quoi jouer une vingtaine de parties sans
-// dépendre du hasard des coffres.
-const STARTER_STOCK=10;
+// Dotation d'un compte neuf : de quoi jouer sans dépendre du hasard des
+// coffres, et pas un exemplaire de plus.
+//
+// ELLE ÉTAIT À 10, c'est-à-dire déjà au plafond du coffre de
+// réapprovisionnement (DAILY_CHEST.cap) : une pièce neuve n'était donc jamais
+// réapprovisionnée, et le filet de sécurité ne se déclenchait qu'après une
+// série de défaites. À 6, le quotidien fait son travail dès le premier jour et
+// le stock monte vers son plafond au lieu d'en partir.
+const STARTER_STOCK=6;
 function invEnsureStarter(){
   if(economyAdmin())return;   // tout est déjà à ADMIN_STOCK, et rien ne s'écrit
   const inv=invAll();
@@ -204,30 +214,8 @@ function economyOnPromotion(pieceId,gs){
   if(typeof questNote==='function')questNote('promo',pieceId,1);
 }
 
-// ----------------------------------------------------------------
-// LA SÉRIE REPART À ZÉRO CHAQUE JOUR
-// ----------------------------------------------------------------
-// « Série DU JOUR » : la fenêtre du menu principal l'annonce, le verrou de
-// défaite promet qu'« elle repart demain » — et elle ne repartait pas. Rien
-// ne remettait `win_streak` à zéro au changement de date : seul le verrou
-// expirait tout seul (streakLockedToday compare à la date du jour). Le
-// compteur, lui, traversait les jours et les semaines. Passé six victoires
-// cumulées, la fenêtre affichait « Série terminée » pour toujours, les six
-// paliers marqués acquis, et il n'y avait plus jamais de palier à décrocher :
-// la Voie des coffres était finie et ne redémarrait jamais.
-//
-// `streak_day` est la date de la série en cours. Dès que la date locale
-// change, le compteur repart de zéro (et le verrou avec lui) : on retrouve un
-// Coffre Pion à la première victoire, un Coffre Roi à la sixième.
-function streakEnsureToday(){
-  if(accGet('streak_day',null)===todayKey())return;
-  accSet('streak_day',todayKey());
-  accSet('win_streak',0);
-  accSet('streak_lock_day',null);
-}
-
 // Règlement complet. Renvoie un rapport affiché par la cinématique de fin
-// (economy-ui.js) : ce qui a été perdu, ce qui rentre, la série et le coffre.
+// (economy-ui.js) : ce qui a été perdu, ce qui rentre, et la série en cours.
 function economySettle(result,gs){
   const rec=accGet(ENGAGED_KEY,null);
   const need=(rec&&rec.need)||{};
@@ -244,59 +232,28 @@ function economySettle(result,gs){
   });
   invAddMany(returned);
 
-  // Série de victoires et coffre associé.
+  // LA SÉRIE DE VICTOIRES N'EST PLUS QU'UNE STATISTIQUE.
   //
-  // LA RARETÉ SUIT LA SÉRIE, ET RIEN D'AUTRE : 1re victoire → Coffre Pion,
-  // 6e et au-delà → Coffre Roi, exactement l'échelle que la fenêtre « Série
-  // du jour » affiche du haut vers le bas.
+  // Elle commandait les coffres : 1re victoire du jour → Coffre Pion, 6e →
+  // Coffre Roi, une défaite refermant la série jusqu'au lendemain. C'était la
+  // « Série du jour », et elle est partie : elle ne donnait rien au joueur qui
+  // passe faire une partie, et elle punissait celui qui en fait dix. Les
+  // coffres tombent maintenant par la RÉCOMPENSE JOURNALIÈRE (un lot par jour,
+  // DAILY_REWARDS/js/rewards.js), la COLONNE DES VICTOIRES (un palier par
+  // victoire) et le Magasin.
   //
-  // Il y avait ici un PLAFOND par le palier de l'adversaire battu (champ
-  // `tier` de AI_OPPONENTS) : contre Cendre ou Suie (tier 0), tout coffre
-  // gagné redescendait au Coffre Pion, quelle que soit la série. Or ce sont
-  // précisément les deux adversaires que la galerie conseille à un compte
-  // neuf (advNextFoe, js/adversaires.js) : un débutant pouvait enchaîner six
-  // victoires et ne jamais voir autre chose qu'un Coffre Pion, pendant que la
-  // fenêtre lui promettait le Coffre Roi. Le filet de sécurité ne rattrapait
-  // plus personne, et l'échelle affichée était un mensonge.
-  //
-  // Ce que le plafond protégeait — « farmer » le plus faible pour empiler les
-  // Coffres Roi — est déjà tenu par le VERROU QUOTIDIEN juste dessous : il
-  // n'y a qu'une série par jour, donc au mieux un Coffre Roi par jour, et il
-  // faut six victoires d'affilée pour l'atteindre. Battre un adversaire très
-  // en dessous de soi ne rapporte par ailleurs quasiment aucun ELO
-  // (vvCalcNewElo, js/voie.js), donc rien de ce qui se débloque par palier.
-  //
-  // UNE SEULE SÉRIE PAR JOUR (streakLockedToday, plus bas) : une défaite ne
-  // remet plus seulement le compteur à zéro, elle ferme aussi la série pour
-  // le reste de la journée — les victoires suivantes ne donnent plus de
-  // coffre tant que la date locale n'a pas changé. Sans ce verrou, perdre
-  // n'était qu'un contretemps qu'une victoire suivante effaçait aussitôt.
-  //
-  // ET ELLE S'ARRÊTE À SON SIXIÈME COFFRE. chestForStreak renvoie `null`
-  // au-delà (js/data-pieces.js) : la septième victoire du jour ne donne plus
-  // de Coffre Roi, ni rien d'autre ici. Ce que les victoires suivantes
-  // rapportent est dans la COLONNE DES VICTOIRES (colNoteWin, js/rewards.js),
-  // qui avance à chaque victoire sans jamais se refermer.
-  streakEnsureToday();
+  // Le compteur reste, parce que « Meilleure série » est une ligne de la fiche
+  // de compte (js/account-ui.js) et que c'est une vraie fierté. Il n'a donc
+  // plus ni verrou quotidien ni remise à zéro à minuit : c'est simplement le
+  // nombre de victoires d'affilée, qu'une défaite ramène à zéro.
   let streak=accGet('win_streak',0);
-  let chest=null;
-  if(result==='win'){
-    if(!streakLockedToday()){
-      streak=streak+1;
-      chest=chestForStreak(streak);
-      // Le coffre n'est pas crédité ici : c'est settleAndCelebrate()
-      // (js/economy-ui.js) qui l'ouvre, une fois la cinématique d'issue passée
-      // et avant l'écran de résultat.
-    }
-  }else if(result==='loss'){
-    streak=0;
-    accSet('streak_lock_day',todayKey());
-  }
+  if(result==='win')streak=streak+1;
+  else if(result==='loss')streak=0;
   accSet('win_streak',streak);
 
   // LES DEUX AUTRES VOIES (js/rewards.js). La colonne des victoires avance
-  // d'un cran à chaque victoire — série du jour terminée ou non, c'est tout
-  // son intérêt — et les quêtes de la rangée comptent la victoire et les
+  // d'un cran à chaque victoire — c'est tout son intérêt : elle ne se referme
+  // jamais — et les quêtes de la rangée comptent la victoire et les
   // créatures effectivement engagées dans l'armée. C'est ici, et nulle part
   // ailleurs, parce que c'est le seul point par lequel passe le règlement
   // d'une partie (le tutoriel et le mode test n'y arrivent jamais).
@@ -308,7 +265,7 @@ function economySettle(result,gs){
     }
   }
 
-  return{result,lost,returned,gained:(gs&&gs.promoGains)||{},streak,chest};
+  return{result,lost,returned,gained:(gs&&gs.promoGains)||{},streak};
 }
 
 // ----------------------------------------------------------------
@@ -380,13 +337,19 @@ function pearlBuyChest(chestId){
 // CE QU'IL Y A DANS UN COFFRE
 // ----------------------------------------------------------------
 // Deux coffres du même palier ne doivent pas donner deux fois la même chose :
-// le NOMBRE de lots varie de ±1 autour de la valeur du coffre, la quantité de
-// chaque lot tire dans sa fourchette, et les perles aussi.
+// le TOTAL d'exemplaires tire dans la fourchette du coffre (`total`, voir
+// CHESTS dans js/data-pieces.js), le nombre de lots sur lequel ce total est
+// découpé varie de ±1, et les perles tirent dans leur propre fourchette.
 function chestRollCount(chest){return Math.max(1,chest.rolls+randInt(-1,1));}
-function chestRollRange(chest){return[Math.max(1,chest.rolls-1),chest.rolls+1];}
 
-// Probabilité qu'un lot donné soit un BON lot : double quantité, et tirage
-// nettement plus favorable aux pièces chères.
+// Probabilité qu'un lot donné soit un BON lot : tirage nettement plus
+// favorable aux pièces chères.
+//
+// ELLE NE DOUBLE PLUS LA QUANTITÉ. Le total du coffre est fixé d'avance
+// (chestTotalCopies) : un bon lot ne peut donc plus le faire déborder, il
+// déplace seulement le tirage vers le haut du catalogue — ce qui est la vraie
+// bonne nouvelle, un exemplaire de Grand Maître ne valant pas un exemplaire de
+// Fourmi.
 //
 // Elle se DÉDUIT de la probabilité de pièce inédite, et c'est tout l'intérêt :
 // la pièce inédite et les bons lots sont les deux façons dont un coffre peut
@@ -397,6 +360,29 @@ function chestRollRange(chest){return[Math.max(1,chest.rolls-1),chest.rolls+1];}
 // meilleur qu'un Coffre Pion sur les deux tableaux à la fois.
 function chestLuckyChance(chest){
   return Math.max(0.1,Math.min(0.75,0.22+chest.tier*0.09-chest.newChance*0.5));
+}
+
+// Le nombre TOTAL d'exemplaires que ce coffre donne, tous lots confondus.
+function chestTotalCopies(chest){
+  const t=chest.total||[1,1];
+  return Math.max(1,randInt(t[0],t[1]));
+}
+// Découpe `total` en `n` parts entières valant chacune au moins 1. On tire
+// n-1 coupures dans [1, total-1] : c'est une partition uniforme, donc des
+// lots inégaux (« 4 Méduses et 1 Typhon ») plutôt que n parts identiques.
+function chestSplit(total,n){
+  n=Math.max(1,Math.min(n,total));
+  if(n===1)return[total];
+  const cuts=[];
+  while(cuts.length<n-1){
+    const c=randInt(1,total-1);
+    if(!cuts.includes(c))cuts.push(c);
+  }
+  cuts.sort((a,b)=>a-b);
+  const parts=[];let prev=0;
+  cuts.forEach(c=>{parts.push(c-prev);prev=c;});
+  parts.push(total-prev);
+  return parts;
 }
 
 // Tire le contenu d'un coffre SANS l'appliquer : l'animation d'ouverture
@@ -411,12 +397,17 @@ function chestRoll(chestId){
   const lucky=chestLuckyChance(chest);
   const lots=[];
 
+  // Les perles sont un TOTAL, tiré une fois, sans facteur multiplicateur : la
+  // fourchette écrite dans CHEST_PEARLS est exactement ce qu'on peut recevoir.
   const pr=chestPearlRange(chest.id);
-  const pearlLucky=Math.random()<lucky;
-  lots.push({pearls:Math.round(randInt(pr[0],pr[1])*(pearlLucky?1.8:1)),lucky:pearlLucky});
+  lots.push({pearls:randInt(pr[0],pr[1])});
 
-  // La pièce inédite est rare (1 % à 25 %) : quand elle tombe, elle tombe en
-  // nombre, sinon on débloquerait une créature sans pouvoir l'aligner.
+  const total=chestTotalCopies(chest);
+
+  // La pièce inédite est rare (1 % à 25 %) : quand elle tombe, elle prend TOUT
+  // le contenu du coffre — et jamais moins de deux exemplaires, sinon on
+  // débloquerait une créature qui se déploie par paire sans pouvoir l'aligner
+  // une seule fois.
   //
   // Elle est GARANTIE quand on ne possède encore rien. Un coffre ne distribue
   // que des exemplaires de pièces déjà possédées (voir plus bas) : sans cette
@@ -424,7 +415,10 @@ function chestRoll(chestId){
   // justement ce qu'il faut faire quand il n'y a rien à renforcer.
   if(locked.length&&(!owned.length||Math.random()<chest.newChance)){
     const pick=weightedPick(locked,chest.bias);
-    if(pick)lots.push({pieceId:pick,qty:Math.max(4,chest.qty[1]),isNew:true});
+    if(pick){
+      lots.push({pieceId:pick,qty:Math.max(2,total),isNew:true});
+      return lots;
+    }
   }
 
   // ON NE REÇOIT PAS D'EXEMPLAIRES D'UNE PIÈCE QU'ON N'A PAS. Un lot
@@ -433,14 +427,13 @@ function chestRoll(chestId){
   // ici un repli qui, faute de pièces possédées, puisait dans le catalogue
   // entier : il distribuait des exemplaires de créatures encore verrouillées,
   // qui s'empilaient dans un stock sans jamais devenir jouables.
-  const rolls=owned.length?chestRollCount(chest):0;
-  for(let i=0;i<rolls;i++){
+  if(!owned.length)return lots;
+  chestSplit(total,chestRollCount(chest)).forEach(qty=>{
     const good=Math.random()<lucky;
     const pick=weightedPick(owned,chest.bias*(good?2.2:1));
-    if(!pick)continue;
-    const qty=randInt(chest.qty[0],chest.qty[1]);
-    lots.push({pieceId:pick,qty:good?qty*2:qty,isNew:false,lucky:good});
-  }
+    if(!pick)return;
+    lots.push({pieceId:pick,qty,isNew:false,lucky:good});
+  });
   // Fusion des doublons : deux lots de Méduse s'affichent en un seul. Le lot
   // de perles n'a pas de pieceId, il traverse sans être fusionné.
   const merged=[];
@@ -479,17 +472,18 @@ function todayKey(){
 }
 function dailyChestAvailable(){return accGet('daily_last',null)!==todayKey();}
 
-// La série de victoires à coffres est elle aussi quotidienne (voir
-// economySettle plus haut) : une défaite pose `streak_lock_day` à la date du
-// jour, et tant que la date locale n'a pas changé, plus aucune victoire ne
-// donne de coffre. Le lendemain, todayKey() change tout seul et le verrou
-// tombe — mais le COMPTEUR, lui, doit être remis à zéro explicitement, sans
-// quoi la série repart au palier où elle s'était arrêtée la veille (voir
-// streakEnsureToday, plus haut).
-function streakLockedToday(){return accGet('streak_lock_day',null)===todayKey();}
+// Ce que le coffre de réapprovisionnement verserait MAINTENANT. Il ne remplit
+// que ce qui manque : une pièce déjà pourvue (au moins DAILY_CHEST.cap
+// exemplaires) ne reçoit rien, et le versement s'arrête au seuil plutôt que de
+// le franchir. C'est ce qui en fait un filet de sécurité et non un robinet —
+// voir la note de DAILY_CHEST dans js/data-pieces.js.
 function dailyChestPreview(){
   const gains={};
-  invOwnedIds().forEach(id=>{gains[id]=DAILY_CHEST.perPiece;});
+  const cap=DAILY_CHEST.cap||Infinity;
+  invOwnedIds().forEach(id=>{
+    const n=Math.min(DAILY_CHEST.perPiece,cap-invCount(id));
+    if(n>0)gains[id]=n;
+  });
   return gains;
 }
 function claimDailyChest(){

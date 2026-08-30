@@ -349,8 +349,12 @@ const HAPTIC_PATTERNS={
   fanfare:[16,50,16,50,60],// mat, coffre, montée de rang
 };
 
-// Réglage séparé du son : quelqu'un qui joue en silence dans un train veut
-// souvent GARDER la vibration, et l'inverse est vrai aussi.
+// LA VIBRATION EST TOUJOURS ACTIVE. Elle a eu son interrupteur dans les
+// réglages, à part du son ; il est parti (voir js/settings-admin.js). Ce
+// n'est pas un effet qu'on subit mais la réponse du jeu au doigt qui touche,
+// et les cinq motifs ci-dessus durent au total moins d'un tiers de seconde.
+// L'interrupteur reste ici, sous forme de fonction, pour que le repli du
+// mouvement réduit et les tests puissent encore la couper.
 let _hapticEnabled=true;
 function hapticSetEnabled(on){_hapticEnabled=!!on;}
 function hapticSupported(){return typeof navigator!=='undefined'&&typeof navigator.vibrate==='function';}

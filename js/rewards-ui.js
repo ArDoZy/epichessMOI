@@ -1,7 +1,13 @@
 // ================================================================
-// REWARDS-UI.JS : la page « Récompenses » (colonne, rangée, quêtes)
+// REWARDS-UI.JS : la récompense journalière et la page des deux voies
 // ================================================================
-// Une page, deux onglets, et rien d'autre :
+// La FENÊTRE DE LA RÉCOMPENSE JOURNALIÈRE (#daily-modal) : le cycle de trente
+// lots, celui d'aujourd'hui au milieu, un bouton pour le prendre. Elle a
+// remplacé la fenêtre de la « série du jour » et en garde toute la
+// carrosserie (classes .streak-* de css/style.css) : c'est la même chose, une
+// colonne de lots dont un seul est en jeu.
+//
+// Puis la PAGE des deux voies, deux onglets, et rien d'autre :
 //
 //   COLONNE DES VICTOIRES  une colonne verticale de trente paliers, qu'on
 //                          descend d'un cran par victoire. Le palier dû
@@ -18,9 +24,10 @@
 // Dépendances : rewards.js (tout l'état et toutes les règles), economy-ui.js
 // (chestVisual, chestOpenNow, pearlAmountHTML), economy.js (invCount),
 // piece-art.js (pieceIcon), main.js (showPage, escH, showNotif).
-// Utilisé par : le bouton « Récompenses » du menu principal (index.html),
-// economy-ui.js (renderMenuChests rafraîchit la pastille et la carte de la
-// colonne de droite en mode bureau).
+// Utilisé par : les trois boutons du menu principal (index.html) —
+// « Récompense journalière », « Colonne des victoires », « Rangée de la
+// richesse » —, et economy-ui.js (renderMenuChests rafraîchit les pastilles
+// et les cartes de la colonne de droite en mode bureau).
 // ================================================================
 
 // ----------------------------------------------------------------
@@ -66,6 +73,138 @@ function jokerIcon(em){
 }
 function jokerAmountHTML(n,em){
   return '<span class="joker-amt">'+jokerIcon(em)+'<span>'+n+'</span></span>';
+}
+
+// ----------------------------------------------------------------
+// LA FENÊTRE DE LA RÉCOMPENSE JOURNALIÈRE
+// ----------------------------------------------------------------
+// Trente lignes, une par jour du cycle, et le lot d'aujourd'hui au milieu. Les
+// états sont ceux de toutes les autres voies du jeu (voir [STREAK] dans
+// css/style.css), pour qu'il n'y ait pas un deuxième vocabulaire visuel à
+// apprendre :
+//   chest-won   déjà pris (les jours passés de ce tour de cycle)
+//   chest-next  aujourd'hui — c'est lui qui respire
+//   chest-far   les jours suivants
+function dailyRowState(i,cursor){
+  if(i<cursor)return 'chest-won';
+  if(i===cursor)return 'chest-next';
+  return 'chest-far';
+}
+// Le visuel d'un lot : le coffre dessiné, la perle ou la carte de joker.
+function dailyStepVisual(step,state){
+  if(step.chest){
+    const ch=chestById(step.chest);
+    return '<div class="streak-row-chest" style="--chest-c:'+ch.color+'">'+
+      chestVisual(ch,state==='chest-next'?'chest-ready':'')+'</div>';
+  }
+  if(step.pearls)return '<div class="streak-row-chest">'+pearlIcon(2.4)+'</div>';
+  return '<div class="streak-row-chest">'+jokerIcon(2.4)+'</div>';
+}
+function dailyStepName(step){
+  if(step.chest)return chestById(step.chest).name;
+  if(step.pearls)return step.pearls+' perle'+(step.pearls>1?'s':'');
+  return step.jokers+' joker'+(step.jokers>1?'s':'');
+}
+// L'ORDRE EST CELUI DU DOM : DAILY_REWARDS va du premier jour du cycle au
+// trentième, et les lignes se posent de haut en bas.
+function dailyRowsHTML(){
+  const cursor=dailyRewardCursor();
+  return DAILY_REWARDS.map((step,i)=>{
+    const state=dailyRowState(i,cursor);
+    const mark=state==='chest-won'?'<span class="streak-mark streak-mark-ok">✓</span>'
+      :state==='chest-next'?'<span class="streak-mark streak-mark-next">Aujourd\'hui</span>':'';
+    return '<div class="streak-row '+state+'" data-idx="'+i+'"'+
+      (step.chest?' data-chest="'+step.chest+'"':'')+'>'+
+      dailyStepVisual(step,state)+
+      '<div class="streak-row-txt">'+
+        '<div class="streak-row-name">'+escH(dailyStepName(step))+'</div>'+
+        '<div class="streak-row-win">Jour '+(i+1)+' / '+dailyRewardTotal()+'</div>'+
+      '</div>'+mark+
+    '</div>';
+  }).join('');
+}
+// Une phrase, sous le titre : où l'on en est, et ce qu'il y a à faire.
+// Le curseur pointe TOUJOURS le prochain lot à prendre — c'est celui
+// d'aujourd'hui tant qu'il n'est pas encaissé, celui de demain une fois qu'il
+// l'est (dailyRewardClaim avance dr_idx). La même valeur dit donc les deux
+// choses, il n'y a qu'à changer le verbe.
+function dailySubtitle(){
+  const step=dailyRewardStep(dailyRewardCursor());
+  if(!step)return '';
+  return dailyRewardAvailable()
+    ?'Votre lot du jour vous attend : '+dailyStepName(step)+'.'
+    :'Lot du jour déjà pris. Demain : '+dailyStepName(step)+'.';
+}
+function renderDailyModal(){
+  const sub=document.getElementById('daily-sub');
+  if(sub)sub.textContent=dailySubtitle();
+  const foot=document.getElementById('daily-foot');
+  if(foot){
+    // LE BOUTON N'APPARAÎT QUE QUAND IL Y A QUELQUE CHOSE À PRENDRE. Un bouton
+    // grisé en permanence n'est pas une information, c'est un rappel qu'on ne
+    // peut rien faire — la phrase sous le titre le dit déjà, et mieux.
+    foot.innerHTML=dailyRewardAvailable()
+      ?'<button class="btn btn-gold rw-claim" id="daily-claim">Récupérer</button>'
+      :'<div class="daily-wait">Prochain lot demain · cycle n° '+dailyRewardCycle()+'</div>';
+    document.getElementById('daily-claim')?.addEventListener('click',dailyClaim);
+  }
+  const host=document.getElementById('daily-scroll');
+  if(!host)return;
+  host.innerHTML=dailyRowsHTML();
+  // On ARRIVE LÀ OÙ ON EN EST : le lot du jour est amené au centre.
+  requestAnimationFrame(()=>{
+    const row=host.querySelector('.streak-row.chest-next');
+    if(row)row.scrollIntoView({block:'center'});
+    else host.scrollTop=0;
+  });
+}
+function openDailyModal(){
+  if(typeof CUR_ACC!=='undefined'&&!CUR_ACC)return;
+  renderDailyModal();
+  document.getElementById('daily-modal')?.classList.add('show');
+}
+function closeDailyModal(){
+  document.getElementById('daily-modal')?.classList.remove('show');
+  renderRewardsBadge();
+}
+// Prendre le lot du jour. Un coffre s'ouvre avec SA cérémonie (la même qu'un
+// coffre de la colonne ou acheté au Magasin, bris compris) ; des perles se
+// versent sur-le-champ ; des jokers ouvrent la fenêtre de conversion.
+function dailyClaim(){
+  const step=dailyRewardClaim();
+  if(!step){renderDailyModal();return;}
+  closeDailyModal();
+  if(step.chest){
+    if(typeof chestOpenNow==='function')chestOpenNow(step.chest,dailyAfterClaim);
+    else dailyAfterClaim();
+    return;
+  }
+  if(step.pearls){
+    if(typeof pearlAdd==='function')pearlAdd(step.pearls);
+    if(typeof playSound==='function')playSound('rank');
+    if(typeof showNotif==='function')showNotif('+'+step.pearls+' perles','ok');
+    dailyAfterClaim();
+    return;
+  }
+  jokerAdd(step.jokers);
+  openJokerModal();
+}
+function dailyAfterClaim(){
+  if(typeof goToMainMenu==='function')goToMainMenu();
+  if(typeof updAll==='function')updAll();
+  renderRewardsBadge();
+}
+// La carte de la colonne de droite (mode bureau) : le même rail que la
+// fenêtre, produit par la MÊME fonction. Une seule source, deux affichages.
+function renderMenuDailyCard(){
+  const card=document.getElementById('ms-daily');
+  if(!card||typeof DAILY_REWARDS==='undefined')return;
+  card.innerHTML='<div class="ms-title">Récompense journalière</div>'+
+    '<div class="ms-sub">'+escH(dailySubtitle())+'</div>'+
+    '<div class="ms-rows">'+dailyRowsHTML()+'</div>'+
+    '<button class="btn btn-ghost ms-open" id="ms-daily-open">'+
+      (dailyRewardAvailable()?'Récupérer':'Voir le cycle')+'</button>';
+  document.getElementById('ms-daily-open')?.addEventListener('click',openDailyModal);
 }
 
 // ----------------------------------------------------------------
@@ -153,9 +292,14 @@ function rwColRowsHTML(){
     return '<div class="rw-step '+state+'" data-idx="'+i+'">'+
       '<div class="rw-step-num">'+(i+1)+'</div>'+
       rwStepVisual(step,state)+
+      // PAS DE SOUS-TITRE SOUS UN COFFRE. Il portait « Victoire n° 7 », juste
+      // sous « Coffre Pion » — c'est-à-dire le numéro déjà écrit en gros dans
+      // la pastille à gauche de la ligne, dit une deuxième fois en petit. Les
+      // jokers, eux, gardent leur ligne : elle dit ce qu'ils VALENT, ce que
+      // rien d'autre sur la ligne ne montre.
       '<div class="rw-step-txt">'+
         '<div class="rw-step-name">'+escH(rwStepName(step))+'</div>'+
-        '<div class="rw-step-sub">'+(step.chest?'Victoire n° '+(i+1):'Au choix : '+step.jokers+' exemplaires d\'une créature')+'</div>'+
+        (step.chest?'':'<div class="rw-step-sub">Au choix : '+step.jokers+' exemplaires d\'une créature</div>')+
       '</div>'+mark+
     '</div>';
   }).join('');
@@ -360,14 +504,24 @@ function rewardsRefreshUI(){
   if(page&&page.classList.contains('active'))renderRewardsPage();
   else renderRewardsBadge();
 }
-// La pastille du bouton « Récompenses » : allumée seulement quand quelque
-// chose attend vraiment.
-function renderRewardsBadge(){
-  const b=document.getElementById('jouer-rewards-badge');
+// LES TROIS PASTILLES DU MENU, une par bouton. Il n'y en avait qu'une, sur le
+// bouton « Récompenses », qui totalisait les deux voies : elle disait qu'il y
+// avait quelque chose quelque part, sans dire où. Chaque bouton porte
+// maintenant la sienne, et chacune ne s'allume que si SA voie a quelque chose
+// à donner — une pastille toujours allumée n'est plus un rappel, c'est un
+// décor.
+function rwSetBadge(id,n){
+  const b=document.getElementById(id);
   if(!b)return;
-  const n=(typeof rewardsPending==='function')?rewardsPending():0;
   b.textContent=n>9?'9+':String(n);
   b.style.display=n?'':'none';
+}
+function renderRewardsBadge(){
+  const on=(typeof CUR_ACC==='undefined')||!!CUR_ACC;
+  rwSetBadge('jouer-daily-badge',on&&typeof dailyRewardAvailable==='function'&&dailyRewardAvailable()?1:0);
+  rwSetBadge('jouer-colonne-badge',on?colPending():0);
+  // La rangée : un palier payable, ou des jokers qui attendent leur créature.
+  rwSetBadge('jouer-rangee-badge',on?((richCanClaim()?1:0)+(jokerBalance()?1:0)):0);
 }
 
 // La carte de la colonne de droite (mode bureau) : elle résume les deux voies
@@ -409,7 +563,16 @@ function renderMenuRewardsCard(){
 // ----------------------------------------------------------------
 // CÂBLAGE
 // ----------------------------------------------------------------
-document.getElementById('jouer-rewards')?.addEventListener('click',()=>openRewardsPage());
+// TROIS BOUTONS, TROIS DESTINATIONS DIRECTES. Le bouton « Récompenses » ouvrait
+// la page sur son premier onglet et laissait le joueur choisir laquelle des
+// deux voies il venait voir : un sommaire entre lui et ce qu'il cherchait.
+document.getElementById('jouer-daily')?.addEventListener('click',openDailyModal);
+document.getElementById('jouer-colonne')?.addEventListener('click',()=>openRewardsPage('colonne'));
+document.getElementById('jouer-rangee')?.addEventListener('click',()=>openRewardsPage('rangee'));
+document.getElementById('daily-close')?.addEventListener('click',closeDailyModal);
+document.getElementById('daily-modal')?.addEventListener('click',e=>{
+  if(e.target.id==='daily-modal')closeDailyModal();
+});
 document.getElementById('rw-ok')?.addEventListener('click',()=>{
   if(typeof goToMainMenu==='function')goToMainMenu();else showPage('face-jouer');
 });

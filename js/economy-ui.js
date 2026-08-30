@@ -6,12 +6,12 @@
 // texture du plateau (suit automatiquement l'ELO, voir bestUnlockedSkin),
 // la cérémonie d'ouverture d'un coffre,
 // les coffres illimités du mode test (renderAdminChests), la fenêtre de la
-// série du jour (renderStreakModal, ouverte depuis le menu principal), la
+// récompense journalière (renderDailyModal, js/rewards-ui.js), la
 // face « Magasin » du cube où les coffres s'achètent
 // (renderMagasinPage/buyChestFromShop), le coffre de réapprovisionnement
 // quotidien (renderDailyChest) et le rappel de la mise pendant la partie.
 //
-// Dépendances : economy.js (inventaire, coffres, quotidien, streakLockedToday),
+// Dépendances : economy.js (inventaire, coffres, quotidien),
 // data-pieces.js (PIECES, CHESTS, BOARD_SKINS), piece-art.js
 // (pieceIcon/pieceSVG), accounts.js (accGet/accSet, VV_UNLOCKED), main.js
 // (escH, showPage).
@@ -62,122 +62,18 @@ function applyBoardSkin(){
 }
 
 // ----------------------------------------------------------------
-// LA SÉRIE DU JOUR : une fenêtre, plus un rail
-// ----------------------------------------------------------------
-// La série de victoires occupait le bas du MENU PRINCIPAL : six coffres en
-// rang, le solde de perles et la mention « Série · N victoires ». Trois
-// informations posées en permanence sous le pouce pour un état qu'on ne
-// consulte qu'au moment de décider si on relance une partie — et six coffres
-// larges de 13 vw chacun, donc illisibles.
-//
-// Elle a maintenant SA fenêtre, ouverte par le bouton « Série du jour »
-// au-dessus de COMBAT. Une colonne, du Coffre Pion (en haut) au Coffre Roi
-// (en bas) : chaque palier a la place de dire combien de victoires d'affilée
-// il demande, et on arrive directement sur celui qui est en jeu.
-//
-//   chest-won   palier déjà décroché dans la série du jour
-//   chest-next  celui que la PROCHAINE victoire donnerait
-//   chest-far   encore à plusieurs victoires de là
-//
-// La série est QUOTIDIENNE (voir economySettle/streakLockedToday dans
-// js/economy.js) : une défaite la ferme jusqu'au lendemain, et il n'y a
-// alors plus de palier « next » du tout.
-function streakSnapshot(){
-  // Remise à zéro au changement de jour AVANT toute lecture : sans elle, la
-  // fenêtre affichait la série de la veille (et « Série terminée » à vie une
-  // fois les six paliers cumulés). Voir streakEnsureToday, js/economy.js.
-  if(typeof streakEnsureToday==='function')streakEnsureToday();
-  const streak=accGet('win_streak',0);
-  const locked=(typeof streakLockedToday==='function')&&streakLockedToday();
-  const done=streak>=CHESTS.length;
-  // Ni série perdue ni série terminée : le prochain palier est celui d'indice
-  // `streak` (0 victoire → Coffre Pion).
-  const nextIdx=(locked||done)?-1:Math.min(streak,CHESTS.length-1);
-  return{streak,locked,done,nextIdx};
-}
-function streakRowState(i,snap){
-  if(i<snap.streak)return 'chest-won';
-  if(i===snap.nextIdx)return 'chest-next';
-  return 'chest-far';
-}
-// Une phrase, sous le titre : où l'on en est, et ce que ça implique.
-function streakSubtitle(snap){
-  if(snap.locked)return 'Série perdue pour aujourd\'hui. Elle repart du Coffre Pion demain.';
-  // SÉRIE TERMINÉE : RIEN À DIRE. Six coffres cochés du haut en bas de la
-  // colonne, aucun palier « prochain » — la fenêtre le montre déjà d'un coup
-  // d'œil, et la phrase qui doublait ce constat en trois lignes (« les six
-  // coffres sont tombés… vos victoires font maintenant avancer la colonne…
-  // elle repart demain ») ne faisait que meubler l'écran de la seule journée
-  // où il n'y a plus rien à décider.
-  if(snap.done)return '';
-  const next=CHESTS[snap.nextIdx];
-  if(!snap.streak)return 'Une victoire, et le '+next.name+' est à vous.';
-  return snap.streak+' victoire'+(snap.streak>1?'s':'')+' d\'affilée · la prochaine donne le '+next.name+'.';
-}
-// L'ORDRE EST CELUI DU DOM : CHESTS va du Pion au Roi, et les lignes se
-// posent de haut en bas — donc Pion tout en haut, Roi tout en bas.
-function streakRowsHTML(snap){
-  return CHESTS.map((ch,i)=>{
-    const state=streakRowState(i,snap);
-    const wins=i+1;
-    const mark=state==='chest-won'?'<span class="streak-mark streak-mark-ok">✓</span>'
-      :state==='chest-next'?'<span class="streak-mark streak-mark-next">Prochain</span>':'';
-    return '<div class="streak-row '+state+'" data-chest="'+ch.id+'" data-idx="'+i+'" style="--chest-c:'+ch.color+'">'+
-      '<div class="streak-row-chest">'+chestVisual(ch,state==='chest-next'?'chest-ready':'')+'</div>'+
-      '<div class="streak-row-txt">'+
-        '<div class="streak-row-name">'+escH(ch.name)+'</div>'+
-        '<div class="streak-row-win">'+(wins===1?'1re victoire':wins+'e victoire d\'affilée')+'</div>'+
-      '</div>'+mark+
-    '</div>';
-  }).join('');
-}
-function renderStreakModal(){
-  const snap=streakSnapshot();
-  const sub=document.getElementById('streak-sub');
-  if(sub)sub.textContent=streakSubtitle(snap);
-  const host=document.getElementById('streak-scroll');
-  if(!host)return snap;
-  host.innerHTML=streakRowsHTML(snap);
-  // On ARRIVE LÀ OÙ ON EN EST quand une série est en cours : le palier que la
-  // prochaine victoire donnerait est amené au centre. Série terminée ou
-  // perdue, il n'y a pas de « prochain » à montrer — on ouvre donc sur le
-  // début de la colonne (le Coffre Pion, tout en haut).
-  requestAnimationFrame(()=>{
-    if(snap.nextIdx>0){
-      const row=host.querySelector('.streak-row[data-idx="'+snap.nextIdx+'"]');
-      if(row)row.scrollIntoView({block:'center'});
-    }else host.scrollTop=0;
-  });
-  return snap;
-}
-function openStreakModal(){
-  if(!CUR_ACC)return;
-  renderStreakModal();
-  document.getElementById('streak-modal')?.classList.add('show');
-}
-function closeStreakModal(){
-  document.getElementById('streak-modal')?.classList.remove('show');
-}
-document.getElementById('jouer-streak')?.addEventListener('click',openStreakModal);
-document.getElementById('streak-close')?.addEventListener('click',closeStreakModal);
-// Un clic sur le voile (et non sur le panneau) referme, comme les autres
-// fenêtres du jeu.
-document.getElementById('streak-modal')?.addEventListener('click',e=>{
-  if(e.target.id==='streak-modal')closeStreakModal();
-});
-
-// ----------------------------------------------------------------
 // LA COLONNE DE DROITE DU MENU (ORDINATEUR)
 // ----------------------------------------------------------------
 // Sur un grand écran, le menu principal était une colonne de téléphone posée
 // au milieu de 900 px de vide. La colonne de droite (#menu-side, masquée hors
-// de body.desk) y déplie deux choses que le petit écran est OBLIGÉ d'enfermer
-// derrière un bouton : la série du jour et le prochain palier de la Voie.
+// de body.desk) y déplie trois choses que le petit écran est OBLIGÉ d'enfermer
+// derrière un bouton : la récompense journalière, les deux voies de
+// récompenses, et le prochain palier de la Voie.
 //
-// Le rail des coffres n'est PAS réécrit pour l'occasion : c'est
-// streakRowsHTML(), la même fonction que la fenêtre du bouton « Série du
-// jour », sur le même streakSnapshot(). Deux affichages, une seule source —
-// sinon les deux divergent au premier changement de règle.
+// Les deux premières cartes ne sont PAS réécrites pour l'occasion : elles sont
+// produites par js/rewards-ui.js, à partir des mêmes fonctions que les
+// fenêtres des boutons. Deux affichages, une seule source — sinon les deux
+// divergent au premier changement de règle.
 function menuNextMilestoneHTML(){
   if(typeof UNLOCK_MILESTONES==='undefined')return '';
   const elo=(typeof vvLoadElo==='function')?vvLoadElo():0;
@@ -228,17 +124,12 @@ function menuNextMilestoneHTML(){
     '<div class="ms-gauge"><span style="width:'+pct+'%"></span></div>';
 }
 function renderMenuSidePanel(){
-  const rows=document.getElementById('ms-streak-rows');
-  if(!rows)return;                       // balisage absent : rien à faire
-  const snap=streakSnapshot();
-  rows.innerHTML=streakRowsHTML(snap);
-  const sub=document.getElementById('ms-streak-sub');
-  if(sub)sub.textContent=streakSubtitle(snap);
   const next=document.getElementById('ms-next');
   if(next)next.innerHTML=menuNextMilestoneHTML();
-  // Les deux voies qui ne dépendent pas de l'ELO (js/rewards-ui.js) : la carte
-  // de résumé en mode bureau, et la pastille du bouton du menu, qui elle vaut
-  // sur tous les écrans.
+  // La récompense journalière et les deux voies qui ne dépendent pas de l'ELO
+  // (js/rewards-ui.js) : leurs cartes de résumé en mode bureau, et les
+  // pastilles des boutons du menu, qui elles valent sur tous les écrans.
+  if(typeof renderMenuDailyCard==='function')renderMenuDailyCard();
   if(typeof renderMenuRewardsCard==='function')renderMenuRewardsCard();
   if(typeof renderRewardsBadge==='function')renderRewardsBadge();
 }
@@ -350,12 +241,17 @@ function renderReservePage(){
 }
 
 // Ce que promet une carte de coffre, en une ligne : les deux nombres qui
-// décident si on le vise ou non. Le nombre de lots est une FOURCHETTE, le
-// tirage variant de ±1 (chestRollCount, js/economy.js).
+// décident si on le vise ou non.
+//
+// LA PROMESSE EST UN NOMBRE D'EXEMPLAIRES, PAS UN NOMBRE DE LOTS. « 3–5 lots »
+// ne disait rien de ce qu'on allait recevoir : un lot pouvait valoir un
+// exemplaire comme huit. La fourchette affichée est maintenant celle du TOTAL
+// (voir `total` dans CHESTS, js/data-pieces.js), c'est-à-dire exactement ce
+// que le coffre donne.
 function chestPromiseHTML(chest){
-  const [a,b]=chestRollRange(chest);
+  const t=chest.total||[1,1];
   const pct=chest.newChance*100;
-  return '<div class="chest-rar">'+a+'–'+b+' lots · '+
+  return '<div class="chest-rar">'+t[0]+'–'+t[1]+' exemplaires · '+
     (pct<10?pct.toFixed(1).replace('.',','):Math.round(pct))+'% pièce inédite</div>';
 }
 
@@ -394,23 +290,22 @@ function chestBackToReserve(){
 // verdict, quitte à sauter le règlement et la cérémonie.
 function settleAndCelebrate(result,gs,onDone){
   const report=(typeof economySettle==='function')?economySettle(result,gs):null;
-  const finish=()=>{
-    if(report&&report.chest)chestOpenNow(report.chest.id,onDone);
-    else onDone();
-  };
-  if(typeof playOutcomeCinematic==='function')playOutcomeCinematic(result,report,finish);
-  else setTimeout(finish,400);
+  // IL N'Y A PLUS DE COFFRE À OUVRIR ICI. Une victoire en donnait un, selon la
+  // série du jour ; elle fait maintenant avancer la COLONNE DES VICTOIRES
+  // (js/rewards.js), dont le palier s'encaisse quand le joueur le décide.
+  // Reste donc la cinématique d'issue, puis le verdict.
+  if(typeof playOutcomeCinematic==='function')playOutcomeCinematic(result,report,onDone);
+  else setTimeout(onDone,400);
   return report;
 }
 
 // ----------------------------------------------------------------
 // LE MAGASIN : achat d'un coffre contre des perles
 // ----------------------------------------------------------------
-// Les six mêmes coffres que ceux gagnés en enchaînant les victoires, au même
-// contenu : l'achat ne fabrique pas une seconde économie, il donne simplement
-// un second chemin vers la première. C'est le SEUL endroit du jeu où un
-// coffre s'achète — le rail du menu principal ne fait plus que montrer la
-// série (voir renderMenuChests plus haut).
+// Les six mêmes coffres que ceux de la récompense journalière et de la colonne
+// des victoires, au même contenu : l'achat ne fabrique pas une seconde
+// économie, il donne simplement un second chemin vers la première. C'est le
+// SEUL endroit du jeu où un coffre s'achète.
 //
 // On reste sur le Magasin après l'achat : la cérémonie n'est qu'une fenêtre
 // par-dessus, il n'y a donc rien à raviver ailleurs qu'à réafficher la grille
@@ -548,7 +443,7 @@ function dailyChestBusy(){
      el.style.display==='flex');};
   if(shown('result-modal')||shown('chest-modal')||shown('confirm-modal')||
      shown('mp-modal')||shown('lore-intro')||shown('page-account')||
-     shown('streak-modal')||shown('joker-modal'))return true;
+     shown('daily-modal')||shown('joker-modal'))return true;
   return false;
 }
 
