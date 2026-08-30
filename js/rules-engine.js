@@ -163,18 +163,6 @@ function generateMovesRaw(board,r,c,gs){
     case 'cavalier-primordial':moves=knightMoves(board,r,c,p);break;
     case 'fou-primordial':moves=slidingMoves(board,r,c,p,[[1,1],[1,-1],[-1,1],[-1,-1]],gs);break;
     case 'tour-primordiale':moves=slidingMoves(board,r,c,p,[[1,0],[-1,0],[0,1],[0,-1]],gs);break;
-    // PEUREUX : une case dans les huit directions, MAIS jamais hors de son
-    // camp — les quatre premières rangées du sien (« Retraite Prudente »).
-    // Blanc démarre en bas (r=7) : son camp est r>=4. Noir en haut : r<=3.
-    case 'peureux':{
-      const inCamp=nr=>p.color==='w'?nr>=4:nr<=3;
-      for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++){
-        if(!dr&&!dc)continue;
-        const nr=r+dr,nc=c+dc;
-        if(!inB(nr,nc)||!inCamp(nr))continue;
-        if(!board[nr][nc]||board[nr][nc].color!==p.color)moves.push({r:nr,c:nc});
-      }
-      break;}
     case 'fourmi':{
       // La Fourmi N'EST PAS un pion (voir TRUE_PAWN_IDS, data-pieces.js) : la
       // Cuirasse du Preux Chevalier, qui n'arrête que les pions, ne la
@@ -200,6 +188,14 @@ function generateMovesRaw(board,r,c,gs){
       for(const[dr,dc] of[[1,0],[-1,0],[0,1],[0,-1]]){const nr=r+dr,nc=c+dc;if(inB(nr,nc)&&(!board[nr][nc]||board[nr][nc].color!==p.color))moves.push({r:nr,c:nc});}
       for(const[dr,dc] of[[2,0],[-2,0],[0,2],[0,-2]]){const nr=r+dr,nc=c+dc;if(!inB(nr,nc))continue;const mr=r+dr/2,mc2=c+dc/2;if(board[mr][mc2]&&board[mr][mc2].color===p.color)continue;if(board[nr][nc]&&board[nr][nc].color===p.color)continue;moves.push({r:nr,c:nc,destroysPath:true,fromR:r,fromC:c});}
       break;
+    // LES TROIS GARDES, et rien de plus : une seule case, mais chacune sa
+    // grammaire. L'Eau ne connaît que l'orthogonale, le Feu que la diagonale,
+    // la Pierre les deux. Ce sont les trois premières créatures du joueur :
+    // elles enseignent le plateau, elles ne cachent aucun pouvoir.
+    case 'garde-eau':
+      for(const[dr,dc] of[[1,0],[-1,0],[0,1],[0,-1]]){const nr=r+dr,nc=c+dc;if(inB(nr,nc)&&(!board[nr][nc]||board[nr][nc].color!==p.color))moves.push({r:nr,c:nc});}break;
+    case 'garde-feu':
+      for(const[dr,dc] of[[1,1],[1,-1],[-1,1],[-1,-1]]){const nr=r+dr,nc=c+dc;if(inB(nr,nc)&&(!board[nr][nc]||board[nr][nc].color!==p.color))moves.push({r:nr,c:nc});}break;
     case 'garde-pierre':
       for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++){if(!dr&&!dc)continue;const nr=r+dr,nc=c+dc;if(inB(nr,nc)&&(!board[nr][nc]||board[nr][nc].color!==p.color))moves.push({r:nr,c:nc});}break;
     case 'meduse':
@@ -259,9 +255,9 @@ function isInCheckSimple(color,board){
 // CUSTOM_MOVE_IDS : pièces dont le déplacement/attaque N'EST PAS celui de
 // leur pieceType de base. Elles ont une détection d'échec DÉDIÉE plus bas,
 // donc le raccourci « attaque comme son pieceType » ne doit JAMAIS jouer
-// pour elles, sinon le Peureux, la Banshee ou le Typhon donneraient échec
+// pour elles, sinon la Banshee, le Typhon ou un Garde donneraient échec
 // comme leur pieceType de base tout le long d'une ligne, ce qui est faux.
-const CUSTOM_MOVE_IDS=new Set(['amazone','peureux','fourmi','preux-chevalier','dresseur-elephant','garde-pierre','meduse','typhon','banshee','pretre']);
+const CUSTOM_MOVE_IDS=new Set(['amazone','fourmi','preux-chevalier','dresseur-elephant','garde-eau','garde-feu','garde-pierre','meduse','typhon','banshee','pretre']);
 // Pièces qui donnent échec en GLISSANT (portée illimitée). Le raccourci par
 // pieceType (b/r/q) couvre en plus les pièces standard et promues.
 const DIAG_SLIDER_IDS=new Set(['fou-primordial','amazone','dame','grand-maitre']);
@@ -311,13 +307,10 @@ function isSquareAttackedSimple(tr,tc,defColor,board){
   for(const dc of[-1,1]){const r=tr+atkFwdDir,c=tc+dc;if(inB(r,c)){const p=board[r][c];if(p&&p.color===atk&&p.pieceId==='fourmi')return true;}}}
   // --- Typhon : 1 case en diagonale ---
   for(const[dr,dc] of[[1,1],[1,-1],[-1,1],[-1,-1]]){const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;const p=board[r][c];if(p&&p.color===atk&&p.pieceId==='typhon')return true;}
-  // --- Peureux : 1 case dans les 8 directions, mais uniquement vers une case
-  //     de SON camp (Retraite Prudente) : hors de son camp, il n'attaque rien. ---
-  for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++){
-    if(!dr&&!dc)continue;const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;
-    const p=board[r][c];if(!(p&&p.color===atk&&p.pieceId==='peureux'))continue;
-    if(p.color==='w'?tr>=4:tr<=3)return true;
-  }
+  // --- Garde d'Eau : 1 case orthogonale ---
+  for(const[dr,dc] of[[1,0],[-1,0],[0,1],[0,-1]]){const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;const p=board[r][c];if(p&&p.color===atk&&p.pieceId==='garde-eau')return true;}
+  // --- Garde de Feu : 1 case diagonale ---
+  for(const[dr,dc] of[[1,1],[1,-1],[-1,1],[-1,-1]]){const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;const p=board[r][c];if(p&&p.color===atk&&p.pieceId==='garde-feu')return true;}
   // --- Banshee : 1 OU 2 cases en diagonale (les 2 cases sans sauter) ---
   for(const[dr,dc] of[[1,1],[1,-1],[-1,1],[-1,-1]]){const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;const p=board[r][c];if(p&&p.color===atk&&p.pieceId==='banshee')return true;}
   for(const[dr,dc] of[[2,2],[2,-2],[-2,2],[-2,-2]]){const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;const midR=tr+dr/2,midC=tc+dc/2;if(!inB(midR,midC)||board[midR][midC])continue;const p=board[r][c];if(p&&p.color===atk&&p.pieceId==='banshee')return true;}

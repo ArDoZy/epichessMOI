@@ -14,12 +14,12 @@
 //      faibles (TUTO_INSTRUCTORS dans data-pieces.js). Les deux camps ont
 //      exactement la même armée, posée en dur : personne ne perd parce qu'il
 //      a mal composé. Chaque victoire ouvre un coffre qui débloque UNE
-//      créature (Peureux, puis Fourmi, puis Éléphant de guerre), suivie de
-//      son
+//      créature (Garde d'Eau, puis Garde de Feu, puis Garde de Pierre), suivie
+//      de son
 //      exercice de déplacement (js/tuto-drill.js). Une défaite ne fait pas
 //      avancer : l'Alchimiste propose la revanche, autant de fois qu'il faut.
 //      C'est ainsi que le joueur se retrouve, à la fin, avec une armée
-//      complète (Roi, Dame, Peureux, Fourmi, Éléphant de guerre) qu'il a
+//      complète (Roi, Dame et les trois Gardes) qu'il a
 //      gagnée.
 //   2. LA VISITE DU LABORATOIRE (étapes marquées `click`) : le joueur tourne
 //      réellement le cube, compose réellement une armée, ouvre réellement sa
@@ -76,8 +76,8 @@ const ALCHIMISTE_SVG=
 // d'une créature par bataille, dans l'ordre où le joueur les débloque, et
 // chaque créature se place vers l'extérieur en partant du Monarque.
 //
-//   colonnes :  0            1        2       3      4     5       6        7
-//               éléphant     fourmi   peureux dame   roi   peureux fourmi   éléphant
+//   colonnes :  0        1      2      3      4     5      6      7
+//               pierre   feu    eau    dame   roi   eau    feu    pierre
 //
 // L'adversaire monte en force à chaque fois (index dans AI_INSTRUCTORS via
 // tutoInstructorLevel) et la couleur du joueur alterne pour qu'il joue une
@@ -87,12 +87,12 @@ const ALCHIMISTE_SVG=
 // avait une : on apprenait à jouer avec un chronomètre au-dessus de l'épaule,
 // et une première partie perdue au temps ne se comprend pas. La pendule
 // arrive avec les vraies parties, où elle a un sens.
-const TUTO_EXTRA_COLS={'peureux':[2,5],'fourmi':[1,6],'dresseur-elephant':[0,7]};
+const TUTO_EXTRA_COLS={'garde-eau':[2,5],'garde-feu':[1,6],'garde-pierre':[0,7]};
 const TUTO_BATTLES=[
   {playerColor:'b',extras:[],                              clockMin:0},
-  {playerColor:'w',extras:['peureux'],                          clockMin:0},
-  {playerColor:'b',extras:['peureux','fourmi'],                 clockMin:0},
-  {playerColor:'w',extras:['peureux','fourmi','dresseur-elephant'],clockMin:0},
+  {playerColor:'w',extras:['garde-eau'],                            clockMin:0},
+  {playerColor:'b',extras:['garde-eau','garde-feu'],                clockMin:0},
+  {playerColor:'w',extras:['garde-eau','garde-feu','garde-pierre'], clockMin:0},
 ];
 
 let _tutoUid=0;
@@ -229,22 +229,24 @@ const TUTO_STEPS=[
          'adversaire et lance la charge vaillamment.',
     battle:0,btn:'Au combat !',
   },
-  {reward:{chest:'pion',piece:'peureux'}},
-  {drill:'peureux'},
+  {reward:{chest:'pion',piece:'garde-eau'}},
+  {drill:'garde-eau'},
   {
     text:'Merveilleux&nbsp;! Tu es visiblement un élève prometteur. Défie un nouvel '+
-         'adversaire, et utilise ton <strong>Peureux</strong> fraîchement débloqué.',
+         'adversaire, et utilise ta <strong>Garde d\'Eau</strong> fraîchement débloquée&nbsp;: '+
+         'elle ne va que <strong>tout droit</strong>, d\'une case.',
     at:'#cube-jouer-btn',combat:1,
   },
-  {reward:{chest:'cavalier',piece:'fourmi'}},
-  {drill:'fourmi'},
+  {reward:{chest:'cavalier',piece:'garde-feu'}},
+  {drill:'garde-feu'},
   {
-    text:'Bravo&nbsp;! Avec la <strong>Fourmi</strong> en soutien, ton armée sera bien '+
-         'plus puissante. Attaque encore, et prends par surprise ton adversaire.',
+    text:'Bravo&nbsp;! La <strong>Garde de Feu</strong> fait l\'exact contraire&nbsp;: '+
+         '<strong>en biais</strong>, d\'une case. À elles deux, elles couvrent tout ce '+
+         'qui entoure une case. Attaque encore, et prends par surprise ton adversaire.',
     at:'#cube-jouer-btn',combat:2,
   },
-  {reward:{chest:'fou',piece:'dresseur-elephant'}},
-  {drill:'dresseur-elephant'},
+  {reward:{chest:'fou',piece:'garde-pierre'}},
+  {drill:'garde-pierre'},
   {
     text:'Ton armée est maintenant complète&nbsp;! Lance un dernier combat contre un '+
          'instructeur, tu affronteras ensuite des joueurs du monde entier. Montre-moi '+
@@ -348,27 +350,28 @@ const TUTO_STEPS=[
     at:'.jouer-player',
   },
   {
-    text:'<strong>Série du jour</strong> ouvre mes six coffres, du Pion au Roi. Chaque '+
-         'victoire d\'affilée en décroche un de plus, et le suivant est toujours plus '+
-         'rare que le précédent&nbsp;— mais <strong>une seule défaite ferme la série '+
-         'jusqu\'au lendemain</strong>. Réfléchissez avant de relancer.<br>'+
-         'Les six pris, <strong>la série est finie pour la journée</strong>. Et si vous '+
-         'êtes pressé, <strong>n\'importe lequel s\'achète en perles</strong> '+
-         'au <strong>Magasin</strong>, la face du cube à votre gauche.',
-    at:'#jouer-streak',
+    text:'<strong>Récompense journalière</strong>&nbsp;: un lot par jour, et rien à '+
+         'réussir pour l\'avoir. Coffres, perles, <strong>jokers</strong>&nbsp;— trente '+
+         'jours de suite, puis <strong>ça recommence</strong>. Manquer un jour ne coûte '+
+         'rien&nbsp;: vous reprenez le cycle là où vous l\'aviez laissé. Et si vous êtes '+
+         'pressé, <strong>n\'importe quel coffre s\'achète en perles</strong> au '+
+         '<strong>Magasin</strong>, la face du cube à votre gauche.',
+    at:'#jouer-daily',
   },
   {
-    // Les deux voies qui ne se referment jamais (js/rewards.js). Elles
-    // arrivent JUSTE APRÈS la série du jour, parce que c'est la question que
-    // la série pose : « et quand j'ai pris les six ? »
-    text:'Et quand les six sont tombés&nbsp;? <strong>Récompenses</strong>. Deux voies '+
-         'y courent&nbsp;: la <strong>colonne des victoires</strong>, trente paliers dont '+
-         'vous descendez un cran à chaque victoire, coffres et <strong>jokers</strong> '+
-         '(un joker devient la créature que vous désignez)&nbsp;; et la '+
-         '<strong>rangée de la richesse</strong>, des perles qui s\'achètent avec les '+
-         '<strong>tickets</strong> de mes quêtes du jour. Rien de tout ça ne se perd&nbsp;: '+
-         'ni défaite, ni lendemain n\'y touchent.',
-    at:'#jouer-rewards',
+    text:'La <strong>colonne des victoires</strong>&nbsp;: trente paliers dont vous '+
+         'descendez un cran à <strong>chaque victoire</strong>, coffres et '+
+         '<strong>jokers</strong> (un joker devient la créature que vous désignez). '+
+         'Elle ne se remet <strong>jamais</strong> à zéro&nbsp;: ni défaite, ni lendemain '+
+         'n\'y touchent.',
+    at:'#jouer-colonne',
+  },
+  {
+    text:'La <strong>rangée de la richesse</strong>&nbsp;: vingt-cinq paliers de perles, '+
+         'payés en <strong>tickets</strong>. Les tickets ne s\'obtiennent pas en '+
+         'gagnant&nbsp;— ils s\'obtiennent en <strong>accomplissant mes quêtes du '+
+         'jour</strong>, quoi qu\'il arrive à la fin de la partie.',
+    at:'#jouer-rangee',
   },
   {
     // Le coffre de réapprovisionnement n'a plus de carte à montrer du doigt :
@@ -380,9 +383,10 @@ const TUTO_STEPS=[
     // rééquilibrage est expliqué), et l'Alchimiste a continué d'en promettre 4
     // pendant tout ce temps. data-pieces.js est chargé bien avant ce fichier,
     // la constante est donc là quand ce tableau est construit.
-    text:'Rassurez-vous, je ne suis pas un monstre. Chaque jour, un coffre vous rend '+
+    text:'Rassurez-vous, je ne suis pas un monstre. Chaque jour, un coffre rend '+
          '<strong>'+DAILY_CHEST.perPiece+' exemplaire'+(DAILY_CHEST.perPiece>1?'s':'')+
-         ' de chacune</strong> de vos pièces. Vous n\'avez rien à '+
+         '</strong> de chacune de vos pièces <strong>dont le stock est '+
+         'bas</strong>. Vous n\'avez rien à '+
          'faire&nbsp;: il <strong>s\'ouvre tout seul</strong> dès qu\'il est prêt, à votre '+
          'arrivée ou en sortant d\'une partie. Vous ne pourrez jamais vous retrouver '+
          'bloqué sans armée.',
@@ -535,7 +539,7 @@ function tutoStepSkipped(step){
 function tutoRunReward(reward){
   tutoHideBox(true);
   const chest=(typeof chestById==='function')?chestById(reward.chest):null;
-  const lots=[{pieceId:reward.piece,qty:reward.qty||10,isNew:true}];
+  const lots=[{pieceId:reward.piece,qty:reward.qty||TUTO_SKIP_QTY,isNew:true}];
   const after=()=>{
     if(typeof updAll==='function')updAll();
     if(typeof renderReservePage==='function'&&CUR_ACC)renderReservePage();
@@ -563,12 +567,12 @@ function tutoRunDrill(pieceId){
 // connaît déjà le jeu (un ami à qui on le montre, un compte recréé).
 //
 // Le bouton donne EXACTEMENT ce que le tutoriel aurait donné, ni plus ni
-// moins : les trois créatures (Peureux, Fourmi, Éléphant de guerre) avec leurs
+// moins : les trois créatures (Garde d'Eau, Garde de Feu, Garde de Pierre) avec leurs
 // exemplaires, plus une première armée composée au hasard — sans quoi on
 // sortirait du tutoriel dans une armurerie vide, incapable de lancer un
 // combat, c'est-à-dire exactement là où le tutoriel sert à ne pas être.
-const TUTO_SKIP_PIECES=['peureux','fourmi','dresseur-elephant'];
-const TUTO_SKIP_QTY=10;
+const TUTO_SKIP_PIECES=['garde-eau','garde-feu','garde-pierre'];
+const TUTO_SKIP_QTY=6;   // même dotation qu'un jalon de départ (STARTER_STOCK)
 
 // Armée aléatoire légale : mêmes règles que le builder (1 Monarque, 1
 // Général, 3 créatures, 24 points, 1 Primordiale au plus), mais restreinte
@@ -814,8 +818,8 @@ document.addEventListener('DOMContentLoaded',()=>{
   document.getElementById('tuto-skip')?.addEventListener('click',()=>{
     if(typeof showConfirmModal==='function'){
       showConfirmModal(
-        'Passer le tutoriel ? Vous recevrez directement le Peureux, la Fourmi et '+
-        'l\'Éléphant de guerre, ainsi qu\'une première armée composée au hasard.',
+        'Passer le tutoriel ? Vous recevrez directement la Garde d\'Eau, la Garde de '+
+        'Feu et la Garde de Pierre, ainsi qu\'une première armée composée au hasard.',
         tutoSkip,{okLabel:'Passer',cancelLabel:'Continuer le tutoriel',okClass:'btn-primary'});
     }else tutoSkip();
   });

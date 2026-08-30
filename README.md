@@ -74,7 +74,7 @@ epic-chess/
     │                          # lancement, bascule/renommage/suppression
     ├── account-ui.js         # Page "Comptes" (#page-account) : sceau du compte
     │                          # courant, bascule entre comptes, création
-    ├── economy.js            # Possession des pièces, mise en jeu, coffres, séries
+    ├── economy.js            # Possession des pièces, mise en jeu, coffres
     ├── ai-level-modal.js     # Réduit à selectedAILevel/selectedTimeControl
     ├── piece-card.js         # LA carte de pièce (format portrait : logo, nom,
     │                          # valeur, stock) + sa fiche en bottom sheet
@@ -104,7 +104,7 @@ epic-chess/
     │                          # colonne des victoires (30 paliers, un par
     │                          # victoire), rangée de la richesse (25 paliers
     │                          # de perles), quêtes du jour, tickets, jokers
-    ├── rewards-ui.js         # Page "Récompenses" (les deux voies + les quêtes)
+    ├── rewards-ui.js         # Récompense journalière + page des deux voies
     │                          # et la fenêtre de conversion des jokers
     ├── tuto-drill.js         # Exercice de déplacement d'une créature débloquée
     ├── tutorial.js           # Tutoriel : 4 batailles scriptées + visite guidée
@@ -130,6 +130,23 @@ les exemplaires engagés restent hors inventaire. Le garde-fou est
 `economyRecoverOrphanEngagement()`, appelé à la connexion : il rend les
 pièces d'une partie interrompue.
 
+**Le robinet et la fuite.** Une pièce ne se perd qu'à la défaite, et une par
+une ; tout ce qui en distribue doit donc rester petit, sinon les stocks
+saturent et un coffre ne change plus rien à ce qu'on peut aligner (on en était
+à plus de 70 exemplaires par pièce). Trois chiffres tiennent l'équilibre, et
+ils se lisent ensemble :
+
+| Constante | Valeur | Rôle |
+|---|---|---|
+| `CHESTS[].total` (`data-pieces.js`) | Pion 1-3 → Roi 20-30 | ce qu'un coffre donne **en tout**, tous lots confondus. `chestRoll` tire ce total puis le découpe en lots (`chestSplit`) : le nombre de lots ne fait plus que rythmer la cérémonie. |
+| `STARTER_STOCK` (`economy.js`) | 6 | la dotation d'un jalon de départ |
+| `DAILY_CHEST` (`data-pieces.js`) | `perPiece:2`, `cap:10` | le coffre de réapprovisionnement ne remplit **que ce qui est vide** : au-dessus de `cap`, il ne verse rien. Sans ce seuil il versait 2 exemplaires par pièce et par jour indéfiniment, ce qui faisait de lui — et non des coffres — la première source de pièces du jeu. |
+
+`CHEST_PEARLS` suit la même échelle (Pion 1-3 perles, Roi 20-30), prix compris,
+et un coffre ne doit **jamais** pouvoir se racheter avec ses propres perles :
+le haut de sa fourchette reste sous la moitié de son prix. Toucher à l'une de
+ces fourchettes, c'est refaire ce calcul — le test de fumée le vérifie.
+
 ### 1 bis. Les trois voies de progression (`js/voie.js`, `js/rewards.js`)
 
 Elles portent le nom des trois lignes de l'échiquier, et ce n'est pas
@@ -138,9 +155,10 @@ lire le titre pour savoir où l'on est.
 
 | Voie | Ce qui la fait avancer | Ce qu'elle donne | Où |
 |---|---|---|---|
+| **Récompense Journalière** | revenir, une fois par jour | cycle sans fin de 30 lots : coffres, perles, jokers | `DAILY_REWARDS`, `js/rewards.js` |
 | **Diagonale de la Puissance** | l'ELO (parties classées) | créatures, échiquiers, petits lots | `js/voie.js`, `UNLOCK_TABLE` |
 | **Colonne des Victoires** | une victoire = un palier | 30 paliers : coffres et jokers | `VICTORY_COLUMN`, `js/rewards.js` |
-| **Rangée de la Richesse** | les tickets des quêtes du jour | 25 paliers de perles (5→25) | `WEALTH_TIERS`, `js/rewards.js` |
+| **Rangée de la Richesse** | les tickets des quêtes du jour | 25 paliers de perles (2→6) | `WEALTH_TIERS`, `js/rewards.js` |
 
 La « Voie des Victoires » S'APPELLE MAINTENANT la Diagonale de la Puissance.
 Seuls les libellés ont changé : les identifiants (`page-voie`, `voie-*`,
@@ -149,11 +167,17 @@ de fumée — les renommer ne changerait rien à l'écran.
 
 Trois règles à ne pas casser :
 
-- **La série du jour a une fin.** `chestForStreak()` rend `null` au-delà du
-  sixième coffre. Elle plafonnait au Coffre Roi, si bien que la 7e victoire du
-  jour et toutes les suivantes en redonnaient un : le palier le plus rare du
-  jeu était devenu le lot ordinaire de la fin de journée. Ce que rapportent
-  ces victoires-là est maintenant dans la colonne.
+- **Le cycle journalier avance par lot pris, pas par jour écoulé.**
+  `dr_idx` compte les récompenses encaissées et `dr_day` verrouille la
+  journée : un joueur qui saute trois jours ne saute pas trois lots, il
+  reprend là où il s'était arrêté. Le cycle recommence indéfiniment
+  (`dailyRewardStep` indexe modulo `DAILY_REWARDS.length`).
+  Il a remplacé la « série du jour », qui exigeait six victoires d'affilée
+  dans la journée et qu'une seule défaite refermait jusqu'au lendemain :
+  elle ne donnait rien à qui passe faire une partie et punissait qui en fait
+  dix. `win_streak` survit, mais uniquement comme statistique (« Meilleure
+  série » sur la fiche de compte) : plus de coffre, plus de verrou, plus de
+  remise à zéro à minuit.
 - **La colonne avance dans `economySettle()`**, une seule fois par partie
   gagnée, et jamais en tutoriel ni en mode test. Toute nouvelle façon de
   terminer une partie qui passerait à côté d'`economySettle` la laisserait
@@ -419,7 +443,7 @@ seule.
 | Clé | Ce qu'elle garde |
 |---|---|
 | `piece_stats` | `{pieceId:{g,w}}` — parties et victoires par créature alignée. Une créature en double dans la même armée compte **une** partie : on mesure les parties jouées avec elle, pas les exemplaires posés. |
-| `best_streak` | La plus longue série de victoires, à vie. **Relevée après `settleAndCelebrate`** : c'est `economySettle` qui incrémente `win_streak`, la lire avant enregistrerait toujours la série de la partie précédente. |
+| `best_streak` | La plus longue série de victoires, à vie. **Relevée après `settleAndCelebrate`** : c'est `economySettle` qui incrémente `win_streak`, la lire avant enregistrerait toujours la série de la partie précédente. `win_streak` ne commande plus aucune récompense : cette ligne est sa seule raison d'exister. |
 
 Un seuil de 5 parties protège la créature fétiche : « 100 % de victoires » sur
 une seule partie n'apprend rien et se lit comme une promesse fausse.
@@ -583,17 +607,17 @@ joue — sinon il aurait l'air de se moquer du joueur.
 
 Deux garde-fous contre le farm du bas de l'échelle : la formule Elo elle-même
 (battre beaucoup plus faible que soi ne rapporte quasiment rien, donc aucun
-palier de déblocage), et le **verrou quotidien** de la série de coffres
-(`streakLockedToday`/`streakEnsureToday`, js/economy.js) — une seule série par
-jour, six victoires d'affilée pour toucher le Coffre Roi.
+palier de déblocage), et le fait qu'une victoire ne donne plus de coffre du
+tout au règlement : elle fait avancer la **Colonne des Victoires**, qui a
+trente paliers et une seule vie par compte.
 
-Il y a eu un troisième garde-fou, un **plafond de coffre** par palier
-d'adversaire, retiré : il ramenait tout coffre au Coffre Pion contre Cendre ou
+Il y a eu deux autres garde-fous, tous deux retirés. Un **plafond de coffre**
+par palier d'adversaire ramenait tout coffre au Coffre Pion contre Cendre ou
 Suie, c'est-à-dire contre les deux adversaires que la galerie conseille à un
-compte neuf. Un débutant enchaînait six victoires et ne voyait jamais autre
-chose qu'un Coffre Pion, pendant que la fenêtre « Série du jour » lui promettait
-le Coffre Roi. Le `tier` d'`AI_OPPONENTS` ne sert plus qu'à situer l'adversaire
-sur l'échelle des douze.
+compte neuf : un débutant enchaînait six victoires et ne voyait jamais autre
+chose qu'un Coffre Pion. Puis le **verrou quotidien** de la série est parti
+avec la série elle-même. Le `tier` d'`AI_OPPONENTS` ne sert plus qu'à situer
+l'adversaire sur l'échelle des douze.
 
 `tools/ai-bench.js` fait s'affronter les adversaires en autopartie et vérifie
 que l'échelle tient dans le bon sens. Il ne fait pas partie de `npm test` (une
@@ -681,15 +705,24 @@ volontairement faible (`TUTO_INSTRUCTORS` dans `data-pieces.js`, ajoutés à
 `tutoInstructorLevel(i) = AI_OPPONENTS.length + i`), avec **la même armée des deux
 côtés, posée en dur** (`tutoBuildBoard`) : personne ne perd parce qu'il a mal
 composé. Une victoire ouvre un coffre au contenu **imposé** qui débloque une
-créature (Peureux, Fourmi, Éléphant de guerre), suivie de son exercice de
-déplacement. Une défaite ne fait pas avancer : le savant propose la revanche,
-autant de fois qu'il le faut.
+créature, suivie de son exercice de déplacement. Une défaite ne fait pas
+avancer : le savant propose la revanche, autant de fois qu'il le faut.
+
+**Les trois premières créatures sont les trois Gardes**, et c'est un choix :
+la Garde d'Eau ne va que tout droit (une case), la Garde de Feu qu'en biais
+(une case), la Garde de Pierre dans les huit directions. Elles enseignent le
+vocabulaire du plateau — orthogonal, diagonal, les deux — au lieu d'ouvrir sur
+trois pouvoirs à retenir, et les deux premières n'ont volontairement **aucun**
+pouvoir. Elles portent le drapeau `starter` dans `UNLOCK_TABLE` ; la Fourmi et
+l'Éléphant de guerre, qui tenaient ce rôle avant elles, sont devenus les deux
+premiers déblocages par l'ELO (30 et 75). Le Peureux, lui, a été retiré du
+catalogue.
 
 Ces batailles passent par `startGame(true,false,tutoCfg)` : le troisième
 argument impose le plateau et la couleur, **saute l'économie** (rien n'est
 prélevé sur l'Armurerie, une promotion ne crédite rien) et court-circuite la
 cinématique d'entrée. `triggerEndOfGame` les détourne vers `tutoOnBattleEnd` :
-ni ELO, ni coffre de série, ni règlement d'Armurerie. **Aucune des quatre
+ni ELO, ni avancée des voies, ni règlement d'Armurerie. **Aucune des quatre
 batailles n'a de pendule** (`clockMin:0` partout) : le chronomètre arrive avec
 les vraies parties.
 
@@ -724,7 +757,7 @@ quel coffre, voir `chestCeremonyClose`), une page s'ouvre avec la pièce seule
 sur l'échiquier et cinq repères à ramasser. Ni tour par tour, ni adversaire.
 
 Le point délicat : **tous les déplacements ne vont pas partout** (la Fourmi ne
-recule pas, le Peureux ne sort jamais de son camp). Cinq
+recule pas, la Garde de Feu ne quitte jamais sa couleur de case). Cinq
 repères tirés au hasard seraient souvent impossibles à prendre. Ils sont donc
 posés le long d'une **promenade de la pièce** (`drillLayDots`) : un chemin qui
 les ramasse tous existe par construction. Si le joueur s'écarte et se coince,
@@ -779,9 +812,9 @@ montre.** Rien n'est inventé pour l'ordinateur, on y déplie ce que le petit
 |---|---|
 | La barre des faces devient un **rail vertical** à gauche, avec libellés | Une barre de pouce flottante masquait deux noms de cartes en plein milieu de « Mes armées ». Le rail ne recouvre plus rien : la zone utile de chaque face recule d'autant |
 | Les deux flèches de rotation disparaissent | Sur 1500 px elles se retrouvaient à 1400 px l'une de l'autre, sans lien visible avec le cube. Le rail nomme les quatre faces ; ← et → tournent toujours |
-| Le menu principal passe en **deux colonnes** | La colonne de droite (`#menu-side`) déplie la série du jour, le résumé des deux voies de récompenses et le prochain palier de la Diagonale |
+| Le menu principal passe en **deux colonnes** | La colonne de droite (`#menu-side`) déplie le cycle de la récompense journalière, le résumé des deux voies de récompenses et le prochain palier de la Diagonale |
 | Les largeurs de contenu montent à `--content-max` (1280 px) | Les plafonds (980, 1000, 860…) étaient des plafonds de lisibilité inutiles sur téléphone et un plafond de gâchis sur grand écran |
-| Le catalogue passe de 6 à ~8 colonnes, avec des cartes plus grandes | Les 18 pièces tiennent alors sur un écran, sans défilement |
+| Le catalogue passe de 6 à ~8 colonnes, avec des cartes plus grandes | Les 19 pièces tiennent alors sur un écran, sans défilement |
 | Le **survol** d'une carte ouvre ses deux boutons | L'appui qui déplie la carte ne sert plus à rien quand un pointeur la désigne déjà : composer une armée passe de deux clics par pièce à un seul |
 
 Deux pièges à connaître avant d'y toucher :
@@ -799,7 +832,7 @@ Deux pièges à connaître avant d'y toucher :
   le contenu. Là où aucune place n'est réservée (téléphone), le calcul vaut 0.
 
 `Échap` (`wireEscape`, js/main.js) ferme le panneau de réglages, la fenêtre de
-série et les pages en surimpression. La liste est **courte et volontaire** :
+la récompense journalière et les pages en surimpression. La liste est **courte et volontaire** :
 sont exclus la cérémonie d'un coffre (fermer applique le lot), la fenêtre de
 fin de partie (elle règle l'ELO et la mise), la promotion d'un pion (il faut
 choisir) et la recherche en ligne (partir sans annuler laisse une entrée dans
@@ -903,7 +936,7 @@ Trois points de vigilance :
   même fichier. Google invalide le balisage si les deux textes divergent :
   modifier l'un, c'est modifier l'autre. Le `<head>` d'`index.html` ne porte
   plus que `VideoGame`/`WebSite`.
-- **Les chiffres du JSON-LD et de `llms.txt`** (18 créatures, 5 classes,
+- **Les chiffres du JSON-LD et de `llms.txt`** (19 créatures, 5 classes,
   budget 24 points, 7 rangs, 6 raretés de coffre) proviennent de
   `js/data-pieces.js` et `js/builder.js`. Ajouter une pièce ou un rang veut
   dire mettre ces deux fichiers à jour, sinon les moteurs de réponse IA
@@ -940,12 +973,18 @@ adresse que le `<link rel="icon">`.
 
 Le crochet est la classe **`.game-emblem`** : `mountEmblems()` (js/main.js)
 remplit tout élément qui la porte, et les classes qui l'accompagnent ne
-règlent que la taille et l'encre. Trois emplacements aujourd'hui :
+règlent que la taille et l'encre.
 
-| Classe | Écran | Particularité |
-|---|---|---|
-| `menu-emblem` | menu principal, au-dessus du pseudo | sa hauteur est `--menu-emblem-h`, dont dépend le retrait de `.jouer-menu` |
-| `intro-emblem` | parchemin d'accueil | repeint à l'encre du parchemin (#6b4f1e) : le laiton sur beige est illisible |
+**Aucun écran du jeu n'en porte actuellement.** Le dernier emplacement était le
+menu principal (`menu-emblem`, au-dessus du pseudo) ; il est parti, parce qu'un
+sceau de 52 px demandait de connaître le jeu pour le reconnaître. Le menu écrit
+maintenant **« Epic Chess »** en toutes lettres (`.menu-title`), et c'est sa
+hauteur — `--menu-title-h` — dont dépend le retrait de `.jouer-menu`.
+
+`EMBLEM_SVG` reste malgré tout la référence du tracé : `favicon.svg` en reprend
+exactement les chemins, et c'est lui qu'on voit dans l'onglet et sur l'écran
+d'accueil. Reposer le sceau quelque part ne demande donc qu'une `<div
+class="game-emblem …">`.
 
 `/info` (info.html) n'exécute **aucun** script : son emblème est une `<img>`
 sur `favicon.svg`, pour qu'il ne puisse pas diverger d'une copie de tracé.
@@ -1018,9 +1057,10 @@ parcours : création de compte, refus expliqué, tutoriel, réglages conservés,
 galerie des douze adversaires, partie CLASSÉE contre l'un d'eux (avec un coup
 joué et la réponse de l'IA), pendule, orientation des tables position-carrés,
 destruction du Typhon dans la simulation de coup, rendu de l'Armurerie et de
-la Diagonale de la Puissance, fin de la série du jour au sixième coffre,
-colonne des victoires (ordre des trente paliers, encaissement d'un coffre,
-conversion des jokers), rangée de la richesse et quêtes du jour. Il échoue au
+la Diagonale de la Puissance, cycle de la récompense journalière (ordre des
+trente lots, reprise au premier après le trentième), fourchettes de contenu des
+six coffres, colonne des victoires (ordre des trente paliers, encaissement d'un
+coffre, conversion des jokers), rangée de la richesse et quêtes du jour. Il échoue au
 premier message d'erreur de la console.
 
 ```
@@ -1047,7 +1087,7 @@ mais dans une version que Playwright refuse, le script le retrouve tout seul
 | Changer la façon dont un style se joue | `STYLE_W` dans `js/ai-engine.js` (évaluation) + `ARMY_STYLE_CLASS` dans `js/armies.js` (composition) |
 | Ajouter un portrait d'adversaire | déposer `assets/adversaires/<id>.png` — rien à déclarer |
 | Changer le contenu ou la rareté des coffres | `js/data-pieces.js` (`CHESTS`, `DAILY_CHEST`) + `js/economy.js` (`chestRoll`) |
-| Changer à quoi ressemble un coffre (partout : série, colonne, Magasin) | `chestVisual()` dans `js/economy-ui.js` — il rend la **statuette** (première planche de la séquence de bris) dès qu'un coffre en a une, sinon le coffre à couvercle dessiné en CSS |
+| Changer à quoi ressemble un coffre (partout : journalière, colonne, Magasin) | `chestVisual()` dans `js/economy-ui.js` — il rend la **statuette** (première planche de la séquence de bris) dès qu'un coffre en a une, sinon le coffre à couvercle dessiné en CSS |
 | Changer les perles (gains en coffre, prix d'achat) | `js/data-pieces.js` (`CHEST_PEARLS`) + `js/economy.js` (`chestRoll`, `pearlBuyChest`) + `renderMenuChests()` dans `js/economy-ui.js` |
 | Changer la cadence des parties (temps, incrément) | `js/ai-level-modal.js` (`selectedTimeControl`, `selectedTimeIncrement`) ; l'incrément est crédité par `recordMove()` dans `js/rules-engine.js` |
 | Changer ce qu'une partie fait risquer ou rapporter | `js/economy.js` (`economyCommit` / `economySettle`) |
@@ -1087,13 +1127,14 @@ mais dans une version que Playwright refuse, le script le retrouve tout seul
 | Ajouter un nouveau réglage utilisateur | `index.html` (bloc `#settings-panel`) + `js/settings-admin.js` |
 | Modifier la présentation ou la FAQ publiques | `info.html` (texte visible **et** JSON-LD `FAQPage`) |
 | Changer les modes qui rapportent de l'ELO | `js/voie.js` (`vvNoEloReason`) |
-| Changer le coffre gagné par série de victoires | `CHESTS`/`chestForStreak` dans `js/data-pieces.js` + `economySettle` dans `js/economy.js` |
-| Changer la remise à zéro quotidienne de la série | `streakEnsureToday`/`streakLockedToday` dans `js/economy.js` |
+| Changer ce que contient un coffre | `CHESTS` (`total`) et `CHEST_PEARLS` dans `js/data-pieces.js` + `chestRoll` dans `js/economy.js` |
+| Changer le cycle des lots journaliers | `DAILY_REWARDS` dans `js/data-pieces.js` (l'affichage suit tout seul) |
 | Changer les récompenses de la colonne des victoires | `VICTORY_COLUMN` dans `js/rewards.js` (l'affichage suit tout seul) |
 | Changer les paliers ou le prix en tickets de la rangée | `WEALTH_TIERS` dans `js/rewards.js` |
 | Ajouter / modifier une quête | `QUEST_POOL` dans `js/rewards.js` ; si elle demande un fait de jeu inédit, poser l'appel `questNote()` là où ce fait se produit |
 | Changer ce que valent les jokers ou ce qu'ils peuvent devenir | `jokerChoices`/`jokerConvert` dans `js/rewards.js` + `renderJokerModal` dans `js/rewards-ui.js` |
-| Modifier la page « Récompenses » | `js/rewards-ui.js` + `#page-rewards` dans `index.html` + `[REWARDS]` de `css/style.css` |
+| Modifier la page des deux voies | `js/rewards-ui.js` + `#page-rewards` dans `index.html` + `[REWARDS]` de `css/style.css` |
+| Modifier la récompense journalière | `DAILY_REWARDS` dans `js/data-pieces.js` + `dailyReward*` dans `js/rewards.js` + `renderDailyModal` dans `js/rewards-ui.js` |
 | Changer les écrans qui portent le bouton de réglages | `updateMainMenuFlag` dans `js/cube-nav.js` + `body.main-menu` dans `[SETTINGS]` de `css/style.css` |
 | Changer le retrait haut des pages (sous l'encoche) | `--page-top` / `--menu-top` en tête de `css/style.css` |
 | Changer ce que donne le mode test | `economyAdmin`/`invAll`/`pearlBalance` dans `js/economy.js` + `vvLoadElo`/`loadAccountGlobals` dans `js/accounts.js` |

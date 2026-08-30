@@ -117,13 +117,14 @@ function pmvRing(b,r0,c0,nr,nc,color){
 // ----------------------------------------------------------------
 // Le schéma montre le RÉPERTOIRE d'une créature, pas ce qu'elle peut faire
 // depuis une case en particulier. Or certaines créatures ne se déplacent pas
-// pareil partout : le Peureux ne sort jamais des quatre rangées de son camp,
-// un pion ne fait son bond de deux cases que de sa rangée de départ.
+// pareil partout : un pion ne fait son bond de deux cases que de sa rangée de
+// départ, une créature dont le déplacement dépend de son camp change de
+// répertoire selon la moitié de plateau où elle se trouve.
 //
-// La question était posée d'UNE seule case, la rangée 4 — qui se trouve être,
-// pour les Blancs, la ligne de front du camp du Peureux. Son schéma le
-// montrait donc incapable d'avancer d'un pas, ce qui est faux partout ailleurs
-// dans son camp. On essaie maintenant les rangées dans l'ordre : celle qui a
+// La question était posée d'UNE seule case, la rangée 4 — qui se trouve être
+// la ligne de front pour les Blancs. Une créature qui ne se déplace que chez
+// elle s'y montrait donc incapable d'avancer d'un pas, ce qui est faux partout
+// ailleurs. On essaie maintenant les rangées dans l'ordre : celle qui a
 // toujours servi d'abord (rien ne change pour les créatures dont le
 // déplacement ne dépend pas de la case), puis les autres, jusqu'à en trouver
 // une d'où la case visée est atteignable.
@@ -242,7 +243,7 @@ function pieceMoveDiagramHTML(pieceId,opts){
     }
     // Le schéma ne porte plus la mention « ↑ camp adverse » sous la grille.
     // Elle n'apparaissait que sous les pièces au déplacement orienté (Fourmi,
-    // Peureux, Méduse…), ajoutait une ligne sous un dessin déjà serré, et
+    // Méduse, Garde d'Eau…), ajoutait une ligne sous un dessin déjà serré, et
     // n'apprenait rien : le haut d'un échiquier est le camp d'en face, c'est
     // vrai de toutes les cases du jeu.
     html='<div class="pmv"><div class="pmv-grid">'+cells+'</div></div>';

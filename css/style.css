@@ -175,7 +175,7 @@ body{
    prochain appui ailleurs. On le retire partout et on ne le redonne qu'au
    clavier via :focus-visible (voir plus bas). */
 button,.btn,.cube-arrow,.jouer-btn,.chest-card,.army-card,.adv-card,
-.jouer-streak,a,[role="button"]{outline:none}
+.jouer-track,a,[role="button"]{outline:none}
 .btn{padding:10px 20px;border-radius:9px;font-weight:600;cursor:pointer;border:none;font-size:14px;transition:transform .14s,background .18s,border-color .18s,color .18s;font-family:var(--f-ui);letter-spacing:0;position:relative}
 .btn:active:not(:disabled){transform:translateY(1px)}
 .btn-ghost{background:transparent;color:var(--text);border:1px solid var(--border2)}
@@ -487,7 +487,6 @@ body.has-acc #page-game{min-height:0}
 .acc-fav-sub{font-family:var(--f-ui);font-size:11.5px;color:var(--muted);margin-top:2px}
 
 /* --- 2 & 3. LES SECTIONS ------------------------------------------ */
-.acc-logout{width:100%;margin-top:14px;font-size:12px!important;padding:10px 16px!important}
 
 /* CLASSEMENT RETOMBÉ SOUS LE RANG ACQUIS. Le rang est porté par le sommet
    d'ELO atteint (elo_peak) et ne se perd jamais ; le nombre, lui, redescend.
@@ -502,10 +501,10 @@ body.has-acc #page-game{min-height:0}
   font-family:var(--f-ui);font-size:11px;letter-spacing:1.1px;text-transform:uppercase;
   color:var(--muted);font-weight:600;margin:0 0 12px;
 }
-.acc-hint,.acc-empty{font-family:var(--f-ui);font-size:12.5px;line-height:1.55;color:var(--muted);margin:0 0 12px}
 .acc-empty{
+  font-family:var(--f-ui);font-size:12.5px;line-height:1.55;color:var(--muted);margin:0;
   background:var(--surface);border:1px dashed var(--border2);border-radius:12px;
-  padding:14px 16px;margin-bottom:0;
+  padding:14px 16px;
 }
 
 .acc-list{display:flex;flex-direction:column;gap:10px}
@@ -559,11 +558,6 @@ body.has-acc #page-game{min-height:0}
   .acc-stats{grid-template-columns:repeat(2,1fr)}
   .acc-medal-lg{width:64px;height:64px}
   .acc-medal-lg .acc-medal-letter{font-size:27px}
-}
-
-.acc-foot{
-  font-family:var(--f-ui);font-size:11px;line-height:1.6;color:var(--muted);
-  border-top:1px solid var(--border);padding-top:14px;margin:8px 0 0;max-width:60ch;
 }
 
 /* La ligne « Compte » du panneau de réglages : un bouton pleine largeur sous
@@ -897,28 +891,10 @@ body:not(.main-menu) #settings-panel{display:none}
   .sfx-shake,.sfx-shake-hard{animation:none}
 }
 
-/* L'INTERRUPTEUR DE VIBRATION, dans le panneau de réglages. Le seul
-   interrupteur du jeu : il emprunte la couleur d'accent quand il est allumé,
-   comme tout ce qui est « en cours » ailleurs dans l'interface. */
-/* L'INTERRUPTEUR EST DESSINÉ PETIT ET TOUCHÉ GRAND. Le rectangle visible
-   fait 44×24 — la proportion d'un interrupteur —, mais la zone sensible
-   descend à 44 px de haut grâce au rembourrage transparent : on ne rate pas
-   le seul interrupteur du jeu parce qu'il est joli. */
-.sp-toggle{
-  width:44px;height:44px;flex:none;padding:10px 0;box-sizing:border-box;
-  border:none;background:transparent;cursor:pointer;position:relative;
-}
-.sp-toggle::before{
-  content:'';position:absolute;left:0;top:10px;width:44px;height:24px;border-radius:12px;
-  border:1px solid var(--border2);background:var(--bg);
-  transition:background .18s,border-color .18s;
-}
-.sp-toggle span{
-  position:absolute;top:13px;left:3px;width:18px;height:18px;border-radius:50%;
-  background:var(--muted);transition:transform .18s,background .18s;z-index:1;
-}
-.sp-toggle[aria-checked="true"]::before{background:var(--accent-bg);border-color:var(--accent2)}
-.sp-toggle[aria-checked="true"] span{transform:translateX(20px);background:var(--accent2)}
+/* IL N'Y A PLUS D'INTERRUPTEUR DANS LE PANNEAU DE RÉGLAGES. Le seul qui y
+   restait commandait la vibration ; elle est maintenant toujours active
+   (voir js/settings-admin.js), et le panneau n'a plus que ses deux curseurs
+   de volume et la porte vers la page Comptes. */
 
 /* [ARMIES] ======================================================= */
 #page-armies{padding:clamp(16px,3vw,32px) clamp(12px,3vw,20px);min-height:100vh;background:var(--bg)}
@@ -1445,17 +1421,23 @@ body:not(.main-menu) #settings-panel{display:none}
    du jeu (arête claire en haut, ombre portée dessous) : une cible franche
    pour le pouce, sans être un mur.
    TOUT EST RELATIF : largeur en pourcentage de l'écran, hauteur et rondeur en
-   `em`, retrait du bas en `vh` — la pastille garde les mêmes proportions d'un
-   petit téléphone à une tablette.
+   `em` — la pastille garde les mêmes proportions d'un petit téléphone à une
+   tablette.
+   ELLE EST COLLÉE AU BAS DE L'ÉCRAN, et plus posée à 2 vh au-dessus. Ce
+   retrait la laissait flotter au milieu d'une bande vide, et sur un grand
+   écran elle avait l'air d'avoir glissé du contenu ; il ne reste que la zone
+   sûre (var(--safe-b)), c'est-à-dire l'espace que le matériel réclame et rien
+   de plus. Les coins du bas s'équerrent : une pastille posée SUR le bord de
+   l'écran doit épouser ce bord, sinon elle ne se lit pas comme collée.
    Elle reste en position:absolute (et non fixed) pour la raison expliquée
    dans index.html : l'animation d'entrée de .page.active laisse un transform
    permanent sur la page, qui ferait d'elle le bloc conteneur du fixed.
    `transform` porte le centrage : l'enfoncement au clic (.btn:active) doit
    donc le REPRENDRE, sinon le bouton saute à droite dès qu'on le touche. */
-.voie-ok-bar{position:absolute;left:50%;bottom:calc(2vh + var(--safe-b));
+.voie-ok-bar{position:absolute;left:50%;bottom:var(--safe-b);
   transform:translateX(-50%);z-index:5;
   width:34%;min-width:6em;max-width:14em;
-  margin:0;padding:.75em 1em;border-radius:999px;
+  margin:0;padding:.75em 1em;border-radius:999px 999px 0 0;
   font-family:var(--f-ui);font-weight:800;font-size:min(4.2vw,16px);letter-spacing:.09em;
   box-shadow:inset 0 .1em 0 rgba(255,240,205,.55),inset 0 -.18em 0 rgba(0,0,0,.28),
              0 .45em 1.1em -.35em rgba(0,0,0,.75)}
@@ -1584,15 +1566,16 @@ body.light .cube-face[data-face="jouer"]{background:
    est en position absolue, il ne pousse donc rien. Sans cette réserve, la
    colonne — qui a grandi d'une carte en récupérant le coffre quotidien — se
    centre trop haut et vient chevaucher le pseudo et l'ELO. */
-/* --menu-emblem-h : la hauteur du sceau posé au-dessus du pseudo. Le bloc
-   d'identité est en position:absolute (il ne pousse donc rien), c'est ce
-   retrait du haut de la colonne qui lui fait sa place. Les deux valeurs sont
-   liées : changer l'une sans l'autre fait chevaucher COMBAT et l'identité. */
-.jouer-menu{--menu-emblem-h:52px;
+/* --menu-title-h : la hauteur du titre « Epic Chess » posé au-dessus du
+   pseudo. Le bloc d'identité est en position:absolute (il ne pousse donc
+   rien), c'est ce retrait du haut de la colonne qui lui fait sa place. Les
+   deux valeurs sont liées : changer l'une sans l'autre fait chevaucher COMBAT
+   et l'identité. */
+.jouer-menu{--menu-title-h:56px;
   position:absolute;inset:0;display:flex;flex-direction:column;
   align-items:center;justify-content:center;gap:clamp(14px,3vh,30px);
   text-align:center;
-  padding:calc(var(--menu-top) + var(--menu-emblem-h) + clamp(50px,9vh,100px)) 5% calc(clamp(18px,3vh,28px) + var(--safe-b));
+  padding:calc(var(--menu-top) + var(--menu-title-h) + clamp(50px,9vh,100px)) 5% calc(clamp(18px,3vh,28px) + var(--safe-b));
   overflow:hidden}
 .jouer-btn{position:relative;cursor:pointer;border:none;
   font-family:var(--f-title);font-weight:900;letter-spacing:4px;
@@ -1619,9 +1602,9 @@ body.light .cube-face[data-face="jouer"]{background:
    final de la mise en page. */
 .jouer-btn>span{display:block;margin-right:-4px}
 /* Boutons secondaires autour de COMBAT : même colonne, mais gap resserré pour
-   rester visuellement en retrait du gros bouton doré. « Série du jour » est
-   au-dessus (voir .jouer-streak, section [STREAK]), « Adversaires » en
-   dessous. */
+   rester visuellement en retrait du gros bouton doré. Les trois boutons de
+   voies sont au-dessus (voir .jouer-track, section [STREAK]),
+   « Adversaires » en dessous. */
 .jouer-actions{display:flex;flex-direction:column;align-items:center;gap:14px}
 
 /* --- Faces placeholder (Magasin / Missions / Variantes) --- */
@@ -2462,40 +2445,49 @@ body.light .pmv-dark{background:#c3bdae}
 .tally-box.tally-loss{border-color:rgba(212,69,63,.45)}
 .tally-box.tally-gain{border-color:rgba(193,154,69,.45)}
 
-/* [STREAK] : la série du jour ======================================
-   Elle occupait le bas du MENU PRINCIPAL — six coffres en rang, le solde de
-   perles, la mention « Série · N victoires ». Trois informations posées en
-   permanence sous le pouce pour un état qu'on ne consulte qu'entre deux
-   parties, et six coffres de 13 vw de large, donc illisibles.
+/* [STREAK] : la colonne de lots (récompense journalière) ===========
+   Ces classes ont servi à la « série du jour », qui occupait le bas du MENU
+   PRINCIPAL — six coffres en rang, le solde de perles, la mention « Série · N
+   victoires ». Trois informations posées en permanence sous le pouce pour un
+   état qu'on ne consulte qu'entre deux parties, et six coffres de 13 vw de
+   large, donc illisibles. La série du jour elle-même a disparu.
 
-   Elle a maintenant son bouton (au-dessus de COMBAT) et SA FENÊTRE : une
-   colonne verticale, large, du Coffre Pion tout en haut au Coffre Roi tout en
-   bas. Voir renderStreakModal() dans js/economy-ui.js, qui la fait aussi
-   défiler jusqu'au palier en jeu.
+   La RÉCOMPENSE JOURNALIÈRE a repris cette carrosserie telle quelle : c'est
+   la même chose — une colonne de lots dont un seul est en jeu — et lui donner
+   un deuxième vocabulaire visuel aurait été un vocabulaire à apprendre pour
+   rien. Voir renderDailyModal() dans js/rewards-ui.js, qui fait aussi défiler
+   la colonne jusqu'au lot du jour.
 
    Trois états, lisibles sans légende :
-     .chest-won   déjà décroché dans la série du jour
-     .chest-next  ce que la prochaine victoire donne — éclatant, il respire
-     .chest-far   encore loin, mais lisible : c'est l'objectif
+     .chest-won   lot déjà pris
+     .chest-next  le lot d'aujourd'hui — éclatant, il respire
+     .chest-far   encore à venir
    ============================================================== */
-/* Le bouton, au-dessus de COMBAT : nettement en retrait du gros bouton doré
-   (c'est un état à consulter, pas l'action principale), mais assez présent
-   pour qu'on sache qu'il s'ouvre. */
-.jouer-streak{display:inline-flex;align-items:center;gap:8px;cursor:pointer;
-  /* 12 px de retrait vertical et non 9 : la pastille mesurait 35 px de haut,
-     juste sous le seuil des 44 px recommandés pour une cible tactile — et
-     c'est un des deux boutons les plus touchés du jeu. */
-  padding:12px 18px;min-height:44px;border-radius:999px;
+/* LES TROIS BOUTONS, AU-DESSUS DE COMBAT : récompense journalière, colonne des
+   victoires, rangée de la richesse. Nettement en retrait du gros bouton doré
+   (ce sont des états à consulter, pas l'action principale), mais assez
+   présents pour qu'on sache qu'ils s'ouvrent.
+   ILS SONT EN COLONNE, PICTOGRAMME AU-DESSUS DU LIBELLÉ, et non plus en
+   pastilles couchées. Ils étaient deux et tenaient sur une ligne ; à trois,
+   avec des libellés de vingt caractères (« Récompense journalière »), des
+   pastilles couchées se seraient empilées sur trois rangs et auraient mangé
+   150 px au-dessus de COMBAT. En colonne, chacun tient dans un tiers de la
+   largeur et les trois tiennent sur UNE ligne, à toutes les tailles d'écran.
+   La cible tactile reste bien au-dessus de 44 px. */
+.jouer-track{display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:6px;cursor:pointer;position:relative;
+  padding:10px 6px;min-height:60px;border-radius:14px;
   border:1px solid var(--border2);background:rgba(255,255,255,.05);
-  backdrop-filter:blur(10px);color:var(--muted);
-  font-family:var(--f-ui);font-size:12px;font-weight:650;
-  letter-spacing:.09em;text-transform:uppercase;
+  backdrop-filter:blur(10px);color:var(--muted);text-align:center;
+  font-family:var(--f-ui);font-size:min(2.7vw,11px);font-weight:650;
+  line-height:1.25;letter-spacing:.05em;text-transform:uppercase;
   transition:color .18s ease,border-color .18s ease,background .18s ease}
-.jouer-streak svg{width:15px;height:15px;flex-shrink:0}
-.jouer-streak:hover{color:var(--gold2);border-color:var(--gold);background:rgba(193,154,69,.12)}
+.jouer-track>span:not(.jouer-badge){display:block;max-width:100%}
+.jouer-track svg{width:17px;height:17px;flex-shrink:0}
+.jouer-track:hover{color:var(--gold2);border-color:var(--gold);background:rgba(193,154,69,.12)}
 
-/* La fenêtre. « Assez large » et VERTICALE : c'est une colonne de six
-   paliers, sa hauteur est ce qui compte. */
+/* La fenêtre. « Assez large » et VERTICALE : c'est une colonne de trente
+   lots, sa hauteur est ce qui compte. */
 .streak-modal{position:fixed;inset:0;z-index:9100;display:none;
   align-items:center;justify-content:center;padding:18px;
   background:rgba(4,7,9,.86);backdrop-filter:blur(3px)}
@@ -2517,11 +2509,20 @@ body.light .pmv-dark{background:#c3bdae}
   display:flex;align-items:center;justify-content:center;padding:0;transition:all .16s ease}
 .streak-close svg{width:15px;height:15px}
 .streak-close:hover{color:var(--text);border-color:var(--accent2);background:var(--surface2)}
-/* La colonne défilante : c'est elle que renderStreakModal() positionne sur le
-   palier en cours. */
+/* La colonne défilante : c'est elle que renderDailyModal() positionne sur le
+   lot du jour. */
 .streak-scroll{flex:1 1 auto;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;
   padding:14px;display:flex;flex-direction:column;gap:10px}
-/* Un palier. L'ordre du DOM suit CHESTS (Pion → Roi), donc Pion en haut. */
+/* LE PIED DE LA FENÊTRE JOURNALIÈRE : le bouton « Récupérer », épinglé sous la
+   colonne défilante. Il ne défile PAS avec elle — l'action ne doit jamais
+   sortir de l'écran pendant qu'on parcourt le cycle. */
+.daily-foot{flex:0 0 auto;padding:12px 14px calc(12px + var(--safe-b));
+  border-top:1px solid var(--border);display:flex;justify-content:center}
+.daily-foot .rw-claim{width:100%;max-width:16em}
+.daily-wait{font-family:var(--f-ui);font-size:11.5px;color:var(--muted);
+  letter-spacing:.04em;text-align:center;padding:6px 0}
+/* Un lot. L'ordre du DOM suit DAILY_REWARDS, donc le premier jour du cycle en
+   haut et le trentième en bas. */
 .streak-row{flex:0 0 auto;display:flex;align-items:center;gap:14px;
   padding:12px 14px;border-radius:15px;
   border:1px solid var(--border);background:var(--surface);
@@ -2583,7 +2584,6 @@ body.light .pmv-dark{background:#c3bdae}
    pour les mêmes quatre états serait un vocabulaire à apprendre pour rien.
    ============================================================== */
 
-/* Les deux boutons du menu, côte à côte au-dessus de COMBAT. */
 /* TOUTES LES DIMENSIONS DE CETTE PAGE SONT RELATIVES. Plus une seule largeur,
    hauteur, marge ou taille de texte en pixels durs : des pourcentages du
    conteneur, des `em` (qui suivent la taille du texte) et des `vw` plafonnés.
@@ -2593,13 +2593,19 @@ body.light .pmv-dark{background:#c3bdae}
    base en pixels (`flex:1 1 180px`) les faisait passer l'un sous l'autre dès
    que l'écran descendait sous 400 px, et cette pile mangeait deux fois la
    hauteur pour la même information. */
-/* Les deux boutons du menu, côte à côte au-dessus de COMBAT. */
-.jouer-tracks{display:flex;gap:2.5%;flex-wrap:wrap;justify-content:center}
-.jouer-rewards{position:relative}
+/* Les trois boutons du menu, côte à côte au-dessus de COMBAT. Une grille de
+   trois colonnes ÉGALES, et non un flex qui se répartit selon la longueur des
+   libellés : trois boutons de largeurs différentes se lisent comme trois
+   choses d'importances différentes, ce qu'ils ne sont pas. */
+.jouer-tracks{display:grid;grid-template-columns:repeat(3,1fr);gap:2.5%;
+  width:min(100% - 24px,440px)}
 /* La pastille : allumée uniquement quand quelque chose attend d'être
    récupéré (renderRewardsBadge, js/rewards-ui.js). Une pastille toujours
-   allumée n'est plus un rappel, c'est un décor. */
-.jouer-badge{min-width:1.8em;height:1.8em;padding:0 .5em;border-radius:999px;
+   allumée n'est plus un rappel, c'est un décor.
+   En haut à droite du bouton, et non dans son flux : le libellé est sur deux
+   lignes centrées, une pastille posée à sa suite le décentrerait. */
+.jouer-badge{position:absolute;top:-.5em;right:-.4em;
+  min-width:1.8em;height:1.8em;padding:0 .5em;border-radius:999px;
   background:var(--gold);color:#1a1206;
   font-family:var(--f-ui);font-size:min(2.6vw,10px);font-weight:900;line-height:1.8em;
   display:inline-flex;align-items:center;justify-content:center;
@@ -2843,12 +2849,6 @@ body.light .pmv-dark{background:#c3bdae}
 .cstake-row .pc-icon{width:26px;height:26px}
 .cstake-row .gs-stake-q{font-family:var(--f-ui);font-size:11px;color:var(--muted)}
 .cstake-warn{font-family:var(--f-ui);font-size:11px;color:var(--danger);margin-top:4px;text-align:center}
-/* Coffre annoncé dans le modal de fin de partie. */
-.result-chest{margin-top:16px;padding:13px 16px;border-radius:12px;text-align:center;
-  background:linear-gradient(180deg,rgba(193,154,69,.14),rgba(193,154,69,.04));border:1px solid rgba(193,154,69,.35)}
-.rc-lbl{font-family:var(--f-ui);font-size:9.5px;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted)}
-.rc-name{font-family:var(--f-ui);font-size:16px;font-weight:800;color:var(--gold2);margin:4px 0 2px}
-.rc-hint{font-size:11.5px;color:var(--muted)}
 
 /* [MENU] : face JOUER ============================================ */
 /* LE COFFRE DE RÉAPPROVISIONNEMENT N'A PLUS DE CARTE sur le menu : il
@@ -2857,8 +2857,8 @@ body.light .pmv-dark{background:#c3bdae}
    lui : le menu n'a plus qu'un bloc d'identité, deux boutons et le rail des
    coffres, ce qui tient enfin sur un écran de téléphone sans défilement. */
 @media(max-width:760px){
-  .jouer-menu{--menu-emblem-h:44px;
-    padding-top:calc(var(--menu-top) + var(--menu-emblem-h) + clamp(38px,6vh,72px))}
+  .jouer-menu{--menu-title-h:46px;
+    padding-top:calc(var(--menu-top) + var(--menu-title-h) + clamp(38px,6vh,72px))}
 }
 
 .jouer-second{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
@@ -2872,11 +2872,26 @@ body.light .pmv-dark{background:#c3bdae}
   top:var(--menu-top);display:flex;flex-direction:column;align-items:center;gap:8px;
   width:min(92%,540px);pointer-events:none}
 .jouer-player .btn{pointer-events:auto}
-.jouer-name{font-family:var(--f-display);font-weight:900;
-  font-size:clamp(24px,4.4vw,46px);letter-spacing:1.5px;line-height:1.1;
-  background:linear-gradient(180deg,var(--gold2),var(--gold) 55%,#8a6a1a);
+/* LE NOM DU JEU, TOUT EN HAUT, ET EN GRAND. C'est la première chose que voit
+   quelqu'un qui ouvre le jeu, et c'était la seule qu'il ne trouvait nulle
+   part : le menu montrait un sceau de 52 px qu'il fallait déjà connaître.
+   Cinzel Decorative (--f-display), la police de titre du jeu, dorée comme le
+   bouton COMBAT et le pseudo — même famille, mêmes matières.
+   La hauteur de ligne est celle que --menu-title-h réserve en haut de la
+   colonne du menu (voir .jouer-menu) : les deux se suivent. */
+.menu-title{font-family:var(--f-display);font-weight:900;
+  font-size:clamp(28px,7.6vw,52px);letter-spacing:.06em;line-height:1;margin:0;
+  background:linear-gradient(180deg,#f6e3ad,var(--gold) 52%,#8a6a1a);
   -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
-  filter:drop-shadow(0 4px 20px rgba(201,162,39,.3));
+  filter:drop-shadow(0 6px 26px rgba(201,162,39,.38));
+  white-space:nowrap;max-width:100%}
+/* LE PSEUDO PASSE DERRIÈRE LE TITRE. Il avait la même police, la même dorure
+   et presque la même taille : deux titres l'un sur l'autre, dont aucun ne
+   dominait. Il garde sa matière mais recule d'un cran — c'est une légende sous
+   une enseigne, pas une deuxième enseigne. */
+.jouer-name{font-family:var(--f-title);font-weight:700;
+  font-size:clamp(14px,3.4vw,20px);letter-spacing:.16em;line-height:1.1;
+  text-transform:uppercase;color:var(--muted);
   max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 /* UNE pastille tactile, et non trois objets de trois poids différents. */
 .jouer-idpill{display:inline-flex;align-items:center;gap:7px;height:34px;padding:0 10px 0 12px;
@@ -2894,7 +2909,7 @@ body.light .pmv-dark{background:#c3bdae}
 /* La destination du combat, sous le bouton. */
 @media(max-width:760px){
   .jouer-player{gap:5px}
-  .jouer-name{font-size:clamp(20px,6vw,28px)}
+  .menu-title{font-size:clamp(26px,8.4vw,40px)}
 }
 /* Boussole du cube : nomme la face affichée. */
 /* Promotion : le libellé sous le logo, sinon deux créatures inconnues se
@@ -3309,10 +3324,9 @@ body.cube-active:not(.nav-overlay) .notif-host{bottom:92px}
    taille et l'encre. */
 .game-emblem{display:block}
 .login-emblem{width:78px;height:78px;margin:0 auto 10px}
-/* Menu principal : au-dessus du pseudo. La hauteur est une VARIABLE parce que
-   la colonne du menu doit reculer d'autant (voir .jouer-menu) — sans quoi le
-   bouton COMBAT remonterait sous le bloc d'identité. */
-.menu-emblem{width:var(--menu-emblem-h);height:var(--menu-emblem-h);margin:0 auto}
+/* LE MENU PRINCIPAL NE PORTE PLUS DE SCEAU. Il porte le NOM DU JEU, en toutes
+   lettres et en grand (.menu-title, section [MENU]) : un logo de 52 px
+   demandait de connaître le jeu pour le reconnaître. */
 /* Parchemin d'accueil : à l'encre du parchemin. Le laiton et l'or clair, sur
    un fond beige, se lisent comme deux taches délavées ; le sceau reprend donc
    ici le brun du titre (#6b4f1e), et le bouillon garde sa couleur — c'est le
@@ -3865,7 +3879,7 @@ body.light .adv-advised{color:#f6f5f1}
    un anneau à lui, sur tout ce qui se pilote au clavier. */
 .btn:focus-visible,.jouer-btn:focus-visible,.cube-arrow:focus-visible,
 .army-card:focus-visible,.chest-card:focus-visible,
-.adv-card:focus-visible,.jouer-streak:focus-visible,#settings-btn:focus-visible{
+.adv-card:focus-visible,.jouer-track:focus-visible,#settings-btn:focus-visible{
   outline:2px solid var(--accent2);outline-offset:2px}
 
 /* Le mouvement réduit reste prioritaire sur tout ce qui précède. */
@@ -4120,19 +4134,17 @@ body.desk .jouer-menu{
 body.desk .jouer-col{display:flex;flex-direction:column;align-items:center;
   gap:clamp(18px,3.4vh,36px)}
 body.desk .jouer-player{position:static;transform:none;width:auto;max-width:100%;gap:10px}
-/* L'emblème a la place de respirer : c'est le seul écran qui porte l'identité
-   du jeu, et 52 px sur 900 px de large, c'était une vignette. */
-body.desk .jouer-menu{--menu-emblem-h:68px}
+/* Le titre a la place de respirer : c'est l'écran qui porte l'identité du jeu,
+   et sur 900 px de large il peut l'écrire en grand. */
+body.desk .jouer-menu{--menu-title-h:88px}
 /* COMBAT est l'action principale : à la souris, sur 900 px de large, elle a
    le droit d'être franchement plus grande qu'une cible de pouce. */
 body.desk .jouer-btn{font-size:clamp(22px,2vw,30px);padding:22px 64px;letter-spacing:6px}
-/* Le bouton « Série du jour » n'a plus d'objet : sa fenêtre est dépliée en
-   permanence dans la colonne de droite, juste à côté. Le bouton
-   « Récompenses », lui, RESTE : ce qu'il ouvre est une page entière (deux
-   voies et les quêtes du jour), pas une carte qui tiendrait dans la colonne —
-   celle-ci n'en donne que le résumé (voir #ms-rewards). */
-body.desk .jouer-streak{display:none}
-body.desk .jouer-rewards{display:inline-flex}
+/* LES TROIS BOUTONS RESTENT en mode bureau. La colonne de droite en donne le
+   résumé — le cycle journalier déplié, l'état des deux voies — mais ce qu'ils
+   ouvrent (une fenêtre, une page entière avec ses quêtes) ne tient pas dans
+   une carte de 340 px. Le résumé ne remplace pas l'action, il la prépare. */
+body.desk .jouer-tracks{max-width:440px}
 
 /* --- LA COLONNE DE DROITE ---------------------------------------- */
 .menu-side{display:none}
@@ -4151,7 +4163,7 @@ body.desk .menu-side{
    plutôt que d'étirer la carte au-delà de l'écran. */
 .ms-rows{display:flex;flex-direction:column;gap:8px;
   max-height:min(44vh,400px);overflow-y:auto;padding-right:2px}
-/* Le rail vient de streakRowsHTML() : mêmes lignes que la fenêtre, resserrées
+/* Le rail vient de dailyRowsHTML() : mêmes lignes que la fenêtre, resserrées
    pour une colonne de 360 px. */
 .ms-rows .streak-row{gap:10px;padding:8px 10px}
 .ms-rows .streak-row-chest{width:50px}

@@ -334,11 +334,11 @@ function renderVoiePage(){
   let side=0;
   const sideCls=()=>(side++%2===0)?'vm-l':'vm-r';
   UNLOCK_MILESTONES.forEach((milestone,idx)=>{
-    // Les cinq jalons de départ (Roi, Dame, Fourmi, Peureux, Éléphant de
-    // guerre — `starter`) sont à 0 ELO, donc numériquement dans la tranche
-    // Bois, mais ils ne portent PAS son bandeau : ils forment le socle tout
-    // en bas de la Voie, sous l'arène. Le bandeau Bois s'ouvre normalement au
-    // jalon suivant (Preux Chevalier, 50 ELO), premier jalon non-`starter`.
+    // Les cinq jalons de départ (Roi, Dame et les trois Gardes — `starter`)
+    // sont à 0 ELO, donc numériquement dans la tranche Bois, mais ils ne
+    // portent PAS son bandeau : ils forment le socle tout en bas de la Voie,
+    // sous l'arène. Le bandeau Bois s'ouvre normalement au jalon suivant
+    // (les 20 perles à 25 ELO), premier jalon non-`starter`.
     if(!milestone.starter){
       const mRank=vvGetRank(milestone.eloRequired);
       if(mRank.id!==lastRankId){lastRankId=mRank.id;html+='<div class="vm-rank-section"><div class="vm-rank-bar"><span class="vm-rank-label" style="color:'+mRank.color+'">'+mRank.name+'</span><span class="vm-rank-range">'+mRank.min+'–'+(mRank.max===9999?'∞':mRank.max)+' ELO</span></div></div>';}

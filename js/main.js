@@ -224,9 +224,9 @@ function wireEscape(){
     if(ae&&/INPUT|TEXTAREA|SELECT/.test(ae.tagName))return;
     const panel=document.getElementById('settings-panel');
     if(panel&&panel.classList.contains('open')){panel.classList.remove('open');return;}
-    const streak=document.getElementById('streak-modal');
-    if(streak&&streak.classList.contains('show')){
-      if(typeof closeStreakModal==='function')closeStreakModal();
+    const daily=document.getElementById('daily-modal');
+    if(daily&&daily.classList.contains('show')){
+      if(typeof closeDailyModal==='function')closeDailyModal();
       return;
     }
     // Une page en surimpression : `nav-overlay` est posée par cube-nav.js
@@ -258,11 +258,15 @@ function watchDeskMode(){
 // joueur qui a déjà un compte ne le voyait donc jamais, nulle part : le seul
 // endroit où l'identité du jeu lui apparaissait encore était l'icône
 // d'onglet, que les navigateurs gardent en cache pendant des semaines.
-// Le crochet est maintenant la classe `.game-emblem`, portée par TOUS les
-// emplacements (voile de pseudo, menu principal) ; les
-// classes qui l'accompagnent (`login-emblem`, `menu-emblem`)
-// ne règlent plus que la taille et l'encre. Ajouter un emplacement = poser
-// une div `game-emblem`, rien de plus.
+// Le crochet est la classe `.game-emblem` ; les classes qui l'accompagnent
+// (`login-emblem`…) ne règlent que la taille et l'encre. Ajouter un
+// emplacement = poser une div `game-emblem`, rien de plus.
+// AUCUN ÉCRAN N'EN PORTE ACTUELLEMENT. Le menu principal, qui était le
+// dernier, dit maintenant le nom du jeu en toutes lettres (« Epic Chess »,
+// .menu-title dans index.html) : un sceau de 52 px ne pouvait pas le faire
+// pour qui ne le connaissait pas déjà. Le tracé reste ici, et reste la source
+// de favicon.svg, qui le montre dans l'onglet — et mountEmblems reste le
+// chemin pour le reposer quelque part le jour où on le voudra.
 function mountEmblems(){
   document.querySelectorAll('.game-emblem').forEach(el=>{
     if(!el.firstElementChild)el.innerHTML=EMBLEM_SVG;

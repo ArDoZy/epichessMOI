@@ -1,28 +1,31 @@
 // ================================================================
-// SETTINGS-ADMIN.JS : Panneau de réglages (volume)
+// SETTINGS-ADMIN.JS : Panneau de réglages (volumes)
 // ================================================================
 // Contient : le bouton et panneau flottant de réglages (#settings-btn /
-// #settings-panel) qui contrôle LE volume (un seul, voir plus bas). Le jeu
-// n'a qu'un thème (sombre) : il n'y a donc plus de réglage d'apparence ici.
-// Le mode test (/?test, voir plus bas dans main.js) reste utilisable par son
-// adresse, mais n'a plus d'entrée dans ce panneau.
+// #settings-panel) qui contrôle les DEUX volumes (bruitages, musique). Le jeu
+// n'a qu'un thème (sombre) : il n'y a donc pas de réglage d'apparence ici, et
+// la vibration n'a plus d'interrupteur (elle est toujours active, voir plus
+// bas). Le mode test (/?test, voir plus bas dans main.js) reste utilisable par
+// son adresse, mais n'a pas d'entrée dans ce panneau.
 //
 // Dépendances : main.js (ADMIN_MODE),
 // rules-engine.js (_soundEnabled), combat-music.js (window._musicGain),
-// sfx.js (hapticSetEnabled, hapticSupported, haptic).
+// sfx.js (hapticSetEnabled).
 //
 // Si vous ajoutez un nouveau réglage : ajoutez sa ligne .sp-row dans
 // index.html (section #settings-panel) et son listener ici.
 // ================================================================
 
-// UN SEUL CURSEUR POUR TOUT LE SON. Il y en avait deux, « Bruitages » et
-// « Musique » : baisser le son du jeu demandait donc deux gestes, et personne
-// n'a jamais voulu de la musique sans les bruitages ni l'inverse. Le curseur
-// « Bruitages » commande maintenant les deux, la musique restant en retrait
-// d'un facteur fixe — c'est un fond, pas un premier plan.
+// DEUX CURSEURS, PARCE QUE CE SONT DEUX SONS. Il n'y en a eu qu'un pendant un
+// temps : « Bruitages » commandait aussi la musique, à un facteur fixe près.
+// Mais couper la boucle de combat en gardant le bruit des pièces — ce qu'on
+// fait dès qu'on écoute autre chose en jouant — était alors impossible, et
+// baisser la musique obligeait à rendre le jeu muet.
 //
 // _sfxVol vit dans rules-engine.js (playTone en a besoin) ; ici on ne fait que
-// l'écrire. _musicVol en est déduit, combat-music.js le lit.
+// l'écrire. _musicVol est lu par combat-music.js (ensureMusicGain).
+// MUSIC_RATIO n'est plus qu'une VALEUR DE DÉPART : la musique est un fond, il
+// serait absurde qu'elle sorte à plein volume au premier lancement.
 const MUSIC_RATIO=0.5;
 let _musicVol=MUSIC_RATIO;
 
@@ -41,12 +44,17 @@ function savePrefs(patch){
   const p=Object.assign(loadPrefs(),patch);
   try{localStorage.setItem(PREFS_KEY,JSON.stringify(p));}catch(e){}
 }
-// Un seul point d'entrée : il pose le volume des bruitages ET celui de la
-// musique, qui en découle.
+// Les bruitages. `_soundEnabled` (rules-engine.js) suit : à zéro, playTone
+// n'ouvre même plus de contexte audio.
 function applySfxVol(v){
   _sfxVol=Math.max(0,Math.min(1,v));
   _soundEnabled=_sfxVol>0;
-  _musicVol=_sfxVol*MUSIC_RATIO;
+}
+// La musique. Le gain est posé sur le nœud s'il existe déjà (une partie est en
+// cours) ; sinon ensureMusicGain (js/combat-music.js) lira _musicVol à la
+// création, donc le réglage s'applique de toute façon au combat suivant.
+function applyMusicVol(v){
+  _musicVol=Math.max(0,Math.min(1,v));
   if(window._musicGain)window._musicGain.gain.value=_musicVol;
 }
 
@@ -57,35 +65,26 @@ function applySfxVol(v){
   document.addEventListener('click',e=>{if(!panel.contains(e.target)&&e.target!==btn)panel.classList.remove('open');});
   const sfx=document.getElementById('sp-sfx-vol');
   sfx.addEventListener('input',function(){applySfxVol(parseFloat(this.value));savePrefs({sfx:_sfxVol});});
+  const mus=document.getElementById('sp-music-vol');
+  mus?.addEventListener('input',function(){applyMusicVol(parseFloat(this.value));savePrefs({music:_musicVol});});
 
-  // -- VIBRATION ---------------------------------------------------------
-  // Réglage SÉPARÉ du son : jouer en silence et garder la vibration est un
-  // usage courant (transports), l'inverse aussi (quelqu'un que la vibration
-  // agace). Les regrouper obligerait à sacrifier l'un pour l'autre.
-  const hap=document.getElementById('sp-haptic');
-  const hapRow=document.getElementById('sp-haptic-row');
-  // Un appareil qui ne sait pas vibrer ne doit pas montrer l'interrupteur :
-  // un réglage qui ne commande rien est pire que pas de réglage.
-  if(hapRow&&typeof hapticSupported==='function'&&!hapticSupported())hapRow.style.display='none';
-  if(hap){
-    hap.addEventListener('click',()=>{
-      const on=hap.getAttribute('aria-checked')!=='true';
-      hap.setAttribute('aria-checked',on?'true':'false');
-      if(typeof hapticSetEnabled==='function')hapticSetEnabled(on);
-      savePrefs({haptic:on});
-      // On fait sentir le réglage au moment où on l'allume : c'est la seule
-      // façon de savoir ce qu'on vient d'activer.
-      if(on&&typeof haptic==='function')haptic('place');
-    });
-  }
+  // -- VIBRATION : TOUJOURS ACTIVE ---------------------------------------
+  // Elle a eu son interrupteur, à part du son. Il est parti : la vibration
+  // n'est pas un effet qu'on subit, c'est la réponse du jeu au doigt qui
+  // touche — cinq motifs de quelques dizaines de millisecondes, pas un de plus
+  // (voir haptic, js/sfx.js). Sur un appareil qui ne sait pas vibrer, elle
+  // retombe déjà toute seule sur son repli visuel. On l'allume ici, une fois,
+  // et la préférence enregistrée par l'ancienne version du panneau est
+  // ignorée : personne ne doit se retrouver avec une vibration muette sans
+  // savoir où la rallumer.
+  if(typeof hapticSetEnabled==='function')hapticSetEnabled(true);
 
   // Restitution au chargement : le panneau doit montrer ce qui est réellement
   // appliqué, sinon les réglages mentent dès la seconde visite.
   const prefs=loadPrefs();
   if(typeof prefs.sfx==='number'){applySfxVol(prefs.sfx);sfx.value=_sfxVol;}
-  const hapOn=(typeof prefs.haptic==='boolean')?prefs.haptic:true;
-  if(typeof hapticSetEnabled==='function')hapticSetEnabled(hapOn);
-  if(hap)hap.setAttribute('aria-checked',hapOn?'true':'false');
+  applyMusicVol(typeof prefs.music==='number'?prefs.music:MUSIC_RATIO);
+  if(mus)mus.value=_musicVol;
 })();
 
 // Le mode test (bac à sable : tout le catalogue, 10 000 ELO, perles

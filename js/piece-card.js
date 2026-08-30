@@ -54,8 +54,6 @@ const POWER_ICONS={
   empereur:'<path d="M4 20l4-1 11-11 1-4-4 1L5 16z"/><path d="M6 18l-2 2"/><path d="M14 6l4 4"/>',
   // Domination (Grand Maître) : une couronne qui pèse sur une barre.
   'grand-maitre':'<path d="M4 8l3 3 5-6 5 6 3-3v8H4z"/><path d="M4 19h16"/>',
-  // Retraite Prudente (Peureux) : une flèche qui rentre derrière un mur.
-  peureux:'<path d="M20 4v16"/><path d="M16 12H4"/><path d="M9 7l-5 5 5 5"/>',
   // Obstination (Fourmi) : une flèche qui ne va que vers l'avant.
   fourmi:'<path d="M12 20V5"/><path d="M6 11l6-6 6 6"/><path d="M5 21h14"/>',
   // Cuirasse (Preux Chevalier) : un écu.
