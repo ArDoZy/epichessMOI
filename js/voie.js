@@ -225,8 +225,12 @@ function vvEloExplain(calc,result,peakElo){
   }
   if(result==='loss'&&calc.bottomed)
     return 'Vous êtes au bas de l\'échelle : impossible de descendre plus bas.';
-  if(calc.games<VV_K_STEPS[0].games)
-    return 'Partie de placement '+(calc.games+1)+'/'+VV_K_STEPS[0].games+' : elle compte double.';
+  // LES PARTIES DE PLACEMENT NE S'ANNONCENT PLUS. « Partie de placement 2/5 :
+  // elle compte double » expliquait un écart d'ELO par une règle de plus à
+  // retenir, à un moment — les cinq premières parties — où le joueur découvre
+  // déjà tout le reste. L'écart, lui, se lit sur la ligne au-dessus, et il est
+  // dans le bon sens : c'est une bonne nouvelle qui n'a pas besoin de note de
+  // bas de page.
   if(calc.climbing&&result==='win')
     return 'Bonus d\'ascension : ×'+calc.gainMult.toFixed(1)+' jusqu\'à '+VV_CLIMB_TOP+' ELO.';
   if(calc.climbing&&result==='loss')

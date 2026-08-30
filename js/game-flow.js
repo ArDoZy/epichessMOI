@@ -209,10 +209,6 @@ function showArmyIntro(playerArmy,aiArmy){
 function showResultModal(result,oldElo,newElo,delta,newUnlockIds,noEloReason,eloCalc){
   setTimeout(()=>playSound(result==='win'?'win':result==='loss'?'loss':'draw'),200);
   const modal=document.getElementById('result-modal');const box=document.getElementById('result-box');
-  // Le rang du modal est le rang ACQUIS (sommet atteint), pas celui du
-  // classement de l'instant : une défaite qui repasse sous un seuil ne
-  // doit pas afficher une rétrogradation qui n'a pas lieu.
-  const rank=(typeof vvRank==='function')?vvRank():vvGetRank(newElo);
   box.className='result-box '+(result==='win'?'win-result':result==='loss'?'loss-result':'draw-result');
   // Plus de chevron au-dessus du titre pour une victoire ou une défaite : le
   // mot et sa couleur disent déjà tout, le triangle n'ajoutait qu'un symbole
@@ -261,7 +257,11 @@ function showResultModal(result,oldElo,newElo,delta,newUnlockIds,noEloReason,elo
     noteEl.textContent=noteText;
     noteEl.classList.toggle('result-elo-climb',!showNote&&!!climbNote);
   }
-  document.getElementById('result-rank-name').textContent=rank.name+' · '+newElo+' ELO';
+  // PLUS DE LIGNE DE RANG. Elle affichait « Pierre · 218 ELO » juste sous
+  // « 213 → 218 · +5 » : le même nombre, une deuxième fois, dans une phrase
+  // plus longue. Le rang, lui, ne bouge presque jamais d'une partie à
+  // l'autre — et quand il bouge, la Diagonale de la Puissance le fête pour
+  // de bon. L'écran de fin de partie dit le résultat et l'ELO, c'est tout.
   const unlockSec=document.getElementById('unlock-section');
   if(newUnlockIds&&newUnlockIds.length>0){
     const pid=newUnlockIds[0];const pd=PIECES.find(p=>p.id===pid);

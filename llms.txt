@@ -46,7 +46,7 @@ la création de son compte (js/lore-intro.js).
 Le catalogue compte **19 créatures** réparties en **5 classes** :
 
 - **Monarque** : l'équivalent du roi, la pièce à protéger. Exemples : Roi
-  (3 pts, 1 case dans toutes les directions), Empereur (7 pts, se déplace
+  (3 pts, 1 case dans toutes les directions), Empereur (8 pts, se déplace
   comme un roi ou un cavalier).
 - **Général** : l'équivalent de la dame, la pièce maîtresse. Exemples :
   Amazone (7 pts, cavalier + fou), Centaure (8 pts, tour + cavalier),
@@ -59,8 +59,9 @@ Le catalogue compte **19 créatures** réparties en **5 classes** :
   faible. Exemples : les trois Gardes — Garde d'Eau (2 pts, une case
   orthogonale), Garde de Feu (2 pts, une case diagonale), Garde de Pierre
   (3 pts, une case dans les huit directions, et elle peut s'ancrer sur place
-  pour devenir imprenable) —, puis Fourmi, Preux Chevalier, Éléphant de
-  guerre.
+  pour devenir imprenable) —, puis Fourmi (2 pts, avance d'une case tout droit
+  ou en diagonale, sans jamais reculer, et **se promeut** si elle atteint la
+  dernière rangée), Preux Chevalier, Éléphant de guerre.
 - **Sorcier** : les pièces possédant des capacités spéciales avancées, mais
   à la mobilité réduite. Exemples : Méduse, Typhon, Banshee, Prêtre.
 

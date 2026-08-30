@@ -405,7 +405,12 @@ function applyMoveQuick(board,from,to,p,anchored){
   // coup, pas un supplément. Sans eux la recherche évaluait un Typhon comme un
   // fou d'une case et ne jouait jamais le coup qui efface trois pièces.
   applyCollateralOnBoard(b,from,to,b[to.r][to.c],anchored);
-  if(b[to.r]?.[to.c]?.pieceId==='std-pawn'&&(to.r===0||to.r===7)&&b[to.r][to.c])b[to.r][to.c]={...b[to.r][to.c],type:'q',emoji:'♛',pieceId:'dame'};
+  // Promotion dans la recherche : la Fourmi se promeut comme le pion (voir
+  // PROMOTING_IDS, js/data-pieces.js). Sans cette ligne, le moteur évaluerait
+  // une Fourmi arrivée au bout comme une Fourmi — et ne verrait donc jamais
+  // l'intérêt de l'y pousser.
+  if(b[to.r]?.[to.c]&&PROMOTING_IDS.has(b[to.r][to.c].pieceId)&&(to.r===0||to.r===7))
+    b[to.r][to.c]={...b[to.r][to.c],type:'q',emoji:'♛',pieceId:'dame'};
   return b;
 }
 
@@ -783,6 +788,7 @@ function getWorkerCode(){
   const consts=`
 const PIECES=${JSON.stringify(PIECES)};
 const TRUE_PAWN_IDS=new Set(${JSON.stringify([...TRUE_PAWN_IDS])});
+const PROMOTING_IDS=new Set(${JSON.stringify([...PROMOTING_IDS])});
 const CVAL=${JSON.stringify(CVAL)};
 const PVAL=${JSON.stringify(PVAL)};
 const PIECE_CLASS_BY_ID=${JSON.stringify(PIECE_CLASS_BY_ID)};
