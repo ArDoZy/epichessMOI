@@ -395,25 +395,12 @@
             </div>
           </div>
           </div><!-- /.jouer-col -->
-          <!-- COLONNE DE DROITE, ORDINATEUR SEULEMENT (masquée par défaut,
-               allumée par body.desk — voir [DESKTOP] dans css/style.css).
-
-               C'est l'application du principe : LE TÉLÉPHONE CACHE,
-               L'ORDINATEUR MONTRE. Sur un petit écran, le cycle des
-               récompenses journalières est enfermé derrière son bouton et la
-               progression derrière la pastille d'ELO — il n'y a pas la place
-               de faire autrement. Sur un écran de 1500 px, le menu était une
-               colonne de téléphone posée au milieu de 900 px de vide : ces
-               deux choses y tiennent sans rien déplacer.
-               Rien n'est réécrit pour l'occasion : le rail des lots est
-               produit par dailyRowsHTML(), la MÊME fonction qui remplit la
-               fenêtre du bouton (voir renderMenuDailyCard dans
-               js/rewards-ui.js). Une seule source, deux affichages. -->
-          <aside class="menu-side" id="menu-side">
-            <section class="ms-card" id="ms-daily"></section>
-            <section class="ms-card" id="ms-rewards"></section>
-            <section class="ms-card" id="ms-next"></section>
-          </aside>
+          <!-- Pas de colonne de droite en mode bureau : la récompense
+               journalière, la colonne des victoires et la rangée de la
+               richesse s'ouvrent déjà chacune depuis leur bouton
+               (.jouer-tracks ci-dessus) — les dupliquer dans un panneau
+               permanent n'ajoutait qu'une bande de cartes redondante à côté
+               du menu. -->
         </div>
       </div>
     </div>
