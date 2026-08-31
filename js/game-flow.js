@@ -262,6 +262,9 @@ function showResultModal(result,oldElo,newElo,delta,newUnlockIds,noEloReason,elo
   // plus longue. Le rang, lui, ne bouge presque jamais d'une partie à
   // l'autre — et quand il bouge, la Diagonale de la Puissance le fête pour
   // de bon. L'écran de fin de partie dit le résultat et l'ELO, c'est tout.
+  // Son médaillon (rankMedalHTML, js/main.js) vit toujours sur la
+  // Diagonale de la Puissance (js/voie.js) : rien n'est perdu, seulement
+  // pas répété ici.
   const unlockSec=document.getElementById('unlock-section');
   if(newUnlockIds&&newUnlockIds.length>0){
     const pid=newUnlockIds[0];const pd=PIECES.find(p=>p.id===pid);

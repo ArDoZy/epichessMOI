@@ -83,18 +83,24 @@ async function launchChromium(){
   }
 }
 
-// Les portraits d'adversaires (assets/adversaires/<id>.png), le fond du menu
-// principal (assets/backgrounds/main-page.png) et les planches de
-// destruction des coffres (assets/chests/<id>/) sont FACULTATIFS par
-// construction : le jeu dessine un repli quand ils manquent — un coffre à
-// couvercle pour les planches (voir chestBreakReady, js/chest-break.js).
-// Leur 404 est donc un comportement voulu et non une panne, au même titre
-// que les polices Google ou le CDN Supabase quand le réseau est coupé.
+// TOUT `assets/` EST FACULTATIF, sauf `boards/` : portraits d'adversaires,
+// fonds d'écran, bannières de titre, mobilier, effets, médaillons de rang,
+// planches de destruction des coffres. Le jeu dessine un repli quand un
+// fichier manque — un coffre à couvercle pour les planches (voir
+// chestBreakReady, js/chest-break.js), un sceau procédural pour un portrait,
+// et pour tout le reste le décor en dégradés qui existait avant les images
+// (voir la section [ART] de css/style.css et le catalogue
+// assets/PROMPTS.md). Leur 404 est donc un comportement voulu et non une
+// panne, au même titre que les polices Google ou le CDN Supabase quand le
+// réseau est coupé.
+// `boards/` n'est PAS dans la liste : ces cinq textures sont versées au
+// dépôt et générées par tools/gen-boards.js — un 404 y serait une vraie
+// panne.
 // ERR_CERT_AUTHORITY_INVALID vient des environnements dont le réseau passe
 // par un mandataire à certificat propre : c'est la machine de test qui
 // refuse le certificat d'une ressource externe, pas le jeu qui échoue.
 const IGNORED_CONSOLE=/ERR_TUNNEL_CONNECTION_FAILED|ERR_CONNECTION_RESET|ERR_NAME_NOT_RESOLVED|ERR_CERT_AUTHORITY_INVALID|fonts\.googleapis|fonts\.gstatic|jsdelivr|supabase/;
-const OPTIONAL_ASSET=/adversaires\/[a-z-]+\.png|backgrounds\/main-page\.png|chests\/[a-z]+\//;
+const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|chests)\//;
 
 (async()=>{
   const server=serve();

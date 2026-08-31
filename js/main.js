@@ -285,6 +285,42 @@ const TRASH_ICON='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" str
 const fmtDate=ts=>{const d=new Date(ts);return d.toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});};
 
 // ----------------------------------------------------------------
+// LE MÉDAILLON D'UN RANG
+// ----------------------------------------------------------------
+// Sept rangs (RANKS, js/data-pieces.js), sept planches facultatives dans
+// assets/ranks/<id>.png. Trois pages l'affichent : le bandeau d'ELO de la
+// Diagonale, ses bandeaux de rang, et la fenêtre de fin de partie.
+//
+// Le repli suit celui des portraits d'adversaires (advPortraitPath,
+// js/adversaires.js) et pour la même raison : tester l'existence du fichier
+// à l'avance demanderait une requête par rang à chaque ouverture de page. On
+// pose donc l'<img> et on la RETIRE si elle ne charge pas — c'est la seule
+// forme de repli qui ne laisse pas de trou. Une taille fixe dans le CSS,
+// elle, réserverait ses 26 px même sans image, et le bandeau de rang
+// garderait un vide inexplicable à gauche de son nom.
+//
+// `cls` donne la taille : 'rm-lg' (52 px, bandeau d'ELO), 'rm-md' (30 px,
+// fin de partie), 'rm-sm' (26 px, bandeaux de la route).
+//
+// La source tente D'ABORD le `.webp` : c'est ce que produit tools/opt-
+// images.js, dix fois plus léger que le PNG d'origine qu'un générateur
+// d'images sort. Tant que la conversion n'a pas tourné, seul le `.png`
+// existe — rankMedalErr() retombe dessus une fois, puis retire l'image si
+// aucun des deux n'existe. Un déposer-et-ça-marche en deux temps, jamais un
+// trou : c'est le même repli que les portraits d'adversaires, doublé d'un
+// palier.
+function rankMedalErr(img){
+  if(img.dataset.fallback){img.remove();return;}
+  img.dataset.fallback='1';
+  img.src=img.src.replace(/\.webp(\?.*)?$/,'.png$1');
+}
+function rankMedalHTML(rankId,cls){
+  if(!rankId)return '';
+  return '<img class="rank-medal '+(cls||'rm-sm')+'" alt="" aria-hidden="true"'+
+    ' src="assets/ranks/'+rankId+'.webp" onerror="rankMedalErr(this)">';
+}
+
+// ----------------------------------------------------------------
 // NOTIFICATIONS
 // ----------------------------------------------------------------
 // showNotif() était devenue une fonction vide. Or c'est le SEUL retour du jeu
