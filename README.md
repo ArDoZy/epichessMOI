@@ -165,6 +165,26 @@ Seuls les libellés ont changé : les identifiants (`page-voie`, `voie-*`,
 `vv*`) sont les clés du CSS, du tutoriel, des sauvegardes de compte et du test
 de fumée — les renommer ne changerait rien à l'écran.
 
+**UNE PAGE PAR VOIE, ET UN SEUL GESTE POUR PRENDRE.** `#page-rewards` a porté
+deux onglets en tête, qui faisaient passer de la colonne à la rangée : une
+barre de navigation permanente sur un écran où l'on vient faire UNE chose, et
+que le menu principal — un bouton par voie — ouvrait déjà sur la bonne. Il ne
+reste qu'un titre (`#rw-title`, posé par `rewardsSetVoie`), et « OK » ramène au
+menu : c'est le seul chemin de l'une à l'autre.
+
+Le bandeau « Récupérer » posé au-dessus des deux voies est parti avec eux : une
+rangée entière d'écran pour une action dont la cible — le palier qui pulse, à
+deux doigts de là — était déjà sous les yeux. **On touche ce qu'on prend**
+(`.rw-step.rw-due` et `.rw-row-card.rw-due` portent le clic).
+
+La rangée, elle, ne montre plus qu'**une récompense à la fois**, dans une carte
+qui prend toute la place libre au-dessus des quêtes du jour. On la parcourt par
+les deux flèches ou en balayant du doigt (`rwWireSwipe`) : la flèche s'apprend
+en la voyant, le balayage est plus rapide une fois qu'on sait. `_rwRowIdx` est
+le palier REGARDÉ — il part de celui qu'on peut prendre et ne bouge qu'à la
+demande, mais il est remis à zéro à chaque `openRewardsPage()` : on ne revient
+jamais sur une page ouverte au milieu de nulle part.
+
 Trois règles à ne pas casser :
 
 - **Le cycle journalier avance par lot pris, pas par jour écoulé.**
@@ -839,7 +859,7 @@ montre.** Rien n'est inventé pour l'ordinateur, on y déplie ce que le petit
 
 | Ce qui change | Pourquoi |
 |---|---|
-| La barre des faces devient un **rail vertical** à gauche, avec libellés | Une barre de pouce flottante masquait deux noms de cartes en plein milieu de « Mes armées ». Le rail ne recouvre plus rien : la zone utile de chaque face recule d'autant |
+| La barre des faces devient un **rail vertical** à gauche, libellés à droite du blason | Sur téléphone c'est une barre d'onglets pleine largeur collée en bas ; sur 1400 px elle masquerait le contenu. Le rail ne recouvre rien : la zone utile de chaque face recule d'autant |
 | Les deux flèches de rotation disparaissent | Sur 1500 px elles se retrouvaient à 1400 px l'une de l'autre, sans lien visible avec le cube. Le rail nomme les quatre faces ; ← et → tournent toujours |
 | Le menu principal passe en **deux colonnes** | La colonne de droite (`#menu-side`) déplie le cycle de la récompense journalière, le résumé des deux voies de récompenses et le prochain palier de la Diagonale |
 | Les largeurs de contenu montent à `--content-max` (1280 px) | Les plafonds (980, 1000, 860…) étaient des plafonds de lisibilité inutiles sur téléphone et un plafond de gâchis sur grand écran |
@@ -1178,7 +1198,7 @@ mais dans une version que Playwright refuse, le script le retrouve tout seul
 | Changer un message de refus / d'information | l'appel `showNotif()` concerné ; l'apparence est dans `[NOTIF]` de `css/style.css` |
 | Modifier l'emblème (logo) du jeu | `EMBLEM_SVG` dans `js/main.js` + `favicon.svg` (même tracé) + `[EMBLEM]` de `css/style.css` — **et incrémenter le `?v=` de l'icône** dans `index.html`, `info.html` et `site.webmanifest`, sinon l'onglet garde l'ancienne en cache |
 | Ajouter un endroit qui affiche l'emblème | poser une `<div class="game-emblem …">` dans `index.html` : `mountEmblems()` (js/main.js) la remplit toute seule |
-| Modifier les blasons de la barre des faces | les quatre `<svg>` de `#cube-facebar` dans `index.html` + `.cube-facebar-btn` dans `css/style.css` |
+| Modifier les blasons ou les onglets de la barre du bas | les quatre `<svg>` et `.cfb-label` de `#cube-facebar` dans `index.html` + `.cube-facebar` / `.cube-facebar-btn` dans `[CUBE]` de `css/style.css` (et `--facebar-h` dans `[THEME]`, que `--page-bottom` réserve) |
 | Changer ce qu'un bot peut aligner | `aiPiecePool()` / `generateAIArmy()` dans `js/armies.js` |
 | Changer le verrou d'orientation (téléphone) | `lockPortrait()` dans `js/main.js` + `orientation` dans `site.webmanifest` + `[PORTRAIT-LOCK]` de `css/style.css` (voile `#rotate-gate`) |
 | Changer le bandeau « à qui de jouer » | `updateStatus()` dans `js/game-render.js` (constantes `TURN_YOU` / `TURN_OPP`) |

@@ -110,10 +110,27 @@
      haut : une bande vide sur laquelle il n'y avait plus rien à cliquer, et
      qui repoussait chaque titre d'autant vers le bas. --page-top ne garde
      donc qu'une respiration ; --menu-top, lui, dégage toujours le bouton,
-     mais sur le seul écran qui le porte encore. */
-  --page-top:calc(var(--safe-t) + 16px);
-  --menu-top:calc(var(--safe-t) + 54px);
-  --page-bottom:calc(96px + var(--safe-b));
+     mais sur le seul écran qui le porte encore.
+
+     LES DEUX BANDES DE L'APPLICATION INSTALLÉE SERVENT MAINTENANT À QUELQUE
+     CHOSE. En mode autonome (`display:standalone`), le système rend une bande
+     en haut (l'heure, la batterie) et une en bas (le geste d'accueil) : le
+     fond du jeu passe déjà dessous grâce à `viewport-fit=cover`, mais le
+     CONTENU s'arrêtait bien avant — 16 px de respiration s'ajoutaient à la
+     zone sûre en haut, et 96 px étaient réservés en bas pour des flèches de
+     rotation qui n'existent plus sur téléphone.
+     · en haut : la respiration tombe à 6 px. La zone sûre reste réservée —
+       on n'écrit pas sous l'heure du téléphone — mais rien de plus.
+     · en bas : la réserve vaut exactement la hauteur de la barre d'onglets,
+       qui absorbe elle-même la zone sûre dans son rembourrage (voir
+       .cube-facebar dans [CUBE]). La bande du bas est donc OCCUPÉE par le
+       fond de la barre au lieu de rester noire.
+     Sur un téléphone sans encoche ni geste d'accueil, les deux `env()` valent
+     zéro et rien ne change. */
+  --page-top:calc(var(--safe-t) + 6px);
+  --menu-top:calc(var(--safe-t) + 48px);
+  --facebar-h:64px;
+  --page-bottom:calc(var(--facebar-h) + var(--safe-b) + 8px);
 }
 body.light{
   --bg:#e8e7e1;--bg2:#efeee9;
@@ -1664,22 +1681,61 @@ body.light .cube-face[data-face="magasin"]{background:
    commentaire de #cube-facebar dans index.html. Une silhouette pleine tient
    la mise à 24 px de côté là où un trait de 2,2 px se réduit à une bouillie
    grise — c'est la seule raison de ce choix. --- */
-.cube-facebar{position:fixed;z-index:400;left:50%;bottom:calc(22px + var(--safe-b));
-  transform:translateX(-50%);display:flex;gap:4px;padding:5px;border-radius:16px;
-  border:1px solid var(--border2);background:rgba(255,255,255,.05);
-  backdrop-filter:blur(14px);box-shadow:0 6px 20px rgba(0,0,0,.4)}
-.cube-facebar-btn{cursor:pointer;border:none;background:transparent;color:var(--muted);
-  width:40px;height:40px;border-radius:11px;display:flex;align-items:center;justify-content:center;
-  padding:0;transition:all .2s ease}
-.cube-facebar-btn svg{display:block;width:62%;height:62%;pointer-events:none}
-.cube-facebar-btn:hover{color:var(--text);background:var(--surface2)}
-/* La face en cours : le blason passe en NÉGATIF sur le laiton. Les creux du
-   dessin (fente du coffre, plateaux de la balance) sont de vrais trous
-   (fill-rule:evenodd), donc l'or les traverse au lieu de les boucher. */
-.cube-facebar-btn.is-active{color:#1a1206;background:var(--gold);
-  box-shadow:inset 0 1px 0 rgba(255,235,190,.45),0 2px 6px -2px rgba(0,0,0,.5)}
-body.light .cube-facebar{background:rgba(255,255,255,.82);border-color:var(--border2)}
-body.light .cube-facebar-btn:hover{background:#fff}
+/* UNE BARRE D'ONGLETS PLEINE LARGEUR, COLLÉE AU BAS DE L'ÉCRAN. Elle a été
+   une pastille flottante de quatre blasons, centrée à 22 px du bord : quatre
+   cibles de 40 px au milieu d'un ruban, et sous elles une bande sombre que
+   rien n'occupait — sur une application installée, cette bande, c'est la zone
+   du geste d'accueil, qui restait vide.
+   La barre prend maintenant toute la largeur et absorbe la zone sûre du bas
+   dans son propre rembourrage : son fond va jusqu'au bord de l'écran, ses
+   boutons restent au-dessus du geste système. C'est la disposition des jeux
+   qu'on ouvre au pouce (Clash Royale et les siens) : quatre onglets à parts
+   égales, un pictogramme et son nom, et l'onglet courant surélevé sur un
+   socle de laiton. On sait où l'on est sans lire, et où aller sans chercher.
+   --facebar-h porte la hauteur : c'est elle que --page-bottom réserve à
+   chaque page (voir [THEME]). */
+/* `width:100vw` et non `right:0` : `html` réserve en permanence la place
+   d'une barre de défilement (`scrollbar-gutter:stable`, voir [THEME]), si
+   bien que le bloc conteneur d'un élément `fixed` est plus étroit que la
+   fenêtre — la barre s'arrêtait à 11 px du bord droit. La gouttière étant à
+   DROITE, `left:0` tombe déjà sur le bord de l'écran ; il ne manquait que la
+   largeur. Là où rien n'est réservé (téléphone, barres flottantes), 100vw
+   vaut exactement la largeur du bloc conteneur et rien ne change. */
+.cube-facebar{position:fixed;z-index:400;left:0;right:auto;
+  width:100vw;bottom:0;
+  transform:none;display:flex;gap:0;border-radius:0;
+  padding:6px 2vw calc(6px + var(--safe-b));
+  border:none;border-top:1px solid var(--border2);
+  background:linear-gradient(180deg,rgba(23,31,37,.94),rgba(14,18,22,.98));
+  backdrop-filter:blur(18px);box-shadow:0 -8px 26px -10px rgba(0,0,0,.75)}
+/* Quatre parts ÉGALES : quatre destinations de même rang, donc quatre cibles
+   de même largeur. Une répartition selon la longueur des libellés ferait
+   croire à une hiérarchie qui n'existe pas. */
+.cube-facebar-btn{flex:1 1 0;min-width:0;cursor:pointer;border:none;background:transparent;
+  color:var(--muted);width:auto;height:auto;min-height:52px;border-radius:14px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+  padding:6px 2px;transition:color .18s ease,background .18s ease,transform .18s ease}
+.cube-facebar-btn svg{display:block;width:clamp(20px,6vw,26px);height:clamp(20px,6vw,26px);
+  flex:0 0 auto;pointer-events:none}
+.cube-facebar-btn:hover{color:var(--text)}
+/* LE LIBELLÉ EST DE RETOUR SUR TÉLÉPHONE. Il n'existait que sur le rail
+   d'ordinateur, au motif que la barre n'avait de place que pour le blason —
+   c'était vrai d'une pastille de 40 px, ça ne l'est plus d'une barre pleine
+   largeur, où chaque onglet dispose d'un quart de l'écran. */
+.cfb-label{display:block;font-family:var(--f-ui);font-size:min(2.7vw,10px);
+  font-weight:800;letter-spacing:.04em;line-height:1.1;text-align:center;
+  max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* La face en cours : le blason passe en NÉGATIF sur le laiton, et l'onglet se
+   soulève d'un pixel. Les creux du dessin (fente du coffre, plateaux de la
+   balance) sont de vrais trous (fill-rule:evenodd), donc l'or les traverse au
+   lieu de les boucher. */
+.cube-facebar-btn.is-active{color:#1a1206;
+  background:linear-gradient(180deg,var(--gold2),var(--gold));
+  transform:translateY(-2px);
+  box-shadow:inset 0 1px 0 rgba(255,240,205,.6),0 4px 12px -4px rgba(0,0,0,.7)}
+body.light .cube-facebar{background:linear-gradient(180deg,rgba(255,255,255,.94),rgba(240,239,233,.98));
+  border-top-color:var(--border2)}
+body.light .cube-facebar-btn:hover{color:var(--text)}
 
 /* --- Pages secondaires : overlays plein écran AU-DESSUS du cube ---
    (armées, voie, combat, login). Restent pilotées par
@@ -1703,15 +1759,20 @@ body.light .cube-facebar-btn:hover{background:#fff}
   .armies-hdr{flex-direction:column;align-items:stretch}
   .armies-hdr .btn{width:100%}
 
-  .cube-arrow-side{width:44px;height:44px;bottom:calc(12px + var(--safe-b));border-radius:12px}
-  #cube-arrow-left{left:12px}
-  #cube-arrow-right{right:12px}
   .cube-arrow-vert{width:52px;height:34px}
   #cube-arrow-down{bottom:calc(12px + var(--safe-b))}
-  .cube-facebar{bottom:calc(12px + var(--safe-b));gap:2px;padding:4px}
-  /* 34 px était sous le seuil tactile, sur une barre qu'on utilise pour
-     naviguer entre les quatre faces — donc en permanence. */
-  .cube-facebar-btn{width:42px;height:42px;border-radius:11px}
+}
+/* LES DEUX FLÈCHES DE ROTATION S'EN VONT SUR TÉLÉPHONE. Elles étaient le
+   secours du glissement de doigt, qui reste (voir js/cube-nav.js) — et la
+   barre du bas, elle, nomme les quatre faces et y mène directement, ce
+   qu'une flèche « tourner à droite » ne dit pas. Deux pastilles de 44 px
+   plantées dans les coins bas, par-dessus une barre d'onglets qui fait déjà
+   le travail, c'étaient deux cibles de plus à éviter en visant le pouce.
+   Elles restent sur les écrans intermédiaires (tablette), où la barre existe
+   mais où le glissement est moins naturel qu'au pouce ; sur ordinateur, le
+   rail les remplace (voir [DESKTOP]). */
+@media(max-width:820px){
+  .cube-arrow-side{display:none!important}
 }
 /* [DRILL] ======================================================
    Exercice de déplacement (js/tuto-drill.js) : une pièce seule, cinq
@@ -2581,7 +2642,7 @@ body.light .pmv-dark{background:#c3bdae}
    sens de la sienne :
 
      COLONNE des victoires   de haut en bas   (#rw-col-strip)
-     RANGÉE  de la richesse  de gauche à droite (#rw-row-strip)
+     RANGÉE  de la richesse  de gauche à droite (.rw-row-stage)
      DIAGONALE de la puissance en zigzag       (section [VOIE])
 
    Ce n'est pas une coquetterie : trois voies qui se ressembleraient
@@ -2618,91 +2679,62 @@ body.light .pmv-dark{background:#c3bdae}
   display:inline-flex;align-items:center;justify-content:center;
   box-shadow:0 0 .8em rgba(201,168,76,.55)}
 
-/* La page reprend la mise en page de la Voie : zone défilante + bouton « OK »
-   posé en bas de l'écran (voir [VOIE]). */
+/* LA PAGE TIENT DANS L'ÉCRAN, ET LES DEUX VOIES AVEC. Elle a longtemps
+   défilé comme la Voie, avec le bouton « OK » posé par-dessus (voir [VOIE]) :
+   la colonne se calait alors sur un `.voie-scroll` qui réservait 8 vh de
+   rembourrage en bas — une bande sombre, vide, sous le dernier palier
+   visible, où la colonne aurait dû continuer.
+   Elle est maintenant une colonne flex de haut en bas : titre, puis la voie,
+   qui prend TOUT le reste. Rien ne déborde, rien ne défile en dehors de la
+   bande des paliers, et le rembourrage du bas est reporté DANS cette bande
+   (voir .rw-col-strip) — là, il dégage la pastille « OK » sans laisser de
+   vide : les paliers passent dessous quand on fait défiler. */
 #page-rewards{padding:0;background:var(--bg)}
 #page-rewards.active{display:flex;flex-direction:column;overflow:hidden}
-/* LA COLONNE OCCUPE TOUT CE QUI RESTE. Sa bande plafonnait à 58 vh : sous le
-   dernier palier visible s'ouvrait une bande morte de cent pixels jusqu'au
-   bouton « OK ». L'écran est donc découpé en flex : l'en-tête et le bandeau
-   prennent ce qu'il leur faut, la bande des paliers prend le reste, et il n'y
-   a plus rien en trop. La rangée, elle, dépasse et fait défiler la page
-   normalement. */
-/* `rw-fill` n'est posée que sur l'onglet COLONNE (rewardsSetTab,
-   js/rewards-ui.js) : lui seul doit tenir exactement dans l'écran, avec sa
-   bande qui défile chez elle. La rangée, elle, dépasse — sa hauteur ne doit
-   surtout pas être bridée, sinon les quêtes passeraient sous le bouton « OK »,
-   et c'est pourquoi aucune de ces trois règles ne vaut hors de `rw-fill`.
-   `height` et pas `min-height` : avec un simple minimum, la bande reprenait la
-   hauteur de ses trente paliers et plus rien ne la contenait.
-   `flex:1 1 0` et pas `1 1 auto` : avec une base `auto`, la bande part de la
-   hauteur de ses trente paliers et le calcul de rétrécissement lui rend un peu
-   moins que la place disponible. Base zéro : elle prend exactement ce qui
-   reste, ni plus ni moins. */
+#page-rewards .rw-scroll{overflow:hidden;padding-bottom:0}
 .rw-inner{display:flex;flex-direction:column}
-/* La zone défilante réserve déjà la hauteur du bouton « OK » (voir
-   .voie-scroll) : le retrait du bas que la Voie ajoute sur téléphone
-   (`.voie-inner{padding-bottom:var(--page-bottom)}`, section [MOBILE-APP])
-   viendrait s'y AJOUTER — de la place vide de plus sous la rangée, et autant
-   de pris à la colonne, qui se calcule justement sur cette hauteur. */
 #page-rewards .rw-inner{padding-bottom:0}
 #page-rewards.rw-fill .rw-inner{height:100%}
+/* `flex:1 1 0` et pas `1 1 auto` : avec une base `auto`, le panneau part de
+   la hauteur de son contenu (trente paliers) et le calcul de rétrécissement
+   lui rend un peu moins que la place disponible. Base zéro : il prend
+   exactement ce qui reste, ni plus ni moins. */
 #page-rewards.rw-fill .rw-pane{flex:1 1 0;min-height:0}
 #page-rewards.rw-fill .rw-col-strip{flex:1 1 0;min-height:0}
 /* `hidden` doit rester plus fort que la règle d'affichage ci-dessous, sinon
-   l'onglet masqué se rouvre tout seul — et il l'a fait : `#rw-pane-colonne`
+   la voie masquée se rouvre toute seule — et elle l'a fait : `#rw-pane-colonne`
    porte un identifiant, qui l'emportait sur un simple `.rw-pane[hidden]`, si
    bien que la colonne restait affichée sous la rangée. D'où le sélecteur
    d'identifiant des deux côtés. */
 #page-rewards .rw-pane[hidden]{display:none}
-#rw-pane-colonne{display:flex;flex-direction:column}
-.rw-hdr{margin-bottom:3%}
-.rw-hdr .voie-title{margin-bottom:2.5%}
-/* DEUX ONGLETS, TOUJOURS CÔTE À CÔTE. Chacun prend la moitié de la largeur
-   (`flex:1 1 50%` + `min-width:0`, qui autorise le texte à se replier sur
-   deux lignes plutôt qu'à imposer sa largeur), et la rangée ne se casse
-   jamais : `flex-wrap:nowrap`. Un onglet sous l'autre, c'était deux rangées
-   de boutons pour deux voies — la moitié de la hauteur utile d'un téléphone
-   dépensée avant le premier palier. */
-.rw-tabs{display:flex;gap:2.5%;flex-wrap:nowrap}
-/* min-height : sur un écran de 350 px, `padding:.8em` sur une police en
-   min(3.1vw,12px) donnait un onglet de 33 px. La hauteur ne peut pas
-   dépendre d'une police qui rétrécit avec l'écran. */
-.rw-tab{flex:1 1 50%;min-width:0;cursor:pointer;padding:.8em 2%;min-height:44px;
-  display:flex;align-items:center;justify-content:center;border-radius:.85em;
-  border:1px solid var(--border2);background:var(--surface);color:var(--muted);
-  font-family:var(--f-ui);font-size:min(3.1vw,12px);font-weight:700;letter-spacing:.04em;
-  line-height:1.25;
-  transition:color .16s ease,border-color .16s ease,background .16s ease}
-.rw-tab:hover{color:var(--text);border-color:var(--accent2)}
-.rw-tab.is-on{color:#1a1206;border-color:var(--gold);
-  background:linear-gradient(180deg,var(--gold2),var(--gold))}
+#rw-pane-colonne,#rw-pane-rangee{display:flex;flex-direction:column;min-height:0}
+/* IL N'Y A PLUS D'ONGLETS EN TÊTE. Ils faisaient passer de la colonne à la
+   rangée : une barre de navigation permanente sur un écran où l'on vient
+   faire UNE chose, et que le menu principal ouvre déjà sur la bonne voie. Ne
+   reste que le titre, qui dit où l'on est. */
+.rw-hdr{flex:0 0 auto;margin-bottom:3%}
 
-/* Le bandeau de tête d'un onglet : RIEN QUE LE BOUTON QUI ENCAISSE.
-   Il a porté une jauge de progression au-dessus de la colonne : une barre
-   qui répétait, en plus vague, ce que les trente paliers cochés montrent
-   déjà un par un — et qui prenait une rangée entière à l'écran pour ça. Sans
-   rien à récupérer, il n'y a donc plus de bandeau du tout (voir
-   renderRewardsColonne et renderRewardsRangee, js/rewards-ui.js) : un cadre
-   vide n'est pas une information. Le bouton n'ayant plus de colonne de texte
-   à équilibrer, il prend toute la largeur du bandeau plutôt que de flotter à
-   gauche d'un vide. */
-.rw-banner{flex:0 0 auto;display:flex;align-items:center;gap:3%;flex-wrap:wrap;
-  background:var(--surface);border:1px solid var(--border);border-radius:.9em;
-  padding:2.5%;margin-bottom:3.5%;position:relative;overflow:hidden}
-.rw-banner::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;
-  background:var(--gold);opacity:.5}
-.rw-claim{flex:1 1 auto;width:100%}
+/* IL N'Y A PLUS DE BANDEAU « RÉCUPÉRER » AU-DESSUS DES VOIES. Il a porté une
+   jauge de progression, puis une phrase, puis rien qu'un bouton : une rangée
+   entière d'écran pour une action dont la cible — le palier qui pulse, à deux
+   doigts de là — était déjà sous les yeux. ON TOUCHE CE QU'ON PREND
+   (rewardsClaimColumn / rewardsClaimRich, js/rewards-ui.js), et le palier à
+   prendre le dit lui-même. */
+.rw-step.rw-claimable,.rw-row-card.rw-due{cursor:pointer}
 
 /* --- LA COLONNE : trente paliers, de haut en bas ------------------ */
+/* Le rembourrage du bas dégage la pastille « OK » : il est DANS la bande
+   défilante et non sous elle, si bien que les paliers passent derrière le
+   bouton au lieu de s'arrêter au-dessus d'une bande morte. */
 .rw-col-strip{display:flex;flex-direction:column;gap:1.8%;
   overflow-y:auto;-webkit-overflow-scrolling:touch;
-  padding:.25em .25em .5em;position:relative}
+  padding:.25em .25em calc(7vh + var(--safe-b));position:relative}
 /* Le fil qui relie les paliers : c'est lui qui en fait une colonne et non une
    liste. Posé derrière les lignes, il court sous les numéros — d'où le
    décalage en `em`, qui reprend le rembourrage de la bande, celui d'un
    palier et la moitié d'une pastille de numéro. */
-.rw-col-strip::before{content:'';position:absolute;left:1.9em;top:.5em;bottom:.5em;width:2px;
+.rw-col-strip::before{content:'';position:absolute;left:1.9em;top:.5em;
+  bottom:calc(7vh + var(--safe-b));width:2px;
   background:linear-gradient(to bottom,var(--accent),var(--gold),var(--accent2));
   opacity:.28;border-radius:2px}
 .rw-step{flex:0 0 auto;display:flex;align-items:center;gap:.9em;position:relative;
@@ -2742,7 +2774,7 @@ body.light .pmv-dark{background:#c3bdae}
 .rw-got .rw-step-num{color:var(--success);border-color:color-mix(in srgb,var(--success) 45%,var(--border2))}
 .rw-due{border-color:var(--gold);
   background:linear-gradient(100deg,rgba(193,154,69,.16),var(--surface))}
-.rw-due .rw-step-name,.rw-due .rw-cell-gain{color:var(--gold2)}
+.rw-due .rw-step-name,.rw-due .rw-row-gain{color:var(--gold2)}
 .rw-due .chest:not(.chest-pawn),.rw-due .rw-step-joker svg{
   filter:drop-shadow(0 0 .85em var(--chest-c,var(--gold))) drop-shadow(0 0 1.7em rgba(201,168,76,.5));
   animation:jcBreathe 2.6s ease-in-out infinite}
@@ -2754,25 +2786,71 @@ body.light .pmv-dark{background:#c3bdae}
 .rw-far .chest-pawn{--pawn-fx:saturate(.28) brightness(.8)}
 .rw-far .rw-step-joker svg,.rw-far .pearl-icon{filter:saturate(.3) brightness(.85)}
 
-/* --- LA RANGÉE : vingt-cinq cases, de gauche à droite -------------- */
-/* Elle défile CHEZ ELLE et non avec la page : une rangée qui déborde
-   horizontalement ferait défiler tout l'écran de côté. Une case fait le quart
-   de la largeur visible, sur téléphone comme sur tablette : on en voit donc
-   toujours quatre, et la cinquième amorcée dit qu'il y en a d'autres. */
-.rw-row-strip{display:flex;gap:2.5%;overflow-x:auto;-webkit-overflow-scrolling:touch;
-  padding:.25em .15em .9em;scroll-snap-type:x proximity;position:relative}
-.rw-cell{flex:0 0 24%;max-width:7em;scroll-snap-align:center;
-  display:flex;flex-direction:column;align-items:center;gap:.4em;
-  padding:.8em 2%;border-radius:.9em;
+/* --- LA RANGÉE : UNE récompense à la fois, en grand ---------------- */
+/* Elle a été une bande de vingt-cinq cases larges d'un quart d'écran, qui
+   défilait de côté sous un bouton « Récupérer ». Quatre cases minuscules à la
+   fois, dont aucune ne se lisait, et vingt-et-une hors champ : la rangée
+   ressemblait à une liste de courses là où c'est le PALIER EN COURS qui
+   compte — ce qu'il donne, ce qu'il coûte, et si on peut le prendre.
+   Il n'y a donc plus qu'une carte à l'écran, et elle prend TOUTE la place
+   laissée libre au-dessus des quêtes du jour. On passe d'un palier à l'autre
+   par les deux flèches ou en balayant la carte du doigt (rwWireSwipe,
+   js/rewards-ui.js) : la flèche s'apprend en la voyant, le balayage est plus
+   rapide une fois qu'on sait. */
+.rw-row-stage{flex:1 1 0;min-height:0;display:flex;align-items:stretch;gap:2.5%;
+  padding:.25em 0 3%;touch-action:pan-y}
+.rw-row-arrow{flex:0 0 auto;align-self:center;cursor:pointer;
+  width:clamp(38px,11vw,52px);aspect-ratio:1;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;padding:0;
+  border:1px solid var(--border2);background:var(--surface);color:var(--muted);
+  transition:color .16s ease,border-color .16s ease,background .16s ease,opacity .16s ease}
+.rw-row-arrow svg{width:52%;height:52%;pointer-events:none}
+.rw-row-arrow:hover:not(:disabled){color:var(--gold2);border-color:var(--gold);background:rgba(193,154,69,.12)}
+.rw-row-arrow:disabled{opacity:.28;cursor:default}
+/* La carte : elle occupe toute la hauteur de la scène et centre son contenu.
+   Ses trois lignes ne sont pas de même poids — le GAIN est la réponse à la
+   question qu'on se pose, le prix la condition, l'état la conclusion. */
+.rw-row-card{flex:1 1 auto;min-width:0;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4%;
+  padding:6% 4%;border-radius:1.2em;
   border:1px solid var(--border);background:var(--surface);
-  transition:border-color .2s ease,opacity .2s ease}
-.rw-cell-num{font-family:var(--f-ui);font-size:min(2.8vw,10px);font-weight:800;color:var(--muted);
-  letter-spacing:.08em}
-.rw-cell-gain{display:flex;align-items:center;justify-content:center;
-  font-family:var(--f-ui);font-size:min(4vw,15px);font-weight:800;color:var(--text)}
-.rw-cell-cost{display:flex;align-items:center;justify-content:center;
-  font-family:var(--f-ui);font-size:min(3.2vw,12px);color:var(--muted)}
-.rw-cell.rw-due{animation:jcBreathe 2.6s ease-in-out infinite}
+  transition:border-color .2s ease,opacity .2s ease,transform .16s ease}
+.rw-row-card.rw-due:active{transform:scale(.985)}
+.rw-row-num{font-family:var(--f-ui);font-size:min(3vw,11px);font-weight:800;color:var(--muted);
+  letter-spacing:.12em;text-transform:uppercase}
+.rw-row-gain{display:flex;align-items:center;justify-content:center;
+  font-family:var(--f-ui);font-size:min(9vw,34px);font-weight:900;color:var(--text);
+  line-height:1}
+.rw-row-cost{display:flex;align-items:center;justify-content:center;
+  font-family:var(--f-ui);font-size:min(4.4vw,17px);color:var(--muted)}
+.rw-row-mark{font-family:var(--f-ui);font-size:min(3vw,11px);font-weight:800;
+  letter-spacing:.08em;text-transform:uppercase;color:var(--muted);
+  border:1px solid var(--border2);border-radius:999px;padding:.5em 1.1em;text-align:center}
+.rw-row-mark-ok{color:var(--success);border-color:color-mix(in srgb,var(--success) 45%,var(--border2))}
+.rw-row-mark-due{color:#1a1206;background:var(--gold);border-color:var(--gold)}
+/* LES QUATRE ÉTATS, REDITS ICI, ET CE N'EST PAS UN DOUBLON. Les règles
+   communes (.rw-got / .rw-due / .rw-far, plus haut) sont écrites AVANT
+   `.rw-row-card`, qui repose sa propre bordure et son propre fond : à
+   spécificité égale, c'est la dernière qui gagne, et la carte à prendre
+   perdait son laiton. On les repose donc après, sur la carte.
+   Le halo respire au lieu de faire clignoter la carte entière : `jcBreathe`
+   fait varier l'OPACITÉ, ce qui sur un coffre de 60 px se lit comme une lueur
+   et sur une carte pleine hauteur comme un écran qui s'éteint. */
+.rw-row-card.rw-got{border-color:rgba(255,255,255,.16)}
+.rw-row-card.rw-due{border-color:var(--gold);
+  background:linear-gradient(180deg,rgba(193,154,69,.17),var(--surface));
+  animation:rwCardBreathe 2.6s ease-in-out infinite}
+@keyframes rwCardBreathe{
+  0%,100%{box-shadow:0 0 0 0 rgba(193,154,69,0)}
+  50%{box-shadow:0 0 1.6em -.2em rgba(193,154,69,.45)}
+}
+/* Un palier à venir reste LISIBLE. L'opacité de 42 % des états communs
+   convenait à une case d'un quart d'écran perdue dans une bande ; sur la
+   seule carte affichée, elle rendait illisible ce qu'on est précisément venu
+   consulter. */
+.rw-row-card.rw-far{opacity:.72}
+/* La perle et le ticket, en grand : ils portent la carte à eux seuls. */
+.rw-row-gain .pearl-icon{width:1.1em;height:1.1em}
 
 /* --- LES QUÊTES ---------------------------------------------------- */
 /* Le titre suffit. La note qui le suivait — « Trois quêtes par jour, tirées
@@ -2780,7 +2858,15 @@ body.light .pmv-dark{background:#c3bdae}
    accomplie ; elles repartent demain. » — décrivait en trois lignes ce que
    les trois cartes juste en dessous MONTRENT : elles sont trois, elles
    portent le logo d'une créature possédée, et chacune affiche ses tickets. */
-.rw-quests{margin-top:4%}
+/* LES QUÊTES SONT EN BAS, ET ELLES NE BOUGENT PLUS. Elles étaient sous la
+   rangée dans un panneau qui défilait : la rangée montait et descendait avec
+   elles. Elles sont maintenant un socle de hauteur fixe — c'est ce qui permet
+   à la carte du dessus de prendre tout le reste sans jamais être poussée hors
+   de l'écran. La liste défile CHEZ ELLE si les trois cartes ne tiennent pas.
+   Le rembourrage du bas dégage la pastille « OK », comme la colonne. */
+.rw-quests{flex:0 0 auto;display:flex;flex-direction:column;min-height:0;
+  padding-bottom:calc(7vh + var(--safe-b))}
+.rw-quests-list{min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch}
 .rw-sec-title{font-family:var(--f-ui);font-size:min(2.9vw,10.5px);font-weight:800;text-transform:uppercase;
   letter-spacing:.14em;color:var(--gold);margin-bottom:2%}
 .rw-sec-note{font-family:var(--f-ui);font-size:min(3.1vw,11.5px);line-height:1.5;color:var(--muted);
@@ -4057,7 +4143,10 @@ body.light .adv-advised{color:#f6f5f1}
 /* La gouttière du rail. À 0 partout ailleurs : les règles qui s'en servent
    peuvent donc rester écrites une seule fois, sans doublon tactile. */
 :root{--rail-w:0px}
-body.desk{--rail-w:200px}
+/* Sur ordinateur, la barre d'onglets est un rail À GAUCHE : il n'y a plus
+   rien en bas de l'écran, et la réserve du bas retombe à une simple
+   respiration. */
+body.desk{--rail-w:200px;--page-bottom:calc(28px + var(--safe-b))}
 
 /* --- LE RAIL DES FACES ------------------------------------------
    La barre des faces est une barre de POUCE : posée en bas, au milieu, elle
@@ -4084,21 +4173,21 @@ body.desk .cube-facebar{
   left:calc((100% - 100vw) / 2);top:0;bottom:0;width:var(--rail-w);
   transform:none;flex-direction:column;justify-content:center;
   gap:6px;padding:20px 14px;border-radius:0;
-  border:none;border-right:1px solid var(--border2);
+  border:none;border-top:none;border-right:1px solid var(--border2);
   background:linear-gradient(180deg,rgba(255,255,255,.055),rgba(255,255,255,.025));
   backdrop-filter:blur(18px);
   box-shadow:2px 0 24px -8px rgba(0,0,0,.6)}
 body.desk .cube-facebar-btn{
-  width:100%;height:52px;border-radius:12px;
-  justify-content:flex-start;gap:14px;padding:0 14px}
+  flex:0 0 auto;width:100%;height:52px;min-height:0;border-radius:12px;
+  flex-direction:row;justify-content:flex-start;gap:14px;padding:0 14px;transform:none}
+body.desk .cube-facebar-btn.is-active{transform:none}
 /* L'icône garde une taille FIXE : en pourcentage, elle enflait avec la
    hauteur du bouton et écrasait le libellé. */
 body.desk .cube-facebar-btn svg{width:24px;height:24px;flex:0 0 24px}
-/* Le libellé n'existe que sur le rail — sur le téléphone, la barre n'a de
-   place que pour le blason, et le `title` suffit à lever un doute. */
-.cfb-label{display:none}
-body.desk .cfb-label{display:block;font-family:var(--f-ui);font-size:13.5px;
-  font-weight:700;letter-spacing:.3px;white-space:nowrap}
+/* Le libellé existe des deux côtés — la barre du bas le porte aussi depuis
+   qu'elle est pleine largeur (voir .cfb-label dans [CUBE]) — mais le rail a la
+   place de l'écrire en grand, à côté du blason plutôt qu'en dessous. */
+body.desk .cfb-label{font-size:13.5px;font-weight:700;letter-spacing:.3px;text-align:left}
 
 /* Les deux flèches de rotation s'en vont : elles étaient déjà le secours du
    glissement de doigt, et sur un grand écran elles se retrouvaient à 1400 px

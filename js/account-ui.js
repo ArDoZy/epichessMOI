@@ -111,12 +111,17 @@ function accountFavourite(s){
   return{piece:p,games:best.g,wins:best.w,rate:Math.round(best.w/best.g*100)};
 }
 
-// Les dix dernières parties, de la plus récente à la plus ancienne. Une
+// Les dix dernières parties, DE LA PLUS ANCIENNE À LA PLUS RÉCENTE. Une
 // pastille par partie : c'est la forme la plus dense qui reste lisible, et
 // elle dit d'un coup d'oeil si l'on est en train de monter ou de couler.
+//
+// Elles se lisaient à l'envers, la plus récente à gauche. Or une bande de
+// forme est une frise : le temps y va de gauche à droite, comme dans toutes
+// les courbes qu'on a jamais lues. À l'envers, une remontée ressemblait à une
+// chute — c'est le contraire de ce que la bande est censée dire.
 const ACC_RECENT=10;
 function accountRecent(s){
-  return (s.history||[]).filter(h=>h&&h.ranked!==false).slice(-ACC_RECENT).reverse();
+  return (s.history||[]).filter(h=>h&&h.ranked!==false).slice(-ACC_RECENT);
 }
 
 // Le médaillon : la première lettre du pseudo, frappée dans un disque teinté

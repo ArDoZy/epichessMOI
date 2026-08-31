@@ -258,8 +258,12 @@ const OPTIONAL_ASSET=/adversaires\/[a-z-]+\.png|backgrounds\/main-page\.png|ches
     // que la page le raconte.
     await page.evaluate(()=>{
       const h=[];
+      // L'historique est CHRONOLOGIQUE : la partie la plus ancienne en tête,
+      // la plus récente en queue (c'est l'ordre dans lequel vvNoteHistory les
+      // empile). La date suit, sinon la frise et les infobulles se
+      // contrediraient.
       for(let i=0;i<12;i++)h.push({result:i%3===0?'loss':'win',oldElo:400+i*5,newElo:405+i*5,
-        delta:5,date:Date.now()-i*86400000,ranked:true,army:['garde-eau','fourmi'],mode:'ia'});
+        delta:5,date:Date.now()-(11-i)*86400000,ranked:true,army:['garde-eau','fourmi'],mode:'ia'});
       accSet('match_history',h);
       accSet('piece_stats',{'garde-eau':{g:12,w:8},fourmi:{g:3,w:3}});
       accSet('best_streak',7);
@@ -268,8 +272,19 @@ const OPTIONAL_ASSET=/adversaires\/[a-z-]+\.png|backgrounds\/main-page\.png|ches
     });
     const bad=await page.evaluate(()=>{
       const out=[];
-      if(document.querySelectorAll('.acc-form-dots span').length!==10)
-        out.push('la bande de forme ne montre pas dix parties');
+      const dots=[...document.querySelectorAll('.acc-form-dots span')];
+      if(dots.length!==10)out.push('la bande de forme ne montre pas dix parties');
+      // LA FRISE VA DE GAUCHE (le plus ancien) À DROITE (le plus récent). Elle
+      // se lisait à l'envers : une remontée y ressemblait à une chute. Les
+      // douze parties semées plus haut suivent `i%3===0 → défaite` ; les dix
+      // dernières sont donc les indices 2 à 11, dans CET ordre.
+      if(dots.length===10){
+        const attendu=[];
+        for(let i=2;i<12;i++)attendu.push(i%3===0?'acc-dot-l':'acc-dot-w');
+        const lu=dots.map(d=>d.className);
+        if(lu.join(',')!==attendu.join(','))
+          out.push('la frise n\'est pas dans l\'ordre du temps :\n  '+lu.join(',')+'\nau lieu de\n  '+attendu.join(','));
+      }
       const fav=document.querySelector('.acc-fav-name');
       if(!fav)out.push('aucune créature fétiche');
       // La Fourmi a 3 parties, sous le minimum : c'est la Garde d'Eau, 12
@@ -776,6 +791,66 @@ const OPTIONAL_ASSET=/adversaires\/[a-z-]+\.png|backgrounds\/main-page\.png|ches
     if(bad.length)throw new Error(bad.join(' · '));
   });
 
+  // LA BARRE DU BAS EST UNE VRAIE BARRE D'ONGLETS. Elle a été une pastille
+  // flottante de quatre blasons, centrée à 22 px du bord : quatre cibles de
+  // 40 px au milieu d'un ruban, et sous elles une bande que rien n'occupait —
+  // sur une application installée, c'est la zone du geste d'accueil. Elle
+  // prend maintenant toute la largeur, elle porte le NOM de chaque face, et
+  // son fond descend jusqu'au bord de l'écran.
+  await step('la barre des faces prend toute la largeur, jusqu\'au bord bas',async()=>{
+    await page.setViewportSize({width:390,height:844});
+    await page.evaluate(()=>{if(typeof goToMainMenu==='function')goToMainMenu();});
+    await page.waitForTimeout(700);
+    const r=await page.evaluate(()=>{
+      const bar=document.getElementById('cube-facebar');
+      if(!bar||getComputedStyle(bar).display==='none')return null;
+      const b=bar.getBoundingClientRect();
+      const btns=[...bar.querySelectorAll('.cube-facebar-btn')];
+      const larg=btns.map(x=>Math.round(x.getBoundingClientRect().width));
+      return{
+        // La largeur de référence est celle de la FENÊTRE (innerWidth) et non
+        // celle du bloc conteneur du fixed : la barre doit aller d'un bord de
+        // l'écran à l'autre, gouttière de défilement comprise.
+        gauche:b.left,droite:innerWidth-b.right,bas:innerHeight-b.bottom,
+        hauteur:b.height,
+        n:btns.length,
+        // Quatre parts égales : quatre destinations de même rang.
+        egales:larg.length===4&&Math.max(...larg)-Math.min(...larg)<=1,
+        // Chaque onglet porte son nom, pas seulement son blason.
+        libelles:btns.map(x=>{
+          const l=x.querySelector('.cfb-label');
+          return l&&getComputedStyle(l).display!=='none'?l.textContent.trim():'';
+        }),
+        actif:bar.querySelectorAll('.cube-facebar-btn.is-active').length,
+        // Et le pouce trouve chaque onglet sans viser.
+        haut:Math.min(...btns.map(x=>Math.round(x.getBoundingClientRect().height))),
+      };
+    });
+    if(!r)throw new Error('la barre des faces est absente du menu principal');
+    if(r.gauche>0.5||r.droite>0.5)
+      throw new Error('la barre ne prend pas toute la largeur (marges '+r.gauche+' / '+r.droite+')');
+    if(r.bas>0.5)throw new Error('la barre ne touche pas le bas de l\'écran ('+r.bas+' px en dessous)');
+    if(r.n!==4)throw new Error(r.n+' onglets au lieu de 4');
+    if(!r.egales)throw new Error('les quatre onglets n\'ont pas la même largeur');
+    if(r.libelles.some(t=>!t))throw new Error('un onglet n\'affiche pas son nom : '+JSON.stringify(r.libelles));
+    if(r.actif!==1)throw new Error(r.actif+' onglets marqués actifs au lieu d\'un seul');
+    if(r.haut<44)throw new Error('un onglet ne fait que '+r.haut+' px de haut');
+  });
+
+  // ET LES DEUX FLÈCHES DE ROTATION S'EN VONT SUR TÉLÉPHONE. Elles étaient le
+  // secours du glissement de doigt — qui reste — au-dessus d'une barre qui
+  // nomme les quatre faces et y mène directement.
+  await step('les flèches de rotation ont quitté le téléphone',async()=>{
+    const vues=await page.evaluate(()=>
+      ['cube-arrow-left','cube-arrow-right'].filter(id=>{
+        const el=document.getElementById(id);
+        return el&&getComputedStyle(el).display!=='none';
+      }));
+    if(vues.length)throw new Error('flèches encore visibles sur téléphone : '+vues.join(', '));
+    await page.setViewportSize({width:1400,height:900});
+    await page.waitForTimeout(400);
+  });
+
   // LE MODE BUREAU. Le jeu est pensé téléphone d'abord, et toutes ses règles
   // adaptatives étaient des `max-width` : sur un écran d'ordinateur, il ne
   // s'adaptait donc pas du tout — colonne de téléphone au milieu du vide, et
@@ -876,6 +951,14 @@ const OPTIONAL_ASSET=/adversaires\/[a-z-]+\.png|backgrounds\/main-page\.png|ches
     const onglets=await page.evaluate(vu);
     if(!onglets.colonneVisible||onglets.rangeeVisible)
       throw new Error('« Colonne des victoires » n\'ouvre pas sur la colonne');
+    // PLUS D'ONGLETS EN TÊTE : le titre dit la voie, et le menu principal est
+    // le seul chemin de l'une à l'autre.
+    const tete=await page.evaluate(()=>({
+      onglets:document.querySelectorAll('#page-rewards .rw-tab').length,
+      titre:(document.getElementById('rw-title')||{}).textContent||'',
+    }));
+    if(tete.onglets)throw new Error(tete.onglets+' onglets subsistent en tête de la page');
+    if(tete.titre.trim()!=='Colonne des Victoires')throw new Error('titre de la page : « '+tete.titre+' »');
     // Aucune ligne de la colonne ne redit le numéro du palier sous le nom du
     // coffre : la pastille de gauche le porte déjà.
     const sousTitres=await page.evaluate(()=>
@@ -891,10 +974,14 @@ const OPTIONAL_ASSET=/adversaires\/[a-z-]+\.png|backgrounds\/main-page\.png|ches
       colonneVisible:getComputedStyle(document.getElementById('rw-pane-colonne')).display!=='none',
       rangeeVisible:getComputedStyle(document.getElementById('rw-pane-rangee')).display!=='none',
       quetes:document.querySelectorAll('#rw-pane-rangee .rw-quest').length,
-      cases:document.querySelectorAll('#rw-row-strip .rw-cell').length,
+      // UNE SEULE récompense à l'écran : la rangée ne défile plus de côté,
+      // elle se parcourt palier par palier (flèches et balayage).
+      cartes:document.querySelectorAll('#rw-row-stage .rw-row-card').length,
+      titre:(document.getElementById('rw-title')||{}).textContent||'',
     }));
     if(apres.colonneVisible||!apres.rangeeVisible)throw new Error('« Rangée de la richesse » n\'ouvre pas sur la rangée');
-    if(apres.cases!==25)throw new Error(apres.cases+' cases dans la rangée au lieu de 25');
+    if(apres.cartes!==1)throw new Error(apres.cartes+' cartes affichées dans la rangée au lieu d\'une seule');
+    if(apres.titre.trim()!=='Rangée de la Richesse')throw new Error('titre de la page : « '+apres.titre+' »');
     if(apres.quetes!==3)throw new Error(apres.quetes+' quêtes affichées au lieu de 3');
     await page.click('#rw-ok');
     await page.waitForTimeout(500);
@@ -963,81 +1050,97 @@ const OPTIONAL_ASSET=/adversaires\/[a-z-]+\.png|backgrounds\/main-page\.png|ches
       throw new Error('une opacité est posée sur la boîte de la statuette : même effet qu\'un filtre ('+r.blend.opaciteBoite+')');
   });
 
-  // LES DEUX BANDEAUX NE PARLENT PLUS, ET NE DESSINENT PLUS. Ils redisaient
-  // le nom de la voie (que l'onglet porte déjà), sa progression en toutes
-  // lettres et un compteur ; puis, une fois ces trois-là retirés, il restait
-  // au-dessus de la colonne une JAUGE qui répétait une quatrième fois ce que
-  // les trente paliers cochés montrent un par un. Ne reste que le bouton
-  // « Récupérer », et sans rien à encaisser, plus de bandeau du tout. La note
-  // sous « Quêtes du jour » est partie pour la même raison : elle décrivait
-  // en trois lignes les trois cartes posées juste en dessous.
-  await step('la page des récompenses ne redit plus ce qu\'elle montre',async()=>{
+  // ON TOUCHE CE QU'ON PREND. La colonne et la rangée ont porté un bandeau
+  // « Récupérer » au-dessus d'elles : une rangée entière d'écran pour une
+  // action dont la cible — le palier qui pulse, à deux doigts de là — était
+  // déjà sous les yeux. Le bandeau est parti, le palier est cliquable, et il
+  // le dit.
+  await step('un palier se prend en le touchant, sans bandeau au-dessus',async()=>{
     const r=await page.evaluate(()=>{
-      accSet('col_wins',5);accSet('col_claimed',5);accSet('tickets',0);accSet('rich_claimed',1);
+      accSet('col_wins',5);accSet('col_claimed',4);accSet('tickets',0);accSet('rich_claimed',1);
       openRewardsPage('colonne');
       const colonne=document.getElementById('rw-pane-colonne');
-      rewardsSetTab('rangee');
-      const rangee=document.getElementById('rw-pane-rangee');
-      const texteRangee=rangee.textContent;
-      // Rien à encaisser : pas de bandeau du tout, ni dans la colonne ni dans
-      // la rangée. (Relevé AVANT de se donner un palier à prendre, plus bas :
-      // le panneau est réécrit à chaque rendu.)
-      const bandeauCol=!!colonne.querySelector('.rw-banner');
-      const jaugeCol=!!colonne.querySelector('.ms-gauge');
-      // Un palier gagné et pas encore encaissé : le bandeau revient, et il ne
-      // porte QUE le bouton.
-      accSet('col_claimed',4);
-      rewardsSetTab('colonne');renderRewardsColonne();
-      const bandeauDu=document.querySelector('#rw-pane-colonne .rw-banner');
-      return{
-        bandeauCol,jaugeCol,
-        bandeauRangee:!!rangee.querySelector('.rw-banner'),
-        noteQuetes:/repartent demain/.test(texteRangee),
-        bandeauDu:!!bandeauDu,
-        texteBandeauDu:bandeauDu?bandeauDu.textContent.trim():'',
-        jaugeBandeauDu:!!(bandeauDu&&bandeauDu.querySelector('.ms-gauge')),
-        diagonale:!!document.getElementById('rw-goto-voie'),
-        pied:document.querySelectorAll('#page-rewards .rw-foot').length,
+      const du=colonne.querySelector('.rw-step.rw-claimable');
+      const out={
+        bandeau:!!document.querySelector('#page-rewards .rw-banner'),
+        bouton:!!document.querySelector('#page-rewards .rw-claim'),
+        jauge:!!colonne.querySelector('.ms-gauge'),
+        du:!!du,
+        curseurDu:du?getComputedStyle(du).cursor:'',
+        // La colonne s'encaisse DANS L'ORDRE : un seul palier est touchable à
+        // la fois, sinon toucher le troisième dû donnerait le premier.
+        touchables:colonne.querySelectorAll('.rw-step.rw-claimable').length,
+        dus:colonne.querySelectorAll('.rw-step.rw-due').length,
+        avant:colClaimed(),
       };
+      // Le clic sur le palier dû l'encaisse : ici c'est un coffre, donc la
+      // cérémonie s'ouvre — on la referme aussitôt, le test porte sur le geste.
+      if(du)du.click();
+      out.apres=colClaimed();
+      return out;
     });
-    if(r.bandeauCol)throw new Error('la colonne garde un bandeau alors qu\'il n\'y a rien à encaisser');
-    if(r.jaugeCol)throw new Error('la jauge de progression est encore au-dessus de la colonne');
-    if(r.bandeauRangee)throw new Error('la rangée garde un bandeau vide alors qu\'il n\'y a rien à encaisser');
-    if(r.noteQuetes)throw new Error('la note « elles repartent demain » est encore sous les quêtes');
-    if(!r.bandeauDu)throw new Error('un palier est à prendre et le bandeau « Récupérer » n\'apparaît pas');
-    if(!/Récupérer/.test(r.texteBandeauDu))
-      throw new Error('le bandeau de la colonne n\'offre pas de bouton : « '+r.texteBandeauDu+' »');
-    if(r.jaugeBandeauDu)throw new Error('la jauge est revenue dans le bandeau de la colonne');
-    if(r.diagonale)throw new Error('le bouton « Diagonale de la puissance » est encore là');
-    if(r.pied)throw new Error('le pied de page vide est encore là');
+    if(r.bandeau)throw new Error('le bandeau « Récupérer » est encore au-dessus de la voie');
+    if(r.bouton)throw new Error('le bouton « Récupérer » est encore là');
+    if(r.jauge)throw new Error('la jauge de progression est encore au-dessus de la colonne');
+    if(!r.du)throw new Error('aucun palier à prendre alors qu\'un est dû');
+    if(r.curseurDu!=='pointer')throw new Error('le palier à prendre ne se donne pas comme cliquable ('+r.curseurDu+')');
+    if(r.touchables!==1)throw new Error(r.touchables+' paliers touchables à la fois au lieu d\'un seul');
+    if(r.apres!==r.avant+1)throw new Error('toucher le palier ne l\'encaisse pas ('+r.avant+' → '+r.apres+')');
+    // La cérémonie de coffre s'est ouverte par-dessus : on la déroule.
+    for(let i=0;i<40&&await page.isVisible('#chest-modal.show');i++){
+      await page.click('#chest-modal',{position:{x:8,y:8}});
+      await page.waitForTimeout(350);
+    }
+    if(await page.isVisible('#page-drill.active'))
+      await page.evaluate(()=>{if(typeof drillAbort==='function')drillAbort();showPage('page-rewards');});
+    // La note sous « Quêtes du jour » n'est pas revenue non plus.
+    const note=await page.evaluate(()=>{
+      openRewardsPage('rangee');
+      return /repartent demain/.test(document.getElementById('rw-pane-rangee').textContent);
+    });
+    if(note)throw new Error('la note « elles repartent demain » est encore sous les quêtes');
   });
 
-  // LES DEUX ONGLETS RESTENT CÔTE À CÔTE, MÊME SUR UN PETIT TÉLÉPHONE. Leur
-  // largeur de base était en pixels (`flex:1 1 180px`) : sous 400 px d'écran,
-  // ils passaient l'un SOUS l'autre et cette pile prenait deux rangées de
-  // boutons pour deux voies. Toutes les dimensions de la page sont désormais
-  // relatives (pourcentages, `em`, `vw` plafonnés), et la rangée d'onglets ne
-  // se casse plus (`flex-wrap:nowrap`).
-  await step('les deux onglets des récompenses tiennent sur une seule ligne sur téléphone',async()=>{
-    await page.setViewportSize({width:320,height:640});
-    await page.evaluate(()=>openRewardsPage('colonne'));
-    await page.waitForTimeout(150);
+  // LA RANGÉE NE MONTRE QU'UNE RÉCOMPENSE À LA FOIS, et on la parcourt par
+  // les flèches ou au doigt. Elle a été une bande de vingt-cinq cases larges
+  // d'un quart d'écran : quatre minuscules à la fois, dont aucune ne se
+  // lisait, et vingt-et-une hors champ.
+  await step('la rangée se parcourt palier par palier',async()=>{
     const r=await page.evaluate(()=>{
-      const t=[...document.querySelectorAll('#page-rewards .rw-tab')].map(b=>b.getBoundingClientRect());
-      const largeurPage=document.getElementById('page-rewards').clientWidth;
-      return{n:t.length,
-        memeLigne:t.length===2&&Math.abs(t[0].top-t[1].top)<2,
-        cote:t.length===2&&t[1].left>=t[0].right-1,
-        debordement:t.length===2&&t[1].right>largeurPage+1,
-        largeurPage};
+      accSet('rich_claimed',3);accSet('tickets',0);
+      openRewardsPage('rangee');
+      // Le panneau est REDESSINÉ à chaque pas : toute référence gardée d'un
+      // clic à l'autre pointerait un nœud détaché. On réinterroge le document.
+      const idx=()=>parseInt(document.querySelector('#rw-row-stage .rw-row-card').dataset.idx,10);
+      const fleche=d=>[...document.querySelectorAll('#rw-row-stage .rw-row-arrow')]
+        .find(b=>b.dataset.go===String(d));
+      const out={cartes:document.querySelectorAll('#rw-row-stage .rw-row-card').length,ouverture:idx()};
+      fleche(1).click();out.apresSuivant=idx();
+      fleche(-1).click();out.apresPrecedent=idx();
+      // Au premier palier, la flèche « précédent » se désarme au lieu de
+      // boucler : une rangée a un début.
+      for(let i=0;i<40;i++)fleche(-1).click();
+      out.debut=idx();out.precedentDesarme=!!fleche(-1).disabled;
+      // Et au dernier, la flèche « suivant ».
+      for(let i=0;i<80;i++)fleche(1).click();
+      out.fin=idx();out.suivantDesarme=!!fleche(1).disabled;
+      out.total=WEALTH_ROW.length;
+      out.quetesEnBas=(()=>{
+        const q=document.querySelector('#rw-pane-rangee .rw-quests');
+        const s=document.getElementById('rw-row-stage');
+        return !!q&&!!s&&q.getBoundingClientRect().top>=s.getBoundingClientRect().bottom-1;
+      })();
+      return out;
     });
-    if(r.n!==2)throw new Error('la page ne montre plus deux onglets ('+r.n+')');
-    if(!r.memeLigne)throw new Error('les deux onglets ne sont pas sur la même ligne à 320 px');
-    if(!r.cote)throw new Error('le second onglet n\'est pas à droite du premier');
-    if(r.debordement)throw new Error('les onglets débordent de la page (largeur '+r.largeurPage+' px)');
-    await page.evaluate(()=>{if(typeof goToMainMenu==='function')goToMainMenu();});
-    await page.setViewportSize({width:1400,height:900});
-    await page.waitForTimeout(150);
+    if(r.cartes!==1)throw new Error(r.cartes+' cartes à l\'écran au lieu d\'une seule');
+    if(r.ouverture!==3)throw new Error('la rangée n\'ouvre pas sur le palier en jeu (palier '+(r.ouverture+1)+')');
+    if(r.apresSuivant!==4)throw new Error('la flèche « suivant » ne va pas au palier suivant');
+    if(r.apresPrecedent!==3)throw new Error('la flèche « précédent » ne revient pas en arrière');
+    if(r.debut!==0)throw new Error('on n\'atteint pas le premier palier');
+    if(!r.precedentDesarme)throw new Error('la flèche « précédent » reste active sur le premier palier');
+    if(r.fin!==r.total-1)throw new Error('on n\'atteint pas le dernier palier');
+    if(!r.suivantDesarme)throw new Error('la flèche « suivant » reste active sur le dernier palier');
+    if(!r.quetesEnBas)throw new Error('les quêtes du jour ne sont pas sous la rangée');
   });
 
   // L'ORDRE DES TRENTE LOTS JOURNALIERS est une spécification à part entière :
@@ -1100,7 +1203,8 @@ const OPTIONAL_ASSET=/adversaires\/[a-z-]+\.png|backgrounds\/main-page\.png|ches
     if(avant.lignes!==30)throw new Error(avant.lignes+' lignes dans la colonne au lieu de 30');
     if(avant.aPrendre!==2)throw new Error(avant.aPrendre+' paliers « à prendre » au lieu de 2');
     if(avant.badge!=='2')throw new Error('pastille de la colonne : '+avant.badge+' au lieu de 2 (les deux paliers dus)');
-    await page.click('#rw-claim-col');
+    // On touche le premier palier dû : c'est le geste, il n'y a plus de bouton.
+    await page.click('#rw-col-strip .rw-step.rw-claimable');
     await page.waitForSelector('#chest-modal.show',{timeout:8000});
     for(let i=0;i<40&&await page.isVisible('#chest-modal.show');i++){
       await page.click('#chest-modal',{position:{x:8,y:8}});
