@@ -370,8 +370,21 @@ function hasLegalMovesForColor(color,board,gs){
 // MISES À JOUR DES ÉTATS SPÉCIAUX (à appeler après chaque coup)
 // ================================================================
 function updateMedusaParalysis(board,gs){
+  // L'ensemble PRÉCÉDENT est retenu le temps du recalcul : la pétrification
+  // ne se voit qu'à l'INSTANT où elle tombe. L'état, lui, est déjà porté en
+  // permanence par la pièce elle-même (.pc-para : gris et halo violet, voir
+  // js/game-render.js) — rejouer l'éclat à chaque coup ferait clignoter la
+  // moitié du plateau tant qu'une Méduse tient sa diagonale.
+  const before=gs.medusaParalyzed||new Set();
   gs.medusaParalyzed=new Set();
   for(let r=0;r<8;r++)for(let c=0;c<8;c++){const p=board[r][c];if(p&&p.pieceId==='meduse'){for(const[dr,dc] of[[1,1],[1,-1],[-1,1],[-1,-1]]){const nr=r+dr,nc=c+dc;if(inB(nr,nc)&&board[nr][nc]&&board[nr][nc].color!==p.color)gs.medusaParalyzed.add(`${nr},${nc}`);}}}
+  if(typeof fxPower==='function'){
+    gs.medusaParalyzed.forEach(k=>{
+      if(before.has(k))return;
+      const rc=k.split(',');
+      fxPower('meduse',+rc[0],+rc[1]);
+    });
+  }
 }
 // Clés de la forme « <couleur protégée>:<r>,<c> » : le Prêtre couvre ses
 // ALLIÉES en diagonale, et elles seules. Le Monarque en est exclu — le rendre
@@ -489,6 +502,18 @@ function applyDresseurEffect(move,board,p,gs){
   }
 }
 
+// La colonne de lumière d'une promotion (js/combat-fx.js). Trois chemins
+// mènent à une promotion — reçue d'un adversaire en ligne, choisie par l'IA,
+// choisie par le joueur dans sa fenêtre — et ils n'ont en commun que la case
+// et le plateau : d'où ce guichet, plutôt que trois fois la même précaution.
+// La créature est lue APRÈS coup sur le plateau, parce que c'est elle qui
+// donne sa couleur à l'effet, et pas le pion qu'elle vient de remplacer.
+function fxPromoteAt(board,to){
+  if(typeof fxPromote!=='function')return;
+  const np=board&&board[to.r]&&board[to.r][to.c];
+  fxPromote(to.r,to.c,np&&np.pieceId);
+}
+
 // ================================================================
 // EXÉCUTION D'UN COUP : cœur du moteur, tous les effets spéciaux
 // ================================================================
@@ -512,6 +537,37 @@ function executeGameMove(from,to,gs){
   applyTyphonEffect(to.r,to.c,b,p,gs);
   applyBansheeEffect(to.r,to.c,b,p);
 
+  // ---- LES EFFETS SPÉCIAUX (js/combat-fx.js) --------------------------
+  // UN SEUL APPEL, ET LE MOTEUR N'EN SAIT PAS PLUS. On décrit ce qui vient
+  // d'arriver — d'où, vers où, avec quoi, sur qui, sous quel pouvoir — et le
+  // module d'effets décide de ce que ça donne à l'écran. Le moteur n'a donc
+  // aucune notion de traînée, de vortex ni de voile, et le module aucune
+  // notion de règle : on peut retirer sa balise <script> d'index.html, tout
+  // continue de marcher, en plus terne.
+  //
+  // C'est posé ICI et non à la fin de la fonction parce que la promotion
+  // ouvre une fenêtre modale et RETOURNE (voir plus bas) : les effets du coup
+  // qui promeut seraient perdus.
+  if(typeof fxPlayMove==='function'){
+    // La prise en passant se joue sur une case que le pion N'ATTEINT PAS :
+    // l'éclat doit tomber sur la victime, une rangée derrière, sinon il
+    // s'allume sur une case où il ne s'est rien passé.
+    const capAt=to.ep?{r:to.r+(p.color==='w'?1:-1),c:to.c}:{r:to.r,c:to.c};
+    const power=to.destroysPath?'charge'
+      :(p.pieceId==='typhon'?'typhon'
+      :(p.pieceId==='banshee'?'banshee':null));
+    let rook=null,rookPieceId=null;
+    // Le roque déplace DEUX pièces : sans la seconde traînée, le coup se lit
+    // comme un déplacement de roi et la tour semble s'être téléportée.
+    if(to.castle==='K'){rook={from:{r:from.r,c:7},to:{r:from.r,c:5}};rookPieceId=b[from.r][5]&&b[from.r][5].pieceId;}
+    else if(to.castle==='Q'){rook={from:{r:from.r,c:0},to:{r:from.r,c:3}};rookPieceId=b[from.r][3]&&b[from.r][3].pieceId;}
+    fxPlayMove({
+      from:{r:from.r,c:from.c},to:{r:to.r,c:to.c},capAt:capAt,
+      pieceId:p.pieceId,captured:captured?captured.pieceId:null,
+      castle:to.castle||null,rook:rook,rookPieceId:rookPieceId,power:power,
+    });
+  }
+
   gs.enPassant=null;
   if(p.pieceId==='std-pawn'&&Math.abs(to.r-from.r)===2)gs.enPassant={r:(to.r+from.r)/2,c:from.c};
   gs.halfmoveClock=(p.type==='p'||captured)?0:gs.halfmoveClock+1;
@@ -528,7 +584,7 @@ function executeGameMove(from,to,gs){
     if(gs._forcedPromo){
       const opt=gs._forcedPromo;gs._forcedPromo=null;
       b[to.r][to.c]={...p,type:opt.type,emoji:opt.emoji,pieceId:opt.pieceId};
-      playSound('promo');recordMove(p,to,!!captured,gs,from);gs.turn=opp(gs.turn);gs.turnCount++;postMoveUpdate(gs);
+      playSound('promo');fxPromoteAt(b,to);recordMove(p,to,!!captured,gs,from);gs.turn=opp(gs.turn);gs.turnCount++;postMoveUpdate(gs);
     }
     else if(p.color===aiCol&&!gs.multiplayer){
       // L'IA choisit la meilleure pièce de son armée via évaluation rapide
@@ -555,7 +611,7 @@ function executeGameMove(from,to,gs){
         if(sc>bestSc){bestSc=sc;bestOpt=opt;}
       }
       b[to.r][to.c]={...p,type:bestOpt.type,emoji:bestOpt.emoji,pieceId:bestOpt.pieceId};
-      playSound('promo');recordMove(p,to,!!captured,gs,from);gs.turn=opp(gs.turn);gs.turnCount++;postMoveUpdate(gs);
+      playSound('promo');fxPromoteAt(b,to);recordMove(p,to,!!captured,gs,from);gs.turn=opp(gs.turn);gs.turnCount++;postMoveUpdate(gs);
     }
     else{gs.pendingPromo={from,to,p};showPromoModal(gs);return;}
   }else{
@@ -682,6 +738,7 @@ function showPromoModal(gs){
     const opt=options[i];const{from,to,p}=gs.pendingPromo;
     gs.board[to.r][to.c]={...p,type:opt.type,emoji:opt.emoji,pieceId:opt.pieceId};
     gs.pendingPromo=null;modal.classList.remove('active');playSound('promo');
+    fxPromoteAt(gs.board,to);
     // Règle d'économie : une promotion CRÉE un exemplaire de la pièce
     // choisie, crédité immédiatement (voir economy.js::economyOnPromotion).
     if(typeof economyOnPromotion==='function')economyOnPromotion(opt.pieceId,gs);

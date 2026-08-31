@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Effets de combat — banc d'essai</title>
+
+<!--
+  BANC D'ESSAI DES EFFETS DE COMBAT
+  =================================================================
+  Cette page ne fait PAS partie du jeu : rien dans index.html ne la charge,
+  et le jeu s'ouvre exactement comme avant sans elle.
+
+  Elle monte un plateau nu — les 64 cases et la couche des pièces du VRAI
+  css/style.css — et y joue les effets du VRAI js/combat-fx.js, un par un,
+  sur commande. C'est le seul moyen de régler une durée ou une couleur sans
+  devoir gagner la bonne position dans une vraie partie : mater quelqu'un
+  trois fois de suite pour juger l'orientation des rais du mat n'est pas une
+  boucle de travail.
+
+  Ce qui est SIMULÉ ici, et rien d'autre :
+    · PIECES, réduit aux quelques créatures dont les effets tirent leur
+      couleur de classe et leur valeur (fxPieceColor, fxForce) ;
+    · sfxCaptureForce, la même formule qu'en jeu (js/sfx.js) — l'œil et
+      l'oreille doivent se régler sur le même chiffre ;
+    · quelques pièces dessinées en rond, pour qu'on voie ce que l'effet
+      couvre et ce qu'il laisse voir. Le vrai plateau a des SVG, mais un
+      effet qui se lit sur un disque se lit sur une créature.
+
+  Le curseur « Intensité » appelle fxSetLevel(), exactement comme le curseur
+  « Effets » du panneau de réglages du jeu. Le bouton « Retourner » appelle
+  fxSetFlipped() : c'est le contrôle qui vérifie qu'un joueur des noirs voit
+  bien ses éclats sur la bonne case et non sur la symétrique.
+
+  Ouvrir :  npm run dev   puis   /tools/combat-fx-preview.html
+  (le protocole file:// suffit ici : la page ne charge aucune image, seule
+  l'onde de choc en cherche une et se passe très bien de l'avoir.)
+-->
+
+<link rel="stylesheet" href="../css/style.css">
+<style>
+  body{margin:0;background:var(--bg);color:var(--text);font-family:var(--f-ui,system-ui);padding:18px}
+  h1{font-family:var(--f-display,serif);font-size:20px;margin:0 0 4px}
+  p.sub{color:var(--muted);font-size:12px;margin:0 0 16px;max-width:60ch;line-height:1.5}
+  .wrap{display:flex;gap:22px;flex-wrap:wrap;align-items:flex-start}
+  /* Le plateau du banc d'essai reprend la grille du jeu. Il ne partage PAS
+     l'id #game-board avec la page de jeu — il n'y a qu'un plateau ici — mais
+     il le porte, parce que c'est cet id que fxBoard() va chercher. */
+  #game-board{position:relative;width:min(78vw,520px);aspect-ratio:1;
+    display:grid;grid-template-columns:repeat(8,1fr);grid-template-rows:repeat(8,1fr);
+    border:2px solid var(--border2);border-radius:8px;overflow:hidden}
+  #game-board .gc{position:relative}
+  #game-board .gc.l{background:#c9b18b}
+  #game-board .gc.d{background:#7d5f42}
+  .fake-piece{position:absolute;width:12.5%;height:12.5%;display:flex;
+    align-items:center;justify-content:center;z-index:2;pointer-events:none}
+  .fake-piece i{width:74%;height:74%;border-radius:50%;display:block;
+    box-shadow:0 3px 4px rgba(0,0,0,.5)}
+  .panel{min-width:250px;max-width:340px}
+  .panel h2{font-size:12px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);
+    margin:16px 0 8px;border-bottom:1px solid var(--border);padding-bottom:5px}
+  .panel button{display:block;width:100%;margin:0 0 6px;padding:9px 11px;text-align:left;
+    background:var(--surface2);color:var(--text);border:1px solid var(--border2);
+    border-radius:7px;font:inherit;font-size:12px;cursor:pointer}
+  .panel button:hover{border-color:var(--accent2);color:var(--accent2)}
+  .panel button b{font-weight:700}
+  .panel button small{display:block;color:var(--muted);font-size:10.5px;margin-top:2px}
+  .lvl{display:flex;align-items:center;gap:10px;font-size:12px;color:var(--muted);margin:10px 0}
+  .lvl input{flex:1}
+</style>
+</head>
+<body>
+
+<h1>Effets de combat</h1>
+<p class="sub">Le vrai <code>js/combat-fx.js</code> et le vrai <code>css/style.css</code>, sur un
+plateau nu. Chaque bouton joue un effet une fois. Rien ici n'appartient au jeu :
+cette page sert à régler des durées et des couleurs sans avoir à provoquer la
+position correspondante dans une partie.</p>
+
+<div class="wrap">
+  <div id="game-board" role="presentation"></div>
+  <div class="panel">
+    <div class="lvl">
+      <span>Intensité</span>
+      <input type="range" id="lvl" min="0" max="1" step="0.05" value="1">
+      <span id="lvl-val">1.00</span>
+    </div>
+    <button id="flip"><b>Retourner le plateau</b><small>fxSetFlipped — les effets doivent suivre</small></button>
+
+    <h2>Le coup</h2>
+    <button data-fx="move-pawn"><b>Coup simple</b><small>traînée d'un pion, e2–e4</small></button>
+    <button data-fx="move-queen"><b>Coup lointain</b><small>traînée d'une Dame en travers du plateau</small></button>
+    <button data-fx="castle"><b>Roque</b><small>deux traînées : le roi et la tour</small></button>
+
+    <h2>La prise</h2>
+    <button data-fx="cap-pawn"><b>Prendre un pion</b><small>force 0,28 : une étincelle</small></button>
+    <button data-fx="cap-dame"><b>Prendre une Dame</b><small>force 0,82 : deux anneaux</small></button>
+    <button data-fx="cap-gm"><b>Prendre le Grand Maître</b><small>force 1,00 : voile d'écran</small></button>
+
+    <h2>Les pouvoirs</h2>
+    <button data-fx="typhon"><b>Orage Sanguinaire</b><small>Typhon : vortex + quatre victimes</small></button>
+    <button data-fx="banshee"><b>Hurlement</b><small>Banshee : trois ondes</small></button>
+    <button data-fx="meduse"><b>Pétrification</b><small>Méduse : éclat froid et fêlure</small></button>
+    <button data-fx="charge"><b>Charge</b><small>Dresseur : la case écrasée</small></button>
+
+    <h2>La prise en main</h2>
+    <button data-fx="select"><b>Sélection</b><small>halo sous la pièce + éveil des cases</small></button>
+
+    <h2>Les moments</h2>
+    <button data-fx="promo"><b>Promotion</b><small>colonne de lumière et cercles runiques</small></button>
+    <button data-fx="check"><b>Échec</b><small>alarme sur le roi + cerne rouge</small></button>
+    <button data-fx="mate-win"><b>Mat — victoire</b><small>rais dorés, plateau figé</small></button>
+    <button data-fx="mate-loss"><b>Mat — défaite</b><small>rais d'ardeur, plateau assombri</small></button>
+  </div>
+</div>
+
+<script>
+// --- CE QUE LE BANC SIMULE ---------------------------------------------
+// combat-fx.js ne connaît du jeu que deux choses : le catalogue des pièces
+// (pour la couleur de classe et la valeur) et la formule de force des
+// captures. On les lui donne ici, réduites au strict nécessaire et à
+// l'identique du jeu — une force calculée autrement ferait régler les effets
+// sur un plateau qui ment.
+const PIECES=[
+  {id:'std-pawn',name:'Pion',class:'Primordiale',value:1},
+  {id:'dame',name:'Dame',class:'Général',value:10},
+  {id:'grand-maitre',name:'Grand Maître',class:'Général',value:13},
+  {id:'roi',name:'Roi',class:'Monarque',value:3},
+  {id:'tour-primordiale',name:'Tour',class:'Primordiale',value:5},
+  {id:'typhon',name:'Typhon',class:'Sorcier',value:6},
+  {id:'banshee',name:'Banshee',class:'Sorcier',value:4},
+  {id:'meduse',name:'Méduse',class:'Sorcier',value:2},
+  {id:'dresseur-elephant',name:'Dresseur',class:'Brute',value:5},
+];
+// Copie conforme de sfxCaptureForce (js/sfx.js).
+function sfxCaptureForce(pieceId){
+  const p=PIECES.find(x=>x.id===pieceId);
+  const v=p&&typeof p.value==='number'?p.value:1;
+  return Math.max(0.28,Math.min(1,0.28+(v-1)/12*0.72));
+}
+</script>
+<script src="../js/combat-fx.js"></script>
+<script>
+const board=document.getElementById('game-board');
+for(let r=0;r<8;r++)for(let c=0;c<8;c++){
+  const el=document.createElement('div');
+  el.className='gc '+(((r+c)%2===0)?'l':'d');
+  board.appendChild(el);
+}
+// Quelques pièces posées en dur : un effet doit se juger sur ce qu'il couvre
+// et sur ce qu'il laisse voir, pas sur un plateau vide.
+const DECOR=[[4,4,'#f6f1e6'],[3,3,'#141a1f'],[7,4,'#f6f1e6'],[0,4,'#141a1f'],[3,5,'#141a1f'],[5,2,'#f6f1e6']];
+for(const[r,c,col] of DECOR){
+  const el=document.createElement('div');
+  el.className='fake-piece';
+  el.style.transform='translate3d('+(c*100)+'%,'+(r*100)+'%,0)';
+  el.innerHTML='<i style="background:'+col+'"></i>';
+  board.appendChild(el);
+}
+
+let flipped=false;
+document.getElementById('flip').addEventListener('click',()=>{
+  flipped=!flipped;fxSetFlipped(flipped);
+  // Le décor suit, sinon on comparerait des effets retournés à des pièces
+  // qui ne le sont pas.
+  document.querySelectorAll('.fake-piece').forEach((el,i)=>{
+    const[r,c]=DECOR[i];const vr=flipped?7-r:r,vc=flipped?7-c:c;
+    el.style.transform='translate3d('+(vc*100)+'%,'+(vr*100)+'%,0)';
+  });
+});
+const lvl=document.getElementById('lvl');
+lvl.addEventListener('input',()=>{
+  fxSetLevel(parseFloat(lvl.value));
+  document.getElementById('lvl-val').textContent=parseFloat(lvl.value).toFixed(2);
+});
+
+const SCENES={
+  'move-pawn':()=>fxPlayMove({from:{r:6,c:4},to:{r:4,c:4},pieceId:'std-pawn'}),
+  'move-queen':()=>fxPlayMove({from:{r:7,c:3},to:{r:2,c:6},pieceId:'dame'}),
+  'castle':()=>fxPlayMove({from:{r:7,c:4},to:{r:7,c:6},pieceId:'roi',castle:'K',
+    rook:{from:{r:7,c:7},to:{r:7,c:5}},rookPieceId:'tour-primordiale'}),
+  'cap-pawn':()=>fxPlayMove({from:{r:5,c:3},to:{r:4,c:4},pieceId:'std-pawn',captured:'std-pawn'}),
+  'cap-dame':()=>fxPlayMove({from:{r:7,c:3},to:{r:4,c:4},pieceId:'dame',captured:'dame'}),
+  'cap-gm':()=>fxPlayMove({from:{r:0,c:4},to:{r:4,c:4},pieceId:'dame',captured:'grand-maitre'}),
+  'typhon':()=>{
+    fxPlayMove({from:{r:5,c:5},to:{r:4,c:4},pieceId:'typhon',power:'typhon'});
+    // Les victimes collatérales n'ont pas d'effet propre : elles passent par
+    // la poussière commune, comme dans le jeu (syncPieces, game-render.js).
+    [[3,3],[3,5],[5,3],[5,5]].forEach(([r,c])=>fxPuff(r,c,'tour-primordiale'));
+  },
+  'banshee':()=>fxPlayMove({from:{r:5,c:5},to:{r:4,c:4},pieceId:'banshee',power:'banshee'}),
+  'meduse':()=>{fxPower('meduse',3,3);fxPower('meduse',3,5);},
+  'charge':()=>fxPlayMove({from:{r:6,c:4},to:{r:4,c:4},pieceId:'dresseur-elephant',power:'charge'}),
+  'promo':()=>fxPromote(0,4,'dame'),
+  // La sélection a deux moitiés : l'éveil des cases, jetable, et le halo sous
+  // la pièce, qui est une CLASSE portée par la case (.gc.sel) et vit tant que
+  // la sélection dure. Le banc pose la seconde à la main — dans le jeu c'est
+  // paintBoardCells qui s'en charge (js/game-render.js).
+  'select':()=>{
+    document.querySelectorAll('#game-board .gc.sel').forEach(e=>e.classList.remove('sel'));
+    document.querySelectorAll('#game-board .gc')[4*8+4].classList.add('sel');
+    const cells=[];
+    for(let i=1;i<=3;i++)cells.push({r:4-i,c:4},{r:4+i,c:4},{r:4,c:4-i},{r:4,c:4+i});
+    fxSelect({r:4,c:4},cells.filter(m=>m.r>=0&&m.r<8&&m.c>=0&&m.c<8));
+  },
+  'check':()=>fxCheck(7,4),
+  'mate-win':()=>fxMate(0,4,true),
+  'mate-loss':()=>fxMate(7,4,false),
+};
+document.querySelectorAll('[data-fx]').forEach(b=>{
+  b.addEventListener('click',()=>{const f=SCENES[b.dataset.fx];if(f)f();});
+});
+</script>
+</body>
+</html>
