@@ -28,9 +28,10 @@ const CVAL={
   'dame':950,'amazone':800,'chevaucheur-rhinoceros':870,'grand-maitre':1200,
   'cavalier-primordial':360,'fou-primordial':360,'tour-primordiale':530,
   'dresseur-elephant':310,'meduse':240,'typhon':520,
-  'peureux':170,
   'fourmi':190,'banshee':430,'preux-chevalier':210,
-  'garde-pierre':290,'pretre':420,'std-pawn':100,
+  // Les trois Gardes : une seule case. L'Eau et le Feu couvrent chacun quatre
+  // directions, la Pierre les huit — et elle sait en plus s'ancrer.
+  'garde-eau':200,'garde-feu':200,'garde-pierre':290,'pretre':420,'std-pawn':100,
 };
 const PVAL={k:10000,q:950,r:530,b:360,n:360,p:100};
 // Classe de chaque pièce, indexée pour l'évaluation : PIECES.find() dans la
@@ -223,14 +224,6 @@ function evalPowers(board,fgs){
         if(t&&t.color!==p.color&&(t.type==='p'||t.pieceId==='std-pawn'))s+=sg*22;
       }
     }
-
-    // PEUREUX : il ne franchit jamais la moitié du plateau (Retraite
-    // Prudente). Il ne vaut donc rien en attaque et tout en couverture : on le
-    // récompense de garder une case du fond de son propre camp, pas d'avancer.
-    else if(id==='peureux'){
-      const home=p.color==='b'?(3-r):(r-4);   // 0 au milieu, 3 sur sa rangée de départ
-      s+=sg*(home>=0?home*5:-25);
-    }
   }
   return s;
 }
@@ -412,7 +405,12 @@ function applyMoveQuick(board,from,to,p,anchored){
   // coup, pas un supplément. Sans eux la recherche évaluait un Typhon comme un
   // fou d'une case et ne jouait jamais le coup qui efface trois pièces.
   applyCollateralOnBoard(b,from,to,b[to.r][to.c],anchored);
-  if(b[to.r]?.[to.c]?.pieceId==='std-pawn'&&(to.r===0||to.r===7)&&b[to.r][to.c])b[to.r][to.c]={...b[to.r][to.c],type:'q',emoji:'♛',pieceId:'dame'};
+  // Promotion dans la recherche : la Fourmi se promeut comme le pion (voir
+  // PROMOTING_IDS, js/data-pieces.js). Sans cette ligne, le moteur évaluerait
+  // une Fourmi arrivée au bout comme une Fourmi — et ne verrait donc jamais
+  // l'intérêt de l'y pousser.
+  if(b[to.r]?.[to.c]&&PROMOTING_IDS.has(b[to.r][to.c].pieceId)&&(to.r===0||to.r===7))
+    b[to.r][to.c]={...b[to.r][to.c],type:'q',emoji:'♛',pieceId:'dame'};
   return b;
 }
 
@@ -424,7 +422,8 @@ const ZK=(()=>{
   const rnd=()=>{seed=Math.imul(1664525,seed)+1013904223|0;return(seed>>>0);};
   const pieceIds=['roi','empereur','amazone','chevaucheur-rhinoceros',
     'dame','grand-maitre','cavalier-primordial','fou-primordial','tour-primordiale',
-    'peureux','fourmi','preux-chevalier','dresseur-elephant','garde-pierre',
+    'fourmi','preux-chevalier','dresseur-elephant',
+    'garde-eau','garde-feu','garde-pierre',
     'meduse','typhon','banshee','pretre',
     'std-pawn','std-r','std-n','std-b'];
   const pidx={};pieceIds.forEach((id,i)=>{pidx[id]=i;});
@@ -789,6 +788,7 @@ function getWorkerCode(){
   const consts=`
 const PIECES=${JSON.stringify(PIECES)};
 const TRUE_PAWN_IDS=new Set(${JSON.stringify([...TRUE_PAWN_IDS])});
+const PROMOTING_IDS=new Set(${JSON.stringify([...PROMOTING_IDS])});
 const CVAL=${JSON.stringify(CVAL)};
 const PVAL=${JSON.stringify(PVAL)};
 const PIECE_CLASS_BY_ID=${JSON.stringify(PIECE_CLASS_BY_ID)};

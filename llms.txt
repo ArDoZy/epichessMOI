@@ -36,17 +36,17 @@ la création de son compte (js/lore-intro.js).
   **1 Monarque, 1 Général et 3 créatures**.
 - La composition est limitée à un **budget de 24 points**. Chaque pièce
   coûte un nombre de points proportionnel à sa puissance : la Dame vaut
-  10 points, le Grand Maître 13, le Cavalier Primordial 3, le Peureux 2.
+  10 points, le Grand Maître 13, le Cavalier Primordial 3, la Garde d'Eau 2.
   Prendre une pièce forte en tête laisse donc moins de points pour le
   reste, ce qui constitue l'arbitrage central du jeu.
 - Perdre son Monarque fait perdre la partie.
 
 ## Les pièces
 
-Le catalogue compte **18 créatures** réparties en **5 classes** :
+Le catalogue compte **19 créatures** réparties en **5 classes** :
 
 - **Monarque** : l'équivalent du roi, la pièce à protéger. Exemples : Roi
-  (3 pts, 1 case dans toutes les directions), Empereur (7 pts, se déplace
+  (3 pts, 1 case dans toutes les directions), Empereur (8 pts, se déplace
   comme un roi ou un cavalier).
 - **Général** : l'équivalent de la dame, la pièce maîtresse. Exemples :
   Amazone (7 pts, cavalier + fou), Centaure (8 pts, tour + cavalier),
@@ -56,9 +56,12 @@ Le catalogue compte **18 créatures** réparties en **5 classes** :
   Fou Primordial, Tour Primordiale. Une seule primordiale est autorisée
   par armée, et elles ne s'obtiennent que dans les coffres.
 - **Brute** : les pièces ayant un déplacement puissant, mais un pouvoir
-  faible. Exemples : Peureux (2 pts, une case autour de lui, mais il ne
-  quitte jamais les quatre premières rangées de son camp), Fourmi, Preux
-  Chevalier, Éléphant de guerre, Garde de Pierre.
+  faible. Exemples : les trois Gardes — Garde d'Eau (2 pts, une case
+  orthogonale), Garde de Feu (2 pts, une case diagonale), Garde de Pierre
+  (3 pts, une case dans les huit directions, et elle peut s'ancrer sur place
+  pour devenir imprenable) —, puis Fourmi (2 pts, avance d'une case tout droit
+  ou en diagonale, sans jamais reculer, et **se promeut** si elle atteint la
+  dernière rangée), Preux Chevalier, Éléphant de guerre.
 - **Sorcier** : les pièces possédant des capacités spéciales avancées, mais
   à la mobilité réduite. Exemples : Méduse, Typhon, Banshee, Prêtre.
 
@@ -82,24 +85,24 @@ C'est la mécanique qui distingue le plus Epic Chess des autres variantes :
   reviennent à l'Armurerie.
 - Une **promotion** de pion crée un exemplaire supplémentaire de la pièce
   choisie.
-- Chaque victoire donne un **coffre**, qui **s'ouvre aussitôt la partie
-  terminée**, et dont la rareté suit la **série de victoires consécutives** :
-  Coffre Pion, puis Cavalier, Fou, Tour, Dame et enfin Roi à partir de six
-  victoires d'affilée. Une défaite remet la série à zéro. Les coffres
+- Il existe **six raretés de coffre**, du Coffre Pion au Coffre Roi. Ils
   contiennent des exemplaires de pièces, des perles, et — rarement, avec une
   probabilité croissante selon leur rareté (de 1 % au Coffre Pion à 25 % au
-  Coffre Roi) — une créature encore jamais débloquée.
-- Les six coffres sont affichés en bas du menu principal, du Pion au Roi :
-  ceux déjà décrochés dans la série en cours sont allumés, celui que la
-  prochaine victoire donnerait brille, les suivants sont en retrait. Chacun
-  porte son prix en **perles** et peut être acheté à tout moment, quelle que
-  soit la série.
+  Coffre Roi) — une créature encore jamais débloquée. Un coffre **s'ouvre
+  aussitôt obtenu**, avec sa cérémonie.
+- Ce qu'un coffre donne est écrit sur sa carte, et c'est un **total** : Pion
+  1-3 exemplaires et 1-3 perles, Cavalier 3-5, Fou 5-8, Tour 8-12, Dame 12-20,
+  Roi 20-30. Un coffre ne peut jamais se racheter avec ses propres perles.
+- Les coffres s'obtiennent de trois façons : la **Récompense Journalière**
+  (un lot par jour), la **Colonne des Victoires** (un palier par victoire) et
+  l'achat en **perles** au **Magasin**, où les six sont exposés avec leur prix.
 - L'**Armurerie** rassemble ce que le joueur possède : ses exemplaires de
   pièces, le coffre de réapprovisionnement quotidien et le choix de
   l'échiquier.
-- Un **coffre de réapprovisionnement quotidien** rend 2 exemplaires de
-  chaque pièce possédée : il est donc impossible de rester définitivement
-  bloqué sans armée jouable.
+- Un **coffre de réapprovisionnement quotidien** rend 2 exemplaires de chaque
+  pièce possédée **dont le stock est bas** : il est donc impossible de rester
+  définitivement bloqué sans armée jouable, sans pour autant que les stocks
+  gonflent indéfiniment.
 
 ## Adversaires et progression
 
@@ -110,12 +113,12 @@ C'est la mécanique qui distingue le plus Epic Chess des autres variantes :
 - Un compte neuf ne possède que son **Monarque et son Général** : toutes les
   créatures s'obtiennent en jouant.
 - Le joueur consulte son **profil** depuis la page Comptes : taux de victoire,
-  meilleure série, dix dernières parties et créature fétiche, avec son taux de
+  meilleure série, 10 dernières parties et créature fétiche, avec son taux de
   victoire réel.
 - Un **tutoriel interactif** guide le nouveau joueur : un Alchimiste lui fait
   livrer quatre batailles contre des instructeurs faibles, où les deux camps
   ont exactement la même armée. Chaque victoire ouvre un coffre qui débloque
-  une créature (Peureux, puis Fourmi, puis Éléphant de guerre), suivie d'un petit
+  une créature (Garde d'Eau, puis Garde de Feu, puis Garde de Pierre), suivie d'un petit
   exercice où l'on apprend son déplacement en ramassant cinq repères avec
   elle. L'Alchimiste fait ensuite visiter le laboratoire et composer une armée.
 - Cet exercice de déplacement revient à chaque créature inédite sortie d'un
@@ -161,17 +164,16 @@ C'est la mécanique qui distingue le plus Epic Chess des autres variantes :
 - **La force de l'adversaire décide de tout**, comme dans n'importe quel Elo :
   battre plus fort que soi rapporte beaucoup, battre plus faible rapporte peu,
   perdre contre plus fort coûte peu, perdre contre plus faible coûte cher.
-- La rareté du coffre gagné suit la **série de victoires** : 1re victoire du
-  jour → Coffre Pion, 6e → Coffre Roi. La série est **quotidienne** et
-  **s'arrête à son sixième coffre** : au-delà, plus aucun coffre de série ce
-  jour-là. Une défaite la ferme aussi jusqu'au lendemain, où elle repart du
-  Coffre Pion.
-- La **Colonne des Victoires** prend le relais : **30 paliers**, un par
-  victoire, série du jour terminée ou non, sans jamais se remettre à zéro.
+- La **Récompense Journalière** donne **un lot par jour**, sans rien exiger :
+  ni victoire, ni quête. Le cycle fait **30 jours** — coffres, perles et
+  jokers — puis **recommence indéfiniment**. Un jour manqué ne coûte rien : le
+  cycle avance d'un cran par lot pris, pas par jour de calendrier.
+- La **Colonne des Victoires** est la voie de celui qui gagne : **30 paliers**,
+  un par victoire, sans verrou quotidien et sans jamais se remettre à zéro.
   Elle donne des coffres et des **jokers** — un joker se transforme en la
   créature de son choix (3 jokers = 3 exemplaires de la créature désignée).
-- La **Rangée de la Richesse** compte **25 paliers de perles** (5, 10, 15, 20
-  puis 25 perles, par tranches de cinq). On y avance avec des **tickets**,
+- La **Rangée de la Richesse** compte **25 paliers de perles** (2, 3, 4, 5
+  puis 6 perles, par tranches de cinq). On y avance avec des **tickets**,
   gagnés en accomplissant les **trois quêtes du jour** (mater avec telle
   créature, donner échec trois fois, la déplacer cinq fois, promouvoir un
   pion en telle créature, gagner en l'alignant…).

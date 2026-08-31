@@ -146,25 +146,30 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
     if(list.length!==1||list[0]!==acc)throw new Error('la liste des comptes ne contient pas le compte créé');
   });
 
-  // L'EMBLÈME EST PARTOUT OÙ LE JEU SE PRÉSENTE. Il n'a longtemps vécu que
-  // dans le voile de choix du pseudo — un écran qu'un joueur ayant déjà un
-  // compte ne revoit JAMAIS. Le refondre ne se voyait donc nulle part, et
-  // c'est exactement le genre de panne qu'aucun test ne rattrape : rien n'est
-  // cassé, il n'y a simplement plus personne pour regarder. On vérifie donc
-  // que chaque emplacement porte bien le crochet `.game-emblem`, et que
-  // mountEmblems les a tous remplis.
-  await step('chaque emplacement d\'emblème est rempli',async()=>{
+  // LE JEU DIT SON NOM SUR L'ÉCRAN QU'ON OUVRE À CHAQUE PARTIE. C'est la
+  // panne qu'aucun test ne rattrape : rien n'est cassé, il n'y a simplement
+  // plus rien qui dise où l'on est. L'emblème a tenu ce rôle — un sceau de
+  // 52 px qu'il fallait déjà connaître pour le reconnaître —, le titre l'a
+  // remplacé. On vérifie donc qu'il est là, en toutes lettres, tout en haut,
+  // et que le sceau n'y est plus.
+  await step('le menu principal porte le titre du jeu, en haut et en grand',async()=>{
     const bad=await page.evaluate(()=>{
       const out=[];
-      const slots=[...document.querySelectorAll('.game-emblem')];
-      // .login-emblem a disparu avec le voile de choix du pseudo : il n'y a
-      // plus d'écran avant le jeu (voir js/accounts.js).
-      ['menu-emblem'].forEach(cls=>{
-        if(!slots.some(el=>el.classList.contains(cls)))out.push('emplacement manquant : .'+cls);
-      });
-      slots.forEach(el=>{
-        if(!el.querySelector('svg.emblem'))out.push('emplacement vide : '+el.className);
-      });
+      const t=document.querySelector('.menu-title');
+      if(!t){out.push('aucun titre sur le menu principal');return out;}
+      if(t.textContent.trim()!=='Epic Chess')out.push('titre inattendu : '+t.textContent);
+      if(document.querySelector('.jouer-player .game-emblem'))
+        out.push('le logo est encore sur le menu principal');
+      const st=getComputedStyle(t);
+      if(parseFloat(st.fontSize)<26)out.push('le titre ne fait que '+st.fontSize);
+      if(!/Cinzel/.test(st.fontFamily))out.push('le titre n\'est pas dans la police de titre : '+st.fontFamily);
+      // Tout en haut : au-dessus du pseudo, qui est lui-même au-dessus de
+      // COMBAT.
+      const pseudo=document.getElementById('jouer-name');
+      const combat=document.getElementById('cube-jouer-btn');
+      const tb=t.getBoundingClientRect();
+      if(pseudo&&tb.bottom>pseudo.getBoundingClientRect().top+1)out.push('le titre n\'est pas au-dessus du pseudo');
+      if(combat&&tb.bottom>=combat.getBoundingClientRect().top)out.push('le titre n\'est pas au-dessus de COMBAT');
       return out;
     });
     if(bad.length)throw new Error(bad.join(' · '));
@@ -259,23 +264,39 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
     // que la page le raconte.
     await page.evaluate(()=>{
       const h=[];
+      // L'historique est CHRONOLOGIQUE : la partie la plus ancienne en tête,
+      // la plus récente en queue (c'est l'ordre dans lequel vvNoteHistory les
+      // empile). La date suit, sinon la frise et les infobulles se
+      // contrediraient.
       for(let i=0;i<12;i++)h.push({result:i%3===0?'loss':'win',oldElo:400+i*5,newElo:405+i*5,
-        delta:5,date:Date.now()-i*86400000,ranked:true,army:['peureux','fourmi'],mode:'ia'});
+        delta:5,date:Date.now()-(11-i)*86400000,ranked:true,army:['garde-eau','fourmi'],mode:'ia'});
       accSet('match_history',h);
-      accSet('piece_stats',{peureux:{g:12,w:8},fourmi:{g:3,w:3}});
+      accSet('piece_stats',{'garde-eau':{g:12,w:8},fourmi:{g:3,w:3}});
       accSet('best_streak',7);
       accSet('ranked_games',12);accSet('ranked_wins',8);
       renderAccountPage();
     });
     const bad=await page.evaluate(()=>{
       const out=[];
-      if(document.querySelectorAll('.acc-form-dots span').length!==10)
-        out.push('la bande de forme ne montre pas dix parties');
+      const dots=[...document.querySelectorAll('.acc-form-dots span')];
+      if(dots.length!==10)out.push('la bande de forme ne montre pas dix parties');
+      // LA FRISE VA DE GAUCHE (le plus ancien) À DROITE (le plus récent). Elle
+      // se lisait à l'envers : une remontée y ressemblait à une chute. Les
+      // douze parties semées plus haut suivent `i%3===0 → défaite` ; les dix
+      // dernières sont donc les indices 2 à 11, dans CET ordre.
+      if(dots.length===10){
+        const attendu=[];
+        for(let i=2;i<12;i++)attendu.push(i%3===0?'acc-dot-l':'acc-dot-w');
+        const lu=dots.map(d=>d.className);
+        if(lu.join(',')!==attendu.join(','))
+          out.push('la frise n\'est pas dans l\'ordre du temps :\n  '+lu.join(',')+'\nau lieu de\n  '+attendu.join(','));
+      }
       const fav=document.querySelector('.acc-fav-name');
       if(!fav)out.push('aucune créature fétiche');
-      // La Fourmi a 3 parties, sous le minimum : c'est le Peureux, 12 parties,
-      // qui doit sortir — sinon on afficherait un « 100 % » sur trois parties.
-      else if(!/Peureux/i.test(fav.textContent))out.push('fétiche inattendue : '+fav.textContent);
+      // La Fourmi a 3 parties, sous le minimum : c'est la Garde d'Eau, 12
+      // parties, qui doit sortir — sinon on afficherait un « 100 % » sur trois
+      // parties.
+      else if(!/Garde d'Eau/i.test(fav.textContent))out.push('fétiche inattendue : '+fav.textContent);
       const stats=[...document.querySelectorAll('.acc-stat-k')].map(e=>e.textContent);
       if(!stats.some(t=>/Meilleure série/.test(t)))out.push('la meilleure série n\'est pas affichée');
       const vals=[...document.querySelectorAll('.acc-stat-v')].map(e=>e.textContent);
@@ -290,13 +311,13 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
     const bad=await page.evaluate(()=>{
       const out=[];
       const avant=JSON.parse(JSON.stringify(vvLoadPieceStats()));
-      vvNotePieceStats(['peureux','peureux','fourmi'],true);
+      vvNotePieceStats(['garde-eau','garde-eau','fourmi'],true);
       const apres=vvLoadPieceStats();
       // Une créature alignée en double ne compte qu'UNE partie : on mesure
       // les parties jouées avec elle, pas les exemplaires posés.
-      if(apres.peureux.g!==avant.peureux.g+1)
-        out.push('une créature en double compte deux fois : '+avant.peureux.g+' -> '+apres.peureux.g);
-      if(apres.peureux.w!==avant.peureux.w+1)out.push('la victoire n\'est pas comptée');
+      if(apres['garde-eau'].g!==avant['garde-eau'].g+1)
+        out.push('une créature en double compte deux fois : '+avant['garde-eau'].g+' -> '+apres['garde-eau'].g);
+      if(apres['garde-eau'].w!==avant['garde-eau'].w+1)out.push('la victoire n\'est pas comptée');
       vvNoteStreak(3);
       if(vvLoadBestStreak()!==7)out.push('une série plus courte a écrasé le record : '+vvLoadBestStreak());
       vvNoteStreak(11);
@@ -320,18 +341,22 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
       throw new Error('la liste des comptes garde l\'ancien pseudo');
   });
 
-  await step('« quitter ce compte » annonce où il emmène',async()=>{
-    // Le « se déconnecter » du jeu. Il ne doit JAMAIS mener à un écran de
-    // connexion (il n'y en a pas) ni supprimer quoi que ce soit : il pose le
-    // joueur sur une autre identité jouable, le compte quitté restant intact.
-    await page.click('#acc-logout');
-    const msg=await page.textContent('#confirm-msg');
-    if(!/Quitter/.test(msg))throw new Error('confirmation inattendue : '+msg);
-    if(!/seul compte/.test(msg))throw new Error('le seul compte de l\'appareil n\'est pas annoncé comme tel : '+msg);
+  // SUPPRIMER SE CONFIRME, CHANGER DE COMPTE NON. On ne fait confirmer que ce
+  // qui se perd — et la confirmation de suppression ne récite plus l'inventaire
+  // du compte (« ses 13 parties classées, ses créatures et ses 903 perles ») :
+  // trois chiffres à lire au moment où l'on veut juste savoir si on appuie.
+  await step('la suppression d\'un compte se confirme sans réciter son inventaire',async()=>{
+    const msg=await page.evaluate(()=>{
+      accountAskDelete('SmokeTest');
+      return document.getElementById('confirm-msg').textContent;
+    });
+    if(!/Supprimer définitivement/.test(msg))throw new Error('confirmation inattendue : '+msg);
+    if(/perles|parties|créatures/i.test(msg))
+      throw new Error('la confirmation récite encore l\'inventaire : '+msg);
     await page.click('#confirm-cancel');
-    if(await page.evaluate(()=>CUR_ACC)!=='SmokeTest')throw new Error('annuler a quand même changé de compte');
+    await page.waitForTimeout(200);
     if(!await page.evaluate(()=>accountsList().includes('SmokeTest')))
-      throw new Error('le compte a disparu de la liste sur une simple annulation');
+      throw new Error('le compte a disparu sur une simple annulation');
   });
 
   await step('un pseudo déjà pris est refusé',async()=>{
@@ -383,8 +408,9 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
     await page.click('#settings-btn');
     await page.click('#sp-account');
     await page.waitForSelector('#page-account.active',{timeout:5000});
+    // Changer de compte ne se confirme plus : rien n'est perdu, et la ligne
+    // qu'on touche porte déjà le nom, le rang et l'ELO du compte visé.
     await page.click('[data-switch="SmokeTest"]');
-    await page.click('#confirm-ok');
     await page.waitForLoadState('load');
     await page.waitForFunction(()=>typeof CUR_ACC!=='undefined'&&CUR_ACC==='SmokeTest',null,{timeout:10000});
     // La bascule doit rendre au compte SA progression, pas celle de l'autre.
@@ -686,20 +712,21 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
     await page.evaluate(()=>{GS.gameOver=true;stopClockTick(GS);renderReservePage();renderVoiePage();renderArmiesPage();});
   });
 
-  // LA FENÊTRE DE SÉRIE remplace le rail de six coffres qui occupait le bas du
-  // menu principal : c'est elle qu'on regarde avant de relancer une partie, un
-  // état de série mal calculé s'y verrait tout de suite.
-  await step('la fenêtre de série montre les paliers du Pion (en haut) au Roi (en bas)',async()=>{
+  // LA FENÊTRE DE LA RÉCOMPENSE JOURNALIÈRE remplace celle de la « série du
+  // jour », qui elle-même remplaçait le rail de six coffres du bas du menu.
+  // C'est elle qu'on ouvre en arrivant, un cycle mal indexé s'y verrait tout
+  // de suite.
+  await step('la fenêtre journalière montre le cycle des trente lots',async()=>{
     await page.evaluate(()=>{
-      accSet('streak_day',todayKey());accSet('streak_lock_day',null);accSet('win_streak',2);accSet('pearls',300);
+      accSet('dr_idx',2);accSet('dr_day',null);accSet('pearls',300);
       showPage('face-jouer');renderMenuChests();
     });
-    // La COLONNE du menu (`.jouer-col` : identité, COMBAT, Adversaires) ne
-    // porte plus ni rail de coffres, ni solde de perles, ni mention
-    // « Série · N victoires » — tout est passé dans la fenêtre.
+    // La COLONNE du menu (`.jouer-col` : titre, identité, COMBAT, Adversaires)
+    // ne porte ni rail de coffres ni solde de perles — tout est passé dans les
+    // fenêtres.
     // Les assertions visent la colonne et non `.jouer-menu` entier : sur un
     // écran d'ordinateur, `.jouer-menu` contient AUSSI la colonne de droite
-    // (#menu-side), qui déplie délibérément la série et le prochain palier —
+    // (#menu-side), qui déplie délibérément le cycle et le prochain palier —
     // et qui peut donc contenir le mot « perles » quand c'est un lot de perles
     // qui vient. C'est l'exception voulue, pas le retour du désordre : ce qui
     // est proscrit, c'est d'encombrer la colonne sous le pouce.
@@ -707,44 +734,127 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
       const col=document.querySelector('.jouer-col');
       return{
         rail:!!document.getElementById('jouer-chests'),
-        texteSerie:/Série\s*·/.test(col.textContent),
         perles:/perles/i.test(col.textContent),
-        bouton:!!document.getElementById('jouer-streak'),
+        titre:(document.querySelector('.menu-title')||{}).textContent||'',
+        emblem:!!document.querySelector('.jouer-player .game-emblem'),
+        boutons:['jouer-daily','jouer-colonne','jouer-rangee'].filter(id=>!document.getElementById(id)),
       };
     });
     if(menu.rail)throw new Error('le rail de coffres est encore sur le menu principal');
-    if(menu.texteSerie)throw new Error('la mention « Série · N victoires » est encore dans la colonne du menu');
     if(menu.perles)throw new Error('le solde de perles est encore dans la colonne du menu');
-    if(!menu.bouton)throw new Error('le bouton « Série du jour » est absent du menu');
+    if(menu.titre.trim()!=='Epic Chess')throw new Error('le titre du menu n\'est pas « Epic Chess » : '+menu.titre);
+    if(menu.emblem)throw new Error('le logo est encore sur le menu principal');
+    if(menu.boutons.length)throw new Error('boutons absents du menu : '+menu.boutons.join(', '));
 
     // La fenêtre s'ouvre par son point d'entrée public et non par un clic sur
-    // le bouton : celui-ci est masqué en mode bureau (la colonne de droite
-    // montre déjà les six paliers en permanence), et ce test-ci porte sur le
-    // CONTENU de la fenêtre, pas sur le bouton qui l'ouvre. Le bouton, lui,
-    // est vérifié juste au-dessus — il existe et reste le chemin du téléphone.
-    await page.evaluate(()=>openStreakModal());
-    await page.waitForSelector('#streak-modal.show',{timeout:8000});
+    // le bouton : ce test-ci porte sur le CONTENU de la fenêtre, pas sur le
+    // bouton qui l'ouvre (vérifié juste au-dessus).
+    await page.evaluate(()=>openDailyModal());
+    await page.waitForSelector('#daily-modal.show',{timeout:8000});
     await page.waitForTimeout(400);
     const r=await page.evaluate(()=>{
-      const rows=[...document.querySelectorAll('#streak-scroll .streak-row')];
-      const host=document.getElementById('streak-scroll');
-      const next=document.querySelector('#streak-scroll .streak-row.chest-next');
+      const rows=[...document.querySelectorAll('#daily-scroll .streak-row')];
+      const host=document.getElementById('daily-scroll');
+      const next=document.querySelector('#daily-scroll .streak-row.chest-next');
       const hb=host.getBoundingClientRect(),nb=next?next.getBoundingClientRect():null;
       return{
         n:rows.length,
-        ordre:rows.map(x=>x.dataset.chest),
-        etats:rows.map(x=>x.className.match(/chest-(won|next|far)/)[1]),
-        // Le palier en jeu est amené dans la fenêtre visible.
+        etats:rows.slice(0,5).map(x=>x.className.match(/chest-(won|next|far)/)[1]),
+        noms:rows.slice(0,3).map(x=>x.querySelector('.streak-row-name').textContent),
+        claim:!!document.getElementById('daily-claim'),
+        // Le lot du jour est amené dans la fenêtre visible.
         nextVisible:!!nb&&nb.top>=hb.top-2&&nb.bottom<=hb.bottom+2,
       };
     });
-    if(r.n!==6)throw new Error(r.n+' paliers au lieu de 6');
-    // Pion en PREMIER dans le DOM = tout en haut ; Roi en dernier = tout en bas.
-    if(r.ordre.join(',')!=='pion,cavalier,fou,tour,dame,roi')throw new Error('ordre : '+r.ordre.join(','));
-    if(r.etats.join(',')!=='won,won,next,far,far,far')throw new Error('états : '+r.etats.join(','));
-    if(!r.nextVisible)throw new Error('la fenêtre ne s\'ouvre pas sur le palier en cours');
-    await page.click('#streak-close');
-    await page.waitForSelector('#streak-modal.show',{state:'hidden',timeout:8000});
+    if(r.n!==30)throw new Error(r.n+' lots au lieu de 30');
+    // dr_idx=2 : les deux premiers jours sont pris, le troisième est celui du jour.
+    if(r.etats.join(',')!=='won,won,next,far,far')throw new Error('états : '+r.etats.join(','));
+    if(r.noms.join(' | ')!=='Coffre Pion | 10 perles | Coffre Cavalier')
+      throw new Error('début du cycle inattendu : '+r.noms.join(' | '));
+    if(!r.claim)throw new Error('le bouton « Récupérer » manque alors que le lot du jour est dû');
+    if(!r.nextVisible)throw new Error('la fenêtre ne s\'ouvre pas sur le lot du jour');
+    await page.click('#daily-close');
+    await page.waitForSelector('#daily-modal.show',{state:'hidden',timeout:8000});
+  });
+
+  // Le cycle est SANS FIN : le trente-et-unième jour revient au premier lot,
+  // sans remettre quoi que ce soit à zéro. C'est la promesse de la journalière.
+  await step('le cycle journalier repart au premier lot après le trentième',async()=>{
+    const bad=await page.evaluate(()=>{
+      const out=[];
+      const t=dailyRewardTotal();
+      if(t!==30)out.push('le cycle fait '+t+' lots au lieu de 30');
+      accSet('dr_idx',t);accSet('dr_day',null);
+      if(dailyRewardCursor()!==0)out.push('le cycle ne revient pas à son premier lot : '+dailyRewardCursor());
+      if(dailyRewardCycle()!==2)out.push('le numéro de cycle ne s\'incrémente pas : '+dailyRewardCycle());
+      if(!dailyRewardAvailable())out.push('le lot du jour n\'est pas disponible');
+      const pris=dailyRewardClaim();
+      if(!pris||pris.chest!=='pion')out.push('le premier lot du cycle n\'est pas un Coffre Pion');
+      if(dailyRewardAvailable())out.push('un deuxième lot est encaissable le même jour');
+      if(dailyRewardIdx()!==t+1)out.push('le compteur du cycle n\'a pas avancé');
+      return out;
+    });
+    if(bad.length)throw new Error(bad.join(' · '));
+  });
+
+  // LA BARRE DU BAS EST UNE VRAIE BARRE D'ONGLETS. Elle a été une pastille
+  // flottante de quatre blasons, centrée à 22 px du bord : quatre cibles de
+  // 40 px au milieu d'un ruban, et sous elles une bande que rien n'occupait —
+  // sur une application installée, c'est la zone du geste d'accueil. Elle
+  // prend maintenant toute la largeur, elle porte le NOM de chaque face, et
+  // son fond descend jusqu'au bord de l'écran.
+  await step('la barre des faces prend toute la largeur, jusqu\'au bord bas',async()=>{
+    await page.setViewportSize({width:390,height:844});
+    await page.evaluate(()=>{if(typeof goToMainMenu==='function')goToMainMenu();});
+    await page.waitForTimeout(700);
+    const r=await page.evaluate(()=>{
+      const bar=document.getElementById('cube-facebar');
+      if(!bar||getComputedStyle(bar).display==='none')return null;
+      const b=bar.getBoundingClientRect();
+      const btns=[...bar.querySelectorAll('.cube-facebar-btn')];
+      const larg=btns.map(x=>Math.round(x.getBoundingClientRect().width));
+      return{
+        // La largeur de référence est celle de la FENÊTRE (innerWidth) et non
+        // celle du bloc conteneur du fixed : la barre doit aller d'un bord de
+        // l'écran à l'autre, gouttière de défilement comprise.
+        gauche:b.left,droite:innerWidth-b.right,bas:innerHeight-b.bottom,
+        hauteur:b.height,
+        n:btns.length,
+        // Quatre parts égales : quatre destinations de même rang.
+        egales:larg.length===4&&Math.max(...larg)-Math.min(...larg)<=1,
+        // Chaque onglet porte son nom, pas seulement son blason.
+        libelles:btns.map(x=>{
+          const l=x.querySelector('.cfb-label');
+          return l&&getComputedStyle(l).display!=='none'?l.textContent.trim():'';
+        }),
+        actif:bar.querySelectorAll('.cube-facebar-btn.is-active').length,
+        // Et le pouce trouve chaque onglet sans viser.
+        haut:Math.min(...btns.map(x=>Math.round(x.getBoundingClientRect().height))),
+      };
+    });
+    if(!r)throw new Error('la barre des faces est absente du menu principal');
+    if(r.gauche>0.5||r.droite>0.5)
+      throw new Error('la barre ne prend pas toute la largeur (marges '+r.gauche+' / '+r.droite+')');
+    if(r.bas>0.5)throw new Error('la barre ne touche pas le bas de l\'écran ('+r.bas+' px en dessous)');
+    if(r.n!==4)throw new Error(r.n+' onglets au lieu de 4');
+    if(!r.egales)throw new Error('les quatre onglets n\'ont pas la même largeur');
+    if(r.libelles.some(t=>!t))throw new Error('un onglet n\'affiche pas son nom : '+JSON.stringify(r.libelles));
+    if(r.actif!==1)throw new Error(r.actif+' onglets marqués actifs au lieu d\'un seul');
+    if(r.haut<44)throw new Error('un onglet ne fait que '+r.haut+' px de haut');
+  });
+
+  // ET LES DEUX FLÈCHES DE ROTATION S'EN VONT SUR TÉLÉPHONE. Elles étaient le
+  // secours du glissement de doigt — qui reste — au-dessus d'une barre qui
+  // nomme les quatre faces et y mène directement.
+  await step('les flèches de rotation ont quitté le téléphone',async()=>{
+    const vues=await page.evaluate(()=>
+      ['cube-arrow-left','cube-arrow-right'].filter(id=>{
+        const el=document.getElementById(id);
+        return el&&getComputedStyle(el).display!=='none';
+      }));
+    if(vues.length)throw new Error('flèches encore visibles sur téléphone : '+vues.join(', '));
+    await page.setViewportSize({width:1400,height:900});
+    await page.waitForTimeout(400);
   });
 
   // LE MODE BUREAU. Le jeu est pensé téléphone d'abord, et toutes ses règles
@@ -753,7 +863,8 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
   // une barre des faces flottante qui RECOUVRAIT le contenu (sur « Mes
   // armées », elle masquait deux noms de cartes en plein milieu de l'écran).
   // Ce test tient les trois promesses du mode bureau : le drapeau s'allume,
-  // le rail ne recouvre plus rien, et la colonne de droite déplie la série.
+  // le rail ne recouvre plus rien, et la colonne de droite déplie le cycle
+  // journalier.
   // La fenêtre du test fait 1400 px avec un pointeur fin : elle est donc en
   // mode bureau, comme un vrai ordinateur.
   await step('le mode bureau pose son rail sans recouvrir le contenu',async()=>{
@@ -776,13 +887,10 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
         // Les libellés sortent de l'ombre : à la souris, il y a la place.
         libelles:[...bar.querySelectorAll('.cfb-label')]
           .filter(el=>getComputedStyle(el).display!=='none').length,
-        // La colonne de droite déplie les six paliers de la série.
-        sideRows:document.querySelectorAll('#ms-streak-rows .streak-row').length,
+        // La colonne de droite déplie le cycle journalier en entier.
+        sideRows:document.querySelectorAll('#ms-daily .streak-row').length,
         sideVisible:!!document.getElementById('menu-side')&&
           getComputedStyle(document.getElementById('menu-side')).display!=='none',
-        // Et le bouton qui ouvrait la fenêtre s'efface : la colonne montre déjà
-        // ce qu'il allait chercher.
-        boutonMasque:getComputedStyle(document.getElementById('jouer-streak')).display==='none',
       };
     });
     if(!r.desk)throw new Error('body.desk ne s\'allume pas sur un écran d\'ordinateur');
@@ -791,8 +899,7 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
     if(!r.gouttiere)throw new Error('la zone utile ne recule pas derrière le rail : il recouvre le contenu');
     if(r.libelles!==4)throw new Error(r.libelles+' libellés visibles sur le rail au lieu de 4');
     if(!r.sideVisible)throw new Error('la colonne de droite du menu est absente');
-    if(r.sideRows!==6)throw new Error(r.sideRows+' paliers dans la colonne de droite au lieu de 6');
-    if(!r.boutonMasque)throw new Error('le bouton « Série du jour » double encore la colonne de droite');
+    if(r.sideRows!==30)throw new Error(r.sideRows+' lots dans la colonne de droite au lieu de 30');
   });
 
   // Et le retrait doit DISPARAÎTRE avec le rail : pendant une partie, le cube
@@ -811,99 +918,34 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
     if(r.avec<=1)throw new Error('la zone utile ne recule plus quand le rail revient');
   });
 
-  // LA SÉRIE EST QUOTIDIENNE : une défaite la ferme pour le reste de la
-  // journée (streakLockedToday, js/economy.js) — plus aucun coffre gagné, plus
-  // aucun palier « prochain », et la fenêtre s'ouvre sur le début.
-  await step('une défaite verrouille la série jusqu\'au lendemain',async()=>{
+  // LA SÉRIE DE VICTOIRES N'EST PLUS QU'UNE STATISTIQUE. Elle commandait les
+  // coffres (« série du jour »), avec verrou quotidien à la défaite et remise
+  // à zéro à minuit ; il ne reste qu'un compteur de victoires d'affilée, celui
+  // que la fiche de compte affiche sous « Meilleure série ». Une victoire ne
+  // donne plus AUCUN coffre au règlement : elle fait avancer la colonne.
+  await step('la série compte les victoires d\'affilée, sans coffre ni verrou',async()=>{
     const r=await page.evaluate(()=>{
-      accSet('streak_day',todayKey());accSet('win_streak',3);accSet('streak_lock_day',null);
-      const report=economySettle('loss',{board:[],promoGains:{}});
-      renderStreakModal();
-      return{
-        streakAfterLoss:report.streak,
-        locked:streakLockedToday(),
-        next:document.querySelectorAll('#streak-scroll .streak-row.chest-next').length,
-        sub:document.getElementById('streak-sub').textContent,
-      };
+      accSet('win_streak',3);
+      const perdu=economySettle('loss',{board:[],promoGains:{}});
+      const gagne=economySettle('win',{board:[],promoGains:{}});
+      const encore=economySettle('win',{board:[],promoGains:{}});
+      return{apresDefaite:perdu.streak,apres1:gagne.streak,apres2:encore.streak,
+             coffre:gagne.chest||null};
     });
-    if(r.streakAfterLoss!==0)throw new Error('série non remise à zéro : '+r.streakAfterLoss);
-    if(!r.locked)throw new Error('la série n\'est pas verrouillée après une défaite');
-    if(r.next)throw new Error('un palier est encore marqué « prochain » alors que la série est perdue');
-    if(!/perdue/i.test(r.sub))throw new Error('la fenêtre ne dit pas que la série est perdue : '+r.sub);
-    // Une victoire le MÊME jour ne doit rendre aucun coffre.
-    const r2=await page.evaluate(()=>{
-      const report=economySettle('win',{board:[],promoGains:{}});
-      return{chest:report.chest,streak:report.streak};
-    });
-    if(r2.chest)throw new Error('un coffre a été gagné malgré le verrou du jour');
-    // Série terminée : les six paliers sont acquis, la fenêtre ouvre en haut.
-    const r3=await page.evaluate(()=>{
-      accSet('streak_day',todayKey());accSet('streak_lock_day',null);accSet('win_streak',6);
-      renderStreakModal();
-      return{
-        won:document.querySelectorAll('#streak-scroll .streak-row.chest-won').length,
-        next:document.querySelectorAll('#streak-scroll .streak-row.chest-next').length,
-        haut:document.getElementById('streak-scroll').scrollTop,
-      };
-    });
-    if(r3.won!==6)throw new Error('série terminée : '+r3.won+' paliers acquis au lieu de 6');
-    if(r3.next)throw new Error('série terminée : un palier est encore « prochain »');
-    if(r3.haut>2)throw new Error('série terminée : la fenêtre ne s\'ouvre pas sur le début');
-    // Reset propre pour la suite du parcours (achat de coffre plus bas).
-    await page.evaluate(()=>{accSet('streak_lock_day',null);accSet('win_streak',0);});
+    if(r.apresDefaite!==0)throw new Error('série non remise à zéro par la défaite : '+r.apresDefaite);
+    if(r.apres1!==1||r.apres2!==2)throw new Error('la série ne compte pas les victoires : '+r.apres1+', '+r.apres2);
+    if(r.coffre)throw new Error('une victoire donne encore un coffre au règlement');
+    await page.evaluate(()=>{accSet('win_streak',0);});
   });
 
-  // LA SÉRIE REPART DE ZÉRO CHAQUE JOUR. Rien ne remettait `win_streak` à zéro
-  // au changement de date : le compteur traversait les jours, et passé six
-  // victoires cumulées la fenêtre affichait « Série terminée » à vie, sans
-  // plus jamais de palier à décrocher.
-  await step('la série repart du Coffre Pion le lendemain',async()=>{
-    const r=await page.evaluate(()=>{
-      // Une série d'hier, terminée et verrouillée.
-      accSet('streak_day','2000-01-01');accSet('win_streak',6);
-      accSet('streak_lock_day','2000-01-01');
-      const snap=streakSnapshot();
-      renderStreakModal();
-      return{
-        streak:snap.streak,next:snap.nextIdx,locked:snap.locked,
-        prochain:document.querySelector('#streak-scroll .streak-row.chest-next')?.dataset.chest||null,
-        acquis:document.querySelectorAll('#streak-scroll .streak-row.chest-won').length,
-      };
-    });
-    if(r.streak!==0)throw new Error('la série d\'hier n\'est pas remise à zéro : '+r.streak);
-    if(r.locked)throw new Error('le verrou d\'hier est encore posé aujourd\'hui');
-    if(r.acquis)throw new Error(r.acquis+' paliers encore marqués acquis au réveil');
-    if(r.prochain!=='pion')throw new Error('le prochain palier n\'est pas le Coffre Pion : '+r.prochain);
-  });
-
-  // LE COFFRE SUIT LA SÉRIE, ET RIEN D'AUTRE. Un plafond par le palier de
-  // l'adversaire ramenait tout coffre au Coffre Pion contre les deux plus
-  // faibles — c'est-à-dire contre ceux que la galerie conseille à un compte
-  // neuf : six victoires d'affilée, six Coffres Pion.
-  await step('six victoires d\'affilée montent du Coffre Pion au Coffre Roi',async()=>{
-    const ids=await page.evaluate(()=>{
-      aiSetOpponent('cendre');            // le plus faible des douze (tier 0)
-      accSet('streak_day',todayKey());accSet('streak_lock_day',null);accSet('win_streak',0);
-      const out=[];
-      for(let i=0;i<6;i++)out.push(economySettle('win',{board:[],promoGains:{}}).chest?.id||null);
-      return out;
-    });
-    const attendu='pion,cavalier,fou,tour,dame,roi';
-    if(ids.join(',')!==attendu)
-      throw new Error('coffres de la série contre Cendre : '+ids.join(',')+' au lieu de '+attendu);
-    await page.evaluate(()=>{
-      aiSetOpponent('instructeur');
-      accSet('streak_lock_day',null);accSet('win_streak',0);
-    });
-  });
-
-  // LE BOUTON DU MENU OUVRE LA PAGE, ET « OK » EN SORT. Le reste des étapes
-  // pilote les deux voies par leurs fonctions ; celle-ci vérifie le chemin que
-  // le joueur emprunte réellement — un bouton, deux onglets, une sortie.
-  await step('le menu ouvre la page des récompenses, et « OK » en sort',async()=>{
+  // LES DEUX BOUTONS DU MENU OUVRENT CHACUN SA VOIE, ET « OK » EN SORT. Le
+  // reste des étapes pilote les deux voies par leurs fonctions ; celle-ci
+  // vérifie le chemin que le joueur emprunte réellement — un bouton par voie,
+  // qui ouvre directement dessus, et une sortie.
+  await step('les deux boutons du menu ouvrent chacun sa voie, et « OK » en sort',async()=>{
     await page.evaluate(()=>{showPage('face-jouer');});
     await page.waitForTimeout(400);
-    await page.click('#jouer-rewards');
+    await page.click('#jouer-colonne');
     await page.waitForSelector('#page-rewards.active',{timeout:8000});
     // On lit l'AFFICHAGE CALCULÉ et pas l'attribut `hidden` : un sélecteur
     // d'identifiant plus fort que `[hidden]` laissait la colonne affichée sous
@@ -914,17 +956,38 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
     });
     const onglets=await page.evaluate(vu);
     if(!onglets.colonneVisible||onglets.rangeeVisible)
-      throw new Error('la page ne s\'ouvre pas sur la colonne');
-    await page.click('#page-rewards .rw-tab[data-tab="rangee"]');
+      throw new Error('« Colonne des victoires » n\'ouvre pas sur la colonne');
+    // PLUS D'ONGLETS EN TÊTE : le titre dit la voie, et le menu principal est
+    // le seul chemin de l'une à l'autre.
+    const tete=await page.evaluate(()=>({
+      onglets:document.querySelectorAll('#page-rewards .rw-tab').length,
+      titre:(document.getElementById('rw-title')||{}).textContent||'',
+    }));
+    if(tete.onglets)throw new Error(tete.onglets+' onglets subsistent en tête de la page');
+    if(tete.titre.trim()!=='Colonne des Victoires')throw new Error('titre de la page : « '+tete.titre+' »');
+    // Aucune ligne de la colonne ne redit le numéro du palier sous le nom du
+    // coffre : la pastille de gauche le porte déjà.
+    const sousTitres=await page.evaluate(()=>
+      [...document.querySelectorAll('#rw-col-strip .rw-step-sub')].map(e=>e.textContent));
+    if(sousTitres.some(t=>/Victoire\s*n/i.test(t)))
+      throw new Error('« Victoire n° … » est encore sous le nom des coffres');
+    await page.click('#rw-ok');
+    await page.waitForTimeout(400);
+    await page.click('#jouer-rangee');
+    await page.waitForSelector('#page-rewards.active',{timeout:8000});
     await page.waitForTimeout(200);
     const apres=await page.evaluate(()=>({
       colonneVisible:getComputedStyle(document.getElementById('rw-pane-colonne')).display!=='none',
       rangeeVisible:getComputedStyle(document.getElementById('rw-pane-rangee')).display!=='none',
       quetes:document.querySelectorAll('#rw-pane-rangee .rw-quest').length,
-      cases:document.querySelectorAll('#rw-row-strip .rw-cell').length,
+      // UNE SEULE récompense à l'écran : la rangée ne défile plus de côté,
+      // elle se parcourt palier par palier (flèches et balayage).
+      cartes:document.querySelectorAll('#rw-row-stage .rw-row-card').length,
+      titre:(document.getElementById('rw-title')||{}).textContent||'',
     }));
-    if(apres.colonneVisible||!apres.rangeeVisible)throw new Error('l\'onglet rangée ne s\'affiche pas');
-    if(apres.cases!==25)throw new Error(apres.cases+' cases dans la rangée au lieu de 25');
+    if(apres.colonneVisible||!apres.rangeeVisible)throw new Error('« Rangée de la richesse » n\'ouvre pas sur la rangée');
+    if(apres.cartes!==1)throw new Error(apres.cartes+' cartes affichées dans la rangée au lieu d\'une seule');
+    if(apres.titre.trim()!=='Rangée de la Richesse')throw new Error('titre de la page : « '+apres.titre+' »');
     if(apres.quetes!==3)throw new Error(apres.quetes+' quêtes affichées au lieu de 3');
     await page.click('#rw-ok');
     await page.waitForTimeout(500);
@@ -932,14 +995,17 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
   });
 
   // UNE SEULE IMAGE PAR COFFRE, ET C'EST LA STATUETTE DU MAGASIN. Il y en
-  // avait deux : le coffre à couvercle dessiné en CSS dans la série du jour,
-  // la colonne et le mode test, et la statuette au Magasin — deux objets pour
-  // le même Coffre Pion, plus un troisième en l'ouvrant. Les quatre coffres
-  // équipés de planches (Pion, Cavalier, Fou, Tour) montrent partout leur
-  // statuette ; la Dame et le Roi gardent le couvercle, faute de planches.
+  // avait deux : le coffre à couvercle dessiné en CSS dans la récompense
+  // journalière, la colonne et le mode test, et la statuette au Magasin — deux
+  // objets pour le même Coffre Pion, plus un troisième en l'ouvrant. Les
+  // quatre coffres équipés de planches (Pion, Cavalier, Fou, Tour) montrent
+  // partout leur statuette ; la Dame et le Roi gardent le couvercle, faute de
+  // planches. Le cycle journalier ne contient que les quatre premiers ; la
+  // Dame et le Roi se lisent dans la colonne des victoires, où ils sont les
+  // paliers 22 et 30.
   await step('les coffres montrent partout la statuette du Magasin',async()=>{
     const r=await page.evaluate(()=>{
-      openStreakModal();
+      openDailyModal();
       const lire=sel=>{
         const el=document.querySelector(sel);
         if(!el)return 'absent';
@@ -948,12 +1014,14 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
         return 'rien';
       };
       const serie={};
-      ['pion','cavalier','fou','tour','dame','roi'].forEach(id=>{
-        serie[id]=lire('#streak-scroll .streak-row[data-chest="'+id+'"]');
+      ['pion','cavalier','fou','tour'].forEach(id=>{
+        serie[id]=lire('#daily-scroll .streak-row[data-chest="'+id+'"]');
       });
-      closeStreakModal();
+      closeDailyModal();
       accSet('col_wins',3);accSet('col_claimed',0);
       openRewardsPage('colonne');
+      serie.dame=lire('#rw-col-strip .rw-step[data-idx="21"]');         // Coffre Dame
+      serie.roi=lire('#rw-col-strip .rw-step[data-idx="29"]');          // Coffre Roi
       const colonne=lire('#rw-col-strip .rw-step[data-idx="0"]');       // Coffre Pion
       const source=(document.querySelector('#rw-col-strip .chest-pawn img')||{}).getAttribute
         ?document.querySelector('#rw-col-strip .chest-pawn img').getAttribute('src'):'';
@@ -972,11 +1040,11 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
     });
     ['pion','cavalier','fou','tour'].forEach(id=>{
       if(r.serie[id]!=='statuette')
-        throw new Error('série du jour : le Coffre '+id+' montre « '+r.serie[id]+' » au lieu de sa statuette');
+        throw new Error('récompense journalière : le Coffre '+id+' montre « '+r.serie[id]+' » au lieu de sa statuette');
     });
     ['dame','roi'].forEach(id=>{
       if(r.serie[id]!=='couvercle')
-        throw new Error('série du jour : le Coffre '+id+' n\'a pas de planches, il devrait garder le couvercle ('+r.serie[id]+')');
+        throw new Error('colonne : le Coffre '+id+' n\'a pas de planches, il devrait garder le couvercle ('+r.serie[id]+')');
     });
     if(r.colonne!=='statuette')throw new Error('colonne des victoires : « '+r.colonne+' » au lieu de la statuette');
     if(!/01-intact\.webp$/.test(r.source||''))throw new Error('la colonne ne pointe pas la planche intacte : '+r.source);
@@ -988,120 +1056,116 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
       throw new Error('une opacité est posée sur la boîte de la statuette : même effet qu\'un filtre ('+r.blend.opaciteBoite+')');
   });
 
-  // LES DEUX BANDEAUX NE PARLENT PLUS, ET NE DESSINENT PLUS. Ils redisaient
-  // le nom de la voie (que l'onglet porte déjà), sa progression en toutes
-  // lettres et un compteur ; puis, une fois ces trois-là retirés, il restait
-  // au-dessus de la colonne une JAUGE qui répétait une quatrième fois ce que
-  // les trente paliers cochés montrent un par un. Ne reste que le bouton
-  // « Récupérer », et sans rien à encaisser, plus de bandeau du tout. La note
-  // sous « Quêtes du jour » est partie pour la même raison : elle décrivait
-  // en trois lignes les trois cartes posées juste en dessous.
-  await step('la page des récompenses ne redit plus ce qu\'elle montre',async()=>{
+  // ON TOUCHE CE QU'ON PREND. La colonne et la rangée ont porté un bandeau
+  // « Récupérer » au-dessus d'elles : une rangée entière d'écran pour une
+  // action dont la cible — le palier qui pulse, à deux doigts de là — était
+  // déjà sous les yeux. Le bandeau est parti, le palier est cliquable, et il
+  // le dit.
+  await step('un palier se prend en le touchant, sans bandeau au-dessus',async()=>{
     const r=await page.evaluate(()=>{
-      accSet('col_wins',5);accSet('col_claimed',5);accSet('tickets',0);accSet('rich_claimed',1);
+      accSet('col_wins',5);accSet('col_claimed',4);accSet('tickets',0);accSet('rich_claimed',1);
       openRewardsPage('colonne');
       const colonne=document.getElementById('rw-pane-colonne');
-      rewardsSetTab('rangee');
-      const rangee=document.getElementById('rw-pane-rangee');
-      const texteRangee=rangee.textContent;
-      // Rien à encaisser : pas de bandeau du tout, ni dans la colonne ni dans
-      // la rangée. (Relevé AVANT de se donner un palier à prendre, plus bas :
-      // le panneau est réécrit à chaque rendu.)
-      const bandeauCol=!!colonne.querySelector('.rw-banner');
-      const jaugeCol=!!colonne.querySelector('.ms-gauge');
-      // Un palier gagné et pas encore encaissé : le bandeau revient, et il ne
-      // porte QUE le bouton.
-      accSet('col_claimed',4);
-      rewardsSetTab('colonne');renderRewardsColonne();
-      const bandeauDu=document.querySelector('#rw-pane-colonne .rw-banner');
-      return{
-        bandeauCol,jaugeCol,
-        bandeauRangee:!!rangee.querySelector('.rw-banner'),
-        noteQuetes:/repartent demain/.test(texteRangee),
-        bandeauDu:!!bandeauDu,
-        texteBandeauDu:bandeauDu?bandeauDu.textContent.trim():'',
-        jaugeBandeauDu:!!(bandeauDu&&bandeauDu.querySelector('.ms-gauge')),
-        diagonale:!!document.getElementById('rw-goto-voie'),
-        pied:document.querySelectorAll('#page-rewards .rw-foot').length,
+      const du=colonne.querySelector('.rw-step.rw-claimable');
+      const out={
+        bandeau:!!document.querySelector('#page-rewards .rw-banner'),
+        bouton:!!document.querySelector('#page-rewards .rw-claim'),
+        jauge:!!colonne.querySelector('.ms-gauge'),
+        du:!!du,
+        curseurDu:du?getComputedStyle(du).cursor:'',
+        // La colonne s'encaisse DANS L'ORDRE : un seul palier est touchable à
+        // la fois, sinon toucher le troisième dû donnerait le premier.
+        touchables:colonne.querySelectorAll('.rw-step.rw-claimable').length,
+        dus:colonne.querySelectorAll('.rw-step.rw-due').length,
+        avant:colClaimed(),
       };
+      // Le clic sur le palier dû l'encaisse : ici c'est un coffre, donc la
+      // cérémonie s'ouvre — on la referme aussitôt, le test porte sur le geste.
+      if(du)du.click();
+      out.apres=colClaimed();
+      return out;
     });
-    if(r.bandeauCol)throw new Error('la colonne garde un bandeau alors qu\'il n\'y a rien à encaisser');
-    if(r.jaugeCol)throw new Error('la jauge de progression est encore au-dessus de la colonne');
-    if(r.bandeauRangee)throw new Error('la rangée garde un bandeau vide alors qu\'il n\'y a rien à encaisser');
-    if(r.noteQuetes)throw new Error('la note « elles repartent demain » est encore sous les quêtes');
-    if(!r.bandeauDu)throw new Error('un palier est à prendre et le bandeau « Récupérer » n\'apparaît pas');
-    if(!/Récupérer/.test(r.texteBandeauDu))
-      throw new Error('le bandeau de la colonne n\'offre pas de bouton : « '+r.texteBandeauDu+' »');
-    if(r.jaugeBandeauDu)throw new Error('la jauge est revenue dans le bandeau de la colonne');
-    if(r.diagonale)throw new Error('le bouton « Diagonale de la puissance » est encore là');
-    if(r.pied)throw new Error('le pied de page vide est encore là');
+    if(r.bandeau)throw new Error('le bandeau « Récupérer » est encore au-dessus de la voie');
+    if(r.bouton)throw new Error('le bouton « Récupérer » est encore là');
+    if(r.jauge)throw new Error('la jauge de progression est encore au-dessus de la colonne');
+    if(!r.du)throw new Error('aucun palier à prendre alors qu\'un est dû');
+    if(r.curseurDu!=='pointer')throw new Error('le palier à prendre ne se donne pas comme cliquable ('+r.curseurDu+')');
+    if(r.touchables!==1)throw new Error(r.touchables+' paliers touchables à la fois au lieu d\'un seul');
+    if(r.apres!==r.avant+1)throw new Error('toucher le palier ne l\'encaisse pas ('+r.avant+' → '+r.apres+')');
+    // La cérémonie de coffre s'est ouverte par-dessus : on la déroule.
+    for(let i=0;i<40&&await page.isVisible('#chest-modal.show');i++){
+      await page.click('#chest-modal',{position:{x:8,y:8}});
+      await page.waitForTimeout(350);
+    }
+    if(await page.isVisible('#page-drill.active'))
+      await page.evaluate(()=>{if(typeof drillAbort==='function')drillAbort();showPage('page-rewards');});
+    // La note sous « Quêtes du jour » n'est pas revenue non plus.
+    const note=await page.evaluate(()=>{
+      openRewardsPage('rangee');
+      return /repartent demain/.test(document.getElementById('rw-pane-rangee').textContent);
+    });
+    if(note)throw new Error('la note « elles repartent demain » est encore sous les quêtes');
   });
 
-  // LES DEUX ONGLETS RESTENT CÔTE À CÔTE, MÊME SUR UN PETIT TÉLÉPHONE. Leur
-  // largeur de base était en pixels (`flex:1 1 180px`) : sous 400 px d'écran,
-  // ils passaient l'un SOUS l'autre et cette pile prenait deux rangées de
-  // boutons pour deux voies. Toutes les dimensions de la page sont désormais
-  // relatives (pourcentages, `em`, `vw` plafonnés), et la rangée d'onglets ne
-  // se casse plus (`flex-wrap:nowrap`).
-  await step('les deux onglets des récompenses tiennent sur une seule ligne sur téléphone',async()=>{
-    await page.setViewportSize({width:320,height:640});
-    await page.evaluate(()=>openRewardsPage('colonne'));
-    await page.waitForTimeout(150);
+  // LA RANGÉE NE MONTRE QU'UNE RÉCOMPENSE À LA FOIS, et on la parcourt par
+  // les flèches ou au doigt. Elle a été une bande de vingt-cinq cases larges
+  // d'un quart d'écran : quatre minuscules à la fois, dont aucune ne se
+  // lisait, et vingt-et-une hors champ.
+  await step('la rangée se parcourt palier par palier',async()=>{
     const r=await page.evaluate(()=>{
-      const t=[...document.querySelectorAll('#page-rewards .rw-tab')].map(b=>b.getBoundingClientRect());
-      const largeurPage=document.getElementById('page-rewards').clientWidth;
-      return{n:t.length,
-        memeLigne:t.length===2&&Math.abs(t[0].top-t[1].top)<2,
-        cote:t.length===2&&t[1].left>=t[0].right-1,
-        debordement:t.length===2&&t[1].right>largeurPage+1,
-        largeurPage};
+      accSet('rich_claimed',3);accSet('tickets',0);
+      openRewardsPage('rangee');
+      // Le panneau est REDESSINÉ à chaque pas : toute référence gardée d'un
+      // clic à l'autre pointerait un nœud détaché. On réinterroge le document.
+      const idx=()=>parseInt(document.querySelector('#rw-row-stage .rw-row-card').dataset.idx,10);
+      const fleche=d=>[...document.querySelectorAll('#rw-row-stage .rw-row-arrow')]
+        .find(b=>b.dataset.go===String(d));
+      const out={cartes:document.querySelectorAll('#rw-row-stage .rw-row-card').length,ouverture:idx()};
+      fleche(1).click();out.apresSuivant=idx();
+      fleche(-1).click();out.apresPrecedent=idx();
+      // Au premier palier, la flèche « précédent » se désarme au lieu de
+      // boucler : une rangée a un début.
+      for(let i=0;i<40;i++)fleche(-1).click();
+      out.debut=idx();out.precedentDesarme=!!fleche(-1).disabled;
+      // Et au dernier, la flèche « suivant ».
+      for(let i=0;i<80;i++)fleche(1).click();
+      out.fin=idx();out.suivantDesarme=!!fleche(1).disabled;
+      out.total=WEALTH_ROW.length;
+      out.quetesEnBas=(()=>{
+        const q=document.querySelector('#rw-pane-rangee .rw-quests');
+        const s=document.getElementById('rw-row-stage');
+        return !!q&&!!s&&q.getBoundingClientRect().top>=s.getBoundingClientRect().bottom-1;
+      })();
+      return out;
     });
-    if(r.n!==2)throw new Error('la page ne montre plus deux onglets ('+r.n+')');
-    if(!r.memeLigne)throw new Error('les deux onglets ne sont pas sur la même ligne à 320 px');
-    if(!r.cote)throw new Error('le second onglet n\'est pas à droite du premier');
-    if(r.debordement)throw new Error('les onglets débordent de la page (largeur '+r.largeurPage+' px)');
-    await page.evaluate(()=>{if(typeof goToMainMenu==='function')goToMainMenu();});
-    await page.setViewportSize({width:1400,height:900});
-    await page.waitForTimeout(150);
+    if(r.cartes!==1)throw new Error(r.cartes+' cartes à l\'écran au lieu d\'une seule');
+    if(r.ouverture!==3)throw new Error('la rangée n\'ouvre pas sur le palier en jeu (palier '+(r.ouverture+1)+')');
+    if(r.apresSuivant!==4)throw new Error('la flèche « suivant » ne va pas au palier suivant');
+    if(r.apresPrecedent!==3)throw new Error('la flèche « précédent » ne revient pas en arrière');
+    if(r.debut!==0)throw new Error('on n\'atteint pas le premier palier');
+    if(!r.precedentDesarme)throw new Error('la flèche « précédent » reste active sur le premier palier');
+    if(r.fin!==r.total-1)throw new Error('on n\'atteint pas le dernier palier');
+    if(!r.suivantDesarme)throw new Error('la flèche « suivant » reste active sur le dernier palier');
+    if(!r.quetesEnBas)throw new Error('les quêtes du jour ne sont pas sous la rangée');
   });
 
-  // LA SÉRIE DU JOUR A UNE FIN. Elle n'en avait pas : chestForStreak plafonnait
-  // au dernier coffre, si bien que la 7e victoire du jour, la 8e et toutes les
-  // suivantes redonnaient un COFFRE ROI — le palier le plus rare du jeu devenu
-  // le lot ordinaire de la fin de journée, et les cinq premiers paliers réduits
-  // à un chemin pour y arriver.
-  await step('la série du jour s\'arrête au sixième coffre',async()=>{
-    const r=await page.evaluate(()=>{
-      accSet('streak_day',todayKey());accSet('streak_lock_day',null);accSet('win_streak',6);
-      const apres=[];
-      for(let i=0;i<3;i++)apres.push(economySettle('win',{board:[],promoGains:{}}).chest);
-      renderStreakModal();
-      return{
-        apres:apres.map(c=>c?c.id:null),
-        septieme:chestForStreak(7),
-        sub:document.getElementById('streak-sub').textContent,
-        marques:document.querySelectorAll('#streak-scroll .streak-row.chest-won').length,
-        prochain:document.querySelectorAll('#streak-scroll .streak-row.chest-next').length,
-      };
-    });
-    if(r.apres.some(c=>c!==null))
-      throw new Error('la série continue de donner des coffres après le sixième : '+r.apres.join(','));
-    if(r.septieme!==null)throw new Error('chestForStreak(7) rend encore un coffre');
-    // Série terminée : la fenêtre ne dit plus RIEN sous son titre. Six coffres
-    // cochés et aucun palier « prochain » le montrent déjà ; la phrase qui
-    // doublait ce constat a été retirée.
-    if(r.sub.trim())throw new Error('la fenêtre écrit encore quelque chose une fois la série terminée : '+r.sub);
-    if(r.marques!==6)throw new Error(r.marques+' paliers cochés au lieu de 6 : rien ne dit plus que la série est finie');
-    if(r.prochain)throw new Error('un palier est encore marqué « prochain » alors que la série est terminée');
-    await page.evaluate(()=>{accSet('streak_lock_day',null);accSet('win_streak',0);});
+  // L'ORDRE DES TRENTE LOTS JOURNALIERS est une spécification à part entière :
+  // il se vérifie en entier, sinon une inversion passerait inaperçue.
+  await step('les trente lots du cycle journalier sont dans l\'ordre annoncé',async()=>{
+    const lus=await page.evaluate(()=>DAILY_REWARDS.map(s=>s.chest||(s.pearls?'p'+s.pearls:'j'+s.jokers)));
+    const attendu=['pion','p10','cavalier','pion','j5','fou','pion','p10','cavalier','pion',
+                   'j5','fou','pion','p10','tour','pion','j5','cavalier','pion','p10',
+                   'fou','pion','j5','cavalier','pion','p10','fou','pion','j5','tour'];
+    if(lus.length!==30)throw new Error(lus.length+' lots au lieu de 30');
+    if(lus.join(',')!==attendu.join(','))
+      throw new Error('ordre du cycle journalier :\n  '+lus.join(',')+'\nau lieu de\n  '+attendu.join(','));
   });
 
-  // LA COLONNE DES VICTOIRES prend le relais : elle avance d'un cran à CHAQUE
-  // victoire, série du jour terminée ou non, et elle ne se remet jamais à zéro.
-  await step('la colonne des victoires avance à chaque victoire, même série terminée',async()=>{
+  // LA COLONNE DES VICTOIRES est la voie des victoires : elle avance d'un cran
+  // à CHAQUE victoire, sans verrou quotidien, et ne se remet jamais à zéro.
+  await step('la colonne des victoires avance à chaque victoire',async()=>{
     const r=await page.evaluate(()=>{
-      accSet('col_wins',0);accSet('col_claimed',0);
-      accSet('streak_day',todayKey());accSet('streak_lock_day',null);accSet('win_streak',6);
+      accSet('col_wins',0);accSet('col_claimed',0);accSet('win_streak',0);
       for(let i=0;i<4;i++)economySettle('win',{board:[],promoGains:{}});
       const avantDefaite=colWins();
       economySettle('loss',{board:[],promoGains:{}});
@@ -1125,26 +1189,28 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
   });
 
   // On encaisse un palier À LA FOIS, et un coffre encaissé s'ouvre avec la
-  // VRAIE cérémonie — la même qu'un coffre de série ou acheté au Magasin.
+  // VRAIE cérémonie — la même qu'un coffre journalier ou acheté au Magasin.
   await step('un palier de coffre s\'encaisse et ouvre sa cérémonie',async()=>{
     await page.evaluate(()=>{
       accSet('col_wins',2);accSet('col_claimed',0);accSet('jokers',0);
-      // Pastille du menu : elle compte TOUT ce qui attend. On met la rangée et
-      // les jokers hors jeu pour n'y lire que les deux paliers de la colonne.
+      // Chaque voie a SA pastille : celle de la colonne ne compte que ses
+      // paliers dus. On neutralise quand même la rangée et les jokers, dont
+      // la pastille voisine se lit dans le même coup d'œil.
       accSet('tickets',0);accSet('rich_claimed',0);
       openRewardsPage('colonne');
     });
     await page.waitForSelector('#page-rewards.active',{timeout:8000});
     const avant=await page.evaluate(()=>({
       dus:colPending(),
-      badge:document.getElementById('jouer-rewards-badge').textContent,
+      badge:document.getElementById('jouer-colonne-badge').textContent,
       lignes:document.querySelectorAll('#rw-col-strip .rw-step').length,
       aPrendre:document.querySelectorAll('#rw-col-strip .rw-due').length,
     }));
     if(avant.lignes!==30)throw new Error(avant.lignes+' lignes dans la colonne au lieu de 30');
     if(avant.aPrendre!==2)throw new Error(avant.aPrendre+' paliers « à prendre » au lieu de 2');
-    if(avant.badge!=='2')throw new Error('pastille du menu : '+avant.badge+' au lieu de 2 (les deux paliers dus)');
-    await page.click('#rw-claim-col');
+    if(avant.badge!=='2')throw new Error('pastille de la colonne : '+avant.badge+' au lieu de 2 (les deux paliers dus)');
+    // On touche le premier palier dû : c'est le geste, il n'y a plus de bouton.
+    await page.click('#rw-col-strip .rw-step.rw-claimable');
     await page.waitForSelector('#chest-modal.show',{timeout:8000});
     for(let i=0;i<40&&await page.isVisible('#chest-modal.show');i++){
       await page.click('#chest-modal',{position:{x:8,y:8}});
@@ -1201,8 +1267,8 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
   await step('la rangée de la richesse se paie en tickets',async()=>{
     const table=await page.evaluate(()=>WEALTH_ROW.map(s=>s.pearls+'/'+s.cost));
     const attendu=[].concat(
-      Array(5).fill('5/3'),Array(5).fill('10/4'),Array(5).fill('15/5'),
-      Array(5).fill('20/6'),Array(5).fill('25/8'));
+      Array(5).fill('2/3'),Array(5).fill('3/4'),Array(5).fill('4/5'),
+      Array(5).fill('5/6'),Array(5).fill('6/8'));
     if(table.join(',')!==attendu.join(','))
       throw new Error('rangée : '+table.join(',')+'\nau lieu de\n'+attendu.join(','));
     const r=await page.evaluate(()=>{
@@ -1215,7 +1281,7 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
     if(r.refus)throw new Error('un palier a été encaissé sans les tickets nécessaires');
     if(!r.ok)throw new Error('le palier n\'a pas été encaissé alors que les tickets y sont');
     if(r.tickets!==2)throw new Error('tickets après encaissement : '+r.tickets+' au lieu de 2 (5 - 3)');
-    if(r.perles!==105)throw new Error('perles après encaissement : '+r.perles+' au lieu de 105');
+    if(r.perles!==102)throw new Error('perles après encaissement : '+r.perles+' au lieu de 102');
     if(r.paliers!==1)throw new Error(r.paliers+' paliers encaissés au lieu de 1');
   });
 
@@ -1414,6 +1480,11 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
         pw:document.getElementById('page-voie').clientWidth,
         scrollable:host.scrollHeight>host.clientHeight+40,
         retourVisible:!!document.getElementById('voie-back'),
+        // La pastille reste une PASTILLE : quatre coins ronds. Ils ont été
+        // équerrés en bas pour « épouser le bord de l'écran », ce qui en
+        // faisait un onglet mal coupé — descendre le bouton ne veut pas dire
+        // le déformer.
+        coins:getComputedStyle(btn).borderRadius,
         toucheLeBord:cote===btn||btn.contains(cote)};
     });
     if(!r.scrollable)throw new Error('la Voie ne défile pas, le test ne prouve rien');
@@ -1421,10 +1492,12 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
     // Immobile d'un bout à l'autre du défilement.
     if(Math.abs(r.haut.top-r.bas.top)>1)
       throw new Error('le bouton OK bouge avec le défilement ('+r.haut.top+' → '+r.bas.top+')');
-    // DANS LE BAS DE L'ÉCRAN, sans le toucher : il flotte au-dessus du bord.
+    // COLLÉ AU BAS DE L'ÉCRAN : il ne flotte plus au-dessus du bord, il
+    // l'épouse. Seule la zone sûre du matériel (var(--safe-b)) peut l'en
+    // écarter, et elle vaut 0 sur un écran d'ordinateur.
     const marge=r.vh-r.haut.bottom;
-    if(marge<2||marge>r.vh*0.08)
-      throw new Error('le bouton OK n\'est pas posé dans le bas de l\'écran (bas à '+
+    if(marge>2)
+      throw new Error('le bouton OK n\'est pas collé au bas de l\'écran (bas à '+
         Math.round(r.haut.bottom)+' pour une hauteur de '+r.vh+')');
     // MODESTE : il ne prend plus toute la largeur, et il reste centré.
     if(r.haut.w>r.pw*0.45)
@@ -1437,6 +1510,10 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
       throw new Error('le bouton OK n\'est haut que de '+Math.round(r.haut.h)+' px');
     if(r.toucheLeBord)
       throw new Error('le bouton OK s\'étend encore jusqu\'au bord de l\'écran');
+    // Une seule valeur de rayon = quatre coins identiques. Deux valeurs ou
+    // plus, et l'un des coins a été équerré.
+    if(r.coins.trim().split(/[\s/]+/).filter(Boolean).length!==1)
+      throw new Error('le bouton OK n\'est plus une pastille : border-radius « '+r.coins+' »');
     await page.click('#voie-ok');
     await page.waitForTimeout(400);
     if(await page.isVisible('#page-voie.active'))throw new Error('le bouton OK ne referme pas la Voie');
@@ -1468,6 +1545,49 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
     if(!r.apres)throw new Error('le bouton de réglages n\'est pas là sur le menu principal');
   });
 
+  // LE COMPTE EST LA PREMIÈRE LIGNE DU PANNEAU. Il était sous les deux
+  // curseurs de volume : chercher son identité demandait de descendre deux
+  // réglages qu'on ne venait pas voir. Le panneau se lit maintenant de haut en
+  // bas — les portes, puis les réglages.
+  await step('les réglages ouvrent sur le Compte, puis les volumes',async()=>{
+    await page.click('#settings-btn');
+    await page.waitForTimeout(250);
+    const r=await page.evaluate(()=>{
+      const panel=document.getElementById('settings-panel');
+      const ordre=[...panel.children].filter(el=>el.nodeType===1&&getComputedStyle(el).display!=='none')
+        .map(el=>el.id||el.querySelector('.sp-label')?.textContent||'?');
+      const y=id=>document.getElementById(id).getBoundingClientRect().top;
+      return{ordre,compte:y('sp-account'),sfx:y('sp-sfx-vol'),musique:y('sp-music-vol')};
+    });
+    if(!(r.compte<r.sfx))throw new Error('« Compte » n\'est pas au-dessus de « Bruitages » : '+r.ordre.join(' / '));
+    if(!(r.sfx<r.musique))throw new Error('« Musique » passe avant « Bruitages » : '+r.ordre.join(' / '));
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(200);
+  });
+
+  // LE LOGO DE LA FICHE EST CENTRÉ DANS SON CADRE. Le 76 % s'appliquait deux
+  // fois — à la boîte de l'icône ET au SVG imbriqué —, et comme la boîte est
+  // un inline-block, le dessin se collait à sa gauche : cinq pixels de décalage
+  // dans un carré de 58, visibles au premier coup d'œil.
+  await step('le logo de la fiche de pièce est centré dans son cadre',async()=>{
+    const r=await page.evaluate(()=>{
+      openPieceSheet('dame');
+      const logo=document.getElementById('psheet-logo');
+      const svg=logo.querySelector('svg');
+      if(!svg)return null;
+      const lb=logo.getBoundingClientRect(),sb=svg.getBoundingClientRect();
+      closePieceSheet();
+      return{dx:(sb.left+sb.width/2)-(lb.left+lb.width/2),
+             dy:(sb.top+sb.height/2)-(lb.top+lb.height/2),cadre:lb.width,dessin:sb.width};
+    });
+    if(!r)throw new Error('aucun logo dans la fiche de pièce');
+    if(Math.abs(r.dx)>1)throw new Error('logo décalé de '+r.dx.toFixed(1)+' px horizontalement');
+    if(Math.abs(r.dy)>1)throw new Error('logo décalé de '+r.dy.toFixed(1)+' px verticalement');
+    // Et il remplit bien son cadre : un dessin deux fois trop petit serait le
+    // symptôme du double pourcentage, même une fois recentré.
+    if(r.dessin<r.cadre*0.6)throw new Error('le logo ne fait que '+Math.round(r.dessin/r.cadre*100)+' % du cadre');
+  });
+
   // Les schémas de déplacement sont DÉDUITS du moteur (js/piece-moves.js) :
   // une pièce qui n'aurait plus aucune case atteignable serait le signe que
   // generateMovesRaw a changé sous leurs pieds.
@@ -1482,22 +1602,37 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
 
   // Le contenu d'un coffre est la mécanique la plus facile à casser sans
   // s'en apercevoir : elle ne se voit qu'après une victoire, et un tirage
-  // vide ou négatif passerait pour de la malchance.
-  await step('les six coffres tirent un contenu coherent',async()=>{
+  // vide, négatif ou débordant passerait pour de la chance.
+  //
+  // LA FOURCHETTE EST UN TOTAL. Les coffres se décrivaient en lots de N
+  // exemplaires, avec un facteur qui doublait la quantité sur un bon tirage :
+  // personne ne pouvait dire ce qu'un coffre donnait vraiment, et la réponse
+  // était « beaucoup trop » (plus de 70 exemplaires en stock par pièce).
+  // `total` est maintenant le nombre d'exemplaires donnés EN TOUT, et c'est
+  // lui qu'on vérifie — une seule sortie hors fourchette, et le stock repart.
+  await step('un coffre ne donne jamais plus que sa fourchette',async()=>{
     const bad=await page.evaluate(()=>{
       const out=[];
       CHESTS.forEach(ch=>{
-        const hi=chestRollRange(ch)[1];
+        const t=ch.total,pr=chestPearlRange(ch.id);
         for(let i=0;i<200;i++){
           const lots=chestRoll(ch.id);
+          const perles=lots.filter(l=>l.pearls>0);
+          const total=perles.reduce((a,l)=>a+l.pearls,0);
           const pieces=lots.filter(l=>l.pieceId);
-          if(!lots.some(l=>l.pearls>0))out.push(ch.id+' : aucun lot de perles');
-          // Borne HAUTE seulement : chestRoll fusionne les doublons (deux
-          // tirages de Méduse ne font qu'une carte), le nombre de lots
-          // affichés peut donc descendre bien en dessous du nombre tiré. Le
-          // +1 tient compte de la pièce inédite, qui s'ajoute à la fourchette.
-          if(pieces.length<1||pieces.length>hi+1)out.push(ch.id+' : '+pieces.length+' lots hors de [1,'+(hi+1)+']');
+          const inedit=pieces.some(l=>l.isNew);
+          const copies=pieces.reduce((a,l)=>a+l.qty,0);
+          if(!perles.length)out.push(ch.id+' : aucun lot de perles');
+          if(total<pr[0]||total>pr[1])
+            out.push(ch.id+' : '+total+' perles hors de ['+pr.join('-')+']');
           if(pieces.some(l=>!(l.qty>0)))out.push(ch.id+' : lot de quantite nulle');
+          // Un lot INÉDIT a droit à deux exemplaires au minimum, même dans un
+          // Coffre Pion : une créature qui se déploie par paire doit pouvoir
+          // être alignée au moins une fois le jour où elle tombe.
+          const max=inedit?Math.max(2,t[1]):t[1];
+          if(copies>max)out.push(ch.id+' : '+copies+' exemplaires, plafond '+max);
+          if(!inedit&&copies&&copies<t[0])
+            out.push(ch.id+' : '+copies+' exemplaires, plancher '+t[0]);
         }
         const lucky=chestLuckyChance(ch);
         if(!(lucky>0&&lucky<1))out.push(ch.id+' : proba de bon lot aberrante ('+lucky+')');
@@ -1512,14 +1647,14 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
   // rachetait le coffre avec son propre contenu, indéfiniment, en encaissant
   // les pièces au passage. C'est la borne HAUTE qu'on vérifie, pas la
   // moyenne : le trou ne s'ouvre que sur le meilleur tirage, et une moyenne
-  // saine le cache complètement. Le calcul est celui de chestRoll, pas une
-  // constante recopiée — changer le facteur « bon lot » fera bouger ce test
-  // avec lui.
+  // saine le cache complètement. Le facteur « bon lot » ne s'applique plus aux
+  // perles (chestRoll les tire une fois, dans leur fourchette) : le maximum
+  // est donc le haut de CHEST_PEARLS, tel quel.
   await step('aucun coffre ne peut se payer avec ses propres perles',async()=>{
     const bad=await page.evaluate(()=>{
       const out=[];
       CHESTS.forEach(ch=>{
-        const max=Math.round(chestPearlRange(ch.id)[1]*1.8),prix=chestPearlPrice(ch.id);
+        const max=chestPearlRange(ch.id)[1],prix=chestPearlPrice(ch.id);
         if(max>=prix)out.push(ch.id+' : jusqu\'a '+max+' perles pour un prix de '+prix);
         // Une marge, et pas seulement l'inegalite stricte : a 99 % du prix, il
         // suffit d'un coffre gagne en jouant pour relancer la boucle.
@@ -1528,6 +1663,142 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
       return out;
     });
     if(bad.length)throw new Error(bad.join(' · '));
+  });
+
+  // LA NOTATION DU JOURNAL. Il disait les DEUX cases (« ♞e1–f3 »), ce qu'aucune
+  // notation d'échecs n'écrit : la case de départ ne sert à rien tant qu'une
+  // seule pièce peut atteindre l'arrivée. Elle ne revient donc que pour lever
+  // une ambiguïté — colonne, sinon rangée, sinon la case entière —, et un pion
+  // qui capture garde toujours sa colonne, comme le veut la règle officielle.
+  // Les positions sont posées à la main : c'est la seule façon de provoquer à
+  // coup sûr les quatre cas.
+  await step('le journal note en algébrique, et ne désambiguïse que s\'il le faut',async()=>{
+    const lus=await page.evaluate(()=>{
+      const vide=()=>Array.from({length:8},()=>Array(8).fill(null));
+      const pose=(b,r,c,pieceId,color,type)=>{
+        const cell={type:type||'n',color,pieceId,emoji:'',hasMoved:true,isKing:type==='k',id:pieceId+r+c};
+        b[r][c]=cell;return cell;
+      };
+      const rois=b=>{pose(b,7,4,'roi','w','k');pose(b,0,4,'roi','b','k');};
+      const jouer=(b,from,to)=>{
+        GS.board=b;GS.movePairs=[];GS.history=[];GS.turn=b[from.r][from.c].color;
+        GS.gameOver=false;GS.pendingPromo=null;
+        executeGameMove(from,to,GS);
+        GS.gameOver=true;
+        const el=document.createElement('div');
+        el.innerHTML=GS.movePairs.map(p=>p[0]).join('');
+        return el.textContent.trim();
+      };
+      const out={};
+      let b=vide();rois(b);pose(b,7,1,'cavalier-primordial','w');
+      out.seul=jouer(b,{r:7,c:1},{r:5,c:2});
+      b=vide();rois(b);pose(b,7,1,'cavalier-primordial','w');pose(b,7,3,'cavalier-primordial','w');
+      out.colonne=jouer(b,{r:7,c:1},{r:5,c:2});
+      b=vide();rois(b);
+      pose(b,7,1,'cavalier-primordial','w');pose(b,7,3,'cavalier-primordial','w');pose(b,3,1,'cavalier-primordial','w');
+      out.case=jouer(b,{r:7,c:1},{r:5,c:2});
+      b=vide();rois(b);pose(b,7,0,'tour-primordiale','w','r');pose(b,3,0,'tour-primordiale','w','r');
+      out.rangee=jouer(b,{r:7,c:0},{r:5,c:0});
+      b=vide();rois(b);pose(b,4,4,'std-pawn','w','p');pose(b,3,3,'tour-primordiale','b','r');
+      out.prisePion=jouer(b,{r:4,c:4},{r:3,c:3});
+      return out;
+    });
+    const attendu={seul:'c3',colonne:'bc3',case:'b1c3',rangee:'1a3',prisePion:'e×d5'};
+    Object.keys(attendu).forEach(k=>{
+      if(lus[k]!==attendu[k])
+        throw new Error('notation « '+k+' » : « '+lus[k]+' » au lieu de « '+attendu[k]+' »');
+    });
+  });
+
+  // LES DEUX ÉTATS DU TOUR SE LISENT AU MÊME ENDROIT. « À votre tour » était
+  // masqué sur téléphone : la barre ne montrait jamais qu'une moitié de la
+  // question, et le joueur n'avait rien à lire au moment où c'était à lui.
+  await step('la barre de statut annonce les deux tours',async()=>{
+    const r=await page.evaluate(()=>{
+      const bar=document.getElementById('game-status');
+      const lire=()=>({txt:bar.textContent,vu:getComputedStyle(bar).display!=='none'});
+      GS.gameOver=false;GS.historyView=null;
+      GS.playerColor='w';GS.aiColor='b';
+      GS.turn='w';updateStatus(GS);const moi=lire();
+      GS.turn='b';updateStatus(GS);const lui=lire();
+      GS.gameOver=true;
+      return{moi,lui};
+    });
+    if(!/À votre tour/.test(r.moi.txt))throw new Error('tour du joueur : « '+r.moi.txt+' »');
+    if(!r.moi.vu)throw new Error('« À votre tour » est masqué');
+    if(!/Au tour de votre adversaire/.test(r.lui.txt))throw new Error('tour adverse : « '+r.lui.txt+' »');
+    if(!r.lui.vu)throw new Error('« Au tour de votre adversaire » est masqué');
+  });
+
+  // LA FOURMI SE PROMEUT, ET ON NE SE PROMEUT PAS EN FOURMI. Son pouvoir était
+  // l'inverse exact (« ne peut pas reculer, même si elle atteint l'autre côté
+  // de l'échiquier ») : elle traversait tout le plateau pour finir clouée.
+  // Les deux moitiés de la règle se tiennent — une créature qui se promeut ne
+  // peut pas être le LOT d'une promotion, sinon la promotion serait à refaire
+  // au coup suivant, sur la case même où elle vient d'arriver.
+  await step('la Fourmi se promeut, et ne peut pas être choisie en promotion',async()=>{
+    const r=await page.evaluate(()=>{
+      const vide=()=>Array.from({length:8},()=>Array(8).fill(null));
+      const pose=(b,r,c,pieceId,color,type)=>{
+        b[r][c]={type:type||'p',color,pieceId,emoji:'',hasMoved:true,isKing:type==='k',id:pieceId+r+c};
+      };
+      const rois=b=>{pose(b,7,4,'roi','w','k');pose(b,0,4,'roi','b','k');};
+      const out={data:PIECES.find(p=>p.id==='fourmi').ability};
+      // Côté joueur : la fenêtre de promotion s'ouvre, sans la Fourmi dedans.
+      let b=vide();rois(b);pose(b,1,3,'fourmi','w','p');
+      GS.board=b;GS.movePairs=[];GS.history=[];GS.turn='w';GS.gameOver=false;GS.pendingPromo=null;
+      GS.playerColor='w';GS.aiColor='b';
+      GS.playerArmy={extras:['fourmi','meduse'],gen:{id:'dame'}};
+      executeGameMove({r:1,c:3},{r:0,c:3},GS);
+      out.modal=document.getElementById('promo-modal').classList.contains('active');
+      out.choix=[...document.querySelectorAll('#promo-modal .promo-piece-lbl')].map(e=>e.textContent);
+      document.getElementById('promo-modal').classList.remove('active');
+      GS.pendingPromo=null;
+      // Côté adversaire : promotion automatique, jamais en Fourmi non plus.
+      b=vide();rois(b);pose(b,1,3,'fourmi','w','p');
+      GS.board=b;GS.movePairs=[];GS.history=[];GS.turn='w';GS.gameOver=false;
+      GS.playerColor='b';GS.aiColor='w';
+      GS.aiArmy={extras:['fourmi','meduse'],gen:{id:'dame'}};
+      executeGameMove({r:1,c:3},{r:0,c:3},GS);
+      out.ia=GS.board[0][3]&&GS.board[0][3].pieceId;
+      // Le pion, lui, se promeut comme avant.
+      b=vide();rois(b);pose(b,1,2,'std-pawn','w','p');
+      GS.board=b;GS.movePairs=[];GS.history=[];GS.turn='w';GS.gameOver=false;
+      executeGameMove({r:1,c:2},{r:0,c:2},GS);
+      out.pion=GS.board[0][2]&&GS.board[0][2].pieceId;
+      GS.gameOver=true;
+      return out;
+    });
+    if(!/promeut/i.test(r.data))throw new Error('le pouvoir de la Fourmi dit encore : '+r.data);
+    if(!r.modal)throw new Error('la Fourmi arrivée au bout n\'ouvre pas la promotion');
+    if(!r.choix.length)throw new Error('aucun choix de promotion proposé');
+    if(r.choix.some(t=>/Fourmi/i.test(t)))throw new Error('la Fourmi est proposée en promotion : '+r.choix.join(','));
+    if(r.ia==='fourmi')throw new Error('l\'adversaire se promeut en Fourmi');
+    if(r.ia==='std-pawn')throw new Error('la Fourmi de l\'adversaire ne se promeut pas');
+    if(r.pion==='std-pawn')throw new Error('le pion ne se promeut plus');
+  });
+
+  // Les valeurs de PIECES sont le budget du builder : une valeur qui bouge
+  // change toutes les compositions possibles. Celles qu'on fixe à la main se
+  // vérifient donc à la main.
+  // L'ÉCRAN DE FIN DE PARTIE NE REDIT PLUS L'ELO. Il portait, sous la ligne
+  // « 213 → 218 · +5 », une deuxième ligne « Pierre · 218 ELO » : le même
+  // nombre, en plus long. Et sous elle, pour les cinq premières parties, une
+  // note « Partie de placement 2/5 : elle compte double ».
+  await step('l\'écran de fin de partie ne redit pas l\'ELO',async()=>{
+    const r=await page.evaluate(()=>({
+      rang:!!document.getElementById('result-rank-name'),
+      ligneElo:!!document.getElementById('result-elo-after'),
+      note:!!document.getElementById('result-elo-note'),
+    }));
+    if(r.rang)throw new Error('la ligne de rang est encore sur l\'écran de fin de partie');
+    if(!r.ligneElo)throw new Error('la ligne d\'ELO a disparu avec elle');
+    if(!r.note)throw new Error('la ligne d\'explication a disparu : elle sert encore à l\'ascension');
+  });
+
+  await step('l\'Empereur vaut 8 points',async()=>{
+    const v=await page.evaluate(()=>PIECES.find(p=>p.id==='empereur').value);
+    if(v!==8)throw new Error('Empereur à '+v+' points au lieu de 8');
   });
 
   // LES POUVOIRS, un par un. Ils sont ce que le jeu a de particulier et ce
@@ -1552,12 +1823,33 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
       };
       const va=(b,r,c,tr,tc)=>generateMovesRaw(b,r,c,etat(b)).some(m=>m.r===tr&&m.c===tc);
 
-      // PEUREUX — Retraite Prudente : jamais hors des 4 rangées de son camp.
-      let b=vide();pose(b,4,4,'peureux','w');
-      if(!va(b,4,4,5,4))out.push('peureux : ne recule pas dans son camp');
-      if(va(b,4,4,3,4))out.push('peureux : franchit la moitie du plateau');
-      b=vide();pose(b,3,4,'peureux','b');
-      if(va(b,3,4,4,4))out.push('peureux noir : franchit la moitie du plateau');
+      // LES TROIS GARDES — une case, mais chacune sa grammaire : l'Eau tout
+      // droit, le Feu en biais, la Pierre les deux. Ce sont les trois
+      // premières créatures du joueur : si l'une d'elles se met à aller
+      // ailleurs, c'est tout l'apprentissage du plateau qui ment.
+      let b=vide();pose(b,4,4,'garde-eau','w');
+      if(!va(b,4,4,3,4)||!va(b,4,4,5,4)||!va(b,4,4,4,3)||!va(b,4,4,4,5))
+        out.push('garde d\'eau : elle ne va pas dans les quatre orthogonales');
+      if(va(b,4,4,3,3)||va(b,4,4,5,5))out.push('garde d\'eau : elle va en diagonale');
+      if(va(b,4,4,2,4))out.push('garde d\'eau : elle avance de deux cases');
+      b=vide();pose(b,4,4,'garde-feu','w');
+      if(!va(b,4,4,3,3)||!va(b,4,4,3,5)||!va(b,4,4,5,3)||!va(b,4,4,5,5))
+        out.push('garde de feu : elle ne va pas dans les quatre diagonales');
+      if(va(b,4,4,3,4)||va(b,4,4,4,5))out.push('garde de feu : elle va tout droit');
+      if(va(b,4,4,2,2))out.push('garde de feu : elle avance de deux cases');
+      b=vide();pose(b,4,4,'garde-pierre','w');
+      if(!va(b,4,4,3,4)||!va(b,4,4,3,3))out.push('garde de pierre : elle ne couvre pas les huit directions');
+      // Et elles donnent échec là où elles se déplacent, pas ailleurs : une
+      // pièce au déplacement particulier qui attaquerait comme son pieceType
+      // de base donnerait des échecs imaginaires.
+      b=vide();pose(b,4,4,'garde-eau','w');pose(b,3,4,'roi','b');
+      if(!isInCheckSimple('b',b))out.push('garde d\'eau : elle ne donne pas echec tout droit');
+      b=vide();pose(b,4,4,'garde-eau','w');pose(b,3,3,'roi','b');
+      if(isInCheckSimple('b',b))out.push('garde d\'eau : elle donne echec en diagonale');
+      b=vide();pose(b,4,4,'garde-feu','w');pose(b,3,3,'roi','b');
+      if(!isInCheckSimple('b',b))out.push('garde de feu : elle ne donne pas echec en diagonale');
+      b=vide();pose(b,4,4,'garde-feu','w');pose(b,3,4,'roi','b');
+      if(isInCheckSimple('b',b))out.push('garde de feu : elle donne echec tout droit');
 
       // CUIRASSE — les pions ne prennent pas le Preux Chevalier, la Fourmi si.
       b=vide();pose(b,4,4,'std-pawn','w');pose(b,3,3,'preux-chevalier','b');
@@ -1608,7 +1900,7 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
   await step('un adversaire ne compose son armée qu\'avec des pièces que le joueur possède',async()=>{
     const bad=await page.evaluate(()=>{
       const avant={unlocked:new Set(VV_UNLOCKED),inv:JSON.parse(JSON.stringify(invAll()))};
-      const permis=['roi','dame','cavalier-primordial','peureux','meduse'];
+      const permis=['roi','dame','cavalier-primordial','garde-eau','meduse'];
       const out=[];
       try{
         VV_UNLOCKED=new Set(permis);
@@ -1788,8 +2080,13 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
       let e=0;
       for(let g=0;g<5;g++)e=vvCalcNewElo(e,e,'win',g).newElo;
       if(e<300)out.push('cinq victoires de placement ne mènent qu\'à '+e+' ELO');
-      // Et la phrase d'explication doit exister quand il se passe quelque chose.
-      if(!vvEloExplain(vvCalcNewElo(0,400,'win',0),'win',0))out.push('le placement n\'est pas expliqué au joueur');
+      // Et la phrase d'explication doit exister quand il se passe quelque chose
+      // — SAUF pour les parties de placement, qui ne s'annoncent plus : elles
+      // ajoutaient une règle à retenir aux cinq premières parties, celles où
+      // le joueur découvre déjà tout le reste.
+      if(/placement/i.test(vvEloExplain(vvCalcNewElo(1200,1200,'win',0),'win',1200)||''))
+        out.push('les parties de placement s\'annoncent encore');
+      if(!vvEloExplain(vvCalcNewElo(0,400,'win',0),'win',0))out.push('le bonus d\'ascension n\'est pas expliqué');
       if(!vvEloExplain(vvCalcNewElo(200,200,'loss',40),'loss',200))out.push('l\'amorti des pertes n\'est pas expliqué');
       if(vvEloExplain(vvCalcNewElo(1500,1500,'win',200),'win',1500))out.push('une partie ordinaire s\'explique alors qu\'il n\'y a rien à dire');
       return out;
@@ -1813,6 +2110,23 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
       // Elle doit croître, pas sauter d'un coup à son plafond.
       if(!(mpEloWindow(0)<mpEloWindow(2)&&mpEloWindow(2)<=mpEloWindow(4)))
         out.push('la fenêtre ne s\'élargit pas progressivement');
+      // ET ELLE NE S'EXPLIQUE PAS AU JOUEUR QUI ATTEND. « On cherche d'abord un
+      // adversaire de votre niveau, puis on élargit » était la première chose
+      // affichée sous le radar : une règle d'appariement à lire pour patienter.
+      // La note dit ce qui se passe, un point.
+      const note=document.getElementById('mp-search-note');
+      if(!note)out.push('la note de recherche a disparu');
+      else{
+        if(/élargit|niveau/i.test(note.textContent))
+          out.push('la note explique encore la fenêtre d\'appariement : « '+note.textContent.trim()+' »');
+        if(!note.textContent.trim())out.push('la note de recherche est vide');
+        // Et ce qu'elle dit au premier instant est déjà ce que mpRenderSearch
+        // écrira : pas de phrase intermédiaire à voir passer.
+        const avant=note.textContent.trim();
+        mpRenderSearch(0,0,0);
+        if(note.textContent.trim()!==avant)
+          out.push('la note change dès le premier battement : « '+avant+' » puis « '+note.textContent.trim()+' »');
+      }
       return out;
     });
     if(bad.length)throw new Error(bad.join(' · '));
@@ -1925,29 +2239,46 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
     if(bad.length)throw new Error(bad.join(' · '));
   });
 
-  await step('le réglage de vibration se souvient de lui-même',async()=>{
+  // LA VIBRATION EST TOUJOURS ACTIVE, et n'a plus d'interrupteur : elle est la
+  // réponse du jeu au doigt qui touche, pas un effet qu'on subit. On vérifie
+  // les deux moitiés de la promesse — plus de bouton, et une vibration qui
+  // part vraiment — ainsi que le curseur de musique qui a pris sa place et
+  // survit au rechargement.
+  await step('la vibration n\'a plus d\'interrupteur et reste active',async()=>{
     await page.goto('http://localhost:'+PORT+'/',{waitUntil:'domcontentloaded'});
     await page.waitForSelector('#cube-jouer-btn',{state:'visible',timeout:8000});
     await page.click('#settings-btn');
-    // L'interrupteur n'est montré que sur un appareil qui sait vibrer ; sous
-    // Chromium de test, navigator.vibrate existe.
-    const visible=await page.isVisible('#sp-haptic');
-    if(!visible){
-      if(await page.evaluate(()=>hapticSupported()))
-        throw new Error('l\'interrupteur est caché alors que l\'appareil sait vibrer');
-      return;                       // pas de vibreur : rien à régler, c'est voulu
-    }
-    await page.click('#sp-haptic');
-    if(await page.getAttribute('#sp-haptic','aria-checked')!=='false')
-      throw new Error('l\'interrupteur ne s\'éteint pas');
+    if(await page.locator('#sp-haptic').count())
+      throw new Error('l\'interrupteur de vibration est encore dans les réglages');
+    // Sous Chromium de test, navigator.vibrate existe : la vibration doit donc
+    // réellement partir, sans qu'on ait rien allumé.
+    const part=await page.evaluate(()=>hapticSupported()?haptic('impact')!==false:true);
+    if(!part)throw new Error('la vibration ne part pas alors qu\'elle est censée être toujours active');
+  });
+
+  // LE CURSEUR DE MUSIQUE est le réglage qui a remplacé l'interrupteur. Il
+  // commande le gain de la boucle de combat, SÉPARÉMENT des bruitages —
+  // couper la musique en gardant le bruit des pièces est ce qu'on fait dès
+  // qu'on écoute autre chose en jouant.
+  await step('le curseur de musique règle la musique seule, et s\'en souvient',async()=>{
+    const r=await page.evaluate(()=>{
+      const mus=document.getElementById('sp-music-vol'),sfx=document.getElementById('sp-sfx-vol');
+      if(!mus)return{absent:true};
+      applySfxVol(1);
+      applyMusicVol(0);
+      const musCoupee=_musicVol===0&&_sfxVol===1&&_soundEnabled===true;
+      applyMusicVol(0.35);savePrefs({music:_musicVol});
+      return{absent:false,musCoupee,sfx:!!sfx,valeur:_musicVol};
+    });
+    if(r.absent)throw new Error('le curseur « Musique » est absent des réglages');
+    if(!r.sfx)throw new Error('le curseur « Bruitages » a disparu');
+    if(!r.musCoupee)throw new Error('couper la musique coupe aussi les bruitages');
     await page.goto('http://localhost:'+PORT+'/',{waitUntil:'domcontentloaded'});
     await page.waitForSelector('#cube-jouer-btn',{state:'visible',timeout:8000});
-    await page.click('#settings-btn');
-    if(await page.getAttribute('#sp-haptic','aria-checked')!=='false')
-      throw new Error('le réglage n\'a pas survécu au rechargement');
-    if(await page.evaluate(()=>haptic('impact'))!==false)
-      throw new Error('la vibration part alors qu\'elle est coupée');
-    await page.click('#sp-haptic');   // on remet en place pour les étapes suivantes
+    const apres=await page.evaluate(()=>({
+      vol:_musicVol,curseur:parseFloat(document.getElementById('sp-music-vol').value)}));
+    if(Math.abs(apres.vol-0.35)>0.001)throw new Error('le volume de musique n\'a pas survécu au rechargement : '+apres.vol);
+    if(Math.abs(apres.curseur-0.35)>0.001)throw new Error('le curseur ne montre pas le volume appliqué : '+apres.curseur);
   });
 
   await browser.close();

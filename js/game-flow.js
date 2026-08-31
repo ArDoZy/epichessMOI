@@ -209,10 +209,6 @@ function showArmyIntro(playerArmy,aiArmy){
 function showResultModal(result,oldElo,newElo,delta,newUnlockIds,noEloReason,eloCalc){
   setTimeout(()=>playSound(result==='win'?'win':result==='loss'?'loss':'draw'),200);
   const modal=document.getElementById('result-modal');const box=document.getElementById('result-box');
-  // Le rang du modal est le rang ACQUIS (sommet atteint), pas celui du
-  // classement de l'instant : une défaite qui repasse sous un seuil ne
-  // doit pas afficher une rétrogradation qui n'a pas lieu.
-  const rank=(typeof vvRank==='function')?vvRank():vvGetRank(newElo);
   box.className='result-box '+(result==='win'?'win-result':result==='loss'?'loss-result':'draw-result');
   // Plus de chevron au-dessus du titre pour une victoire ou une défaite : le
   // mot et sa couleur disent déjà tout, le triangle n'ajoutait qu'un symbole
@@ -261,40 +257,25 @@ function showResultModal(result,oldElo,newElo,delta,newUnlockIds,noEloReason,elo
     noteEl.textContent=noteText;
     noteEl.classList.toggle('result-elo-climb',!showNote&&!!climbNote);
   }
-  document.getElementById('result-rank-name').textContent=rank.name+' · '+newElo+' ELO';
-  // Le médaillon du rang (rankMedalHTML, js/main.js). La planche
-  // assets/ranks/<id>.png est facultative : l'<img> se retire d'elle-même si
-  // le fichier manque, et la ligne retrouve la mise en page qu'elle avait
-  // avant que les médaillons existent.
-  const rankIcon=document.getElementById('result-rank-icon');
-  if(rankIcon)rankIcon.innerHTML=rankMedalHTML(rank.id,'rm-md');
+  // PLUS DE LIGNE DE RANG. Elle affichait « Pierre · 218 ELO » juste sous
+  // « 213 → 218 · +5 » : le même nombre, une deuxième fois, dans une phrase
+  // plus longue. Le rang, lui, ne bouge presque jamais d'une partie à
+  // l'autre — et quand il bouge, la Diagonale de la Puissance le fête pour
+  // de bon. L'écran de fin de partie dit le résultat et l'ELO, c'est tout.
+  // Son médaillon (rankMedalHTML, js/main.js) vit toujours sur la
+  // Diagonale de la Puissance (js/voie.js) : rien n'est perdu, seulement
+  // pas répété ici.
   const unlockSec=document.getElementById('unlock-section');
   if(newUnlockIds&&newUnlockIds.length>0){
     const pid=newUnlockIds[0];const pd=PIECES.find(p=>p.id===pid);
     if(pd){unlockSec.style.display='';document.getElementById('unlock-piece-emoji').innerHTML=pieceIcon(pd.id,'n');document.getElementById('unlock-piece-name').textContent=pd.name;const clsEl=document.getElementById('unlock-piece-class');clsEl.textContent=pd.class;clsEl.className='unlock-piece-class pc-class '+pd.class;document.getElementById('unlock-piece-ability').textContent=pd.ability||'Aucun pouvoir spécial.';}
     else unlockSec.style.display='none';
   }else unlockSec.style.display='none';
-  // Coffre obtenu : il vient d'être ouvert, juste avant ce modal (voir
-  // settleAndCelebrate dans js/economy-ui.js). Le rappel sert de récapitulatif
-  // — quelle série, quel palier — pas d'invitation à aller le chercher.
-  const chestSec=document.getElementById('result-chest');
-  if(chestSec){
-    const st=_lastSettlement;
-    if(st&&st.chest){
-      chestSec.style.display='';
-      // La série du jour a une FIN : au sixième coffre, chestForStreak ne
-      // renvoie plus rien (js/data-pieces.js). Le rappel dit alors ce que
-      // devient une victoire de plus — un palier de la colonne des victoires
-      // (js/rewards.js) — au lieu d'annoncer un septième coffre qui
-      // n'existe pas.
-      const suivant=chestForStreak(st.streak+1);
-      chestSec.innerHTML='<div class="rc-lbl">Série de '+st.streak+' victoire'+(st.streak>1?'s':'')+'</div>'+
-        '<div class="rc-name">'+st.chest.name+' ouvert</div>'+
-        '<div class="rc-hint">'+(suivant
-          ?'Prochaine victoire : '+suivant.name+'.'
-          :'Série du jour terminée. Vos prochaines victoires avancent dans la colonne des victoires.')+'</div>';
-    }else chestSec.style.display='none';
-  }
+  // PLUS DE RAPPEL DE COFFRE SUR L'ÉCRAN DE RÉSULTAT. Une victoire ouvrait un
+  // coffre selon la série du jour, et un bloc en rappelait le palier. La série
+  // du jour n'existe plus (voir economySettle, js/economy.js) : une victoire
+  // fait avancer la COLONNE DES VICTOIRES, dont le palier s'encaisse quand le
+  // joueur le décide, sur sa page. Il n'y a donc rien à récapituler ici.
   modal.classList.add('active');
 }
 document.getElementById('result-close-btn').addEventListener('click',()=>{
@@ -344,7 +325,6 @@ document.getElementById('result-revanche').addEventListener('click',()=>{
 // FIN DE PARTIE : calcule le nouvel ELO et déclenche le modal de résultat.
 // ----------------------------------------------------------------
 let _endGameTriggered=false;
-let _lastSettlement=null;   // rapport d'économie de la dernière partie
 function triggerEndOfGame(result){
   if(_endGameTriggered)return;_endGameTriggered=true;
   stopClockTick(GS);
@@ -400,15 +380,16 @@ function triggerEndOfGame(result){
     vvNotePieceStats(armee,result==='win');
   // Règlement des pièces engagées AVANT l'affichage : la cinématique montre
   // le décompte réel, pas une estimation. settleAndCelebrate (economy-ui.js)
-  // enchaîne ensuite cinématique d'issue → ouverture du coffre gagné → modal.
+  // enchaîne ensuite cinématique d'issue → modal de verdict.
   const showModal=()=>showResultModal(result,oldElo,newElo,delta,newUnlocks,noEloReason,eloCalc);
-  _lastSettlement=(typeof settleAndCelebrate==='function')
-    ?settleAndCelebrate(result,GS,showModal)
-    :(setTimeout(showModal,400),null);
+  if(typeof settleAndCelebrate==='function')settleAndCelebrate(result,GS,showModal);
+  else setTimeout(showModal,400);
   // LA MEILLEURE SÉRIE SE RELÈVE APRÈS LE RÈGLEMENT, et pas avant : c'est
   // economySettle (appelée par settleAndCelebrate) qui incrémente
   // 'win_streak'. Lue plus haut, on enregistrerait toujours la série de la
   // partie PRÉCÉDENTE — et le record n'atteindrait jamais sa vraie valeur.
+  // La série ne commande plus aucune récompense (voir economySettle) : elle ne
+  // sert plus qu'à cette ligne de la fiche de compte, « Meilleure série ».
   if(!noEloReason&&typeof vvNoteStreak==='function')
     vvNoteStreak(accGet('win_streak',0));
   // Après trois victoires, et une seule fois, le jeu propose de s'installer

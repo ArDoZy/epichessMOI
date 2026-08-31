@@ -111,12 +111,17 @@ function accountFavourite(s){
   return{piece:p,games:best.g,wins:best.w,rate:Math.round(best.w/best.g*100)};
 }
 
-// Les dix dernières parties, de la plus récente à la plus ancienne. Une
+// Les dix dernières parties, DE LA PLUS ANCIENNE À LA PLUS RÉCENTE. Une
 // pastille par partie : c'est la forme la plus dense qui reste lisible, et
 // elle dit d'un coup d'oeil si l'on est en train de monter ou de couler.
+//
+// Elles se lisaient à l'envers, la plus récente à gauche. Or une bande de
+// forme est une frise : le temps y va de gauche à droite, comme dans toutes
+// les courbes qu'on a jamais lues. À l'envers, une remontée ressemblait à une
+// chute — c'est le contraire de ce que la bande est censée dire.
 const ACC_RECENT=10;
 function accountRecent(s){
-  return (s.history||[]).filter(h=>h&&h.ranked!==false).slice(-ACC_RECENT).reverse();
+  return (s.history||[]).filter(h=>h&&h.ranked!==false).slice(-ACC_RECENT);
 }
 
 // Le médaillon : la première lettre du pseudo, frappée dans un disque teinté
@@ -199,11 +204,10 @@ function accountSealHTML(s){
     '</div>'+
     accountFormHTML(s)+
     accountFavouriteHTML(s)+
-    // « Quitter ce compte » : le bouton que cherche quelqu'un qui veut se
-    // déconnecter. Discret (btn-ghost) et sous les chiffres : ce n'est pas
-    // l'action pour laquelle on vient ici, mais elle doit se trouver du
-    // premier coup d'oeil quand on la cherche.
-    '<button class="btn btn-ghost acc-logout" id="acc-logout">Quitter ce compte</button>'+
+    // PLUS DE « QUITTER CE COMPTE ». Il n'y a rien à quitter : le jeu n'a ni
+    // mot de passe ni session, et la seule chose que le bouton faisait —
+    // repasser par la page de connexion — se fait déjà en choisissant un
+    // autre compte dans la liste juste en dessous.
   '</section>';
 }
 
@@ -218,7 +222,7 @@ function accountFormHTML(s){
   const lbl={win:'Victoire',loss:'Défaite',draw:'Nulle'};
   return ''+
   '<div class="acc-form">'+
-    '<div class="acc-form-k">Dix dernières</div>'+
+    '<div class="acc-form-k">10 dernières parties</div>'+
     '<div class="acc-form-dots">'+
       recent.map(h=>{
         const cls=h.result==='win'?'w':h.result==='loss'?'l':'d';
@@ -297,8 +301,6 @@ function accountCreateHTML(full){
   return ''+
   '<section class="acc-sec">'+
     '<h3 class="acc-sec-title">Nouveau compte</h3>'+
-    '<p class="acc-hint">Un compte neuf repart de zéro : aucune créature, aucune perle, '+
-      '0 ELO. Le compte actuel est conservé et reste accessible depuis cette page.</p>'+
     '<div class="acc-create-row">'+
       '<input class="acc-input" id="acc-new-input" type="text" maxlength="'+ACC_NAME_MAX+'" '+
         'placeholder="Pseudo du nouveau compte" autocomplete="off" spellcheck="false" aria-label="Pseudo du nouveau compte">'+
@@ -348,20 +350,6 @@ function wireAccountPage(){
     if(e.key==='Escape'){_accRenaming=false;_accRenameDraft=null;renderAccountPage();}
   });
 
-  host.querySelector('#acc-logout')?.addEventListener('click',()=>{
-    if(accountBusy())return;
-    // On annonce OÙ le bouton emmène avant de cliquer : sur le compte
-    // précédent, ou sur un compte tout neuf s'il n'y en a pas d'autre.
-    const cible=accountLogoutTarget();
-    showConfirmModal(
-      cible
-        ? 'Quitter « '+CUR_ACC+' » et reprendre « '+cible+' » ? Le compte '+CUR_ACC+' est conservé.'
-        : 'Quitter « '+CUR_ACC+' » ? C\'est votre seul compte : un nouveau compte vide sera créé, '+
-          'et vous pourrez revenir sur celui-ci quand vous voudrez.',
-      ()=>{const err=accountLogout();if(err)showNotif(err,'err');},
-      {okLabel:'Quitter',okClass:'btn-primary'});
-  });
-
   host.querySelectorAll('[data-switch]').forEach(b=>{
     b.addEventListener('click',()=>accountAskSwitch(b.getAttribute('data-switch')));
   });
@@ -409,22 +397,28 @@ function accountBusy(){
   return false;
 }
 
+// CHANGER DE COMPTE NE SE CONFIRME PLUS. La confirmation annonçait le rang et
+// l'ELO du compte visé et promettait que l'actuel serait conservé : trois
+// choses que la ligne qu'on vient de toucher affiche déjà, pour une action qui
+// ne détruit rien et se défait en touchant la ligne d'à côté. On ne fait
+// confirmer que ce qui se perd — c'est ce qui donne son poids à la
+// confirmation de suppression, juste en dessous.
+//
+// Le refus en pleine partie, lui, reste (accountBusy) : celui-là abandonnerait
+// vraiment quelque chose.
 function accountAskSwitch(username){
   if(!username||accountBusy())return;
-  const s=accountSummary(username);
-  showConfirmModal(
-    'Passer sur le compte « '+username+' » ('+s.rank.name+' · '+s.elo+' ELO) ? '+
-    'Le compte '+CUR_ACC+' est conservé, vous pourrez y revenir.',
-    ()=>accountSwitch(username),
-    {okLabel:'Changer de compte',okClass:'btn-primary'});
+  accountSwitch(username);
 }
 
 function accountAskDelete(username){
   if(!username)return;
-  const s=accountSummary(username);
+  // L'INVENTAIRE DU COMPTE N'EST PAS RÉCITÉ. « Ses 13 parties classées, ses
+  // créatures et ses 903 perles seront perdues » : trois chiffres à lire au
+  // moment où l'on veut juste savoir si on appuie ou non. « Définitivement » et
+  // « irréversible » disent tout ce qu'il faut savoir pour décider.
   showConfirmModal(
-    'Supprimer définitivement « '+username+' » ? Ses '+s.games+' parties classées, '+
-    'ses créatures et ses '+s.pearls+' perles seront perdues. Cette action est irréversible.',
+    'Supprimer définitivement « '+username+' » ? Cette action est irréversible.',
     ()=>{
       accountDelete(username);
       showNotif('Compte « '+username+' » supprimé.','ok');

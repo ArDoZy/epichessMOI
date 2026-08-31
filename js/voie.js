@@ -225,8 +225,12 @@ function vvEloExplain(calc,result,peakElo){
   }
   if(result==='loss'&&calc.bottomed)
     return 'Vous êtes au bas de l\'échelle : impossible de descendre plus bas.';
-  if(calc.games<VV_K_STEPS[0].games)
-    return 'Partie de placement '+(calc.games+1)+'/'+VV_K_STEPS[0].games+' : elle compte double.';
+  // LES PARTIES DE PLACEMENT NE S'ANNONCENT PLUS. « Partie de placement 2/5 :
+  // elle compte double » expliquait un écart d'ELO par une règle de plus à
+  // retenir, à un moment — les cinq premières parties — où le joueur découvre
+  // déjà tout le reste. L'écart, lui, se lit sur la ligne au-dessus, et il est
+  // dans le bon sens : c'est une bonne nouvelle qui n'a pas besoin de note de
+  // bas de page.
   if(calc.climbing&&result==='win')
     return 'Bonus d\'ascension : ×'+calc.gainMult.toFixed(1)+' jusqu\'à '+VV_CLIMB_TOP+' ELO.';
   if(calc.climbing&&result==='loss')
@@ -338,11 +342,11 @@ function renderVoiePage(){
   let side=0;
   const sideCls=()=>(side++%2===0)?'vm-l':'vm-r';
   UNLOCK_MILESTONES.forEach((milestone,idx)=>{
-    // Les cinq jalons de départ (Roi, Dame, Fourmi, Peureux, Éléphant de
-    // guerre — `starter`) sont à 0 ELO, donc numériquement dans la tranche
-    // Bois, mais ils ne portent PAS son bandeau : ils forment le socle tout
-    // en bas de la Voie, sous l'arène. Le bandeau Bois s'ouvre normalement au
-    // jalon suivant (Preux Chevalier, 50 ELO), premier jalon non-`starter`.
+    // Les cinq jalons de départ (Roi, Dame et les trois Gardes — `starter`)
+    // sont à 0 ELO, donc numériquement dans la tranche Bois, mais ils ne
+    // portent PAS son bandeau : ils forment le socle tout en bas de la Voie,
+    // sous l'arène. Le bandeau Bois s'ouvre normalement au jalon suivant
+    // (les 20 perles à 25 ELO), premier jalon non-`starter`.
     if(!milestone.starter){
       const mRank=vvGetRank(milestone.eloRequired);
       if(mRank.id!==lastRankId){lastRankId=mRank.id;html+='<div class="vm-rank-section"><div class="vm-rank-bar">'+rankMedalHTML(mRank.id,'rm-sm')+'<span class="vm-rank-label" style="color:'+mRank.color+'">'+mRank.name+'</span><span class="vm-rank-range">'+mRank.min+'–'+(mRank.max===9999?'∞':mRank.max)+' ELO</span></div></div>';}

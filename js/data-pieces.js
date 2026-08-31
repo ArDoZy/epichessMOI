@@ -187,108 +187,132 @@ const BOARD_SKINS=[
 // ----------------------------------------------------------------
 // COFFRES : six raretés nommées d'après les pièces d'échecs
 // ----------------------------------------------------------------
-// Ils s'obtiennent en enchaînant les victoires : 1re victoire = Pion,
-// 2e d'affilée = Cavalier, puis Fou, Tour, Dame et Roi. Une défaite remet la
-// série à zéro (voir economy.js::economySettle).
+// Ils s'obtiennent de trois façons, et de trois seulement : la RÉCOMPENSE
+// JOURNALIÈRE (DAILY_REWARDS, plus bas), la COLONNE DES VICTOIRES
+// (js/rewards.js) et l'achat en perles au Magasin.
 //
-// rolls   : nombre de lots de pièces tirés EN MOYENNE (le tirage réel varie
-//           de ±1, voir chestRollCount dans js/economy.js)
-// qty     : fourchette de quantité par lot
+// LA PIÈCE INÉDITE EST RARE. Elle sortait d'un coffre sur trente au Pion et
+// d'un sur deux au Roi : débloquer tout le catalogue ne demandait qu'une
+// poignée de bons coffres, et le Coffre Roi n'avait plus rien à donner. Les
+// six probabilités sont 1 %, 2,8 %, 3 %, 5 %, 10 % et 25 % : une pièce
+// inédite est un événement, y compris tout en haut.
+//
+// Ce qui a été retiré d'un côté est rendu de l'autre : la probabilité qu'un
+// lot soit un BON lot (tirage nettement plus favorable aux pièces chères) est
+// calculée à partir de newChance (chestLuckyChance, js/economy.js). Un coffre
+// sans pièce inédite reste donc un bon coffre.
+//
+// LES QUANTITÉS SONT DES TOTAUX, ET ELLES SONT PETITES.
+// Les coffres se décrivaient en `rolls` lots de `qty` exemplaires chacun, avec
+// un facteur « bon lot » qui doublait la quantité : personne ne pouvait dire,
+// en lisant la table, ce qu'un coffre donnait vraiment. La réponse était
+// « beaucoup trop » — plus de 70 exemplaires en moyenne par pièce en stock,
+// c'est-à-dire un inventaire où plus rien de ce qu'on ouvre ne change quoi que
+// ce soit à ce qu'on peut aligner.
+//
+// `total` est maintenant le nombre d'exemplaires que le coffre donne EN TOUT,
+// tous lots confondus (chestRoll, js/economy.js, tire ce total puis le répartit
+// sur ses lots). `pearls` (CHEST_PEARLS plus bas) suit la même échelle et est
+// lui aussi un total. On lit donc la table comme le joueur voit le coffre :
+//
+//   pion 1-3 · cavalier 3-5 · fou 5-8 · tour 8-12 · dame 12-20 · roi 20-30
+//
+// rolls     : nombre de lots tirés EN MOYENNE (±1, voir chestRollCount). Ce
+//             n'est plus qu'un rythme de cérémonie : le total ne dépend pas de
+//             lui, il est seulement découpé en autant de parts.
+// total     : fourchette du NOMBRE TOTAL d'exemplaires donnés
 // newChance : probabilité de contenir une pièce ENCORE JAMAIS DÉBLOQUÉE
-// bias    : plus il est élevé, plus les pièces chères sont probables
-//
-// LA PIÈCE INÉDITE EST DEVENUE RARE. Elle sortait d'un coffre sur trente au
-// Pion et d'un sur deux au Roi : débloquer tout le catalogue ne demandait
-// qu'une poignée de bonnes séries, et le Coffre Roi n'avait plus rien à
-// donner. Les six probabilités sont maintenant 1 %, 2,8 %, 3 %, 5 %, 10 % et
-// 25 % : une pièce inédite est un événement, y compris tout en haut.
-//
-// Ce qui a été retiré d'un côté est rendu de l'autre : les lots ordinaires
-// sont plus gros, plus nombreux, et la probabilité qu'un lot soit un BON lot
-// est calculée à partir de newChance (chestLuckyChance, js/economy.js). Un
-// coffre sans pièce inédite reste donc un bon coffre.
-// LES QUANTITÉS ONT ÉTÉ DIVISÉES PAR DEUX ET DEMI. Un Coffre Roi rendait 144
-// exemplaires ; les pièces, elles, ne se perdent qu'à la défaite et une par
-// une (economySettle plus haut ne retire que les non-survivantes). Le robinet
-// coulait bien plus vite que la fuite : au bout de quelques séries, tous les
-// stocks étaient saturés et un coffre ne changeait plus rien à ce qu'on
-// pouvait aligner. Le NOMBRE DE LOTS ne bouge pas — c'est lui qui fait la
-// cérémonie, on n'a rien à gagner à la raccourcir —, seule la quantité par lot
-// est resserrée.
+// bias      : plus il est élevé, plus les pièces chères sont probables
 const CHESTS=[
-  {id:'pion',    tier:0,name:'Coffre Pion',    rolls:2,qty:[1,2], newChance:0.010,bias:0.60,color:'#7f8b94'},
-  {id:'cavalier',tier:1,name:'Coffre Cavalier',rolls:3,qty:[1,3], newChance:0.028,bias:0.90,color:'#7d9c6a'},
-  {id:'fou',     tier:2,name:'Coffre Fou',     rolls:4,qty:[2,4], newChance:0.030,bias:1.25,color:'#5f93b8'},
-  {id:'tour',    tier:3,name:'Coffre Tour',    rolls:4,qty:[2,5], newChance:0.050,bias:1.80,color:'#9a6fc4'},
-  {id:'dame',    tier:4,name:'Coffre Dame',    rolls:5,qty:[3,6], newChance:0.100,bias:2.40,color:'#d0742e'},
-  {id:'roi',     tier:5,name:'Coffre Roi',     rolls:6,qty:[4,8], newChance:0.250,bias:3.30,color:'#d9b64e'},
+  {id:'pion',    tier:0,name:'Coffre Pion',    rolls:2,total:[1,3],  newChance:0.010,bias:0.60,color:'#7f8b94'},
+  {id:'cavalier',tier:1,name:'Coffre Cavalier',rolls:3,total:[3,5],  newChance:0.028,bias:0.90,color:'#7d9c6a'},
+  {id:'fou',     tier:2,name:'Coffre Fou',     rolls:3,total:[5,8],  newChance:0.030,bias:1.25,color:'#5f93b8'},
+  {id:'tour',    tier:3,name:'Coffre Tour',    rolls:4,total:[8,12], newChance:0.050,bias:1.80,color:'#9a6fc4'},
+  {id:'dame',    tier:4,name:'Coffre Dame',    rolls:5,total:[12,20],newChance:0.100,bias:2.40,color:'#d0742e'},
+  {id:'roi',     tier:5,name:'Coffre Roi',     rolls:6,total:[20,30],newChance:0.250,bias:3.30,color:'#d9b64e'},
 ];
 function chestById(id){return CHESTS.find(c=>c.id===id)||CHESTS[0];}
-// Une série de n victoires donne le coffre de rang n-1 — et RIEN au-delà du
-// sixième.
-//
-// La borne était un PLAFOND (`Math.min(..., CHESTS.length-1)`) : passé le
-// Coffre Roi, chaque victoire supplémentaire de la journée en redonnait un
-// autre, puis un autre, indéfiniment. La série du jour n'avait donc pas de
-// fin : le palier le plus rare du jeu devenait, une fois les six coffres
-// tombés, le lot ordinaire de toute victoire suivante — et les cinq premiers
-// paliers ne servaient plus qu'à y arriver.
-//
-// La série s'arrête maintenant à son dernier coffre : `null` veut dire « la
-// série du jour est terminée, elle repart demain ». Ce que les victoires
-// suivantes rapportent est ailleurs — dans la COLONNE DES VICTOIRES
-// (js/rewards.js), qui n'a pas de limite quotidienne.
-function chestForStreak(streak){
-  const i=Math.max(1,streak)-1;
-  return i<CHESTS.length?CHESTS[i]:null;
-}
+// IL N'Y A PLUS DE SÉRIE DU JOUR, DONC PLUS DE chestForStreak(). Les six
+// coffres se gagnaient en enchaînant les victoires dans la journée ; ils
+// tombent maintenant par la RÉCOMPENSE JOURNALIÈRE (DAILY_REWARDS, plus bas),
+// la COLONNE DES VICTOIRES (js/rewards.js) et le Magasin.
 
 // ----------------------------------------------------------------
 // PERLES : la monnaie des coffres
 // ----------------------------------------------------------------
-// Les coffres ne contiennent plus seulement des pièces : ils contiennent
-// aussi des PERLES, et les perles rachètent des coffres. C'est ce qui donne
-// une sortie à une série de coffres médiocres : même sans pièce inédite, on
-// avance vers le coffre qu'on vise.
+// Les coffres ne contiennent pas seulement des pièces : ils contiennent aussi
+// des PERLES, et les perles rachètent des coffres. C'est ce qui donne une
+// sortie à un coffre médiocre : même sans pièce inédite, on avance vers le
+// coffre qu'on vise.
 //
-// pearls : fourchette de perles contenues dans le coffre. Elle vaut à peu
-//          près la MOITIÉ de ce qu'elle valait : un coffre doit faire avancer
-//          vers le suivant, pas se payer lui-même.
-// price  : prix du coffre, payable en perles depuis le menu principal.
+// pearls : nombre de perles contenues dans le coffre, EN TOUT. Un seul tirage,
+//          sans facteur « bon lot » : la fourchette écrite ici est exactement
+//          ce que le joueur peut recevoir.
+// price  : prix du coffre, payable en perles au Magasin.
 //
-// UN COFFRE NE DOIT JAMAIS SE REMBOURSER, même sur son meilleur tirage. Le
-// Coffre Pion y arrivait une fois sur trente : 18 perles au maximum, ×1,8 sur
-// un bon lot, soit 32 perles pour un prix de 30 — de quoi en racheter un et
-// recommencer indéfiniment, chaque tour rapportant des pièces en prime. Le
-// plafond de chaque coffre (haut de fourchette × 1,8, le facteur « bon lot »
-// de chestRoll) est maintenant sous la moitié de son prix :
+// TOUTE L'ÉCHELLE A ÉTÉ DIVISÉE PAR DIX, perles ET prix ensemble. Les perles
+// suivent maintenant la même fourchette que les exemplaires (voir `total` dans
+// CHESTS) : pion 1-3, cavalier 3-5, fou 5-8, tour 8-12, dame 12-20, roi 20-30.
+// Laisser les prix à leur ancienne échelle (30 à 750) aurait fermé le Magasin :
+// il aurait fallu une trentaine de Coffres Roi pour en racheter un.
 //
-//   pion 16/30 · cavalier 36/120 · fou 52/150
-//   tour 90/250 · dame 158/500 · roi 252/750
+// UN COFFRE NE DOIT JAMAIS SE REMBOURSER, même sur son meilleur tirage : le
+// haut de chaque fourchette reste sous la MOITIÉ du prix.
+//
+//   pion 3/8 · cavalier 5/16 · fou 8/26 · tour 12/40 · dame 20/64 · roi 30/100
 //
 // Toucher à l'une de ces fourchettes, c'est refaire ce calcul.
 const CHEST_PEARLS={
-  pion:    {pearls:[3,9],    price:30},
-  cavalier:{pearls:[8,20],   price:120},
-  fou:     {pearls:[13,29],  price:150},
-  tour:    {pearls:[22,50],  price:250},
-  dame:    {pearls:[40,88],  price:500},
-  roi:     {pearls:[65,140], price:750},
+  pion:    {pearls:[1,3],  price:8},
+  cavalier:{pearls:[3,5],  price:16},
+  fou:     {pearls:[5,8],  price:26},
+  tour:    {pearls:[8,12], price:40},
+  dame:    {pearls:[12,20],price:64},
+  roi:     {pearls:[20,30],price:100},
 };
 function chestPearlRange(id){return (CHEST_PEARLS[id]||CHEST_PEARLS.pion).pearls;}
 function chestPearlPrice(id){return (CHEST_PEARLS[id]||CHEST_PEARLS.pion).price;}
 
-// Coffre de réapprovisionnement quotidien : +2 exemplaires de CHAQUE pièce
-// possédée. C'est le filet de sécurité du système : sans lui, un joueur qui
-// perd tout son inventaire ne pourrait plus composer d'armée du tout.
+// Coffre de réapprovisionnement quotidien : le filet de sécurité du système.
+// Sans lui, un joueur qui perd tout son inventaire ne pourrait plus composer
+// d'armée du tout.
 //
-// Il était à 4, et c'était en réalité LA plus grosse source de pièces du jeu :
-// versée tous les jours, sur tout le catalogue possédé, sans rien demander —
-// bien devant les coffres de série, qui eux se méritent. Resserrer les coffres
-// en le laissant à 4 n'aurait presque rien changé à ce qu'on a en stock. À 2,
-// il reste ce qu'il doit être : de quoi se refaire une armée, pas de quoi en
-// accumuler dix.
-const DAILY_CHEST={id:'reappro',name:'Coffre de réapprovisionnement',perPiece:2};
+// IL NE REMPLIT QUE CE QUI EST VIDE. Versé tous les jours, sur tout le
+// catalogue possédé, sans rien demander, il était en réalité la plus grosse
+// source de pièces du jeu — très loin devant les coffres, qui eux se méritent.
+// Resserrer les coffres en le laissant tel quel n'aurait rien changé au stock :
+// il aurait continué d'empiler deux exemplaires par pièce et par jour,
+// indéfiniment. `cap` est le SEUIL au-dessous duquel il verse : une pièce déjà
+// pourvue ne reçoit rien, une pièce laminée par une défaite est remise debout
+// dès le lendemain. Le filet reste tendu, le robinet est fermé.
+const DAILY_CHEST={id:'reappro',name:'Coffre de réapprovisionnement',perPiece:2,cap:10};
+
+// ----------------------------------------------------------------
+// LA RÉCOMPENSE JOURNALIÈRE : un lot par jour, un cycle de trente
+// ----------------------------------------------------------------
+// Elle remplace la SÉRIE DU JOUR, qui demandait d'enchaîner six victoires dans
+// la même journée et qu'une seule défaite refermait jusqu'au lendemain : elle
+// punissait exactement le joueur qui joue beaucoup, et elle ne donnait rien du
+// tout à celui qui passe dire bonjour.
+//
+// Ici, revenir suffit. Chaque jour ouvre le lot suivant du cycle ; le cycle
+// fait trente jours et RECOMMENCE indéfiniment (voir dailyRewardStep,
+// js/rewards.js, qui indexe modulo la longueur du tableau). Un jour manqué ne
+// coûte rien : on reprend là où on s'était arrêté, le cycle avance d'un cran
+// par récupération et non par jour de calendrier.
+//
+// Trois natures de lot, les mêmes que la colonne des victoires :
+//   {chest:'<id>'}  un coffre, ouvert avec la cérémonie habituelle
+//   {pearls:n}      n perles
+//   {jokers:n}      n jokers, convertis en la créature de son choix
+const DAILY_REWARDS=[
+  {chest:'pion'},{pearls:10},{chest:'cavalier'},{chest:'pion'},{jokers:5},
+  {chest:'fou'}, {chest:'pion'},{pearls:10},    {chest:'cavalier'},{chest:'pion'},
+  {jokers:5},    {chest:'fou'},{chest:'pion'},  {pearls:10},   {chest:'tour'},
+  {chest:'pion'},{jokers:5},   {chest:'cavalier'},{chest:'pion'},{pearls:10},
+  {chest:'fou'}, {chest:'pion'},{jokers:5},     {chest:'cavalier'},{chest:'pion'},
+  {pearls:10},   {chest:'fou'},{chest:'pion'},  {jokers:5},    {chest:'tour'},
+];
 
 // ----------------------------------------------------------------
 // CATALOGUE COMPLET DES PIÈCES (version light)
@@ -312,7 +336,7 @@ const DAILY_CHEST={id:'reappro',name:'Coffre de réapprovisionnement',perPiece:2
 // paraphrase son déplacement.
 const PIECES=[
   {id:'roi',name:'Roi',emoji:'👑',class:'Monarque',value:3,qty:1,pieceType:'k',ability:null},
-  {id:'empereur',name:'Empereur',emoji:'⚜️',class:'Monarque',value:7,qty:1,pieceType:'k',ability:'Espadon : Met en échecs le roi adverse en l\'attaquant en cavalier'},
+  {id:'empereur',name:'Empereur',emoji:'⚜️',class:'Monarque',value:8,qty:1,pieceType:'k',ability:'Espadon : Met en échecs le roi adverse en l\'attaquant en cavalier'},
   {id:'amazone',name:'Amazone',emoji:'🏹',class:'Général',value:7,qty:1,pieceType:'q',ability:null},
   // Le Chevaucheur de Rhinocéros s'appelle désormais le Centaure. L'IDENTIFIANT
   // reste 'chevaucheur-rhinoceros' : c'est la clé sous laquelle les armées, les
@@ -324,10 +348,17 @@ const PIECES=[
   {id:'cavalier-primordial',name:'Cavalier Primordial',emoji:'♞',class:'Primordiale',value:3,qty:2,pieceType:'n',ability:null},
   {id:'fou-primordial',name:'Fou Primordial',emoji:'♝',class:'Primordiale',value:3,qty:2,pieceType:'b',ability:null},
   {id:'tour-primordiale',name:'Tour Primordiale',emoji:'♜',class:'Primordiale',value:5,qty:2,pieceType:'r',ability:null},
-  {id:'peureux',name:'Peureux',emoji:'🫣',class:'Brute',value:2,qty:2,pieceType:'p',ability:'Retraite Prudente : Il est contraint de rester dans son camp (4 premières lignes)'},
-  {id:'fourmi',name:'Fourmi',emoji:'🐜',class:'Brute',value:2,qty:2,pieceType:'p',ability:'Obstination : Ne peut pas reculer, même si elle atteint l\'autre côté de l\'échiquier'},
+  {id:'fourmi',name:'Fourmi',emoji:'🐜',class:'Brute',value:2,qty:2,pieceType:'p',ability:'Promotion : Se promeut si elle arrive sur la dernière rangée'},
   {id:'preux-chevalier',name:'Preux Chevalier',emoji:'🛡️',class:'Brute',value:3,qty:2,pieceType:'r',ability:'Cuirasse : Les pions adverses ne peuvent pas le capturer'},
   {id:'dresseur-elephant',name:'Éléphant de guerre',emoji:'🐘',class:'Brute',value:3,qty:2,pieceType:'r',ability:'Charge : Détruit toutes les pièces ennemies sur son passage'},
+  // LES TROIS GARDES : les premières créatures du jeu, et les plus simples à
+  // comprendre. Chacune ne connaît qu'UNE façon d'aller d'une case à l'autre —
+  // l'Eau tout droit, le Feu en biais, la Pierre partout mais une seule case —
+  // ce qui en fait le vocabulaire de base du plateau : orthogonal, diagonal,
+  // les deux. Les deux premières n'ont AUCUN pouvoir, et c'est voulu : on
+  // apprend à déplacer avant d'apprendre à déclencher.
+  {id:'garde-eau',name:'Garde d\'Eau',emoji:'💧',class:'Brute',value:2,qty:2,pieceType:'p',ability:null},
+  {id:'garde-feu',name:'Garde de Feu',emoji:'🔥',class:'Brute',value:2,qty:2,pieceType:'p',ability:null},
   {id:'garde-pierre',name:'Garde de Pierre',emoji:'🪨',class:'Brute',value:3,qty:2,pieceType:'p',ability:'Retour à l\'Etat Fondamental : S\'ancre sur place, devenant imprenable mais inamovible',hasPower:true,powerLabel:'Retour à l\'Etat Fondamental'},
   {id:'meduse',name:'Méduse',emoji:'🪼',class:'Sorcier',value:2,qty:2,pieceType:'p',ability:'Pétrification : Paralyse les pièces ennemies diagonalement adjacentes'},
   {id:'typhon',name:'Typhon',emoji:'🌪️',class:'Sorcier',value:6,qty:2,pieceType:'b',ability:'Orage Sanguinaire : Les pièces ennemies adjacentes sont détruites après son déplacement'},
@@ -335,12 +366,26 @@ const PIECES=[
   {id:'pretre',name:'Prêtre',emoji:'✝️',class:'Sorcier',value:4,qty:2,pieceType:'r',ability:'Foi Inébranlable : Les ennemis ne peuvent pas capturer les pièces alliées (sauf Monarque) dans les cases diagonalement adjacentes'},
 ];
 
-// LE SEUL VRAI PION du jeu. La Fourmi, la Méduse et le Garde de Pierre portent
+// LE SEUL VRAI PION du jeu. La Fourmi, la Méduse et les trois Gardes portent
 // `pieceType:'p'` pour le moteur, mais ce ne sont PAS des pions : ni la
 // Cuirasse du Preux Chevalier, ni le Hurlement de la Banshee, ni la Domination
 // du Grand Maître ne les concernent.
 const TRUE_PAWN_IDS=new Set(['std-pawn']);
 function isTruePawn(cell){return !!cell&&TRUE_PAWN_IDS.has(cell.pieceId);}
+
+// CE QUI SE PROMEUT EN ARRIVANT AU BOUT. Le pion, bien sûr — et la FOURMI,
+// dont c'est désormais tout le pouvoir. Elle a longtemps porté l'inverse
+// (« Obstination : ne peut pas reculer, même si elle atteint l'autre côté de
+// l'échiquier ») : une créature qui traversait tout le plateau pour finir
+// clouée dans un coin, ce qui se lisait comme une punition d'avoir avancé.
+//
+// SE PROMOUVOIR EN FOURMI EST DONC EXCLU (voir showPromoModal,
+// js/rules-engine.js) : le lot d'une promotion serait une pièce qui n'attend
+// que de se promouvoir à son tour, sur la case même où elle vient d'arriver.
+// C'est aussi pourquoi cet ensemble n'est PAS `TRUE_PAWN_IDS` : la Fourmi
+// reste tout sauf un pion pour le reste des règles.
+const PROMOTING_IDS=new Set(['std-pawn','fourmi']);
+function pieceCanPromote(pieceId){return PROMOTING_IDS.has(pieceId);}
 const CLASS_ORDER={Monarque:1,Général:2,Primordiale:3,Brute:4,Sorcier:5};
 // Couleurs partagées par classe de pièce : utilisées par le menu contextuel factorisé
 const CLASS_COLOR_VARS={Monarque:'var(--monarque)',Général:'var(--general)',Primordiale:'var(--primordiale)',Brute:'var(--brute)',Sorcier:'var(--sorcier)'};
@@ -349,20 +394,26 @@ const CLASS_COLOR_VARS={Monarque:'var(--monarque)',Général:'var(--general)',Pr
 // TABLE DE DÉBLOCAGE : pièces débloquées par palier d'ELO
 // ----------------------------------------------------------------
 // Un compte neuf ne possède que son Monarque et son Général : tout le reste
-// s'obtient en jouant. Le Peureux, la Fourmi et l'Éléphant de guerre arrivent
-// dans les coffres du tutoriel (js/tutorial.js) ; les trois Primordiales ne
-// s'obtiennent QUE dans les coffres (il n'y a plus de « choix de la
-// Primordiale » à la création du compte : on ne choisit pas ce qu'on ne
-// connaît pas encore).
+// s'obtient en jouant. Les TROIS GARDES (Eau, Feu, Pierre) arrivent dans les
+// coffres du tutoriel (js/tutorial.js) ; les trois Primordiales ne s'obtiennent
+// QUE dans les coffres (il n'y a plus de « choix de la Primordiale » à la
+// création du compte : on ne choisit pas ce qu'on ne connaît pas encore).
 // `coffre:true` = la pièce n'est ni donnée au départ, ni débloquée par un
 // palier d'ELO : elle n'existe que comme contenu de coffre. `voieMilestone`
-// la fait quand même apparaître comme jalon sur la Voie (c'est le cas du
-// Peureux, de la Fourmi et de l'Éléphant de guerre : offerts par le tutoriel,
-// pas par l'ELO, mais on veut les VOIR sur la Voie). `starter` marque les
-// cinq jalons de départ (Roi, Dame, Fourmi, Peureux, Éléphant de guerre) :
-// tous à 0 ELO, ils sont rendus TOUT EN BAS de la Voie, sous l'arène Bois,
-// sans bandeau de rang — voir renderVoiePage (js/voie.js), qui saute leur
-// bandeau et ouvre celui de Bois juste après (au Preux Chevalier).
+// la fait quand même apparaître comme jalon sur la Voie (c'est le cas des
+// trois Gardes : offertes par le tutoriel, pas par l'ELO, mais on veut les
+// VOIR sur la Voie). `starter` marque les cinq jalons de départ (Roi, Dame,
+// Garde d'Eau, Garde de Feu, Garde de Pierre) : tous à 0 ELO, ils sont rendus
+// TOUT EN BAS de la Voie, sous l'arène Bois, sans bandeau de rang — voir
+// renderVoiePage (js/voie.js), qui saute leur bandeau et ouvre celui de Bois
+// juste après (à la Fourmi).
+//
+// LES TROIS PREMIÈRES CRÉATURES SONT LES TROIS GARDES, et non plus le Peureux,
+// la Fourmi et l'Éléphant de guerre. Elles disent le vocabulaire du plateau
+// (tout droit, en biais, les deux) au lieu d'ouvrir sur trois pouvoirs à
+// retenir. La Fourmi et l'Éléphant de guerre n'ont pas disparu : ils sont
+// devenus les DEUX PREMIERS DÉBLOCAGES PAR L'ELO (30 et 75), c'est-à-dire les
+// deux premières récompenses de vraies parties.
 // Jalons de RÉCOMPENSE (pas de nouvelle pièce) : ils jalonnent la Voie entre
 // deux déblocages, pour qu'il y ait toujours quelque chose à décrocher de
 // proche en proche plutôt que de longues sections vides entre deux pièces.
@@ -372,35 +423,40 @@ const CLASS_COLOR_VARS={Monarque:'var(--monarque)',Général:'var(--general)',Pr
 // unique et stable : vvCheckRewardMilestones (js/voie.js) l'utilise pour ne
 // verser la récompense qu'une seule fois, même si l'ELO redescend puis
 // remonte au-dessus du palier.
+//
+// LES RÉCOMPENSES EN PERLES SUIVENT LA NOUVELLE ÉCHELLE (voir CHEST_PEARLS) :
+// vingt perles quand un Coffre Pion en coûte huit, c'était déjà deux coffres ;
+// à l'ancienne échelle, elles ne payaient même pas le premier.
 const UNLOCK_TABLE=[
   {pieceId:'roi',eloRequired:0,starter:true},{pieceId:'dame',eloRequired:0,starter:true},
-  {pieceId:'fourmi',eloRequired:0,coffre:true,voieMilestone:true,starter:true},
-  {pieceId:'peureux',eloRequired:0,coffre:true,voieMilestone:true,starter:true},
-  {pieceId:'dresseur-elephant',eloRequired:0,coffre:true,voieMilestone:true,starter:true},
+  {pieceId:'garde-eau',eloRequired:0,coffre:true,voieMilestone:true,starter:true},
+  {pieceId:'garde-feu',eloRequired:0,coffre:true,voieMilestone:true,starter:true},
+  {pieceId:'garde-pierre',eloRequired:0,coffre:true,voieMilestone:true,starter:true},
   {pieceId:'cavalier-primordial',eloRequired:0,coffre:true},
   {pieceId:'fou-primordial',eloRequired:0,coffre:true},
   {pieceId:'tour-primordiale',eloRequired:0,coffre:true},
-  {id:'rw-25',reward:'pearls',amount:20,eloRequired:25},
+  {id:'rw-25',reward:'pearls',amount:6,eloRequired:25},
+  {pieceId:'fourmi',eloRequired:30},
   {pieceId:'preux-chevalier',eloRequired:50},
+  {pieceId:'dresseur-elephant',eloRequired:75},
   {id:'rw-100',reward:'copies',copyId:'preux-chevalier',qty:2,eloRequired:100},
   {pieceId:'chevaucheur-rhinoceros',eloRequired:150},
-  {id:'rw-180',reward:'pearls',amount:25,eloRequired:180},
+  {id:'rw-180',reward:'pearls',amount:8,eloRequired:180},
   {pieceId:'meduse',eloRequired:210},{pieceId:'amazone',eloRequired:260},
   {id:'rw-320',reward:'copies',copyId:'chevaucheur-rhinoceros',qty:2,eloRequired:320},
-  {id:'rw-400',reward:'pearls',amount:30,eloRequired:400},
+  {id:'rw-400',reward:'pearls',amount:10,eloRequired:400},
   {pieceId:'empereur',eloRequired:480},
   {id:'rw-550',reward:'copies',copyId:'meduse',qty:2,eloRequired:550},
-  {pieceId:'garde-pierre',eloRequired:600},
-  {id:'rw-700',reward:'pearls',amount:35,eloRequired:700},
+  {id:'rw-700',reward:'pearls',amount:12,eloRequired:700},
   {pieceId:'pretre',eloRequired:800},{pieceId:'typhon',eloRequired:1000,bigReward:true},
   {id:'rw-900',reward:'copies',copyId:'empereur',qty:2,eloRequired:900},
-  {id:'rw-1080',reward:'pearls',amount:40,eloRequired:1080},
+  {id:'rw-1080',reward:'pearls',amount:14,eloRequired:1080},
   {pieceId:'banshee',eloRequired:1150},
   {id:'rw-1300',reward:'copies',copyId:'garde-pierre',qty:2,eloRequired:1300},
-  {id:'rw-1450',reward:'pearls',amount:45,eloRequired:1450},
+  {id:'rw-1450',reward:'pearls',amount:16,eloRequired:1450},
   {pieceId:'grand-maitre',eloRequired:1700},
   {id:'rw-1600',reward:'copies',copyId:'pretre',qty:2,eloRequired:1600},
-  {id:'rw-1850',reward:'pearls',amount:50,eloRequired:1850},
+  {id:'rw-1850',reward:'pearls',amount:18,eloRequired:1850},
   {pieceId:null,eloRequired:2000,bigReward:true,label:'Or Légendaire atteint !'},
 ];
 

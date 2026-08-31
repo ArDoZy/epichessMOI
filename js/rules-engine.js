@@ -163,18 +163,6 @@ function generateMovesRaw(board,r,c,gs){
     case 'cavalier-primordial':moves=knightMoves(board,r,c,p);break;
     case 'fou-primordial':moves=slidingMoves(board,r,c,p,[[1,1],[1,-1],[-1,1],[-1,-1]],gs);break;
     case 'tour-primordiale':moves=slidingMoves(board,r,c,p,[[1,0],[-1,0],[0,1],[0,-1]],gs);break;
-    // PEUREUX : une case dans les huit directions, MAIS jamais hors de son
-    // camp — les quatre premières rangées du sien (« Retraite Prudente »).
-    // Blanc démarre en bas (r=7) : son camp est r>=4. Noir en haut : r<=3.
-    case 'peureux':{
-      const inCamp=nr=>p.color==='w'?nr>=4:nr<=3;
-      for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++){
-        if(!dr&&!dc)continue;
-        const nr=r+dr,nc=c+dc;
-        if(!inB(nr,nc)||!inCamp(nr))continue;
-        if(!board[nr][nc]||board[nr][nc].color!==p.color)moves.push({r:nr,c:nc});
-      }
-      break;}
     case 'fourmi':{
       // La Fourmi N'EST PAS un pion (voir TRUE_PAWN_IDS, data-pieces.js) : la
       // Cuirasse du Preux Chevalier, qui n'arrête que les pions, ne la
@@ -200,6 +188,14 @@ function generateMovesRaw(board,r,c,gs){
       for(const[dr,dc] of[[1,0],[-1,0],[0,1],[0,-1]]){const nr=r+dr,nc=c+dc;if(inB(nr,nc)&&(!board[nr][nc]||board[nr][nc].color!==p.color))moves.push({r:nr,c:nc});}
       for(const[dr,dc] of[[2,0],[-2,0],[0,2],[0,-2]]){const nr=r+dr,nc=c+dc;if(!inB(nr,nc))continue;const mr=r+dr/2,mc2=c+dc/2;if(board[mr][mc2]&&board[mr][mc2].color===p.color)continue;if(board[nr][nc]&&board[nr][nc].color===p.color)continue;moves.push({r:nr,c:nc,destroysPath:true,fromR:r,fromC:c});}
       break;
+    // LES TROIS GARDES, et rien de plus : une seule case, mais chacune sa
+    // grammaire. L'Eau ne connaît que l'orthogonale, le Feu que la diagonale,
+    // la Pierre les deux. Ce sont les trois premières créatures du joueur :
+    // elles enseignent le plateau, elles ne cachent aucun pouvoir.
+    case 'garde-eau':
+      for(const[dr,dc] of[[1,0],[-1,0],[0,1],[0,-1]]){const nr=r+dr,nc=c+dc;if(inB(nr,nc)&&(!board[nr][nc]||board[nr][nc].color!==p.color))moves.push({r:nr,c:nc});}break;
+    case 'garde-feu':
+      for(const[dr,dc] of[[1,1],[1,-1],[-1,1],[-1,-1]]){const nr=r+dr,nc=c+dc;if(inB(nr,nc)&&(!board[nr][nc]||board[nr][nc].color!==p.color))moves.push({r:nr,c:nc});}break;
     case 'garde-pierre':
       for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++){if(!dr&&!dc)continue;const nr=r+dr,nc=c+dc;if(inB(nr,nc)&&(!board[nr][nc]||board[nr][nc].color!==p.color))moves.push({r:nr,c:nc});}break;
     case 'meduse':
@@ -259,9 +255,9 @@ function isInCheckSimple(color,board){
 // CUSTOM_MOVE_IDS : pièces dont le déplacement/attaque N'EST PAS celui de
 // leur pieceType de base. Elles ont une détection d'échec DÉDIÉE plus bas,
 // donc le raccourci « attaque comme son pieceType » ne doit JAMAIS jouer
-// pour elles, sinon le Peureux, la Banshee ou le Typhon donneraient échec
+// pour elles, sinon la Banshee, le Typhon ou un Garde donneraient échec
 // comme leur pieceType de base tout le long d'une ligne, ce qui est faux.
-const CUSTOM_MOVE_IDS=new Set(['amazone','peureux','fourmi','preux-chevalier','dresseur-elephant','garde-pierre','meduse','typhon','banshee','pretre']);
+const CUSTOM_MOVE_IDS=new Set(['amazone','fourmi','preux-chevalier','dresseur-elephant','garde-eau','garde-feu','garde-pierre','meduse','typhon','banshee','pretre']);
 // Pièces qui donnent échec en GLISSANT (portée illimitée). Le raccourci par
 // pieceType (b/r/q) couvre en plus les pièces standard et promues.
 const DIAG_SLIDER_IDS=new Set(['fou-primordial','amazone','dame','grand-maitre']);
@@ -311,13 +307,10 @@ function isSquareAttackedSimple(tr,tc,defColor,board){
   for(const dc of[-1,1]){const r=tr+atkFwdDir,c=tc+dc;if(inB(r,c)){const p=board[r][c];if(p&&p.color===atk&&p.pieceId==='fourmi')return true;}}}
   // --- Typhon : 1 case en diagonale ---
   for(const[dr,dc] of[[1,1],[1,-1],[-1,1],[-1,-1]]){const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;const p=board[r][c];if(p&&p.color===atk&&p.pieceId==='typhon')return true;}
-  // --- Peureux : 1 case dans les 8 directions, mais uniquement vers une case
-  //     de SON camp (Retraite Prudente) : hors de son camp, il n'attaque rien. ---
-  for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++){
-    if(!dr&&!dc)continue;const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;
-    const p=board[r][c];if(!(p&&p.color===atk&&p.pieceId==='peureux'))continue;
-    if(p.color==='w'?tr>=4:tr<=3)return true;
-  }
+  // --- Garde d'Eau : 1 case orthogonale ---
+  for(const[dr,dc] of[[1,0],[-1,0],[0,1],[0,-1]]){const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;const p=board[r][c];if(p&&p.color===atk&&p.pieceId==='garde-eau')return true;}
+  // --- Garde de Feu : 1 case diagonale ---
+  for(const[dr,dc] of[[1,1],[1,-1],[-1,1],[-1,-1]]){const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;const p=board[r][c];if(p&&p.color===atk&&p.pieceId==='garde-feu')return true;}
   // --- Banshee : 1 OU 2 cases en diagonale (les 2 cases sans sauter) ---
   for(const[dr,dc] of[[1,1],[1,-1],[-1,1],[-1,-1]]){const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;const p=board[r][c];if(p&&p.color===atk&&p.pieceId==='banshee')return true;}
   for(const[dr,dc] of[[2,2],[2,-2],[-2,2],[-2,-2]]){const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;const midR=tr+dr/2,midC=tc+dc/2;if(!inB(midR,midC)||board[midR][midC])continue;const p=board[r][c];if(p&&p.color===atk&&p.pieceId==='banshee')return true;}
@@ -523,7 +516,10 @@ function executeGameMove(from,to,gs){
   if(p.pieceId==='std-pawn'&&Math.abs(to.r-from.r)===2)gs.enPassant={r:(to.r+from.r)/2,c:from.c};
   gs.halfmoveClock=(p.type==='p'||captured)?0:gs.halfmoveClock+1;
 
-  const isPawnPromo=TRUE_PAWN_IDS.has(p.pieceId)&&(to.r===0||to.r===7);
+  // LE PION ET LA FOURMI se promeuvent en atteignant la dernière rangée (voir
+  // PROMOTING_IDS, js/data-pieces.js). Ni l'un ni l'autre ne recule : la
+  // rangée 0 est forcément celle des Blancs, la 7 celle des Noirs.
+  const isPawnPromo=pieceCanPromote(p.pieceId)&&(to.r===0||to.r===7);
   if(isPawnPromo){
     const aiCol=gs.aiColor||'b';
     // Promotion imposée : coup reçu d'un adversaire en ligne, qui a déjà
@@ -536,7 +532,10 @@ function executeGameMove(from,to,gs){
     }
     else if(p.color===aiCol&&!gs.multiplayer){
       // L'IA choisit la meilleure pièce de son armée via évaluation rapide
-      const aiExtras=(gs.aiArmy?.extras||[]).map(id=>PIECES.find(x=>x.id===id)).filter(Boolean);
+      // Même exclusion que pour le joueur : une promotion en Fourmi ne serait
+      // qu'une promotion reportée d'un coup.
+      const aiExtras=(gs.aiArmy?.extras||[]).map(id=>PIECES.find(x=>x.id===id))
+        .filter(x=>x&&!pieceCanPromote(x.id));
       const aiGen=gs.aiArmy?.gen?.id?PIECES.find(x=>x.id===gs.aiArmy.gen.id):null;
       const stdOpts=aiCol==='b'
         ?[{type:'q',emoji:'♛',pieceId:'dame'},{type:'r',emoji:'♜',pieceId:'tour-primordiale'},{type:'b',emoji:'♝',pieceId:'fou-primordial'},{type:'n',emoji:'♞',pieceId:'cavalier-primordial'}]
@@ -660,7 +659,14 @@ function postMoveUpdate(gs){
 function showPromoModal(gs){
   const modal=document.getElementById('promo-modal');const box=document.getElementById('promo-box');
   modal.querySelector('.promo-title').textContent='Choisir la promotion';modal.classList.add('active');
-  const armyPieces=(gs.playerArmy?.extras||[]).map(id=>PIECES.find(p=>p.id===id)).filter(Boolean);
+  // ON NE SE PROMEUT PAS EN QUELQUE CHOSE QUI SE PROMEUT. La Fourmi arrive sur
+  // la dernière rangée et devient autre chose (PROMOTING_IDS,
+  // js/data-pieces.js) : la choisir ici donnerait une pièce qui n'attend que
+  // de se promouvoir à son tour, sur la case où elle vient de naître. Une
+  // armée qui n'aligne QUE des créatures de ce genre retombe sur les quatre
+  // pièces standard, plutôt que sur une fenêtre vide.
+  const armyPieces=(gs.playerArmy?.extras||[]).map(id=>PIECES.find(p=>p.id===id))
+    .filter(p=>p&&!pieceCanPromote(p.id));
   const genPiece=gs.playerArmy?.gen?.id?PIECES.find(p=>p.id===gs.playerArmy.gen.id):null;
   const stdPieces=[{type:'q',emoji:'♕',label:'Dame',pieceId:'dame-promo'},{type:'r',emoji:'♖',label:'Tour',pieceId:'tour-promo'},{type:'b',emoji:'♗',label:'Fou',pieceId:'fou-promo'},{type:'n',emoji:'♘',label:'Cavalier',pieceId:'cav-promo'}];
   let options;
@@ -687,8 +693,75 @@ function showPromoModal(gs){
 }
 
 // ================================================================
-// JOURNAL DES COUPS (notation textuelle simple, PAS la notation FIDE)
+// JOURNAL DES COUPS : la notation algébrique, avec le logo pour lettre
 // ================================================================
+// LE JOURNAL DISAIT LES DEUX CASES, « ♞E1–F3 ». C'était une redondance : la
+// case de départ ne sert à rien tant qu'un seul cavalier peut atteindre F3, et
+// aucune notation d'échecs ne l'écrit. On note donc comme tout le monde depuis
+// deux siècles — la pièce, puis la case d'arrivée —, la LETTRE de la pièce
+// étant remplacée par son LOGO : sur un jeu où les pièces sont des créatures,
+// « M » ou « G » ne désignerait rien (Méduse, Grand Maître ? Garde d'Eau, de
+// Feu, de Pierre ?), le dessin, si.
+//
+// LA CASE DE DÉPART REVIENT QUAND, ET SEULEMENT QUAND, ELLE LÈVE UNE
+// AMBIGUÏTÉ : deux créatures du même logo pouvant aller sur la même case. On
+// donne alors la colonne si elle suffit (« ♞ef3 »), sinon la rangée, sinon
+// les deux — exactement la règle de la notation algébrique. Un pion qui
+// capture garde toujours sa colonne, comme le veut la règle officielle.
+//
+// D'OÙ VIENT LE PLATEAU D'AVANT LE COUP. recordMove() est appelée APRÈS la
+// mutation du plateau : chercher les rivales sur `gs.board` échouerait, la
+// case d'arrivée étant désormais occupée par la pièce qui vient d'y aller.
+// executeGameMove() empile juste avant de jouer un instantané complet
+// (gs.history) : c'est lui qu'on interroge, avec ses propres états spéciaux
+// recalculés dessus, pour que la question posée soit bien « qui POUVAIT y
+// aller ? ».
+const ML_FILES=FILES.map(f=>f.toLowerCase());
+function mlSquare(r,c){return ML_FILES[c]+(8-r);}
+// Deux pièces sont « du même type » si elles portent le MÊME LOGO : c'est ce
+// que le joueur lit. Une Dame de départ et une Dame de promotion ont deux
+// identifiants (`dame`, `dame-promo`) et un seul dessin — les distinguer ici
+// laisserait passer une vraie ambiguïté.
+function mlArtKey(id){
+  return (typeof PIECE_ART_ALIAS!=='undefined'&&PIECE_ART_ALIAS[id])||id;
+}
+// Le plateau d'avant le coup, reconstitué depuis le dernier instantané, avec
+// ses états spéciaux recalculés dessus. Renvoie null si l'instantané ne
+// correspond pas au coup qu'on note (partie rejouée, coup hors moteur) : la
+// notation se passe alors de désambiguïsation plutôt que d'en inventer une.
+function mlPreState(p,gs,from){
+  if(!from||!gs||!Array.isArray(gs.history)||!gs.history.length)return null;
+  const snap=gs.history[gs.history.length-1];
+  const pre=snap&&snap.board;
+  const was=pre&&pre[from.r]&&pre[from.r][from.c];
+  if(!was||was.color!==p.color||was.pieceId!==p.pieceId)return null;
+  const preGs={board:pre,enPassant:snap.enPassant,
+    anchored:snap.anchored||new Set(),
+    grandMaitreAlive:snap.grandMaitreAlive||{w:false,b:false},
+    medusaParalyzed:new Set(),pretreProtected:new Set(),lastMoveHistory:[]};
+  updateMedusaParalysis(pre,preGs);
+  updatePretreProtection(pre,preGs);
+  return{pre,preGs};
+}
+// Ce qu'il faut ajouter au logo pour que le coup soit sans ambiguïté : rien,
+// une colonne, une rangée, ou la case entière.
+function mlDisambiguation(p,to,isCapture,gs,from){
+  const truePawn=(typeof TRUE_PAWN_IDS!=='undefined')&&TRUE_PAWN_IDS.has(p.pieceId);
+  const st=mlPreState(p,gs,from);
+  if(!st)return (isCapture&&truePawn&&from)?ML_FILES[from.c]:'';
+  const mine=mlArtKey(p.pieceId);
+  const rivals=[];
+  for(let r=0;r<8;r++)for(let c=0;c<8;c++){
+    if(r===from.r&&c===from.c)continue;
+    const q=st.pre[r][c];
+    if(!q||q.color!==p.color||mlArtKey(q.pieceId)!==mine)continue;
+    if(getLegalMoves(st.pre,r,c,st.preGs).some(m=>m.r===to.r&&m.c===to.c))rivals.push({r,c});
+  }
+  if(!rivals.length)return (isCapture&&truePawn)?ML_FILES[from.c]:'';
+  if(rivals.every(q=>q.c!==from.c))return ML_FILES[from.c];
+  if(rivals.every(q=>q.r!==from.r))return String(8-from.r);
+  return mlSquare(from.r,from.c);
+}
 function recordMove(p,to,isCapture,gs,from){
   // QUÊTES DE LA RANGÉE DE LA RICHESSE (js/rewards.js) : « déplacer 5 fois X »,
   // « capturer 3 pièces avec X », « engager X et la jouer 3 fois ». C'est ici
@@ -708,25 +781,21 @@ function recordMove(p,to,isCapture,gs,from){
     gs[k]=(gs[k]||0)+gs.incrementMs;
     if(typeof renderClocks==='function')renderClocks(gs);
   }
-  // Le journal affiche le LOGO de la pièce jouée : sur un jeu où les pièces
-  // sont des créatures, « 🪼xD4 » ne disait rien à personne.
-  //
-  // Il affiche AUSSI la case de départ. Sans elle, « ♟D4 » sur un plateau qui
-  // compte jusqu'à trois exemplaires d'une même créature ne désigne aucun coup
-  // en particulier : relire sa partie était impossible, et le journal ne
-  // servait qu'à compter les coups. Le roque a sa notation d'échecs, la seule
-  // que tout le monde lise du premier coup d'œil.
-  const sq=(r,c)=>FILES[c]+(8-r);
+  // LE LOGO TIENT LIEU DE LETTRE, puis vient la case d'arrivée — et entre les
+  // deux, la colonne ou la rangée de départ seulement si une autre créature du
+  // même logo pouvait aller là (voir mlDisambiguation, plus haut). Le roque
+  // garde sa notation, la seule que tout le monde lise du premier coup d'œil.
   const icon=(typeof pieceIcon==='function')?pieceIcon(p.pieceId,p.color,1.05):'';
   let txt;
   if(to.castle)txt=icon+'<span class="ml-sq">'+(to.castle==='K'?'O-O':'O-O-O')+'</span>';
   else if(from&&from.r===to.r&&from.c===to.c)
     // Ancrage du Garde de Pierre : la pièce ne se déplace pas, elle se fixe.
-    txt=icon+'<span class="ml-sq">'+sq(to.r,to.c)+'</span><span class="ml-flag">ancré</span>';
+    txt=icon+'<span class="ml-sq">'+mlSquare(to.r,to.c)+'</span><span class="ml-flag">ancré</span>';
   else{
-    const dep=from?'<span class="ml-from">'+sq(from.r,from.c)+'</span>':'';
-    const link=isCapture?'<span class="ml-x">×</span>':'<span class="ml-dash">–</span>';
-    txt=icon+dep+link+'<span class="ml-sq">'+sq(to.r,to.c)+'</span>'+
+    const dis=mlDisambiguation(p,to,!!isCapture,gs,from);
+    txt=icon+(dis?'<span class="ml-dis">'+dis+'</span>':'')+
+      (isCapture?'<span class="ml-x">×</span>':'')+
+      '<span class="ml-sq">'+mlSquare(to.r,to.c)+'</span>'+
       (to.ep?'<span class="ml-flag">e.p.</span>':'')+
       (to.destroysPath?'<span class="ml-flag">charge</span>':'')+
       (p.pieceId==='typhon'?'<span class="ml-flag">typhon</span>':'');

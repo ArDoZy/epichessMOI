@@ -68,7 +68,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Cinzel+Decorative:wght@400;700;900&family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/style.css">
 
-<!-- Données structurées Schema.org. Les faits (18 pièces, 5 classes,
+<!-- Données structurées Schema.org. Les faits (19 pièces, 5 classes,
      budget 24 points, 7 rangs, 12 adversaires, 6 raretés de coffre) doivent
      rester synchronisés avec js/data-pieces.js : c'est ce que citent les
      moteurs de réponse. -->
@@ -98,7 +98,7 @@
         {"@type": "Thing", "name": "Monarque", "description": "L'équivalent du roi, la pièce à protéger. Roi ou Empereur."},
         {"@type": "Thing", "name": "Général", "description": "L'équivalent de la dame, la pièce maîtresse. Dame, Amazone, Centaure ou Grand Maître."},
         {"@type": "Thing", "name": "Primordiale", "description": "Les pièces d'échecs classiques : Cavalier, Fou et Tour."},
-        {"@type": "Thing", "name": "Brute", "description": "Les pièces ayant un déplacement puissant, mais un pouvoir faible, comme le Peureux ou la Fourmi."},
+        {"@type": "Thing", "name": "Brute", "description": "Les pièces ayant un déplacement puissant, mais un pouvoir faible, comme la Garde d'Eau ou la Fourmi."},
         {"@type": "Thing", "name": "Sorcier", "description": "Les pièces possédant des capacités spéciales avancées, mais à la mobilité réduite, comme la Méduse, la Banshee ou le Prêtre."}
       ]
     },
@@ -213,11 +213,15 @@
 
     <div id="mp-screen-quick">
       <div class="mp-radar"><span></span><span></span><span></span></div>
-      <!-- La note ne dit plus que la FENÊTRE DE NIVEAU en cours d'ouverture.
-           Elle annonçait aussi « Personne d'autre en attente pour l'instant » :
-           apprendre qu'on est seul en ligne pendant qu'on attend n'aide en
-           rien et décourage d'attendre. Remplie par mpRenderSearch(). -->
-      <div class="mp-search-note" id="mp-search-note">On cherche d'abord un adversaire de votre niveau, puis on élargit.</div>
+      <!-- LA NOTE DIT CE QUI SE PASSE, ET RIEN D'AUTRE. Elle a annoncé
+           « Personne d'autre en attente pour l'instant » (apprendre qu'on est
+           seul en ligne pendant qu'on attend n'aide en rien), puis « On
+           cherche d'abord un adversaire de votre niveau, puis on élargit » —
+           une règle d'appariement que le joueur n'a pas à connaître pour
+           attendre, et qui restait affichée le temps que mpRenderSearch()
+           passe. Le texte d'origine est donc DÉJÀ celui de la recherche : la
+           première image est la bonne. -->
+      <div class="mp-search-note" id="mp-search-note">Recherche d'adversaire en cours</div>
     </div>
 
     <!-- TIPS D'ATTENTE : rempli par mpRenderTip() (js/multiplayer.js) et
@@ -242,25 +246,25 @@
   </div>
 </div>
 
-<!-- FENÊTRE DE SÉRIE : l'avancement de la série de victoires du jour, une
-     colonne du Coffre Pion (en haut) au Coffre Roi (en bas). Ouverte par le
-     bouton « Série du jour » posé au-dessus de COMBAT sur le menu principal.
-     Elle remplace le rail de six coffres qui occupait le bas du menu : ici
-     elle a la place de montrer chaque palier en grand, avec le nombre de
-     victoires qu'il demande. Remplie par renderStreakModal()
-     (js/economy-ui.js), qui la fait aussi défiler jusqu'au palier en cours. -->
-<div class="streak-modal" id="streak-modal">
-  <div class="streak-panel" role="dialog" aria-modal="true" aria-labelledby="streak-title">
+<!-- FENÊTRE DE LA RÉCOMPENSE JOURNALIÈRE : le cycle des trente lots, avec
+     celui d'aujourd'hui au milieu et le bouton qui l'encaisse. Remplie par
+     renderDailyModal() (js/rewards-ui.js), qui la fait aussi défiler jusqu'au
+     lot du jour. Elle a remplacé la fenêtre de la « série du jour » et en
+     garde toute la carrosserie (classes .streak-* dans css/style.css) : c'est
+     la même chose — une colonne de lots dont un seul est en jeu. -->
+<div class="streak-modal" id="daily-modal">
+  <div class="streak-panel" role="dialog" aria-modal="true" aria-labelledby="daily-title">
     <div class="streak-head">
       <div>
-        <div class="streak-title" id="streak-title">Série du jour</div>
-        <div class="streak-sub" id="streak-sub"></div>
+        <div class="streak-title" id="daily-title">Récompense journalière</div>
+        <div class="streak-sub" id="daily-sub"></div>
       </div>
-      <button class="streak-close" id="streak-close" aria-label="Fermer">
+      <button class="streak-close" id="daily-close" aria-label="Fermer">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>
-    <div class="streak-scroll" id="streak-scroll"></div>
+    <div class="streak-scroll" id="daily-scroll"></div>
+    <div class="daily-foot" id="daily-foot"></div>
   </div>
 </div>
 
@@ -313,15 +317,13 @@
                chose : votre rang. Le bouton fantôme, en particulier, avait
                exactement l'apparence d'un élément désactivé. Toute la pastille
                ouvre la Voie : aucune fonction n'est perdue. -->
-          <!-- L'EMBLÈME EST DE RETOUR EN TÊTE DU MENU. Il en avait été retiré
-               au profit du pseudo et de l'ELO, au motif qu'on sait déjà où
-               l'on est — sauf qu'il ne restait alors AUCUN écran du jeu où
-               l'identité s'affiche : le voile de choix du pseudo ne se montre
-               qu'à la toute première visite, et l'icône d'onglet dort dans le
-               cache du navigateur. Le menu principal est l'écran que l'on
-               ouvre à chaque partie ; le sceau y tient en 52 px, au-dessus du
-               pseudo, sans rien lui prendre (la colonne du menu recule
-               d'autant, voir --menu-emblem-h dans css/style.css). -->
+          <!-- LE JEU DIT SON NOM, ET L'EMBLÈME S'EFFACE. Le sceau tenait la
+               tête du menu depuis qu'on l'y avait remis : un logo de 52 px
+               qu'il fallait déjà connaître pour le reconnaître, sur l'écran
+               que le joueur ouvre à chaque partie. « EPIC CHESS », écrit en
+               grand dans la police de titre du jeu (Cinzel Decorative), dit
+               la même chose et se lit. La colonne du menu recule de sa
+               hauteur, voir --menu-title-h dans css/style.css. -->
           <!-- CONTENEUR NEUTRE, ET NON UN NIVEAU DE PLUS. `.jouer-col` est en
                `display:contents` partout sauf en mode bureau : sur téléphone,
                le navigateur fait donc comme s'il n'existait pas — le bloc
@@ -332,7 +334,7 @@
                de 170 px. -->
           <div class="jouer-col">
           <div class="jouer-player">
-            <div class="game-emblem menu-emblem"></div>
+            <h1 class="menu-title">Epic Chess</h1>
             <div class="jouer-name" id="jouer-name"></div>
             <button class="jouer-idpill" id="jouer-voie" aria-label="Voir la Diagonale de la Puissance">
               <span class="jp-dot" id="jouer-rank-dot"></span>
@@ -350,30 +352,39 @@
                de victoires en bas de l'écran, avec le solde de perles et la
                mention « Série · N victoires » : trois informations posées en
                permanence sous le pouce, pour un état qu'on ne consulte qu'au
-               moment de décider si on relance une partie. Tout cela vit
-               maintenant DANS la fenêtre de série (bouton ci-dessous), qui a
-               la place de la montrer en grand — voir renderStreakModal()
-               dans js/economy-ui.js.
+               moment de décider si on relance une partie. La série du jour
+               elle-même a disparu ; ce qui reste vit DANS les fenêtres des
+               boutons ci-dessous, qui ont la place de le montrer en grand —
+               voir renderDailyModal() dans js/rewards-ui.js.
 
                Le coffre de réapprovisionnement, lui, n'a jamais eu de carte
                ici : il s'ouvre tout seul dès que son délai est écoulé (voir
                dailyChestMaybeOpen, js/economy-ui.js). -->
           <div class="jouer-actions">
+            <!-- TROIS BOUTONS, TROIS ENDROITS OÙ QUELQUE CHOSE ATTEND, ET
+                 AUCUN SOMMAIRE ENTRE LES DEUX. « Récompenses » ouvrait une
+                 page à deux onglets : un clic pour arriver, un deuxième pour
+                 choisir laquelle des deux voies on venait voir. Les deux
+                 voies ont maintenant chacune son bouton et s'ouvrent
+                 directement sur elle-même.
+                 Chaque pastille ne s'allume que quand quelque chose attend
+                 vraiment d'être récupéré (renderRewardsBadge,
+                 js/rewards-ui.js). -->
             <div class="jouer-tracks">
-              <button class="jouer-streak" id="jouer-streak">
+              <button class="jouer-track" id="jouer-daily">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h16v11a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 19V8Z"/><path d="M3 5.5h18V8H3z"/><path d="M12 8v12.5"/></svg>
-                <span id="jouer-streak-lbl">Série du jour</span>
+                <span>Récompense journalière</span>
+                <span class="jouer-badge" id="jouer-daily-badge" style="display:none">1</span>
               </button>
-              <!-- LES DEUX VOIES QUI NE SE REFERMENT PAS : la colonne des
-                   victoires (un palier par victoire) et la rangée de la
-                   richesse (des perles contre des tickets de quête). La
-                   pastille ne s'allume que quand quelque chose attend
-                   vraiment d'être récupéré (renderRewardsBadge,
-                   js/rewards-ui.js). -->
-              <button class="jouer-streak jouer-rewards" id="jouer-rewards">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4.5h16v15H4z"/><path d="M9 4.5v15"/><path d="M4 9.5h16"/></svg>
-                <span>Récompenses</span>
-                <span class="jouer-badge" id="jouer-rewards-badge" style="display:none">0</span>
+              <button class="jouer-track" id="jouer-colonne">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3.5h8v17H8z"/><path d="M8 9h8M8 15h8"/></svg>
+                <span>Colonne des victoires</span>
+                <span class="jouer-badge" id="jouer-colonne-badge" style="display:none">0</span>
+              </button>
+              <button class="jouer-track" id="jouer-rangee">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 8h17v8h-17z"/><path d="M9 8v8M15 8v8"/></svg>
+                <span>Rangée de la richesse</span>
+                <span class="jouer-badge" id="jouer-rangee-badge" style="display:none">0</span>
               </button>
             </div>
             <button class="jouer-btn" id="cube-jouer-btn"><span>COMBAT</span></button>
@@ -388,22 +399,18 @@
                allumée par body.desk — voir [DESKTOP] dans css/style.css).
 
                C'est l'application du principe : LE TÉLÉPHONE CACHE,
-               L'ORDINATEUR MONTRE. Sur un petit écran, la série du jour est
-               enfermée derrière le bouton « Série du jour » et la progression
-               derrière la pastille d'ELO — il n'y a pas la place de faire
-               autrement. Sur un écran de 1500 px, le menu était une colonne de
-               téléphone posée au milieu de 900 px de vide : ces deux choses y
-               tiennent sans rien déplacer.
-               Rien n'est réécrit pour l'occasion : le rail des coffres est
-               produit par streakRowsHTML(), la MÊME fonction qui remplit la
-               fenêtre du bouton (voir renderMenuSidePanel dans
-               js/economy-ui.js). Une seule source, deux affichages. -->
+               L'ORDINATEUR MONTRE. Sur un petit écran, le cycle des
+               récompenses journalières est enfermé derrière son bouton et la
+               progression derrière la pastille d'ELO — il n'y a pas la place
+               de faire autrement. Sur un écran de 1500 px, le menu était une
+               colonne de téléphone posée au milieu de 900 px de vide : ces
+               deux choses y tiennent sans rien déplacer.
+               Rien n'est réécrit pour l'occasion : le rail des lots est
+               produit par dailyRowsHTML(), la MÊME fonction qui remplit la
+               fenêtre du bouton (voir renderMenuDailyCard dans
+               js/rewards-ui.js). Une seule source, deux affichages. -->
           <aside class="menu-side" id="menu-side">
-            <section class="ms-card">
-              <div class="ms-title">Série du jour</div>
-              <div class="ms-sub" id="ms-streak-sub"></div>
-              <div class="ms-rows" id="ms-streak-rows"></div>
-            </section>
+            <section class="ms-card" id="ms-daily"></section>
             <section class="ms-card" id="ms-rewards"></section>
             <section class="ms-card" id="ms-next"></section>
           </aside>
@@ -690,8 +697,8 @@
            partie et l'Armurerie avant de voir sa récompense.
            Il n'y a plus non plus de « Boutique » ici : les six coffres et
            leur prix en perles sont sur la face MAGASIN du cube
-           (#shop-chest-grid), et la série de victoires en cours se lit dans sa
-           propre fenêtre, ouverte depuis le menu principal (#streak-modal). -->
+           (#shop-chest-grid), et le lot du jour se prend dans sa propre
+           fenêtre, ouverte depuis le menu principal (#daily-modal). -->
       <!-- Il n'y a plus de liste « Vos pièces » ici : le nombre d'exemplaires
            possédés se lit là où il sert à décider, c'est-à-dire sur la carte de
            chaque créature dans le builder (.pc-stock) et sous chaque pièce
@@ -770,9 +777,6 @@
   <div class="voie-inner acc-inner">
     <div class="voie-hdr"><div class="voie-title">Comptes</div></div>
     <div id="account-body"></div>
-    <p class="acc-foot">Les comptes vivent dans ce navigateur, sur cet appareil.
-      Ils ne sont envoyés nulle part — et ils disparaissent si vous effacez les
-      données du site.</p>
   </div>
 </div>
 <button class="btn btn-gold voie-ok-bar" id="acc-close">OK</button>
@@ -782,23 +786,23 @@
      L'échiquier a trois lignes, le jeu a trois voies, et chacune se lit dans
      le sens de la sienne — la COLONNE des victoires de haut en bas, la RANGÉE
      de la richesse de gauche à droite, la DIAGONALE de la puissance
-     (#page-voie) en zigzag. Ouverte par le bouton « Récompenses » du menu
-     principal ; remplie par renderRewardsPage() (js/rewards-ui.js).
-     Elle reprend la mise en page de la Voie : une zone défilante et la
-     pastille « OK » centrée en bas de l'écran (voir la note au-dessus de
-     #page-voie pour la raison du position:absolute). -->
+     (#page-voie) en zigzag.
+
+     C'EST UNE PAGE PAR VOIE, ET NON UNE PAGE À DEUX ONGLETS. Les deux onglets
+     posés en tête servaient à passer de l'une à l'autre : une barre de
+     navigation permanente, sur une page où l'on vient faire UNE chose. Le
+     menu principal a maintenant un bouton par voie et ouvre directement
+     dessus ; la page ne porte plus qu'un titre, celui de la voie qu'on
+     regarde, posé par openRewardsPage() (js/rewards-ui.js). On revient au
+     menu par « OK » — et c'est le seul chemin de l'une à l'autre. -->
 <div id="page-rewards" class="page">
 <div class="voie-scroll rw-scroll" id="rw-scroll">
   <div class="voie-inner rw-inner">
     <div class="rw-hdr">
-      <div class="voie-title art-banner">Récompenses</div>
-      <div class="rw-tabs" role="tablist">
-        <button class="rw-tab is-on" data-tab="colonne" role="tab" aria-selected="true">Colonne des victoires</button>
-        <button class="rw-tab" data-tab="rangee" role="tab" aria-selected="false">Rangée de la richesse</button>
-      </div>
+      <div class="voie-title art-banner" id="rw-title">Colonne des Victoires</div>
     </div>
-    <section class="rw-pane" id="rw-pane-colonne" role="tabpanel"></section>
-    <section class="rw-pane" id="rw-pane-rangee" role="tabpanel" hidden></section>
+    <section class="rw-pane" id="rw-pane-colonne" role="region" aria-labelledby="rw-title"></section>
+    <section class="rw-pane" id="rw-pane-rangee" role="region" aria-labelledby="rw-title" hidden></section>
   </div>
 </div>
 <button class="btn btn-gold voie-ok-bar" id="rw-ok">OK</button>
@@ -894,7 +898,7 @@
 <div class="promo-modal" id="promo-modal"><div class="promo-box"><div class="promo-title">Choisir la promotion</div><div class="promo-pieces-row" id="promo-box"></div></div></div>
 <!-- Le badge « Admin » flottant a disparu : le mode admin est désormais
      l'adresse /test, ouverte depuis les réglages (js/settings-admin.js). -->
-<div class="result-modal" id="result-modal"><div class="result-box" id="result-box"><button id="result-close-btn" style="position:absolute;top:12px;right:14px;background:transparent;border:none;cursor:pointer;color:var(--muted);font-size:22px;line-height:1;font-family:inherit;transition:color .15s;z-index:1" title="Fermer et analyser la partie">✕</button><span class="result-icon" id="result-icon"></span><div class="result-title" id="result-title"></div><div class="result-foe" id="result-foe" style="display:none"></div><div class="result-elo-row"><span class="result-elo-before" id="result-elo-before"></span><span class="result-elo-arrow">→</span><span class="result-elo-after" id="result-elo-after"></span><span class="result-elo-delta" id="result-elo-delta"></span></div><div class="result-elo-note" id="result-elo-note" style="display:none"></div><div class="result-rank-row"><span class="result-rank-icon" id="result-rank-icon"></span><span class="result-rank-name" id="result-rank-name"></span></div><div class="result-chest" id="result-chest" style="display:none"></div><div class="unlock-section" id="unlock-section" style="display:none"><div class="unlock-title">Nouvelle pièce débloquée !</div><span class="unlock-piece-emoji" id="unlock-piece-emoji"></span><div class="unlock-piece-name" id="unlock-piece-name"></div><div class="unlock-piece-class" id="unlock-piece-class"></div><div class="unlock-piece-ability" id="unlock-piece-ability"></div></div><div style="display:flex;flex-direction:column;gap:8px;margin-top:20px"><button class="btn btn-gold" style="width:100%" id="result-continue">Continuer</button><div style="display:flex;gap:8px"><button class="btn btn-primary" style="flex:1" id="result-rejouer">↺ Rejouer</button><button class="btn btn-ghost" style="flex:1;border-color:var(--accent2);color:var(--accent2)" id="result-revanche">Revanche</button></div></div></div></div>
+<div class="result-modal" id="result-modal"><div class="result-box" id="result-box"><button id="result-close-btn" style="position:absolute;top:12px;right:14px;background:transparent;border:none;cursor:pointer;color:var(--muted);font-size:22px;line-height:1;font-family:inherit;transition:color .15s;z-index:1" title="Fermer et analyser la partie">✕</button><span class="result-icon" id="result-icon"></span><div class="result-title" id="result-title"></div><div class="result-foe" id="result-foe" style="display:none"></div><div class="result-elo-row"><span class="result-elo-before" id="result-elo-before"></span><span class="result-elo-arrow">→</span><span class="result-elo-after" id="result-elo-after"></span><span class="result-elo-delta" id="result-elo-delta"></span></div><div class="result-elo-note" id="result-elo-note" style="display:none"></div><div class="unlock-section" id="unlock-section" style="display:none"><div class="unlock-title">Nouvelle pièce débloquée !</div><span class="unlock-piece-emoji" id="unlock-piece-emoji"></span><div class="unlock-piece-name" id="unlock-piece-name"></div><div class="unlock-piece-class" id="unlock-piece-class"></div><div class="unlock-piece-ability" id="unlock-piece-ability"></div></div><div style="display:flex;flex-direction:column;gap:8px;margin-top:20px"><button class="btn btn-gold" style="width:100%" id="result-continue">Continuer</button><div style="display:flex;gap:8px"><button class="btn btn-primary" style="flex:1" id="result-rejouer">↺ Rejouer</button><button class="btn btn-ghost" style="flex:1;border-color:var(--accent2);color:var(--accent2)" id="result-revanche">Revanche</button></div></div></div></div>
 <!-- CÉRÉMONIE D'OUVERTURE DE COFFRE (js/economy-ui.js) -->
 <div class="chest-modal" id="chest-modal">
   <div class="chest-stage">
@@ -993,47 +997,50 @@
   </svg>
 </button>
 <div id="settings-panel">
-  <!-- UN SEUL curseur de son. Deux réglages séparés obligeaient à couper le
-       jeu en deux fois, et « musique à 0 / bruitages à 1 » n'est pas une
-       demande qu'on nous a jamais faite : celui-ci commande les deux, la
-       musique restant simplement plus discrète que les bruitages (voir
-       MUSIC_RATIO dans js/settings-admin.js). Seul réglage restant : le jeu
-       n'a plus qu'un thème (sombre), il n'y a donc plus de mode clair à
-       proposer, et le mode test s'atteint par son adresse (/?test), pas par
-       un bouton ici. -->
-  <div class="sp-row">
-    <span class="sp-label">Bruitages</span>
-    <input type="range" class="sp-slider" id="sp-sfx-vol" min="0" max="1" step="0.05" value="1">
-  </div>
-  <!-- LE COMPTE EST ICI ET NULLE PART AILLEURS. Le jeu ne demande plus de
-       pseudo au démarrage (voir js/accounts.js) : c'est donc le seul chemin
-       vers son identité — se renommer, créer un autre compte, passer de l'un
-       à l'autre. Le rouage est le bon endroit : c'est là qu'on va quand on
-       cherche à régler quelque chose sur soi plutôt que sur la partie. -->
-  <!-- VIBRATION : réglage à part du son, et c'est voulu. Quelqu'un qui joue
-       en silence dans un train veut souvent GARDER la vibration, et
-       l'inverse est vrai aussi. La ligne disparaît sur un appareil qui ne
-       sait pas vibrer (voir hapticSupported, js/sfx.js) : un interrupteur
-       qui ne commande rien est pire que pas d'interrupteur. -->
-  <div class="sp-row" id="sp-haptic-row">
-    <span class="sp-label">Vibration</span>
-    <button class="sp-toggle" id="sp-haptic" role="switch" aria-checked="true" aria-label="Vibration"><span></span></button>
-  </div>
-  <!-- INSTALLER LE JEU. La ligne n'apparaît que si le navigateur dit que
-       c'est possible et que ce n'est pas déjà fait (pwaRefreshSettingsRow,
-       js/pwa.js) : un bouton qui ne fait rien est pire que pas de bouton. -->
-  <button class="sp-account-btn" id="sp-install-row" style="display:none">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-      <path d="M12 4v11"/><path d="M8 11.5 12 15.5 16 11.5"/><path d="M5 19h14"/>
-    </svg>
-    <span id="sp-install">Installer le jeu</span>
-  </button>
+  <!-- LE COMPTE EN PREMIER, PARCE QU'IL EST LA RAISON PRINCIPALE D'OUVRIR CE
+       PANNEAU. Il était tout en bas, sous deux curseurs de volume qu'on règle
+       une fois pour toutes : chercher son identité demandait donc de lire deux
+       réglages qu'on ne venait pas voir. Le jeu ne demande plus de pseudo au
+       démarrage (voir js/accounts.js) — c'est le SEUL chemin vers son
+       identité : se renommer, créer un autre compte, passer de l'un à
+       l'autre. Le rouage est le bon endroit, la première ligne est la bonne
+       place. -->
   <button class="sp-account-btn" id="sp-account">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
       <circle cx="12" cy="8.5" r="3.6"/><path d="M4.8 20a7.2 7.2 0 0 1 14.4 0"/>
     </svg>
     <span>Compte</span>
   </button>
+  <!-- INSTALLER LE JEU. La ligne n'apparaît que si le navigateur dit que
+       c'est possible et que ce n'est pas déjà fait (pwaRefreshSettingsRow,
+       js/pwa.js) : un bouton qui ne fait rien est pire que pas de bouton.
+       Elle suit le Compte : ce sont les deux PORTES du panneau, les curseurs
+       en dessous étant les réglages proprement dits. -->
+  <button class="sp-account-btn" id="sp-install-row" style="display:none">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M12 4v11"/><path d="M8 11.5 12 15.5 16 11.5"/><path d="M5 19h14"/>
+    </svg>
+    <span id="sp-install">Installer le jeu</span>
+  </button>
+  <!-- DEUX CURSEURS DE SON, ET ILS NE COMMANDENT PAS LA MÊME CHOSE. Il n'y en
+       a eu qu'un, « Bruitages », qui pilotait aussi la musique à un facteur
+       fixe près : couper la musique de combat sans perdre le bruit des pièces
+       — ce qu'on fait quand on écoute autre chose en jouant — était alors
+       impossible. Le curseur « Musique » ne touche qu'au gain de la boucle de
+       combat (window._musicGain, js/combat-music.js), « Bruitages » qu'aux
+       sons de jeu. Le jeu n'a plus qu'un thème (sombre), il n'y a donc pas de
+       mode clair à proposer, et le mode test s'atteint par son adresse
+       (/?test), pas par un bouton ici.
+       PLUS D'INTERRUPTEUR DE VIBRATION non plus : elle est TOUJOURS active
+       (voir hapticSetEnabled, js/sfx.js). -->
+  <div class="sp-row">
+    <span class="sp-label">Bruitages</span>
+    <input type="range" class="sp-slider" id="sp-sfx-vol" min="0" max="1" step="0.05" value="1">
+  </div>
+  <div class="sp-row">
+    <span class="sp-label">Musique</span>
+    <input type="range" class="sp-slider" id="sp-music-vol" min="0" max="1" step="0.05" value="0.5">
+  </div>
 </div>
 
 <!-- ================================================================

@@ -278,34 +278,12 @@ function accountRename(rawName){
   return null;
 }
 
-// QUITTER LE COMPTE COURANT — le « se déconnecter » de ce jeu.
-//
-// Il n'y a pas de connexion, donc pas de déconnexion au sens habituel : rien
-// à oublier, aucun mot de passe, aucune session. Ce que veut vraiment
-// quelqu'un qui cherche ce bouton, c'est ARRÊTER DE JOUER SOUS CE NOM — pour
-// prêter l'appareil, ou pour recommencer autrement.
-//
-// On ne peut donc PAS le ramener sur un écran de connexion : il n'y en a pas,
-// et en fabriquer un rouvrirait le mur que le jeu vient de supprimer. On le
-// pose à la place sur une autre identité, immédiatement jouable :
-//   · le compte utilisé juste avant, s'il en existe un ;
-//   · sinon un nouveau compte d'Alchimiste, créé pour l'occasion.
-// Dans les deux cas le compte quitté reste intact dans la liste : « quitter »
-// n'est jamais « supprimer », et on y revient d'un geste depuis la page
-// Comptes. Supprimer, lui, a son propre bouton et sa propre confirmation.
-function accountLogout(){
-  const others=accountsList().filter(u=>u!==CUR_ACC);
-  if(others.length)return accountSwitch(others[0]);
-  return accountCreate(accountsGuestName());
-}
-
-// Ce que fera accountLogout(), pour que la page Comptes puisse le DIRE avant
-// de le faire. Un bouton qui n'annonce pas où il emmène n'est pas un bouton
-// sur lequel on clique.
-function accountLogoutTarget(){
-  const others=accountsList().filter(u=>u!==CUR_ACC);
-  return others.length?others[0]:null;
-}
+// IL N'Y A PLUS DE « QUITTER CE COMPTE ». Le bouton a existé sur la page
+// Comptes ; il posait le joueur sur une autre identité, faute d'écran de
+// connexion où le renvoyer. C'était répondre à une question que le jeu ne pose
+// plus : sans mot de passe ni session, quitter un compte n'est rien d'autre
+// que passer sur un autre, ce que la liste « Changer de compte » fait déjà
+// d'un geste — et mieux, puisqu'on y choisit lequel.
 
 // Supprime un compte et TOUTES ses données, définitivement. Supprimer le
 // compte courant bascule sur le suivant de la liste — et s'il n'en reste
