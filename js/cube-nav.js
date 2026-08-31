@@ -349,7 +349,7 @@
   const SWIPE_MAX_MS=700;      // au-delà, c'est un déplacement, pas un geste
   function swipeBlocked(target){
     return !!(target&&target.closest&&target.closest(
-      'input,textarea,select,.game-board,.pmv,.psheet,.move-log,[data-noswipe]'));
+      'input,textarea,select,.game-board,.pmv,.psheet,.game-panel,[data-noswipe]'));
   }
   function wireSwipe(){
     const stage=document.getElementById('cube-stage');

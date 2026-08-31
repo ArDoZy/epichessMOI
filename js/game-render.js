@@ -441,6 +441,7 @@ function syncPieces(gs,boardEl,flipped,board){
 }
 
 function renderGame(gs){
+  syncGameButtons(gs);
   if(gs.historyView!==null){updateHistoryNav();return;}
   const boardEl=document.getElementById('game-board');if(!boardEl)return;
   const playerCol=gs.playerColor||'w';
@@ -455,18 +456,18 @@ function renderGame(gs){
   if(typeof applyBoardSkin==='function')applyBoardSkin();
 
   buildGameLabels(gs);updateCaptured(gs);updateHistoryNav();renderClocks(gs);updateTurnBars(gs);
-  // La barre d'emotes n'existe qu'en ligne, et disparaît dès que la partie
+  // Le bouton « Chat » n'existe qu'en ligne, et disparaît dès que la partie
   // est finie : on ne parle plus à quelqu'un qui n'est plus là.
-  if(typeof mpRenderEmoteBar==='function')mpRenderEmoteBar();
-  // La feuille du journal est maintenant visible : c'est le seul moment où la
-  // mesurer veut dire quelque chose. On repasse une image plus tard, parce
-  // qu'au premier rendu la poignée n'a pas encore sa taille définitive (le
-  // journal des coups s'y remplit, les polices se posent) — et --sheet-h
-  // borne la taille du plateau, une valeur trop basse le laisserait déborder.
-  gameWatchSheetHeight();
-  requestAnimationFrame(gameSyncSheetHeight);
-  clearTimeout(_sheetSettleTid);
-  _sheetSettleTid=setTimeout(gameSyncSheetHeight,260);
+  if(typeof mpRefreshChat==='function')mpRefreshChat();
+  // La partie est maintenant à l'écran : c'est le seul moment où mesurer ce
+  // qui entoure le plateau veut dire quelque chose. On repasse une image plus
+  // tard, parce qu'au premier rendu rien n'a sa taille définitive (les
+  // polices se posent, le journal se remplit) — et --game-chrome borne la
+  // taille du plateau, une valeur trop basse le laisserait déborder.
+  gameWatchChrome();
+  requestAnimationFrame(gameSyncChrome);
+  clearTimeout(_chromeSettleTid);
+  _chromeSettleTid=setTimeout(gameSyncChrome,260);
 }
 
 // Le bandeau du joueur au trait s'allume : indication permanente de « à qui
@@ -499,70 +500,52 @@ function renderClocks(gs){
 }
 
 // ----------------------------------------------------------------
-// LA PLACE QUE PREND LA FEUILLE DU JOURNAL
+// LA PLACE QUE PREND TOUT CE QUI N'EST PAS LE PLATEAU
 // ----------------------------------------------------------------
-// Sur téléphone, le journal des coups est une feuille ancrée en bas d'écran
-// (voir [MOBILE-APP] dans css/style.css). La page réservait sa hauteur avec
-// une constante — 112 px — et c'était faux : sur un écran de 350 px, la
-// poignée en fait davantage, et « Abandonner » se retrouvait coupé en deux
-// par la feuille. Le bouton le plus définitif du jeu, à moitié inaccessible.
+// L'échiquier est borné par la HAUTEUR d'écran sur un téléphone, et la page
+// réservait pour le reste une constante — 200 px — qui était fausse : il y a
+// le chrome du haut, les deux bandeaux de joueur, la barre de statut, les
+// boutons de partie et la zone sous le plateau, qui GRANDIT quand on y ouvre
+// le journal ou la discussion. Plus de 400 px sur un petit écran, et
+// « Abandonner » finissait hors de l'écran.
 //
-// On mesure donc la hauteur RÉELLE et on la publie en variable CSS. Un
-// ResizeObserver suit toute variation : rotation de l'appareil, police
-// système agrandie, apparition d'un coup dans le journal.
-// LA MESURE SE PREND QUAND LA PARTIE EST À L'ÉCRAN, PAS AU CHARGEMENT.
-// Un premier jet observait la feuille dès DOMContentLoaded : à cet instant
-// #page-game est masquée, la feuille est encore dans le flux et mesure une
-// vingtaine de pixels. C'est cette valeur-là qui partait dans --sheet-h, et
-// « Abandonner » restait coupé en deux. gameSyncSheetHeight() est donc
-// appelée depuis renderGame(), c'est-à-dire à chaque rendu de partie, plus au
-// redimensionnement et à la rotation.
-function gameSyncSheetHeight(){
+// On mesure donc la somme réelle et on la publie en variable CSS : ce qu'il y
+// a AU-DESSUS du plateau (sa position à l'écran) plus ce qu'il y a EN DESSOUS
+// (du bas du plateau au bas du dernier bouton), plus un peu d'air. La boucle
+// converge d'un seul tour : réduire le plateau ne change rien à la hauteur de
+// ce qui l'entoure.
+//
+// LA MESURE SE PREND QUAND LA PARTIE EST À L'ÉCRAN, PAS AU CHARGEMENT. Un
+// premier jet observait la page dès DOMContentLoaded : à cet instant
+// #page-game est masquée et tout mesure zéro. D'où l'appel depuis
+// renderGame(), c'est-à-dire à chaque rendu de partie, plus au
+// redimensionnement, à la rotation et à l'ouverture d'un panneau.
+function gameSyncChrome(){
   const board=document.getElementById('game-board');
   const btns=document.querySelector('.game-btns');
-  const sheet=document.querySelector('.gs-block.gs-grow');
   if(!board||!btns)return;
   const b=board.getBoundingClientRect();
   if(b.height<=0)return;                      // la partie n'est pas à l'écran
-
-  // La feuille du journal : déployée, elle couvre volontairement la page, il
-  // n'y a rien à lui réserver.
-  const sh=(sheet&&!sheet.classList.contains('sheet-open'))
-    ?Math.round(sheet.getBoundingClientRect().height):0;
-  if(sh>0)document.documentElement.style.setProperty('--sheet-h',sh+'px');
-
-  // TOUT CE QUI N'EST PAS LE PLATEAU, MESURÉ PLUTÔT QUE DEVINÉ. La formule
-  // CSS retranchait 200 px en dur pour « le reste » : en réalité il y a le
-  // chrome du haut, le bandeau adverse, la barre de statut, le bandeau du
-  // joueur, les deux boutons de partie ET la feuille ancrée en bas — plus de
-  // 400 px sur un petit écran. D'où « Abandonner » coupé en deux par la
-  // feuille sur un téléphone de 640 px de haut.
-  //
-  // On mesure donc la somme réelle : ce qu'il y a AU-DESSUS du plateau
-  // (sa position à l'écran) plus ce qu'il y a EN DESSOUS (du bas du plateau
-  // au bas des boutons), plus la feuille, plus un peu d'air. La boucle
-  // converge d'un seul tour : réduire le plateau ne change rien à la hauteur
-  // de ce qui l'entoure.
   const below=btns.getBoundingClientRect().bottom-b.bottom;
-  const chrome=Math.round(b.top+below+sh+12);
+  const chrome=Math.round(b.top+below+12);
   if(chrome>0&&chrome<3000)
     document.documentElement.style.setProperty('--game-chrome',chrome+'px');
 }
-let _sheetRO=null,_sheetSettleTid=null;
-function gameWatchSheetHeight(){
-  const sheet=document.querySelector('.gs-block.gs-grow');
-  if(!sheet)return;
-  // Le ResizeObserver reste : il rattrape ce que renderGame ne voit pas —
-  // une police système agrandie, un coup qui rallonge la poignée.
-  if(!_sheetRO&&typeof ResizeObserver==='function'){
-    _sheetRO=new ResizeObserver(gameSyncSheetHeight);
-    _sheetRO.observe(sheet);
+let _chromeRO=null,_chromeSettleTid=null;
+function gameWatchChrome(){
+  const under=document.getElementById('game-under');
+  if(!under)return;
+  // Le ResizeObserver rattrape ce que renderGame ne voit pas : une police
+  // système agrandie, un panneau qui s'ouvre, un coup qui rallonge la barre.
+  if(!_chromeRO&&typeof ResizeObserver==='function'){
+    _chromeRO=new ResizeObserver(gameSyncChrome);
+    _chromeRO.observe(under);
   }
-  gameSyncSheetHeight();
+  gameSyncChrome();
 }
-document.addEventListener('DOMContentLoaded',gameWatchSheetHeight);
-window.addEventListener('resize',gameSyncSheetHeight);
-window.addEventListener('orientationchange',()=>setTimeout(gameSyncSheetHeight,120));
+document.addEventListener('DOMContentLoaded',gameWatchChrome);
+window.addEventListener('resize',gameSyncChrome);
+window.addEventListener('orientationchange',()=>setTimeout(gameSyncChrome,120));
 
 function buildGameLabels(gs){
   // Les repères vivent maintenant DANS les cases de bord : il n'y a plus de
@@ -630,12 +613,6 @@ function startDrag(r,c,gs,clientX,clientY){
   // il n'est joué QUE sur une vraie prise en main, pas quand on repose le
   // doigt sur une pièce déjà sélectionnée.
   if(!alreadySelected&&typeof playSound==='function')playSound('tap',{force:0.3});
-  // L'ÉVEIL DES CASES JOUABLES. Même condition que le son : c'est la PRISE EN
-  // MAIN qu'on accompagne, pas le doigt qui se repose sur une pièce déjà
-  // choisie. Les pastilles permanentes disent où l'on peut aller ; cette
-  // onde-là dit que le plateau a entendu.
-  if(!alreadySelected&&typeof fxSelect==='function')
-    fxSelect({r,c},moves.filter(m=>!m.stayPut));
   if(!alreadySelected)renderGame(gs);
 }
 function moveDrag(clientX,clientY){
@@ -726,11 +703,13 @@ function handleGameClick(r,c,gs){
 // ----------------------------------------------------------------
 // NAVIGATION D'HISTORIQUE (⏮ ◀ ▶ ⏭ + flèches clavier)
 // ----------------------------------------------------------------
+// PLUS DE COMPTEUR DE POSITION. Une ligne « Position 12/31 » vivait sous le
+// pseudo du joueur, et une autre — « Historique : coup 12/31 » — remplaçait la
+// barre de statut pendant la relecture. Les deux disaient la même chose, et
+// aucune n'apprenait rien : le numéro de chaque coup est déjà écrit à côté de
+// sa notation, dans le journal, à l'endroit exact où on le lit.
 function updateHistoryNav(){
   const total=GS.history.length;const view=GS.historyView;
-  const badge=document.getElementById('history-badge');
-  if(view!==null)badge.textContent='Position '+view+'/'+total;
-  else badge.textContent=total>0?total+' coup'+(total>1?'s joués':' joué'):'';
   document.getElementById('hist-first').disabled=(view===null&&total===0)||(view===0);
   document.getElementById('hist-prev').disabled=(view===null&&total===0)||(view===0);
   document.getElementById('hist-next').disabled=(view===null);
@@ -739,8 +718,6 @@ function updateHistoryNav(){
 function renderHistoryPosition(idx){
   const snap=GS.history[idx];if(!snap)return;
   renderBoardFromSnapshot(snap.board,null);updateHistoryNav();
-  const bar=document.getElementById('game-status');
-  if(bar){bar.textContent='Historique : position '+idx+'/'+GS.history.length;bar.className='status-bar';}
 }
 // La relecture d'historique emprunte EXACTEMENT le même plateau que la
 // partie en cours : les mêmes 64 cases, la même couche de pièces. Elle
@@ -777,13 +754,45 @@ document.getElementById('hist-first').addEventListener('click',()=>{if(GS.histor
 document.getElementById('hist-prev').addEventListener('click',()=>{if(GS.history.length===0)return;const cur=GS.historyView!==null?GS.historyView:GS.history.length;const next=Math.max(0,cur-1);GS.historyView=next;renderHistoryPosition(next);updateHistoryNav();});
 document.getElementById('hist-next').addEventListener('click',()=>{if(GS.historyView===null)return;const next=GS.historyView+1;if(next>=GS.history.length){GS.historyView=null;renderGame(GS);updateStatus(GS);}else{GS.historyView=next;renderHistoryPosition(next);}updateHistoryNav();});
 document.getElementById('hist-last').addEventListener('click',()=>{GS.historyView=null;renderGame(GS);updateStatus(GS);updateHistoryNav();});
+// LES FLÈCHES OUVRENT LE JOURNAL AVANT DE LE PARCOURIR. Elles pilotent les
+// quatre commandes de relecture, qui vivent maintenant DANS le panneau : sans
+// cette ouverture, une flèche remonterait le fil de la partie sans que rien
+// ne dise qu'on est en train de relire — le plateau changerait tout seul.
+// C'était le rôle de la ligne « Historique : coup 12/31 » dans la barre de
+// statut, qui redisait ce que le journal écrit déjà à côté de chaque coup.
 document.addEventListener('keydown',e=>{
   if(!document.getElementById('page-game').classList.contains('active'))return;
-  if(e.key==='ArrowLeft')document.getElementById('hist-prev').click();
-  else if(e.key==='ArrowRight')document.getElementById('hist-next').click();
-  else if(e.key==='Home')document.getElementById('hist-first').click();
-  else if(e.key==='End')document.getElementById('hist-last').click();
+  const nav={ArrowLeft:'hist-prev',ArrowRight:'hist-next',Home:'hist-first',End:'hist-last'}[e.key];
+  if(!nav)return;
+  if(typeof gamePanelOpen==='function'&&!gamePanelIsOpen('history'))gamePanelOpen('history');
+  document.getElementById(nav).click();
 });
+
+// ----------------------------------------------------------------
+// LES DEUX BOUTONS DE PARTIE SUIVENT L'ÉTAT
+// ----------------------------------------------------------------
+// « Annuler coup » n'existe que pendant une partie HORS LIGNE, et les deux
+// conditions sont décidées ici, ensemble. Elles ont vécu à deux endroits —
+// startGame masquait le bouton en ligne, updateStatus le rendait à chaque
+// rendu — et c'est le classique de la propriété écrite par deux règles : la
+// seconde efface la première à chaque coup.
+//   · EN LIGNE, l'annulation serait unilatérale et désynchroniserait les deux
+//     plateaux ;
+//   · PARTIE TERMINÉE, il n'y a plus rien à reprendre : le résultat est
+//     enregistré, l'ELO est compté. On relit, on n'amende pas.
+//
+// APPELÉE DEPUIS renderGame ET NON DEPUIS updateStatus SEULE, et c'est le
+// point à ne pas perdre : c'est updateStatus qui DÉCLARE la fin de partie
+// (`gs.gameOver=true`, puis triggerEndOfGame). Un état lu en tête de cette
+// fonction est donc l'état d'AVANT — le mat tombait, et « Annuler coup »
+// restait offert pendant toute l'analyse, faute d'un rendu ultérieur pour le
+// corriger. renderGame, lui, passe après.
+function syncGameButtons(gs){
+  const qBtn=document.getElementById('game-quit');
+  if(qBtn)qBtn.textContent=gs.gameOver?'Quitter':'Abandonner';
+  const uBtn=document.getElementById('game-undo');
+  if(uBtn)uBtn.style.display=(gs.gameOver||gs.multiplayer)?'none':'';
+}
 
 // ----------------------------------------------------------------
 // STATUT DE PARTIE (échec/mat/pat/nulle) : appelée par postMoveUpdate()
@@ -791,9 +800,11 @@ document.addEventListener('keydown',e=>{
 // ----------------------------------------------------------------
 function updateStatus(gs){
   const bar=document.getElementById('game-status');if(!bar)return;
-  const qBtn=document.getElementById('game-quit');
-  if(qBtn)qBtn.textContent=gs.gameOver?'Quitter':'Abandonner';
-  if(gs.historyView!==null){bar.textContent='Historique : coup '+gs.historyView+'/'+gs.history.length;bar.className='status-bar';return;}
+  syncGameButtons(gs);
+  // En relecture, la barre garde ce qu'elle disait : ce qu'on regarde est une
+  // position passée, il n'y a pas de « tour » à y annoncer, et le numéro du
+  // coup est déjà dans le journal, à côté de sa notation.
+  if(gs.historyView!==null)return;
   const t=gs.turn;
 
   // Règle des 50 coups
@@ -890,8 +901,13 @@ function updateStatus(gs){
   const TURN_YOU='À votre tour';
   const TURN_OPP='Au tour de votre adversaire';
   const myTurn=(t===playerCol);
+  // LA BARRE NE DIT QU'UNE CHOSE À LA FOIS. Elle a porté « Échec ! Au tour de
+  // votre adversaire » : deux informations de nature différente cousues sur
+  // une ligne, dont la plus urgente — un roi attaqué — se retrouvait diluée
+  // dans la plus banale. Un échec est un ÉVÉNEMENT, il occupe la ligne seul ;
+  // le reste du temps, la ligne dit à qui de jouer, et rien d'autre.
   if(check){
-    bar.textContent='Échec ! '+(myTurn?TURN_YOU:TURN_OPP);bar.className='status-bar check';playSound('check');
+    bar.textContent='Échec !';bar.className='status-bar check';playSound('check');
     // UNE FOIS PAR DEMI-COUP, PAS UNE PAR RENDU. updateStatus est rappelée à
     // chaque redessin — sélection d'une pièce, retour d'historique, simple
     // redimensionnement —, et sans ce repère l'alarme se rejouerait sur un
@@ -917,41 +933,77 @@ function updateStatus(gs){
 window.addEventListener("resize",()=>{if(document.getElementById("page-game").classList.contains("active")&&typeof GS!=="undefined")buildGameLabels(GS);});
 
 // ----------------------------------------------------------------
-// LE JOURNAL EN FEUILLE GLISSANTE (téléphone)
+// LES DEUX PANNEAUX DE LA ZONE SOUS LE PLATEAU
 // ----------------------------------------------------------------
-// Sous 820 px, le bloc du journal est ancré en bas d'écran et ne montre au
-// repos que sa POIGNÉE : le nombre de coups, le dernier coup joué et les
-// quatre commandes de relecture — ce qu'on regarde entre deux coups. Il
-// empilait auparavant, sous le plateau, un titre, une rangée de commandes, un
-// compteur et la liste entière : environ 300 px de défilement pour une
-// information consultée par intermittence.
+// Le journal des coups a été une FEUILLE ancrée en bas d'écran. Repliée, elle
+// mangeait cent pixels de hauteur — pris à l'échiquier, la seule chose qu'on
+// regarde. Dépliée, elle recouvrait le plateau derrière un voile : on ne
+// pouvait donc pas lire le journal ET jouer, ce qui est pourtant la seule
+// chose qu'on demande à un journal des coups.
 //
-// Le déploiement est purement visuel (une classe) : aucune commande ne change
-// de comportement, et les quatre boutons de relecture restent cliquables
-// feuille repliée — c'est même leur place naturelle.
-(function wireMoveSheet(){
-  const sheet=document.querySelector('.gs-block.gs-grow');
-  if(!sheet)return;
-  let scrim=null;
-  const close=()=>{
-    sheet.classList.remove('sheet-open');
-    if(scrim){scrim.remove();scrim=null;}
-  };
-  const open=()=>{
-    sheet.classList.add('sheet-open');
-    if(!scrim){
-      scrim=document.createElement('div');
-      scrim.className='sheet-scrim';
-      scrim.addEventListener('click',close);
-      sheet.parentNode.insertBefore(scrim,sheet);
-    }
-  };
-  sheet.addEventListener('click',e=>{
-    // Les commandes de relecture et le journal lui-même gardent leur rôle :
-    // seul un appui sur le fond de la feuille la déploie ou la referme.
-    if(e.target.closest('button,.move-log'))return;
-    sheet.classList.contains('sheet-open')?close():open();
+// Deux boutons l'ouvrent maintenant — « Historique » à gauche, « Chat » à
+// droite —, et le panneau se pose sur la ZONE SOUS LE PLATEAU et sur elle
+// seule (voir [GAME-PANEL] dans css/style.css). Il recouvre l'indication de
+// tour, « Annuler coup » et les deux boutons ; le plateau reste entier,
+// visible et jouable. Il n'y a volontairement PAS de voile : un voile dirait
+// « le reste est suspendu », et justement il ne l'est pas.
+//
+// Un seul panneau à la fois : deux superposés laisseraient l'un des deux
+// orphelin sous l'autre, et il n'y a de toute façon qu'une zone.
+const GAME_PANELS={history:'panel-history',chat:'panel-chat'};
+let _openPanel=null;
+
+function gamePanelClose(){
+  if(!_openPanel)return;
+  const el=document.getElementById(GAME_PANELS[_openPanel]);
+  if(el)el.hidden=true;
+  const btn=document.getElementById(_openPanel==='history'?'btn-history':'btn-chat');
+  if(btn)btn.setAttribute('aria-expanded','false');
+  _openPanel=null;
+  const under=document.getElementById('game-under');
+  if(under)under.classList.remove('gu-open','gu-chat');
+  // La zone rétrécit : le plateau récupère sa place au même instant, sans
+  // quoi il resterait petit jusqu'au coup suivant.
+  gameSyncChrome();
+}
+
+function gamePanelOpen(name){
+  if(!GAME_PANELS[name])return;
+  if(_openPanel===name)return;
+  gamePanelClose();
+  const el=document.getElementById(GAME_PANELS[name]);
+  if(!el)return;
+  el.hidden=false;
+  _openPanel=name;
+  const btn=document.getElementById(name==='history'?'btn-history':'btn-chat');
+  if(btn)btn.setAttribute('aria-expanded','true');
+  const under=document.getElementById('game-under');
+  if(under){under.classList.add('gu-open');under.classList.toggle('gu-chat',name==='chat');}
+  if(name==='history'){
+    renderMoveLog(GS);
+    gameScrollLogToEnd();
+  }
+  if(name==='chat'&&typeof mpOpenChat==='function')mpOpenChat();
+  gameSyncChrome();
+}
+function gamePanelToggle(name){
+  _openPanel===name?gamePanelClose():gamePanelOpen(name);
+}
+function gamePanelIsOpen(name){return name?_openPanel===name:!!_openPanel;}
+
+// Le dernier coup est en bas : c'est là qu'on regarde en ouvrant le journal,
+// et c'est le seul endroit qu'un défilement automatique a le droit d'imposer.
+function gameScrollLogToEnd(){
+  const log=document.getElementById('move-log');
+  if(log)log.scrollTop=log.scrollHeight;
+}
+
+(function wireGamePanels(){
+  document.getElementById('btn-history')?.addEventListener('click',()=>gamePanelToggle('history'));
+  document.getElementById('btn-chat')?.addEventListener('click',()=>gamePanelToggle('chat'));
+  document.querySelectorAll('[data-close-panel]').forEach(b=>{
+    b.addEventListener('click',gamePanelClose);
   });
-  // Un nouveau coup pendant la consultation : on rend le plateau.
-  document.addEventListener('keydown',e=>{if(e.key==='Escape')close();});
+  // Échap ferme, comme partout ailleurs dans le jeu.
+  document.addEventListener('keydown',e=>{if(e.key==='Escape')gamePanelClose();});
 })();

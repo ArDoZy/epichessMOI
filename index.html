@@ -838,19 +838,6 @@
         <div class="gp-taken" id="cap-opp"></div>
       </div>
 
-      <!-- role=status + aria-live : échec, mat et nulle sont annoncés à voix
-           haute au lieu de n'exister qu'en couleur. `polite` et non `assertive`
-           parce qu'une annonce de partie ne doit pas couper la lecture d'un
-           coup en cours. -->
-      <div class="status-bar" id="game-status" role="status" aria-live="polite" aria-atomic="true">En attente...</div>
-      <div class="gs-block gs-grow">
-        <div class="gsb-title">Journal des coups</div>
-        <div class="history-nav">
-          <button id="hist-first" title="Position de départ">⏮</button><button id="hist-prev" title="Coup précédent">◀</button><button id="hist-next" title="Coup suivant">▶</button><button id="hist-last" title="Position actuelle">⏭</button>
-        </div>
-        <div class="history-badge" id="history-badge"></div>
-        <div class="move-log" id="move-log"></div>
-      </div>
       <div class="gp-bar" id="human-player-bar">
         <div class="gp-av" id="human-player-avatar">?</div>
         <div class="gp-id">
@@ -861,20 +848,94 @@
         <div class="gp-taken" id="cap-me"></div>
       </div>
 
-      <!-- Les deux styles en dur (font-size:11px;padding:8px) donnaient des
-           boutons de 30 px de haut : les deux actions les plus lourdes de
-           conséquence du jeu — annuler un coup, abandonner la partie —
-           étaient les plus difficiles à viser. La taille vit maintenant dans
-           .game-btns .btn (voir [GAME] dans css/style.css). -->
-      <!-- LES EMOTES (js/multiplayer.js). Elles n'apparaissent qu'en partie
-           en ligne : hors ligne, elles n'auraient personne à qui parler.
-           Six pictogrammes et aucun texte libre — un champ de saisie dans un
-           jeu compétitif demanderait une modération, un signalement et un
-           blocage, trois systèmes qui n'existent pas ici. Le dernier bouton
-           est la sourdine, le prix d'entrée de toute communication en jeu. -->
-      <div class="mp-emote-bar" id="mp-emote-bar" style="display:none"></div>
+      <!-- ================================================================
+           LA ZONE SOUS LE PLATEAU, ET CE QU'ELLE PORTE
+           ================================================================
+           Le journal des coups a longtemps été une FEUILLE ancrée en bas
+           d'écran, dépliable d'un appui. Deux défauts, et le second est
+           rédhibitoire : au repos elle mangeait encore une centaine de
+           pixels de hauteur — sur un téléphone, cent pixels pris à
+           l'échiquier —, et dépliée elle recouvrait le plateau derrière un
+           voile. On ne pouvait donc pas lire le journal ET jouer.
+
+           Tout ce qui suit vit maintenant dans cette zone, entre le bandeau
+           du joueur (donc sous sa pendule) et le bouton « Abandonner », qui
+           est le dernier élément de l'écran. Deux boutons l'ouvrent —
+           « Historique » collé à gauche, « Chat » collé à droite — et le
+           panneau correspondant se pose EXACTEMENT sur cette zone, en
+           `position:absolute` : il recouvre l'indication de tour, « Annuler
+           coup » et les deux boutons eux-mêmes, et RIEN D'AUTRE.
+           Le plateau reste entièrement visible et jouable, panneau ouvert :
+           c'est toute la raison de ce découpage. Voir [GAME-PANEL] dans
+           css/style.css. -->
+      <div class="game-under" id="game-under">
+
+        <!-- role=status + aria-live : échec, mat et nulle sont annoncés à
+             voix haute au lieu de n'exister qu'en couleur. `polite` et non
+             `assertive` parce qu'une annonce de partie ne doit pas couper la
+             lecture d'un coup en cours. -->
+        <div class="status-bar" id="game-status" role="status" aria-live="polite" aria-atomic="true">En attente...</div>
+
+        <!-- « Annuler coup » n'existe QUE pendant la partie : une partie
+             terminée ne se rejoue pas, elle se relit (js/game-render.js,
+             updateStatus). -->
+        <button class="btn btn-ghost gu-undo" id="game-undo">Annuler coup</button>
+
+        <div class="game-tools" id="game-tools">
+          <button class="gt-btn" id="btn-history" aria-expanded="false" aria-controls="panel-history">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M4 6h16M4 12h16M4 18h10"/>
+            </svg>
+            <span>Historique</span>
+          </button>
+          <!-- Le chat n'a personne à qui parler hors ligne : le bouton
+               n'apparaît qu'en partie en ligne (mpRefreshChat,
+               js/multiplayer.js). -->
+          <button class="gt-btn gt-chat" id="btn-chat" style="display:none" aria-expanded="false" aria-controls="panel-chat">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M20 12a7 7 0 0 1-7 7H8l-4 3v-4.6A7 7 0 0 1 11 5h2a7 7 0 0 1 7 7Z"/>
+            </svg>
+            <span>Chat</span>
+            <span class="gt-dot" id="chat-dot" hidden></span>
+          </button>
+        </div>
+
+        <!-- LE JOURNAL. Les coups y sont écrits 1,6 fois plus grands qu'avant :
+             on les lit maintenant dans un panneau qu'on a ouvert exprès, et
+             plus dans une poignée de feuille où il fallait plisser les yeux. -->
+        <section class="game-panel" id="panel-history" hidden aria-label="Journal des coups">
+          <div class="gpanel-head">
+            <div class="gpanel-title">Journal des coups</div>
+            <button class="gpanel-close" data-close-panel aria-label="Fermer le journal">✕</button>
+          </div>
+          <div class="history-nav">
+            <button id="hist-first" title="Position de départ">⏮</button><button id="hist-prev" title="Coup précédent">◀</button><button id="hist-next" title="Coup suivant">▶</button><button id="hist-last" title="Position actuelle">⏭</button>
+          </div>
+          <div class="move-log" id="move-log"></div>
+        </section>
+
+        <!-- LA DISCUSSION. Aucun champ de saisie : on choisit une phrase dans
+             un catalogue, et c'est son IDENTIFIANT qui part sur le réseau
+             (js/multiplayer.js). Un client modifié ne peut donc rien faire
+             s'afficher chez l'adversaire qui ne soit pas déjà dans le jeu —
+             c'est la modération par construction, celle qui ne demande ni
+             signalement ni blocage. -->
+        <section class="game-panel" id="panel-chat" hidden aria-label="Discussion">
+          <div class="gpanel-head">
+            <div class="gpanel-title">Discussion</div>
+            <button class="gpanel-mute" id="mp-emote-mute" role="switch" aria-checked="true"
+              title="Recevoir les messages de l'adversaire" aria-label="Recevoir les messages de l'adversaire">🔔</button>
+            <button class="gpanel-close" data-close-panel aria-label="Fermer la discussion">✕</button>
+          </div>
+          <div class="chat-log" id="chat-log"></div>
+          <div class="chat-picker" id="chat-picker"></div>
+        </section>
+      </div>
+
+      <!-- Le bouton le plus définitif du jeu est le DERNIER élément de
+           l'écran, seul sur sa ligne, sous tout le reste : c'est la place
+           d'une sortie. En fin de partie il devient « Quitter ». -->
       <div class="game-btns">
-        <button class="btn btn-ghost" id="game-undo">Annuler coup</button>
         <button class="btn btn-danger" id="game-quit">Abandonner</button>
       </div>
     </aside>

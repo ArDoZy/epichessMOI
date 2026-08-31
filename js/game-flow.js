@@ -150,10 +150,11 @@ function startGame(colorAlreadyChosen,multiplayer,tutoCfg){
   // quitte la partie.
   if(typeof setAppPath==='function')setAppPath(multiplayer?appPath(COMBAT_PATH):appHomePath());
   showPage('page-game');
-  // "Annuler coup" est retiré en ligne : l'annulation serait unilatérale et
-  // désynchroniserait les deux plateaux.
-  const undoBtn=document.getElementById('game-undo');
-  if(undoBtn)undoBtn.style.display=multiplayer?'none':'';
+  // Une nouvelle partie s'ouvre sur le plateau, pas sur un panneau resté
+  // ouvert de la précédente — et le fil de discussion repart vide, car
+  // l'adversaire n'est peut-être plus le même.
+  if(typeof gamePanelClose==='function')gamePanelClose();
+  if(typeof mpChatReset==='function')mpChatReset();
   updateGamePlayerBars();
   renderGame(GS);updateStatus(GS);updateHistoryNav();
   setTimeout(()=>{buildGameLabels(GS);renderGame(GS);},80);
@@ -219,19 +220,15 @@ function showResultModal(result,oldElo,newElo,delta,newUnlockIds,noEloReason,elo
   iconEl.style.display=icons[result]?'':'none';
   const titleEl=document.getElementById('result-title');titleEl.textContent=titles[result];
   titleEl.className='result-title '+(result==='win'?'win-text':result==='loss'?'loss-text':'draw-text');
-  // Contre QUI : avec douze adversaires, « Victoire ! +23 » ne dit plus la
-  // moitié de ce qui s'est passé. La ligne porte aussi le palmarès du duel,
-  // qui est la seule raison d'y revenir une fois l'adversaire battu.
+  // PLUS DE LIGNE D'ADVERSAIRE. Elle portait « L'Instructeur · 900 ELO · 3V
+  // 1N 2D » sous le verdict : le nom de celui qu'on vient d'affronter est
+  // resté affiché en haut de l'écran pendant toute la partie, et son palmarès
+  // est de la consultation, pas de la conclusion — il a sa place sur la page
+  // des adversaires, où on va le chercher quand on le cherche. Une fenêtre de
+  // fin de partie doit tenir en un coup d'œil : le verdict, l'ELO, et ce
+  // qu'on a débloqué.
   const foeEl=document.getElementById('result-foe');
-  if(foeEl){
-    const foe=(!GS.multiplayer&&!GS.tuto&&typeof aiCurrentOpponent==='function')?aiCurrentOpponent():null;
-    if(foe){
-      const rec=(typeof advRecord==='function')?advRecord(foe.id):null;
-      const tally=rec?' · '+rec.w+'V '+rec.d+'N '+rec.l+'D':'';
-      foeEl.style.display='';
-      foeEl.textContent=foe.name+' · '+foe.elo+' ELO'+tally;
-    }else foeEl.style.display='none';
-  }
+  if(foeEl)foeEl.style.display='none';
   document.getElementById('result-elo-before').textContent=oldElo;
   document.getElementById('result-elo-after').textContent=newElo;
   const deltaEl=document.getElementById('result-elo-delta');deltaEl.textContent=(delta>0?'+':'')+delta;
@@ -243,19 +240,23 @@ function showResultModal(result,oldElo,newElo,delta,newUnlockIds,noEloReason,elo
   // de partie : l'Alchimiste vient de dire que c'est un entraînement. La ligne
   // d'ELO disparaît, la phrase aussi. Le mode admin, lui, garde sa mention :
   // elle rappelle où l'on se trouve.
-  // La ligne sous l'ELO porte DEUX choses selon le cas : la raison pour
-  // laquelle la partie n'est pas classée, ou — quand elle l'est — ce qui
-  // explique un écart inhabituel (placement, bonus d'ascension, plancher de
-  // rang qui a absorbé la défaite). Voir vvEloExplain, js/voie.js : sans
-  // elle, un « +38 » puis un « -4 » passent pour un bug.
+  // LA LIGNE SOUS L'ELO NE PORTE PLUS QU'UNE CHOSE : la raison pour laquelle
+  // la partie n'est PAS classée. Elle expliquait aussi, quand elle l'était,
+  // d'où venait l'écart — « Bonus d'ascension : ×2,4 jusqu'à 1000 ELO ». La
+  // règle est réelle et vaut d'être connue, mais pas là : à la fin de chaque
+  // partie gagnée, pendant les cent premières, c'est une note de bas de page
+  // qu'on relit sans jamais en avoir besoin, entre le verdict et le bouton
+  // « Continuer ».
+  // La règle elle-même n'a pas bougé d'un point, et sa mise en phrase non
+  // plus : vvEloExplain (js/voie.js) reste écrite et testée — c'est la
+  // formulation de référence de la courbe d'ascension, celle qu'une page de
+  // la Voie affichera le jour où on la lui demandera. Ce qui est retiré,
+  // c'est son passage obligé à chaque fin de partie.
   const showNote=!!noEloReason&&noEloReason!==VV_NO_ELO_TRAINING;
-  const climbNote=(!noEloReason&&typeof vvEloExplain==='function')
-    ?vvEloExplain(eloCalc,result,(typeof vvLoadPeakElo==='function')?vvLoadPeakElo():newElo):'';
-  const noteText=showNote?noEloReason:climbNote;
+  const noteText=showNote?noEloReason:'';
   if(noteEl){
     noteEl.style.display=noteText?'':'none';
     noteEl.textContent=noteText;
-    noteEl.classList.toggle('result-elo-climb',!showNote&&!!climbNote);
   }
   // PLUS DE LIGNE DE RANG. Elle affichait « Pierre · 218 ELO » juste sous
   // « 213 → 218 · +5 » : le même nombre, une deuxième fois, dans une phrase

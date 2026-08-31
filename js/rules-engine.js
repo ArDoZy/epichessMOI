@@ -878,8 +878,15 @@ function markLastMove(gs,mark){
 function renderMoveLog(gs){
   const log=document.getElementById('move-log');if(!log)return;
   const cur=gs.historyView!==null?Math.floor(gs.historyView/2):gs.movePairs.length-1;
-  log.innerHTML=gs.movePairs.map((pair,i)=>{const isH=gs.historyView!==null&&i===cur;return '<div class="move-log-item" style="'+(isH?'background:rgba(201,168,76,.15);border-radius:4px;':'')+'"><span class="move-log-num">'+(i+1)+'.</span><span class="move-log-w">'+pair[0]+'</span><span class="move-log-b">'+(pair[1]||'')+'</span></div>';}).join('');
-  log.scrollTop=log.scrollHeight;
+  log.innerHTML=gs.movePairs.map((pair,i)=>{const isH=gs.historyView!==null&&i===cur;return '<div class="move-log-item'+(isH?' ml-here':'')+'"><span class="move-log-num">'+(i+1)+'.</span><span class="move-log-w">'+pair[0]+'</span><span class="move-log-b">'+(pair[1]||'')+'</span></div>';}).join('');
+  // LE JOURNAL SUIT CE QU'ON REGARDE. Il défilait toujours jusqu'en bas, y
+  // compris pendant une relecture : on remontait au douzième coup et la liste
+  // repartait aussitôt au dernier, emportant la ligne qu'on venait de
+  // désigner. Pendant la relecture, c'est la position COURANTE qu'on amène à
+  // l'écran ; le reste du temps, le dernier coup joué.
+  const here=log.querySelector('.ml-here');
+  if(here&&typeof here.scrollIntoView==='function')here.scrollIntoView({block:'nearest'});
+  else log.scrollTop=log.scrollHeight;
 }
 
 // ================================================================

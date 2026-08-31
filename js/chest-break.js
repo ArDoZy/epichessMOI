@@ -54,6 +54,9 @@
 //   hint    la phrase sous le titre pendant cette étape
 //   fade    durée (ms) de la montée en opacité de l'image
 //   shake   amplitude (px) de la secousse d'impact
+//   snd     {n,f} : la recette de bruitage à jouer et sa force, 0 à 1
+//           (voir SFX_RECIPES dans js/sfx.js — `choc` pour une frappe,
+//           `blast` pour la déflagration finale)
 //   zoom    grossissement au moment de l'impact
 //   flash   opacité maximale de la gerbe de lumière (0 = aucune)
 //   fdur    durée (ms) de cette gerbe
@@ -114,7 +117,7 @@ function chestBreakTail(){
     // l'on voit d'où vient l'explosion. Il ne dure qu'un battement.
     {src:'06-explosion.webp', hint:'', fade:90, dir:CHEST_BREAK_FORALL,
      shake:22, zoom:1.13, flash:.86, fdur:300, bloom:[.30,.72], bt:'.7s',
-     sparks:44, sparkR:1.6, trem:2.2, hold:260, snd:[120,190,280]},
+     sparks:44, sparkR:1.6, trem:2.2, hold:260, snd:{n:'blast',f:.7}},
 
     // L'EXPLOSION. Elle sort de sa boîte : plein écran, en `cover` — une
     // déflagration n'a pas de composition à préserver, on peut la rogner
@@ -131,7 +134,7 @@ function chestBreakTail(){
     {src:'07-explosion-suite.webp', hint:'', fade:70, dir:CHEST_BREAK_FORALL,
      full:'bleed', blast:true, bldur:1150, white:1500, flash:.9, fdur:520,
      sparks:54, sparkR:3.2, hold:1050,
-     snd:[90,140,200,300,440]},
+     snd:{n:'blast',f:1}},
 
     // LE SOCLE VIDE. En `boxed` : ici le cadrage compte, le socle doit
     // rester entier sur un téléphone comme sur un écran large. `solo`
@@ -155,19 +158,19 @@ function chestBreakSeq(dir,piece){
       {src:'01-intact.webp',   hint:'Frappez '+piece+' pour '+(/^la /.test(piece)?'la':'le')+' briser', fade:260},
 
       {src:'02-fissure.webp',  hint:'Encore',            fade:210, shake:7,  zoom:1.045,
-       flash:.42, fdur:280, bloom:[.10,.26], bt:'3.2s', sparks:8,  snd:[210,320]},
+       flash:.42, fdur:280, bloom:[.10,.26], bt:'3.2s', sparks:8,  snd:{n:'choc',f:.42}},
 
       {src:'03-fissures.webp', hint:'Encore',            fade:190, shake:10, zoom:1.06,
-       flash:.55, fdur:300, bloom:[.16,.40], bt:'2.3s', sparks:14, trem:.4, snd:[250,380]},
+       flash:.55, fdur:300, bloom:[.16,.40], bt:'2.3s', sparks:14, trem:.4, snd:{n:'choc',f:.62}},
 
       {src:'04-brisures.webp', hint:'Il ne tient plus…', fade:170, shake:14, zoom:1.075,
-       flash:.68, fdur:320, bloom:[.24,.62], bt:'1.4s', sparks:22, trem:1,  snd:[300,460]},
+       flash:.68, fdur:320, bloom:[.24,.62], bt:'1.4s', sparks:22, trem:1,  snd:{n:'choc',f:.82}},
 
       // À partir d'ici la pièce ne tient plus : plus une seule frappe à
       // donner, la destruction s'enchaîne d'elle-même jusqu'au socle vide.
       {src:'05-eclats.webp',   hint:'',                  fade:120, shake:20, zoom:1.11,
        flash:.80, fdur:300, bloom:[.35,.80], bt:'.9s',  sparks:34, trem:1.8,
-       hold:190, snd:[150,240,360]},
+       hold:190, snd:{n:'choc',f:1}},
     ].concat(chestBreakTail()),
     // Format des planches (largeur/hauteur). Il donne à la scène `boxed` les
     // proportions exactes de l'image, pour que l'ovale de découpe tombe
@@ -479,16 +482,22 @@ function pbRestart(el,cls){
 // ----------------------------------------------------------------
 // LE SON DE LA FRACTURE
 // ----------------------------------------------------------------
-// playTone (js/rules-engine.js) ne sait produire qu'une note tenue : une
-// seule ne fait pas un craquement. On en empile donc trois à quelques
-// millisecondes d'intervalle, en dents de scie et en descente rapide — c'est
-// la brièveté et l'empilement qui font entendre de la pierre qui cède.
-function pbSound(freqs){
-  if(typeof playTone!=='function'||!freqs)return;
-  freqs.forEach((f,i)=>setTimeout(()=>{
-    playTone(f,'sawtooth',0.05+i*0.015,0.30,true);
-    playTone(f*1.98,'square',0.03,0.10,true);
-  },i*26));
+// IL ÉTAIT FABRIQUÉ ICI, ET C'ÉTAIT L'ERREUR. Chaque étape portait une liste
+// de fréquences, et cette fonction en empilait les notes en dents de scie
+// avec playTone : un grésillement métallique, sans attaque ni corps, qu'on
+// se prenait quatre fois de suite en brisant un coffre. Le jeu a pourtant un
+// moteur de bruitages complet — couches, enveloppes, bruit filtré, variation,
+// ducking de la musique, haptique (js/sfx.js) —, et le coffre était le seul
+// endroit à ne pas s'en servir.
+//
+// Deux recettes lui ont été ajoutées, `choc` et `blast`, et il ne reste ici
+// que le guichet. Une étape ne décrit donc plus des fréquences mais une
+// INTENTION : quel son, et avec quelle force — celle-ci ouvre le filtre,
+// monte le volume et raidit la vibration, exactement comme pour une prise sur
+// le plateau.
+function pbSound(snd){
+  if(!snd||typeof playSound!=='function')return;
+  playSound(snd.n,{force:snd.f||0.6});
 }
 
 // ----------------------------------------------------------------
