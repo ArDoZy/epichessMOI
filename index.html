@@ -1028,6 +1028,20 @@
     <span class="sp-label">Musique</span>
     <input type="range" class="sp-slider" id="sp-music-vol" min="0" max="1" step="0.05" value="0.5">
   </div>
+  <!-- LES EFFETS DE COMBAT (js/combat-fx.js) : éclats de prise, traînées,
+       signatures de pouvoir, embrasement de l'échec. Un CURSEUR et pas un
+       interrupteur, parce que le réglage n'a pas deux états mais un dosage :
+       il pilote le NOMBRE de particules et la richesse des gerbes, jamais
+       leur opacité (voir [COMBAT-FX] dans css/style.css : une couche
+       translucide cesserait de se fondre au bois du plateau). À zéro, plus un
+       seul nœud n'est posé — c'est ce qui rend le jeu jouable sur un
+       téléphone d'entrée de gamme.
+       Le mouvement réduit du système coupe déjà tout de son côté, sans
+       toucher à ce curseur : les deux réglages ne se marchent pas dessus. -->
+  <div class="sp-row">
+    <span class="sp-label">Effets</span>
+    <input type="range" class="sp-slider" id="sp-fx-level" min="0" max="1" step="0.05" value="1">
+  </div>
 </div>
 
 <!-- ================================================================
@@ -1073,6 +1087,14 @@
      pas strictement requis (l'appel est différé jusqu'au premier son)
      mais il dit la dépendance. -->
 <script src="js/sfx.js"></script>
+<!-- combat-fx.js : la moitié VISUELLE du geste dont sfx.js est la moitié
+     sonore — impacts, traînées, signatures de pouvoir, échec, mat. Il est
+     appelé par le moteur et par le rendu, jamais l'inverse, et toujours
+     derrière un `typeof …==='function'` : son ordre de chargement est donc
+     libre, et retirer cette ligne laisse le jeu entier fonctionnel, en plus
+     terne. Il est posé ici parce que c'est sa place dans la lecture, à côté
+     du son qu'il double. -->
+<script src="js/combat-fx.js"></script>
 <script src="js/rules-engine.js"></script>
 <!-- Schémas de déplacement : interroge le moteur de règles, donc APRÈS lui. -->
 <script src="js/piece-moves.js"></script>

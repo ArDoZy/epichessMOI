@@ -2281,6 +2281,65 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
     if(Math.abs(apres.curseur-0.35)>0.001)throw new Error('le curseur ne montre pas le volume appliqué : '+apres.curseur);
   });
 
+  // LES EFFETS DE COMBAT (js/combat-fx.js). Trois promesses à tenir, et
+  // aucune ne se voit sur une capture d'écran :
+  //   · les effets se posent sur le plateau et en repartent — un nœud qui
+  //     resterait s'accumulerait à chaque prise jusqu'à couvrir la partie ;
+  //   · le curseur « Effets » à zéro n'en pose plus AUCUN, ce qui est la
+  //     seule chose qui rende le jeu tenable sur un téléphone lent ;
+  //   · les couches n'ouvrent pas de contexte d'empilement (ni `z-index` ni
+  //     `opacity`), faute de quoi le `mix-blend-mode` de tout ce qu'elles
+  //     contiennent cesse de se fondre au plateau et les planches dessinées
+  //     y laissent un rectangle noir. C'est le piège documenté en tête de la
+  //     section [COMBAT-FX] du CSS, et il se re-tend au premier « il manque
+  //     juste un z-index ici ».
+  await step('les effets de combat se posent, se retirent, et se coupent',async()=>{
+    await page.goto('http://localhost:'+PORT+'/',{waitUntil:'domcontentloaded'});
+    await page.waitForSelector('#cube-jouer-btn',{state:'visible',timeout:8000});
+    const r=await page.evaluate(async()=>{
+      const out=[];
+      const board=document.getElementById('game-board');
+      if(!board)return['pas de plateau'];
+      if(typeof fxPlayMove!=='function')return['js/combat-fx.js n\'est pas chargé'];
+      fxSetLevel(1);fxSetFlipped(false);
+      fxPlayMove({from:{r:6,c:4},to:{r:4,c:4},pieceId:'std-pawn',captured:'dame'});
+      const poses=board.querySelectorAll('.fx-layer > *').length;
+      if(!poses)out.push('une prise ne pose aucun effet');
+      for(const l of board.querySelectorAll('.fx-layer')){
+        const cs=getComputedStyle(l);
+        if(cs.zIndex!=='auto')out.push('une couche d\'effets porte un z-index : le fondu au plateau est perdu');
+        if(parseFloat(cs.opacity)<1)out.push('une couche d\'effets est translucide : le fondu au plateau est perdu');
+      }
+      // À zéro, plus rien — y compris sur un plateau qui vient d'en recevoir.
+      await new Promise(res=>setTimeout(res,1400));
+      const restants=board.querySelectorAll('.fx-layer > *').length;
+      if(restants)out.push(restants+' effet(s) sont restés sur le plateau');
+      fxSetLevel(0);
+      fxPlayMove({from:{r:6,c:4},to:{r:4,c:4},pieceId:'std-pawn',captured:'dame'});
+      fxCheck(7,4);fxPromote(0,4,'dame');
+      if(board.querySelectorAll('.fx-layer > *').length)
+        out.push('le curseur « Effets » à zéro laisse encore passer des effets');
+      fxSetLevel(1);
+      // LE DÉLAI D'ISSUE EST UN CONTRAT ENTRE DEUX MODULES, et c'est le plus
+      // dangereux du lot : settleAndCelebrate (js/economy-ui.js) retarde la
+      // cinématique de fin de ce que dit fxOutcomeDelay(). Une réponse non
+      // nulle hors d'un mat retarderait donc le verdict d'une nulle, d'un
+      // abandon ou d'une pendule à zéro — un écran qui a l'air figé.
+      if(typeof fxOutcomeDelay==='function'){
+        if(fxOutcomeDelay()!==0)out.push('un délai d\'issue est réclamé alors qu\'aucun mat n\'a été joué');
+        fxMate(0,4,true);
+        if(fxOutcomeDelay()<=0)out.push('le mat ne laisse pas au plateau le temps de jouer son effet');
+        await new Promise(res=>setTimeout(res,400));
+        if(fxOutcomeDelay()!==0)out.push('le délai d\'issue survit au mat qui l\'a demandé');
+      }
+      await new Promise(res=>setTimeout(res,2200));
+      if(board.querySelectorAll('.fx-layer > *').length)
+        out.push('les effets du mat sont restés sur le plateau');
+      return out;
+    });
+    if(r.length)throw new Error(r.join(' · '));
+  });
+
   await browser.close();
   server.close();
 

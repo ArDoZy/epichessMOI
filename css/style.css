@@ -25,6 +25,8 @@
      [EMBLEM]       emblème du jeu (sceau d'alchimiste), main.js::EMBLEM_SVG
      [PORTRAIT-LOCK] verrou d'orientation (téléphone couché)
      [BOARD-MOTION] glissement de la pièce qui vient de jouer
+     [COMBAT-FX]    effets spéciaux du combat (js/combat-fx.js) :
+                    impacts, traînées, pouvoirs, échec, mat
      [A11Y]         focus clavier, mouvement réduit
      [MP-SEARCH]    écran de recherche d'adversaire (multiplayer.js)
      [ICON-BUTTONS] boutons porteurs d'une icône SVG (stylo, corbeille)
@@ -3553,6 +3555,448 @@ body.cube-active:not(.nav-overlay) .notif-host{bottom:92px}
 @media(prefers-reduced-motion:reduce){
   .gc-piece{transition:none}
   .gc-piece.gc-dying .gc-art,.gc-piece.gc-born .gc-art,.gc-piece .gc-art.gc-morph{animation:none}
+}
+
+/* [COMBAT-FX] ===================================================
+   LES EFFETS SPÉCIAUX DU COMBAT.
+   Le jeu avait le son, la vibration et la secousse ; à l'écran, une prise
+   n'était qu'un dessin qui se ratatine. Tout ce qui suit est la moitié
+   VISUELLE de ce geste, posée par js/combat-fx.js sur deux couches
+   éphémères — voir l'en-tête de ce fichier pour le partage over/under.
+
+   TROIS RÈGLES TIENNENT TOUTE LA SECTION :
+     1. AUCUN EFFET NE REÇOIT DE CLIC. Les deux couches couvrent le plateau ;
+        sans `pointer-events:none`, un éclat de prise avalerait le coup
+        suivant pendant sa demi-seconde de vie.
+     2. TOUT EST EN POURCENTAGE DE PLATEAU. Comme la couche des pièces : pas
+        une mesure en pixels, donc rien à recalculer au redimensionnement.
+        Seule exception assumée, l'épaisseur des éclats (--len) et la taille
+        des motes (--sz), qui doivent rester des traits fins et non grossir
+        avec le plateau.
+     3. LES ANIMATIONS SONT EN `both` ET LES NŒUDS SONT JETABLES. Chaque
+        élément est retiré du document par fxMount() à la fin de sa durée :
+        rien ici n'a besoin d'être remis à zéro, et deux effets qui se
+        superposent sont deux nœuds, jamais un nœud rejoué.
+
+   `mix-blend-mode:screen` partout où l'effet est de la LUMIÈRE : le noir
+   disparaît, le feu reste, et l'effet se marie au bois du plateau au lieu de
+   s'y poser comme un autocollant. C'est le même procédé que les planches
+   dessinées (voir [ART] plus haut).
+   ============================================================== */
+
+/* LES DEUX COUCHES NE PORTENT NI `z-index` NI `opacity`, ET C'EST LE POINT
+   LE PLUS DÉLICAT DE TOUTE LA SECTION.
+
+   `mix-blend-mode` se fond dans ce qui est peint DERRIÈRE l'élément, à
+   l'intérieur du CONTEXTE D'EMPILEMENT le plus proche — et un `z-index` sur
+   un élément positionné en ouvre un, tout comme une `opacity` inférieure à 1.
+   Une couche d'effets qui aurait l'un ou l'autre serait donc un groupe fermé
+   dont le fond est vide : le noir des planches dessinées y resterait du noir,
+   en gros rectangle sur le plateau, et les halos ne se marieraient plus au
+   bois. C'est le même piège que celui documenté sur `.cine` dans [ART].
+
+   La profondeur est donc portée par les EFFETS EUX-MÊMES, un cran plus bas :
+   les couches ne sont plus que des sacs transparents, le contexte
+   d'empilement de référence reste .game-board, et tout se fond sur le bois.
+   Les repères de rangée et de colonne sont en z-index 3, la couche des
+   pièces en 2, le cadre du plateau en 6 : les effets se glissent entre. */
+.fx-layer{position:absolute;inset:0;pointer-events:none;overflow:hidden;
+  border-radius:inherit}
+/* SOUS les pièces : traînées, vortex, cercles de promotion. Une traînée
+   par-dessus la pièce cacherait celle qu'on regarde. */
+.fx-under>*{z-index:1}
+/* DEVANT : impacts, ondes, voiles. Un éclat doit couvrir la meurtrière. */
+.fx-over>*{z-index:5}
+/* Le conteneur d'un effet de case : exactement une case, et tout ce qu'il
+   contient est centré dessus. */
+.fx-cell{position:absolute;width:12.5%;height:12.5%;
+  display:flex;align-items:center;justify-content:center}
+.fx-cell>span{position:absolute;pointer-events:none}
+
+/* --- L'IMPACT D'UNE PRISE --------------------------------------- */
+/* Trois couches qui racontent trois choses : le noyau (l'instant du
+   contact), l'onde (la force qui part), les éclats (ce qui est brisé).
+   --fx-f porte la VIOLENCE de la prise (0,28 à 1), le même chiffre que
+   celui qui pilote le son : l'oreille et l'œil doivent dire pareil. */
+.fx-impact{mix-blend-mode:screen}
+.fx-core{width:58%;height:58%;border-radius:50%;
+  background:radial-gradient(circle,#fff 0%,var(--fx-c) 42%,transparent 72%);
+  animation:fxCore .30s ease-out both}
+@keyframes fxCore{
+  0%{opacity:0;transform:scale(.25)}
+  22%{opacity:1;transform:scale(1)}
+  100%{opacity:0;transform:scale(1.5)}
+}
+.fx-ring{width:60%;height:60%;border-radius:50%;
+  border:3px solid var(--fx-c);
+  box-shadow:0 0 14px var(--fx-c),inset 0 0 10px var(--fx-c);
+  animation:fxRing .52s cubic-bezier(.15,.7,.3,1) both}
+.fx-ring2{animation-duration:.72s;animation-delay:.07s;opacity:.6}
+@keyframes fxRing{
+  0%{opacity:0;transform:scale(.2)}
+  18%{opacity:1}
+  100%{opacity:0;transform:scale(calc(1.6 + var(--fx-f) * 1.6))}
+}
+/* UN ÉCLAT OCCUPE TOUTE LA CASE, ET C'EST LA CLÉ. On voudrait écrire un
+   élément de cinq pixels et le pousser de « 40 % » vers l'extérieur — mais
+   un pourcentage dans un `translate()` se mesure sur la taille DE L'ÉLÉMENT
+   LUI-MÊME : quarante pour cent de cinq pixels font deux pixels, et toute la
+   gerbe reste tassée sous la pièce. L'éclat fait donc la taille de la case,
+   et l'étincelle n'est qu'un dégradé radial peint en son centre : --dx/--dy
+   se mesurent alors sur la CASE, ce qu'on voulait depuis le début.
+   --len reste en pixels : une étincelle est un point de lumière, elle n'a
+   pas à grossir avec le plateau. */
+.fx-shard{width:100%;height:100%;
+  background:radial-gradient(circle at 50% 50%,
+    #fff 0 calc(var(--len)*.42),
+    var(--fx-c) calc(var(--len)*.8),
+    transparent calc(var(--len)*2.1));
+  animation:fxShard .5s cubic-bezier(.1,.75,.3,1) both;
+  animation-delay:var(--del)}
+@keyframes fxShard{
+  0%{opacity:0;transform:translate(0,0) rotate(0) scale(.4)}
+  12%{opacity:1;transform:translate(calc(var(--dx)*.18),calc(var(--dy)*.18)) rotate(calc(var(--rot)*.18)) scale(1.35)}
+  62%{opacity:.85}
+  100%{opacity:0;transform:translate(var(--dx),var(--dy)) rotate(var(--rot)) scale(.35)}
+}
+
+/* L'ONDE DE CHOC. Le seul effet de cette section qui va chercher une planche
+   dessinée. Elle est FACULTATIVE : le dégradé radial est déclaré en second
+   plan de la même propriété `background` et suffit à lui seul quand le
+   fichier manque — la règle de tout le décor du jeu (voir [ART]). */
+.fx-shock{overflow:visible;mix-blend-mode:screen}
+.fx-shock::before{content:'';position:absolute;left:50%;top:50%;
+  width:520%;height:520%;
+  background:url('../assets/fx/onde-choc.webp') center/contain no-repeat,
+    radial-gradient(circle,transparent 38%,rgba(242,106,61,.42) 46%,transparent 62%);
+  animation:fxShock .62s ease-out both}
+.fx-shock-typhon::before{filter:hue-rotate(215deg) saturate(1.3)}
+.fx-shock-gold::before{filter:hue-rotate(28deg) saturate(1.4) brightness(1.15)}
+@keyframes fxShock{
+  0%{opacity:0;transform:translate(-50%,-50%) scale(.12)}
+  20%{opacity:.85}
+  100%{opacity:0;transform:translate(-50%,-50%) scale(1)}
+}
+
+/* LE VOILE. Une prise majeure (Général, Monarque) ne tient pas dans une
+   case : le plateau entier prend une teinte, un dixième de seconde. C'est le
+   pendant visuel du ducking de la musique (js/sfx.js). */
+.fx-wash{position:absolute;inset:0;mix-blend-mode:screen;
+  animation:fxWash .42s ease-out both}
+.fx-wash-ember{background:radial-gradient(circle at 50% 50%,rgba(242,106,61,.55),rgba(242,106,61,.08) 72%)}
+/* La défaite ne s'illumine pas : elle se retire. D'où le `multiply` et non
+   le `screen` — c'est le seul voile du jeu qui ASSOMBRIT. */
+.fx-wash-ash{background:radial-gradient(circle at 50% 50%,rgba(20,26,31,.5),rgba(20,26,31,.72) 72%);
+  mix-blend-mode:multiply;animation-duration:1.1s}
+@keyframes fxWash{0%{opacity:0}18%{opacity:1}100%{opacity:0}}
+
+/* --- LA TRAÎNÉE DU DÉPLACEMENT ---------------------------------- */
+/* Le sillage laissé par la pièce qui vient de jouer : sur 64 cases, un coup
+   joué à l'autre bout de l'écran passait inaperçu, et c'est le premier
+   reproche d'une partie en ligne. Le dégradé va du transparent (le départ,
+   déjà oublié) au plein (l'arrivée, où l'œil doit aller).
+
+   La géométrie : le nœud est ancré au CENTRE de la case de départ, sa
+   largeur est la distance jusqu'au centre d'arrivée (en % de plateau, qui
+   est carré), et --rot l'angle. `transform-origin:0 50%` met le pivot sur
+   ce point d'ancrage ; le translateY(-50%) qui précède la rotation y amène
+   le milieu du trait. */
+.fx-trail{position:absolute;height:2.2%;border-radius:99px;
+  transform-origin:0 50%;mix-blend-mode:screen;
+  background:linear-gradient(90deg,transparent 0%,var(--fx-c) 88%,#fff 100%);
+  filter:blur(1px);
+  animation:fxTrail .44s cubic-bezier(.2,.75,.35,1) both}
+/* Une prise, ou la charge du Dresseur : le sillage s'épaissit. */
+.fx-trail-heavy{height:3.4%;filter:blur(2px)}
+@keyframes fxTrail{
+  0%{opacity:0;transform:translateY(-50%) rotate(var(--rot)) scaleX(.15)}
+  18%{opacity:1;transform:translateY(-50%) rotate(var(--rot)) scaleX(1)}
+  55%{opacity:.7}
+  100%{opacity:0;transform:translateY(-50%) rotate(var(--rot)) scaleX(1) scaleY(.35)}
+}
+
+/* --- LA POUSSIÈRE D'UNE PIÈCE QUI DISPARAÎT --------------------- */
+/* Posée pour TOUTE pièce qui quitte le plateau, quelle qu'en soit la cause :
+   c'est ce qui la rend précieuse. Elle couvre la prise ordinaire, les
+   victimes collatérales du Typhon et tout pouvoir futur, sans que le module
+   d'effets ait à connaître un seul pouvoir. */
+.fx-puff{mix-blend-mode:screen}
+.fx-smoke{width:80%;height:80%;border-radius:50%;
+  background:radial-gradient(circle,var(--fx-c) 0%,transparent 62%);
+  opacity:.55;animation:fxSmoke .8s ease-out both}
+@keyframes fxSmoke{
+  0%{opacity:0;transform:scale(.4)}
+  25%{opacity:.55}
+  100%{opacity:0;transform:scale(1.25) translateY(-14%)}
+}
+/* Les motes montent : une âme s'échappe, elle ne tombe pas. Même construction
+   que les éclats, et pour la même raison : la mote fait la taille de la case
+   pour que son déplacement se mesure sur la case. */
+.fx-mote-up{width:100%;height:100%;
+  background:radial-gradient(circle at 50% 50%,
+    #fff 0 calc(var(--sz)*.35),
+    var(--fx-c) calc(var(--sz)*.75),
+    transparent calc(var(--sz)*2.2));
+  animation:fxMoteUp .86s ease-out both;animation-delay:var(--del)}
+@keyframes fxMoteUp{
+  0%{opacity:0;transform:translate(0,0) scale(.5)}
+  20%{opacity:1;transform:translate(calc(var(--dx)*.3),calc(var(--dy)*.3)) scale(1)}
+  100%{opacity:0;transform:translate(var(--dx),calc(var(--dy) * 1.6)) scale(.35)}
+}
+
+/* --- LES POUVOIRS ----------------------------------------------- */
+/* Chaque pouvoir avait sa règle et son texte de fiche, aucun n'avait de
+   geste : le Typhon détruisait quatre pièces autour de lui et rien à l'écran
+   ne disait que c'était LUI. Ce sont ces gestes qui l'expliquent — un joueur
+   qui n'a jamais lu la fiche comprend en une partie. */
+
+/* L'ORAGE SANGUINAIRE : un vortex sous la créature. Le dégradé conique
+   tourne, le second anneau tourne à l'envers : c'est ce contresens qui fait
+   lire une SPIRALE plutôt qu'un disque qui pivote. */
+.fx-vortex{mix-blend-mode:screen}
+.fx-swirl{width:200%;height:200%;border-radius:50%;
+  background:conic-gradient(from 0deg,transparent 0deg,rgba(122,168,230,.55) 60deg,
+    transparent 130deg,rgba(63,208,178,.45) 210deg,transparent 300deg);
+  animation:fxSwirl .9s cubic-bezier(.2,.6,.3,1) both}
+.fx-swirl2{width:130%;height:130%;animation-name:fxSwirlBack;animation-duration:.78s}
+@keyframes fxSwirl{
+  0%{opacity:0;transform:rotate(0) scale(.2)}
+  25%{opacity:.9}
+  100%{opacity:0;transform:rotate(420deg) scale(1.1)}
+}
+@keyframes fxSwirlBack{
+  0%{opacity:0;transform:rotate(0) scale(.15)}
+  25%{opacity:.8}
+  100%{opacity:0;transform:rotate(-360deg) scale(1)}
+}
+
+/* LE HURLEMENT : trois anneaux nets qui partent en cascade. Un son se
+   dessine en ondes, pas en halo — d'où la bordure et non un dégradé. */
+.fx-scream{mix-blend-mode:screen}
+.fx-cry{width:90%;height:90%;border-radius:50%;
+  border:2px solid var(--sorcier);box-shadow:0 0 14px var(--sorcier);
+  animation:fxCry .8s cubic-bezier(.1,.65,.3,1) both}
+.fx-cry2{animation-delay:.11s}
+.fx-cry3{animation-delay:.22s}
+@keyframes fxCry{
+  0%{opacity:0;transform:scale(.25)}
+  18%{opacity:.95}
+  100%{opacity:0;transform:scale(2.6)}
+}
+
+/* LA PÉTRIFICATION : un éclat froid, puis une fêlure. L'ÉTAT, lui, reste
+   porté en permanence par .pc-para sur la pièce (gris + halo violet) : ce
+   qui manquait n'était pas l'état mais l'INSTANT où il tombe. */
+.fx-petrify{mix-blend-mode:screen}
+.fx-stone{width:86%;height:86%;border-radius:50%;
+  background:radial-gradient(circle,rgba(233,236,240,.9) 0%,var(--sorcier) 45%,transparent 70%);
+  animation:fxStone .6s ease-out both}
+@keyframes fxStone{
+  0%{opacity:0;transform:scale(.4)}
+  30%{opacity:.95;transform:scale(1)}
+  100%{opacity:0;transform:scale(1.05)}
+}
+/* La fêlure : deux traits croisés qui s'ouvrent sur la pièce. */
+.fx-crack{width:70%;height:70%;
+  background:
+    linear-gradient(64deg,transparent 47%,rgba(255,255,255,.85) 49%,transparent 51%),
+    linear-gradient(-38deg,transparent 46%,rgba(255,255,255,.6) 48%,transparent 50%);
+  animation:fxCrack .7s ease-out both}
+@keyframes fxCrack{
+  0%{opacity:0;transform:scale(.2)}
+  35%{opacity:1;transform:scale(1)}
+  100%{opacity:0;transform:scale(1.15)}
+}
+
+/* LA CHARGE : la case écrasée sur le passage du Dresseur d'Éléphant. Un
+   anneau de poussière au ras du sol, donc SOUS les pièces. */
+.fx-crush{mix-blend-mode:screen}
+.fx-dustring{width:96%;height:52%;border-radius:50%;
+  border:2px solid rgba(198,176,140,.75);
+  background:radial-gradient(ellipse,rgba(198,176,140,.32),transparent 68%);
+  animation:fxCrush .6s ease-out both}
+@keyframes fxCrush{
+  0%{opacity:0;transform:scale(.3)}
+  25%{opacity:1}
+  100%{opacity:0;transform:scale(1.7)}
+}
+
+/* --- LA PRISE EN MAIN ------------------------------------------- */
+/* LE HALO SOUS LA PIÈCE. La case sélectionnée portait un liseré et un lavis
+   posés SUR elle (.gc.sel, plus haut) : correct, mais c'est la case qu'on
+   voyait choisie, jamais la pièce. Le halo est peint SOUS la statuette — en
+   z-index 0, donc sous la couche des pièces qui est en 2 — et il respire.
+   C'est du CSS et non un effet jetable, parce qu'il dure aussi longtemps que
+   la sélection, ce qu'un nœud à durée de vie fixe ne saurait pas faire.
+
+   Le ::before de la case est déjà pris deux fois : par la pastille des coups
+   possibles et par l'éclat de la dernière prise. La sélection l'emporte sur
+   la seconde (on regarde ce qu'on tient, pas ce qu'on a pris) mais cède à la
+   première — une case à la fois sélectionnée et jouable n'existe pas, sauf
+   pour un coup sur place, où la pastille reste la bonne information. */
+.gc.sel:not(.avail):not(.avail-cap)::before{
+  content:'';position:absolute;left:50%;top:50%;
+  width:135%;height:135%;transform:translate(-50%,-50%);
+  border-radius:50%;z-index:0;pointer-events:none;mix-blend-mode:screen;
+  background:radial-gradient(circle,rgba(63,208,178,.55) 0%,rgba(63,208,178,.2) 42%,transparent 68%);
+  animation:fxSelHalo 2.2s ease-in-out infinite}
+@keyframes fxSelHalo{
+  0%,100%{opacity:.7;transform:translate(-50%,-50%) scale(1)}
+  50%{opacity:1;transform:translate(-50%,-50%) scale(1.1)}
+}
+
+/* L'ÉVEIL DES CASES JOUABLES. Les pastilles pulsent en permanence (.gc.avail,
+   plus haut) et disent l'ÉTAT ; cet anneau-ci ne passe qu'UNE FOIS, au moment
+   de la prise en main, en cascade depuis la pièce — c'est le plateau qui
+   répond au doigt. Son retard est calculé sur la DISTANCE à la pièce
+   (fxSelect, js/combat-fx.js) : l'onde part de la main, elle ne parcourt pas
+   une liste. */
+.fx-wake{mix-blend-mode:screen}
+.fx-wake-ring{width:52%;height:52%;border-radius:50%;
+  border:2px solid var(--accent2);box-shadow:0 0 12px rgba(63,208,178,.8);
+  animation:fxWake .5s ease-out both;animation-delay:var(--del)}
+@keyframes fxWake{
+  0%{opacity:0;transform:scale(.15)}
+  35%{opacity:1;transform:scale(.9)}
+  100%{opacity:0;transform:scale(1.55)}
+}
+
+/* --- LA PROMOTION ----------------------------------------------- */
+/* Le nœud de la pièce SURVIT à la promotion (gc-morph, [BOARD-MOTION]) : il
+   n'y a rien à faire disparaître, seulement quelque chose à célébrer. Une
+   colonne de lumière tombe du haut du plateau, deux cercles runiques
+   s'ouvrent au sol — donc sous la créature qui vient de naître. */
+.fx-promo{overflow:visible;mix-blend-mode:screen}
+/* LA COLONNE TRAVERSE LA CASE, ELLE NE TOMBE PAS DESSUS. Une colonne ancrée
+   au sol et montante était la première idée, et elle ne marchait qu'une fois
+   sur deux : une promotion se joue TOUJOURS sur une rangée de bord, et sur la
+   rangée du haut la colonne partait hors du plateau, où le `overflow:hidden`
+   de la couche la mangeait entièrement. Elle déborde donc des DEUX côtés —
+   deux cases au-dessus, deux en dessous — et reste visible quel que soit le
+   bord où le pion arrive. */
+.fx-pillar{width:56%;height:500%;top:-200%;
+  background:linear-gradient(180deg,transparent 0%,var(--fx-c) 40%,
+    #fff 50%,var(--fx-c) 60%,transparent 100%);
+  filter:blur(3px);transform-origin:50% 50%;
+  animation:fxPillar 1s cubic-bezier(.2,.7,.3,1) both}
+@keyframes fxPillar{
+  0%{opacity:0;transform:scaleY(.1) scaleX(.35)}
+  22%{opacity:.95;transform:scaleY(1) scaleX(1)}
+  100%{opacity:0;transform:scaleY(1) scaleX(.15)}
+}
+.fx-rune{width:130%;height:130%;border-radius:50%;
+  border:2px dashed var(--fx-c);box-shadow:0 0 16px var(--fx-c);
+  animation:fxRune 1.15s cubic-bezier(.15,.7,.3,1) both}
+.fx-rune2{width:80%;height:80%;border-style:dotted;animation-delay:.14s;animation-duration:1s}
+@keyframes fxRune{
+  0%{opacity:0;transform:scale(.15) rotate(0)}
+  25%{opacity:1}
+  100%{opacity:0;transform:scale(1.5) rotate(180deg)}
+}
+
+/* --- L'ÉCHEC ---------------------------------------------------- */
+/* La case du roi porte déjà un liseré permanent (.gc-check) : il dit l'ÉTAT.
+   Ce qui manquait, c'est l'ÉVÉNEMENT — l'instant où l'échec tombe. */
+.fx-alarm{mix-blend-mode:screen}
+.fx-alarm-ring{width:100%;height:100%;border-radius:14%;
+  border:3px solid var(--ember);box-shadow:0 0 20px var(--ember),inset 0 0 20px var(--ember);
+  animation:fxAlarm .85s cubic-bezier(.15,.7,.3,1) both}
+.fx-alarm-ring2{animation-delay:.16s}
+@keyframes fxAlarm{
+  0%{opacity:0;transform:scale(.5)}
+  20%{opacity:1;transform:scale(1)}
+  100%{opacity:0;transform:scale(2.1)}
+}
+/* Le cerne rouge sur tout le plateau. `box-shadow:inset` et non un dégradé :
+   le centre du plateau doit rester parfaitement lisible — c'est là qu'on
+   cherche le coup qui sauve le roi. */
+.fx-vignette{position:absolute;inset:0;border-radius:inherit;
+  box-shadow:inset 0 0 60px rgba(242,106,61,.55),inset 0 0 18px rgba(242,106,61,.4);
+  animation:fxVignette .85s ease-out both}
+@keyframes fxVignette{0%{opacity:0}22%{opacity:1}100%{opacity:0}}
+
+/* --- LE MAT ----------------------------------------------------- */
+/* Entre le dernier coup et la cinématique d'issue (js/cinematics.js), le
+   plateau ne disait rien. Des rais partent maintenant de la case du roi
+   maté, et le plateau se fige une seconde — le temps de comprendre que
+   c'est fini. */
+.fx-final{overflow:visible;mix-blend-mode:screen}
+.fx-final-core{width:180%;height:180%;border-radius:50%;
+  background:radial-gradient(circle,#fff 0%,var(--gold2) 30%,transparent 66%);
+  animation:fxFinalCore 1.4s ease-out both}
+.fx-final-loss .fx-final-core{background:radial-gradient(circle,#fff 0%,var(--ember) 32%,transparent 68%)}
+@keyframes fxFinalCore{
+  0%{opacity:0;transform:scale(.2)}
+  18%{opacity:1;transform:scale(1)}
+  100%{opacity:0;transform:scale(1.6)}
+}
+/* Les rais : des fuseaux qui s'ouvrent en étoile. `transform-origin:50% 100%`
+   les fait pivoter autour de leur pointe, posée au centre de la case. */
+.fx-ray{width:3.5%;height:280%;bottom:50%;transform-origin:50% 100%;
+  background:linear-gradient(0deg,var(--gold2),transparent);
+  animation:fxRay 1.5s cubic-bezier(.1,.7,.3,1) both;animation-delay:var(--del)}
+.fx-final-loss .fx-ray{background:linear-gradient(0deg,var(--ember),transparent)}
+@keyframes fxRay{
+  0%{opacity:0;transform:rotate(var(--rot)) scaleY(.05)}
+  25%{opacity:.85;transform:rotate(var(--rot)) scaleY(1)}
+  100%{opacity:0;transform:rotate(calc(var(--rot) + 22deg)) scaleY(1.1)}
+}
+/* LE PLATEAU SE FIGE. Une seconde de suspension, saturation coupée : la
+   partie est finie, plus rien n'y est jouable, et l'image le dit avant le
+   texte.
+
+   C'est un `backdrop-filter` et NON un `filter` posé sur #game-board, et la
+   différence n'est pas cosmétique : un filtre s'applique à tout le sous-arbre
+   de l'élément qui le porte, y compris aux couches d'effets — les rais dorés
+   qui annoncent la victoire seraient désaturés avec le reste, et l'effet se
+   mangerait lui-même. Le `backdrop-filter` ne touche qu'à ce qui est peint
+   DERRIÈRE le voile : le plateau et les pièces se ternissent, les rais posés
+   par-dessus gardent leur or. Un navigateur qui ne le connaît pas ne montre
+   simplement rien — le reste du mat se joue sans lui. */
+.fx-desat{position:absolute;inset:0;border-radius:inherit;
+  -webkit-backdrop-filter:saturate(.3) brightness(1.1);
+  backdrop-filter:saturate(.3) brightness(1.1);
+  animation:fxDesat 1.1s ease-out both}
+@keyframes fxDesat{0%{opacity:0}20%{opacity:1}75%{opacity:1}100%{opacity:0}}
+
+/* LA DISSOLUTION DORÉE DE LA VICTOIRE.
+   C'est le SEUL effet du jeu autorisé à faire disparaître ce qu'il recouvre,
+   et il n'arrive qu'une fois par partie gagnée. Sa raison d'être est d'être
+   une TRANSITION : la cinématique d'issue (js/cinematics.js) est un voile
+   plein écran qui tombait sèchement sur un échiquier encore là. Le plateau
+   s'emplit maintenant de poussière d'or jusqu'à n'être plus qu'un aplat, et
+   c'est sur cet aplat que la fenêtre se lève.
+
+   Le voile est le seul élément de la section à ne PAS être en `screen` : en
+   lumière ajoutée, il ne pourrait qu'éclaircir le bois, jamais l'effacer.
+   C'est un aplat opaque, et c'est exactement ce qu'on lui demande. */
+.fx-gold-veil{position:absolute;inset:0;border-radius:inherit;
+  background:radial-gradient(circle at 50% 55%,#f7e7bb 0%,#e0bd6c 42%,#a8801f 100%);
+  animation:fxGoldVeil 1.5s cubic-bezier(.5,.05,.75,.5) both}
+@keyframes fxGoldVeil{
+  0%{opacity:0}
+  45%{opacity:.45}
+  100%{opacity:1}
+}
+/* Les motes sont montées APRÈS le voile, donc devant lui : sans elles la
+   dissolution ne serait qu'un fondu au jaune, et c'est de POUSSIÈRE qu'il
+   s'agit. Elles montent — l'armée quitte le plateau, elle n'y retombe pas. */
+.fx-gold-swarm{position:absolute;inset:0;border-radius:inherit;overflow:hidden}
+.fx-gold-mote{position:absolute;width:var(--sz);height:var(--sz);border-radius:50%;
+  background:#fff6dd;box-shadow:0 0 10px 2px rgba(240,209,137,.95);
+  animation:fxGoldMote 1.6s ease-out both;animation-delay:var(--del)}
+@keyframes fxGoldMote{
+  0%{opacity:0;transform:translateY(0) scale(.3)}
+  25%{opacity:1;transform:translateY(calc(var(--rise)*.25)) scale(1)}
+  100%{opacity:0;transform:translateY(var(--rise)) scale(.4)}
+}
+
+/* MOUVEMENT RÉDUIT : rien du tout. js/combat-fx.js s'arrête avant de poser
+   le moindre nœud (voir fxOn), et cette règle couvre le cas d'un effet déjà
+   en vol au moment où le réglage système change. Quelqu'un qui coupe le
+   mouvement n'a pas demandé des étincelles plus discrètes. */
+@media(prefers-reduced-motion:reduce){
+  .fx-layer{display:none}
 }
 
 /* [A11Y] ========================================================

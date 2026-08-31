@@ -110,6 +110,8 @@ epic-chess/
     │                          # déplacement, supprimées de data-pieces.js)
     ├── sfx.js                # Moteur de bruitages (couches, enveloppes, bruit
     │                          # filtré, variation, ducking) + retour haptique
+    ├── combat-fx.js          # Effets spéciaux du plateau : impacts de prise,
+    │                          # traînées, signatures de pouvoir, échec, mat
     ├── pwa.js                # Installation sur l'écran d'accueil + service worker
     ├── combat-music.js       # Musique de combat en boucle
     ├── cinematics.js         # Cinématiques d'entrée en combat et d'issue
@@ -463,6 +465,76 @@ l'inverse aussi.
 `sfxFeel(nom, opts)` déclenche les trois ensemble (son + vibration +
 secousse) : les appeler séparément partout, c'est se garantir qu'un jour l'un
 des trois manquera quelque part.
+
+### 1 quinquies ter. Les effets de combat (`js/combat-fx.js`)
+
+**C'est la moitié visuelle du geste dont `sfx.js` est la moitié sonore.** Tout
+le travail décrit ci-dessus avait été fait sur l'oreille — couches, enveloppes,
+intensité liée à la valeur de la pièce prise, ducking — et rien de tout ça
+n'avait d'équivalent à l'écran : la prise la plus violente d'une partie et la
+plus anodine se ressemblaient, un dessin qui se ratatine dans les deux cas.
+
+Le module pose des éléments **jetables** sur **deux couches** posées dans le
+plateau, et c'est ce partage qui décide de tout :
+
+| Couche | `z-index` | Ce qu'elle porte | Pourquoi de ce côté |
+|---|---|---|---|
+| `.fx-under` | 1 | traînées de déplacement, vortex, cercles de promotion | Une traînée par-dessus la pièce cacherait celle qu'on regarde. |
+| `.fx-over` | 5 | éclats de prise, ondes, voiles d'écran, alarmes | Un impact doit couvrir la meurtrière. |
+
+(La couche des pièces est en 2, les repères de rangée en 3, le cadre du
+plateau en 6 : les effets se glissent entre.)
+
+**Ce que chaque moment produit :**
+
+| Moment | Effet | Ce qu'il dit |
+|---|---|---|
+| Prise en main | un halo qui respire **sous** la pièce, et un anneau qui s'ouvre sur chaque case jouable, en cascade depuis la main | Les pastilles disent l'état ; ceci dit que le plateau a entendu le doigt. Le retard de chaque anneau suit la **distance**, pas le rang dans une liste : l'onde part de la pièce. |
+| Coup joué | une traînée du départ vers l'arrivée, teintée de la **classe** de la pièce | D'où ça vient. Sur 64 cases, un coup joué à l'autre bout de l'écran passait inaperçu — le premier reproche d'une partie en ligne. |
+| Prise | noyau + anneaux + éclats projetés, dimensionnés par `sfxCaptureForce()` | Ce qui vient d'être brisé, et **combien ça valait**. |
+| Prise majeure (force > 0,72) | un voile d'ardeur sur tout le plateau | Le pendant visuel du ducking de la musique. |
+| Pièce qui disparaît | une bouffée de poussière et des motes qui montent | Posé par `syncPieces` pour **toute** pièce qui quitte le plateau — donc aussi les victimes collatérales du Typhon, sans que le module connaisse un seul pouvoir. |
+| Typhon / Banshee / Méduse / Dresseur | vortex, ondes de hurlement, éclat de pierre, anneau de poussière | Un pouvoir avait sa règle et son texte de fiche, aucun n'avait de geste. C'est le geste qui l'explique. |
+| Promotion | colonne de lumière, cercles runiques, poussière d'or qui monte | Le nœud de la pièce survit à la promotion : il n'y a rien à faire disparaître, seulement à célébrer. |
+| Échec | alarme sur la case du roi + cerne rouge | `.gc-check` dit l'**état** en permanence ; ceci dit l'**instant**. |
+| Mat | détonation sur le roi tombé, rais, plateau désaturé | Entre le coup qui mate et la cinématique d'issue, le plateau ne disait rien. |
+| Victoire | le plateau **se dissout dans l'or** : un voile opaque monte pendant qu'une pluie de motes s'élève | Le seul effet du jeu autorisé à faire disparaître ce qu'il recouvre, et il ne sert qu'une fois par partie gagnée. C'est une **transition** : la cinématique d'issue se lève sur l'or au lieu de tomber sur un échiquier encore là. |
+
+**Le mat parle avant la fenêtre, et la fenêtre l'attend.** `updateStatus`
+allume l'effet **avant** `triggerEndOfGame()`, sinon la cinématique d'issue —
+un voile plein écran — le recouvrirait avant qu'on en voie une image ; et
+`settleAndCelebrate()` (`js/economy-ui.js`) demande à `fxOutcomeDelay()`
+combien de temps attendre. Ce délai n'est **pas** une constante : il ne
+répond que si un mat vient réellement d'être joué, dans les 300 dernières
+millisecondes. Une nulle par répétition, un abandon ou une pendule à zéro
+passent par le même chemin sans avoir rien allumé — et ne doivent rien
+attendre, sous peine d'un écran qui a l'air figé.
+
+**Le moteur ne connaît qu'un seul point d'entrée.** `executeGameMove()` appelle
+`fxPlayMove({from, to, capAt, pieceId, captured, castle, rook, power})` et rien
+d'autre : il n'a aucune notion de traînée ni de vortex, et le module aucune
+notion de règle. Retirer la balise `<script>` d'`index.html` laisse le jeu
+entier fonctionnel, en plus terne — tous les appels passent par un
+`typeof …==='function'`.
+
+**Trois interrupteurs**, dans cet ordre : `prefers-reduced-motion` (plus un
+seul nœud posé), le curseur **« Effets »** du panneau de réglages (il pilote le
+nombre de particules ; à 0, rien), et un plafond de nœuds vivants
+(`FX_MAX_LIVE`) — une rafale de prises en partie rapide ne doit pas laisser
+trois cents éléments animés à l'écran.
+
+**Le piège à connaître avant de toucher à la section `[COMBAT-FX]` du CSS :**
+les deux couches ne portent **ni `z-index` ni `opacity`**. L'un comme l'autre
+ouvre un contexte d'empilement, et `mix-blend-mode` ne se fond alors plus que
+dans un groupe vide : le noir des planches dessinées y resterait du noir, en
+gros rectangle sur le plateau. La profondeur est donc portée par les effets
+eux-mêmes, un cran plus bas. C'est aussi pourquoi le curseur « Effets » enlève
+des étincelles au lieu de les rendre pâles.
+
+Le banc d'essai **`tools/combat-fx-preview.html`** joue chaque effet sur
+commande, sur un plateau nu, avec le vrai module et le vrai CSS : c'est là
+qu'on règle une durée ou une couleur, sans avoir à provoquer la position
+correspondante dans une partie.
 
 ### 1 quinquies bis. La notation du journal (`js/rules-engine.js`)
 
@@ -1131,7 +1203,8 @@ data-pieces.js → piece-art.js → main.js → cube-nav.js → accounts.js
 → economy.js → ai-level-modal.js → piece-card.js → builder.js → armies.js
 → adversaires.js
 → combat-intro.js
-→ sfx.js → rules-engine.js → piece-moves.js → combat-music.js → cinematics.js
+→ sfx.js → combat-fx.js → rules-engine.js → piece-moves.js → combat-music.js
+→ cinematics.js
 → game-render.js
 → ai-engine.js → game-flow.js → voie.js → economy-ui.js
 → rewards.js → rewards-ui.js → tuto-drill.js
@@ -1234,6 +1307,7 @@ mais dans une version que Playwright refuse, le script le retrouve tout seul
 | Ajouter un raccourci clavier global | `wireEscape()` dans `js/main.js` (Échap) ou l'écouteur `keydown` d'`init()` dans `js/cube-nav.js` (← →) |
 | Modifier les pictogrammes du schéma de déplacement (patte, ailes, couteau…) | `PMV_ICONS` / `PMV_LABELS` dans `js/piece-moves.js` + section `[PMV]` de `css/style.css` |
 | Modifier les cinématiques de combat | `js/cinematics.js` + section `[CINEMATIC]` de `css/style.css` |
+| Régler un effet de combat (durée, couleur, densité) | `js/combat-fx.js` + section `[COMBAT-FX]` de `css/style.css` ; banc d'essai : `tools/combat-fx-preview.html` |
 | Modifier le tutoriel (textes, étapes, cibles) | `js/tutorial.js` (`TUTO_STEPS`) |
 | Modifier les batailles du tutoriel (armées, couleurs, pendule) | `js/tutorial.js` (`TUTO_BATTLES`, `TUTO_EXTRA_COLS`) + `js/data-pieces.js` (`TUTO_INSTRUCTORS`) |
 | Modifier l'exercice de déplacement (nombre de repères, règles) | `js/tuto-drill.js` (`DRILL_DOTS`, `drillLayDots`) |

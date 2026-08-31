@@ -2,7 +2,8 @@
 // SETTINGS-ADMIN.JS : Panneau de réglages (volumes)
 // ================================================================
 // Contient : le bouton et panneau flottant de réglages (#settings-btn /
-// #settings-panel) qui contrôle les DEUX volumes (bruitages, musique). Le jeu
+// #settings-panel) qui contrôle les deux volumes (bruitages, musique) et
+// l'intensité des effets de combat (js/combat-fx.js). Le jeu
 // n'a qu'un thème (sombre) : il n'y a donc pas de réglage d'apparence ici, et
 // la vibration n'a plus d'interrupteur (elle est toujours active, voir plus
 // bas). Le mode test (/?test, voir plus bas dans main.js) reste utilisable par
@@ -10,7 +11,7 @@
 //
 // Dépendances : main.js (ADMIN_MODE),
 // rules-engine.js (_soundEnabled), combat-music.js (window._musicGain),
-// sfx.js (hapticSetEnabled).
+// sfx.js (hapticSetEnabled), combat-fx.js (fxSetLevel).
 //
 // Si vous ajoutez un nouveau réglage : ajoutez sa ligne .sp-row dans
 // index.html (section #settings-panel) et son listener ici.
@@ -58,6 +59,15 @@ function applyMusicVol(v){
   if(window._musicGain)window._musicGain.gain.value=_musicVol;
 }
 
+// Les effets de combat. La valeur vit ici — c'est le panneau qui en est
+// propriétaire —, et elle est POUSSÉE vers js/combat-fx.js, qui peut ne pas
+// être chargé : le jeu doit rester réglable même sans son module d'effets.
+let _fxLevelPref=1;
+function applyFxLevel(v){
+  _fxLevelPref=Math.max(0,Math.min(1,typeof v==='number'?v:1));
+  if(typeof fxSetLevel==='function')fxSetLevel(_fxLevelPref);
+}
+
 (function(){
   const btn=document.getElementById('settings-btn');
   const panel=document.getElementById('settings-panel');
@@ -67,6 +77,13 @@ function applyMusicVol(v){
   sfx.addEventListener('input',function(){applySfxVol(parseFloat(this.value));savePrefs({sfx:_sfxVol});});
   const mus=document.getElementById('sp-music-vol');
   mus?.addEventListener('input',function(){applyMusicVol(parseFloat(this.value));savePrefs({music:_musicVol});});
+  // LES EFFETS DE COMBAT. Un dosage et non un interrupteur : le curseur
+  // pilote le nombre de particules et la richesse des gerbes (fxSetLevel,
+  // js/combat-fx.js), et à zéro le module ne pose plus un seul nœud. C'est le réglage de survie d'un téléphone d'entrée de
+  // gamme, et c'est aussi celui de quelqu'un que les étincelles gênent pour
+  // lire le plateau — deux raisons différentes de baisser la même chose.
+  const fxs=document.getElementById('sp-fx-level');
+  fxs?.addEventListener('input',function(){applyFxLevel(parseFloat(this.value));savePrefs({fx:_fxLevelPref});});
 
   // -- VIBRATION : TOUJOURS ACTIVE ---------------------------------------
   // Elle a eu son interrupteur, à part du son. Il est parti : la vibration
@@ -85,6 +102,8 @@ function applyMusicVol(v){
   if(typeof prefs.sfx==='number'){applySfxVol(prefs.sfx);sfx.value=_sfxVol;}
   applyMusicVol(typeof prefs.music==='number'?prefs.music:MUSIC_RATIO);
   if(mus)mus.value=_musicVol;
+  applyFxLevel(typeof prefs.fx==='number'?prefs.fx:1);
+  if(fxs)fxs.value=_fxLevelPref;
 })();
 
 // Le mode test (bac à sable : tout le catalogue, 10 000 ELO, perles

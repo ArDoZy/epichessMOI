@@ -294,8 +294,21 @@ function settleAndCelebrate(result,gs,onDone){
   // série du jour ; elle fait maintenant avancer la COLONNE DES VICTOIRES
   // (js/rewards.js), dont le palier s'encaisse quand le joueur le décide.
   // Reste donc la cinématique d'issue, puis le verdict.
-  if(typeof playOutcomeCinematic==='function')playOutcomeCinematic(result,report,onDone);
-  else setTimeout(onDone,400);
+  // LE PLATEAU FINIT SA PHRASE AVANT QUE LA FENÊTRE NE COUVRE L'ÉCRAN. Le
+  // mat allume un effet sur l'échiquier (js/combat-fx.js) — une détonation
+  // autour du roi, et sur une victoire une dissolution dorée qui emplit le
+  // plateau. La cinématique d'issue étant un voile plein écran, la monter
+  // aussitôt revenait à jouer cet effet pour personne. fxOutcomeDelay() dit
+  // combien de temps l'attendre, et ne répond QUE si un mat vient d'être
+  // joué : une nulle par répétition ou une pendule à zéro passent ici sans
+  // avoir rien allumé, et ne doivent donc rien attendre.
+  const suite=()=>{
+    if(typeof playOutcomeCinematic==='function')playOutcomeCinematic(result,report,onDone);
+    else setTimeout(onDone,400);
+  };
+  const attente=(typeof fxOutcomeDelay==='function')?fxOutcomeDelay():0;
+  if(attente>0)setTimeout(suite,attente);
+  else suite();
   return report;
 }
 

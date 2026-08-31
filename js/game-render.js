@@ -411,6 +411,10 @@ function syncPieces(gs,boardEl,flipped,board){
     }
 
     const key=r+','+c;
+    // La créature portée par le nœud, retenue pour l'instant où il MOURRA :
+    // la boucle des disparues, plus bas, n'a plus le plateau sous les yeux et
+    // ne saurait pas de quelle classe teinter sa poussière.
+    node._pid=cell.pieceId;
     node.classList.toggle('pc-para',!!(gs.medusaParalyzed&&gs.medusaParalyzed.has(key)));
     node.classList.toggle('gc-anchored',!!(gs.anchored&&gs.anchored.has(key)));
     node.dataset.r=r;node.dataset.c=c;
@@ -424,6 +428,12 @@ function syncPieces(gs,boardEl,flipped,board){
     if(seen.has(id))return;
     _pieceNodes.delete(id);
     node.classList.add('gc-dying');
+    // LA POUSSIÈRE EST POSÉE ICI, ET C'EST CE QUI LA REND UNIVERSELLE. Ce
+    // point de passage voit TOUTE pièce qui quitte le plateau, sans savoir
+    // pourquoi : la prise ordinaire, les victimes collatérales du Typhon, la
+    // case effacée par le Dresseur, et tout pouvoir qui viendra. Le module
+    // d'effets n'a donc pas un seul pouvoir à connaître (js/combat-fx.js).
+    if(typeof fxPuff==='function')fxPuff(+node.dataset.r,+node.dataset.c,node._pid);
     setTimeout(()=>{if(node.parentNode)node.parentNode.removeChild(node);},BOARD_DEATH_MS);
   });
 
@@ -437,6 +447,9 @@ function renderGame(gs){
   const flipped=playerCol==='b'; // échiquier retourné si le joueur joue les noirs
 
   ensureBoardCells(gs,boardEl,flipped);
+  // Les effets ne DEVINENT pas l'orientation, ils la reçoivent : un joueur
+  // des noirs verrait sinon ses éclats sur la case symétrique de la prise.
+  if(typeof fxSetFlipped==='function')fxSetFlipped(flipped);
   paintBoardCells(gs);
   syncPieces(gs,boardEl,flipped);
   if(typeof applyBoardSkin==='function')applyBoardSkin();
@@ -617,6 +630,12 @@ function startDrag(r,c,gs,clientX,clientY){
   // il n'est joué QUE sur une vraie prise en main, pas quand on repose le
   // doigt sur une pièce déjà sélectionnée.
   if(!alreadySelected&&typeof playSound==='function')playSound('tap',{force:0.3});
+  // L'ÉVEIL DES CASES JOUABLES. Même condition que le son : c'est la PRISE EN
+  // MAIN qu'on accompagne, pas le doigt qui se repose sur une pièce déjà
+  // choisie. Les pastilles permanentes disent où l'on peut aller ; cette
+  // onde-là dit que le plateau a entendu.
+  if(!alreadySelected&&typeof fxSelect==='function')
+    fxSelect({r,c},moves.filter(m=>!m.stayPut));
   if(!alreadySelected)renderGame(gs);
 }
 function moveDrag(clientX,clientY){
@@ -830,6 +849,18 @@ function updateStatus(gs){
       const playerWins=opp(t)===playerCol;
       bar.textContent='Échec et mat ! '+(playerWins?'Vous gagnez !':oppLabel+' gagne !');
       bar.className='status-bar mate';gs.gameOver=true;
+      // LE PLATEAU DIT L'ISSUE AVANT LA FENÊTRE, ET C'EST POURQUOI IL PARLE
+      // EN PREMIER. triggerEndOfGame enchaîne sur la cinématique d'issue
+      // (js/cinematics.js), un voile plein écran : appelée avant, elle
+      // recouvrirait l'effet du mat avant qu'on en voie une image. L'effet
+      // est donc allumé d'abord, et c'est lui qui dit à la cinématique
+      // combien de temps l'attendre (fxOutcomeDelay, js/combat-fx.js) — sur
+      // une victoire, le plateau se dissout en or et la fenêtre se lève sur
+      // l'or plutôt que de tomber sur un échiquier encore là.
+      if(typeof fxMate==='function'){
+        const kc=fxKingCell(gs.board,t);
+        if(kc)fxMate(kc.r,kc.c,playerWins);
+      }
       if(!_endGameTriggered)triggerEndOfGame(playerWins?'win':'loss');
       playSound(playerWins?'win':'loss');
     }else{
@@ -859,7 +890,23 @@ function updateStatus(gs){
   const TURN_YOU='À votre tour';
   const TURN_OPP='Au tour de votre adversaire';
   const myTurn=(t===playerCol);
-  if(check){bar.textContent='Échec ! '+(myTurn?TURN_YOU:TURN_OPP);bar.className='status-bar check';playSound('check');}
+  if(check){
+    bar.textContent='Échec ! '+(myTurn?TURN_YOU:TURN_OPP);bar.className='status-bar check';playSound('check');
+    // UNE FOIS PAR DEMI-COUP, PAS UNE PAR RENDU. updateStatus est rappelée à
+    // chaque redessin — sélection d'une pièce, retour d'historique, simple
+    // redimensionnement —, et sans ce repère l'alarme se rejouerait sur un
+    // échec vieux de dix secondes. Le repère est la longueur de l'historique,
+    // qui n'avance que d'un cran par coup joué : c'est déjà celui dont se
+    // servent les quêtes, quelques lignes plus haut.
+    if(typeof fxCheck==='function'){
+      const ply=(gs.history&&gs.history.length)||0;
+      if(gs._fxCheckPly!==ply){
+        gs._fxCheckPly=ply;
+        const kc=fxKingCell(gs.board,t);
+        if(kc)fxCheck(kc.r,kc.c);
+      }
+    }
+  }
   else{
     bar.textContent=myTurn?TURN_YOU:TURN_OPP;
     bar.className='status-bar '+(myTurn?'ok':'thinking');
