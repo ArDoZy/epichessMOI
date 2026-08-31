@@ -3,8 +3,15 @@
 Ce fichier est la **liste complète** des planches que le jeu sait afficher,
 et le prompt à donner à un générateur d'images pour chacune.
 
+> **Statut au dernier inventaire** : les 16 fonds d'écran (`backgrounds/`),
+> les 6 effets (`fx/`) et 6 des 7 médaillons de rang (`ranks/`, il manque
+> `acier.png`) sont posés. Restent à générer : les 4 bannières de titre
+> (`banners/`), les 5 pièces de mobilier (`ui/`), les 12 portraits
+> d'adversaires, `ranks/acier.png`, et les planches des coffres Dame et
+> Roi. Chaque section ci-dessous porte son propre état.
+
 Rien ici n'est obligatoire. Le jeu tourne aujourd'hui sans une seule de ces
-images, et il tournera encore avec trois sur soixante. C'est la règle déjà
+images, et il tournera encore avec la moitié manquante. C'est la règle déjà
 posée par les portraits d'adversaires et par le fond du menu principal,
 généralisée à tout le décor : **une image absente ne produit qu'un 404
 silencieux**, la règle CSS retombe sur le décor dessiné en dégradés, et il

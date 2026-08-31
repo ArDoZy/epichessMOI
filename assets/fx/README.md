@@ -14,3 +14,9 @@ Dossier facultatif : sans image, les effets dessinés en CSS (dégradés
 radiaux, anneaux, motes) jouent seuls, comme aujourd'hui. Chemins,
 dimensions et prompts : **`assets/PROMPTS.md`, § 6**. Câblage : `[ART]`
 dans `css/style.css`.
+
+## Statut actuel
+
+**Les six effets du catalogue sont posés**, convertis en `.webp` par
+`tools/opt-images.js` : `halo-victoire`, `onde-choc`, `braises`,
+`eclat-capture`, `flamme-echec`, `cercle-runique`.

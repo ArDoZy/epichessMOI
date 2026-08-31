@@ -301,10 +301,23 @@ const fmtDate=ts=>{const d=new Date(ts);return d.toLocaleDateString('fr-FR',{day
 //
 // `cls` donne la taille : 'rm-lg' (52 px, bandeau d'ELO), 'rm-md' (30 px,
 // fin de partie), 'rm-sm' (26 px, bandeaux de la route).
+//
+// La source tente D'ABORD le `.webp` : c'est ce que produit tools/opt-
+// images.js, dix fois plus léger que le PNG d'origine qu'un générateur
+// d'images sort. Tant que la conversion n'a pas tourné, seul le `.png`
+// existe — rankMedalErr() retombe dessus une fois, puis retire l'image si
+// aucun des deux n'existe. Un déposer-et-ça-marche en deux temps, jamais un
+// trou : c'est le même repli que les portraits d'adversaires, doublé d'un
+// palier.
+function rankMedalErr(img){
+  if(img.dataset.fallback){img.remove();return;}
+  img.dataset.fallback='1';
+  img.src=img.src.replace(/\.webp(\?.*)?$/,'.png$1');
+}
 function rankMedalHTML(rankId,cls){
   if(!rankId)return '';
   return '<img class="rank-medal '+(cls||'rm-sm')+'" alt="" aria-hidden="true"'+
-    ' src="assets/ranks/'+rankId+'.png" onerror="this.remove()">';
+    ' src="assets/ranks/'+rankId+'.webp" onerror="rankMedalErr(this)">';
 }
 
 // ----------------------------------------------------------------

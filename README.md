@@ -760,9 +760,10 @@ il l'est (Orpiment 620 contre la Salamandre 1750 : 0–4).
 `assets/adversaires/<id>.png` ; sans le fichier, `advSealSVG()` dessine un
 sceau d'alchimiste déterministe à partir de son id. Le jeu est donc complet
 sans un seul octet d'image, et déposer un portrait suffit à le faire
-apparaître — il n'y a aucune liste à tenir à jour. Même principe pour
-`assets/backgrounds/main-page.png`, le fond du menu. Leur 404 est un comportement voulu, et
-`tools/smoke-test.js` l'ignore explicitement (`OPTIONAL_ASSET`).
+apparaître — il n'y a aucune liste à tenir à jour. Même principe pour tout
+`assets/backgrounds/`, `assets/banners/`, `assets/ui/`, `assets/fx/` et
+`assets/ranks/` (voir `assets/PROMPTS.md`). Leur 404 est un comportement
+voulu, et `tools/smoke-test.js` l'ignore explicitement (`OPTIONAL_ASSET`).
 
 ### 4 bis. Le moteur (`js/ai-engine.js`)
 
@@ -1239,7 +1240,7 @@ mais dans une version que Playwright refuse, le script le retrouve tout seul
 | Changer les pièces d'un compte neuf | `js/data-pieces.js` (`UNLOCK_TABLE`, drapeau `coffre:true`) |
 | Changer ce que lance le bouton COMBAT | `js/cube-nav.js` (`onCombat`/`onVsIa`) + `js/combat-intro.js` |
 | Modifier la galerie des adversaires (cartes, sceaux, palmarès) | `js/adversaires.js` + section `[ADVERSAIRES]` de `css/style.css` |
-| Changer le fond du menu principal | `assets/backgrounds/main-page.png` + section `[LAB-BG]` de `css/style.css` |
+| Changer le fond du menu principal | `assets/backgrounds/main-page.webp` (ou `.png`, voir `tools/opt-images.js`) + section `[LAB-BG]` de `css/style.css` |
 | Modifier le bloc pseudo/rang/ELO du menu principal | `renderMenuIdentity()` dans `js/accounts.js` + `[MENU]` de `css/style.css` |
 | Régler la vitesse de rotation du cube | `js/cube-nav.js` (`ROTATE_MS`) **et** la transition de `#cube` dans `css/style.css` |
 | Modifier le système de comptes/sauvegarde | `js/accounts.js` |
@@ -1272,7 +1273,7 @@ mais dans une version que Playwright refuse, le script le retrouve tout seul
 | Ajouter une adresse au jeu (comme `/combat`) | `vercel.json` (`rewrites`) + `appPath`/`setAppPath`/`appHomePath` dans `js/main.js` |
 | Changer l'adresse du mode test | `ADMIN_QUERY` + `pathHasAdmin()` dans `js/main.js` (paramètre `?test`, pas un chemin : un chemin inexistant dépend d'une réécriture d'hébergeur et répondait 404) |
 | Changer ce que contient un coffre | `CHESTS`/`CHEST_PEARLS` dans `js/data-pieces.js` + `chestRoll`/`chestLuckyChance` dans `js/economy.js` |
-| Changer le fond de l'écran d'attente en ligne | remplacer `assets/backgrounds/duel-wait.png` (rien à coder) |
+| Changer le fond de l'écran d'attente en ligne | remplacer `assets/backgrounds/duel-wait.webp` (rien à coder) |
 | Changer un message de refus / d'information | l'appel `showNotif()` concerné ; l'apparence est dans `[NOTIF]` de `css/style.css` |
 | Modifier l'emblème (logo) du jeu | `EMBLEM_SVG` dans `js/main.js` + `favicon.svg` (même tracé) + `[EMBLEM]` de `css/style.css` — **et incrémenter le `?v=` de l'icône** dans `index.html`, `info.html` et `site.webmanifest`, sinon l'onglet garde l'ancienne en cache |
 | Ajouter un endroit qui affiche l'emblème | poser une `<div class="game-emblem …">` dans `index.html` : `mountEmblems()` (js/main.js) la remplit toute seule |
