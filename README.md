@@ -489,7 +489,7 @@ plateau en 6 : les effets se glissent entre.)
 
 | Moment | Effet | Ce qu'il dit |
 |---|---|---|
-| Prise en main | un halo qui respire **sous** la pièce, et un anneau qui s'ouvre sur chaque case jouable, en cascade depuis la main | Les pastilles disent l'état ; ceci dit que le plateau a entendu le doigt. Le retard de chaque anneau suit la **distance**, pas le rang dans une liste : l'onde part de la pièce. |
+| Prise en main | un halo qui respire **sous** la pièce | La case sélectionnée portait un liseré posé *sur* elle : c'est la case qu'on voyait choisie, jamais la pièce. Une onde partait aussi sur chaque case jouable — retirée : un effet qui se déclenche à chaque geste doit être **plus** discret que les autres, et les pastilles pulsent déjà. |
 | Coup joué | une traînée du départ vers l'arrivée, teintée de la **classe** de la pièce | D'où ça vient. Sur 64 cases, un coup joué à l'autre bout de l'écran passait inaperçu — le premier reproche d'une partie en ligne. |
 | Prise | noyau + anneaux + éclats projetés, dimensionnés par `sfxCaptureForce()` | Ce qui vient d'être brisé, et **combien ça valait**. |
 | Prise majeure (force > 0,72) | un voile d'ardeur sur tout le plateau | Le pendant visuel du ducking de la musique. |
@@ -617,6 +617,54 @@ se voit, et `boardResetPieces()` vide la couche entre deux parties (les
 identifiants repartent de `p0` à chaque `buildGameBoard`, un nœud survivant
 serait recyclé pour une pièce qui n'a rien à voir).
 
+### 1 sexies bis. La zone sous le plateau (`[GAME-PANEL]`)
+
+**Le journal des coups a été une feuille ancrée en bas d'écran**, dépliable
+d'un appui. Deux défauts, et le second est rédhibitoire :
+
+* **repliée**, elle mangeait encore une centaine de pixels de hauteur — sur un
+  téléphone, cent pixels pris à l'échiquier, la seule chose qu'on regarde ;
+* **dépliée**, elle recouvrait le plateau derrière un voile. On ne pouvait
+  donc pas lire le journal *et* jouer, ce qui est pourtant la seule chose
+  qu'on demande à un journal des coups.
+
+Ce qui vit maintenant entre le bandeau du joueur (donc sous sa pendule) et
+« Abandonner », qui est **le dernier élément de l'écran** :
+
+| Élément | Où | Pourquoi là |
+|---|---|---|
+| Barre de statut | en haut de la zone | Elle ne dit plus qu'**une** chose à la fois : « Échec ! », ou à qui de jouer. Elle a porté « Échec ! Au tour de votre adversaire » — la plus urgente des deux informations diluée dans la plus banale. |
+| « Annuler coup » | dessous | Masqué **en ligne** (l'annulation serait unilatérale) et **partie finie** (il n'y a plus rien à reprendre : le résultat est enregistré, l'ELO compté). Les deux conditions sont décidées au même endroit, `updateStatus` — elles ont vécu à deux endroits, et la seconde effaçait la première à chaque coup. |
+| « Historique » à gauche, « Chat » à droite | juste au-dessus d'« Abandonner » | Deux natures d'action opposées — se relire, parler —, deux cibles qu'on ne doit jamais confondre au pouce en pleine partie. |
+| « Abandonner » / « Quitter » | tout en bas, seul sur sa ligne | C'est la place d'une sortie. |
+
+**Le panneau se pose sur cette zone et sur elle seule** (`position:absolute;
+inset:0`) : il recouvre l'indication de tour, « Annuler coup » et les deux
+boutons, et **rien d'autre**. Le plateau reste entier, visible et **jouable**
+panneau ouvert — c'est toute la raison de ce découpage. Il n'y a
+volontairement **pas de voile** : un voile dirait « le reste est suspendu », et
+justement il ne l'est pas.
+
+La zone **grandit** quand un panneau s'ouvre, et le plateau rétrécit d'autant
+sur les écrans courts : c'est `--game-chrome`, mesurée à l'exécution par
+`gameSyncChrome()` (`js/game-render.js`) et suivie par un `ResizeObserver`. Les
+deux moitiés d'un même geste — le panneau prend la place qu'il lui faut, le
+plateau la lui laisse, et rien ne sort de l'écran.
+
+Deux conséquences dans le détail :
+
+* **les coups sont écrits 1,6 fois plus grands.** Ils tenaient dans la poignée
+  d'une feuille, où il fallait plisser les yeux pour distinguer un ♞f3 d'un
+  ♝f3. On les lit maintenant dans un panneau qu'on a ouvert exprès, et pour
+  lequel on a payé de la place à l'échiquier : autant qu'ils se lisent.
+* **plus aucun compteur de position.** Une ligne « Position 12/31 » vivait sous
+  le pseudo du joueur, une autre remplaçait la barre de statut pendant la
+  relecture. Les deux disaient la même chose, et aucune n'apprenait rien : le
+  numéro de chaque coup est déjà écrit à côté de sa notation, à l'endroit exact
+  où on le lit. Le journal amène en revanche à l'écran la position qu'on relit
+  — il défilait jusqu'au dernier coup, emportant la ligne qu'on venait de
+  désigner.
+
 ### 1 septies. Ce que le jeu montre du joueur, et ce qu'il refuse de croire
 
 Quatre chantiers distincts, réunis ici parce qu'ils répondent tous à la même
@@ -644,13 +692,30 @@ seule.
 Un seuil de 5 parties protège la créature fétiche : « 100 % de victoires » sur
 une seule partie n'apprend rien et se lit comme une promesse fausse.
 
-**Les emotes (`js/multiplayer.js`).** Pendant une partie en ligne, l'adversaire
-était muet : un pseudo, un ELO, rien d'autre. Dans un jeu qui n'a plus que des
-adversaires humains, c'est la seule présence humaine qu'il restait à donner.
-Six pictogrammes, **aucun texte libre** — un champ de saisie dans un jeu
-compétitif demande une modération, un signalement et un blocage, trois
-systèmes qui n'existent pas ici. Le canal est celui des coups : une emote est
-un évènement de plus, pas une infrastructure de plus.
+**La discussion (`js/multiplayer.js`).** Pendant une partie en ligne,
+l'adversaire était muet : un pseudo, un ELO, rien d'autre. Dans un jeu qui n'a
+plus que des adversaires humains, c'est la seule présence humaine qu'il restait
+à donner. Six pictogrammes **et une vingtaine de phrases rangées par
+intention** (courtoisie, beau jeu, bravade, sur le fil) : on ne cherche pas une
+phrase, on cherche un ton. Le tout s'ouvre dans le panneau « Chat » de la zone
+sous le plateau (voir plus bas), et pas dans une rangée posée en permanence
+sous l'échiquier — six boutons visibles à demeure prenaient une rangée entière
+d'un écran dont la hauteur est justement ce qui manque.
+
+**Aucun texte libre, et ce n'est pas de la prudence.** On choisit une phrase,
+et c'est son **identifiant** qui part sur le réseau. Le receveur ne reçoit
+jamais de texte : il reçoit une clé et affiche la phrase de *son* catalogue.
+Un client modifié ne peut donc rien faire apparaître chez l'adversaire qui ne
+soit pas déjà dans le jeu — ni insulte, ni adresse, ni lien. C'est de la
+modération **par construction** : elle ne demande ni signalement, ni blocage,
+ni équipe pour les traiter, trois systèmes qui n'existent pas ici et qu'un
+champ de saisie rendrait obligatoires du jour au lendemain. Le canal est celui
+des coups : une phrase est un évènement de plus, pas une infrastructure de plus.
+
+La ligne qui décide de ce qui entre dans `MP_CHAT` : une bravade parle des
+**pièces**, jamais de la personne en face. « Mes pièces sentent l'odeur du
+sang » est une fanfaronnade de joueur d'échecs ; tout ce qui vise l'adversaire
+lui-même n'entre pas.
 
 Deux garde-fous, tous deux nécessaires : une **sourdine** (sans elle, un
 joueur qui subit un spam n'a que l'abandon comme recours) et un **débit
@@ -1038,7 +1103,7 @@ le salon). Une touche ne doit pas engager ce qu'un clic n'engage pas.
 ### 7 bis. Le verrou de portrait (`js/main.js::lockPortrait`)
 
 Le jeu se joue **en hauteur, et seulement en hauteur** : plateau au centre,
-journal en feuille glissante sous le pouce, barre des faces collée en bas.
+journal derrière un bouton sous le pouce, barre des faces collée en bas.
 Couché, un téléphone n'offre plus que ~400 px de haut, que le plateau devrait
 partager avec la barre de compte, la barre d'état et le journal — il ne reste
 qu'un échiquier de la taille d'une vignette entre deux bandes vides.
@@ -1322,7 +1387,8 @@ mais dans une version que Playwright refuse, le script le retrouve tout seul
 | Ajouter ou retoucher un bruitage | `SFX_RECIPES` dans `js/sfx.js` (rien d'autre à toucher) |
 | Changer le rendu du plateau, l'animation des pièces | `syncPieces()` / `paintBoardCells()` dans `js/game-render.js` + `[BOARD-MOTION]` de `css/style.css` |
 | Changer une vibration | `HAPTIC_PATTERNS` / `SFX_FEEL` dans `js/sfx.js` |
-| Ajouter une emote, changer la sourdine | `MP_EMOTES` dans `js/multiplayer.js` |
+| Ajouter une emote ou une phrase de chat | `MP_EMOTES` / `MP_CHAT` dans `js/multiplayer.js` |
+| Toucher au journal, au chat ou à leurs boutons | `.game-under` dans `index.html` + `[GAME-PANEL]` de `css/style.css` + le contrôleur de panneaux dans `js/game-render.js` |
 | Ajouter une statistique au profil | `accountSummary()` / `accountSealHTML()` dans `js/account-ui.js` |
 | Changer la stratégie de cache hors ligne | `sw.js` (et monter `CACHE_VERSION`) |
 | Vérifier l'UI à toutes les tailles d'écran | `node tools/ui-shots.js` |

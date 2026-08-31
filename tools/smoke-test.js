@@ -618,7 +618,7 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
   });
 
   // ----------------------------------------------------------------
-  // LES EMOTES ET L'ARMÉE ADVERSE (js/multiplayer.js)
+  // LA DISCUSSION ET L'ARMÉE ADVERSE (js/multiplayer.js)
   // ----------------------------------------------------------------
   await step('les emotes ont un pictogramme lisible et une bulle',async()=>{
     const bad=await page.evaluate(()=>{
@@ -631,15 +631,78 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
         // pictogramme. C'est exactement le piege qu'on verifie ici.
         if([...e.glyph].length!==1)out.push('pictogramme mal echappe pour '+e.id+' : '+e.glyph);
       });
-      mpShowEmote(MP_EMOTES[0].id,true);
+      mpShowBubble(MP_EMOTES[0].glyph,true,true);
       if(!document.querySelector('#human-player-bar .mp-emote-bubble.show'))
         out.push('la bulle du joueur ne s affiche pas');
-      mpShowEmote(MP_EMOTES[1].id,false);
+      mpShowBubble(MP_EMOTES[1].glyph,false,true);
       if(!document.querySelector('#ai-player-bar .mp-emote-bubble.show'))
         out.push('la bulle de l adversaire ne s affiche pas');
       return out;
     });
     if(bad.length)throw new Error(bad.join(' · '));
+  });
+
+  // LE CATALOGUE DE PHRASES. Sa promesse n'est pas « il y a des messages » :
+  // c'est qu'AUCUN TEXTE NE VIENT DU RÉSEAU. On envoie un identifiant, le
+  // receveur affiche la phrase de SON catalogue — donc un client modifié ne
+  // peut rien faire apparaître chez l'adversaire qui ne soit pas déjà dans le
+  // jeu. Le contrôle vérifie exactement ça : un identifiant inconnu ne
+  // produit rien du tout.
+  await step('les phrases viennent du catalogue local, jamais du reseau',async()=>{
+    const bad=await page.evaluate(()=>{
+      const out=[];
+      if(!Array.isArray(MP_CHAT)||MP_CHAT.length<3){out.push('catalogue de phrases absent');return out;}
+      const vus=new Set();
+      MP_CHAT.forEach(c=>{
+        if(!c.cat)out.push('categorie sans nom');
+        if(!Array.isArray(c.msgs)||c.msgs.length<3)out.push('categorie trop maigre : '+c.cat);
+        (c.msgs||[]).forEach(m=>{
+          if(!m.id||!m.t)out.push('phrase sans identite dans '+c.cat);
+          if(vus.has(m.id))out.push('identifiant en double : '+m.id);
+          vus.add(m.id);
+          if(MP_CHAT_BY_ID[m.id]!==m.t)out.push('index desynchronise pour '+m.id);
+        });
+      });
+      // Aucun champ de saisie sur la page de jeu : c'est la garantie, et elle
+      // se verifie en la cherchant.
+      if(document.querySelector('#panel-chat input,#panel-chat textarea'))
+        out.push('un champ de saisie est apparu dans le chat');
+      mpEmoteSetMuted(false);
+      const bulle=()=>document.querySelector('#ai-player-bar .mp-emote-bubble');
+      const b0=bulle();
+      if(b0)b0.classList.remove('show');
+      mpReceiveChat('phrase-qui-nexiste-pas');
+      if(bulle()&&bulle().classList.contains('show'))
+        out.push('un identifiant inconnu s affiche quand meme');
+      return out;
+    });
+    if(bad.length)throw new Error(bad.join(' · '));
+  });
+
+  // LE BOUTON « CHAT » N'EXISTE QU'EN LIGNE : hors ligne, il n'aurait personne
+  // à qui parler. Et son panneau, une fois bâti, porte les pictogrammes et
+  // toutes les phrases du catalogue — c'est le seul moyen d'en envoyer une.
+  await step('le chat s\'ouvre, se remplit, et n\'existe pas hors ligne',async()=>{
+    if(await page.locator('#btn-chat').isVisible())
+      throw new Error('le bouton « Chat » est offert dans une partie hors ligne');
+    const r=await page.evaluate(()=>{
+      // On bâtit le panneau à la main : une vraie partie en ligne demande un
+      // second joueur, et ce qui se vérifie ici est le CONTENU du panneau.
+      mpBuildChatPicker();
+      const picker=document.getElementById('chat-picker');
+      const attendu=MP_CHAT.reduce((n,c)=>n+c.msgs.length,0);
+      return{
+        emotes:picker.querySelectorAll('[data-emote]').length,
+        phrases:picker.querySelectorAll('[data-msg]').length,
+        cats:picker.querySelectorAll('.chat-cat').length,
+        attendu:attendu,
+        saisie:picker.querySelectorAll('input,textarea').length,
+      };
+    });
+    if(r.emotes!==6)throw new Error(r.emotes+' pictogrammes au lieu de 6');
+    if(r.phrases!==r.attendu)throw new Error('le panneau montre '+r.phrases+' phrases sur '+r.attendu);
+    if(r.cats<3)throw new Error('les phrases ne sont pas rangées par catégorie');
+    if(r.saisie)throw new Error('un champ de saisie est apparu dans le chat');
   });
 
   await step('la sourdine et le debit maximal tiennent',async()=>{
@@ -671,13 +734,106 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
     if(await page.evaluate(()=>GS.movePairs.length)<1)throw new Error('journal des coups vide');
   });
 
+  // LE JOURNAL EST DERRIÈRE UN BOUTON. Il vivait dans une feuille toujours
+  // présente en bas d'écran ; il s'ouvre maintenant en panneau sur la zone
+  // sous le plateau ([GAME-PANEL]). Les quatre commandes de relecture sont
+  // dedans : le contrôle ouvre donc le panneau, exactement comme un joueur.
+  await step('le journal s\'ouvre et se ferme par son bouton',async()=>{
+    if(await page.locator('#panel-history').isVisible())
+      throw new Error('le journal est ouvert alors que personne ne l a demandé');
+    await page.click('#btn-history');
+    await page.waitForSelector('#panel-history',{state:'visible',timeout:4000});
+    // LA PROMESSE CENTRALE : le plateau reste jouable panneau ouvert. On
+    // vérifie que les deux rectangles ne se croisent pas — et pas seulement
+    // que l'un est sous l'autre : en mode bureau la colonne latérale est à
+    // CÔTÉ du plateau, pas dessous, et les deux dispositions doivent tenir la
+    // même promesse.
+    if(!await page.locator('#game-board').isVisible())
+      throw new Error('le plateau disparaît quand le journal s ouvre');
+    const gene=await page.evaluate(()=>{
+      const p=document.getElementById('panel-history').getBoundingClientRect();
+      const b=document.getElementById('game-board').getBoundingClientRect();
+      return p.left<b.right-1&&p.right>b.left+1&&p.top<b.bottom-1&&p.bottom>b.top+1;
+    });
+    if(gene)throw new Error('le panneau recouvre le plateau');
+    // Les coups sont écrits en grand : c'est la raison d'avoir payé de la
+    // place à l'échiquier.
+    const taille=await page.evaluate(()=>{
+      const it=document.querySelector('#move-log .move-log-w');
+      return it?parseFloat(getComputedStyle(it).fontSize):0;
+    });
+    if(taille&&taille<18)throw new Error('les coups du journal sont écrits en '+taille+'px');
+    await page.click('#panel-history [data-close-panel]');
+    await page.waitForSelector('#panel-history',{state:'hidden',timeout:4000});
+    if(!await page.locator('#btn-history').isVisible())
+      throw new Error('le bouton « Historique » ne revient pas après fermeture');
+  });
+
+  // SUR TÉLÉPHONE, C'EST LA HAUTEUR QUI MANQUE, et c'est là que la promesse
+  // est difficile à tenir : le panneau doit prendre sa place SANS pousser
+  // « Abandonner » hors de l'écran ni recouvrir l'échiquier. Le plateau
+  // rétrécit de ce qu'il faut (--game-chrome), et c'est ce que ce contrôle
+  // vérifie — l'ancienne feuille du journal, elle, coupait « Abandonner » en
+  // deux sur les écrans courts.
+  await step('sur téléphone, le panneau prend sa place sans pousser Abandonner dehors',async()=>{
+    await page.setViewportSize({width:390,height:780});
+    await page.waitForTimeout(500);
+    const mesure=async()=>page.evaluate(()=>{
+      const b=document.getElementById('game-board').getBoundingClientRect();
+      const q=document.getElementById('game-quit').getBoundingClientRect();
+      const o=document.getElementById('game-tools').getBoundingClientRect();
+      const p=document.getElementById('panel-history');
+      const pr=p.hidden?null:p.getBoundingClientRect();
+      return{
+        plateau:{t:b.top,b:b.bottom,l:b.left,r:b.right,h:b.height},
+        quitter:{t:q.top,b:q.bottom},
+        outils:{t:o.top,b:o.bottom},
+        panneau:pr?{t:pr.top,b:pr.bottom,l:pr.left,r:pr.right,h:pr.height}:null,
+        ecran:innerHeight,
+      };
+    });
+    const ferme=await mesure();
+    if(ferme.quitter.t<ferme.outils.b-1)
+      throw new Error('« Abandonner » n est pas sous les boutons Historique / Chat');
+    if(ferme.quitter.b>ferme.ecran+1)
+      throw new Error('« Abandonner » dépasse du bas de l écran de '+Math.round(ferme.quitter.b-ferme.ecran)+' px');
+    if(ferme.quitter.t<ferme.plateau.b)
+      throw new Error('« Abandonner » n est pas sous le plateau');
+    await page.click('#btn-history');
+    await page.waitForTimeout(500);
+    const ouvert=await mesure();
+    if(!ouvert.panneau)throw new Error('le panneau ne s ouvre pas sur téléphone');
+    if(ouvert.panneau.h<140)
+      throw new Error('le panneau ouvert ne fait que '+Math.round(ouvert.panneau.h)+' px de haut');
+    const p=ouvert.panneau,b=ouvert.plateau;
+    if(p.left<b.r-1&&p.right>b.l+1&&p.t<b.b-1&&p.b>b.t+1)
+      throw new Error('le panneau recouvre le plateau sur téléphone');
+    if(ouvert.quitter.b>ouvert.ecran+1)
+      throw new Error('panneau ouvert, « Abandonner » sort de l écran de '+Math.round(ouvert.quitter.b-ouvert.ecran)+' px');
+    if(ouvert.plateau.b>ouvert.ecran+1)
+      throw new Error('panneau ouvert, le plateau sort de l écran');
+    // Le plateau a bien CÉDÉ la place, il n'a pas été recouvert.
+    if(ouvert.plateau.h>=ferme.plateau.h)
+      throw new Error('le plateau ne rétrécit pas quand le panneau s ouvre');
+    await page.click('#panel-history [data-close-panel]');
+    await page.waitForTimeout(450);
+    const refeme=await mesure();
+    if(Math.abs(refeme.plateau.h-ferme.plateau.h)>2)
+      throw new Error('le plateau ne reprend pas sa taille après fermeture');
+    await page.setViewportSize({width:1400,height:900});
+    await page.waitForTimeout(400);
+  });
+
   await step('la pendule tourne pendant la relecture d\'historique',async()=>{
+    await page.click('#btn-history');
+    await page.waitForSelector('#panel-history',{state:'visible',timeout:4000});
     const before=await page.evaluate(()=>GS.timeWhite+GS.timeBlack);
     await page.click('#hist-prev');
     await page.waitForTimeout(1200);
     const after=await page.evaluate(()=>GS.timeWhite+GS.timeBlack);
     if(after>=before)throw new Error('la pendule est restée figée');
     await page.click('#hist-last');
+    await page.click('#panel-history [data-close-panel]');
   });
 
   await step('les tables position-carrés sont dans le bon sens',async()=>{
@@ -1785,15 +1941,66 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
   // « 213 → 218 · +5 », une deuxième ligne « Pierre · 218 ELO » : le même
   // nombre, en plus long. Et sous elle, pour les cinq premières parties, une
   // note « Partie de placement 2/5 : elle compte double ».
-  await step('l\'écran de fin de partie ne redit pas l\'ELO',async()=>{
-    const r=await page.evaluate(()=>({
-      rang:!!document.getElementById('result-rank-name'),
-      ligneElo:!!document.getElementById('result-elo-after'),
-      note:!!document.getElementById('result-elo-note'),
-    }));
+  // L'ÉCRAN DE FIN DE PARTIE TIENT EN UN COUP D'ŒIL : le verdict, l'ELO, et ce
+  // qu'on a débloqué. Trois lignes en sont parties, chacune pour sa raison —
+  // le rang (il redisait l'ELO en plus long), le palmarès contre l'adversaire
+  // (de la consultation, pas une conclusion : sa place est sur la page des
+  // adversaires), et le « Bonus d'ascension : ×2,4 » (une note de bas de page
+  // qu'on relit à chaque partie gagnée pendant les cent premières).
+  await step('l\'écran de fin de partie tient en un coup d\'œil',async()=>{
+    const r=await page.evaluate(()=>{
+      const vu=id=>{const e=document.getElementById(id);
+        return !!e&&getComputedStyle(e).display!=='none'&&!!e.textContent.trim();};
+      return{
+        rang:!!document.getElementById('result-rank-name'),
+        ligneElo:!!document.getElementById('result-elo-after'),
+        foe:vu('result-foe'),
+        note:vu('result-elo-note'),
+      };
+    });
     if(r.rang)throw new Error('la ligne de rang est encore sur l\'écran de fin de partie');
     if(!r.ligneElo)throw new Error('la ligne d\'ELO a disparu avec elle');
-    if(!r.note)throw new Error('la ligne d\'explication a disparu : elle sert encore à l\'ascension');
+    if(r.foe)throw new Error('le palmarès contre l\'adversaire est encore affiché');
+    if(r.note)throw new Error('le bonus d\'ascension est encore expliqué en fin de partie');
+  });
+
+  // APRÈS LA PARTIE, ON RELIT — ON N'AMENDE PAS. « Annuler coup » restait
+  // offert pendant l'analyse, où il ne pouvait que semer le doute : le
+  // résultat est enregistré, l'ELO est compté. Et la sortie est à la même
+  // place que l'abandon l'était : tout en bas, sous le journal.
+  await step('la partie finie s\'analyse sans pouvoir être amendée',async()=>{
+    const r=await page.evaluate(()=>{
+      // ON REJOUE LE VRAI ENCHAÎNEMENT, et c'est tout l'intérêt du contrôle :
+      // c'est updateStatus qui DÉCLARE la fin de partie, puis renderGame qui
+      // suit (postMoveUpdate, js/rules-engine.js). Une version qui lisait
+      // l'état en tête d'updateStatus lisait donc celui d'AVANT le mat, et
+      // laissait « Annuler coup » offert pendant toute l'analyse. Poser
+      // `gameOver=true` à la main ne l'aurait jamais montré.
+      const b=Array.from({length:8},()=>Array(8).fill(null));
+      const pose=(r,c,type,color,id)=>{b[r][c]={type,color,pieceId:id,emoji:'',
+        hasMoved:true,isKing:type==='k',id:id+r+c};};
+      pose(0,0,'k','b','roi');            // roi noir dans le coin
+      pose(1,7,'r','w','tour-primordiale');
+      pose(0,7,'r','w','tour-primordiale'); // mat du couloir
+      pose(7,4,'k','w','roi');
+      GS.board=b;GS.movePairs=[];GS.history=[];GS.historyView=null;
+      GS.turn='b';GS.playerColor='w';GS.aiColor='b';GS.multiplayer=false;
+      GS.gameOver=false;GS.pendingPromo=null;GS.halfmoveClock=0;
+      updateStatus(GS);
+      renderGame(GS);
+      if(!GS.gameOver)return{pasMat:true};
+      const u=document.getElementById('game-undo');
+      const q=document.getElementById('game-quit');
+      return{
+        undo:getComputedStyle(u).display!=='none',
+        quitte:q.textContent.trim(),
+        journal:!!document.getElementById('btn-history'),
+      };
+    });
+    if(r.pasMat)throw new Error('la position de contrôle n\'est pas un mat : le contrôle ne veut rien dire');
+    if(r.undo)throw new Error('« Annuler coup » est encore offert sur une partie terminée');
+    if(r.quitte!=='Quitter')throw new Error('le bouton dit « '+r.quitte+' » au lieu de « Quitter »');
+    if(!r.journal)throw new Error('le journal n\'est plus consultable après la partie');
   });
 
   await step('l\'Empereur vaut 8 points',async()=>{
@@ -2188,7 +2395,7 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
       // Les sons que le reste du jeu appelle par leur nom. Un playSound()
       // sans recette est silencieux, et rien ne le signale à l'exécution.
       ['move','capture','check','castle','promo','win','loss','draw',
-       'tap','deny','chest','loot','rank'].forEach(n=>{
+       'tap','deny','chest','loot','rank','choc','blast'].forEach(n=>{
         const r=SFX_RECIPES[n];
         if(!r){out.push('son sans recette : '+n);return;}
         if(!Array.isArray(r.layers)||!r.layers.length){out.push(n+' : aucune couche');return;}

@@ -17,7 +17,7 @@
 //
 // -- CE QU'IL MET EN SCÈNE -----------------------------------------------
 //   · la PRISE EN MAIN : un halo sous la pièce (en CSS, il dure autant que la
-//     sélection) et une onde qui éveille les cases jouables ;
+//     sélection) ;
 //   · le COUP : une traînée du départ vers l'arrivée, teintée de la classe de
 //     la pièce — le roque en a deux, une par pièce déplacée ;
 //   · la PRISE : noyau, anneaux et éclats, dimensionnés par la valeur de la
@@ -393,39 +393,20 @@ function fxPromote(r,c,pieceId){
 }
 
 // ----------------------------------------------------------------
-// LA PRISE EN MAIN : le halo sous la pièce et l'éveil des cases
+// LA PRISE EN MAIN : le halo sous la pièce
 // ----------------------------------------------------------------
-// La sélection était une surbrillance de case et une pastille par
-// destination, toutes deux permanentes (voir .gc.sel et .gc.avail dans
-// css/style.css) : elles disent l'ÉTAT, correctement, mais rien ne disait le
-// GESTE — le moment où la main se referme sur la pièce et où le plateau
-// répond. Une étincelle par case jouable, une seule fois, en cascade depuis
-// la pièce : le plateau s'éveille dans l'ordre où l'œil le parcourt.
+// Il n'y a plus qu'un effet ici, et c'est le résultat d'un essai raté.
+// La première version faisait aussi partir une onde sur CHAQUE case jouable,
+// en cascade depuis la pièce. C'était joli une fois et pesant les mille
+// suivantes : on sélectionne une pièce à chaque coup, et vingt-sept anneaux
+// qui s'ouvrent autour des pastilles fatiguent le regard exactement là où il
+// doit lire une position. Un effet qui se déclenche à chaque geste doit être
+// PLUS discret que les autres, pas moins — les pastilles pulsent déjà, elles
+// suffisent.
 //
-// Le halo sous la pièce, lui, est en CSS pur ([COMBAT-FX]) : il dure aussi
-// longtemps que la sélection, ce qu'un nœud jetable ne saurait pas faire.
-function fxSelect(from,cells){
-  if(!fxOn()||!cells||!cells.length)return;
-  const a=fxCenter(from.r,from.c);
-  // Une Dame au centre ouvre vingt-sept destinations : autant d'étincelles
-  // simultanées noieraient la lecture du plateau au lieu de l'aider, et
-  // mangeraient le plafond de nœuds vivants pour le coup suivant. Les plus
-  // proches d'abord — ce sont celles qu'on regarde.
-  const sorted=cells.slice().sort((m,n)=>{
-    const dm=Math.hypot(m.r-from.r,m.c-from.c),dn=Math.hypot(n.r-from.r,n.c-from.c);
-    return dm-dn;
-  }).slice(0,Math.max(4,Math.round(14*_fxLevel)));
-  for(const m of sorted){
-    const b=fxCenter(m.r,m.c);
-    const dist=Math.hypot(b.x-a.x,b.y-a.y);
-    const node=fxCellNode(m.r,m.c,'fx-wake');
-    // Le retard suit la DISTANCE et non le rang dans la liste : l'onde part
-    // de la pièce, elle ne parcourt pas un tableau.
-    node.style.setProperty('--del',(dist*4.5|0)+'ms');
-    node.innerHTML='<span class="fx-wake-ring"></span>';
-    fxMount('over',node,900);
-  }
-}
+// Reste le halo sous la pièce, et il est en CSS pur ([COMBAT-FX]) : il dure
+// aussi longtemps que la sélection, ce qu'un nœud jetable ne saurait pas
+// faire.
 
 // Où est le roi de ce camp ? Les deux effets d'alerte (l'échec, le mat) se
 // posent sur SA case et pas ailleurs : c'est ce qui les rend lisibles d'un

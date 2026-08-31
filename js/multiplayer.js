@@ -343,6 +343,13 @@ function mpBindRoomHandlers(channel){
     if(payload.senderId===MP.myId)return;
     mpReceiveEmote(payload&&payload.id);
   });
+  // Les phrases suivent exactement le même chemin, et ne transportent qu'un
+  // IDENTIFIANT : c'est ce qui garantit qu'aucun texte venu du réseau ne
+  // s'affiche jamais (voir MP_CHAT plus bas).
+  channel.on('broadcast',{event:'chat'},({payload})=>{
+    if(payload.senderId===MP.myId)return;
+    mpReceiveChat(payload&&payload.id);
+  });
 
   // Revanche : chacun annonce son souhait, la partie repart quand les deux
   // l'ont fait. Les couleurs s'inversent, sinon le même camp commencerait
@@ -905,7 +912,7 @@ function mpTryRematch(){
 // partie en ligne passent donc par la barre de statut du plateau, qui est le
 // seul endroit que le joueur regarde pendant une partie.
 // ================================================================
-// LES EMOTES : rendre l'adversaire présent
+// LA DISCUSSION : rendre l'adversaire présent
 // ================================================================
 // PENDANT UNE PARTIE EN LIGNE, L'ADVERSAIRE ÉTAIT MUET. Un pseudo, un ELO,
 // et rien d'autre : aucun moyen de saluer, de féliciter, de réagir à une
@@ -913,14 +920,18 @@ function mpTryRematch(){
 // affronter un pseudonyme — et dans un jeu qui n'a plus que des adversaires
 // humains, c'est la seule présence humaine qu'il reste à donner.
 //
-// Six emotes, pas une de plus, et aucun texte libre. Ce n'est pas de la
-// prudence excessive : un champ de saisie dans un jeu compétitif demande une
-// modération, un signalement et un blocage — trois systèmes qui n'existent
-// pas ici. Six pictogrammes disent l'essentiel (bonjour, bien joué, oups,
-// réfléchis, merci, dépêche-toi) sans qu'aucun ne puisse blesser.
+// -- AUCUN TEXTE LIBRE, ET CE N'EST PAS DE LA PRUDENCE -------------------
+// On ne tape rien : on CHOISIT une phrase dans un catalogue, et c'est son
+// IDENTIFIANT qui part sur le réseau. Le receveur ne reçoit jamais du texte,
+// il reçoit une clé, et affiche la phrase de SON propre catalogue. Un client
+// modifié ne peut donc rien faire apparaître chez l'adversaire qui ne soit
+// pas déjà dans le jeu — pas une insulte, pas une adresse, pas un lien. C'est
+// de la modération par construction : elle ne demande ni signalement, ni
+// blocage, ni équipe pour les traiter, trois systèmes qui n'existent pas ici
+// et qu'un champ de saisie rendrait obligatoires du jour au lendemain.
 //
-// LE CANAL EXISTE DÉJÀ : c'est celui des coups. Une emote n'est donc pas une
-// infrastructure de plus, c'est un événement de plus — quelques lignes.
+// LE CANAL EXISTE DÉJÀ : c'est celui des coups. Une phrase n'est donc pas une
+// infrastructure de plus, c'est un événement de plus.
 //
 // Deux garde-fous, tous deux nécessaires :
 //   · UNE SOURDINE (mpEmoteMuted). Elle est le prix d'entrée de toute
@@ -929,33 +940,100 @@ function mpTryRematch(){
 //   · UN DÉBIT MAXIMAL, des deux côtés. On limite l'envoi (le joueur ne
 //     s'auto-spamme pas) ET la réception (un client modifié pourrait ignorer
 //     sa propre limite ; la nôtre, il ne l'atteint pas).
+
+// Les six pictogrammes. Ils disent en un caractère ce qu'une phrase dirait en
+// dix, et ils traversent les langues.
 const MP_EMOTES=[
-  {id:'salut',   glyph:'\u270B', label:'Salut'},
-  {id:'bravo',   glyph:'\u2728', label:'Bien joué'},
+  {id:'salut',   glyph:'✋', label:'Salut'},
+  {id:'bravo',   glyph:'✨', label:'Bien joué'},
   {id:'oups',    glyph:'\u{1F62C}', label:'Oups'},
-  {id:'reflechi',glyph:'\u23F3', label:'Je réfléchis'},
+  {id:'reflechi',glyph:'⏳', label:'Je réfléchis'},
   {id:'merci',   glyph:'\u{1F64F}', label:'Merci'},
-  {id:'vite',    glyph:'\u26A1', label:'Plus vite ?'},
+  {id:'vite',    glyph:'⚡', label:'Plus vite ?'},
 ];
+
+// LES PHRASES, RANGÉES PAR INTENTION. Quatre catégories, parce qu'on ne
+// cherche pas une phrase, on cherche un TON : saluer, saluer un bon coup,
+// fanfaronner, commenter la tension. Une liste à plat de vingt phrases se
+// relit en entier à chaque fois ; quatre paquets de cinq se choisissent d'un
+// coup d'œil, même au milieu d'une partie.
+//
+// Le registre est celui du jeu — un laboratoire d'alchimie, des créatures,
+// des armées — et pas celui d'un salon de discussion. « Mes pièces sentent
+// l'odeur du sang » est une bravade de joueur d'échecs, pas une menace : la
+// frontière est que ça parle des PIÈCES, jamais de la personne en face. C'est
+// la règle qui décide de ce qui entre dans cette table.
+const MP_CHAT=[
+  {cat:'Courtoisie',msgs:[
+    {id:'bp',   t:'Bonne partie.'},
+    {id:'salue',t:'Salut. Que le meilleur gagne.'},
+    {id:'merci',t:'Merci pour la partie.'},
+    {id:'rev',  t:'Revanche ?'},
+    {id:'plus', t:'À une prochaine, avec plaisir.'},
+  ]},
+  {cat:'Beau jeu',msgs:[
+    {id:'bon',  t:'Bon coup.'},
+    {id:'vu',   t:'Joliment vu. Je ne l’avais pas vu venir.'},
+    {id:'aud',  t:'C’est une attaque audacieuse.'},
+    {id:'lecon',t:'Tu m’apprends quelque chose.'},
+    {id:'belle',t:'Belle partie, quel qu’en soit le bout.'},
+  ]},
+  {cat:'Bravade',msgs:[
+    {id:'sang', t:'Mes pièces sentent l’odeur du sang.'},
+    {id:'tremble',t:'Ton roi tremble déjà.'},
+    {id:'feu',  t:'Tu joues avec le feu.'},
+    {id:'compte',t:'Compte tes pièces pendant qu’il t’en reste.'},
+    {id:'nuit', t:'La nuit tombe sur ton camp.'},
+  ]},
+  {cat:'Sur le fil',msgs:[
+    {id:'reflechi',t:'Je réfléchis.'},
+    {id:'vite', t:'Plus vite ?'},
+    {id:'oups', t:'Oups.'},
+    {id:'serre',t:'Ça se joue à rien.'},
+    {id:'piege',t:'Il y a un piège quelque part. Je le sens.'},
+  ]},
+];
+// L'index plat : c'est lui qui traduit un identifiant reçu en phrase, et lui
+// seul. Rien d'autre du réseau n'entre dans l'affichage.
+const MP_CHAT_BY_ID=(()=>{
+  const m={};
+  MP_CHAT.forEach(c=>c.msgs.forEach(x=>{m[x.id]=x.t;}));
+  return m;
+})();
+
 const MP_EMOTE_COOLDOWN=2500;   // entre deux envois, côté joueur
 const MP_EMOTE_MIN_GAP=1200;    // entre deux réceptions, côté adversaire
-let _emoteLastSent=0,_emoteLastRecv=0,_emoteHideTid=null;
+const MP_CHAT_MAX=40;           // longueur du fil conservé
+let _emoteLastSent=0,_emoteLastRecv=0;
+let _chatLog=[];                // [{mine, text} | {mine, glyph}]
 
 function mpEmoteMuted(){
   try{return localStorage.getItem('ec_emotes_muted')==='1';}catch(e){return false;}
 }
 function mpEmoteSetMuted(on){
   try{localStorage.setItem('ec_emotes_muted',on?'1':'0');}catch(e){}
+  mpPaintMute();
+}
+// L'INTERRUPTEUR CHANGE DE PICTOGRAMME, ET PAS SEULEMENT DE COULEUR. Il a
+// porté une seule cloche barrée, teintée en rouge quand la sourdine coupait :
+// un emoji est peint par sa propre police, la couleur CSS ne l'atteint pas, et
+// l'interrupteur avait donc exactement la même tête dans ses deux états. Deux
+// glyphes, deux états, aucun doute possible.
+function mpPaintMute(){
   const b=document.getElementById('mp-emote-mute');
-  if(b)b.setAttribute('aria-checked',on?'false':'true');
+  if(!b)return;
+  const coupe=mpEmoteMuted();
+  b.setAttribute('aria-checked',coupe?'false':'true');
+  b.textContent=coupe?'🔕':'🔔';
+  b.title=coupe?'Messages de l\'adversaire coupés':'Recevoir les messages de l\'adversaire';
 }
 
 // La bulle : elle se pose du côté de qui l'envoie — la sienne au-dessus de
-// son propre bandeau, celle de l'adversaire au-dessus du sien. Sans ça, on
-// ne sait pas qui vient de parler.
-function mpShowEmote(id,mine){
-  const e=MP_EMOTES.find(x=>x.id===id);
-  if(!e)return;
+// son propre bandeau, celle de l'adversaire au-dessus du sien. Sans ça, on ne
+// sait pas qui vient de parler. Elle existe TOUJOURS, panneau ouvert ou non :
+// c'est ce qui permet de recevoir un message sans avoir à surveiller un
+// onglet pendant qu'on cherche un coup.
+function mpShowBubble(txt,mine,glyph){
   const host=document.getElementById(mine?'human-player-bar':'ai-player-bar');
   if(!host)return;
   let bulle=host.querySelector('.mp-emote-bubble');
@@ -964,57 +1042,161 @@ function mpShowEmote(id,mine){
     bulle.className='mp-emote-bubble';
     host.appendChild(bulle);
   }
-  bulle.textContent=e.glyph;
-  bulle.setAttribute('aria-label',e.label);
-  // Relancer l'animation quand deux emotes s'enchaînent.
+  bulle.textContent=txt;
+  bulle.classList.toggle('mp-bubble-glyph',!!glyph);
+  // Relancer l'animation quand deux messages s'enchaînent.
   bulle.classList.remove('show');void bulle.offsetWidth;
   bulle.classList.add('show');
   clearTimeout(bulle._tid);
-  bulle._tid=setTimeout(()=>bulle.classList.remove('show'),2200);
+  bulle._tid=setTimeout(()=>bulle.classList.remove('show'),2800);
   if(typeof playSound==='function')playSound('tap',{force:0.35});
 }
 
-function mpSendEmote(id){
+function mpChatPush(entry){
+  _chatLog.push(entry);
+  if(_chatLog.length>MP_CHAT_MAX)_chatLog.shift();
+  mpRenderChatLog();
+  // La pastille du bouton ne s'allume que si le panneau est FERMÉ, et jamais
+  // pour ses propres messages : on sait ce qu'on vient de dire.
+  const dot=document.getElementById('chat-dot');
+  const ouvert=(typeof gamePanelIsOpen==='function')&&gamePanelIsOpen('chat');
+  if(dot&&!entry.mine&&!ouvert)dot.hidden=false;
+}
+
+function mpSay(id,glyph){
   if(!MP.channel||!GS||!GS.multiplayer||GS.gameOver)return;
   const now=Date.now();
   if(now-_emoteLastSent<MP_EMOTE_COOLDOWN)return;   // le joueur ne se spamme pas lui-même
   _emoteLastSent=now;
-  mpShowEmote(id,true);
-  mpSend('emote',{id});
+  if(glyph){
+    mpShowBubble(glyph,true,true);
+    mpChatPush({mine:true,glyph:glyph});
+    mpSend('emote',{id});
+  }else{
+    const t=MP_CHAT_BY_ID[id];
+    if(!t)return;
+    mpShowBubble(t,true);
+    mpChatPush({mine:true,text:t});
+    mpSend('chat',{id});
+  }
+  mpChatCoolDown();
+}
+function mpSendEmote(id){
+  const e=MP_EMOTES.find(x=>x.id===id);
+  if(e)mpSay(e.id,e.glyph);
 }
 
+// La RÉCEPTION traduit un identifiant en phrase du catalogue local. Un
+// identifiant inconnu — client d'une autre version, ou bricolé — est
+// simplement ignoré : rien d'étranger n'atteint l'écran.
 function mpReceiveEmote(id){
   if(mpEmoteMuted())return;
   const now=Date.now();
   if(now-_emoteLastRecv<MP_EMOTE_MIN_GAP)return;    // un client modifié n'inonde pas l'écran
+  const e=MP_EMOTES.find(x=>x.id===id);
+  if(!e)return;
   _emoteLastRecv=now;
-  mpShowEmote(id,false);
+  mpShowBubble(e.glyph,false,true);
+  mpChatPush({mine:false,glyph:e.glyph});
+}
+function mpReceiveChat(id){
+  if(mpEmoteMuted())return;
+  const now=Date.now();
+  if(now-_emoteLastRecv<MP_EMOTE_MIN_GAP)return;
+  const t=MP_CHAT_BY_ID[id];
+  if(!t)return;
+  _emoteLastRecv=now;
+  mpShowBubble(t,false);
+  mpChatPush({mine:false,text:t});
 }
 
-// La barre d'emotes n'existe QUE pendant une partie en ligne : hors ligne,
-// elle n'aurait personne à qui parler.
-function mpRenderEmoteBar(){
-  const bar=document.getElementById('mp-emote-bar');
-  if(!bar)return;
+// Le délai d'envoi se VOIT. Sans ça, on appuie sur une phrase, rien ne part,
+// et on conclut que le bouton est cassé.
+let _chatCoolTid=null;
+function mpChatCoolDown(){
+  const picker=document.getElementById('chat-picker');
+  if(!picker)return;
+  picker.classList.add('cooling');
+  clearTimeout(_chatCoolTid);
+  _chatCoolTid=setTimeout(()=>picker.classList.remove('cooling'),MP_EMOTE_COOLDOWN);
+}
+
+function mpRenderChatLog(){
+  const log=document.getElementById('chat-log');
+  if(!log)return;
+  if(!_chatLog.length){
+    log.innerHTML='<div class="chat-empty">Choisissez un pictogramme ou une phrase.<br>'+
+      'Rien ne s’écrit à la main : c’est ce qui garantit qu’aucune insulte ne peut arriver ici.</div>';
+    return;
+  }
+  log.innerHTML=_chatLog.map(e=>
+    '<div class="cmsg '+(e.mine?'cmsg-me':'cmsg-opp')+(e.glyph?' cmsg-glyph':'')+'">'+
+      escH(e.glyph||e.text)+'</div>').join('');
+  log.scrollTop=log.scrollHeight;
+}
+
+// Le catalogue n'est bâti qu'une fois : il ne change jamais en cours de
+// partie, et le reconstruire à chaque rendu perdrait le défilement en cours.
+function mpBuildChatPicker(){
+  const picker=document.getElementById('chat-picker');
+  if(!picker||picker.dataset.built==='1')return;
+  picker.dataset.built='1';
+  picker.innerHTML=
+    '<div class="chat-emotes">'+
+      MP_EMOTES.map(e=>'<button class="chat-emote" data-emote="'+e.id+'" title="'+escH(e.label)+
+        '" aria-label="'+escH(e.label)+'">'+e.glyph+'</button>').join('')+
+    '</div>'+
+    MP_CHAT.map(c=>
+      '<div class="chat-cat">'+escH(c.cat)+'</div><div class="chat-lines">'+
+      c.msgs.map(m=>'<button class="chat-line" data-msg="'+m.id+'">'+escH(m.t)+'</button>').join('')+
+      '</div>').join('');
+  picker.querySelectorAll('[data-emote]').forEach(b=>
+    b.addEventListener('click',()=>mpSendEmote(b.dataset.emote)));
+  picker.querySelectorAll('[data-msg]').forEach(b=>
+    b.addEventListener('click',()=>mpSay(b.dataset.msg,null)));
+}
+
+// UN FIL PAR PARTIE. Sans cette remise à zéro, la revanche s'ouvrirait sur
+// les félicitations de la partie précédente — et sur celles d'un adversaire
+// qui n'est peut-être plus le même.
+function mpChatReset(){
+  _chatLog=[];
+  _emoteLastSent=0;_emoteLastRecv=0;
+  const dot=document.getElementById('chat-dot');
+  if(dot)dot.hidden=true;
+  mpRenderChatLog();
+}
+
+// Appelée à l'ouverture du panneau (gamePanelOpen, js/game-render.js).
+function mpOpenChat(){
+  mpBuildChatPicker();
+  mpRenderChatLog();
+  mpPaintMute();
+  const dot=document.getElementById('chat-dot');
+  if(dot)dot.hidden=true;
+}
+
+// LE BOUTON « CHAT » N'EXISTE QU'EN PARTIE EN LIGNE : hors ligne, il n'aurait
+// personne à qui parler. Appelée à chaque rendu de partie (renderGame).
+function mpRefreshChat(){
+  const btn=document.getElementById('btn-chat');
+  if(!btn)return;
   const on=!!(GS&&GS.multiplayer&&!GS.gameOver);
-  bar.style.display=on?'':'none';
-  if(!on||bar.dataset.built==='1')return;
-  bar.dataset.built='1';
-  bar.innerHTML=MP_EMOTES.map(e=>
-    '<button class="mp-emote" data-emote="'+e.id+'" title="'+e.label+'" aria-label="'+e.label+'">'+
-      e.glyph+'</button>').join('')+
-    '<button class="mp-emote mp-emote-mute" id="mp-emote-mute" role="switch" '+
-      'aria-checked="'+(mpEmoteMuted()?'false':'true')+'" '+
-      'title="Recevoir les emotes de l\'adversaire" aria-label="Recevoir les emotes de l\'adversaire">'+
-      '\u{1F507}</button>';
-  bar.querySelectorAll('[data-emote]').forEach(b=>{
-    b.addEventListener('click',()=>mpSendEmote(b.dataset.emote));
-  });
-  bar.querySelector('#mp-emote-mute')?.addEventListener('click',function(){
+  btn.style.display=on?'':'none';
+  if(!on){
+    if(typeof gamePanelIsOpen==='function'&&gamePanelIsOpen('chat')&&typeof gamePanelClose==='function')
+      gamePanelClose();
+    return;
+  }
+  mpPaintMute();
+}
+
+(function wireChatMute(){
+  document.getElementById('mp-emote-mute')?.addEventListener('click',function(){
     const recoit=this.getAttribute('aria-checked')==='true';
     mpEmoteSetMuted(recoit);            // on coupe si l'on recevait
   });
-}
+})();
 
 function mpGameMessage(text,cls){
   const bar=document.getElementById('game-status');

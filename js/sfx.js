@@ -254,8 +254,41 @@ const SFX_RECIPES={
   // confondent en un seul bruit.
   chest:{vary:0.05,duck:0.6,layers:[
     {type:'noise',rate:0.7,gain:0.40,attack:0.0005,decay:0.13,filter:{type:'lowpass',freq:2400}},
-    {type:'tone',wave:'sawtooth',freq:140,freq2:60,gain:0.24,attack:0.001,decay:0.2,bend:0.12},
+    // La dent de scie a été remplacée par une sinusoïde. Une dent de scie
+    // grave, c'est TOUTES les harmoniques d'un coup : sur un haut-parleur de
+    // téléphone, ça ne descend pas — ça grésille. Le corps d'un impact veut
+    // du fondamental, pas du spectre.
+    {type:'tone',wave:'sine',freq:140,freq2:58,gain:0.30,attack:0.001,decay:0.24,bend:0.12},
     {type:'noise',rate:1.8,gain:0.16,attack:0.03,decay:0.55,delay:0.06,filter:{type:'highpass',freq:1800}},
+  ]},
+
+  // LE CHOC : une frappe sur un coffre qu'on brise (js/chest-break.js).
+  // Il a longtemps été trois dents de scie empilées à quelques millisecondes
+  // d'écart, produites directement par playTone : un grésillement métallique
+  // qui n'évoquait ni la pierre ni le bois, et qu'on prenait quatre fois de
+  // suite. Un choc, c'est trois choses et pas trois notes : l'ATTAQUE (du
+  // bruit large, coupé bas — la masse qui rencontre la masse), le CORPS (une
+  // sinusoïde qui plonge, c'est elle qui donne le poids), et un ÉCLAT
+  // d'éclats juste après, court et haut.
+  choc:{vary:0.07,duck:0.5,layers:[
+    {type:'noise',rate:0.55,gain:0.46,attack:0.0004,decay:0.10,filter:{type:'lowpass',freq:1500}},
+    {type:'tone',wave:'sine',freq:132,freq2:46,gain:0.34,attack:0.001,decay:0.26,bend:0.09},
+    {type:'noise',rate:2.2,gain:0.13,attack:0.001,decay:0.07,delay:0.012,filter:{type:'bandpass',freq:2600,q:0.9}},
+  ]},
+
+  // L'EXPLOSION : le coffre cède. C'est le son le plus long du jeu, et de
+  // loin — près de deux secondes —, ce qui se justifie une fois par coffre et
+  // jamais ailleurs. Quatre couches, chacune sur sa propre durée : la
+  // déflagration (bruit très grave, immédiat), la chute du sub (90 → 28 Hz,
+  // c'est elle qu'on sent plus qu'on ne l'entend), la gerbe d'éclats (bruit
+  // aigu qui traîne), et la RETOMBÉE, qui arrive en dernier et s'éteint le
+  // plus tard : sans elle, l'explosion s'arrête net et sonne comme un
+  // échantillon coupé.
+  blast:{vary:0.03,duck:0.9,layers:[
+    {type:'noise',rate:0.32,gain:0.50,attack:0.001,decay:0.85,filter:{type:'lowpass',freq:900}},
+    {type:'tone',wave:'sine',freq:90,freq2:28,gain:0.42,attack:0.002,decay:1.1,bend:0.45},
+    {type:'noise',rate:1.1,gain:0.24,attack:0.004,decay:1.3,delay:0.03,filter:{type:'highpass',freq:900}},
+    {type:'noise',rate:0.8,gain:0.17,attack:0.03,decay:1.7,delay:0.14,filter:{type:'lowpass',freq:2400}},
   ]},
 
   // Un lot révélé : clair, court, franc. Il se répète lot après lot, donc il
@@ -402,6 +435,11 @@ const SFX_FEEL={
   win    :{haptic:'fanfare'},
   loss   :{haptic:'alert'},
   chest  :{haptic:'fanfare',shake:true},
+  // Le choc et l'explosion vibrent mais ne SECOUENT PAS : la scène du coffre
+  // tremble déjà d'elle-même (--pb-amp, js/chest-break.js), et deux secousses
+  // sur le même élément se battraient pour la même propriété `animation`.
+  choc   :{haptic:'impact'},
+  blast  :{haptic:'fanfare'},
   rank   :{haptic:'fanfare'},
   tap    :{haptic:'tap'},
   loot   :{haptic:'tap'},

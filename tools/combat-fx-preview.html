@@ -104,9 +104,6 @@ position correspondante dans une partie.</p>
     <button data-fx="meduse"><b>Pétrification</b><small>Méduse : éclat froid et fêlure</small></button>
     <button data-fx="charge"><b>Charge</b><small>Dresseur : la case écrasée</small></button>
 
-    <h2>La prise en main</h2>
-    <button data-fx="select"><b>Sélection</b><small>halo sous la pièce + éveil des cases</small></button>
-
     <h2>Les moments</h2>
     <button data-fx="promo"><b>Promotion</b><small>colonne de lumière et cercles runiques</small></button>
     <button data-fx="check"><b>Échec</b><small>alarme sur le roi + cerne rouge</small></button>
@@ -193,17 +190,6 @@ const SCENES={
   'meduse':()=>{fxPower('meduse',3,3);fxPower('meduse',3,5);},
   'charge':()=>fxPlayMove({from:{r:6,c:4},to:{r:4,c:4},pieceId:'dresseur-elephant',power:'charge'}),
   'promo':()=>fxPromote(0,4,'dame'),
-  // La sélection a deux moitiés : l'éveil des cases, jetable, et le halo sous
-  // la pièce, qui est une CLASSE portée par la case (.gc.sel) et vit tant que
-  // la sélection dure. Le banc pose la seconde à la main — dans le jeu c'est
-  // paintBoardCells qui s'en charge (js/game-render.js).
-  'select':()=>{
-    document.querySelectorAll('#game-board .gc.sel').forEach(e=>e.classList.remove('sel'));
-    document.querySelectorAll('#game-board .gc')[4*8+4].classList.add('sel');
-    const cells=[];
-    for(let i=1;i<=3;i++)cells.push({r:4-i,c:4},{r:4+i,c:4},{r:4,c:4-i},{r:4,c:4+i});
-    fxSelect({r:4,c:4},cells.filter(m=>m.r>=0&&m.r<8&&m.c>=0&&m.c<8));
-  },
   'check':()=>fxCheck(7,4),
   'mate-win':()=>fxMate(0,4,true),
   'mate-loss':()=>fxMate(7,4,false),

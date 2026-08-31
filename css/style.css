@@ -14,6 +14,8 @@
      [ARMIES]       pages "Mes armées" / "Armées IA"
      [COMBAT-INTRO] page d'intro combat (VS, présentation armées)
      [GAME]         page de jeu : plateau, sidebars, historique, drag&drop
+     [GAME-PANEL]   zone sous le plateau : boutons Historique / Chat et les
+                    deux panneaux qui s'y posent
      [MODALS-GAME]  promotion
      [VOIE]         page "Diagonale de la Puissance" (ELO, rangs, jalons)
      [REWARDS]      page "Récompenses" (colonne des victoires, rangée de la
@@ -1076,16 +1078,11 @@ body:not(.main-menu) #settings-panel{display:none}
   animation:clockLowPulse 1s ease-in-out infinite}
 @keyframes clockLowPulse{0%,100%{opacity:1}50%{opacity:.6}}
 
-/* --- Colonne latérale : elle porte maintenant TOUT sauf l'échiquier, du
-   bandeau adverse en haut au sien en bas. Seul le journal des coups s'étire
-   (gs-grow), le reste garde sa taille. --- */
+/* --- Colonne latérale : elle porte TOUT sauf l'échiquier — les deux
+   bandeaux de joueur en haut, la zone sous le plateau au milieu (voir
+   [GAME-PANEL]), et « Abandonner » tout en bas. --- */
 .game-side{width:330px;flex-shrink:0;background:var(--surface);border-left:1px solid var(--border);
   display:flex;flex-direction:column;padding:10px;gap:8px;overflow:hidden}
-.gsb-title{font-family:var(--f-ui);font-size:11px;font-weight:650;
-  letter-spacing:.2px;color:var(--accent2);margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border)}
-.gs-block{background:var(--bg2);border:1px solid var(--border);border-radius:11px;padding:11px 12px;
-  display:flex;flex-direction:column;min-height:0}
-.gs-block.gs-grow{flex:1}
 .status-bar{font-family:var(--f-ui);font-size:12.5px;padding:11px 12px;border-radius:11px;
   text-align:center;background:var(--surface2);border:1px solid var(--border);line-height:1.4}
 .status-bar.check{border-color:var(--ember);color:var(--ember);animation:checkShake .4s ease}
@@ -1095,51 +1092,54 @@ body:not(.main-menu) #settings-panel{display:none}
 .move-log{flex:1;overflow-y:auto;font-size:13px;font-family:var(--f-ui);line-height:1.7;min-height:60px}
 .move-log-item{display:flex;gap:8px;align-items:center;padding:2px 4px;border-radius:5px}
 .move-log-item:nth-child(odd){background:rgba(255,255,255,.02)}
+/* La position qu'on relit. Le fond était écrit en style en ligne par
+   renderMoveLog : il gagnait donc contre le thème clair, où un lavis doré sur
+   fond crème ne se voyait plus. */
+.move-log-item.ml-here{background:rgba(201,168,76,.18);box-shadow:inset 0 0 0 1px rgba(201,168,76,.45)}
 .move-log-num{color:var(--muted);min-width:24px;font-size:10px}
 /* Les coups NOIRS étaient grisés. Or le coup adverse n'est pas une
    information secondaire — c'est souvent celui qu'on relit. La couleur du
    camp est portée par le logo de la pièce, pas par l'opacité du texte. */
 .move-log-w,.move-log-b{flex:1;color:var(--text);display:flex;align-items:center;gap:3px}
 .move-log .pc-icon{width:15px;height:15px}
-/* --- LES EMOTES (js/multiplayer.js) --------------------------------
-   Six pictogrammes et une sourdine, sur une rangée, au-dessus des deux
-   boutons de partie. Ils ne s'affichent qu'en partie en ligne : c'est le
-   seul moment où il y a quelqu'un en face.
-   Chaque bouton est carré et fait 44 px : on les touche en pleine partie,
-   souvent d'une main, parfois vite. */
-.mp-emote-bar{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-bottom:8px}
-.mp-emote{
-  width:44px;height:44px;flex:none;border-radius:12px;cursor:pointer;padding:0;
-  border:1px solid var(--border2);background:var(--surface2);
-  font-size:20px;line-height:1;display:flex;align-items:center;justify-content:center;
-  transition:border-color .16s ease,transform .1s ease,background .16s ease;
-}
-.mp-emote:hover{border-color:var(--accent2);background:var(--surface)}
-.mp-emote:active{transform:scale(.92)}
-/* La sourdine est un interrupteur, pas une emote : elle se distingue par sa
-   sourdine visuelle, et s'allume en rouge quand elle coupe vraiment. */
-.mp-emote-mute{margin-left:auto;font-size:16px;opacity:.55}
-.mp-emote-mute[aria-checked="true"]{opacity:.55}
-.mp-emote-mute[aria-checked="false"]{opacity:1;border-color:var(--danger);color:var(--danger);
-  background:rgba(212,69,63,.12)}
-
+/* --- LA BULLE DE DISCUSSION (js/multiplayer.js) ---------------------
+   La rangée d'emotes qui vivait ici, au-dessus des boutons de partie, a
+   déménagé dans le panneau « Chat » (voir [GAME-PANEL]) : six pictogrammes
+   posés en permanence sous le plateau prenaient une rangée entière à un
+   écran dont la hauteur est justement ce qui manque, pour une action qu'on
+   fait deux fois par partie.
+   La BULLE, elle, reste ici et vaut panneau ouvert comme fermé : c'est ce qui
+   permet de recevoir un message sans avoir à surveiller un onglet pendant
+   qu'on cherche un coup. --- */
 /* LA BULLE se pose du côté de qui l'envoie — au-dessus de son propre
    bandeau. Sans ça, on ne sait pas qui vient de parler. */
 .gp-bar{position:relative}
+/* LA BULLE PENCHE VERS LE PLATEAU, chacune du côté où il y a de la place.
+   Elle sortait par le haut de l'écran : le bandeau adverse est le PREMIER
+   élément de la page, et une bulle posée seize pixels au-dessus n'a rien
+   au-dessus d'elle. Celle de l'adversaire descend donc sur le plateau, celle
+   du joueur monte dessus — et dans les deux cas elle apparaît du côté où
+   l'œil est déjà. */
 .mp-emote-bubble{
-  position:absolute;right:10px;top:-14px;z-index:5;pointer-events:none;
-  min-width:38px;height:38px;padding:0 8px;border-radius:14px;
-  display:flex;align-items:center;justify-content:center;font-size:20px;line-height:1;
+  position:absolute;right:10px;bottom:calc(100% - 12px);z-index:5;pointer-events:none;
+  min-width:38px;min-height:34px;max-width:min(74vw,300px);
+  padding:6px 11px;border-radius:14px;
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--f-ui);font-size:13px;line-height:1.35;text-align:center;
   background:var(--surface2);border:1px solid var(--border2);
   box-shadow:0 6px 18px -6px rgba(0,0,0,.65);
   opacity:0;transform:scale(.6) translateY(6px);
 }
-.mp-emote-bubble.show{animation:mpEmotePop 2.2s cubic-bezier(.2,.9,.3,1) both}
+/* Un pictogramme se lit d'un coup d'œil, une phrase se LIT : la bulle tient
+   donc près de trois secondes, et le pictogramme y est grand. */
+#ai-player-bar .mp-emote-bubble{bottom:auto;top:calc(100% - 12px)}
+.mp-emote-bubble.mp-bubble-glyph{font-size:22px;line-height:1}
+.mp-emote-bubble.show{animation:mpEmotePop 2.8s cubic-bezier(.2,.9,.3,1) both}
 @keyframes mpEmotePop{
   0%{opacity:0;transform:scale(.6) translateY(6px)}
   12%{opacity:1;transform:scale(1.12) translateY(0)}
-  22%{transform:scale(1) translateY(0)}
-  82%{opacity:1;transform:scale(1) translateY(0)}
+  18%{transform:scale(1) translateY(0)}
+  86%{opacity:1;transform:scale(1) translateY(0)}
   100%{opacity:0;transform:scale(.9) translateY(-6px)}
 }
 @media(prefers-reduced-motion:reduce){
@@ -1147,9 +1147,9 @@ body:not(.main-menu) #settings-panel{display:none}
 }
 
 .game-btns{display:flex;flex-direction:column;gap:7px;margin-top:auto}
-/* Annuler un coup et abandonner une partie sont les deux actions les plus
-   lourdes de conséquence du jeu ; elles portaient un style en dur qui leur
-   donnait 30 px de haut. Une cible tactile pleine, comme partout ailleurs. */
+/* Abandonner une partie est l'action la plus définitive du jeu ; elle portait
+   un style en dur qui lui donnait 30 px de haut. Une cible tactile pleine,
+   comme partout ailleurs. */
 .game-btns .btn{min-height:44px;font-size:12.5px;padding:11px 12px}
 .history-nav{display:flex;gap:6px;justify-content:center;margin-bottom:6px}
 /* 44 × 44 : les quatre commandes faisaient 25 px de haut sur 5 px d'écart,
@@ -1160,7 +1160,6 @@ body:not(.main-menu) #settings-panel{display:none}
   transition:border-color .16s,color .16s,background .16s}
 .history-nav button:hover:not(:disabled){border-color:var(--accent2);color:var(--accent2)}
 .history-nav button:disabled{opacity:.28;cursor:not-allowed}
-.history-badge{font-family:var(--f-ui);font-size:9.5px;color:var(--muted);text-align:center;margin-bottom:6px;min-height:13px}
 
 .gs-stake-q{font-family:var(--f-ui);font-size:10px;color:var(--muted);margin-left:-2px;margin-right:5px}
 
@@ -1331,16 +1330,6 @@ body:not(.main-menu) #settings-panel{display:none}
    js/game-flow.js. */
 .result-elo-note{margin:14px 0;font-family:var(--f-ui);font-size:12px;letter-spacing:.6px;
   color:var(--muted);background:var(--bg);border:1px dashed var(--border2);border-radius:8px;padding:9px 14px}
-/* La MÊME ligne porte deux choses opposées : « cette partie ne compte pas »
-   (en retrait, pointillés) et « cette partie a compté DOUBLE » (un cadeau).
-   La seconde ne peut pas se dire en gris pointillé : elle explique un +48 que
-   le joueur, sinon, prend pour un bug. Elle passe donc au vert-de-gris plein,
-   la couleur de ce qui vient d'arriver de bien (voir vvEloExplain,
-   js/voie.js). */
-.result-elo-note.result-elo-climb{
-  border-style:solid;border-color:var(--accent);color:var(--accent2);
-  background:var(--accent-bg);letter-spacing:.3px;
-}
 /* La ligne de rang (« Pierre · 218 ELO ») a quitté l'écran de fin de partie :
    elle redisait, en plus long, le nombre que la ligne d'ELO juste au-dessus
    venait d'afficher avec son écart. */
@@ -2512,9 +2501,18 @@ body.light .pmv-dark{background:#c3bdae}
   animation:clashIn .55s cubic-bezier(.2,1.7,.4,1) .75s forwards}
 @keyframes clashIn{0%{opacity:0;transform:scale(2.6) rotate(-9deg)}70%{opacity:1;transform:scale(.92) rotate(2deg)}100%{opacity:1;transform:scale(1) rotate(0)}}
 /* Onde de choc au moment du VS. */
-.cine-shock{position:absolute;left:50%;top:50%;width:20px;height:20px;margin:-10px 0 0 -10px;border-radius:50%;
-  border:3px solid var(--ember);opacity:0;animation:shock .9s ease-out .78s forwards;z-index:1}
-@keyframes shock{0%{opacity:.95;transform:scale(1)}100%{opacity:0;transform:scale(46)}}
+/* L'ONDE DE CHOC DE L'ENTRÉE EN COMBAT EST DESSINÉE, PAS TRACÉE.
+   Il y en a eu DEUX en même temps : cet anneau-ci, un cercle d'ardeur mis à
+   l'échelle quarante-six fois, et la planche `onde-choc.webp` accrochée à
+   `.cine` un peu plus bas (voir [ART]). Deux ondes concentriques parties du
+   même point au même instant ne se lisent pas comme un choc plus fort — elles
+   se lisent comme un défaut d'affichage. La planche reste, elle a de la
+   matière ; l'anneau part.
+
+   L'élément, lui, RESTE dans le balisage (js/cinematics.js) : c'est sur sa
+   présence que `.cine:has(.cine-shock)` distingue l'entrée en combat de
+   l'issue de partie. Il ne peint simplement plus rien. */
+.cine-shock{position:absolute;left:50%;top:50%;width:0;height:0;z-index:1}
 .cine-skip{position:absolute;bottom:22px;left:50%;transform:translateX(-50%);z-index:5;
   font-family:var(--f-ui);font-size:11px;letter-spacing:1px;color:var(--muted);
   background:transparent;border:1px solid var(--border2);border-radius:8px;padding:7px 16px;cursor:pointer}
@@ -3127,8 +3125,6 @@ body.light .move-log-item:nth-child(odd){background:rgba(20,26,25,.03)}
 /* Barres collantes et feuilles : ombres allégées de moitié. */
 body.light .army-box{box-shadow:0 6px 20px -12px rgba(20,26,25,.4),0 1px 2px rgba(20,26,25,.10)}
 body.light .bd-more-menu{box-shadow:0 12px 32px -10px rgba(20,26,25,.26),0 2px 8px rgba(20,26,25,.10)}
-body.light .gs-block.gs-grow{box-shadow:0 -10px 30px -14px rgba(20,26,25,.34)}
-body.light .sheet-scrim{background:rgba(30,40,38,.34)}
 /* En mode clair, le jeton garde son laiton : c'est un objet de métal, pas une
    surface d'interface — seule l'ombre portée s'allège. */
 body.light #settings-btn{box-shadow:0 0 0 1px rgba(20,26,25,.18),inset 0 1px 1px rgba(255,225,170,.30),
@@ -3188,9 +3184,8 @@ body.light .gp-bar.gp-turn{background:linear-gradient(90deg,var(--accent-bg),var
   #ai-player-bar{order:1}
   .game-main{order:2}
   #human-player-bar{order:3}
-  #game-status{order:4}
-  .gs-block{order:5}
-  .game-btns{order:6;margin-top:2px}
+  .game-under{order:4}
+  .game-btns{order:5;margin-top:2px}
 
   /* Le plateau prend la largeur ; la hauteur lui est comptée à partir de ce
      que le reste occupe réellement (chrome + deux bandeaux + écarts +
@@ -3200,10 +3195,10 @@ body.light .gp-bar.gp-turn{background:linear-gradient(90deg,var(--accent-bg),var
      rangées 8 à 4. Elle reprend sa hauteur naturelle. */
   /* LE PLATEAU CÈDE LA PLACE, PAS LES BOUTONS. La réserve valait 200 px en
      dur, alors que le reste de la colonne en occupe bien davantage : deux
-     bandeaux de 40 px, la barre de statut, les deux boutons de partie, et
-     surtout la feuille du journal ancrée en bas (--sheet-h, mesurée par
-     gameSyncSheetHeight dans js/game-render.js). Sur un écran de 640 px de
-     haut, « Abandonner » se retrouvait donc coupé en deux par la feuille.
+     bandeaux de 40 px, la barre de statut, les boutons de partie, et la zone
+     sous le plateau — qui GRANDIT quand un panneau s'y ouvre (--game-chrome,
+     mesurée par gameSyncChrome dans js/game-render.js). Sur un écran de
+     640 px de haut, « Abandonner » se retrouvait sinon hors de l'écran.
      Le plateau rétrécit maintenant de ce qu'il faut — et seulement sur les
      écrans courts : à partir d'environ 800 px de haut, c'est la largeur qui
      borne, la taille du plateau ne change pas d'un pixel.
@@ -3242,63 +3237,174 @@ body.light .gp-bar.gp-turn{background:linear-gradient(90deg,var(--accent-bg),var
      indications occupent maintenant la même ligne, à tour de rôle — c'est
      précisément ce qui en fait un repère. */
 
-  /* Même piège que .game-main : sous `display:contents`, .gs-grow devient un
-     enfant direct de la colonne, où `flex:1` vaut `flex-basis:0`. Le bloc
-     retombait à zéro et le journal débordait par-dessus le bloc suivant. */
-  .gs-block.gs-grow{flex:0 0 auto}
-  /* `margin-top:auto` poussait les deux boutons tout en bas de la colonne. */
+  /* Même piège que .game-main : sous `display:contents`, .game-under devient
+     un enfant direct de la colonne, où `flex:1` vaudrait `flex-basis:0` et la
+     ferait retomber à zéro. Elle garde sa hauteur naturelle — celle de son
+     contenu, ou celle que lui impose le panneau ouvert. */
+  .game-under{flex:0 0 auto}
+  /* `margin-top:auto` poussait « Abandonner » tout en bas de la colonne ; en
+     colonne mobile il est déjà le dernier élément. */
   .game-btns{margin-top:2px}
-  .gs-block,.status-bar{width:100%}
+  .game-under,.status-bar{width:100%}
+}
 
-  /* --- LE JOURNAL DEVIENT UNE FEUILLE GLISSANTE ------------------
-     Il empilait sous le plateau un titre, une rangée de commandes, un
-     compteur et la liste — plus les deux boutons de partie : environ 300 px
-     de défilement pour une
-     information qu'on consulte par intermittence.
-     Tout cela vit maintenant dans une feuille ancrée en bas d'écran. Au
-     repos, on n'en voit que la POIGNÉE : le nombre de coups, le dernier coup
-     joué, et les quatre commandes de relecture — c'est-à-dire ce qu'on
-     regarde entre deux coups. Un appui sur la poignée déploie le reste.
-     Aucune fonction n'est retirée : elles changent de place. */
-  .gs-block.gs-grow{position:fixed;left:0;right:0;bottom:0;z-index:60;
-    margin:0;border-radius:20px 20px 0 0;border:1px solid var(--border);
-    border-bottom:none;background:var(--surface);
-    padding:6px 12px calc(10px + var(--safe-b));
-    box-shadow:0 -10px 30px -12px rgba(0,0,0,.6);
-    max-height:calc(100dvh - 120px);
-    transition:transform .24s cubic-bezier(.32,.72,.3,1)}
-  /* La poignée : une barre à saisir, puis la ligne d'état. */
-  .gs-block.gs-grow::before{content:'';display:block;width:42px;height:4px;border-radius:2px;
-    background:var(--border2);margin:2px auto 8px}
-  .gsb-title{display:none}
-  /* Repliée, la feuille ne montre que ses commandes et le dernier coup. */
-  .gs-block.gs-grow:not(.sheet-open) .move-log{max-height:26px;overflow:hidden;
-    -webkit-mask-image:none;mask-image:none}
-  .gs-block.gs-grow:not(.sheet-open) .move-log .move-log-item:not(:last-child){display:none}
-  .gs-block.gs-grow.sheet-open .move-log{max-height:46dvh;overflow-y:auto;overscroll-behavior:contain}
-  .history-nav{margin-bottom:4px}
-  .history-badge{margin-bottom:2px}
-  /* La mise et les deux boutons de partie restent dans le flux, sous le
-     bandeau du joueur : ce sont des actions rares, on les atteint en
-     défilant. La feuille passe par-dessus quand on la déploie, c'est le
-     propre d'une feuille.
+/* [GAME-PANEL] ==================================================
+   LA ZONE SOUS LE PLATEAU, ET LES DEUX PANNEAUX QUI S'Y POSENT.
 
-     LA PAGE RÉSERVE LA HAUTEUR RÉELLE DE LA POIGNÉE, PAS UNE CONSTANTE.
-     Elle valait 112 px en dur : sur un écran de 350 px de large, la poignée
-     en fait davantage (les quatre commandes de relecture y tiennent moins à
-     l'aise), et « Abandonner » se retrouvait coupé en deux par la feuille —
-     le bouton le plus définitif du jeu, à moitié inaccessible.
-     --sheet-h est mesurée à l'exécution par gameWatchSheetHeight()
-     (js/game-render.js) et suit toute variation : rotation, changement de
-     taille de police du système, apparition d'un coup dans le journal.
-     Le repli garde l'ancienne valeur, pour le cas où le script ne serait pas
-     encore passé. */
-  .game-wrap{padding-bottom:calc(var(--sheet-h,112px) + 14px)}
-  /* Un voile derrière la feuille déployée : il dit qu'on est « dans » le
-     journal, et un appui dessus le referme. */
-  .sheet-scrim{position:fixed;inset:0;z-index:55;background:rgba(4,7,9,.5);
-    animation:fadeIn .18s ease both}
-  @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+   Le journal des coups a été une FEUILLE ancrée en bas d'écran, dépliable
+   d'un appui. Deux défauts, et le second est rédhibitoire :
+     · repliée, elle mangeait encore une centaine de pixels de hauteur — sur
+       un téléphone, cent pixels pris à l'échiquier, qui est la seule chose
+       qu'on regarde ;
+     · dépliée, elle recouvrait le plateau derrière un voile. On ne pouvait
+       donc pas lire le journal ET jouer, ce qui est pourtant exactement ce
+       qu'on veut faire d'un journal des coups.
+
+   LE PRINCIPE MAINTENANT : la zone entre le bandeau du joueur (donc sous sa
+   pendule) et « Abandonner » est un CONTENEUR POSITIONNÉ. Les panneaux s'y
+   posent en `position:absolute;inset:0` : ils recouvrent exactement ce
+   qu'elle contient — l'indication de tour, « Annuler coup », les deux
+   boutons — et rien d'autre. Le plateau reste entier, visible et JOUABLE,
+   panneau ouvert. Il n'y a donc pas de voile : un voile servirait à dire
+   « le reste est suspendu », et justement il ne l'est pas.
+
+   La zone GRANDIT quand un panneau s'ouvre (`min-height`), et le plateau
+   rétrécit d'autant sur les écrans courts — c'est --game-chrome, mesurée à
+   l'exécution par gameSyncChrome (js/game-render.js). Ce sont les deux
+   moitiés d'un même geste : le panneau prend la place qu'il lui faut, le
+   plateau la lui laisse, et rien ne sort de l'écran.
+   ============================================================== */
+.game-under{position:relative;display:flex;flex-direction:column;gap:7px;
+  min-height:0;flex:1}
+/* « Annuler coup » a quitté la rangée des boutons de partie (il n'y reste que
+   la sortie) : il reprend ici la cible tactile pleine que .game-btns .btn lui
+   donnait. Annuler un coup est l'une des deux actions les plus lourdes de
+   conséquence du jeu ; elle ne se vise pas sur trente pixels. */
+.gu-undo{min-height:44px;font-size:12.5px;padding:11px 12px;width:100%}
+/* La hauteur ouverte. Assez pour une dizaine de coups écrits en grand ou une
+   demi-douzaine de messages, pas plus : au-delà, c'est l'échiquier qu'on
+   rogne. Le `dvh` suit la barre d'adresse des navigateurs mobiles, qui se
+   rétracte au défilement — un `vh` figé laisserait le panneau dépasser. */
+.game-under.gu-open{min-height:min(38dvh,320px)}
+/* La discussion porte DEUX choses empilées — le fil et le catalogue — là où
+   le journal n'en porte qu'une. Elle prend donc un cran de plus, et pas un de
+   plus que ça : au-delà, c'est l'échiquier qu'on rogne. */
+.game-under.gu-open.gu-chat{min-height:min(46dvh,400px)}
+
+/* --- LES DEUX BOUTONS QUI OUVRENT ------------------------------- */
+/* `space-between` : « Historique » est collé à gauche, « Chat » à droite.
+   Ce n'est pas de la décoration — ce sont deux natures d'action opposées (se
+   relire, parler), et deux cibles qu'on ne doit jamais confondre au pouce
+   pendant une partie. Quand le chat n'existe pas (hors ligne), l'historique
+   reste à gauche, à sa place. */
+.game-tools{display:flex;justify-content:space-between;gap:8px}
+.gt-btn{display:inline-flex;align-items:center;gap:7px;position:relative;
+  font-family:var(--f-ui);font-size:12px;font-weight:650;letter-spacing:.3px;
+  color:var(--muted);background:var(--surface2);
+  border:1px solid var(--border2);border-radius:11px;
+  padding:9px 14px;min-height:40px;cursor:pointer;
+  transition:color .15s,border-color .15s,background .15s}
+.gt-btn svg{width:15px;height:15px;flex:none}
+.gt-btn:hover{color:var(--accent2);border-color:var(--accent2);background:var(--accent-bg)}
+/* La pastille du chat : un message est arrivé pendant que le panneau était
+   fermé. Elle ne compte pas les messages — un nombre inviterait à les
+   compter, et il n'y a rien à compter : il y a du nouveau, ou il n'y a rien. */
+.gt-dot{position:absolute;top:6px;right:7px;width:8px;height:8px;border-radius:50%;
+  background:var(--ember);box-shadow:0 0 0 2px var(--surface2);
+  animation:gtDot 1.6s ease-in-out infinite}
+@keyframes gtDot{0%,100%{opacity:1}50%{opacity:.35}}
+
+/* --- LE PANNEAU ------------------------------------------------- */
+.game-panel{position:absolute;inset:0;z-index:40;
+  display:flex;flex-direction:column;gap:6px;min-height:0;
+  background:var(--surface);border:1px solid var(--border2);border-radius:14px;
+  padding:8px 10px 10px;
+  box-shadow:0 10px 34px -14px rgba(0,0,0,.75);
+  animation:gpanelIn .18s cubic-bezier(.32,.72,.3,1) both}
+.game-panel[hidden]{display:none}
+@keyframes gpanelIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.gpanel-head{display:flex;align-items:center;gap:8px;flex:none;
+  padding-bottom:6px;border-bottom:1px solid var(--border)}
+.gpanel-title{flex:1;font-family:var(--f-ui);font-size:11px;font-weight:650;
+  letter-spacing:.6px;text-transform:uppercase;color:var(--accent2);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* La croix, en haut à droite, ferme le panneau et redonne son bouton. 34 px
+   de cible : c'est le geste qu'on fait pour revenir au plateau, il ne doit
+   jamais se rater. */
+.gpanel-close,.gpanel-mute{flex:none;width:34px;height:34px;border-radius:9px;
+  display:inline-flex;align-items:center;justify-content:center;
+  background:transparent;border:1px solid transparent;
+  color:var(--muted);font-size:16px;line-height:1;cursor:pointer;
+  font-family:inherit;transition:color .15s,border-color .15s}
+.gpanel-close:hover{color:var(--danger);border-color:var(--danger)}
+.gpanel-mute:hover{color:var(--accent2);border-color:var(--accent2)}
+/* La sourdine allumée (on REÇOIT) se lit comme un état, pas comme un bouton
+   éteint : sans ça, on ne sait jamais dans quel sens l'interrupteur est. */
+.gpanel-mute[aria-checked="false"]{color:var(--ember);border-color:var(--ember)}
+
+/* --- LE JOURNAL DANS SON PANNEAU -------------------------------- */
+/* LES COUPS SONT ÉCRITS 1,6 FOIS PLUS GRANDS. Ils tenaient dans la poignée
+   d'une feuille, où il fallait plisser les yeux pour distinguer un ♞f3 d'un
+   ♝f3. On les lit maintenant dans un panneau qu'on a ouvert exprès, et pour
+   lequel on a payé de la place à l'échiquier : autant qu'ils se lisent.
+   La spécificité (deux classes) l'emporte sur la règle de base ET sur celle
+   de [MOBILE-APP], quel que soit l'ordre des sections. */
+.game-panel .move-log{flex:1;min-height:0;overflow-y:auto;
+  overscroll-behavior:contain;-webkit-overflow-scrolling:touch;
+  font-size:21px;line-height:1.55;padding-right:2px}
+.game-panel .move-log-item{padding:5px 7px;border-radius:7px;gap:10px}
+.game-panel .move-log-num{min-width:38px;font-size:15px}
+.game-panel .move-log-w,.game-panel .move-log-b{font-size:21px;gap:5px}
+.game-panel .move-log .pc-icon{width:24px;height:24px}
+/* Les quatre commandes de relecture gardent leur rangée, sous le titre. */
+.game-panel .history-nav{flex:none;margin:0 0 2px}
+
+/* --- LA DISCUSSION ---------------------------------------------- */
+/* Le fil, du plus ancien en haut au plus récent en bas — l'ordre d'une
+   conversation, et celui vers lequel on fait défiler tout seul. */
+.chat-log{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;
+  -webkit-overflow-scrolling:touch;
+  display:flex;flex-direction:column;gap:6px;padding:2px 2px 0}
+.chat-empty{margin:auto;text-align:center;font-family:var(--f-ui);font-size:11.5px;
+  color:var(--muted);line-height:1.6;padding:8px 14px}
+/* Qui parle se lit à la POSITION avant de se lire à la couleur : le sien à
+   droite, celui d'en face à gauche, comme partout ailleurs. */
+.cmsg{max-width:82%;padding:7px 11px;border-radius:13px;
+  font-family:var(--f-ui);font-size:13px;line-height:1.45;word-break:break-word}
+.cmsg-me{align-self:flex-end;background:var(--accent-bg);
+  border:1px solid rgba(63,208,178,.4);color:var(--text);border-bottom-right-radius:5px}
+.cmsg-opp{align-self:flex-start;background:var(--surface2);
+  border:1px solid var(--border2);color:var(--text);border-bottom-left-radius:5px}
+/* Une emote n'est pas une phrase : elle est grande et n'a pas de bulle. */
+.cmsg-glyph{font-size:26px;padding:2px 8px;background:transparent;border:none}
+
+/* Le choix : une rangée d'emotes, puis les phrases rangées par catégorie.
+   Aucun champ de saisie — voir js/multiplayer.js pour la raison, qui est une
+   raison de conception et pas de prudence. */
+.chat-picker{flex:none;max-height:44%;overflow-y:auto;overscroll-behavior:contain;
+  border-top:1px solid var(--border);padding-top:7px}
+.chat-emotes{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.chat-emote{width:38px;height:38px;border-radius:10px;font-size:19px;line-height:1;
+  background:var(--surface2);border:1px solid var(--border2);cursor:pointer;
+  transition:transform .12s,border-color .15s}
+.chat-emote:hover{border-color:var(--accent2);transform:translateY(-2px)}
+.chat-cat{font-family:var(--f-ui);font-size:9.5px;font-weight:700;letter-spacing:1px;
+  text-transform:uppercase;color:var(--muted);margin:8px 0 5px}
+.chat-cat:first-child{margin-top:0}
+.chat-lines{display:flex;flex-wrap:wrap;gap:5px}
+.chat-line{font-family:var(--f-ui);font-size:12px;color:var(--text);
+  background:var(--bg2);border:1px solid var(--border);border-radius:9px;
+  padding:7px 11px;cursor:pointer;text-align:left;
+  transition:border-color .15s,color .15s,background .15s}
+.chat-line:hover{border-color:var(--accent2);color:var(--accent2);background:var(--accent-bg)}
+/* Le débit est limité (js/multiplayer.js) : pendant l'attente, les phrases
+   disent qu'elles ne partiront pas plutôt que de partir dans le vide. */
+.chat-picker.cooling .chat-line,.chat-picker.cooling .chat-emote{opacity:.4;pointer-events:none}
+
+/* Mouvement réduit : le panneau se pose sans glisser. */
+@media(prefers-reduced-motion:reduce){
+  .game-panel{animation:none}
+  .gt-dot{animation:none}
 }
 
 /* [COMBAT-MODES] : la page d'engagement a deux visages ==========
@@ -3822,7 +3928,12 @@ body.cube-active:not(.nav-overlay) .notif-host{bottom:92px}
 }
 
 /* --- LA PRISE EN MAIN ------------------------------------------- */
-/* LE HALO SOUS LA PIÈCE. La case sélectionnée portait un liseré et un lavis
+/* LE HALO SOUS LA PIÈCE, ET RIEN D'AUTRE. Une onde partait aussi sur chaque
+   case jouable, en cascade depuis la pièce : jolie une fois, pesante les
+   mille suivantes — on sélectionne une pièce à chaque coup, et vingt-sept
+   anneaux qui s'ouvrent autour des pastilles fatiguent le regard là où il
+   doit lire une position. Les pastilles pulsent déjà (.gc.avail plus haut),
+   elles suffisent. La case sélectionnée portait un liseré et un lavis
    posés SUR elle (.gc.sel, plus haut) : correct, mais c'est la case qu'on
    voyait choisie, jamais la pièce. Le halo est peint SOUS la statuette — en
    z-index 0, donc sous la couche des pièces qui est en 2 — et il respire.
@@ -3843,22 +3954,6 @@ body.cube-active:not(.nav-overlay) .notif-host{bottom:92px}
 @keyframes fxSelHalo{
   0%,100%{opacity:.7;transform:translate(-50%,-50%) scale(1)}
   50%{opacity:1;transform:translate(-50%,-50%) scale(1.1)}
-}
-
-/* L'ÉVEIL DES CASES JOUABLES. Les pastilles pulsent en permanence (.gc.avail,
-   plus haut) et disent l'ÉTAT ; cet anneau-ci ne passe qu'UNE FOIS, au moment
-   de la prise en main, en cascade depuis la pièce — c'est le plateau qui
-   répond au doigt. Son retard est calculé sur la DISTANCE à la pièce
-   (fxSelect, js/combat-fx.js) : l'onde part de la main, elle ne parcourt pas
-   une liste. */
-.fx-wake{mix-blend-mode:screen}
-.fx-wake-ring{width:52%;height:52%;border-radius:50%;
-  border:2px solid var(--accent2);box-shadow:0 0 12px rgba(63,208,178,.8);
-  animation:fxWake .5s ease-out both;animation-delay:var(--del)}
-@keyframes fxWake{
-  0%{opacity:0;transform:scale(.15)}
-  35%{opacity:1;transform:scale(.9)}
-  100%{opacity:0;transform:scale(1.55)}
 }
 
 /* --- LA PROMOTION ----------------------------------------------- */
@@ -4706,8 +4801,8 @@ body.light .art-banner::before{opacity:.55;filter:saturate(.7)}
 
    Les deux planches sont accrochées à `.cine` ET PAS à l'élément qu'elles
    accompagnent, pour deux raisons distinctes :
-     · `.cine-shock` est mis à l'échelle QUARANTE-SIX FOIS par son
-       animation, et un enfant subit la transformation de son parent ;
+     · `.cine-shock` n'est plus qu'un repère de taille nulle (voir plus
+       haut), et n'a donc aucune surface à offrir à une planche ;
      · `.cine-motes` et `.cine-body` n'ont AUCUN fond, et `mix-blend-mode`
        se fond dans ce qui est peint derrière, à l'intérieur du contexte
        d'empilement le plus proche. Sur un parent sans fond qui ouvre un
