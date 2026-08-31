@@ -786,23 +786,23 @@
      L'échiquier a trois lignes, le jeu a trois voies, et chacune se lit dans
      le sens de la sienne — la COLONNE des victoires de haut en bas, la RANGÉE
      de la richesse de gauche à droite, la DIAGONALE de la puissance
-     (#page-voie) en zigzag. Ouverte par le bouton « Récompenses » du menu
-     principal ; remplie par renderRewardsPage() (js/rewards-ui.js).
-     Elle reprend la mise en page de la Voie : une zone défilante et la
-     pastille « OK » centrée en bas de l'écran (voir la note au-dessus de
-     #page-voie pour la raison du position:absolute). -->
+     (#page-voie) en zigzag.
+
+     C'EST UNE PAGE PAR VOIE, ET NON UNE PAGE À DEUX ONGLETS. Les deux onglets
+     posés en tête servaient à passer de l'une à l'autre : une barre de
+     navigation permanente, sur une page où l'on vient faire UNE chose. Le
+     menu principal a maintenant un bouton par voie et ouvre directement
+     dessus ; la page ne porte plus qu'un titre, celui de la voie qu'on
+     regarde, posé par openRewardsPage() (js/rewards-ui.js). On revient au
+     menu par « OK » — et c'est le seul chemin de l'une à l'autre. -->
 <div id="page-rewards" class="page">
 <div class="voie-scroll rw-scroll" id="rw-scroll">
   <div class="voie-inner rw-inner">
     <div class="rw-hdr">
-      <div class="voie-title">Récompenses</div>
-      <div class="rw-tabs" role="tablist">
-        <button class="rw-tab is-on" data-tab="colonne" role="tab" aria-selected="true">Colonne des victoires</button>
-        <button class="rw-tab" data-tab="rangee" role="tab" aria-selected="false">Rangée de la richesse</button>
-      </div>
+      <div class="voie-title" id="rw-title">Colonne des Victoires</div>
     </div>
-    <section class="rw-pane" id="rw-pane-colonne" role="tabpanel"></section>
-    <section class="rw-pane" id="rw-pane-rangee" role="tabpanel" hidden></section>
+    <section class="rw-pane" id="rw-pane-colonne" role="region" aria-labelledby="rw-title"></section>
+    <section class="rw-pane" id="rw-pane-rangee" role="region" aria-labelledby="rw-title" hidden></section>
   </div>
 </div>
 <button class="btn btn-gold voie-ok-bar" id="rw-ok">OK</button>
