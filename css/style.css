@@ -2257,19 +2257,29 @@ body.light .pmv-dark{background:#c3bdae}
    de couleur, aucune ne rééchantillonne l'image : sur un GPU c'est gratuit,
    contrairement au flou du halo. */
 
-/* L'EMBALLEMENT. L'image déferle — elle part plus petite que l'écran et le
-   dépasse — pendant que sa luminosité monte jusqu'à la brûlure. Seule, elle
-   ne blanchirait que là où elle est ; c'est .pb-white qui emporte le reste
-   de l'écran, les deux montent ensemble. */
+/* L'EMBALLEMENT. L'image déferle — elle grandit et dépasse l'écran — pendant
+   que sa luminosité monte jusqu'à la brûlure. Seule, elle ne blanchirait que
+   là où elle est ; c'est .pb-white qui emporte le reste de l'écran, les deux
+   montent ensemble.
+
+   ELLE NE PART PLUS D'EN DESSOUS. La planche commune à tous les coffres
+   (07-explosion-suite) dessine son souffle plus petit dans son cadre que
+   l'éclatement qui la précède (06-explosion) : arrivée à `scale(.58)`, elle
+   était NETTEMENT plus petite que ce qu'on venait de voir, et l'explosion
+   avait l'air de se rétracter pendant quelques images avant de repartir —
+   explosion, implosion, ré-explosion. La rampe part donc au-dessus de la
+   taille de l'écran et ne fait plus que MONTER : le souffle ne recule jamais.
+   C'est aussi ce qui donne à cette planche la taille des autres, elle qui
+   est rendue une fois pour les six coffres. */
 .pb-scene.blast{animation:pbBlastIn var(--pb-bldur,440ms) linear forwards}
 @keyframes pbBlastIn{
   /* Elle DÉFERLE (0→18%), puis elle TIENT (18→55%) : la matière en fusion
      reste lisible une demi-seconde à luminosité presque normale. Ce n'est
      qu'après qu'elle s'emballe vers la brûlure. */
-  0%  {transform:scale(.58);filter:brightness(1) saturate(1)}
-  18% {transform:scale(1.00);filter:brightness(1.12) saturate(1.08)}
-  55% {transform:scale(1.06);filter:brightness(1.5) saturate(1.2)}
-  100%{transform:scale(1.20);filter:brightness(6) saturate(1.35)}
+  0%  {transform:scale(1.10);filter:brightness(1) saturate(1)}
+  18% {transform:scale(1.42);filter:brightness(1.12) saturate(1.08)}
+  55% {transform:scale(1.50);filter:brightness(1.5) saturate(1.2)}
+  100%{transform:scale(1.72);filter:brightness(6) saturate(1.35)}
 }
 
 /* LE VOILE BLANC. Il monte très vite, tient un court instant — l'écran est
@@ -2758,14 +2768,14 @@ body.light .pmv-dark{background:#c3bdae}
 .rw-col-strip{display:flex;flex-direction:column;gap:1.8%;
   overflow-y:auto;-webkit-overflow-scrolling:touch;
   padding:.25em .25em calc(7vh + var(--safe-b));position:relative}
-/* Le fil qui relie les paliers : c'est lui qui en fait une colonne et non une
-   liste. Posé derrière les lignes, il court sous les numéros — d'où le
-   décalage en `em`, qui reprend le rembourrage de la bande, celui d'un
-   palier et la moitié d'une pastille de numéro. */
-.rw-col-strip::before{content:'';position:absolute;left:1.9em;top:.5em;
-  bottom:calc(7vh + var(--safe-b));width:2px;
-  background:linear-gradient(to bottom,var(--accent),var(--gold),var(--accent2));
-  opacity:.28;border-radius:2px}
+/* PLUS DE FIL VERTICAL DERRIÈRE LES NUMÉROS. Il voulait relier les paliers,
+   mais il était posé en `position:absolute` DANS la bande défilante : son
+   `bottom` se mesurait sur la hauteur visible, pas sur la hauteur des trente
+   paliers. Le trait s'arrêtait donc net après les huit premiers numéros et
+   suivait le défilement — une barre orpheline au milieu de la colonne, qui
+   ressemblait à un défaut d'affichage plutôt qu'à un fil conducteur. Les
+   pastilles numérotées, alignées les unes sous les autres, font déjà la
+   colonne à elles seules. */
 .rw-step{flex:0 0 auto;display:flex;align-items:center;gap:.9em;position:relative;
   padding:.7em .9em;border-radius:.95em;
   border:1px solid var(--border);background:var(--surface);
@@ -2878,6 +2888,35 @@ body.light .pmv-dark{background:#c3bdae}
    seule carte affichée, elle rendait illisible ce qu'on est précisément venu
    consulter. */
 .rw-row-card.rw-far{opacity:.72}
+/* LE GLISSEMENT D'UN PALIER À L'AUTRE. La rangée ne montre qu'une carte à la
+   fois : sans mouvement, passer au palier suivant se lit comme un
+   remplacement de contenu — les chiffres changent sur place et rien ne dit
+   dans quel SENS on vient de se déplacer. La carte entre donc par le côté
+   d'où elle arrive : par la droite quand on avance dans la rangée, par la
+   gauche quand on revient. C'est le même geste que le balayage du doigt,
+   rendu à l'écran.
+   Le sens tient dans une variable et non dans deux jeux d'images-clés : une
+   seule animation, deux valeurs. */
+.rw-row-card.rw-slide-next{--rw-slide:34%}
+.rw-row-card.rw-slide-prev{--rw-slide:-34%}
+.rw-row-card.rw-slide-next,.rw-row-card.rw-slide-prev{
+  animation:rwRowSlide .3s cubic-bezier(.22,.9,.3,1)}
+/* La carte À PRENDRE respire déjà (rwCardBreathe). `animation` est un
+   raccourci : la poser à nouveau EFFACERAIT la respiration, et le palier dû
+   perdrait son halo dès qu'on l'atteint en glissant. Les deux sont donc
+   redites ensemble, glissement d'abord. */
+.rw-row-card.rw-due.rw-slide-next,.rw-row-card.rw-due.rw-slide-prev{
+  animation:rwRowSlide .3s cubic-bezier(.22,.9,.3,1),
+            rwCardBreathe 2.6s ease-in-out infinite}
+@keyframes rwRowSlide{
+  from{opacity:0;transform:translate3d(var(--rw-slide,34%),0,0)}
+  to  {opacity:1;transform:translate3d(0,0,0)}
+}
+/* Moins d'animation : la carte se contente d'apparaître, elle ne traverse
+   plus l'écran. */
+@media(prefers-reduced-motion:reduce){
+  .rw-row-card.rw-slide-next,.rw-row-card.rw-slide-prev{--rw-slide:0%}
+}
 /* La perle et le ticket, en grand : ils portent la carte à eux seuls. */
 .rw-row-gain .pearl-icon{width:1.1em;height:1.1em}
 

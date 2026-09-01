@@ -83,7 +83,7 @@ function jokerAmountHTML(n,em){
 // css/style.css), pour qu'il n'y ait pas un deuxième vocabulaire visuel à
 // apprendre :
 //   chest-won   déjà pris (les jours passés de ce tour de cycle)
-//   chest-next  aujourd'hui — c'est lui qui respire
+//   chest-next  le prochain lot à prendre — c'est lui qui respire
 //   chest-far   les jours suivants
 function dailyRowState(i,cursor){
   if(i<cursor)return 'chest-won';
@@ -107,42 +107,40 @@ function dailyStepName(step){
 }
 // L'ORDRE EST CELUI DU DOM : DAILY_REWARDS va du premier jour du cycle au
 // trentième, et les lignes se posent de haut en bas.
+// LA MARQUE DIT QUAND LE LOT S'OUVRE, ET NON UN JOUR FIGÉ. Le curseur pointe
+// TOUJOURS le prochain lot à prendre : c'est celui d'aujourd'hui tant qu'il
+// n'est pas encaissé, celui de DEMAIN une fois qu'il l'est (dailyRewardClaim
+// avance dr_idx). Écrire « Aujourd'hui » dans les deux cas annonçait, le lot
+// du jour une fois pris, un lot que la journée ne donnera plus.
 function dailyRowsHTML(){
   const cursor=dailyRewardCursor();
+  const when=dailyRewardAvailable()?'Aujourd\'hui':'Demain';
   return DAILY_REWARDS.map((step,i)=>{
     const state=dailyRowState(i,cursor);
     const mark=state==='chest-won'?'<span class="streak-mark streak-mark-ok">✓</span>'
-      :state==='chest-next'?'<span class="streak-mark streak-mark-next">Aujourd\'hui</span>':'';
+      :state==='chest-next'?'<span class="streak-mark streak-mark-next">'+when+'</span>':'';
     return '<div class="streak-row '+state+'" data-idx="'+i+'"'+
       (step.chest?' data-chest="'+step.chest+'"':'')+'>'+
       dailyStepVisual(step,state)+
       '<div class="streak-row-txt">'+
         '<div class="streak-row-name">'+escH(dailyStepName(step))+'</div>'+
-        '<div class="streak-row-win">Jour '+(i+1)+' / '+dailyRewardTotal()+'</div>'+
+        '<div class="streak-row-win">Jour '+(i+1)+'</div>'+
       '</div>'+mark+
     '</div>';
   }).join('');
 }
-// Une phrase, sous le titre : où l'on en est, et ce qu'il y a à faire.
-// Le curseur pointe TOUJOURS le prochain lot à prendre — c'est celui
-// d'aujourd'hui tant qu'il n'est pas encaissé, celui de demain une fois qu'il
-// l'est (dailyRewardClaim avance dr_idx). La même valeur dit donc les deux
-// choses, il n'y a qu'à changer le verbe.
-function dailySubtitle(){
-  const step=dailyRewardStep(dailyRewardCursor());
-  if(!step)return '';
-  return dailyRewardAvailable()
-    ?'Votre lot du jour vous attend : '+dailyStepName(step)+'.'
-    :'Lot du jour déjà pris. Demain : '+dailyStepName(step)+'.';
-}
+// PLUS DE PHRASE SOUS LE TITRE. Elle disait « Votre lot du jour vous attend :
+// Coffre Pion. » ou « Lot du jour déjà pris. Demain : Coffre Fou. » — c'est-à-
+// dire, en toutes lettres, ce que la ligne qui respire au milieu du cycle
+// montre déjà : le lot, son nom, et sa marque « Aujourd'hui » ou « Demain ».
+// Le bouton « Récupérer », lui, n'apparaît que quand il y a à prendre. Rien
+// dans cette phrase n'était introuvable ailleurs dans la fenêtre.
 function renderDailyModal(){
-  const sub=document.getElementById('daily-sub');
-  if(sub)sub.textContent=dailySubtitle();
   const foot=document.getElementById('daily-foot');
   if(foot){
     // LE BOUTON N'APPARAÎT QUE QUAND IL Y A QUELQUE CHOSE À PRENDRE. Un bouton
     // grisé en permanence n'est pas une information, c'est un rappel qu'on ne
-    // peut rien faire — la phrase sous le titre le dit déjà, et mieux.
+    // peut rien faire — la ligne « Prochain lot demain » le dit déjà, et mieux.
     foot.innerHTML=dailyRewardAvailable()
       ?'<button class="btn btn-gold rw-claim" id="daily-claim">Récupérer</button>'
       :'<div class="daily-wait">Prochain lot demain · cycle n° '+dailyRewardCycle()+'</div>';
@@ -200,7 +198,6 @@ function renderMenuDailyCard(){
   const card=document.getElementById('ms-daily');
   if(!card||typeof DAILY_REWARDS==='undefined')return;
   card.innerHTML='<div class="ms-title">Récompense journalière</div>'+
-    '<div class="ms-sub">'+escH(dailySubtitle())+'</div>'+
     '<div class="ms-rows">'+dailyRowsHTML()+'</div>'+
     '<button class="btn btn-ghost ms-open" id="ms-daily-open">'+
       (dailyRewardAvailable()?'Récupérer':'Voir le cycle')+'</button>';
@@ -375,6 +372,12 @@ function rwRichState(i){
 // ne bouge ensuite qu'à la demande : rien ne doit ramener le joueur en arrière
 // pendant qu'il parcourt la rangée.
 let _rwRowIdx=null;
+// LE SENS DU DERNIER DÉPLACEMENT, et rien d'autre : +1 on avance dans la
+// rangée, −1 on revient, 0 on n'a pas bougé (premier affichage). Il ne sert
+// qu'à choisir par quel côté la carte entre (.rw-slide-*, css/style.css), et
+// se consomme au rendu suivant — un simple redessin (des tickets gagnés, une
+// quête accomplie) ne doit pas rejouer le glissement.
+let _rwRowSlide=0;
 function rwRowTotal(){return (typeof WEALTH_ROW!=='undefined')?WEALTH_ROW.length:0;}
 function rwRowIdx(){
   const n=rwRowTotal();
@@ -387,6 +390,7 @@ function rwRowGo(delta){
   if(!n)return;
   const next=Math.max(0,Math.min(n-1,rwRowIdx()+delta));
   if(next===rwRowIdx())return;
+  _rwRowSlide=delta>0?1:-1;
   _rwRowIdx=next;
   renderRewardsRangee();
 }
@@ -396,11 +400,15 @@ function rwRowCardHTML(){
   const n=rwRowTotal();
   if(!n)return '<div class="rw-sec-note">La rangée est vide.</div>';
   const i=rwRowIdx(),step=WEALTH_ROW[i],state=rwRichState(i);
+  // Le sens se consomme ICI : la classe n'est posée que sur le rendu qui suit
+  // le déplacement, jamais sur les redessins d'après.
+  const slide=_rwRowSlide>0?' rw-slide-next':_rwRowSlide<0?' rw-slide-prev':'';
+  _rwRowSlide=0;
   const manque=Math.max(0,step.cost-ticketBalance());
   const mark=state==='rw-got'?'<span class="rw-row-mark rw-row-mark-ok">Récupéré</span>'
     :state==='rw-due'?'<span class="rw-row-mark rw-row-mark-due">Touchez pour récupérer</span>'
     :'<span class="rw-row-mark">'+(manque?'Encore '+manque+' ticket'+(manque>1?'s':''):'À venir')+'</span>';
-  return '<div class="rw-row-card '+state+'" data-idx="'+i+'">'+
+  return '<div class="rw-row-card '+state+slide+'" data-idx="'+i+'">'+
     '<div class="rw-row-num">Palier '+(i+1)+' / '+n+'</div>'+
     '<div class="rw-row-gain">'+pearlAmountHTML(step.pearls,2.6)+'</div>'+
     '<div class="rw-row-cost">'+ticketAmountHTML(step.cost,1.6)+'</div>'+
@@ -495,7 +503,9 @@ function rewardsClaimRich(){
   // le palier suivant, qui est ce que le joueur veut voir ensuite.
   if(typeof playSound==='function')playSound('rank');
   if(typeof showNotif==='function')showNotif('+'+got.pearls+' perles','ok');
-  _rwRowIdx=Math.min(rwRowTotal()-1,got.idx+1);
+  const to=Math.min(rwRowTotal()-1,got.idx+1);
+  _rwRowSlide=(to>rwRowIdx())?1:0;
+  _rwRowIdx=to;
   renderRewardsPage();
   if(typeof updAll==='function')updAll();
 }
