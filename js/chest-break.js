@@ -131,6 +131,10 @@ function chestBreakTail(){
     // l'afficher. Elle arrive maintenant plein écran en 200 ms, puis TIENT
     // nue pendant une demi-seconde, à luminosité presque normale : le temps
     // de voir la matière en fusion. Ce n'est qu'ensuite que ça s'emballe.
+    // `bldur` est la durée de l'emballement (pbBlastIn, css/style.css), dont
+    // les images-clés partent maintenant AU-DESSUS de la taille de l'écran :
+    // l'explosion ne peut plus commencer plus petite que l'éclatement qui la
+    // précède (voir le commentaire de pbBlastIn).
     {src:'07-explosion-suite.webp', hint:'', fade:70, dir:CHEST_BREAK_FORALL,
      full:'bleed', blast:true, bldur:1150, white:1500, flash:.9, fdur:520,
      sparks:54, sparkR:3.2, hold:1050,
@@ -601,9 +605,24 @@ function chestBreakMount(chestId,onDone){
       // L'image monte par-dessus la pile ; celles du dessous restent en
       // place, cachées derrière, et rien ne clignote. Sauf `solo` : la
       // dernière image est seule en scène, on éteint tout le reste.
+      //
+      // ET ON L'ÉTEINT D'UN COUP, SANS FONDU. Chaque planche garde le
+      // `--pb-fade` de SON étape, et ces durées ne sont pas les mêmes : la
+      // pièce intacte s'était installée en 260 ms, les planches d'explosion
+      // en 70 et 90. Retirer `on` à toutes en même temps les faisait donc
+      // disparaître dans le DÉSORDRE — les explosions du dessus s'effaçaient
+      // les premières et découvraient, pendant deux ou trois images, la
+      // statuette intacte du dessous. Le coffre se reconstituait juste après
+      // avoir explosé. On remet la durée à zéro avant de les couper : la pile
+      // s'éteint en une seule image, à couvert sous le voile blanc, et il ne
+      // reste que le socle vide qui monte.
       const f=frames[i];
+      if(st.solo)frames.forEach(o=>{
+        if(o===f)return;
+        o.style.setProperty('--pb-fade','0ms');
+        o.classList.remove('on');
+      });
       f.style.setProperty('--pb-fade',(st.fade||240)+'ms');
-      if(st.solo)frames.forEach(o=>{if(o!==f)o.classList.remove('on');});
       f.classList.add('on');
 
       // L'EMBALLEMENT. `blast` fait grandir l'image et monte sa luminosité

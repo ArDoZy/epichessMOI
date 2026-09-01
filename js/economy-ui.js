@@ -620,8 +620,14 @@ function chestRevealNext(){
   }
   document.getElementById('chest-loot').innerHTML=
     '<div class="chest-loot-count">'+(st.idx+1)+' / '+st.lots.length+'</div>'+card;
+  // SUR LE DERNIER LOT, LE BOUTON PARLE TOUT SEUL. La phrase disait
+  // « Cliquez pour tout récupérer » juste au-dessus d'un bouton « Récupérer »
+  // qui apparaît au même instant et fait exactement cela : deux fois la même
+  // consigne, dont l'une n'est même pas cliquable. On garde le bouton, qui
+  // est la cible, et on retire la phrase. (Cliquer ailleurs referme toujours
+  // la cérémonie — chestCeremonyAdvance —, on ne perd aucun geste.)
   document.getElementById('chest-hint').textContent=
-    last?'Cliquez pour tout récupérer':'Cliquez pour continuer';
+    last?'':'Cliquez pour continuer';
   document.getElementById('chest-close').style.display=last?'':'none';
 }
 
