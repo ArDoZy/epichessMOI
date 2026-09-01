@@ -155,12 +155,17 @@ C'est la mécanique qui distingue le plus Epic Chess des autres variantes :
   haut ELO jamais atteint : un joueur qui a touché Bronze reste Bronze pour
   toujours et ne reperd jamais une créature ni un échiquier, même si son
   classement retombe.
-- **La montée est conçue pour être atteignable par tous.** Sous 1000 ELO, une
-  victoire rapporte davantage qu'une défaite ne coûte, et d'autant plus qu'on
-  est bas : à 0 ELO une victoire vaut triple et une défaite ne coûte que 15 %
-  de ce que dirait la formule Elo. Les deux se rejoignent à 1000, où le
-  classement redevient un Elo ordinaire. Les cinq premières parties sont des
-  parties de placement, qui déplacent le classement beaucoup plus vite.
+- **La montée est conçue pour être atteignable par tous, et pour durer.** Sous
+  2000 ELO, une victoire rapporte davantage qu'une défaite ne coûte, et
+  d'autant plus qu'on est bas : à 0 ELO une victoire vaut ×1,9 et une défaite
+  ne coûte que 30 % de ce que dirait la formule Elo. Les deux se rejoignent à
+  2000, où le classement redevient un Elo ordinaire. L'assistance couvre donc
+  toute la Voie, et s'éteint en pente plutôt qu'en marche. Aucune partie ne
+  déplace le classement de plus de 30 points : une victoire ordinaire vaut de
+  +11 à +17. Les cinq premières parties sont des parties de placement, qui
+  comptent un peu plus de deux fois plus. Comptez une vingtaine de parties
+  pour le rang Pierre, environ 210 pour 1000 ELO et plusieurs centaines de plus
+  pour Or Légendaire : c'est une aventure longue, sans mur.
 - **La force de l'adversaire décide de tout**, comme dans n'importe quel Elo :
   battre plus fort que soi rapporte beaucoup, battre plus faible rapporte peu,
   perdre contre plus fort coûte peu, perdre contre plus faible coûte cher.

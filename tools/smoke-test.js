@@ -1945,7 +1945,7 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
   // qu'on a débloqué. Trois lignes en sont parties, chacune pour sa raison —
   // le rang (il redisait l'ELO en plus long), le palmarès contre l'adversaire
   // (de la consultation, pas une conclusion : sa place est sur la page des
-  // adversaires), et le « Bonus d'ascension : ×2,4 » (une note de bas de page
+  // adversaires), et le « Bonus d'ascension : ×1,9 » (une note de bas de page
   // qu'on relit à chaque partie gagnée pendant les cent premières).
   await step('l\'écran de fin de partie tient en un coup d\'œil',async()=>{
     const r=await page.evaluate(()=>{
@@ -2171,10 +2171,11 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
   // ----------------------------------------------------------------
   // LA COURBE D'ASCENSION (vvCalcNewElo, js/voie.js)
   // ----------------------------------------------------------------
-  // C'est le réglage principal du jeu : monter vite jusqu'à 1000, se battre
-  // après. Les trois règles se vérifient sur des cas nommés plutôt que sur
-  // des valeurs exactes — les constantes bougeront, la promesse non.
-  await step('l\'ascension paie plus qu\'elle ne coûte sous 1000 ELO',async()=>{
+  // C'est le réglage principal du jeu : une pente régulière de 0 à
+  // VV_CLIMB_TOP, sans marche. Les règles se vérifient sur des cas nommés
+  // plutôt que sur des valeurs exactes — les constantes bougeront, la
+  // promesse non.
+  await step('l\'ascension paie plus qu\'elle ne coûte, et s\'éteint en pente',async()=>{
     const bad=await page.evaluate(()=>{
       const out=[];
       // Duel équilibré à différents niveaux, hors parties de placement.
@@ -2182,17 +2183,66 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
         win :vvCalcNewElo(e,e,'win',40).delta,
         loss:vvCalcNewElo(e,e,'loss',40).delta,
       });
-      const bas=at(100),milieu=at(700),haut=at(1400);
+      const bas=at(100),milieu=at(700);
       if(bas.win<=Math.abs(bas.loss)*2)
         out.push('à 100 ELO la victoire ne domine pas la défaite : +'+bas.win+' / '+bas.loss);
       if(milieu.win<=Math.abs(milieu.loss))
         out.push('à 700 ELO la victoire ne domine plus : +'+milieu.win+' / '+milieu.loss);
-      // Au-delà du seuil, l'Elo redevient symétrique.
+      // Au-delà du seuil, l'Elo redevient symétrique — l'assistance est finie.
+      const haut=at(VV_CLIMB_TOP+300);
       if(haut.win!==Math.abs(haut.loss))
-        out.push('au-dessus de 1000 ELO l\'Elo n\'est pas symétrique : +'+haut.win+' / '+haut.loss);
+        out.push('au-dessus de '+VV_CLIMB_TOP+' ELO l\'Elo n\'est pas symétrique : +'+haut.win+' / '+haut.loss);
       // Le bonus décroît : il doit être strictement plus faible en montant.
       if(!(at(100).win>at(500).win&&at(500).win>at(900).win))
         out.push('le bonus d\'ascension ne décroît pas avec l\'ELO');
+      // Et il court jusqu'en haut de la Voie : le défaut de la version
+      // précédente était de s'éteindre d'un coup à mi-parcours, laissant un
+      // mur là où il fallait une pente.
+      if(at(1400).win<=Math.abs(at(1400).loss))
+        out.push('à 1400 ELO l\'ascension a déjà cessé de payer : +'+at(1400).win+' / '+at(1400).loss);
+      return out;
+    });
+    if(bad.length)throw new Error(bad.join(' · '));
+  });
+
+  // AUCUNE PARTIE NE DOIT DÉPLACER LE CLASSEMENT D'UN BLOC. C'est le défaut
+  // qui a motivé ce réglage : la première victoire d'un compte neuf valait
+  // +127, et une victoire de routine à bas classement +48 — trois rangs
+  // pouvaient tomber en une soirée. VV_MAX_SWING tient la borne haute, et on
+  // vérifie ici que le régime ORDINAIRE reste bien en dessous.
+  await step('une partie reste une partie',async()=>{
+    const bad=await page.evaluate(()=>{
+      const out=[];
+      // Le pire cas imaginable : le plus faible des classements, les parties
+      // de placement, et l'adversaire le plus fort du jeu.
+      const exploit=vvCalcNewElo(0,2300,'win',0).delta;
+      if(exploit>VV_MAX_SWING)
+        out.push('un exploit dépasse le garde-fou : +'+exploit+' pour un plafond de '+VV_MAX_SWING);
+      if(VV_MAX_SWING>40)
+        out.push('le garde-fou d\'amplitude est trop haut pour tenir sa promesse : '+VV_MAX_SWING);
+      // Et le régime de croisière, lui, doit rester nettement plus calme :
+      // c'est ce que le joueur voit à presque toutes ses parties.
+      [0,300,800,1500].forEach(e=>{
+        const w=vvCalcNewElo(e,e,'win',80).delta;
+        if(w>20)out.push('à '+e+' ELO une victoire ordinaire rapporte encore +'+w);
+      });
+      return out;
+    });
+    if(bad.length)throw new Error(bad.join(' · '));
+  });
+
+  // LA TRANSITION VERS LE HAUT DE TABLEAU SE FAIT EN PENTE. Le K se resserre
+  // et l'ascension s'éteint au même endroit : cumulés d'un seul coup, les
+  // deux divisaient les gains par deux à l'instant précis où le joueur
+  // atteignait le dernier rang — une punition pour être arrivé au bout.
+  await step('le haut du classement n\'est pas une falaise',async()=>{
+    const bad=await page.evaluate(()=>{
+      const out=[];
+      const w=e=>vvCalcNewElo(e,e,'win',200).delta;
+      for(let e=VV_CLIMB_TOP-400;e<=VV_CLIMB_TOP+100;e+=50){
+        const ici=w(e),apres=w(e+50);
+        if(apres<ici-1)out.push('chute de +'+ici+' à +'+apres+' entre '+e+' et '+(e+50)+' ELO');
+      }
       return out;
     });
     if(bad.length)throw new Error(bad.join(' · '));
@@ -2283,10 +2333,16 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
       const routine=vvCalcNewElo(0,400,'win',100).k;
       if(!(placement>routine*2))out.push('le K de placement ('+placement+') ne domine pas celui de routine ('+routine+')');
       if(vvCalcNewElo(2100,2100,'win',500).k>=routine)out.push('le K ne se resserre pas en haut du classement');
-      // Un compte neuf doit franchir le premier rang en quelques parties.
+      // UN COMPTE NEUF QUI GAGNE DOIT AVANCER, SANS QUE LA VOIE Y PASSE. Les
+      // cinq parties de placement menaient auparavant à plus de 300 ELO,
+      // c'est-à-dire au rang Pierre et à cinq créatures en cinq parties : le
+      // jeu se consommait avant d'avoir commencé. Elles doivent maintenant
+      // décrocher les premiers jalons (25, 30, 50, 75 ELO) sans approcher le
+      // deuxième rang.
       let e=0;
       for(let g=0;g<5;g++)e=vvCalcNewElo(e,e,'win',g).newElo;
-      if(e<300)out.push('cinq victoires de placement ne mènent qu\'à '+e+' ELO');
+      if(e<75)out.push('cinq victoires de placement ne mènent qu\'à '+e+' ELO');
+      if(e>=200)out.push('cinq victoires de placement mènent déjà à '+e+' ELO, soit le rang Pierre');
       // Et la phrase d'explication doit exister quand il se passe quelque chose
       // — SAUF pour les parties de placement, qui ne s'annoncent plus : elles
       // ajoutaient une règle à retenir aux cinq premières parties, celles où

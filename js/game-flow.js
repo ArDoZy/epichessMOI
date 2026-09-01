@@ -242,7 +242,7 @@ function showResultModal(result,oldElo,newElo,delta,newUnlockIds,noEloReason,elo
   // elle rappelle où l'on se trouve.
   // LA LIGNE SOUS L'ELO NE PORTE PLUS QU'UNE CHOSE : la raison pour laquelle
   // la partie n'est PAS classée. Elle expliquait aussi, quand elle l'était,
-  // d'où venait l'écart — « Bonus d'ascension : ×2,4 jusqu'à 1000 ELO ». La
+  // d'où venait l'écart — « Bonus d'ascension : ×1,9 jusqu'à 2000 ELO ». La
   // règle est réelle et vaut d'être connue, mais pas là : à la fin de chaque
   // partie gagnée, pendant les cent premières, c'est une note de bas de page
   // qu'on relit sans jamais en avoir besoin, entre le verdict et le bouton
