@@ -12,9 +12,10 @@
 // js/data-pieces.js).
 //
 // Contient : le calcul d'ELO après une partie (vvCalcNewElo — formule Elo,
-// K-facteur dégressif, courbe d'ascension sous 1000 ELO et plancher de rang,
-// voir le pavé « LA COURBE D'ASCENSION » plus bas ; c'est le réglage
-// principal du jeu), sa mise en phrase pour le joueur (vvEloExplain), le
+// K-facteur dégressif, courbe d'ascension étalée de 0 à 2000 ELO et garde-fou
+// d'amplitude, voir le pavé « LA COURBE D'ASCENSION » plus bas ; c'est le
+// réglage principal du jeu), sa mise en phrase pour le joueur (vvEloExplain),
+// le
 // compteur de parties classées (vvRankedGames / vvRankedWins),
 // la détection de nouveaux déblocages
 // (vvCheckNewUnlocks), l'estimation de l'ELO d'un instructeur IA
@@ -48,29 +49,47 @@ function vvEstimateAiElo(){
   return(o&&o.elo)||800;
 }
 // ----------------------------------------------------------------
-// LA COURBE D'ASCENSION : on monte vite jusqu'à 1000, on se bat après
+// LA COURBE D'ASCENSION : une pente régulière de 0 à 2000, sans marche
 // ----------------------------------------------------------------
 // Epic Chess n'est pas un tournoi, c'est une AVENTURE. Un compte neuf part
-// de 0 et doit pouvoir atteindre 1000 sans être un joueur d'échecs — c'est
-// là que se trouvent la plupart des créatures et des échiquiers, donc là que
-// se trouve le jeu. Un Elo pur ne fait pas ça : il place tout le monde autour
-// de sa vraie force et y laisse la moitié des joueurs sous 800 à vie.
+// de 0 et doit pouvoir traverser TOUTE la Voie — les sept rangs, de Bois à
+// Or Légendaire — sans être un joueur d'échecs. Un Elo pur ne fait pas ça :
+// il place tout le monde autour de sa vraie force et l'y laisse à vie.
 //
-// Trois mécanismes s'en chargent, tous dans vvCalcNewElo :
+// LA VERSION PRÉCÉDENTE VISAIT 1000 ELO, ET ELLE Y ARRIVAIT TROP BIEN. Le
+// K de placement valait 60 et la majoration des gains ×3 : la toute première
+// victoire rapportait +127, et une victoire de routine à bas classement +48.
+// Simulé à 50 % de victoires, cela donnait Pierre en 4 parties, Bronze en 17,
+// Acier en 37, et 1000 ELO en 77. Tout le catalogue de créatures jusqu'à
+// l'Empereur tombait en une soirée.
+//
+// Et juste derrière, un MUR : passé 1000 les bonus s'éteignaient d'un coup et
+// l'Elo redevenait pur, c'est-à-dire immobile à 50 % de victoires. La même
+// simulation demandait alors 1316 parties pour aller de 1000 à 1500, et à
+// 45 % de victoires 1500 n'arrivait JAMAIS. La courbe était binaire : tout
+// donné en quarante parties, puis plus rien. C'est le pire profil possible —
+// le joueur consomme le jeu d'un trait, puis se cogne.
+//
+// LE RÉGLAGE ACTUEL ÉTALE LA MÊME PROMESSE SUR TOUTE LA VOIE. L'assistance ne
+// s'arrête plus à 1000 mais s'éteint progressivement jusqu'à 2000, et les
+// K-facteurs ont été divisés par deux environ. Trois mécanismes, tous dans
+// vvCalcNewElo :
 //
 //   1. K DÉGRESSIF. Le K-facteur mesure combien une partie déplace le
-//      classement. Il est énorme au début (les cinq premières parties placent
-//      le joueur en quelques duels au lieu de quelques dizaines) puis se
-//      resserre : à haut niveau, un classement doit être stable, sinon il ne
-//      veut plus rien dire. Voir VV_K_STEPS.
+//      classement : 30 pour les cinq parties de placement, puis 22, 18, et 14
+//      en régime de croisière, puis une descente en pente douce jusqu'à 10 à
+//      partir de 1700 ELO, où un classement doit être stable sinon il ne veut
+//      plus rien dire. Voir VV_K_STEPS et vvKFactor.
 //
-//   2. LA COURBE D'ASCENSION. Sous 1000 ELO, les gains sont majorés et les
-//      pertes amorties, d'autant plus fortement qu'on est bas. À 0 ELO on
-//      gagne 2,2 fois ce que dit la formule et on ne perd qu'un quart ; à
-//      1000 les deux multiplicateurs valent 1 et l'Elo redevient l'Elo, sans
+//   2. LA COURBE D'ASCENSION. Sous VV_CLIMB_TOP, les gains sont majorés et
+//      les pertes amorties, d'autant plus fortement qu'on est bas. À 0 ELO on
+//      gagne 1,9 fois ce que dit la formule et on ne perd que 30 % ; à 2000
+//      les deux multiplicateurs valent 1 et l'Elo redevient l'Elo, sans
 //      marche d'escalier puisqu'ils se rejoignent progressivement.
-//      C'est l'équivalent des arènes de Clash Royale : la montée initiale est
-//      une pente, pas un mur.
+//      La décroissance est LINÉAIRE (VV_CLIMB_EASE=1). L'ancien exposant 0,6
+//      servait à empêcher le bonus de s'évaporer dès 300 ELO — mais c'était
+//      avec un seuil à 1000. Étalé sur 2000, le linéaire tient tout seul :
+//      la majoration vaut encore ×1,45 à 1000 ELO et ×1,22 à 1500.
 //
 //   3. LE RANG EST ACQUIS, L'ELO EST VIVANT. Deux nombres, deux rôles :
 //      · `elo` monte ET DESCEND. Une défaite coûte TOUJOURS au moins un
@@ -89,47 +108,92 @@ function vvEstimateAiElo(){
 //      cas de défaite. C'était un point de stationnement à risque zéro, avec
 //      des tentatives illimitées pour remonter — la pire chose qu'on puisse
 //      mettre dans un classement. Séparer les deux nombres tient la même
-//      promesse sans jamais rendre une défaite gratuite.
+//      promesse sans jamais rendre une défaite gratuite. NE PAS Y REVENIR.
 //
 // Ces trois règles se lisent aussi côté joueur, sur le modal de fin de partie
-// (vvEloExplain, plus bas) : sans explication, un « +38 / -4 » ressemble à un
+// (vvEloExplain, plus bas) : sans explication, un « +17 / -3 » ressemble à un
 // bug plutôt qu'à un cadeau.
 
 // Seuil de fin d'ascension : au-dessus, plus aucun bonus, l'Elo est pur.
-const VV_CLIMB_TOP=1000;
+// C'est le début d'Or Légendaire, le dernier rang — l'assistance couvre donc
+// exactement la Voie, et pas un point de plus.
+const VV_CLIMB_TOP=2000;
 // Majoration maximale des gains et amortissement maximal des pertes, tous
-// deux atteints à 0 ELO : au départ une victoire vaut TRIPLE et une défaite
-// ne coûte que 15 % de ce que dit la formule.
-const VV_CLIMB_GAIN_MAX=3.0;
-const VV_CLIMB_LOSS_MIN=0.15;
-// Adoucissement de la courbe. Le bonus décroît en t^0.6 et non linéairement :
-// linéairement, il s'évaporait dès 300 ELO et la montée s'arrêtait là. Avec
-// cet exposant il reste franc jusque vers 600 puis se referme sur les cent
-// derniers points, ce qui donne exactement la sensation recherchée — on monte
-// vite, puis le classement se met à résister.
-//
-// CES TROIS NOMBRES SONT LE RÉGLAGE PRINCIPAL DU JEU, et ils ont été choisis
-// par simulation (400 tirages par point, adversaires tirés à ±200 ELO).
-// À 50 % de victoires — ce vers quoi l'appariement pousse tout le monde —
-// 1000 ELO s'atteint en 73 parties (médiane) ; à 45 %, 106 ; et même à 35 %,
-// c'est-à-dire en perdant deux parties sur trois, 100 % des simulations y
-// arrivent, en 310 parties. C'est la promesse, et elle tient : le mur
-// n'existe pas, seule la durée change. Toucher à l'un de ces trois nombres,
-// c'est déplacer cette promesse ; refaire la simulation avant.
-const VV_CLIMB_EASE=0.6;
+// deux atteints à 0 ELO : au départ une victoire vaut presque double et une
+// défaite ne coûte que 30 % de ce que dit la formule.
+const VV_CLIMB_GAIN_MAX=1.9;
+const VV_CLIMB_LOSS_MIN=0.30;
+// Forme de la décroissance (voir le point 2 ci-dessus) : 1 = linéaire.
+const VV_CLIMB_EASE=1.0;
+// Au-delà de ce classement, l'assistance existe encore mais elle est trop
+// discrète pour mériter une phrase (×1,3 et moins). vvEloExplain se tait :
+// une note de bas de page à chaque partie n'explique plus rien, elle devient
+// du décor. Voir vvEloExplain.
+const VV_CLIMB_NOTE_TOP=1200;
+
+// AMPLITUDE MAXIMALE D'UNE PARTIE, majoration comprise. C'est le garde-fou
+// qui répond directement au défaut d'origine : quoi qu'il arrive, aucune
+// partie ne déplace le classement de plus de 30 points. Le plafond ne mord
+// que sur les vrais exploits — battre un adversaire plusieurs centaines de
+// points au-dessus de soi pendant les parties de placement — et laisse
+// intacte la lecture ordinaire, où une victoire vaut de +11 à +17.
+const VV_MAX_SWING=30;
 
 // K-facteur par nombre de parties CLASSÉES déjà jouées. Les cinq premières
-// sont des parties de placement : elles valent presque quatre fois une partie
-// de routine, ce qui amène un joueur à sa vraie zone en une soirée.
+// sont des parties de placement : elles pèsent un peu plus de deux fois une
+// partie de routine, de quoi sortir un joueur fort du bas de l'échelle sans
+// pour autant lui offrir un rang par soirée.
 const VV_K_STEPS=[
-  {games:5,  k:60},   // placement
-  {games:15, k:48},
-  {games:30, k:40},
-  {games:60, k:32},
+  {games:5,  k:30},   // placement
+  {games:20, k:22},
+  {games:60, k:18},
 ];
-const VV_K_BASE=24;     // régime de croisière
-const VV_K_ELITE=16;    // au-dessus de VV_ELITE_ELO : un classement stable
+const VV_K_BASE=14;     // régime de croisière
+const VV_K_ELITE=10;    // à partir de VV_ELITE_ELO : un classement stable
+// LE RESSERREMENT DU HAUT DE TABLEAU SE FAIT EN PENTE, PAS EN MARCHE. Le K
+// passait de VV_K_BASE à VV_K_ELITE d'un seul coup au franchissement du
+// seuil : comme la courbe d'ascension s'éteint au même endroit, un joueur qui
+// venait tout juste d'atteindre Or Légendaire voyait ses gains passer de +10
+// à +5 du jour au lendemain — une punition à l'instant précis du sacre. Le K
+// glisse donc linéairement de l'un à l'autre entre VV_ELITE_START et
+// VV_ELITE_ELO, ce qui rend la transition continue.
+const VV_ELITE_START=1700;
 const VV_ELITE_ELO=2000;
+
+// CE QUE CE RÉGLAGE DONNE, PAR SIMULATION (60 tirages par point, adversaires
+// tirés à ±200 ELO autour du classement courant, taux de victoires fixé).
+// Médiane du nombre de parties nécessaires pour atteindre chaque rang :
+//
+//   victoires │  Pierre Bronze  Acier  (mi-Voie) Obsid.  Argent   Or
+//             │    200    500    800     1000     1200    1500   2000
+//   ──────────┼──────────────────────────────────────────────────────
+//      60 %   │     15     49    104      152      200     289    532
+//      50 %   │     18     74    153      211      290     436   1219
+//      45 %   │     22     89    193      268      360     603   7693
+//      35 %   │     34    154    342      528      916       —      —
+//
+// Et les jalons de la Voie eux-mêmes, à 50 % de victoires : 6 perles dès la
+// première partie, le Preux Chevalier en 4, la Méduse en 21, l'Empereur en
+// 66, le Prêtre en 153, le Typhon en 211, la Banshee en 268, le Grand Maître
+// en 591.
+//
+// Ce qu'il faut y lire, et qui EST la promesse :
+//   · Les premiers jalons tombent tout de suite : le joueur repart de sa
+//     toute première partie avec quelque chose en main. C'est l'hameçon, et
+//     il n'a pas besoin d'être payé en centaines de points d'ELO.
+//   · Chaque rang coûte ensuite nettement plus cher que le précédent — de 18
+//     parties à 74, puis 153, puis 290 — sans qu'aucune porte ne se ferme
+//     d'un coup. C'est une pente, jamais une marche.
+//   · Même en perdant DEUX PARTIES SUR TROIS, on atteint Obsidienne : cinq
+//     rangs sur sept, le Typhon, la Banshee, l'échiquier d'Acier. Il n'y a
+//     pas de mur, seule la durée change.
+//   · Les deux derniers rangs (Argent, Or Légendaire) ne sont pas donnés :
+//     c'est la fin de l'aventure, et elle se mérite en jouant mieux, pas
+//     seulement en jouant plus.
+//
+// CES NOMBRES SONT LE RÉGLAGE PRINCIPAL DU JEU. Toucher à VV_CLIMB_*, à
+// VV_K_* ou à VV_MAX_SWING déplace ce tableau : refaire la simulation avant,
+// et le recopier ici.
 
 // Parties et victoires CLASSÉES de ce compte, depuis toujours. Comptées à
 // part de l'historique (vvLoadHistory), qui ne garde que les 30 dernières
@@ -147,7 +211,14 @@ function vvNoteRankedGame(result){
 
 function vvKFactor(playerElo,games){
   if(playerElo>=VV_ELITE_ELO)return VV_K_ELITE;
+  // Les parties de placement gardent leur K quel que soit le classement :
+  // un compte neuf n'arrive pas à 1700 ELO, et s'il y arrivait par import,
+  // c'est justement le placement qu'on veut voir agir.
   for(const s of VV_K_STEPS)if(games<s.games)return s.k;
+  if(playerElo>VV_ELITE_START){
+    const t=(playerElo-VV_ELITE_START)/(VV_ELITE_ELO-VV_ELITE_START);
+    return VV_K_BASE+(VV_K_ELITE-VV_K_BASE)*t;
+  }
   return VV_K_BASE;
 }
 
@@ -160,6 +231,10 @@ function vvClimbFactors(elo){
     gain:1+(VV_CLIMB_GAIN_MAX-1)*t,
     loss:1-(1-VV_CLIMB_LOSS_MIN)*t,
     climbing:t>0,
+    // L'assistance mérite-t-elle encore d'être dite au joueur ? Voir
+    // VV_CLIMB_NOTE_TOP : au-delà elle agit toujours, mais si discrètement
+    // qu'une phrase à chaque fin de partie deviendrait du décor.
+    notable:elo<VV_CLIMB_NOTE_TOP,
   };
 }
 
@@ -186,10 +261,12 @@ function vvCalcNewElo(playerElo,aiElo,result,games){
   else if(result==='loss')delta=Math.min(-1,Math.round(raw*cf.loss));
   else delta=Math.round(raw*(raw>=0?cf.gain:cf.loss));
 
-  // Garde-fou : aucune partie ne peut déplacer le classement de plus que ne
-  // le permet le K le plus élevé, majoration comprise.
-  const cap=Math.round(VV_K_STEPS[0].k*VV_CLIMB_GAIN_MAX);
-  delta=Math.max(-cap,Math.min(cap,delta));
+  // GARDE-FOU D'AMPLITUDE. Aucune partie, quelle qu'elle soit, ne déplace le
+  // classement de plus de VV_MAX_SWING points. Il était auparavant déduit du
+  // K le plus élevé (60 × 3 = 180), c'est-à-dire assez haut pour ne jamais
+  // rien garder : c'est lui, désormais, qui tient la promesse « une partie
+  // reste une partie ».
+  delta=Math.max(-VV_MAX_SWING,Math.min(VV_MAX_SWING,delta));
 
   // Seul plancher : le zéro absolu. Le rang, lui, ne se perd pas — il est
   // porté par elo_peak (voir le point 3 de l'en-tête), pas par ce nombre.
@@ -201,6 +278,7 @@ function vvCalcNewElo(playerElo,aiElo,result,games){
     k:K,
     games:g,
     climbing:cf.climbing,
+    notable:cf.notable,
     gainMult:cf.gain,
     lossMult:cf.loss,
     bottomed:rawNew<0,          // le zéro absolu a absorbé la perte
@@ -231,9 +309,15 @@ function vvEloExplain(calc,result,peakElo){
   // déjà tout le reste. L'écart, lui, se lit sur la ligne au-dessus, et il est
   // dans le bon sens : c'est une bonne nouvelle qui n'a pas besoin de note de
   // bas de page.
-  if(calc.climbing&&result==='win')
+  // L'ASSISTANCE NE S'ANNONCE QUE TANT QU'ELLE SE VOIT. Elle court maintenant
+  // jusqu'à 2000 ELO (contre 1000 auparavant) : la dire à chaque partie
+  // reviendrait à coller la même note de bas de page sous les trois quarts
+  // des résultats du jeu, ce qui ne l'explique plus, ce qui la banalise. Elle
+  // se tait donc au-delà de VV_CLIMB_NOTE_TOP, là où le multiplicateur est
+  // devenu trop faible pour surprendre qui que ce soit.
+  if(calc.notable&&result==='win')
     return 'Bonus d\'ascension : ×'+calc.gainMult.toFixed(1)+' jusqu\'à '+VV_CLIMB_TOP+' ELO.';
-  if(calc.climbing&&result==='loss')
+  if(calc.notable&&result==='loss')
     return 'Ascension : la défaite ne coûte que '+Math.round(calc.lossMult*100)+' % avant '+VV_CLIMB_TOP+' ELO.';
   return '';
 }

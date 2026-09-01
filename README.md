@@ -288,25 +288,47 @@ Trois règles à ne pas casser :
 ### 1 ter. La courbe d'ascension : l'ELO (`js/voie.js::vvCalcNewElo`)
 
 **Epic Chess n'est pas un tournoi, c'est une aventure.** Un compte neuf part
-de 0 et doit pouvoir atteindre **1000 ELO** sans être un joueur d'échecs :
-c'est là que se trouvent la plupart des créatures et des échiquiers, donc là
-que se trouve le jeu. Un Elo pur ne fait pas ça — il place chacun autour de sa
-vraie force et y laisse la moitié des joueurs sous 800 à vie.
+de 0 et doit pouvoir traverser **toute la Voie** — les sept rangs, de Bois à
+Or Légendaire — sans être un joueur d'échecs. Un Elo pur ne fait pas ça : il
+place chacun autour de sa vraie force et l'y laisse à vie.
 
-Trois mécanismes s'en chargent, tous dans `vvCalcNewElo` :
+⚠️ **La version précédente visait 1000 ELO, et elle y arrivait trop bien.** Le
+K de placement valait 60 et la majoration des gains ×3 : la toute première
+victoire rapportait **+127**, une victoire de routine à bas classement **+48**,
+et à 50 % de victoires on décrochait Pierre en 4 parties, Bronze en 17, Acier
+en 37. Tout le catalogue jusqu'à l'Empereur tombait en une soirée — puis, juste
+derrière, un **mur** : passé 1000 les bonus s'éteignaient d'un coup, et la même
+simulation demandait 1316 parties pour aller de 1000 à 1500, à 45 % de
+victoires **jamais**. Courbe binaire : tout donné en quarante parties, puis
+plus rien. Le joueur consommait le jeu d'un trait, puis se cognait.
+
+**Le réglage actuel étale la même promesse sur toute la Voie** : l'assistance
+ne s'arrête plus à 1000 mais s'éteint progressivement jusqu'à 2000, et les
+K-facteurs ont été divisés par deux environ. Trois mécanismes, tous dans
+`vvCalcNewElo` :
 
 1. **K dégressif** (`VV_K_STEPS`). Le K-facteur mesure de combien une partie
-   déplace le classement : 60 pour les **cinq parties de placement**, puis 48,
-   40, 32, 24 en régime de croisière, et 16 au-dessus de 2000 ELO — un
-   classement de haut de tableau doit être stable, sinon il ne veut plus rien
-   dire.
-2. **La courbe d'ascension** (`VV_CLIMB_*`). Sous 1000 ELO, les gains sont
+   déplace le classement : 30 pour les **cinq parties de placement**, puis 22,
+   18, et 14 en régime de croisière, puis une descente **en pente douce**
+   jusqu'à 10 entre 1700 et 2000 ELO — un classement de haut de tableau doit
+   être stable, sinon il ne veut plus rien dire. La pente compte : le K se
+   resserre au même endroit que l'ascension s'éteint, et cumulés d'un seul
+   coup les deux divisaient les gains par deux à l'instant précis où le joueur
+   atteignait le dernier rang.
+2. **La courbe d'ascension** (`VV_CLIMB_*`). Sous **2000 ELO**, les gains sont
    majorés et les pertes amorties, d'autant plus fortement qu'on est bas : à
-   0 ELO une victoire vaut **triple** et une défaite ne coûte que **15 %** ; à
-   1000 les deux multiplicateurs valent 1 et l'Elo redevient l'Elo. La
-   décroissance est en `t^0.6` et non linéaire — linéairement, le bonus
-   s'évaporait dès 300 ELO et la montée s'arrêtait là.
-3. **Le rang est acquis, l'ELO est vivant** — deux nombres, deux rôles :
+   0 ELO une victoire vaut **×1,9** et une défaite ne coûte que **30 %** ; à
+   2000 les deux multiplicateurs valent 1 et l'Elo redevient l'Elo. La
+   décroissance est **linéaire** (`VV_CLIMB_EASE = 1`) : l'ancien exposant 0,6
+   servait à empêcher le bonus de s'évaporer dès 300 ELO, mais c'était avec un
+   seuil à 1000 — étalé sur 2000, le linéaire tient tout seul (×1,45 à 1000
+   ELO, ×1,22 à 1500).
+3. **Un garde-fou d'amplitude** (`VV_MAX_SWING = 30`). Quoi qu'il arrive,
+   aucune partie ne déplace le classement de plus de 30 points. Il était
+   auparavant déduit du K le plus élevé (60 × 3 = **180**), assez haut pour ne
+   jamais rien garder. Il ne mord que sur les vrais exploits ; en régime
+   ordinaire une victoire vaut de **+11 à +17**.
+4. **Le rang est acquis, l'ELO est vivant** — deux nombres, deux rôles :
    - `elo` **monte et descend**. Une défaite coûte **toujours** au moins un
      point, à n'importe quel niveau. Seul le zéro absolu l'arrête.
    - `elo_peak`, le plus haut ELO jamais atteint, **ne descend jamais**. C'est
@@ -324,30 +346,45 @@ Trois mécanismes s'en chargent, tous dans `vvCalcNewElo` :
 
 **L'écart avec l'adversaire décide de tout, comme dans un Elo ordinaire** : la
 courbe d'ascension multiplie le résultat de la formule, elle ne le remplace
-pas. À 500 ELO, une victoire vaut **+7** contre un adversaire 400 points plus
-faible, **+37** à niveau égal, **+67** contre un adversaire 400 points plus
-fort ; une défaite coûte **−13**, **−7** et **−1** dans les mêmes cas. Le test
+pas. À 500 ELO, une victoire vaut **+3** contre un adversaire 400 points plus
+faible, **+15** à niveau égal, **+27** contre un adversaire 400 points plus
+fort ; une défaite coûte **−8**, **−4** et **−1** dans les mêmes cas. Le test
 de fumée vérifie cet ordre à cinq niveaux différents.
 
 **Ces constantes sont le réglage principal du jeu et ont été choisies par
-simulation** (400 tirages par point, adversaires tirés à ±200 ELO) :
+simulation** (60 tirages par point, adversaires tirés à ±200 ELO autour du
+classement courant, taux de victoires fixé). Médiane du nombre de parties pour
+atteindre chaque rang :
 
-| Taux de victoires | Atteignent 1000 ELO | Parties (médiane) |
-|---|---|---|
-| 35 % | 100 % | 310 |
-| 45 % | 100 % | 106 |
-| 50 % | 100 % | 73 |
-| 55 % | 100 % | 55 |
+| Victoires | Pierre 200 | Bronze 500 | Acier 800 | 1000 | Obsidienne 1200 | Argent 1500 | Or 2000 |
+|---|---|---|---|---|---|---|---|
+| 60 % | 15 | 49 | 104 | 152 | 200 | 289 | 532 |
+| 50 % | 18 | 74 | 153 | 211 | 290 | 436 | 1219 |
+| 45 % | 22 | 89 | 193 | 268 | 360 | 603 | 7693 |
+| 35 % | 34 | 154 | 342 | 528 | 916 | — | — |
 
-C'est la promesse : le mur n'existe pas, seule la durée change. Toucher à
-`VV_CLIMB_GAIN_MAX`, `VV_CLIMB_LOSS_MIN` ou `VV_CLIMB_EASE` la déplace :
-refaire la simulation avant. Quatre étapes du test de fumée la gardent
-(`l'ascension paie plus qu'elle ne coûte sous 1000 ELO`, `une défaite coûte
-toujours des points`, `l'écart avec l'adversaire décide du gain et de la
-perte`, `le rang et les déblocages sont acquis pour toujours`).
+Et les jalons eux-mêmes, à 50 % de victoires : 6 perles dès la **première**
+partie, le Preux Chevalier en 4, la Méduse en 21, l'Empereur en 66, le Prêtre
+en 153, le Typhon en 211, la Banshee en 268, le Grand Maître en 591.
 
-Dernier point : un écart inhabituel **doit s'expliquer au joueur**. Un `+48`
-suivi d'un `−2` passe pour un bug si personne ne dit pourquoi, et une chute
+C'est la promesse, et elle tient en trois points : les premiers jalons tombent
+tout de suite (l'hameçon n'a pas besoin d'être payé en centaines de points) ;
+chaque rang coûte ensuite nettement plus cher que le précédent — 18 parties,
+puis 74, puis 153, puis 290 — **sans qu'aucune porte ne se ferme d'un coup** ;
+et même en perdant **deux parties sur trois** on atteint Obsidienne, soit cinq
+rangs sur sept. Les deux derniers (Argent, Or Légendaire) se méritent en jouant
+mieux, pas seulement en jouant plus.
+
+Toucher à `VV_CLIMB_*`, `VV_K_*` ou `VV_MAX_SWING` déplace ce tableau : refaire
+la simulation avant, et recopier le résultat dans `js/voie.js`. Six étapes du
+test de fumée gardent la courbe (`l'ascension paie plus qu'elle ne coûte, et
+s'éteint en pente`, `une partie reste une partie`, `le haut du classement n'est
+pas une falaise`, `une défaite coûte toujours des points`, `l'écart avec
+l'adversaire décide du gain et de la perte`, `le rang et les déblocages sont
+acquis pour toujours`).
+
+Dernier point : un écart inhabituel **doit s'expliquer au joueur**. Un `+17`
+suivi d'un `−3` passe pour un bug si personne ne dit pourquoi, et une chute
 sous le seuil de son propre rang fait croire qu'on vient de perdre ses
 créatures. C'est le rôle de `vvEloExplain()`, dont la phrase s'affiche sous
 l'écart dans le modal de fin de partie — et qui reste **vide** en régime
@@ -1143,7 +1180,7 @@ Le nouveau tient en quatre règles :
    infinie : personne n'attend dix secondes sur un écran de recherche, et
    dans un jeu où perdre coûte l'armée engagée, jeter un débutant contre un
    joueur de 1800 est pire que ne pas trouver de partie. Avec la courbe
-   d'ascension, la quasi-totalité des comptes vit entre 0 et 1000 ELO :
+   d'ascension, la quasi-totalité des comptes vit entre 0 et 1200 ELO :
    ±600 y couvre presque tout le monde. Le jour où la population s'étale,
    c'est `MP_ELO_MAX` qu'il faudra revoir.
 2. **Un seul décideur** : le joueur qui attend depuis le plus longtemps
@@ -1392,7 +1429,7 @@ mais dans une version que Playwright refuse, le script le retrouve tout seul
 | Ajouter une statistique au profil | `accountSummary()` / `accountSealHTML()` dans `js/account-ui.js` |
 | Changer la stratégie de cache hors ligne | `sw.js` (et monter `CACHE_VERSION`) |
 | Vérifier l'UI à toutes les tailles d'écran | `node tools/ui-shots.js` |
-| Changer la vitesse de montée en ELO | `VV_CLIMB_*` et `VV_K_STEPS` dans `js/voie.js` (relire « La courbe d'ascension ») |
+| Changer la vitesse de montée en ELO | `VV_CLIMB_*`, `VV_K_*` et `VV_MAX_SWING` dans `js/voie.js` (relire « La courbe d'ascension », et refaire la simulation) |
 | Changer la largeur de la fenêtre d'appariement | `MP_ELO_*` dans `js/multiplayer.js` |
 | Ajouter un nouveau réglage utilisateur | `index.html` (bloc `#settings-panel`, sous les deux boutons « Compte » / « Installer ») + `js/settings-admin.js` |
 | Changer ce que dit la barre de statut d'une partie | `updateStatus()` dans `js/game-render.js` (+ `.status-bar` dans `css/style.css`) |
