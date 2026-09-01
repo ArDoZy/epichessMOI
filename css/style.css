@@ -2208,6 +2208,18 @@ body.light .pmv-dark{background:#c3bdae}
    (pb-done), à temps pour annoncer les lots. */
 .pbreak.pb-full ~ .chest-title,
 .pbreak.pb-full ~ .chest-hint{opacity:0;transition:opacity .12s linear}
+/* MAIS L'EFFACEMENT COMMENCE AVANT LE PLEIN ÉCRAN. `pb-full` n'arrive qu'à
+   l'avant-dernière planche : les deux premières planches de la destruction —
+   les éclats, puis l'éclatement — se jouaient donc avec « Coffre Pion »
+   toujours écrit par-dessus l'explosion. Les étapes portent maintenant
+   `hush` (js/chest-break.js) dès que la pièce a lâché, et la coupure est
+   SÈCHE : un fondu, même de quelques images, laisse le nom lisible par-dessus
+   les premiers éclats — c'est exactement ce qu'on veut voir disparaître. Sur
+   une explosion, personne ne remarque un texte qui s'éteint d'un coup. Le
+   socle vide, lui, ne porte pas `hush` — le titre revient donc tout seul
+   annoncer les lots, et son retour, lui, reste fondu. */
+.pbreak.pb-hush ~ .chest-title,
+.pbreak.pb-hush ~ .chest-hint{opacity:0;transition:none}
 .pbreak.pb-full.pb-done ~ .chest-title,
 .pbreak.pb-full.pb-done ~ .chest-hint{opacity:1;transition:opacity .45s ease .35s}
 
@@ -2409,7 +2421,13 @@ body.light .pmv-dark{background:#c3bdae}
 .chest-modal.pb-loot .chest-title{grid-row:1;align-self:end;margin:0 0 42px}
 .chest-modal.pb-loot .chest-loot{grid-row:2;margin:0;min-height:0}
 .chest-modal.pb-loot .chest-hint{grid-row:3;align-self:start;margin:18px 0 0}
-.chest-modal.pb-loot #chest-close{grid-row:3;align-self:start;margin-top:62px}
+/* LE BOUTON SE POSE SOUS LA CARTE, ET NON SOUS UNE PHRASE ABSENTE. Ses 62 px
+   de marge dégageaient « Cliquez pour tout récupérer », qui partageait la
+   rangée avec lui ; cette phrase a disparu (chestRevealNext, js/economy-ui.js)
+   et le bouton restait suspendu au milieu du vide, loin du lot qu'il
+   récupère. Il prend la même marge que la phrase avait : le lot, puis le
+   geste, à portée l'un de l'autre. */
+.chest-modal.pb-loot #chest-close{grid-row:3;align-self:start;margin-top:18px}
 .chest-modal.pb-loot .chest-loot-count{position:absolute;bottom:100%;left:0;right:0;
   width:auto;margin:0 0 10px}
 
@@ -4483,9 +4501,22 @@ body.light .adv-advised{color:#f6f5f1}
 .pcard-act:hover{background:var(--surface)}
 .pcard-use{color:var(--pc);border-color:color-mix(in srgb,var(--pc) 45%,transparent)}
 .pcard-infos{color:var(--accent2);border-color:rgba(47,177,151,.4)}
-/* Les boutons de la dernière rangée débordent sous la grille : on lui réserve
-   la place, sinon ils tomberaient sous le pli ou seraient rognés. */
-#cards-container{padding-bottom:110px}
+/* ON PEUT TOUJOURS DÉFILER PLUS BAS QUE LA DERNIÈRE RANGÉE. Le bloc de
+   boutons est en position absolue SOUS sa carte (voir .pcard-actions
+   ci-dessus) : il ne compte pas dans la hauteur de la grille, donc rien ne
+   lui réserve de place et la page s'arrête au bas de la dernière rangée.
+   Sur la page de composition d'armées, où la barre d'onglets du cube couvre
+   les 64 derniers pixels de l'écran, « Infos » se retrouvait coupé et
+   « Utiliser » entièrement derrière la barre, sans un pixel de défilement
+   restant pour aller les chercher — dès que le catalogue dépasse les neuf
+   cartes qui tiennent à l'écran.
+   Ce rembourrage est ce qu'on peut faire remonter au-dessus de la barre : il
+   dépasse la hauteur du bloc (deux boutons, environ 77 px avec son écart),
+   si bien que la dernière rangée peut toujours être amenée assez haut pour
+   que ses deux options soient lisibles en entier. Il s'ajoute au
+   rembourrage de page qui dégage déjà la barre (--page-bottom). */
+#cards-container,
+#ar-cards-container{padding-bottom:110px}
 
 /* [PSHEET] : LA FICHE DE PIÈCE (BOTTOM SHEET) =====================
    Tout ce que la carte ne dit plus. Elle monte du bas de l'écran, à portée

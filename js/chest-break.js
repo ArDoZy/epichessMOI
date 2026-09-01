@@ -71,6 +71,8 @@
 //           format de l'image et se centre, découpe comprise (le socle vide)
 //   solo    n'affiche QUE cette image : les précédentes sont éteintes
 //   snd     fréquences (Hz) empilées pour le bruit de fracture
+//   hush    le titre et la phrase s'effacent : la pièce a lâché, plus rien
+//           autour de la scène n'a de raison de rester à l'écran
 //   hold    si présent, l'étape suivante s'enchaîne SEULE après ce délai (ms)
 //   end     dernière étape : la cérémonie reprend la main (les lots)
 //   dir     dossier de CETTE image, quand il n'est pas celui du coffre :
@@ -115,7 +117,7 @@ function chestBreakTail(){
     // L'ÉCLATEMENT. La pièce part en morceaux mais le socle est encore là,
     // et la scène tient encore dans son ovale : c'est le dernier plan où
     // l'on voit d'où vient l'explosion. Il ne dure qu'un battement.
-    {src:'06-explosion.webp', hint:'', fade:90, dir:CHEST_BREAK_FORALL,
+    {src:'06-explosion.webp', hint:'', fade:90, dir:CHEST_BREAK_FORALL, hush:true,
      shake:22, zoom:1.13, flash:.86, fdur:300, bloom:[.30,.72], bt:'.7s',
      sparks:44, sparkR:1.6, trem:2.2, hold:260, snd:{n:'blast',f:.7}},
 
@@ -135,7 +137,7 @@ function chestBreakTail(){
     // les images-clés partent maintenant AU-DESSUS de la taille de l'écran :
     // l'explosion ne peut plus commencer plus petite que l'éclatement qui la
     // précède (voir le commentaire de pbBlastIn).
-    {src:'07-explosion-suite.webp', hint:'', fade:70, dir:CHEST_BREAK_FORALL,
+    {src:'07-explosion-suite.webp', hint:'', fade:70, dir:CHEST_BREAK_FORALL, hush:true,
      full:'bleed', blast:true, bldur:1150, white:1500, flash:.9, fdur:520,
      sparks:54, sparkR:3.2, hold:1050,
      snd:{n:'blast',f:1}},
@@ -172,9 +174,14 @@ function chestBreakSeq(dir,piece){
 
       // À partir d'ici la pièce ne tient plus : plus une seule frappe à
       // donner, la destruction s'enchaîne d'elle-même jusqu'au socle vide.
+      // LE NOM DU COFFRE S'EN VA ICI, et non trois planches plus loin. Il
+      // ne s'effaçait qu'à l'explosion plein écran (`pb-full`) : entre les
+      // deux, l'éclatement se jouait avec « Coffre Pion » toujours écrit
+      // par-dessus. Or la pièce ne tient plus dès cette planche-ci — il n'y
+      // a plus de coffre à nommer, il n'y a qu'une destruction à regarder.
       {src:'05-eclats.webp',   hint:'',                  fade:120, shake:20, zoom:1.11,
        flash:.80, fdur:300, bloom:[.35,.80], bt:'.9s',  sparks:34, trem:1.8,
-       hold:190, snd:{n:'choc',f:1}},
+       hush:true, hold:190, snd:{n:'choc',f:1}},
     ].concat(chestBreakTail()),
     // Format des planches (largeur/hauteur). Il donne à la scène `boxed` les
     // proportions exactes de l'image, pour que l'ovale de découpe tombe
@@ -590,11 +597,17 @@ function chestBreakMount(chestId,onDone){
     pbWhenReady(pbSrc(cfg,i),()=>{
       if(ctl._dead)return;
 
+      // LE TITRE ET LA PHRASE S'EFFACENT dès que la pièce a lâché — et non
+      // au passage en plein écran, deux planches plus loin, où le nom du
+      // coffre se lisait encore par-dessus les premiers éclats. Ils
+      // reviennent d'eux-mêmes sur le socle vide, qui ne porte pas `hush` :
+      // c'est là qu'ils annoncent les lots.
+      host.classList.toggle('pb-hush',!!st.hush);
+
       // LA SCÈNE QUITTE SA BOÎTE. À l'explosion, l'ovale et les 320 px de
-      // large sautent : l'image passe en position fixe sur tout l'écran. Le
-      // titre et la phrase s'effacent d'eux-mêmes (règle de voisinage
-      // `.pbreak.pb-full ~ …` dans css/style.css), donc le passage hors flux
-      // ne fait sauter aucun texte.
+      // large sautent : l'image passe en position fixe sur tout l'écran. Les
+      // deux textes sont déjà partis (`hush` ci-dessus), donc le passage hors
+      // flux ne fait sauter aucun texte.
       if(st.full){
         host.classList.add('pb-full');
         host.classList.toggle('pb-bleed',st.full==='bleed');
