@@ -13,9 +13,16 @@
 // script fait le pas d'après, et fait les DEUX moitiés du travail :
 //   1. il convertit en .webp tout .png de assets/{backgrounds,banners,ui,
 //      fx,ranks} ;
-//   2. il réécrit les url(...) de css/style.css pour qu'elles pointent sur
-//      le .webp.
+//   2. il réécrit les url(...) de css/style.css ET les src="..." de
+//      index.html pour qu'ils pointent sur le .webp.
 // Sans la seconde moitié, convertir éteindrait le décor entier en silence.
+//
+// index.html est venu s'ajouter avec les sept logos de navigation
+// (assets/ui/logo-*), qui sont les seules planches du jeu citées dans le
+// BALISAGE et non dans la feuille de style : elles sont en <img>, parce
+// qu'une <img> se retire d'elle-même quand le fichier manque (onerror) et
+// laisse le pictogramme SVG dessiné en dessous. Ne repointer que le CSS les
+// aurait laissées sur des .png convertis, donc absentes.
 //
 // Les PNG d'origine sont CONSERVÉS : ce sont les fichiers qu'on retouche.
 // Ajoutez-les à .gitignore si vous ne voulez pas les verser au dépôt.
@@ -74,24 +81,36 @@ async function main() {
     return;
   }
 
-  // Le CSS ne suit pas tout seul : on ne réécrit QUE les chemins dont le
-  // .webp vient d'être produit, et jamais une extension au hasard.
-  const cssPath = path.join(ROOT, 'css', 'style.css');
-  let css = fs.readFileSync(cssPath, 'utf8');
-  let patched = 0;
-  for (const rel of converted) {
-    const from = "url('../" + rel + "')";
-    const to = "url('../" + rel.replace(/\.png$/, '.webp') + "')";
-    if (css.includes(from)) {
-      css = css.split(from).join(to);
-      patched++;
+  // Ni le CSS ni le balisage ne suivent tout seuls : on ne réécrit QUE les
+  // chemins dont le .webp vient d'être produit, et jamais une extension au
+  // hasard. Le CSS cite `url('../assets/…')`, index.html cite
+  // `src="assets/…"` — deux formes, une seule liste.
+  const targets = [
+    { file: path.join(ROOT, 'css', 'style.css'),
+      label: 'css/style.css',
+      form: rel => "url('../" + rel + "')" },
+    { file: path.join(ROOT, 'index.html'),
+      label: 'index.html',
+      form: rel => 'src="' + rel + '"' },
+  ];
+  for (const t of targets) {
+    if (!fs.existsSync(t.file)) continue;
+    let text = fs.readFileSync(t.file, 'utf8');
+    let patched = 0;
+    for (const rel of converted) {
+      const from = t.form(rel);
+      const to = t.form(rel.replace(/\.png$/, '.webp'));
+      if (text.includes(from)) {
+        text = text.split(from).join(to);
+        patched++;
+      }
     }
-  }
-  if (patched) {
-    fs.writeFileSync(cssPath, css);
-    console.log('\ncss/style.css : ' + patched + ' chemin(s) repointé(s) sur .webp.');
-  } else {
-    console.log('\ncss/style.css : rien à repointer (déjà fait).');
+    if (patched) {
+      fs.writeFileSync(t.file, text);
+      console.log('\n' + t.label + ' : ' + patched + ' chemin(s) repointé(s) sur .webp.');
+    } else {
+      console.log('\n' + t.label + ' : rien à repointer (déjà fait).');
+    }
   }
   console.log(converted.length + ' planche(s) en .webp.');
 }

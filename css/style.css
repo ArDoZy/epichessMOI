@@ -1692,23 +1692,48 @@ body.light .cube-face[data-face="jouer"]{background:
    `z-index:-1` la pose derrière le fond du bouton : elle ne se voit donc que
    là où elle DÉBORDE, et ne voile jamais le mot COMBAT. Ni `.jouer-actions`
    ni `.jouer-menu` ne peignent de fond, rien ne la recouvre.
-   Le halo est la SILHOUETTE DU BOUTON, floutée : un `filter:blur(14px)` sur
-   une plaque dorée de la taille exacte du bouton déborde de ~28 px tout
-   autour, et ce débordement EST le halo. Un dégradé radial aurait demandé de
-   régler ses arrêts sur les proportions du bouton — qui changent avec la
-   largeur de l'écran — pour finir par éteindre la lumière juste là où on
-   voulait la voir. Le flou, lui, suit la forme quelle qu'elle soit. */
-.jouer-btn::before{content:'';position:absolute;inset:0;z-index:-1;
-  border-radius:16px;pointer-events:none;
-  background:linear-gradient(180deg,var(--gold2),var(--gold));
-  filter:blur(14px);
-  animation:combatPulse 2.6s ease-in-out infinite}
-@keyframes combatPulse{
-  0%,100%{opacity:.32;transform:scale(.98)}
-  50%    {opacity:.85;transform:scale(1.055)}
+   Le halo est la SILHOUETTE DU BOUTON, floutée : une plaque dorée de la
+   taille exacte du bouton, passée au flou, déborde tout autour, et ce
+   débordement EST le halo. Un dégradé radial aurait demandé de régler ses
+   arrêts sur les proportions du bouton — qui changent avec la largeur de
+   l'écran — pour finir par éteindre la lumière juste là où on voulait la
+   voir. Le flou, lui, suit la forme quelle qu'elle soit.
+
+   DEUX SOUFFLES, ET NON UN SEUL. Une lumière qui enfle et retombe sur une
+   seule couche PULSE — c'est un clignotant lent, et l'œil y entend un
+   métronome. Deux couches suffisent à en faire une RESPIRATION : une nappe
+   large et lente (4,4 s, très floue) qui donne la chaleur de fond, et un
+   liseré serré et plus vif (2,6 s, à peine flouté) qui court sur l'arête du
+   métal. Leurs périodes ne sont pas multiples l'une de l'autre — 2,6 et 4,4
+   ont pour plus petit commun multiple 28,6 s — donc le motif d'ensemble ne se
+   répète qu'une fois toutes les demi-minutes, et jamais on ne le surprend à
+   se répéter. */
+.jouer-btn::before,.jouer-btn::after{content:'';position:absolute;z-index:-1;
+  border-radius:18px;pointer-events:none;
+  background:linear-gradient(180deg,var(--gold2),var(--gold))}
+/* La nappe : large, lente, c'est elle qu'on voit du coin de l'œil. */
+.jouer-btn::before{inset:-1px;filter:blur(16px);
+  animation:combatSouffle 4.4s ease-in-out infinite}
+/* Le liseré : serré sur l'arête, plus contrasté, c'est lui qui fait le métal
+   chaud. Décalé d'un temps sur la nappe (`-1.1s`) : les deux ne culminent
+   jamais ensemble.
+   Il DÉBORDE, comme la nappe. Les deux couches sont en `z-index:-1`, donc
+   masquées par le fond opaque du bouton : une couche posée à l'intérieur de
+   ses bords ne se verrait nulle part. Tout ce qui s'affiche d'un halo, c'est
+   ce qui dépasse. */
+.jouer-btn::after{inset:-4px;filter:blur(5px);
+  animation:combatArete 2.6s ease-in-out infinite -1.1s}
+@keyframes combatSouffle{
+  0%,100%{opacity:.26;transform:scale(.975)}
+  50%    {opacity:.80;transform:scale(1.06)}
+}
+@keyframes combatArete{
+  0%,100%{opacity:.22;transform:scale(.99)}
+  50%    {opacity:.72;transform:scale(1.022)}
 }
 @media(prefers-reduced-motion:reduce){
   .jouer-btn::before{animation:none;opacity:.5;transform:none}
+  .jouer-btn::after{animation:none;opacity:.3;transform:none}
 }
 /* L'interlettrage pose un blanc APRÈS chaque lettre, y compris la dernière :
    le bloc de texte est donc plus large que le mot, et un centrage
@@ -2718,115 +2743,169 @@ body.light .pmv-dark{background:#c3bdae}
   line-height:1.25;letter-spacing:.05em;text-transform:uppercase;
   transition:color .18s ease,border-color .18s ease,background .18s ease}
 .jouer-track>span:not(.jouer-badge){display:block;max-width:100%}
-.jouer-track svg{width:17px;height:17px;flex-shrink:0}
-.jouer-track:hover{color:var(--gold2);border-color:var(--gold);background:rgba(193,154,69,.12)}
+.jt-ico .jt-draw{width:100%;height:100%}
 
-/* --- L'EMBLÈME DE CHAQUE VOIE, ET CE QUI TOURNE AUTOUR --------------
-   `.jt-ico` est une boîte de 17 px qui ne prend aucune place de plus dans le
-   bouton : le dessin (SVG), la planche peinte (`.jt-art`) et la couche
-   d'effets (`.jt-fx`) s'y superposent tous les trois en absolu. Les effets
-   DÉBORDENT franchement de cette boîte — c'est le point : ils vivent autour
-   de l'emblème, pas dessus. Rien n'écrête (`.jouer-track` n'a pas
-   d'`overflow`), et la couche est `pointer-events:none`, donc le bouton reste
-   cliquable de bord à bord. */
-.jt-ico{position:relative;display:block;width:17px;height:17px;flex:0 0 auto}
-.jt-ico svg,.jt-art{position:absolute;inset:0;width:100%;height:100%}
-.jt-art{object-fit:contain}
+/* --- L'EMBLÈME DE CHAQUE VOIE, ET LE FEU QUI EN SORT ----------------
+   `.jt-ico` est une boîte de 26 px qui ne prend aucune place de plus dans le
+   bouton : le repli dessiné (`.jt-draw`), la planche peinte (`.jt-art`) et les
+   deux couches d'effets s'y superposent tous en absolu.
+
+   ELLE EST PASSÉE DE 17 À 26 PX. 17 px était la taille d'un pictogramme au
+   trait ; les planches peintes sont des illustrations de 256 px avec des
+   feuilles ciselées, des reliures cloutées et des arêtes de métal — à 17 px
+   il n'en restait qu'une tache dorée. 26 px est la taille des blasons du cube
+   (voir .cube-facebar-btn svg), donc rien de nouveau à apprendre, et les trois
+   boutons du menu et les quatre onglets du bas parlent enfin la même langue.
+
+   DEUX COUCHES D'EFFETS, ET C'EST TOUT L'INTÉRÊT. `.jt-fx-back` passe DERRIÈRE
+   la planche, `.jt-fx-front` DEVANT : la spirale de lumière peut donc plonger
+   derrière le livre et revenir devant, ce qu'une seule couche ne saurait pas
+   faire — elle tournerait à plat, comme un cerceau posé sur l'image. Les
+   flammes et les éclairs n'utilisent que la couche avant.
+
+   Les deux couches débordent LARGEMENT de l'emblème (52 px pour une boîte de
+   26) : le feu lèche au-dessus de la couronne, les éclairs claquent à côté de
+   l'éclair, l'orbite passe au large du livre. Rien n'écrête — ni `.jouer-track`
+   ni `.jt-ico` n'ont d'`overflow` — et la couche est `pointer-events:none`,
+   donc le bouton reste cliquable de bord à bord. */
+.jt-ico{position:relative;display:block;width:26px;height:26px;flex:0 0 auto}
+.jt-ico .jt-draw,.jt-art{position:absolute;inset:0;width:100%;height:100%}
+.jt-art{object-fit:contain;z-index:1}
 /* La planche peinte gagne contre le dessin quand elle est là — et quand elle
    n'est pas là, l'`<img>` s'est retirée toute seule (onerror, index.html) :
-   le sélecteur ne mord plus, et le SVG reste seul. Fichier absent = l'écran
-   d'aujourd'hui, à l'identique. */
-.jt-ico:has(.jt-art) svg{display:none}
+   le sélecteur ne mord plus, et le SVG reste seul. Fichier absent = un
+   pictogramme doré, et les effets par-dessus, à l'identique. */
+.jt-ico:has(.jt-art) .jt-draw{display:none}
 
-/* La couche d'effets : éteinte par défaut, allumée par `.is-ready`, que
-   rwSetBadge() pose sur le bouton en même temps qu'il allume la pastille
-   (js/rewards-ui.js). Les deux disent donc toujours la même chose. */
-.jt-fx{display:none;position:absolute;inset:-9px;pointer-events:none}
+/* LA LUMIÈRE S'AJOUTE, ELLE NE SE POSE PAS. `mix-blend-mode:screen` est ce qui
+   sépare un effet lumineux d'un autocollant : en `screen`, le noir de la
+   couche disparaît et les valeurs claires s'ADDITIONNENT au fond — une flamme
+   éclaircit le bouton sous elle, exactement comme une vraie. C'est déjà le
+   procédé de tous les effets de combat (voir [FX] et le halo des coffres).
+   Le thème clair, lui, n'a rien à éclaircir : en `screen` sur du blanc, tout
+   disparaît. Il repasse donc en peinture normale, un cran plus saturé et plus
+   sombre pour tenir sur le fond pâle. */
+.jt-fx{display:none;position:absolute;left:50%;top:50%;
+  width:52px;height:52px;margin:-26px 0 0 -26px;
+  overflow:visible;pointer-events:none;mix-blend-mode:screen}
+.jt-fx-back{z-index:0}
+.jt-fx-front{z-index:2}
+body.light .jt-fx{mix-blend-mode:normal;filter:saturate(1.45) brightness(.82)}
+/* Allumées par `.is-ready`, que rwSetBadge() pose sur le bouton en même temps
+   qu'il allume la pastille (js/rewards-ui.js). Les deux disent donc toujours
+   la même chose. */
 .jouer-track.is-ready .jt-fx{display:block}
 /* L'emblème lui-même passe en doré quand sa voie a quelque chose à donner :
-   sans ça, un halo de flammes tournerait autour d'un pictogramme gris. */
+   sans ça, un feu tournerait autour d'un pictogramme gris. */
 .jouer-track.is-ready{color:var(--gold2);border-color:rgba(193,154,69,.55)}
 
-/* LES FLAMMES DES LAURIERS (colonne des victoires). Cinq langues de feu
-   posées sur la couronne, chacune avec sa durée et son retard : des flammes
-   synchrones se lisent comme un clignotant, pas comme du feu. La forme est
-   une goutte inversée en `border-radius` à deux rayons — pointue en haut,
-   ronde en bas — et l'origine de la transformation est le PIED de la flamme,
-   qui reste donc accroché à la couronne pendant qu'elle monte. */
-.jt-fx-flammes i{position:absolute;width:5px;height:9px;
-  border-radius:56% 56% 48% 48%/78% 78% 34% 34%;
-  background:linear-gradient(180deg,#fff4cd,#f0aa2f 48%,#d9552f);
-  box-shadow:0 0 5px rgba(240,150,45,.75);
-  transform-origin:50% 100%;opacity:0;
-  animation:jtFlamme 1.45s ease-in-out infinite}
-.jt-fx-flammes i:nth-child(1){left:1px;  top:4px;  animation-delay:0s;    animation-duration:1.45s}
-.jt-fx-flammes i:nth-child(2){left:7px;  top:-1px; animation-delay:.34s;  animation-duration:1.2s}
-.jt-fx-flammes i:nth-child(3){right:1px; top:4px;  animation-delay:.68s;  animation-duration:1.6s}
-.jt-fx-flammes i:nth-child(4){left:3px;  bottom:2px;animation-delay:.95s; animation-duration:1.3s}
-.jt-fx-flammes i:nth-child(5){right:3px; bottom:2px;animation-delay:.18s; animation-duration:1.7s}
-@keyframes jtFlamme{
-  0%,100%{opacity:0;  transform:translateY(3px)  scale(.45,.5)}
-  22%    {opacity:1;  transform:translateY(0)    scale(1,1.12)}
-  55%    {opacity:.85;transform:translateY(-3px) scale(.86,.92)}
-  82%    {opacity:0;  transform:translateY(-6px) scale(.55,.6)}
+/* --- LE FEU (colonne des victoires) ------------------------------
+   Neuf langues posées SUR le cercle de la couronne, chacune avec sa durée et
+   son retard : des flammes synchrones se lisent comme un clignotant, pas comme
+   du feu. Chaque langue monte, se tord et s'éteint ; son PIED reste accroché à
+   la couronne (`transform-origin:50% 100%`) pendant que sa pointe part de côté.
+   Le `rotate` de l'animation est donc une ONDULATION, pas une rotation.
+
+   `transform-box:fill-box` est obligatoire : sans lui, l'origine d'une
+   transformation CSS sur un élément SVG se calcule dans le repère du SVG
+   ENTIER, et « 50% 100% » désignerait le bas de la boîte de 100 unités au lieu
+   du pied de la langue — les flammes partiraient en tournoyant à l'autre bout
+   de l'écran. */
+.jtf-tongue{transform-box:fill-box;transform-origin:50% 100%;
+  animation:jtfLick 1.5s ease-in-out infinite}
+@keyframes jtfLick{
+  0%  {transform:translateY(2px)  rotate(0deg)  scale(.78,.46);opacity:0}
+  13% {opacity:1}
+  33% {transform:translateY(-1px) rotate(-8deg) scale(1.04,1.22)}
+  55% {transform:translateY(-2px) rotate(6deg)  scale(.97,1.06);opacity:.95}
+  76% {transform:translateY(-4px) rotate(-5deg) scale(.86,.86);opacity:.8}
+  100%{transform:translateY(-9px) rotate(2deg)  scale(.56,.44);opacity:0}
+}
+/* Le cœur blanc : le MÊME jeu de langues, réduit et repeint en blanc chaud.
+   Une flamme est plus claire au milieu qu'au bord ; sans ce deuxième calque,
+   les langues restent des pétales jaunes uniformes. */
+.jtf-fire-core{transform-box:fill-box;transform-origin:50% 100%;
+  transform:scale(.5,.62);opacity:.72}
+/* Le halo de couronne et le lit de braises, qui respirent tous les deux. */
+.jtf-bed{transform-box:fill-box;transform-origin:50% 50%;
+  animation:jtfBed 2.1s ease-in-out infinite}
+@keyframes jtfBed{0%,100%{opacity:.4;transform:scale(.9)}50%{opacity:.85;transform:scale(1.06)}}
+/* Les escarbilles : elles montent, dérivent et s'éteignent. */
+.jtf-ember{transform-box:fill-box;opacity:0;animation:jtfEmber 2.4s linear infinite}
+@keyframes jtfEmber{
+  0%  {opacity:0;transform:translate(0,0) scale(.6)}
+  12% {opacity:1}
+  70% {opacity:.7}
+  100%{opacity:0;transform:translate(var(--dx,2px),-26px) scale(.3)}
 }
 
-/* LES ÉCLATS ÉLECTRIQUES DE L'ÉCLAIR (rangée de la richesse). Quatre petits
-   éclairs découpés au `clip-path` — le même polygone que la silhouette du
-   pictogramme, en miniature. Ils ne montent pas et ne dérivent pas : un
-   éclair CLAQUE, il n'a pas de trajectoire. Toute l'animation est donc dans
-   l'opacité, avec une double frappe (la décharge, le rebond), et quatre
-   retards premiers entre eux pour que le motif ne se répète jamais à l'œil. */
-.jt-fx-eclairs i{position:absolute;width:6px;height:9px;
-  background:linear-gradient(180deg,#fffbe8,#ffd75e 52%,#ffab2e);
-  clip-path:polygon(60% 0,16% 54%,46% 54%,34% 100%,86% 40%,54% 40%);
-  filter:drop-shadow(0 0 3px rgba(255,214,94,.9));
-  opacity:0;animation:jtEclair 1.15s linear infinite}
-.jt-fx-eclairs i:nth-child(1){left:-1px; top:2px;  transform:rotate(-18deg);animation-delay:0s}
-.jt-fx-eclairs i:nth-child(2){right:-1px;top:1px;  transform:rotate(14deg); animation-delay:.29s}
-.jt-fx-eclairs i:nth-child(3){left:2px;  bottom:-1px;transform:rotate(23deg);animation-delay:.61s}
-.jt-fx-eclairs i:nth-child(4){right:2px; bottom:0;  transform:rotate(-11deg);animation-delay:.83s}
-@keyframes jtEclair{
-  0%  {opacity:0}
-  4%  {opacity:1}
-  11% {opacity:.12}
-  17% {opacity:.95}
-  27% {opacity:0}
-  100%{opacity:0}
+/* --- LES ÉCLAIRS (rangée de la richesse) --------------------------
+   Six arcs qui claquent, chacun sur sa propre période — 1,15 s, 1,30 s,
+   1,45 s, 1,75 s, 1,90 s, 2,05 s. Aucune n'est multiple d'une autre : le motif
+   d'ensemble ne se répète pas avant plusieurs minutes, et l'œil n'y trouve
+   jamais de boucle.
+
+   Un éclair CLAQUE, il n'a pas de trajectoire : toute l'animation est dans
+   l'opacité, avec une double frappe (la décharge, puis le rebond), et l'arc
+   est éteint les trois quarts du temps. Le `stroke-dashoffset` le fait JAILLIR
+   depuis l'emblème vers l'extérieur en une image — `pathLength="100"` normalise
+   chaque tracé à cent unités, si bien que la même animation convient à des
+   arcs de longueurs différentes. */
+.jtf-arc{opacity:0;animation:jtfStrike 1.15s linear infinite}
+@keyframes jtfStrike{
+  0%{opacity:0} 3%{opacity:1} 8%{opacity:.15} 13%{opacity:.95} 22%{opacity:0} 100%{opacity:0}
+}
+.jtf-arc path{stroke-dasharray:100;stroke-dashoffset:100;
+  animation:jtfShoot 1.15s linear infinite}
+@keyframes jtfShoot{0%{stroke-dashoffset:100}5%{stroke-dashoffset:0}100%{stroke-dashoffset:0}}
+/* La couronne électrique reste allumée en permanence, très bas : sans elle,
+   l'emblème est éteint pendant les silences entre deux décharges. */
+.jtf-corona{transform-box:fill-box;transform-origin:50% 50%;opacity:.3;
+  animation:jtfCorona 2.3s ease-in-out infinite}
+@keyframes jtfCorona{0%,100%{opacity:.18;transform:scale(.88)}50%{opacity:.42;transform:scale(1.04)}}
+.jtf-flash{opacity:0;transform-box:fill-box;transform-origin:50% 50%;
+  animation:jtfFlash 1.15s linear infinite}
+@keyframes jtfFlash{0%{opacity:0;transform:scale(.7)}3%{opacity:.85;transform:scale(1)}
+  18%{opacity:0;transform:scale(1.25)}100%{opacity:0}}
+
+/* --- LA SPIRALE (récompense journalière) --------------------------
+   Un filament de lumière en orbite autour du livre. Quatre ellipses
+   superposées, toutes animées par le MÊME `stroke-dashoffset` : ce sont les
+   `animation-delay` NÉGATIFS qui les décalent en phase, et ce décalage EST la
+   traînée — chaque copie plus fine et plus pâle que la précédente traîne
+   derrière la tête. Un seul jeu d'images-clés pour toute la comète.
+
+   L'ORBITE EST UNE ELLIPSE, LA TÊTE TOURNE EN ROND. Le groupe qui porte la
+   tête est écrasé verticalement (`scale(1 .46)`) : un cercle parcouru à
+   l'intérieur y devient exactement l'ellipse du ruban, et une simple rotation
+   suffit à la faire courir dessus. La tête est dessinée haute (ry 4,7 pour
+   rx 1,9) pour ressortir ronde une fois écrasée.
+
+   LA MOITIÉ ARRIÈRE EST DERRIÈRE LE LIVRE. La couche avant est masquée par un
+   dégradé vertical (`#jtfNearMask`) qui ne laisse passer que le bas de
+   l'orbite ; le haut n'existe que dans la couche arrière, où le livre le
+   recouvre. C'est ce qui fait tourner la lumière AUTOUR du livre plutôt
+   qu'au-dessus. */
+.jtf-trail{animation:jtfOrbit 2.9s linear infinite}
+@keyframes jtfOrbit{from{stroke-dashoffset:0}to{stroke-dashoffset:-100}}
+.jtf-head{animation:jtfHead 2.9s linear infinite}
+@keyframes jtfHead{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+/* Les poussières de lumière que l'orbite laisse derrière elle. */
+.jtf-mote{transform-box:fill-box;opacity:0;animation:jtfMote 3.6s linear infinite}
+@keyframes jtfMote{
+  0%  {opacity:0;transform:translate(0,4px) scale(.5)}
+  20% {opacity:.9}
+  75% {opacity:.5}
+  100%{opacity:0;transform:translate(var(--mx,2px),-13px) scale(.35)}
 }
 
-/* LA SPIRALE DU LIVRE (récompense journalière). Deux pièces, un seul
-   mouvement : un ARC de lumière qui tourne — un dégradé conique dont on ne
-   garde qu'un anneau, par un masque radial — et une TÊTE brillante qui court
-   devant lui. La tête est en orbite `rotate → translateX → rotate` : le
-   deuxième rotate, exactement opposé au premier, empêche la bille de
-   tourner sur elle-même. Son rayon passe de 13 à 10 px à mi-tour et sa
-   taille de 1 à .72 : le cercle devient une spirale vue de trois quarts,
-   qui plonge derrière le livre et revient devant. */
-.jt-fx-spirale i:first-child{position:absolute;inset:0;border-radius:50%;
-  background:conic-gradient(from 0deg,
-    rgba(255,214,120,0) 0deg,rgba(255,214,120,0) 205deg,
-    rgba(255,226,150,.88) 332deg,rgba(255,246,214,0) 360deg);
-  -webkit-mask:radial-gradient(closest-side,transparent 70%,#000 80%,#000 94%,transparent 100%);
-          mask:radial-gradient(closest-side,transparent 70%,#000 80%,#000 94%,transparent 100%);
-  animation:jtSpiraleTour 2.4s linear infinite}
-.jt-fx-spirale i:last-child{position:absolute;top:50%;left:50%;
-  width:4px;height:4px;margin:-2px 0 0 -2px;border-radius:50%;
-  background:#fff6d8;box-shadow:0 0 7px 2px rgba(255,224,140,.9);
-  animation:jtSpiraleTete 2.4s linear infinite}
-@keyframes jtSpiraleTour{to{transform:rotate(360deg)}}
-@keyframes jtSpiraleTete{
-  0%  {transform:rotate(0)      translateX(13px) rotate(0)       scale(1)}
-  50% {transform:rotate(180deg) translateX(10px) rotate(-180deg) scale(.72)}
-  100%{transform:rotate(360deg) translateX(13px) rotate(-360deg) scale(1)}
-}
-
-/* Mouvement réduit : l'information reste (l'emblème est doré, la pastille est
-   allumée), c'est le mouvement qui part. */
+/* Mouvement réduit : l'information reste — l'emblème est doré, la pastille est
+   allumée, le feu et la lumière sont là — c'est le mouvement qui part. */
 @media(prefers-reduced-motion:reduce){
-  .jt-fx-flammes i,.jt-fx-eclairs i{animation:none;opacity:.9}
-  .jt-fx-spirale i:first-child{animation:none}
-  .jt-fx-spirale i:last-child{animation:none;transform:translateX(13px)}
+  .jtf-tongue,.jtf-bed,.jtf-ember,.jtf-arc,.jtf-arc path,.jtf-corona,.jtf-flash,
+  .jtf-trail,.jtf-head,.jtf-mote{animation:none}
+  .jtf-arc,.jtf-ember,.jtf-mote{opacity:.85}
+  .jtf-arc path{stroke-dashoffset:0}
 }
 
 /* La fenêtre. « Assez large » et VERTICALE : c'est une colonne de trente
@@ -3388,6 +3467,12 @@ body.light .cube-dot.is-on{background:var(--accent2)}
 body.light .jouer-btn{background:var(--accent2);color:#fff;
   box-shadow:0 4px 12px -2px rgba(20,40,36,.20),0 1px 3px rgba(20,40,36,.14),
              inset 0 1px 0 rgba(255,255,255,.26)}
+/* Le halo suit la couleur du bouton. Sur le thème clair, COMBAT est en
+   vert-de-gris et non en laiton : une auréole dorée y ferait le tour d'un
+   bouton vert, ce qui ne se lit pas comme une lumière mais comme une erreur de
+   calque. La lumière est toujours de la couleur de ce qui l'émet. */
+body.light .jouer-btn::before,body.light .jouer-btn::after{
+  background:linear-gradient(180deg,var(--accent),var(--accent2))}
 body.light .jouer-btn:hover{background:var(--accent);
   box-shadow:0 8px 20px -4px rgba(20,40,36,.24),0 1px 3px rgba(20,40,36,.14),
              inset 0 1px 0 rgba(255,255,255,.3)}
