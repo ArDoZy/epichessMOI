@@ -327,6 +327,9 @@ document.getElementById('result-revanche').addEventListener('click',()=>{
 // ----------------------------------------------------------------
 let _endGameTriggered=false;
 function triggerEndOfGame(result){
+  // La partie est finie : un prémouvement inscrit n'a plus de tour où partir,
+  // et ses deux cases violettes resteraient allumées sur le plateau final.
+  if(typeof premoveCancel==='function'&&typeof GS!=='undefined')premoveCancel(GS,false);
   if(_endGameTriggered)return;_endGameTriggered=true;
   stopClockTick(GS);
   endCombatMusic();
@@ -416,6 +419,10 @@ document.getElementById('game-undo').addEventListener('click',()=>{
   // En ligne, annuler unilatéralement désynchroniserait les deux plateaux.
   if(GS.multiplayer){showNotif('Impossible d\'annuler un coup en partie en ligne.','err');return;}
   GS.historyView=null;
+  // Un prémouvement inscrit désignait deux cases de la position qu'on vient
+  // d'effacer : il partirait sur un plateau qui n'est plus celui qu'on
+  // regardait (js/game-render.js, « LE PRÉMOUVEMENT »).
+  if(typeof premoveCancel==='function')premoveCancel(GS,false);
   const plies=Math.min(2,GS.history.length);
   for(let i=0;i<plies;i++){
     if(!GS.history.length)break;

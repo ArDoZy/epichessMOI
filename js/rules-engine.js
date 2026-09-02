@@ -707,6 +707,11 @@ function postMoveUpdate(gs){
   updateStatus(gs);renderGame(gs);
   const aiCol=gs.aiColor||'b';
   if(gs.turn===aiCol&&!gs.multiplayer&&!gs.gameOver&&!gs.pendingPromo)setTimeout(()=>doAIMove(gs),500);
+  // LE PRÉMOUVEMENT PART D'ICI, et de nulle part ailleurs : c'est le seul
+  // point qui voit TOUS les coups — le nôtre, celui de l'IA, celui d'un
+  // adversaire en ligne — et donc le seul qui sache que le trait vient de
+  // nous revenir (js/game-render.js, section « LE PRÉMOUVEMENT »).
+  if(typeof premoveRun==='function')premoveRun(gs);
 }
 
 // ================================================================
