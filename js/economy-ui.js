@@ -1,8 +1,8 @@
 // ================================================================
-// ECONOMY-UI.JS : l'Armurerie (perles, échiquiers), les coffres du menu
+// ECONOMY-UI.JS : la Guerre des clans (perles, échiquiers), les coffres du menu
 // principal, et les affichages liés à l'économie ailleurs dans le jeu
 // ================================================================
-// Contient : le rendu de la face « Armurerie » du cube (#page-reserve), la
+// Contient : le rendu de la face « Guerre des clans » du cube (#page-reserve), la
 // texture du plateau (suit automatiquement l'ELO, voir bestUnlockedSkin),
 // la cérémonie d'ouverture d'un coffre,
 // les coffres illimités du mode test (renderAdminChests), la fenêtre de la
@@ -15,7 +15,7 @@
 // data-pieces.js (PIECES, CHESTS, BOARD_SKINS), piece-art.js
 // (pieceIcon/pieceSVG), accounts.js (accGet/accSet, VV_UNLOCKED), main.js
 // (escH, showPage).
-// Utilisé par : cube-nav.js (ouverture des faces jouer/armurerie/magasin),
+// Utilisé par : cube-nav.js (ouverture des faces jouer/Guerre des clans/magasin),
 // game-flow.js (mise en partie), game-render.js (texture de plateau).
 // ================================================================
 
@@ -231,7 +231,7 @@ function pearlAmountHTML(n,em){
   return '<span class="pearl-amt">'+pearlIcon(em)+'<span>'+n+'</span></span>';
 }
 
-// L'Armurerie ne montre plus le solde de perles : on n'y achète rien. Les
+// La Guerre des clans ne montre plus le solde de perles : on n'y achète rien. Les
 // perles servent aux coffres, et leur solde est écrit sous les coffres, au
 // Magasin, sur la carte de chaque coffre et dans l'en-tête (voir
 // renderMagasinPage), là où on décide de dépenser.
@@ -267,7 +267,7 @@ function chestOpenNow(chestId,onClose){
   showChestCeremony(chest,chestRoll(chest.id),true,onClose||function(){});
 }
 
-// Retour à l'Armurerie après une ouverture lancée depuis l'Armurerie.
+// Retour à la Guerre des clans après une ouverture lancée depuis la Guerre des clans.
 function chestBackToReserve(){
   showPage('page-reserve');
   renderReservePage();
