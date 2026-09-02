@@ -5,11 +5,11 @@ et le prompt à donner à un générateur d'images pour chacune.
 
 > **Statut au dernier inventaire** : les 16 fonds d'écran (`backgrounds/`),
 > les 6 effets (`fx/`) et 6 des 7 médaillons de rang (`ranks/`, il manque
-> `acier.png`) sont posés. Restent à générer : les 4 bannières de titre
-> (`banners/`), les 5 pièces de mobilier et les 7 logos de navigation
-> (`ui/`), les 12 portraits d'adversaires, `ranks/acier.png`, et les
-> planches des coffres Dame et Roi. Chaque section ci-dessous porte son
-> propre état.
+> `acier.png`) **et les 7 logos de navigation** (`ui/logo-*.webp`) sont
+> posés. Restent à générer : les 4 bannières de titre (`banners/`), les 5
+> pièces de mobilier (`ui/`), les 12 portraits d'adversaires,
+> `ranks/acier.png`, et les planches des coffres Dame et Roi. Chaque section
+> ci-dessous porte son propre état.
 
 Rien ici n'est obligatoire. Le jeu tourne aujourd'hui sans une seule de ces
 images, et il tournera encore avec la moitié manquante. C'est la règle déjà
@@ -453,6 +453,17 @@ socle. Le haut du carré est entièrement transparent.
 
 ## 5 bis. LES SEPT LOGOS — `assets/ui/`
 
+> **CETTE SECTION EST FAITE.** Les sept planches sont générées, détourées,
+> ramenées à 256 px et posées en `assets/ui/logo-*.webp` — c'est la seule
+> famille du catalogue livrée en `.webp` plutôt qu'en `.png`, parce qu'elle
+> est déjà passée par `tools/opt-images.js` : 11 à 28 Ko la planche au lieu
+> de 0,7 à 2 Mo. Les prompts restent ici pour pouvoir en REFAIRE une : le
+> nom du fichier à écrire est alors `logo-<voie>.png`, et le script le
+> convertit et repointe `index.html` tout seul.
+>
+> **Les effets lumineux ne sont toujours PAS à générer** — voir l'encadré en
+> fin de section, c'est le piège principal de cette famille.
+
 Sept emblèmes, et **c'est la famille la plus regardée du jeu** : quatre sont
 posés en permanence dans la barre de navigation (le rail de gauche sur
 ordinateur, la barre du bas sur téléphone), trois sont les boutons du menu
@@ -479,21 +490,29 @@ ci-dessous ne sont pas du confort :
 
 Format **carré** pour les sept.
 
-| Fichier | Où ça s'affiche | Objet |
+| Fichier (posé) | Où ça s'affiche | Objet |
 |---|---|---|
-| `logo-combat.png` | onglet « Combat » | deux épées croisées |
-| `logo-magasin.png` | onglet « Magasin » | une balance de marchand |
-| `logo-armees.png` | onglet « Mes armées » | un bouclier, la lance derrière |
-| `logo-clans.png` | onglet « Guerre des clans » | deux bannières croisées |
-| `logo-victoires.png` | bouton « Colonne des victoires » | une couronne de lauriers |
-| `logo-richesse.png` | bouton « Rangée de la richesse » | un éclair |
-| `logo-journaliere.png` | bouton « Récompense journalière » | un livre ouvert |
+| `logo-combat.webp` | onglet « Combat » | deux épées croisées |
+| `logo-magasin.webp` | onglet « Magasin » | une balance de marchand |
+| `logo-armees.webp` | onglet « Mes armées » | un bouclier, la lance derrière |
+| `logo-clans.webp` | onglet « Guerre des clans » | deux bannières croisées |
+| `logo-victoires.webp` | bouton « Colonne des victoires » | une couronne de lauriers |
+| `logo-richesse.webp` | bouton « Rangée de la richesse » | un éclair |
+| `logo-journaliere.webp` | bouton « Récompense journalière » | un livre ouvert |
 
-Chacun est **facultatif**, un par un : le jeu dessine déjà les sept en SVG,
-et l'`<img>` du logo se retire d'elle-même si le fichier manque (`onerror`,
-`index.html`). Déposer `logo-combat.png` seul allume le seul onglet Combat,
-les six autres gardent leur dessin. Câblage : `.cfb-art` et `.jt-art` dans
-`css/style.css`.
+Chacun reste **facultatif**, un par un : le jeu dessine toujours les sept en
+SVG dessous, et l'`<img>` du logo se retire d'elle-même si le fichier manque
+(`onerror`, `index.html`). Supprimer `logo-combat.webp` rend son pictogramme
+au seul onglet Combat, les six autres gardent leur planche. Câblage :
+`.cfb-art` et `.jt-art` dans `css/style.css`.
+
+**Le cadrage est fait par le script, pas par le prompt.** Les sept planches
+sortent du générateur avec des marges transparentes très inégales — le livre
+occupait 1254 × 822, le bouclier 762 × 1251. Elles sont donc détourées au
+plus près (`sharp().trim()`), redimensionnées pour que leur plus GRAND côté
+tienne dans le carré, puis recentrées : les sept pèsent alors le même poids
+optique dans leur bouton, quelle que soit leur forme. Inutile de se battre
+avec le générateur là-dessus.
 
 ### `logo-combat.png` — deux épées croisées
 
@@ -611,13 +630,19 @@ maximum. AUCUN pupitre, AUCUN fond, AUCUNE lueur autour : uniquement le
 livre sur du vide transparent.
 ```
 
-> **Les effets lumineux ne sont PAS à générer.** Les flammes qui lèchent la
-> couronne de lauriers, les éclats qui claquent autour de l'éclair et la
-> spirale de lumière qui tourne autour du livre quand une récompense attend
-> sont dessinés et animés par le navigateur (`.jt-fx`, `css/style.css`) —
-> une image fixe ne saurait pas tourner. Les trois logos doivent donc être
-> **éteints** : pas de flamme, pas d'étincelle, pas de halo peint dessus,
-> sinon les deux se superposeraient.
+> **Les effets lumineux ne sont PAS à générer, et c'est le piège de cette
+> famille.** Les flammes qui lèchent la couronne de lauriers, les arcs qui
+> claquent autour de l'éclair et la spirale de lumière qui tourne autour du
+> livre quand une récompense attend sont dessinés et animés par le
+> navigateur — turbulence de Perlin pour le feu, floraison à deux rayons
+> pour les arcs, comète en orbite pour la spirale (voir le `<defs>` en tête
+> d'`index.html` et `.jtf-*` dans `css/style.css`). Une image fixe ne saurait
+> pas tourner, ni vaciller, ni s'éteindre quand la récompense est prise.
+>
+> Les trois logos du menu doivent donc être livrés **ÉTEINTS** : pas de
+> flamme, pas d'étincelle, pas de halo, pas de lueur peinte autour. Une
+> planche qui en porte déjà se retrouve avec DEUX feux superposés, l'un
+> immobile et l'autre vivant, et c'est l'immobile qu'on remarque.
 
 ---
 
@@ -822,9 +847,9 @@ assets/backgrounds/  main-page.png  armees.png  armurerie.png  magasin.png
 assets/banners/      magasin.png  adversaires.png  voie.png  recompenses.png
 assets/ui/           cadre-plateau.png  ornement-coin.png  socle.png
                      laiton.png  vert-de-gris.png
-                     logo-combat.png  logo-magasin.png  logo-armees.png
-                     logo-clans.png  logo-victoires.png  logo-richesse.png
-                     logo-journaliere.png
+                     logo-combat.webp  logo-magasin.webp  logo-armees.webp
+                     logo-clans.webp  logo-victoires.webp  logo-richesse.webp
+                     logo-journaliere.webp        ← les sept sont POSÉS
 assets/fx/           halo-victoire.png  onde-choc.png  braises.png
                      eclat-capture.png  flamme-echec.png  cercle-runique.png
 assets/ranks/        bois.png  pierre.png  bronze.png  acier.png
