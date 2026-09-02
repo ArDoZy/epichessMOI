@@ -867,13 +867,21 @@
            Le plateau reste entièrement visible et jouable, panneau ouvert :
            c'est toute la raison de ce découpage. Voir [GAME-PANEL] dans
            css/style.css. -->
-      <div class="game-under" id="game-under">
+      <!-- LA BARRE DE STATUT EST HORS DE LA ZONE DES PANNEAUX, et c'est
+           délibéré. Elle a vécu DEDANS, et le journal comme la discussion la
+           recouvraient donc en s'ouvrant : « À votre tour », « Au tour de
+           votre adversaire », « Reconnecté à la partie » disparaissaient au
+           moment précis où on ouvre un panneau — c'est-à-dire pendant qu'on
+           attend, quand ces phrases sont les seules à dire ce qui se passe.
+           Elle est maintenant SŒUR de la zone, au-dessus d'elle : les
+           panneaux se posent sur ce qui suit, et sur rien d'autre.
+           role=status + aria-live : échec, mat et nulle sont annoncés à voix
+           haute au lieu de n'exister qu'en couleur. `polite` et non
+           `assertive` parce qu'une annonce de partie ne doit pas couper la
+           lecture d'un coup en cours. -->
+      <div class="status-bar" id="game-status" role="status" aria-live="polite" aria-atomic="true">En attente...</div>
 
-        <!-- role=status + aria-live : échec, mat et nulle sont annoncés à
-             voix haute au lieu de n'exister qu'en couleur. `polite` et non
-             `assertive` parce qu'une annonce de partie ne doit pas couper la
-             lecture d'un coup en cours. -->
-        <div class="status-bar" id="game-status" role="status" aria-live="polite" aria-atomic="true">En attente...</div>
+      <div class="game-under" id="game-under">
 
         <!-- « Annuler coup » n'existe QUE pendant la partie : une partie
              terminée ne se rejoue pas, elle se relit (js/game-render.js,
@@ -922,8 +930,14 @@
         <section class="game-panel" id="panel-chat" hidden aria-label="Discussion">
           <div class="gpanel-head">
             <div class="gpanel-title">Discussion</div>
-            <button class="gpanel-mute" id="mp-emote-mute" role="switch" aria-checked="true"
-              title="Recevoir les messages de l'adversaire" aria-label="Recevoir les messages de l'adversaire">🔔</button>
+            <!-- L'interrupteur ne commande QUE la bulle posée sur le
+                 plateau, et elle est coupée par défaut (mpEmoteMuted,
+                 js/multiplayer.js) : ce qui dérange en pleine réflexion n'est
+                 pas le message, c'est la bulle. Le fil et la pastille rouge
+                 du bouton « Chat » marchent toujours. -->
+            <button class="gpanel-mute" id="mp-emote-mute" role="switch" aria-checked="false"
+              title="Messages affichés dans ce panneau seulement"
+              aria-label="Messages affichés dans ce panneau seulement">🔕</button>
             <button class="gpanel-close" data-close-panel aria-label="Fermer la discussion">✕</button>
           </div>
           <div class="chat-log" id="chat-log"></div>
@@ -1058,6 +1072,26 @@
     </svg>
     <span>Compte</span>
   </button>
+  <!-- LES EFFETS DE COMBAT (js/combat-fx.js) : éclats de prise, sillages,
+       signatures de pouvoir, embrasement de l'échec.
+       UN INTERRUPTEUR, PAS UN CURSEUR. Le réglage a été un dosage de 0 à 1,
+       et c'était une question à laquelle personne n'a de réponse : entre
+       « 0,35 » et « 0,60 » d'effets, il n'y a rien à choisir, il y a un
+       curseur à traîner jusqu'à ce que ça ait l'air bien. Il n'y a en vérité
+       que deux positions utiles — tout, ou rien — et la seconde est celle
+       d'un téléphone qui peine ou de quelqu'un que les étincelles gênent
+       pour lire le plateau.
+       Il est ICI, juste sous « Compte », et non tout en bas : c'est le
+       réglage qu'on vient chercher quand le jeu rame, et on ne le cherche pas
+       sous deux curseurs de volume.
+       Le mouvement réduit du système coupe déjà tout de son côté, sans
+       toucher à cet interrupteur : les deux réglages ne se marchent pas
+       dessus. -->
+  <div class="sp-row">
+    <span class="sp-label">Effets</span>
+    <button class="sp-switch" id="sp-fx-toggle" role="switch" aria-checked="true"
+      aria-label="Effets de combat"><span class="sp-knob"></span></button>
+  </div>
   <!-- INSTALLER LE JEU. La ligne n'apparaît que si le navigateur dit que
        c'est possible et que ce n'est pas déjà fait (pwaRefreshSettingsRow,
        js/pwa.js) : un bouton qui ne fait rien est pire que pas de bouton.
@@ -1087,20 +1121,6 @@
   <div class="sp-row">
     <span class="sp-label">Musique</span>
     <input type="range" class="sp-slider" id="sp-music-vol" min="0" max="1" step="0.05" value="0.5">
-  </div>
-  <!-- LES EFFETS DE COMBAT (js/combat-fx.js) : éclats de prise, traînées,
-       signatures de pouvoir, embrasement de l'échec. Un CURSEUR et pas un
-       interrupteur, parce que le réglage n'a pas deux états mais un dosage :
-       il pilote le NOMBRE de particules et la richesse des gerbes, jamais
-       leur opacité (voir [COMBAT-FX] dans css/style.css : une couche
-       translucide cesserait de se fondre au bois du plateau). À zéro, plus un
-       seul nœud n'est posé — c'est ce qui rend le jeu jouable sur un
-       téléphone d'entrée de gamme.
-       Le mouvement réduit du système coupe déjà tout de son côté, sans
-       toucher à ce curseur : les deux réglages ne se marchent pas dessus. -->
-  <div class="sp-row">
-    <span class="sp-label">Effets</span>
-    <input type="range" class="sp-slider" id="sp-fx-level" min="0" max="1" step="0.05" value="1">
   </div>
 </div>
 

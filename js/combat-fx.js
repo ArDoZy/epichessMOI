@@ -274,6 +274,61 @@ function fxTrail(from,to,pieceId,heavy){
 }
 
 // ----------------------------------------------------------------
+// LE SILLAGE : ce que la pièce sème derrière elle
+// ----------------------------------------------------------------
+// La traînée dit le TRAJET — d'où à où, en une image. Elle ne dit pas QUI
+// passe : elle est teintée de la classe, mais c'est un trait, et un trait
+// s'oublie aussitôt tracé.
+//
+// Les particules, elles, restent une seconde après le passage. Elles sont
+// semées LE LONG du chemin, chacune retardée à proportion de sa position :
+// la première tombe quand la pièce quitte sa case, la dernière quand elle
+// arrive — on voit la matière se détacher au fur et à mesure, et non un
+// chapelet qui s'allume d'un bloc. Puis elles s'éteignent en dérivant, sans
+// jamais recouvrir une pièce (couche `under`).
+//
+// La couleur est celle de la CLASSE, comme partout ailleurs dans ce module :
+// un sillage violet dit qu'un Sorcier vient de traverser le plateau, un
+// sillage rouge qu'une Brute a chargé — sans un mot, et sans que le module
+// connaisse une seule créature.
+const FX_DUST_MAX=14;            // plafond par coup, quelle que soit la distance
+function fxDust(from,to,pieceId){
+  if(!fxOn())return;
+  const a=fxCenter(from.r,from.c),b=fxCenter(to.r,to.c);
+  const dx=b.x-a.x,dy=b.y-a.y;
+  const len=Math.sqrt(dx*dx+dy*dy);
+  if(len<1)return;
+  // Une particule tous les ~6 % de plateau, soit une demi-case : assez pour
+  // que le chemin se lise, assez peu pour qu'une partie rapide n'en couvre
+  // pas le plateau.
+  const n=Math.min(FX_DUST_MAX,fxCount(Math.round(len/6),0.5));
+  if(n<1)return;
+  const node=document.createElement('div');
+  node.className='fx-dust';
+  node.style.setProperty('--fx-c',fxPieceColor(pieceId));
+  let html='';
+  for(let i=0;i<n;i++){
+    // t : où sur le trajet, de 0 (départ) à 1 (arrivée). Le retard suit t,
+    // donc la particule naît quand la pièce PASSE dessus.
+    const t=(i+0.5)/n;
+    // Un écart perpendiculaire au trajet, pour que le sillage ait une
+    // épaisseur : parfaitement alignées, les particules redessineraient la
+    // traînée au lieu de la prolonger.
+    const px=-dy/len,py=dx/len;
+    const off=(Math.random()-0.5)*3.4;
+    html+='<span class="fx-dot" style="'+
+      'left:'+(a.x+dx*t+px*off).toFixed(2)+'%;'+
+      'top:'+(a.y+dy*t+py*off).toFixed(2)+'%;'+
+      '--sz:'+(2.2+Math.random()*2.6).toFixed(1)+'px;'+
+      '--dx:'+((Math.random()-0.5)*22).toFixed(1)+'%;'+
+      '--dy:'+(-10-Math.random()*22).toFixed(1)+'%;'+
+      '--del:'+Math.round(t*160)+'ms"></span>';
+  }
+  node.innerHTML=html;
+  fxMount('under',node,1100);
+}
+
+// ----------------------------------------------------------------
 // L'AGONIE : la poussière que laisse une pièce qui disparaît
 // ----------------------------------------------------------------
 // Appelée par syncPieces (js/game-render.js) pour TOUTE pièce qui quitte le
@@ -556,7 +611,11 @@ function fxPlayMove(d){
   if(!fxOn()||!d)return;
   const heavy=!!d.captured||d.power==='charge';
   fxTrail(d.from,d.to,d.pieceId,heavy);
-  if(d.rook)fxTrail(d.rook.from,d.rook.to,d.rookPieceId||d.pieceId,false);
+  fxDust(d.from,d.to,d.pieceId);
+  if(d.rook){
+    fxTrail(d.rook.from,d.rook.to,d.rookPieceId||d.pieceId,false);
+    fxDust(d.rook.from,d.rook.to,d.rookPieceId||d.pieceId);
+  }
   if(d.captured){
     const at=d.capAt||d.to;
     fxImpact(at.r,at.c,d.captured);

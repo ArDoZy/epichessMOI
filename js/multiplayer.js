@@ -965,32 +965,26 @@ const MP_EMOTES=[
 // la règle qui décide de ce qui entre dans cette table.
 const MP_CHAT=[
   {cat:'Courtoisie',msgs:[
-    {id:'bp',   t:'Bonne partie.'},
-    {id:'salue',t:'Salut. Que le meilleur gagne.'},
-    {id:'merci',t:'Merci pour la partie.'},
+    {id:'bp',   t:'Bonne partie !'},
+    {id:'salue',t:'Que le meilleur gagne'},
+    {id:'folle',t:'Quelle partie folle !'},
     {id:'rev',  t:'Revanche ?'},
-    {id:'plus', t:'À une prochaine, avec plaisir.'},
+    {id:'plus', t:'À une prochaine !'},
   ]},
   {cat:'Beau jeu',msgs:[
-    {id:'bon',  t:'Bon coup.'},
-    {id:'vu',   t:'Joliment vu. Je ne l’avais pas vu venir.'},
-    {id:'aud',  t:'C’est une attaque audacieuse.'},
-    {id:'lecon',t:'Tu m’apprends quelque chose.'},
-    {id:'belle',t:'Belle partie, quel qu’en soit le bout.'},
+    {id:'bon',  t:'Bon coup !'},
+    {id:'vu',   t:'Je ne l’avais pas vu venir...'},
+    {id:'renv', t:'C’est un renversement de situation !'},
+    {id:'piege',t:'Il y a un piège quelque part, je le sens'},
+    {id:'oups', t:'Oups'},
   ]},
   {cat:'Bravade',msgs:[
-    {id:'sang', t:'Mes pièces sentent l’odeur du sang.'},
-    {id:'tremble',t:'Ton roi tremble déjà.'},
-    {id:'feu',  t:'Tu joues avec le feu.'},
-    {id:'compte',t:'Compte tes pièces pendant qu’il t’en reste.'},
-    {id:'nuit', t:'La nuit tombe sur ton camp.'},
-  ]},
-  {cat:'Sur le fil',msgs:[
-    {id:'reflechi',t:'Je réfléchis.'},
-    {id:'vite', t:'Plus vite ?'},
-    {id:'oups', t:'Oups.'},
-    {id:'serre',t:'Ça se joue à rien.'},
-    {id:'piege',t:'Il y a un piège quelque part. Je le sens.'},
+    {id:'sang', t:'Mes pièces sentent l’odeur du sang'},
+    {id:'tremble',t:'Regarde, ton Roi tremble déjà !'},
+    {id:'feu',  t:'Tu joues avec le feu'},
+    {id:'compte',t:'Compte tes pièces pendant qu’il t’en reste'},
+    {id:'eu',   t:'Hahaha, je t’ai bien eu !'},
+    {id:'mors', t:'Mors tua, vita mea'},
   ]},
 ];
 // L'index plat : c'est lui qui traduit un identifiant reçu en phrase, et lui
@@ -1008,10 +1002,20 @@ let _emoteLastSent=0,_emoteLastRecv=0;
 let _chatLog=[];                // [{mine, text} | {mine, glyph}]
 
 function mpEmoteMuted(){
-  try{return localStorage.getItem('ec_emotes_muted')==='1';}catch(e){return false;}
+  // LA BULLE EST COUPÉE PAR DÉFAUT, ET ELLE EST LA SEULE CHOSE QUE CET
+  // INTERRUPTEUR COMMANDE. Il a coupé la RÉCEPTION entière : le message
+  // n'entrait pas dans le fil, la pastille ne s'allumait pas, et on ne savait
+  // même pas qu'on avait été salué. Or ce qui dérange en pleine réflexion
+  // n'est pas le message, c'est la bulle qui se pose sur le plateau — un
+  // message qui attend dans un panneau fermé ne dérange personne.
+  //
+  // Donc : la bulle est muette tant qu'on ne l'a pas demandée ; le fil et la
+  // pastille, eux, marchent toujours (mpChatPush). L'absence de clé vaut
+  // « coupé », c'est le défaut.
+  try{return localStorage.getItem('ec_emote_bubbles')!=='1';}catch(e){return true;}
 }
 function mpEmoteSetMuted(on){
-  try{localStorage.setItem('ec_emotes_muted',on?'1':'0');}catch(e){}
+  try{localStorage.setItem('ec_emote_bubbles',on?'0':'1');}catch(e){}
   mpPaintMute();
 }
 // L'INTERRUPTEUR CHANGE DE PICTOGRAMME, ET PAS SEULEMENT DE COULEUR. Il a
@@ -1025,7 +1029,9 @@ function mpPaintMute(){
   const coupe=mpEmoteMuted();
   b.setAttribute('aria-checked',coupe?'false':'true');
   b.textContent=coupe?'🔕':'🔔';
-  b.title=coupe?'Messages de l\'adversaire coupés':'Recevoir les messages de l\'adversaire';
+  const t=coupe?'Messages affichés dans ce panneau seulement'
+               :'Afficher les messages sur le plateau';
+  b.title=t;b.setAttribute('aria-label',t);
 }
 
 // La bulle : elle se pose du côté de qui l'envoie — la sienne au-dessus de
@@ -1090,23 +1096,24 @@ function mpSendEmote(id){
 // identifiant inconnu — client d'une autre version, ou bricolé — est
 // simplement ignoré : rien d'étranger n'atteint l'écran.
 function mpReceiveEmote(id){
-  if(mpEmoteMuted())return;
   const now=Date.now();
   if(now-_emoteLastRecv<MP_EMOTE_MIN_GAP)return;    // un client modifié n'inonde pas l'écran
   const e=MP_EMOTES.find(x=>x.id===id);
   if(!e)return;
   _emoteLastRecv=now;
-  mpShowBubble(e.glyph,false,true);
+  if(!mpEmoteMuted())mpShowBubble(e.glyph,false,true);
   mpChatPush({mine:false,glyph:e.glyph});
 }
 function mpReceiveChat(id){
-  if(mpEmoteMuted())return;
   const now=Date.now();
   if(now-_emoteLastRecv<MP_EMOTE_MIN_GAP)return;
   const t=MP_CHAT_BY_ID[id];
   if(!t)return;
   _emoteLastRecv=now;
-  mpShowBubble(t,false);
+  // La sourdine ne coupe QUE la bulle : le message entre dans le fil et
+  // allume la pastille dans tous les cas, sinon on ne saurait pas qu'on a été
+  // salué (voir mpEmoteMuted).
+  if(!mpEmoteMuted())mpShowBubble(t,false);
   mpChatPush({mine:false,text:t});
 }
 
@@ -1125,8 +1132,7 @@ function mpRenderChatLog(){
   const log=document.getElementById('chat-log');
   if(!log)return;
   if(!_chatLog.length){
-    log.innerHTML='<div class="chat-empty">Choisissez un pictogramme ou une phrase.<br>'+
-      'Rien ne s’écrit à la main : c’est ce qui garantit qu’aucune insulte ne peut arriver ici.</div>';
+    log.innerHTML='<div class="chat-empty">Choisissez un pictogramme ou une phrase.</div>';
     return;
   }
   log.innerHTML=_chatLog.map(e=>

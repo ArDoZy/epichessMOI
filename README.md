@@ -528,6 +528,7 @@ plateau en 6 : les effets se glissent entre.)
 |---|---|---|
 | Prise en main | un halo qui respire **sous** la pièce | La case sélectionnée portait un liseré posé *sur* elle : c'est la case qu'on voyait choisie, jamais la pièce. Une onde partait aussi sur chaque case jouable — retirée : un effet qui se déclenche à chaque geste doit être **plus** discret que les autres, et les pastilles pulsent déjà. |
 | Coup joué | une traînée du départ vers l'arrivée, teintée de la **classe** de la pièce | D'où ça vient. Sur 64 cases, un coup joué à l'autre bout de l'écran passait inaperçu — le premier reproche d'une partie en ligne. |
+| Coup joué (suite) | un **sillage de particules** semées le long du chemin, retardées à proportion de leur position (`fxDust`) | La traînée dit le TRAJET et s'oublie aussitôt tracée ; les particules restent une seconde après le passage, et disent QUI est passé — un sillage violet pour un Sorcier, rouge pour une Brute. Elles naissent au fur et à mesure que la pièce les dépasse, jamais d'un bloc. |
 | Prise | noyau + anneaux + éclats projetés, dimensionnés par `sfxCaptureForce()` | Ce qui vient d'être brisé, et **combien ça valait**. |
 | Prise majeure (force > 0,72) | un voile d'ardeur sur tout le plateau | Le pendant visuel du ducking de la musique. |
 | Pièce qui disparaît | une bouffée de poussière et des motes qui montent | Posé par `syncPieces` pour **toute** pièce qui quitte le plateau — donc aussi les victimes collatérales du Typhon, sans que le module connaisse un seul pouvoir. |
@@ -555,8 +556,9 @@ entier fonctionnel, en plus terne — tous les appels passent par un
 `typeof …==='function'`.
 
 **Trois interrupteurs**, dans cet ordre : `prefers-reduced-motion` (plus un
-seul nœud posé), le curseur **« Effets »** du panneau de réglages (il pilote le
-nombre de particules ; à 0, rien), et un plafond de nœuds vivants
+seul nœud posé), l'**interrupteur « Effets »** du panneau de réglages
+(allumé : tout ; éteint : plus un seul nœud, ni ici ni sur le halo de
+l'ouverture de coffre — voir `pbBloomOn`, `js/chest-break.js`), et un plafond de nœuds vivants
 (`FX_MAX_LIVE`) — une rafale de prises en partie rapide ne doit pas laisser
 trois cents éléments animés à l'écran.
 
@@ -565,8 +567,17 @@ les deux couches ne portent **ni `z-index` ni `opacity`**. L'un comme l'autre
 ouvre un contexte d'empilement, et `mix-blend-mode` ne se fond alors plus que
 dans un groupe vide : le noir des planches dessinées y resterait du noir, en
 gros rectangle sur le plateau. La profondeur est donc portée par les effets
-eux-mêmes, un cran plus bas. C'est aussi pourquoi le curseur « Effets » enlève
-des étincelles au lieu de les rendre pâles.
+eux-mêmes, un cran plus bas. C'est aussi pourquoi l'interrupteur « Effets »
+enlève les étincelles au lieu de les rendre pâles.
+
+**Le réglage a été un CURSEUR de 0 à 1, et c'était une question à laquelle
+personne n'a de réponse** : entre « 0,35 » et « 0,60 » d'effets, il n'y a rien
+à choisir — il y a un curseur à traîner jusqu'à ce que ça ait l'air bien. Il
+n'y a que deux positions utiles, tout ou rien, et la seconde est celle d'un
+téléphone qui peine ou de quelqu'un que les étincelles gênent pour lire le
+plateau. C'est aussi pour ça qu'il est remonté **juste sous « Compte »** :
+c'est le réglage qu'on vient chercher quand le jeu rame, et on ne le cherche
+pas sous deux curseurs de volume.
 
 Le banc d'essai **`tools/combat-fx-preview.html`** joue chaque effet sur
 commande, sur un plateau nu, avec le vrai module et le vrai CSS : c'est là
@@ -723,6 +734,16 @@ nous revenir. Il part par un `setTimeout(…,0)` et non dans l'appel lui-même :
 même instantané d'historique. Un tour de boucle d'événements les sépare, et ne
 se voit pas.
 
+**La sélection rattrapée en cours de route.** On désigne une pièce pour
+préparer son coup, et l'adversaire joue **avant** qu'on ait choisi la case
+d'arrivée. La sélection violette restait alors à l'écran alors que c'était
+devenu notre tour : elle proposait des cases théoriques qu'aucun clic ne
+jouait, et plus rien ne la refermait — plateau mort, sur son propre trait.
+Le geste n'était pourtant pas perdu : il disait « c'est cette pièce que je
+veux jouer », et c'est vrai maintenant plus encore qu'avant. Elle devient donc
+une sélection **ordinaire** — les vraies cases légales, en vert
+(`premoveSettleSelection`), et la partie reprend là où le joueur la croyait.
+
 **La bataille scriptée du tutoriel en est exclue** : elle attend un coup précis
 à un moment précis, et un coup parti tout seul lui passerait sous le nez.
 
@@ -752,6 +773,28 @@ Les deux portent sur `.gc-art` et jamais sur `.gc-piece`, dont le `transform`
 tient la position — c'est la règle de la couche des pièces, et la seule chose
 à ne pas casser ici.
 
+### 1 sexies quater. Les prises, et la place qu'elles prennent
+
+Elles étaient posées dans l'ordre où elles tombaient, une par une, chacune
+prenant sa largeur. Deux pertes sèches :
+
+* **L'ordre ne disait rien.** La prise la plus lourde de la partie — la seule
+  qu'on cherche des yeux — pouvait se trouver n'importe où dans la file, entre
+  deux pions. Elles sont rangées par valeur **décroissante** : ce qui compte
+  est à gauche, à la même place à chaque partie.
+* **Huit pions prenaient la largeur de huit pièces**, pour une information qui
+  tient en un dessin et un nombre. Sur le bandeau d'un téléphone, les
+  dernières prises finissaient sous la pendule, invisibles. Les exemplaires
+  d'une même créature se **chevauchent** donc, en pile : chacun ne coûte plus
+  qu'un tiers de largeur, et on voit qu'il y en a plusieurs sans avoir à les
+  compter. Au-delà de **trois**, la pile cesse de grandir et un « ×N » prend
+  le relais — trois formes empilées se distinguent encore, huit ne se
+  distinguent plus.
+
+Le décalage se fait par marge **négative** et non par position absolue : la
+rangée reste une simple ligne de flex, qui se mesure toute seule
+(`drawCaptured`, `js/game-render.js` ; `.cap-stack` dans `css/style.css`).
+
 ### 1 sexies bis. La zone sous le plateau (`[GAME-PANEL]`)
 
 **Le journal des coups a été une feuille ancrée en bas d'écran**, dépliable
@@ -768,10 +811,10 @@ Ce qui vit maintenant entre le bandeau du joueur (donc sous sa pendule) et
 
 | Élément | Où | Pourquoi là |
 |---|---|---|
-| Barre de statut | en haut de la zone | Elle ne dit plus qu'**une** chose à la fois : « Échec ! », ou à qui de jouer. Elle a porté « Échec ! Au tour de votre adversaire » — la plus urgente des deux informations diluée dans la plus banale. |
+| Barre de statut | **au-dessus** de la zone, et non dedans | Elle ne dit plus qu'**une** chose à la fois : « Échec ! », ou à qui de jouer. Elle a porté « Échec ! Au tour de votre adversaire » — la plus urgente des deux informations diluée dans la plus banale. Elle a aussi vécu DANS la zone, donc **sous** les panneaux : « À votre tour », « Au tour de votre adversaire », « Reconnecté à la partie » disparaissaient au moment précis où l'on ouvre le journal ou la discussion — c'est-à-dire pendant qu'on attend, quand ces phrases sont les seules à dire ce qui se passe. Elle est maintenant sœur de la zone, jamais recouverte. |
 | « Annuler coup » | dessous | Masqué **en ligne** (l'annulation serait unilatérale) et **partie finie** (il n'y a plus rien à reprendre : le résultat est enregistré, l'ELO compté). Les deux conditions sont décidées au même endroit, `updateStatus` — elles ont vécu à deux endroits, et la seconde effaçait la première à chaque coup. |
 | « Historique » à gauche, « Chat » à droite | juste au-dessus d'« Abandonner » | Deux natures d'action opposées — se relire, parler —, deux cibles qu'on ne doit jamais confondre au pouce en pleine partie. |
-| « Abandonner » / « Quitter » | tout en bas, seul sur sa ligne | C'est la place d'une sortie. |
+| « Abandonner » / « Quitter » | **collé au bas de l'écran**, seul sur sa ligne | C'est la place d'une sortie. Sur un téléphone haut — où c'est la LARGEUR qui borne le plateau — la colonne s'arrêtait au bas de son contenu et le bouton flottait au milieu de l'écran, avec du vide en dessous. La colonne fait maintenant au moins `100dvh` et le bouton porte `margin-top:auto` : le vide se range **au-dessus** de lui. |
 
 **Le panneau se pose sur cette zone et sur elle seule** (`position:absolute;
 inset:0`) : il recouvre l'indication de tour, « Annuler coup » et les deux
@@ -785,6 +828,24 @@ sur les écrans courts : c'est `--game-chrome`, mesurée à l'exécution par
 `gameSyncChrome()` (`js/game-render.js`) et suivie par un `ResizeObserver`. Les
 deux moitiés d'un même geste — le panneau prend la place qu'il lui faut, le
 plateau la lui laisse, et rien ne sort de l'écran.
+
+**`gameSyncChrome` somme des HAUTEURS, jamais une distance**, et c'est la
+condition pour que « Abandonner » puisse être collé en bas. Elle mesurait
+l'écart entre le bas du plateau et le bas du bouton ; depuis que le vide se
+range entre les deux, cet écart dépend de la taille du plateau — plus le
+plateau rétrécit, plus le vide grandit, plus le plateau rétrécit, jusqu'au
+plancher de 200 px. Elle n'additionne donc que ce qui **occupe** réellement de
+la place : la hauteur propre de chaque élément sous le plateau, les écarts de
+la colonne, le rembourrage du bas. Le vide est précisément ce qu'on cherche à
+laisser.
+
+**Un piège de cascade, dans la même zone** : la règle de base
+`.game-under{flex:1}` est écrite **plus bas** dans `style.css` que la règle
+mobile qui la remet à `flex:0 0 auto`, et à poids égal c'est la dernière qui
+gagne. Tant que la colonne mobile n'avait pas de hauteur minimale, il n'y
+avait pas d'espace libre à distribuer et personne ne s'en apercevait ; depuis
+qu'elle fait `100dvh`, `.game-under` avalait tout le vide — près de 400 px. La
+règle mobile est donc écrite `.game-wrap .game-under`, d'un cran plus précise.
 
 Deux conséquences dans le détail :
 
@@ -856,6 +917,16 @@ Deux garde-fous, tous deux nécessaires : une **sourdine** (sans elle, un
 joueur qui subit un spam n'a que l'abandon comme recours) et un **débit
 maximal des deux côtés** — on limite l'envoi *et* la réception, parce qu'un
 client modifié n'a que faire de sa propre limite.
+
+**La sourdine ne coupe que la BULLE, et elle est coupée par défaut.** Elle a
+coupé la *réception* entière : le message n'entrait pas dans le fil, la
+pastille du bouton ne s'allumait pas, et on ne savait même pas qu'on avait été
+salué. Or ce qui dérange en pleine réflexion n'est pas le message, c'est la
+bulle posée sur le plateau — un message qui attend dans un panneau fermé ne
+dérange personne. Donc : pas de bulle tant qu'on ne l'a pas demandée, mais le
+fil et la **pastille rouge** du bouton « Chat » marchent toujours. Le débit
+maximal, lui, s'applique dans tous les cas : c'est une protection contre un
+client modifié, pas un confort d'affichage.
 
 ⚠️ Les pictogrammes hors du plan de base s'écrivent `\u{1F62C}` et **pas**
 `ὢC` : un `\u` ne prend que quatre chiffres, et la seconde forme produit

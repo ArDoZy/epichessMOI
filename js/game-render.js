@@ -583,10 +583,37 @@ function renderClocks(gs){
 function gameSyncChrome(){
   const board=document.getElementById('game-board');
   const btns=document.querySelector('.game-btns');
-  if(!board||!btns)return;
+  const wrap=document.querySelector('.game-wrap');
+  const main=document.querySelector('.game-main');
+  if(!board||!btns||!wrap||!main)return;
   const b=board.getBoundingClientRect();
   if(b.height<=0)return;                      // la partie n'est pas à l'écran
-  const below=btns.getBoundingClientRect().bottom-b.bottom;
+  // ON MESURE DES HAUTEURS, PLUS UNE DISTANCE. « Abandonner » est collé au
+  // bas de l'écran (margin-top:auto) : entre la zone sous le plateau et lui,
+  // il y a désormais du VIDE, dont la taille dépend de celle du plateau. Le
+  // mesurer comme un encombrement rendait le calcul récursif — plus le
+  // plateau rétrécissait, plus le vide grandissait, plus le plateau
+  // rétrécissait, jusqu'au plancher de 200 px.
+  //
+  // Ce qui suit ne somme donc que ce qui OCCUPE réellement de la place : la
+  // hauteur propre de chaque élément sous le plateau, les écarts de la
+  // colonne, et le rembourrage du bas. Le vide, lui, est justement ce qu'on
+  // cherche à laisser.
+  const cs=getComputedStyle(wrap);
+  const gap=parseFloat(cs.rowGap||cs.gap)||0;
+  const padB=parseFloat(cs.paddingBottom)||0;
+  const m=main.getBoundingClientRect();
+  let below=Math.max(0,m.bottom-b.bottom);    // repères de colonnes, marges internes
+  let n=0;
+  for(const el of [document.getElementById('human-player-bar'),
+                   document.getElementById('game-status'),
+                   document.getElementById('game-under'),
+                   btns]){
+    if(!el||el.offsetParent===null)continue;
+    below+=el.getBoundingClientRect().height;
+    n++;
+  }
+  below+=gap*n+padB;
   const chrome=Math.round(b.top+below+12);
   if(chrome>0&&chrome<3000)
     document.documentElement.style.setProperty('--game-chrome',chrome+'px');
@@ -624,11 +651,54 @@ function updateCaptured(gs){
   const takenByMe=pc==='w'?gs.capturedB:gs.capturedW;
   const takenByOpp=pc==='w'?gs.capturedW:gs.capturedB;
   const val=list=>list.reduce((t,x)=>t+(pieceMaterialValue(x.id)||0),0);
-  const draw=list=>list.map(x=>pieceIcon(x.id,x.color,1.3)).join('');
   const adv=val(takenByMe)-val(takenByOpp);
-  meEl.innerHTML=draw(takenByMe)+(adv>0?'<span class="gp-adv">+'+adv+'</span>':'');
-  oppEl.innerHTML=draw(takenByOpp)+(adv<0?'<span class="gp-adv">+'+(-adv)+'</span>':'');
+  meEl.innerHTML=drawCaptured(takenByMe)+(adv>0?'<span class="gp-adv">+'+adv+'</span>':'');
+  oppEl.innerHTML=drawCaptured(takenByOpp)+(adv<0?'<span class="gp-adv">+'+(-adv)+'</span>':'');
 }
+// LES PRISES SE LISENT EN UN COUP D'ŒIL, ET TIENNENT DANS LEUR PLACE.
+//
+// Elles étaient posées dans l'ordre où elles tombaient, une par une, chacune
+// prenant sa largeur. Deux conséquences, et les deux sont des pertes sèches :
+//
+// · L'ORDRE NE DISAIT RIEN. La prise la plus lourde de la partie — la seule
+//   qu'on cherche des yeux — pouvait se trouver n'importe où dans la file,
+//   entre deux pions. On range donc par valeur DÉCROISSANTE : ce qui compte
+//   est à gauche, à la même place à chaque partie.
+// · HUIT PIONS PRENAIENT LA LARGEUR DE HUIT PIÈCES, pour une information qui
+//   tient en un dessin et un nombre. Sur un bandeau de téléphone, les
+//   dernières prises finissaient sous la pendule, invisibles. Les exemplaires
+//   d'une même créature se CHEVAUCHENT donc, en pile : on voit qu'il y en a
+//   plusieurs sans avoir à compter, et la pile coûte un tiers de largeur par
+//   exemplaire au lieu d'une pleine. Au-delà de trois, la pile cesse de
+//   grandir et un « ×N » prend le relais — trois formes empilées se
+//   distinguent encore, huit ne se distinguent plus.
+const CAP_STACK_MAX=3;
+function drawCaptured(list){
+  if(!list||!list.length)return '';
+  // Regroupement par créature ET par couleur : deux camps peuvent aligner la
+  // même pièce, et ce ne sont pas les mêmes prises.
+  const groups=new Map();
+  for(const x of list){
+    const k=x.id+':'+x.color;
+    if(!groups.has(k))groups.set(k,{id:x.id,color:x.color,n:0});
+    groups.get(k).n++;
+  }
+  const arr=[...groups.values()];
+  // Le tri est STABLE à valeur égale (identifiant), sinon deux rendus
+  // successifs pourraient réordonner la même rangée sous les yeux du joueur.
+  arr.sort((a,b)=>{
+    const d=pieceMaterialValue(b.id)-pieceMaterialValue(a.id);
+    return d!==0?d:(a.id<b.id?-1:a.id>b.id?1:0);
+  });
+  return arr.map(g=>{
+    const shown=Math.min(g.n,CAP_STACK_MAX);
+    let h='<span class="cap-stack'+(g.n>1?' cap-multi':'')+'">';
+    for(let i=0;i<shown;i++)h+=pieceIcon(g.id,g.color,1.3);
+    if(g.n>CAP_STACK_MAX)h+='<span class="cap-n">×'+g.n+'</span>';
+    return h+'</span>';
+  }).join('');
+}
+
 // Valeur « points d'armee » (celle du builder), pas la valeur interne de
 // l'IA : c'est celle que le joueur connait, affichee sur chaque carte.
 function pieceMaterialValue(id){
@@ -896,13 +966,49 @@ function premoveClick(r,c,gs){
   if(cell&&cell.color===playerCol){premoveSelect(r,c,gs);return;}
   paintBoardCells(gs);
 }
+// LA SÉLECTION PRISE EN COURS DE ROUTE. On désigne une pièce pour préparer un
+// prémouvement, et l'adversaire joue AVANT qu'on ait choisi la case d'arrivée.
+// La sélection violette restait alors à l'écran alors que c'était devenu notre
+// tour : elle proposait les cases théoriques de la pièce, aucun clic ne les
+// jouait, et plus rien ne la refermait — le joueur était bloqué, plateau
+// mort, sur son propre trait.
+//
+// Le geste n'était pas perdu pour autant : il disait « c'est cette pièce que
+// je veux jouer », et c'est vrai maintenant plus encore qu'avant. La
+// sélection devient donc une sélection ORDINAIRE — les vraies cases légales,
+// en vert — et la partie reprend exactement là où le joueur la croyait.
+function premoveSettleSelection(gs){
+  if(!gs||!gs.pmSel)return;
+  const sel=gs.pmSel;
+  if(gs.gameOver||gs.turn!==(gs.playerColor||'w')){
+    // Toujours le tour d'en face : la sélection reste ce qu'elle est.
+    if(gs.gameOver)premoveDeselect(gs);
+    return;
+  }
+  premoveDeselect(gs);
+  const p=gs.board[sel.r]&&gs.board[sel.r][sel.c];
+  if(!p||p.color!==(gs.playerColor||'w')){
+    // La pièce vient d'être prise : il n'y a plus rien à sélectionner.
+    gs.selected=null;gs.legalMoves=[];
+    paintBoardCells(gs);
+    return;
+  }
+  gs.selected={r:sel.r,c:sel.c};
+  gs.legalMoves=getLegalMoves(gs.board,sel.r,sel.c,gs);
+  // postMoveUpdate a DÉJÀ rendu la partie avant de nous appeler : sans ce
+  // repeint, la sélection changerait de nature sans changer de couleur.
+  paintBoardCells(gs);
+}
+
 // L'EXÉCUTION. Appelée par postMoveUpdate (js/rules-engine.js) à chaque
 // changement de trait : c'est le seul endroit qui voit tous les coups, celui
 // de l'IA comme celui d'un adversaire en ligne.
 //
 // Légal → joué tout de suite. Illégal → pas joué, et rien de plus.
 function premoveRun(gs){
-  if(!gs||!gs.premove)return;
+  if(!gs)return;
+  premoveSettleSelection(gs);
+  if(!gs.premove)return;
   const pm=gs.premove;
   if(gs.gameOver){premoveCancel(gs);return;}
   if(gs.turn!==(gs.playerColor||'w')||gs.pendingPromo)return;  // pas encore à nous

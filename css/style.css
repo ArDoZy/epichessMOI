@@ -902,6 +902,18 @@ body:not(.main-menu) #settings-panel{display:none}
    haut se rate au doigt une fois sur deux : on garde le rail fin (c'est ce
    qu'on veut voir) en le dessinant dans un élément haut et transparent
    (background-clip:content-box + rembourrage vertical). */
+/* L'INTERRUPTEUR DES EFFETS. Deux états, et ils se lisent à un mètre : le
+   bouton s'allume à la couleur de l'action quand les effets sont là, et
+   retombe à la couleur d'un élément éteint quand ils ne le sont pas. La
+   pastille glisse — c'est la seule chose qui bouge, donc c'est elle qu'on
+   regarde. 44 px de cible : on ne rate pas un interrupteur. */
+.sp-switch{position:relative;width:48px;height:28px;flex:none;padding:0;cursor:pointer;
+  border-radius:99px;border:1px solid var(--border2);background:var(--bg2);
+  transition:background .18s,border-color .18s}
+.sp-switch .sp-knob{position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;
+  background:var(--muted);transition:transform .18s cubic-bezier(.3,.8,.4,1),background .18s}
+.sp-switch[aria-checked="true"]{background:var(--accent-bg);border-color:var(--accent2)}
+.sp-switch[aria-checked="true"] .sp-knob{transform:translateX(20px);background:var(--accent2)}
 .sp-slider{-webkit-appearance:none;appearance:none;width:100px;height:36px;
   padding:16px 0;box-sizing:border-box;background:var(--border2);
   background-clip:content-box;border-radius:2px;outline:none;cursor:pointer}
@@ -1060,10 +1072,24 @@ body:not(.main-menu) #settings-panel{display:none}
 /* Pièces prises par ce joueur : sur leur propre ligne (le bandeau est
    désormais étroit), petites, et bornées en hauteur pour qu'une avalanche de
    captures ne fasse pas grandir le bandeau. */
-.gp-taken{flex-basis:100%;min-width:0;display:flex;flex-wrap:wrap;gap:1px;align-items:center;
+.gp-taken{flex-basis:100%;min-width:0;display:flex;flex-wrap:wrap;gap:3px;align-items:center;
   max-height:44px;overflow:hidden}
 .gp-taken:empty{display:none}
 .gp-taken .pc-icon{width:18px;height:18px}
+/* LA PILE. Les exemplaires d'une même créature se chevauchent : chacun ne
+   coûte plus qu'un tiers de largeur, et on voit qu'il y en a plusieurs sans
+   avoir à les compter. Le décalage se fait par marge NÉGATIVE et non par
+   position absolue — la rangée reste une simple ligne de flex, qui se mesure
+   toute seule. Le premier de la pile est celui du dessus : la pile s'enfonce
+   vers la droite, dans le sens de lecture. */
+.cap-stack{display:inline-flex;align-items:center;flex:none}
+.cap-stack .pc-icon+.pc-icon{margin-left:-66%}
+/* Les exemplaires du DESSOUS s'assombrissent d'un cran : sans ça, trois
+   contours identiques superposés se lisent comme un seul dessin flou. */
+.cap-stack.cap-multi .pc-icon{filter:drop-shadow(-1px 0 0 rgba(0,0,0,.55))}
+/* Au-delà de trois, la pile cesse de grandir : le nombre prend le relais. */
+.cap-n{font-family:var(--f-ui);font-size:10px;font-weight:800;color:var(--muted);
+  margin-left:2px;letter-spacing:0;white-space:nowrap}
 .gp-adv{font-size:12px;font-weight:700;color:var(--gold);margin-left:4px;white-space:nowrap}
 
 /* LA PENDULE : c'est l'information la plus consultée d'une partie chronométrée,
@@ -1211,8 +1237,19 @@ body:not(.main-menu) #settings-panel{display:none}
   z-index:1;pointer-events:none;box-shadow:0 0 10px rgba(47,177,151,.75);
   animation:availPulse 1.7s ease-in-out infinite}
 @keyframes availPulse{0%,100%{transform:scale(1);opacity:.85}50%{transform:scale(1.18);opacity:1}}
-.gc.avail-cap{box-shadow:inset 0 0 0 4px rgba(217,85,47,.9);animation:capPulse 1.2s ease-in-out infinite}
-@keyframes capPulse{0%,100%{box-shadow:inset 0 0 0 4px rgba(217,85,47,.65)}50%{box-shadow:inset 0 0 0 4px rgba(217,85,47,1)}}
+/* LA CASE OÙ L'ON PEUT PRENDRE. Le liseré battait en animant `box-shadow` :
+   une propriété qui REPEINT la case à chaque image, sur autant de cases qu'il
+   y a de prises possibles, en boucle infinie tant qu'une pièce est
+   sélectionnée. C'est maintenant l'OPACITÉ d'un calque qui bat — composité,
+   donc gratuit — et le liseré, lui, ne bouge plus.
+   Le calque est ::before, libre ici : la pastille de déplacement ne se pose
+   que sur `.avail` (une case est jouable OU prenable, jamais les deux), et
+   les deux autres usages de ::before excluent explicitement `.avail-cap`. */
+.gc.avail-cap{box-shadow:inset 0 0 0 4px rgba(217,85,47,.72)}
+.gc.avail-cap::before{content:'';position:absolute;inset:0;pointer-events:none;z-index:1;
+  box-shadow:inset 0 0 0 4px rgba(217,85,47,1);
+  animation:capPulse 1.2s ease-in-out infinite}
+@keyframes capPulse{0%,100%{opacity:0}50%{opacity:1}}
 /* LE DERNIER COUP EST DIRECTIONNEL. Départ et arrivée portaient le même
    lavis vert : sur bois le mélange tournait terne, et surtout deux cases
    identiquement teintées ne disent pas d'où vient la pièce. Le départ est
@@ -1244,7 +1281,11 @@ body:not(.main-menu) #settings-panel{display:none}
   transition:transform .2s cubic-bezier(.3,.85,.4,1)}
 /* Le temps de son glissement, une pièce passe au-dessus des autres : sinon,
    en capturant, elle disparaît sous sa victime au lieu de lui tomber dessus. */
-.gc-piece.gc-moving{z-index:3}
+/* `will-change` UNIQUEMENT pendant le glissement : posé en permanence sur
+   .gc-piece, il donnerait sa propre couche GPU à chacune des 32 pièces, ce
+   qui coûte plus de mémoire vidéo qu'il n'en fait gagner. Il est retiré en
+   même temps que la classe (BOARD_MOVE_MS+40, js/game-render.js). */
+.gc-piece.gc-moving{z-index:3;will-change:transform}
 .gc-piece.gc-dying{z-index:1}
 
 /* Le DESSIN : 86 % de la case, comme avant. */
@@ -2288,11 +2329,36 @@ body.light .pmv-dark{background:#c3bdae}
   /* Elle DÉFERLE (0→18%), puis elle TIENT (18→55%) : la matière en fusion
      reste lisible une demi-seconde à luminosité presque normale. Ce n'est
      qu'après qu'elle s'emballe vers la brûlure. */
-  0%  {transform:scale(1.10);filter:brightness(1) saturate(1)}
-  18% {transform:scale(1.42);filter:brightness(1.12) saturate(1.08)}
-  55% {transform:scale(1.50);filter:brightness(1.5) saturate(1.2)}
-  100%{transform:scale(1.72);filter:brightness(6) saturate(1.35)}
+  /* AUCUN `filter` ICI. La luminosité montait de 1 à 6 sur cette
+     animation-là : un filtre animé sur une image PLEIN ÉCRAN qu'on est en
+     train de mettre à l'échelle oblige le navigateur à refiltrer toute
+     l'image à chaque image — c'est le pic de coût de tout le jeu, et c'est
+     exactement là que l'ouverture de coffre saccadait sur un téléphone
+     modeste. La brûlure est maintenant un CALQUE BLANC dont l'opacité monte
+     (voir juste en dessous) : même montée vers le blanc, à la charge d'un
+     compositeur au lieu d'un filtre. */
+  0%  {transform:scale(1.10)}
+  18% {transform:scale(1.42)}
+  55% {transform:scale(1.50)}
+  100%{transform:scale(1.72)}
 }
+/* LA BRÛLURE. Le blanc qui monte sur la scène elle-même — donc sous le masque
+   ovale, comme l'image : c'est ce qui la distingue du voile plein écran
+   (.pb-white), qui vient après et emporte le reste. */
+.pb-scene.blast::after{content:'';position:absolute;inset:0;pointer-events:none;
+  background:#fff;mix-blend-mode:screen;opacity:0;
+  animation:pbBurn var(--pb-bldur,440ms) linear forwards}
+@keyframes pbBurn{0%{opacity:0} 18%{opacity:.06} 55%{opacity:.28} 100%{opacity:.92}}
+/* PENDANT L'EMBALLEMENT, LA TEINTE PASSE AU FILTRE BON MARCHÉ. Les planches
+   portent un filtre SVG (`url()`, voir plus haut) qui ne fait tourner la
+   teinte que sur les pixels de lumière : superbe à l'arrêt, ruineux sur une
+   image plein écran qu'on met à l'échelle image par image — le filtre est
+   recalculé à chaque taille. Le temps de la déflagration, on retombe sur la
+   rotation globale, qui n'est qu'une matrice de couleur : le marbre y prend
+   une teinte qu'il ne devrait pas, mais il est de toute façon en train de
+   disparaître dans le blanc. */
+.pb-scene.blast .pb-frame{
+  filter:brightness(var(--pb-lum,1)) hue-rotate(var(--pb-rot,0deg)) saturate(var(--pb-sat,1))}
 
 /* LE VOILE BLANC. Il monte très vite, tient un court instant — l'écran est
    alors entièrement lumineux, il ne montre plus rien — puis redescend. Le
@@ -3235,14 +3301,27 @@ body.light .gp-bar.gp-turn{background:linear-gradient(90deg,var(--accent-bg),var
      .game-wrap : on peut alors les ordonner autour du plateau, dans l'ordre
      spatial d'un échiquier réel — l'adverse au-dessus, le sien en dessous.
      Coût : 88 px, contre ~600 px de défilement auparavant. */
-  .game-wrap{display:flex;flex-direction:column;height:auto;overflow:visible;
+  /* LA COLONNE FAIT AU MOINS LA HAUTEUR DE L'ÉCRAN. Sans ça, sur un
+     téléphone haut — où c'est la LARGEUR qui borne le plateau — la colonne
+     s'arrêtait au bas de son contenu et « Abandonner » flottait au milieu de
+     l'écran, avec du vide en dessous. Le bouton le plus définitif du jeu doit
+     être à la place d'une sortie : tout en bas, toujours au même endroit.
+     Le vide va donc SOUS lui (margin-top:auto plus bas), et gameSyncChrome
+     (js/game-render.js) ne le compte pas comme un encombrement — sans quoi le
+     plateau rétrécirait pour laisser de la place à du vide. */
+  .game-wrap{display:flex;flex-direction:column;min-height:100dvh;height:auto;overflow:visible;
     gap:8px;padding:calc(8px + var(--safe-t)) 10px calc(14px + var(--safe-b))}
   .game-side{display:contents}
   #ai-player-bar{order:1}
   .game-main{order:2}
   #human-player-bar{order:3}
-  .game-under{order:4}
-  .game-btns{order:5;margin-top:2px}
+  /* La barre de statut a quitté la zone des panneaux (voir index.html) : elle
+     est maintenant un élément de la colonne à part entière, juste sous le
+     bandeau du joueur — donc toujours lisible, journal ou discussion
+     ouverts. */
+  .status-bar{order:4}
+  .game-under{order:5}
+  .game-btns{order:6;margin-top:2px}
 
   /* Le plateau prend la largeur ; la hauteur lui est comptée à partir de ce
      que le reste occupe réellement (chrome + deux bandeaux + écarts +
@@ -3297,11 +3376,19 @@ body.light .gp-bar.gp-turn{background:linear-gradient(90deg,var(--accent-bg),var
   /* Même piège que .game-main : sous `display:contents`, .game-under devient
      un enfant direct de la colonne, où `flex:1` vaudrait `flex-basis:0` et la
      ferait retomber à zéro. Elle garde sa hauteur naturelle — celle de son
-     contenu, ou celle que lui impose le panneau ouvert. */
-  .game-under{flex:0 0 auto}
-  /* `margin-top:auto` poussait « Abandonner » tout en bas de la colonne ; en
-     colonne mobile il est déjà le dernier élément. */
-  .game-btns{margin-top:2px}
+     contenu, ou celle que lui impose le panneau ouvert.
+     LE SÉLECTEUR EST VOLONTAIREMENT PLUS PRÉCIS QUE `.game-under` : la règle
+     de base (`flex:1`, section [GAME-PANEL]) est écrite PLUS BAS dans ce
+     fichier, et à égalité de poids c'est la dernière qui gagne. Tant que la
+     colonne mobile n'avait pas de hauteur minimale, il n'y avait pas d'espace
+     libre à distribuer et personne ne s'en apercevait ; depuis qu'elle fait
+     100dvh, .game-under avalait TOUT le vide — près de 400 px — et le plateau
+     rétrécissait jusqu'à son plancher pour lui laisser la place. */
+  .game-wrap .game-under{flex:0 0 auto}
+  /* `margin-top:auto` colle « Abandonner » au bas de l'écran : la colonne
+     fait au moins 100dvh (voir plus haut), le vide se range donc AU-DESSUS du
+     bouton et non en dessous de lui. */
+  .game-btns{margin-top:auto;padding-top:2px}
   .game-under,.status-bar{width:100%}
 }
 
@@ -3730,12 +3817,19 @@ body.cube-active:not(.nav-overlay) .notif-host{bottom:92px}
    L'élévation est en POURCENTAGE de la pièce : elle suit la taille du
    plateau sans une seule mesure en pixels, comme tout le reste de la
    couche. */
+/* AUCUN `filter` ANIMÉ ICI, ET C'EST LA RÈGLE LA PLUS IMPORTANTE DE CETTE
+   SECTION. L'ombre portée grossissait avec la hauteur — joli, et payé au prix
+   fort : `filter` sur un SVG force un re-rendu complet de la pièce à CHAQUE
+   image, hors compositeur. Sur un téléphone d'entrée de gamme, le saut
+   sautait littéralement des images. `transform` seul est composité, donc
+   gratuit ; l'élévation se lit très bien à l'échelle, et l'ombre statique de
+   .gc-art suffit à poser la pièce. */
 @keyframes gcLeap{
-  0%  {transform:translateY(0)     scale(1);       filter:drop-shadow(0 3px 3px rgba(0,0,0,.5))}
-  29% {transform:translateY(-26%)  scale(1.13);    filter:drop-shadow(0 15px 9px rgba(0,0,0,.4))}
-  59% {transform:translateY(0)     scale(1);       filter:drop-shadow(0 3px 3px rgba(0,0,0,.5))}
-  74% {transform:translateY(0)     scale(1.08,.9); filter:drop-shadow(0 2px 2px rgba(0,0,0,.55))}
-  100%{transform:translateY(0)     scale(1);       filter:drop-shadow(0 3px 3px rgba(0,0,0,.5))}
+  0%  {transform:translateY(0)     scale(1)}
+  29% {transform:translateY(-26%)  scale(1.13)}
+  59% {transform:translateY(0)     scale(1)}
+  74% {transform:translateY(0)     scale(1.08,.9)}
+  100%{transform:translateY(0)     scale(1)}
 }
 .gc-piece .gc-art.gc-leap{animation:gcLeap .34s cubic-bezier(.4,.05,.5,.95) both}
 
@@ -3937,6 +4031,32 @@ body.cube-active:not(.nav-overlay) .notif-host{bottom:92px}
   55%{opacity:.7}
   100%{opacity:0;transform:translateY(-50%) rotate(var(--rot)) scaleX(1) scaleY(.35)}
 }
+
+/* --- LE SILLAGE : CE QUE LA PIÈCE SÈME DERRIÈRE ELLE ------------ */
+/* La traînée dit le TRAJET, en une image, et s'oublie aussitôt tracée. Les
+   particules restent une seconde après le passage : elles sont semées le long
+   du chemin, chacune retardée à proportion de sa position (--del, posé par
+   fxDust dans js/combat-fx.js), si bien que la matière se détache au fur et à
+   mesure au lieu de s'allumer d'un bloc. La couleur est celle de la CLASSE,
+   comme partout ailleurs ici.
+
+   Le conteneur épouse le plateau et ne porte AUCUN style : chaque particule
+   est placée en % de plateau, donc rien à recalculer au redimensionnement. */
+.fx-dust{position:absolute;inset:0;pointer-events:none;mix-blend-mode:screen}
+/* Une particule : un point de lumière de --sz, centré sur son ancrage. Tout
+   est en transform et opacity — les deux seules propriétés qu'un compositeur
+   anime sans repeindre, et c'est ce qui rend le sillage gratuit sur un
+   téléphone d'entrée de gamme. */
+.fx-dot{position:absolute;width:var(--sz);height:var(--sz);margin:calc(var(--sz)/-2);
+  border-radius:50%;
+  background:radial-gradient(circle,#fff 0 18%,var(--fx-c) 55%,transparent 100%);
+  animation:fxDot .9s ease-out both;animation-delay:var(--del)}
+@keyframes fxDot{
+  0%  {opacity:0;transform:translate(0,0) scale(.4)}
+  14% {opacity:.95;transform:translate(0,0) scale(1)}
+  100%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(.5)}
+}
+@media(prefers-reduced-motion:reduce){.fx-dust{display:none}}
 
 /* --- LA POUSSIÈRE D'UNE PIÈCE QUI DISPARAÎT --------------------- */
 /* Posée pour TOUTE pièce qui quitte le plateau, quelle qu'en soit la cause :
