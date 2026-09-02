@@ -1331,29 +1331,40 @@ body:not(.main-menu) #settings-panel{display:none}
 .gc-piece.pc-cuirasse::before,
 .gc-piece.pc-dominant::before,
 .gc-piece.pc-warded::before{
-  content:'';position:absolute;left:50%;top:58%;
+  content:'';position:absolute;left:50%;top:72%;
   transform:translate(-50%,-50%);
   border-radius:50%;pointer-events:none;z-index:-1}
 
 /* CUIRASSE : un socle net et dense. C'est une armure — ça a un bord. */
+/* L'ALPHA A ÉTÉ RELEVÉ APRÈS COUP, ET LA RAISON MÉRITE D'ÊTRE ÉCRITE : ces
+   lueurs ont été réglées sur un plateau sombre, où elles se détachaient très
+   bien — et elles disparaissaient purement et simplement sur les plateaux de
+   BOIS CLAIR, qui sont la moitié du catalogue (assets/boards). Un or à 34 %
+   sur du chêne clair ne se voit pas. Le cerne sombre sous le halo est là pour
+   ça : il donne un bord à la lueur quel que soit le plateau dessous, au lieu
+   de compter sur un contraste que le joueur peut changer d'un clic. */
 .gc-piece.pc-cuirasse::before{
-  width:84%;height:30%;
-  background:radial-gradient(ellipse,rgba(193,154,69,.62) 0%,rgba(193,154,69,.26) 52%,transparent 76%);
-  box-shadow:0 0 10px rgba(193,154,69,.34)}
+  width:88%;height:32%;
+  background:radial-gradient(ellipse,rgba(193,154,69,.88) 0%,rgba(193,154,69,.4) 50%,transparent 74%);
+  box-shadow:0 0 9px 2px rgba(193,154,69,.45),0 0 0 1px rgba(58,38,8,.3)}
 
 /* DOMINATION : large et diffuse, elle déborde de la case. Le Grand Maître
    n'impose rien sur SA case, il impose à tout le plateau. */
+/* La Domination, elle, reste CENTRÉE sur la pièce et non posée à son socle :
+   les deux autres sont des lueurs au sol — une armure et une bénédiction se
+   portent —, tandis que celle-ci enveloppe le Grand Maître tout entier. */
 .gc-piece.pc-dominant::before{
-  width:126%;height:126%;
-  background:radial-gradient(circle,rgba(90,150,214,.30) 0%,rgba(90,150,214,.13) 46%,transparent 70%)}
+  top:50%;width:126%;height:126%;
+  background:radial-gradient(circle,rgba(90,150,214,.42) 0%,rgba(90,150,214,.17) 46%,transparent 70%)}
 
 /* FOI INÉBRANLABLE : la plus discrète des trois, et elle doit le rester. Ce
    n'est pas la pièce qui est puissante, c'est quelqu'un d'autre qui la
    couvre — et jusqu'à huit alliées peuvent la porter en même temps autour de
    deux Prêtres. Au-delà de cette densité, le plateau devient une guirlande. */
 .gc-piece.pc-warded::before{
-  width:66%;height:22%;
-  background:radial-gradient(ellipse,rgba(193,154,69,.34) 0%,transparent 72%)}
+  width:70%;height:24%;
+  background:radial-gradient(ellipse,rgba(193,154,69,.56) 0%,rgba(193,154,69,.2) 54%,transparent 76%);
+  box-shadow:0 0 6px 1px rgba(193,154,69,.3)}
 
 .drag-ghost{position:fixed;pointer-events:none;z-index:9999;width:64px;height:64px;
   transform:translate(-50%,-50%);opacity:.9;display:none;filter:drop-shadow(0 6px 8px rgba(0,0,0,.6))}

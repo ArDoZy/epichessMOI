@@ -47,6 +47,11 @@ function applyGardePierre(r,c,color,gs){
   // aussi celui de l'adversaire en ligne (mpApplyRemotePower) — les deux
   // plateaux doivent montrer la même chose.
   if(typeof fxPower==='function')fxPower('ancre',r,c);
+  // `choc` est la recette de « la masse qui rencontre la masse » (js/sfx.js) :
+  // c'est exactement ce qu'est un Garde de Pierre qui se referme sur lui-même.
+  // L'œil et l'oreille doivent dire la même chose — c'est la règle que suit
+  // déjà toute la table des effets (voir fxForce, js/combat-fx.js).
+  if(typeof playSound==='function')playSound('choc',{force:0.5});
   recordMove(gs.board[r][c],{r,c},false,gs,{r,c});gs.turn=opp(gs.turn);gs.turnCount++;
   postMoveUpdate(gs);
 }
@@ -1183,7 +1188,12 @@ function handleGameClick(r,c,gs){
     if(typeof fxPower==='function'&&selCell&&typeof isTruePawn==='function'&&isTruePawn(selCell)
        &&cell&&cell.pieceId==='preux-chevalier'&&cell.color!==selCell.color){
       const dir=selCell.color==='w'?-1:1;
-      if(r===gs.selected.r+dir&&Math.abs(c-gs.selected.c)===1)fxPower('cuirasse',r,c);
+      if(r===gs.selected.r+dir&&Math.abs(c-gs.selected.c)===1){
+        fxPower('cuirasse',r,c);
+        // `deny` est LA recette du coup refusé (js/sfx.js). Un refus qu'on
+        // voit sans l'entendre reste ambigu : on croit avoir mal cliqué.
+        if(typeof playSound==='function')playSound('deny');
+      }
     }
     gs.selected=null;gs.legalMoves=[];renderGame(gs);return;
   }

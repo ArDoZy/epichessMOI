@@ -529,9 +529,23 @@ function fxCreatureSignature(p,to,board,gs){
     // FOI INÉBRANLABLE : le dôme s'ouvre là où le Prêtre se pose. Les alliées
     // qu'il couvre portent leur liseré en permanence (.pc-warded,
     // js/game-render.js) : ici l'ÉVÉNEMENT, là-bas l'ÉTAT.
-    case 'pretre':
-      fxPower('foi',to.r,to.c);
+    // FOI INÉBRANLABLE : le dôme ne s'ouvre QUE s'il couvre quelqu'un. Posé à
+    // chacun des coups du Prêtre, cet effet d'une seconde pleine — le plus long
+    // du jeu — se déclencherait sur des déplacements qui ne protègent
+    // personne, et l'œil cesserait de le lire au troisième. C'est la leçon
+    // déjà tirée sur la prise en main (js/combat-fx.js) : un effet fréquent
+    // doit être plus discret, ou plus rare. Celui-ci sera plus rare.
+    case 'pretre':{
+      let couvre=false;
+      for(const[dr,dc] of[[1,1],[1,-1],[-1,1],[-1,-1]]){
+        const nr=to.r+dr,nc=to.c+dc;
+        if(!inB(nr,nc))continue;
+        const t=board[nr][nc];
+        if(t&&t.color===p.color&&!(t.isKing||t.type==='k')){couvre=true;break;}
+      }
+      if(couvre)fxPower('foi',to.r,to.c);
       break;
+    }
     // ESPADON : l'Empereur ne menace en cavalier que s'il menace VRAIMENT.
     // L'effet ne se déclenche donc pas à chacun de ses coups, mais au seul
     // instant où son pouvoir mord — sinon deux lames se croiseraient sur le
