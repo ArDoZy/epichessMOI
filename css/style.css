@@ -1077,28 +1077,6 @@ body:not(.main-menu) #settings-panel{display:none}
 .gp-clock.clock-low{color:#fff;background:rgba(217,85,47,.85);border-color:var(--ember);
   animation:clockLowPulse 1s ease-in-out infinite}
 @keyframes clockLowPulse{0%,100%{opacity:1}50%{opacity:.6}}
-/* SOUS DIX SECONDES, LA PENDULE BAT LE TEMPS QU'ELLE COMPTE. Le palier de
-   30 s battait à la seconde pendant une demi-minute : trop tôt pour alerter,
-   puis rien de plus quand il ne reste vraiment rien. Le second palier bat
-   deux fois plus vite et pousse le chiffre — et il ne s'allume que sur la
-   pendule qui TOURNE (js/game-render.js::renderClocks), une pendule adverse
-   arrêtée à quatre secondes n'ayant aucune raison de palpiter. */
-.gp-clock.clock-urgent{animation:clockUrgent .5s ease-in-out infinite;
-  box-shadow:0 0 0 2px var(--ember) inset,0 0 22px rgba(217,85,47,.6)}
-@keyframes clockUrgent{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.07);opacity:.75}}
-
-/* « IL RÉFLÉCHIT ». Entre notre coup et le sien, rien ne bougeait : sur une
-   recherche d'une seconde et demie, un joueur rejoue son geste en croyant
-   que le premier n'a pas été pris. Trois points battent sous le nom de
-   l'adversaire tant que c'est à lui — et ils occupent une largeur FIXE, sinon
-   le nom sauterait à chaque point. */
-.gp-bar.gp-thinking .gp-name::after{content:' ···';color:var(--accent2);
-  animation:gpThinking 1.1s ease-in-out infinite}
-@keyframes gpThinking{0%,100%{opacity:.25}50%{opacity:1}}
-@media(prefers-reduced-motion:reduce){
-  .gp-bar.gp-thinking .gp-name::after{animation:none;opacity:.9}
-  .gp-clock.clock-urgent,.gp-clock.clock-low{animation:none}
-}
 
 /* --- Colonne latérale : elle porte TOUT sauf l'échiquier — les deux
    bandeaux de joueur en haut, la zone sous le plateau au milieu (voir
@@ -3740,62 +3718,39 @@ body.cube-active:not(.nav-overlay) .notif-host{bottom:92px}
    dans le mouvement ne disait que ce coup-là ENJAMBE. Un déplacement qui
    n'est ni une ligne, ni une colonne, ni une diagonale ne peut être qu'un
    saut (js/game-render.js::markMoveStyle) : la pièce s'élève, son ombre
-   s'étale sous elle, et elle retombe en écrasant un peu à l'arrivée.
+   s'étale sous elle, et elle se pose.
+
+   LES DEUX HORLOGES DOIVENT COÏNCIDER, et c'est tout ce qui compte ici : la
+   POSITION est portée par la transition de .gc-piece (200 ms, voir plus bas),
+   l'ARC par cette animation-ci. L'arc doit donc toucher terre à 200 ms
+   exactement — soit 59 % de ses 340 ms —, sinon la pièce est déjà arrivée
+   quand elle retombe encore, et le saut se lit comme un sursaut sur place.
+   L'écrasement occupe le reste, une fois la case atteinte.
+
    L'élévation est en POURCENTAGE de la pièce : elle suit la taille du
    plateau sans une seule mesure en pixels, comme tout le reste de la
    couche. */
 @keyframes gcLeap{
-  0%  {transform:translateY(0)    scale(1);      filter:drop-shadow(0 3px 3px rgba(0,0,0,.5))}
-  45% {transform:translateY(-24%) scale(1.14);   filter:drop-shadow(0 14px 9px rgba(0,0,0,.42))}
-  84% {transform:translateY(0)    scale(1.02,.9);filter:drop-shadow(0 2px 2px rgba(0,0,0,.55))}
-  100%{transform:translateY(0)    scale(1);      filter:drop-shadow(0 3px 3px rgba(0,0,0,.5))}
+  0%  {transform:translateY(0)     scale(1);       filter:drop-shadow(0 3px 3px rgba(0,0,0,.5))}
+  29% {transform:translateY(-26%)  scale(1.13);    filter:drop-shadow(0 15px 9px rgba(0,0,0,.4))}
+  59% {transform:translateY(0)     scale(1);       filter:drop-shadow(0 3px 3px rgba(0,0,0,.5))}
+  74% {transform:translateY(0)     scale(1.08,.9); filter:drop-shadow(0 2px 2px rgba(0,0,0,.55))}
+  100%{transform:translateY(0)     scale(1);       filter:drop-shadow(0 3px 3px rgba(0,0,0,.5))}
 }
-.gc-piece .gc-art.gc-leap{animation:gcLeap .3s cubic-bezier(.33,.02,.5,1) both}
+.gc-piece .gc-art.gc-leap{animation:gcLeap .34s cubic-bezier(.4,.05,.5,.95) both}
 
 /* SE POSER. Le glissement s'arrêtait net, à vitesse constante jusqu'au
    dernier pixel : une pièce n'a alors aucun poids. Le petit écrasement
    d'arrivée en donne un, et il n'en faut pas plus — c'est le geste le plus
    fréquent du jeu, il doit rester sous le seuil de ce qu'on remarque. Le
    retard vaut la durée du glissement : l'écrasement tombe à l'INSTANT où la
-   pièce touche sa case. */
+   pièce touche sa case, et pas avant. */
 @keyframes gcLand{
   0%  {transform:scale(1)}
-  40% {transform:scale(1.09,.93)}
+  40% {transform:scale(1.07,.94)}
   100%{transform:scale(1)}
 }
-.gc-piece .gc-art.gc-land{animation:gcLand .17s ease-out .17s both}
-
-/* REFUSER. Un coup impossible ne produisait rien du tout : le joueur ne
-   pouvait pas distinguer « le jeu dit non » de « le jeu n'a pas vu mon
-   geste » (js/game-render.js::boardRefuse). La pièce refuse de la tête —
-   court, sec, sans rebond : un non n'oscille pas. */
-@keyframes gcRefuse{
-  0%,100%{transform:translateX(0)}
-  20%{transform:translateX(-7%) rotate(-3deg)}
-  45%{transform:translateX(6%)  rotate(2.5deg)}
-  72%{transform:translateX(-3%) rotate(-1deg)}
-}
-.gc-piece .gc-art.gc-refuse{animation:gcRefuse .32s cubic-bezier(.36,.07,.19,.97) both}
-/* La case visée s'éteint en rouge : elle dit OÙ le refus a eu lieu, la
-   secousse disant seulement QUI a été refusé. */
-@keyframes gcRefused{
-  0%  {box-shadow:inset 0 0 0 4px rgba(227,90,83,.85),inset 0 0 26px rgba(227,90,83,.45)}
-  100%{box-shadow:inset 0 0 0 4px rgba(227,90,83,0),  inset 0 0 26px rgba(227,90,83,0)}
-}
-.gc.gc-refused{animation:gcRefused .38s ease-out both}
-
-/* LA CASE VISÉE PENDANT LE GLISSÉ. Le doigt COUVRE la case qu'il désigne :
-   sans ce repère, on lâche à l'aveugle, et c'est la première cause de coup
-   joué à côté. L'anneau est neutre partout, et passe à la couleur de
-   l'action là où le coup est réellement jouable — la nuance est le seul
-   contenu utile du repère. */
-.gc.gc-drop{box-shadow:inset 0 0 0 3px rgba(255,255,255,.4)}
-.gc.gc-drop.gc-drop-ok{box-shadow:inset 0 0 0 4px var(--accent2),inset 0 0 24px rgba(63,208,178,.32)}
-/* La pièce qu'on s'apprête à prendre recule : elle sait ce qui lui arrive. */
-.gc-piece.gc-doomed .gc-art{transform:scale(.84);filter:drop-shadow(0 2px 2px rgba(0,0,0,.55)) saturate(.55)}
-/* Le fantôme grossit d'un cheveu au-dessus d'une case jouable : le geste
-   reçoit sa confirmation dans la main, pas seulement sous elle. */
-.drag-ghost.dg-ok{transform:translate(-50%,-50%) scale(1.08);filter:drop-shadow(0 8px 10px rgba(0,0,0,.6))}
+.gc-piece .gc-art.gc-land{animation:gcLand .16s ease-out .2s both}
 
 /* LE PRÉMOUVEMENT (js/game-render.js, section du même nom). Ses marques ne
    ressemblent à AUCUNE autre du plateau, et c'est délibéré : ce qu'elles
@@ -3821,7 +3776,7 @@ body.cube-active:not(.nav-overlay) .notif-host{bottom:92px}
 @media(prefers-reduced-motion:reduce){
   .gc-piece{transition:none}
   .gc-piece.gc-dying .gc-art,.gc-piece.gc-born .gc-art,.gc-piece .gc-art.gc-morph{animation:none}
-  .gc-piece .gc-art.gc-leap,.gc-piece .gc-art.gc-land,.gc-piece .gc-art.gc-refuse{animation:none}
+  .gc-piece .gc-art.gc-leap,.gc-piece .gc-art.gc-land{animation:none}
   .gc.pm-from::after,.gc.pm-to::after{animation:none;opacity:1}
 }
 
