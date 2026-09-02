@@ -3713,11 +3713,71 @@ body.cube-active:not(.nav-overlay) .notif-host{bottom:92px}
 }
 .gc-piece .gc-art.gc-morph{animation:gcMorph .32s ease-out both}
 
+/* SAUTER. Toutes les pièces glissaient de la même façon : un cavalier
+   traversait la case qui le bloque comme si elle n'existait pas, et rien
+   dans le mouvement ne disait que ce coup-là ENJAMBE. Un déplacement qui
+   n'est ni une ligne, ni une colonne, ni une diagonale ne peut être qu'un
+   saut (js/game-render.js::markMoveStyle) : la pièce s'élève, son ombre
+   s'étale sous elle, et elle se pose.
+
+   LES DEUX HORLOGES DOIVENT COÏNCIDER, et c'est tout ce qui compte ici : la
+   POSITION est portée par la transition de .gc-piece (200 ms, voir plus bas),
+   l'ARC par cette animation-ci. L'arc doit donc toucher terre à 200 ms
+   exactement — soit 59 % de ses 340 ms —, sinon la pièce est déjà arrivée
+   quand elle retombe encore, et le saut se lit comme un sursaut sur place.
+   L'écrasement occupe le reste, une fois la case atteinte.
+
+   L'élévation est en POURCENTAGE de la pièce : elle suit la taille du
+   plateau sans une seule mesure en pixels, comme tout le reste de la
+   couche. */
+@keyframes gcLeap{
+  0%  {transform:translateY(0)     scale(1);       filter:drop-shadow(0 3px 3px rgba(0,0,0,.5))}
+  29% {transform:translateY(-26%)  scale(1.13);    filter:drop-shadow(0 15px 9px rgba(0,0,0,.4))}
+  59% {transform:translateY(0)     scale(1);       filter:drop-shadow(0 3px 3px rgba(0,0,0,.5))}
+  74% {transform:translateY(0)     scale(1.08,.9); filter:drop-shadow(0 2px 2px rgba(0,0,0,.55))}
+  100%{transform:translateY(0)     scale(1);       filter:drop-shadow(0 3px 3px rgba(0,0,0,.5))}
+}
+.gc-piece .gc-art.gc-leap{animation:gcLeap .34s cubic-bezier(.4,.05,.5,.95) both}
+
+/* SE POSER. Le glissement s'arrêtait net, à vitesse constante jusqu'au
+   dernier pixel : une pièce n'a alors aucun poids. Le petit écrasement
+   d'arrivée en donne un, et il n'en faut pas plus — c'est le geste le plus
+   fréquent du jeu, il doit rester sous le seuil de ce qu'on remarque. Le
+   retard vaut la durée du glissement : l'écrasement tombe à l'INSTANT où la
+   pièce touche sa case, et pas avant. */
+@keyframes gcLand{
+  0%  {transform:scale(1)}
+  40% {transform:scale(1.07,.94)}
+  100%{transform:scale(1)}
+}
+.gc-piece .gc-art.gc-land{animation:gcLand .16s ease-out .2s both}
+
+/* LE PRÉMOUVEMENT (js/game-render.js, section du même nom). Ses marques ne
+   ressemblent à AUCUNE autre du plateau, et c'est délibéré : ce qu'elles
+   montrent n'est pas joué, et peut ne jamais l'être. Le vert est la couleur
+   de ce qui se passe, l'orange celle de ce qui menace ; le violet du Sorcier
+   est ici la couleur de ce qui est seulement PARIÉ. */
+.gc.pm-sel{box-shadow:inset 0 0 0 3px var(--sorcier),inset 0 0 26px rgba(183,142,230,.34)}
+.gc.pm-avail::before{content:'';position:absolute;width:24%;height:24%;border-radius:50%;
+  background:radial-gradient(circle,rgba(255,255,255,.85),var(--sorcier) 74%);
+  z-index:1;pointer-events:none;opacity:.8;box-shadow:0 0 8px rgba(183,142,230,.7)}
+.gc.pm-from::after,.gc.pm-to::after{content:'';position:absolute;inset:0;pointer-events:none;
+  animation:pmBreathe 1.6s ease-in-out infinite}
+.gc.pm-from::after{box-shadow:inset 0 0 0 3px rgba(183,142,230,.85)}
+.gc.pm-to::after{background:rgba(183,142,230,.26);box-shadow:inset 0 0 0 2px rgba(183,142,230,.75)}
+/* Elles RESPIRENT, là où le dernier coup joué est parfaitement immobile :
+   une marque qui bat dit « en attente », une marque fixe dit « fait ». */
+@keyframes pmBreathe{0%,100%{opacity:.62}50%{opacity:1}}
+
 /* Mouvement réduit : les pièces se téléportent, comme avant ce chantier.
-   C'est exactement ce que demande quelqu'un qui coupe les animations. */
+   C'est exactement ce que demande quelqu'un qui coupe les animations. Le
+   refus, lui, SURVIT à ce réglage sous une autre forme : il ne décore rien,
+   il répond à une question — la case visée s'allume sans que rien tremble. */
 @media(prefers-reduced-motion:reduce){
   .gc-piece{transition:none}
   .gc-piece.gc-dying .gc-art,.gc-piece.gc-born .gc-art,.gc-piece .gc-art.gc-morph{animation:none}
+  .gc-piece .gc-art.gc-leap,.gc-piece .gc-art.gc-land{animation:none}
+  .gc.pm-from::after,.gc.pm-to::after{animation:none;opacity:1}
 }
 
 /* [COMBAT-FX] ===================================================

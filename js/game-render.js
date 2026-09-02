@@ -126,6 +126,7 @@ let _boardFlipped=null;    // orientation pour laquelle elles ont été bâties
 let _boardGS=null;         // partie pour laquelle la couche a été peuplée
 let _pieceNodes=new Map(); // id de pièce -> son nœud .gc-piece
 let _pieceAt=[];           // [r][c] -> nœud, pour retrouver une pièce par sa case
+let _cellAt=[];            // [r][c] -> la case, pour la désigner sans balayer les 64
 let _autoPieceId=0;        // repli d'identité (voir syncPieces)
 
 function boardLayer(boardEl){
@@ -163,6 +164,7 @@ function ensureBoardCells(gs,boardEl,flipped){
   boardEl.setAttribute('aria-label','Échiquier');
   _boardCells=[];_boardFlipped=flipped;_boardGS=gs;
   _pieceNodes=new Map();_pieceAt=[];
+  _cellAt=[];for(let i=0;i<8;i++)_cellAt.push(new Array(8).fill(null));
   for(let vi=0;vi<8;vi++)for(let vc=0;vc<8;vc++){
     const r=flipped?7-vi:vi;
     const c=flipped?7-vc:vc;
@@ -192,6 +194,7 @@ function ensureBoardCells(gs,boardEl,flipped){
     bindBoardCell(el,r,c);
     boardEl.appendChild(el);
     _boardCells.push(el);
+    _cellAt[r][c]=el;
   }
   boardLayer(boardEl);
 }
@@ -202,6 +205,9 @@ function ensureBoardCells(gs,boardEl,flipped){
 // piloterait le plateau d'hier.
 function bindBoardCell(el,r,c){
   const playable=gs=>gs&&!gs.gameOver&&gs.turn===(gs.playerColor||'w');
+  // On peut PRENDRE une pièce en main même quand ce n'est pas à nous : le
+  // glissé pose alors un prémouvement au lieu de jouer.
+  const grabbable=gs=>gs&&!gs.gameOver&&(playable(gs)||premoveAllowed(gs));
   const mine=gs=>{
     const cell=gs&&gs.board&&gs.board[r]&&gs.board[r][c];
     return !!cell&&cell.color===(gs.playerColor||'w');
@@ -209,8 +215,11 @@ function bindBoardCell(el,r,c){
 
   el.addEventListener('click',()=>{
     const gs=GS;if(!gs)return;
-    if(gs.gameOver||gs.turn!==(gs.playerColor||'w'))return;
     if(gs.historyView!==null){gs.historyView=null;renderGame(gs);updateStatus(gs);updateHistoryNav();return;}
+    // CE N'EST PAS ENCORE À NOUS : le geste n'est plus perdu, il devient un
+    // PRÉMOUVEMENT (voir la section du même nom plus bas).
+    if(gs.gameOver)return;
+    if(gs.turn!==(gs.playerColor||'w')){premoveClick(r,c,gs);return;}
     handleGameClick(r,c,gs);
   });
 
@@ -225,7 +234,7 @@ function bindBoardCell(el,r,c){
     // L'appui long vient d'ouvrir la fiche de la pièce : le relâchement ne
     // doit pas, en plus, la sélectionner et refermer la fiche.
     if(typeof longPressJustFired==='function'&&longPressJustFired())return;
-    if(gs.gameOver||gs.turn!==(gs.playerColor||'w'))return;
+    if(gs.gameOver)return;
     if(dragState){
       e.preventDefault();
       const t=e.changedTouches[0];
@@ -234,6 +243,7 @@ function bindBoardCell(el,r,c){
     }
     if(gs.historyView!==null){gs.historyView=null;renderGame(gs);updateStatus(gs);updateHistoryNav();return;}
     e.preventDefault();
+    if(gs.turn!==(gs.playerColor||'w')){premoveClick(r,c,gs);return;}
     handleGameClick(r,c,gs);
   },{passive:false});
 
@@ -243,13 +253,13 @@ function bindBoardCell(el,r,c){
   el.addEventListener('mousedown',e=>{
     const gs=GS;
     if(!gs||e.button!==0||gs.historyView!==null)return;
-    if(!playable(gs)||!mine(gs))return;
+    if(!grabbable(gs)||!mine(gs))return;
     startDrag(r,c,gs,e.clientX,e.clientY);
   });
   el.addEventListener('touchstart',e=>{
     const gs=GS;
     if(!gs||gs.historyView!==null)return;
-    if(!playable(gs)||!mine(gs))return;
+    if(!grabbable(gs)||!mine(gs))return;
     const t=e.touches[0];
     if(t)startDrag(r,c,gs,t.clientX,t.clientY);
   },{passive:true});
@@ -342,7 +352,19 @@ function paintBoardCells(gs){
     if(cell&&(cell.isKing||cell.type==='k')&&cell.color===gs.turn&&checkedColor===gs.turn)cls+=' gc-check';
     // Le curseur « main ouverte » vivait sur la pièce ; il vit sur la case,
     // seule chose que le pointeur peut désormais atteindre.
-    if(cell&&cell.color===playerCol&&gs.turn===playerCol&&!gs.gameOver)cls+=' gc-holds';
+    // Le curseur « main ouverte » reste offert pendant le tour adverse : on
+    // peut y prendre une pièce en main, elle inscrit un prémouvement.
+    if(cell&&cell.color===playerCol&&!gs.gameOver&&(gs.turn===playerCol||premoveAllowed(gs)))cls+=' gc-holds';
+    // LE PRÉMOUVEMENT A SES PROPRES MARQUES, et elles ne ressemblent à
+    // aucune autre : ce qu'elles montrent n'est pas encore joué, et peut
+    // très bien ne jamais l'être. Elles sont donc violettes là où tout le
+    // reste du plateau est vert (l'action en cours) ou orange (la menace).
+    if(gs.pmSel&&gs.pmSel.r===r&&gs.pmSel.c===c)cls+=' pm-sel';
+    else if(gs.pmMoves&&gs.pmMoves.some(m=>m.r===r&&m.c===c&&!m.stayPut))cls+=' pm-avail';
+    if(gs.premove){
+      if(gs.premove.from.r===r&&gs.premove.from.c===c)cls+=' pm-from';
+      else if(gs.premove.to.r===r&&gs.premove.to.c===c)cls+=' pm-to';
+    }
     if(el.className!==cls)el.className=cls;
     // Le libellé parlé suit le plateau : sans ça, une case annoncée « vide »
     // le resterait après qu'une pièce s'y est posée.
@@ -387,6 +409,7 @@ function syncPieces(gs,boardEl,flipped,board){
       // en le plaçant après coup, les 32 pièces glisseraient depuis le coin
       // supérieur gauche au début de chaque partie.
       node.style.transform=tf;
+      node._tf=tf;
       layer.appendChild(node);
       _pieceNodes.set(id,node);
       setTimeout(()=>node.classList.remove('gc-born'),BOARD_MOVE_MS);
@@ -400,13 +423,35 @@ function syncPieces(gs,boardEl,flipped,board){
           setTimeout(()=>artEl.classList.remove('gc-morph'),320);}
         node._art=art;
       }
-      if(node.style.transform!==tf){
+      // LA POSITION VOULUE EST RETENUE SUR LE NŒUD, ET RELUE SUR LUI. Elle
+      // était comparée à `node.style.transform`, que le navigateur REND
+      // NORMALISÉ : on écrit « translate3d(12.5%,0%,0) » et on relit
+      // « translate3d(12.5%, 0%, 0px) ». Les deux chaînes ne sont jamais
+      // égales, la condition était donc toujours vraie — le diff de la couche
+      // des pièces, dont c'est toute la raison d'être, « déplaçait » les 32
+      // pièces à chaque rendu, y compris pour un simple survol. Invisible
+      // tant que le déplacement ne portait qu'un z-index ; le jour où il
+      // porte un geste, le plateau entier se met à tressauter.
+      if(node._tf!==tf){
+        node._tf=tf;
         // Une pièce qui bouge passe au-dessus des autres le temps du
         // glissement : sinon, en capturant, elle disparaît sous sa victime.
         node.style.transform=tf;
         node.classList.add('gc-moving');
         clearTimeout(node._movTid);
         node._movTid=setTimeout(()=>node.classList.remove('gc-moving'),BOARD_MOVE_MS+40);
+        // TOUTES LES PIÈCES GLISSAIENT PAREIL. Un cavalier traversait la case
+        // qui le bloque comme s'il n'existait pas, et une tour posait son
+        // coup avec la même mollesse qu'un pion : le mouvement ne disait plus
+        // rien de la créature qui le fait.
+        //
+        // Un déplacement qui n'est ni une ligne, ni une colonne, ni une
+        // diagonale ne peut PAS être un glissement — c'est un saut, par
+        // définition, et c'est vrai de toute créature qui viendra. La pièce
+        // s'élève donc au-dessus du plateau et retombe, sans que le module
+        // ait à connaître un seul identifiant. Les autres, elles, marquent
+        // seulement l'ARRIVÉE : un poids qui se pose.
+        markMoveStyle(node,+node.dataset.r,+node.dataset.c,r,c);
       }
     }
 
@@ -438,6 +483,21 @@ function syncPieces(gs,boardEl,flipped,board){
   });
 
   _pieceAt=at;
+}
+
+// Le geste du déplacement : saut ou atterrissage. Il porte sur .gc-art et
+// jamais sur .gc-piece, dont le transform tient la POSITION — c'est la règle
+// de la couche des pièces, et la seule chose à ne pas casser ici.
+function markMoveStyle(node,fromR,fromC,toR,toC){
+  const art=node.querySelector('.gc-art');
+  if(!art)return;
+  const dr=Math.abs(toR-fromR),dc=Math.abs(toC-fromC);
+  const leap=dr>0&&dc>0&&dr!==dc;
+  art.classList.remove('gc-leap','gc-land');
+  void art.offsetWidth;                     // redémarre sur deux coups d'affilée
+  art.classList.add(leap?'gc-leap':'gc-land');
+  clearTimeout(art._gestTid);
+  art._gestTid=setTimeout(()=>art.classList.remove('gc-leap','gc-land'),BOARD_MOVE_MS+260);
 }
 
 function renderGame(gs){
@@ -599,10 +659,18 @@ function getBoardCell(clientX,clientY,gs){
 
 function startDrag(r,c,gs,clientX,clientY){
   const b=gs.board;const cell=b[r][c];if(!cell)return;
-  const alreadySelected=gs.selected&&gs.selected.r===r&&gs.selected.c===c;
-  const moves=getLegalMoves(b,r,c,gs);
-  gs.selected={r,c};gs.legalMoves=moves;
-  dragState={fromR:r,fromC:c,gs,moved:false,startX:clientX,startY:clientY,alreadySelected};
+  // Prendre en main pendant le tour adverse, c'est préparer un prémouvement :
+  // le geste est le même, seule la destination du résultat change.
+  const pre=gs.turn!==(gs.playerColor||'w');
+  const alreadySelected=pre
+    ?!!(gs.pmSel&&gs.pmSel.r===r&&gs.pmSel.c===c)
+    :!!(gs.selected&&gs.selected.r===r&&gs.selected.c===c);
+  // Le glissé de prémouvement propose les mêmes cases que le clic : celles
+  // de la CRÉATURE (plateau vide), pas celles de la position d'avant le coup
+  // adverse — voir premoveTargets.
+  if(pre){gs.pmSel={r,c};gs.pmMoves=premoveTargets(r,c,gs);}
+  else{gs.selected={r,c};gs.legalMoves=getLegalMoves(b,r,c,gs);}
+  dragState={fromR:r,fromC:c,gs,moved:false,startX:clientX,startY:clientY,alreadySelected,pre};
   dragGhost.innerHTML=pieceSVG(cell.pieceId,cell.color);
   dragGhost.style.left=clientX+'px';dragGhost.style.top=clientY+'px';
   // PRENDRE UNE PIÈCE EN MAIN NE FAISAIT AUCUN BRUIT. C'est le geste le plus
@@ -612,9 +680,10 @@ function startDrag(r,c,gs,clientX,clientY){
   // recette 'tap', js/sfx.js) — c'est une confirmation, pas un événement — et
   // il n'est joué QUE sur une vraie prise en main, pas quand on repose le
   // doigt sur une pièce déjà sélectionnée.
-  if(!alreadySelected&&typeof playSound==='function')playSound('tap',{force:0.3});
-  if(!alreadySelected)renderGame(gs);
+  if(!alreadySelected&&typeof playSound==='function')playSound('tap',{force:pre?0.22:0.3});
+  if(!alreadySelected){if(pre)paintBoardCells(gs);else renderGame(gs);}
 }
+
 function moveDrag(clientX,clientY){
   if(!dragState)return;
   const dx=clientX-dragState.startX,dy=clientY-dragState.startY;
@@ -640,8 +709,20 @@ function endDrag(clientX,clientY){
   const gs=dragState.gs;
   const wasDrag=dragState.moved;
   const wasAlreadySelected=dragState.alreadySelected;
+  const wasPre=dragState.pre;
   const prevSelected={r:dragState.fromR,c:dragState.fromC};
   dragState=null;
+
+  // GLISSÉ PENDANT LE TOUR ADVERSE : on ne joue pas, on inscrit.
+  if(wasPre){
+    if(wasDrag){
+      const cell=getBoardCell(clientX,clientY,gs);
+      const move=cell&&(gs.pmMoves||[]).find(m=>m.r===cell.r&&m.c===cell.c&&!m.stayPut);
+      if(move)premoveSet(gs,prevSelected,{r:move.r,c:move.c});
+      else{premoveDeselect(gs);paintBoardCells(gs);}
+    }else if(wasAlreadySelected){premoveDeselect(gs);paintBoardCells(gs);}
+    return;
+  }
 
   if(wasDrag){
     const cell=getBoardCell(clientX,clientY,gs);
@@ -679,6 +760,172 @@ document.addEventListener('touchcancel',()=>{
   if(dragState.gs){dragState.gs.selected=null;dragState.gs.legalMoves=[];renderGame(dragState.gs);}
   dragState=null;
 });
+
+// ----------------------------------------------------------------
+// LE PRÉMOUVEMENT
+// ----------------------------------------------------------------
+// PENDANT LE TOUR DE L'ADVERSAIRE, LE PLATEAU ÉTAIT MORT. Tout geste était
+// jeté : ni sélection, ni prise en main, rien — et c'est la moitié du temps
+// d'une partie. Sur une pendule courte, c'est aussi la moitié du temps qu'on
+// a pour jouer, dépensée à attendre le droit d'agir.
+//
+// On désigne donc son coup à l'avance, exactement du même geste (clic ou
+// glissé). Il est INSCRIT, pas joué : rien ne bouge, deux cases s'allument en
+// violet, et à l'instant où l'adversaire pose son coup, le nôtre part.
+//
+// Trois règles, et elles décident de tout :
+//
+// · LES CASES PROPOSÉES SONT CELLES DE LA PIÈCE, PAS CELLES DE LA POSITION.
+//   On les calcule sur un plateau VIDE (premoveTargets) : tout ce que la
+//   créature sait faire, sans que rien ne la gêne. C'est le seul calcul
+//   honnête — la position sur laquelle le coup se jouera n'existe pas encore,
+//   et proposer les coups d'AVANT le coup adverse interdirait justement ceux
+//   qu'on prépare : reprendre la pièce qui va venir, occuper la case qu'elle
+//   va libérer.
+// · LA LÉGALITÉ SE VÉRIFIE À L'EXÉCUTION, jamais à l'inscription. Le coup est
+//   recalculé sur le plateau réel au moment de partir : légal, il part ;
+//   illégal, il ne part pas, et rien d'autre ne se produit — c'est un pari,
+//   et un pari perdu n'a pas à être commenté.
+// · UN SEUL PRÉMOUVEMENT À LA FOIS. En désigner un second remplace le
+//   premier : une file d'attente jouerait des coups que le joueur ne voit
+//   plus, sur une position qu'il n'a pas regardée.
+//
+// La bataille scriptée du tutoriel en est exclue : elle attend un coup précis
+// à un moment précis, et un coup parti tout seul lui passerait sous le nez.
+function premoveAllowed(gs){
+  return !!gs&&!gs.gameOver&&!gs.tuto&&!gs.pendingPromo
+    &&gs.historyView===null&&gs.turn!==(gs.playerColor||'w');
+}
+function premoveDeselect(gs){gs.pmSel=null;gs.pmMoves=[];}
+// Annule le prémouvement inscrit ET la sélection en cours. `repaint` est faux
+// quand l'appelant va de toute façon redessiner (renderGame le fait).
+function premoveCancel(gs,repaint){
+  if(!gs)return false;
+  const had=!!(gs.premove||gs.pmSel);
+  gs.premove=null;premoveDeselect(gs);
+  if(had&&repaint!==false&&_boardCells)paintBoardCells(gs);
+  return had;
+}
+
+// LES CASES QU'UNE PIÈCE PEUT THÉORIQUEMENT ATTEINDRE, plateau vide.
+//
+// Le moteur ne sait répondre qu'à « où peut-elle aller MAINTENANT » : sur la
+// position actuelle, une pièce derrière ses propres lignes n'a presque aucun
+// coup, et un prémouvement n'aurait presque jamais rien à proposer. Or ce
+// qu'on prépare est précisément le coup d'APRÈS — reprendre sur la case où
+// l'adversaire va venir, passer par la ligne qu'il va ouvrir.
+//
+// On rejoue donc le générateur du moteur sur un plateau où la pièce est
+// SEULE. Deux passes, parce qu'un pion (et toute créature qui capture
+// autrement qu'elle n'avance) ne montre ses diagonales que s'il y a quelqu'un
+// dessus :
+//   1. plateau vide  → tous les déplacements ;
+//   2. une victime posée tour à tour sur chaque case restante → toutes les
+//      prises.
+// Soixante-trois générations sur un plateau presque vide, une seule fois par
+// sélection : c'est gratuit, et surtout ça ne connaît AUCUNE créature en
+// particulier — la règle vaudra pour celles qui viendront.
+function premoveTargets(r,c,gs){
+  const p=gs.board[r][c];
+  if(!p||typeof generateMovesRaw!=='function')return [];
+  const empty=()=>{const b=[];for(let i=0;i<8;i++)b.push(new Array(8).fill(null));return b;};
+  // Un état de partie NEUTRE : les paralysies, ancrages et protections de la
+  // position actuelle n'ont rien à faire dans un calcul théorique, et la prise
+  // en passant dépend du coup que l'adversaire n'a pas encore joué.
+  const ghostGs={...gs,medusaParalyzed:new Set(),pretreProtected:new Set(),
+    anchored:new Set(),enPassant:null,lastMoveHistory:[]};
+  const seen=new Map();
+  const keep=list=>{for(const m of list){if(m.stayPut)continue;const k=m.r+','+m.c;if(!seen.has(k))seen.set(k,m);}};
+
+  const b0=empty();b0[r][c]={...p};
+  ghostGs.board=b0;
+  keep(generateMovesRaw(b0,r,c,ghostGs));
+
+  const foe=p.color==='w'?'b':'w';
+  for(let tr=0;tr<8;tr++)for(let tc=0;tc<8;tc++){
+    if(tr===r&&tc===c)continue;
+    if(seen.has(tr+','+tc))continue;
+    const b=empty();
+    b[r][c]={...p};
+    // Une victime générique : un pion adverse suffit à révéler une prise, et
+    // n'ouvre aucun pouvoir particulier.
+    b[tr][tc]={pieceId:'std-pawn',type:'p',color:foe,id:'pmGhost',hasMoved:true};
+    ghostGs.board=b;
+    keep(generateMovesRaw(b,r,c,ghostGs));
+  }
+  return [...seen.values()];
+}
+
+function premoveSet(gs,from,to){
+  gs.premove={from:{r:from.r,c:from.c},to:{r:to.r,c:to.c}};
+  premoveDeselect(gs);
+  paintBoardCells(gs);
+  if(typeof playSound==='function')playSound('tap',{force:0.28});
+}
+function premoveSelect(r,c,gs){
+  gs.pmSel={r,c};
+  gs.pmMoves=premoveTargets(r,c,gs);
+  paintBoardCells(gs);
+  if(typeof playSound==='function')playSound('tap',{force:0.22});
+}
+// Le même enchaînement que handleGameClick, mais sans jamais jouer.
+//
+// TOUT CLIC SUR L'ÉCHIQUIER QUI N'EST PAS LA DESTINATION ANNULE. C'est le
+// geste qu'on cherche quand l'adversaire vient de jouer autre chose que ce
+// qu'on avait parié, et il ne doit pas se chercher : n'importe où sur le
+// plateau, et c'est effacé. En dehors de l'échiquier, rien ne bouge — on n'a
+// pas annulé son coup parce qu'on a touché la pendule ou le journal.
+function premoveClick(r,c,gs){
+  if(!premoveAllowed(gs)){premoveCancel(gs);return;}
+  const cell=gs.board[r][c];
+  const playerCol=gs.playerColor||'w';
+
+  if(gs.pmSel){
+    const same=gs.pmSel.r===r&&gs.pmSel.c===c;
+    const target=(gs.pmMoves||[]).find(m=>m.r===r&&m.c===c&&!m.stayPut);
+    if(target&&!same){premoveSet(gs,gs.pmSel,{r,c});return;}
+    // Tout le reste referme la sélection ; sur une AUTRE de nos pièces, elle
+    // se rouvre aussitôt sur celle-là (on change d'avis sans double clic).
+    premoveDeselect(gs);
+    if(!same&&cell&&cell.color===playerCol){premoveSelect(r,c,gs);return;}
+    paintBoardCells(gs);
+    return;
+  }
+
+  gs.premove=null;                       // n'importe quel clic efface l'inscrit
+  if(cell&&cell.color===playerCol){premoveSelect(r,c,gs);return;}
+  paintBoardCells(gs);
+}
+// L'EXÉCUTION. Appelée par postMoveUpdate (js/rules-engine.js) à chaque
+// changement de trait : c'est le seul endroit qui voit tous les coups, celui
+// de l'IA comme celui d'un adversaire en ligne.
+//
+// Légal → joué tout de suite. Illégal → pas joué, et rien de plus.
+function premoveRun(gs){
+  if(!gs||!gs.premove)return;
+  const pm=gs.premove;
+  if(gs.gameOver){premoveCancel(gs);return;}
+  if(gs.turn!==(gs.playerColor||'w')||gs.pendingPromo)return;  // pas encore à nous
+  gs.premove=null;premoveDeselect(gs);
+  const b=gs.board;
+  const p=b[pm.from.r]&&b[pm.from.r][pm.from.c];
+  const moves=(p&&p.color===(gs.playerColor||'w'))?getLegalMoves(b,pm.from.r,pm.from.c,gs):[];
+  const move=moves.find(m=>m.r===pm.to.r&&m.c===pm.to.c&&!m.stayPut);
+  if(!move){paintBoardCells(gs);return;}
+  // LE COUP PART TOUT DE SUITE, mais pas DANS l'appel qui vient de jouer le
+  // coup adverse : executeGameMove appelé depuis lui-même empilerait deux
+  // coups sur le même instantané d'historique. Un tour de boucle
+  // d'événements suffit à les séparer, et ne se voit pas.
+  setTimeout(()=>{
+    if(gs.gameOver||gs.turn!==(gs.playerColor||'w')||gs.pendingPromo)return;
+    const still=getLegalMoves(gs.board,pm.from.r,pm.from.c,gs)
+      .find(m=>m.r===pm.to.r&&m.c===pm.to.c&&!m.stayPut);
+    if(!still)return;
+    gs.lastMove={from:pm.from,to:still,capture:!!gs.board[still.r][still.c]};
+    gs.selected=null;gs.legalMoves=[];
+    executeGameMove({...pm.from},still,gs);
+  },0);
+}
 
 // ----------------------------------------------------------------
 // HANDLER DE CLIC (sélection / déplacement / cas spéciaux)
@@ -762,6 +1009,10 @@ document.getElementById('hist-last').addEventListener('click',()=>{GS.historyVie
 // statut, qui redisait ce que le journal écrit déjà à côté de chaque coup.
 document.addEventListener('keydown',e=>{
   if(!document.getElementById('page-game').classList.contains('active'))return;
+  // Échap efface le prémouvement AVANT de servir à quoi que ce soit d'autre :
+  // c'est la touche qu'on cherche quand l'adversaire vient de jouer autre
+  // chose que ce qu'on avait parié.
+  if(e.key==='Escape'&&typeof GS!=='undefined'&&GS&&premoveCancel(GS))return;
   const nav={ArrowLeft:'hist-prev',ArrowRight:'hist-next',Home:'hist-first',End:'hist-last'}[e.key];
   if(!nav)return;
   if(typeof gamePanelOpen==='function'&&!gamePanelIsOpen('history'))gamePanelOpen('history');

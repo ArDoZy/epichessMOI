@@ -645,14 +645,112 @@ Quatre points à ne pas casser :
   survivent d'une partie à l'autre : une référence figée dans une fermeture
   piloterait le plateau d'hier.
 - **`.gc-piece` réserve son `transform` à sa position.** Tout effet visuel
-  (survol, agonie, promotion) passe par l'enfant `.gc-art`, sinon il écrase la
-  position de la pièce.
+  (survol, agonie, promotion, saut, atterrissage) passe par l'enfant
+  `.gc-art`, sinon il écrase la position de la pièce.
+- **La position voulue se relit sur `node._tf`, jamais sur
+  `node.style.transform`.** Le navigateur RENVOIE une chaîne normalisée : on
+  écrit `translate3d(12.5%,0%,0)`, on relit `translate3d(12.5%, 0%, 0px)`. La
+  comparaison des deux était donc toujours vraie, et le diff — dont c'est
+  toute la raison d'être — « déplaçait » les 32 pièces à chaque rendu, y
+  compris pour un simple survol. Invisible tant que le déplacement ne portait
+  qu'un `z-index` ; le jour où il porte un geste, le plateau entier
+  tressaute.
 
 Ce que ça débloque, et qui n'existait pas : les pièces prises **meurent** au
 lieu de s'évanouir, le roque anime ses deux pièces gratuitement, une promotion
 se voit, et `boardResetPieces()` vide la couche entre deux parties (les
 identifiants repartent de `p0` à chaque `buildGameBoard`, un nœud survivant
 serait recyclé pour une pièce qui n'a rien à voir).
+
+### 1 sexies ter. Le prémouvement et le geste du déplacement (`js/game-render.js`)
+
+#### Le prémouvement
+
+**Pendant le tour de l'adversaire, le plateau était mort.** Tout geste était
+jeté : ni sélection, ni prise en main, rien — et c'est la moitié du temps
+d'une partie. Sur une pendule courte, c'est aussi la moitié du temps qu'on a
+pour jouer, dépensée à attendre le droit d'agir.
+
+On désigne donc son coup à l'avance, **du même geste** (clic ou glissé). Il
+est *inscrit*, pas joué : rien ne bouge, deux cases s'allument, et à l'instant
+où l'adversaire pose son coup, le nôtre part.
+
+Ses marques ne ressemblent à aucune autre du plateau, et c'est délibéré. Le
+vert est la couleur de ce qui se passe, l'orange celle de ce qui menace ; le
+**violet** est ici celle de ce qui est seulement *parié* — et il **respire**,
+là où le dernier coup joué est parfaitement immobile : une marque qui bat dit
+« en attente », une marque fixe dit « fait ».
+
+Trois règles décident de tout :
+
+* **Les cases proposées sont celles de la pièce, pas celles de la position.**
+  On les calcule sur un plateau **vide** (`premoveTargets`) : tout ce que la
+  créature sait faire, sans que rien ne la gêne. C'est le seul calcul honnête
+  — la position sur laquelle le coup se jouera n'existe pas encore, et
+  proposer les coups d'*avant* le coup adverse interdirait justement ceux
+  qu'on prépare : reprendre la pièce qui va venir, occuper la case qu'elle va
+  libérer. Une tour enfermée derrière ses propres lignes a **zéro** coup légal
+  et **quatorze** cases de prémouvement.
+* **La légalité se vérifie à l'exécution**, jamais à l'inscription. Le coup
+  est recalculé sur le plateau réel au moment de partir : légal, il part tout
+  de suite ; illégal, **il ne part pas, et rien d'autre ne se produit** — un
+  pari perdu n'a pas à être commenté.
+* **Un seul prémouvement à la fois.** En désigner un second remplace le
+  premier : une file d'attente jouerait des coups que le joueur ne voit plus,
+  sur une position qu'il n'a pas regardée.
+
+**Tout clic sur l'échiquier qui n'est pas la destination annule.** C'est le
+geste qu'on cherche quand l'adversaire vient de jouer autre chose que ce qu'on
+avait parié, et il ne doit pas se chercher : n'importe où sur le plateau, et
+c'est effacé (sur une autre de nos pièces, la sélection se rouvre aussitôt sur
+celle-là). **En dehors de l'échiquier, rien ne bouge** : on n'a pas annulé son
+coup parce qu'on a touché la pendule ou le journal. `Échap`, « Annuler coup »
+et la fin de partie l'effacent aussi (`premoveCancel`).
+
+Comment `premoveTargets` s'y prend, et pourquoi ça ne connaît aucune créature :
+le générateur du moteur est rejoué sur un plateau où la pièce est **seule**,
+en deux passes — plateau nu pour les déplacements, puis une victime posée tour
+à tour sur chacune des cases restantes pour révéler les prises (un pion ne
+montre ses diagonales que s'il y a quelqu'un dessus). Soixante-trois
+générations sur un plateau presque vide, une fois par sélection : c'est
+gratuit, et la règle vaudra pour les créatures qui viendront.
+
+Il part de `postMoveUpdate` (`js/rules-engine.js`) et de nulle part ailleurs :
+c'est le seul point qui voit **tous** les coups — le nôtre, celui de l'IA,
+celui d'un adversaire en ligne — donc le seul qui sache que le trait vient de
+nous revenir. Il part par un `setTimeout(…,0)` et non dans l'appel lui-même :
+`executeGameMove` appelé depuis `executeGameMove` empilerait deux coups sur le
+même instantané d'historique. Un tour de boucle d'événements les sépare, et ne
+se voit pas.
+
+**La bataille scriptée du tutoriel en est exclue** : elle attend un coup précis
+à un moment précis, et un coup parti tout seul lui passerait sous le nez.
+
+#### Le saut et l'atterrissage
+
+**Toutes les pièces glissaient de la même façon.** Un cavalier traversait la
+case qui le bloque comme si elle n'existait pas, et le glissement s'arrêtait
+net, à vitesse constante jusqu'au dernier pixel : une pièce n'a alors aucun
+poids.
+
+Un déplacement qui n'est ni une ligne, ni une colonne, ni une diagonale **ne
+peut être** qu'un saut — c'est vrai par définition, et de toute créature qui
+viendra : `markMoveStyle` n'a donc pas un seul identifiant de pièce à
+connaître. Elle s'élève, son ombre s'étale sous elle, et elle se pose. Les
+autres marquent seulement l'**arrivée**, d'un écrasement de 160 ms.
+
+**Les deux horloges doivent coïncider, et c'est tout ce qui compte ici.** La
+*position* est portée par la transition de `.gc-piece` (200 ms), l'*arc* par
+l'animation `gcLeap`. L'arc doit toucher terre à 200 ms exactement — soit 59 %
+de ses 340 ms — sinon la pièce est déjà arrivée quand elle retombe encore, et
+le saut se lit comme un sursaut sur place. Mesuré : apex à ~106 ms (la pièce
+est encore en vol), contact à 206 ms au moment précis où elle atteint sa case,
+écrasement ensuite. Même règle pour `gcLand`, dont le retard vaut exactement la
+durée du glissement.
+
+Les deux portent sur `.gc-art` et jamais sur `.gc-piece`, dont le `transform`
+tient la position — c'est la règle de la couche des pièces, et la seule chose
+à ne pas casser ici.
 
 ### 1 sexies bis. La zone sous le plateau (`[GAME-PANEL]`)
 
@@ -1381,6 +1479,8 @@ mais dans une version que Playwright refuse, le script le retrouve tout seul
 | Changer une couleur, un style, l'apparence d'une page | `css/style.css` (cherche le tag `[NOM-DE-PAGE]` en commentaire) |
 | Ajouter/modifier une pièce (valeur, emoji, pouvoir) | `js/data-pieces.js` (tableau `PIECES`) — le déplacement, lui, ne s'y écrit plus : il est dessiné par `js/piece-moves.js` à partir du moteur |
 | Changer les règles de mouvement d'une pièce existante ou en ajouter une | `js/rules-engine.js` (fonction `generateMovesRaw`, + `isSquareAttackedSimple` si elle peut mettre en échec). Le schéma affiché sur les cartes et les fiches suit tout seul |
+| Changer le prémouvement (cases proposées, annulation, exécution) | section « LE PRÉMOUVEMENT » de `js/game-render.js` (`premoveTargets`, `premoveClick`, `premoveRun`) + les règles `.pm-*` de `[BOARD-MOTION]` dans `css/style.css` |
+| Changer la façon dont une pièce se déplace à l'écran (saut, atterrissage) | `markMoveStyle` dans `js/game-render.js` + `gcLeap`/`gcLand` dans `[BOARD-MOTION]` |
 | Changer la notation du journal des coups | `recordMove` / `mlDisambiguation` dans `js/rules-engine.js` (+ `.ml-*` dans `css/style.css`) |
 | Changer ce qui se promeut en arrivant au bout | `PROMOTING_IDS` dans `js/data-pieces.js` — `showPromoModal`, l'IA et le multijoueur excluent tous les trois ces pièces de la LISTE des promotions possibles |
 | Changer le calcul d'ELO, les rangs, les paliers de déblocage | `js/voie.js` (calcul) + `js/data-pieces.js` (table `UNLOCK_TABLE`/`RANKS`) |
