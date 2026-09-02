@@ -3,7 +3,7 @@
 // ================================================================
 // Contient : le bouton et panneau flottant de réglages (#settings-btn /
 // #settings-panel) qui contrôle les deux volumes (bruitages, musique) et
-// l'intensité des effets de combat (js/combat-fx.js). Le jeu
+// l'interrupteur des effets de combat (js/combat-fx.js). Le jeu
 // n'a qu'un thème (sombre) : il n'y a donc pas de réglage d'apparence ici, et
 // la vibration n'a plus d'interrupteur (elle est toujours active, voir plus
 // bas). Le mode test (/?test, voir plus bas dans main.js) reste utilisable par
@@ -59,13 +59,22 @@ function applyMusicVol(v){
   if(window._musicGain)window._musicGain.gain.value=_musicVol;
 }
 
-// Les effets de combat. La valeur vit ici — c'est le panneau qui en est
-// propriétaire —, et elle est POUSSÉE vers js/combat-fx.js, qui peut ne pas
-// être chargé : le jeu doit rester réglable même sans son module d'effets.
-let _fxLevelPref=1;
-function applyFxLevel(v){
-  _fxLevelPref=Math.max(0,Math.min(1,typeof v==='number'?v:1));
-  if(typeof fxSetLevel==='function')fxSetLevel(_fxLevelPref);
+// LES EFFETS DE COMBAT : DEUX ÉTATS, PAS UN DOSAGE. Le réglage a été un
+// curseur de 0 à 1, et c'était une question à laquelle personne n'a de
+// réponse : entre « 0,35 » et « 0,60 » d'effets il n'y a rien à choisir, il y
+// a un curseur à traîner jusqu'à ce que ça ait l'air bien. Il n'y a que deux
+// positions utiles — tout, ou rien — et la seconde est celle d'un téléphone
+// qui peine ou de quelqu'un que les étincelles gênent pour lire le plateau.
+//
+// La valeur vit ici — c'est le panneau qui en est propriétaire —, et elle est
+// POUSSÉE vers js/combat-fx.js, qui peut ne pas être chargé : le jeu doit
+// rester réglable même sans son module d'effets.
+let _fxOnPref=true;
+function applyFxOn(on){
+  _fxOnPref=!!on;
+  if(typeof fxSetLevel==='function')fxSetLevel(_fxOnPref?1:0);
+  const b=document.getElementById('sp-fx-toggle');
+  if(b)b.setAttribute('aria-checked',_fxOnPref?'true':'false');
 }
 
 (function(){
@@ -77,13 +86,10 @@ function applyFxLevel(v){
   sfx.addEventListener('input',function(){applySfxVol(parseFloat(this.value));savePrefs({sfx:_sfxVol});});
   const mus=document.getElementById('sp-music-vol');
   mus?.addEventListener('input',function(){applyMusicVol(parseFloat(this.value));savePrefs({music:_musicVol});});
-  // LES EFFETS DE COMBAT. Un dosage et non un interrupteur : le curseur
-  // pilote le nombre de particules et la richesse des gerbes (fxSetLevel,
-  // js/combat-fx.js), et à zéro le module ne pose plus un seul nœud. C'est le réglage de survie d'un téléphone d'entrée de
-  // gamme, et c'est aussi celui de quelqu'un que les étincelles gênent pour
-  // lire le plateau — deux raisons différentes de baisser la même chose.
-  const fxs=document.getElementById('sp-fx-level');
-  fxs?.addEventListener('input',function(){applyFxLevel(parseFloat(this.value));savePrefs({fx:_fxLevelPref});});
+  // Les effets de combat : allumés ou éteints, rien entre les deux.
+  document.getElementById('sp-fx-toggle')?.addEventListener('click',function(){
+    applyFxOn(!_fxOnPref);savePrefs({fx:_fxOnPref?1:0});
+  });
 
   // -- VIBRATION : TOUJOURS ACTIVE ---------------------------------------
   // Elle a eu son interrupteur, à part du son. Il est parti : la vibration
@@ -102,8 +108,10 @@ function applyFxLevel(v){
   if(typeof prefs.sfx==='number'){applySfxVol(prefs.sfx);sfx.value=_sfxVol;}
   applyMusicVol(typeof prefs.music==='number'?prefs.music:MUSIC_RATIO);
   if(mus)mus.value=_musicVol;
-  applyFxLevel(typeof prefs.fx==='number'?prefs.fx:1);
-  if(fxs)fxs.value=_fxLevelPref;
+  // Allumés par défaut. Une préférence enregistrée par l'ancien CURSEUR est
+  // relue comme un booléen : tout ce qui n'était pas zéro voulait dire « je
+  // veux des effets », et zéro voulait dire « je n'en veux pas ».
+  applyFxOn(typeof prefs.fx==='number'?prefs.fx>0:true);
 })();
 
 // Le mode test (bac à sable : tout le catalogue, 10 000 ELO, perles

@@ -479,6 +479,18 @@ function chestBreakReady(chestId){
 function pbCalm(){
   return window.matchMedia&&window.matchMedia('(prefers-reduced-motion:reduce)').matches;
 }
+// LE HALO EST LE SEUL ÉLÉMENT DE LA CÉRÉMONIE QU'ON PEUT S'OFFRIR OU NON.
+// C'est une copie FLOUTÉE de l'image courante, plein écran, fondue en
+// « screen » : à elle seule, elle coûte plus cher que tout le reste de la
+// scène réunie, et sur un téléphone modeste c'est elle qui fait tomber
+// l'ouverture de coffre à dix images par seconde. L'interrupteur « Effets »
+// des réglages (js/settings-admin.js) la commande donc, comme il commande les
+// effets de combat : c'est la même question posée par le même joueur — « mon
+// téléphone n'y arrive pas ». Tout le reste de la cérémonie est intact.
+function pbBloomOn(){
+  if(pbCalm())return false;
+  return (typeof fxGetLevel!=='function')||fxGetLevel()>0;
+}
 
 // Relance une animation CSS déjà jouée : retirer la classe ne suffit pas, le
 // navigateur regroupe les deux changements dans la même image. Lire une
@@ -531,7 +543,7 @@ function chestBreakMount(chestId,onDone){
   host.innerHTML=
     '<div class="pb-shake"><div class="pb-trem"><div class="pb-scene">'+
       cfg.stages.map((s,i)=>'<img class="pb-frame" alt="" draggable="false" src="'+pbSrc(cfg,i)+'">').join('')+
-      '<div class="pb-bloom"></div>'+
+      (pbBloomOn()?'<div class="pb-bloom"></div>':'')+
     '</div></div></div>'+
     '<div class="pb-flash"></div><div class="pb-sparks"></div>'+
     '<div class="pb-white"></div>';
@@ -654,10 +666,12 @@ function chestBreakMount(chestId,onDone){
 
       // Le halo suit l'image affichée : même cadrage, mais flouté et fondu
       // en « screen », donc seules les fissures brillent.
-      bloom.style.backgroundImage='url("'+pbSrc(cfg,i)+'")';
-      const b=st.bloom||[0,0];
-      host.style.setProperty('--pb-b0',b[0]);
-      host.style.setProperty('--pb-b1',b[1]);
+      if(bloom){
+        bloom.style.backgroundImage='url("'+pbSrc(cfg,i)+'")';
+        const b=st.bloom||[0,0];
+        host.style.setProperty('--pb-b0',b[0]);
+        host.style.setProperty('--pb-b1',b[1]);
+      }
       host.style.setProperty('--pb-bt',st.bt||'2.6s');
 
       // Le tremblement continu s'installe et ne repart plus tant que la

@@ -341,7 +341,7 @@ const PIECES=[
   // Le Chevaucheur de Rhinocéros s'appelle désormais le Centaure. L'IDENTIFIANT
   // reste 'chevaucheur-rhinoceros' : c'est la clé sous laquelle les armées, les
   // inventaires et les déblocages sont déjà enregistrés dans les comptes
-  // existants ; la renommer viderait l'armurerie de tout le monde.
+  // existants ; la renommer viderait la Guerre des clans de tout le monde.
   {id:'chevaucheur-rhinoceros',name:'Centaure',emoji:'🐴',class:'Général',value:8,qty:1,pieceType:'r',ability:null},
   {id:'dame',name:'Dame',emoji:'♛',class:'Général',value:10,qty:1,pieceType:'q',ability:null},
   {id:'grand-maitre',name:'Grand Maître',emoji:'🔮',class:'Général',value:13,qty:1,pieceType:'q',ability:'Domination : Tant qu\'il est vivant, les pions adverses ne peuvent pas avancer de 2 cases'},

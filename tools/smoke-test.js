@@ -674,6 +674,7 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
       mpReceiveChat('phrase-qui-nexiste-pas');
       if(bulle()&&bulle().classList.contains('show'))
         out.push('un identifiant inconnu s affiche quand meme');
+      mpEmoteSetMuted(true);            // on rend le reglage a son defaut
       return out;
     });
     if(bad.length)throw new Error(bad.join(' · '));
@@ -705,28 +706,55 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
     if(r.saisie)throw new Error('un champ de saisie est apparu dans le chat');
   });
 
-  await step('la sourdine et le debit maximal tiennent',async()=>{
+  // LA SOURDINE NE COUPE QUE LA BULLE, ET ELLE EST COUPÉE PAR DÉFAUT.
+  // Elle a coupé la RÉCEPTION entière : le message n entrait pas dans le fil,
+  // la pastille ne s allumait pas, et on ne savait meme pas qu on avait ete
+  // salue. Ce qui derange en pleine reflexion n est pas le message, c est la
+  // bulle posee sur le plateau — un message qui attend dans un panneau ferme
+  // ne derange personne. Le debit, lui, est limite dans TOUS les cas : c est
+  // une protection contre un client modifie, pas un confort d affichage.
+  await step('la sourdine ne coupe que la bulle, et le debit tient',async()=>{
     const bad=await page.evaluate(()=>{
       const out=[];
       const bulle=()=>document.querySelector('#ai-player-bar .mp-emote-bubble');
-      mpEmoteSetMuted(true);
-      bulle().classList.remove('show');
+      const dot=()=>document.getElementById('chat-dot');
+      const filLen=()=>document.querySelectorAll('#chat-log .cmsg').length;
+      // Le defaut se verifie SANS reglage enregistre : l absence de cle vaut
+      // « coupe ». On l efface donc plutot que de faire confiance a l ordre
+      // des controles precedents.
+      try{localStorage.removeItem('ec_emote_bubbles');}catch(e){}
+      if(!mpEmoteMuted())out.push('la bulle n est pas coupee par defaut');
+      const avant=filLen();
+      if(bulle())bulle().classList.remove('show');
+      if(dot())dot().hidden=true;
       mpReceiveEmote(MP_EMOTES[0].id);
-      if(bulle().classList.contains('show'))out.push('une emote passe malgre la sourdine');
+      if(bulle()&&bulle().classList.contains('show'))
+        out.push('une bulle se pose malgre la sourdine');
+      if(filLen()!==avant+1)out.push('le message n entre pas dans le fil sous sourdine');
+      if(dot()&&dot().hidden)out.push('la pastille ne s allume pas sous sourdine');
+      return out;
+    });
+    if(bad.length)throw new Error(bad.join(' · '));
+    // Le temps que la limite de debit retombe (MP_EMOTE_MIN_GAP).
+    await page.waitForTimeout(1400);
+    const bad2=await page.evaluate(()=>{
+      const out=[];
+      const bulle=()=>document.querySelector('#ai-player-bar .mp-emote-bubble');
       mpEmoteSetMuted(false);
       if(mpEmoteMuted())out.push('la sourdine ne se releve pas');
-      // Deux emotes coup sur coup : la seconde est ignoree. C'est la
-      // protection contre un client modifie, qui n a que faire de SA limite.
-      bulle().classList.remove('show');
+      if(bulle())bulle().classList.remove('show');
       mpReceiveEmote(MP_EMOTES[0].id);
-      if(!bulle().classList.contains('show'))out.push('la premiere emote n est pas passee');
+      if(!bulle()||!bulle().classList.contains('show'))
+        out.push('la premiere emote n est pas passee');
+      // Deux emotes coup sur coup : la seconde est ignoree.
       bulle().classList.remove('show');
       mpReceiveEmote(MP_EMOTES[1].id);
       if(bulle().classList.contains('show'))
         out.push('deux emotes d affilee passent : rien ne limite le debit');
+      mpEmoteSetMuted(true);            // on rend le reglage a son defaut
       return out;
     });
-    if(bad.length)throw new Error(bad.join(' · '));
+    if(bad2.length)throw new Error(bad2.join(' · '));
   });
 
   await step('l\'Instructeur répond',async()=>{

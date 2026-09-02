@@ -114,7 +114,7 @@ function combatStockOk(){
   if(stock.ok)return true;
   showConfirmModal('Stock insuffisant pour cette armée : '+
     stock.missing.map(m=>m.name+' ('+m.have+'/'+m.need+')').join(', ')+
-    '. Récupérez le coffre de réapprovisionnement dans l\'Armurerie.',()=>{},
+    '. Récupérez le coffre de réapprovisionnement dans la Guerre des clans.',()=>{},
     {okLabel:'Compris',cancelLabel:'Fermer',okClass:'btn-primary'});
   return false;
 }

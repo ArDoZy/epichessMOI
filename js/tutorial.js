@@ -23,7 +23,7 @@
 //      gagnée.
 //   2. LA VISITE DU LABORATOIRE (étapes marquées `click`) : le joueur tourne
 //      réellement le cube, compose réellement une armée, ouvre réellement sa
-//      Armurerie.
+//      Guerre des clans.
 //
 // PRINCIPES DE ROBUSTESSE, parce qu'un tutoriel cassé est pire que pas de
 // tutoriel :
@@ -125,7 +125,7 @@ function tutoBuildBoard(battleIdx){
 }
 
 // Armée « pour l'affichage » : elle alimente les bandeaux joueurs et les
-// choix de promotion. Elle n'est jamais prélevée sur l'Armurerie.
+// choix de promotion. Elle n'est jamais prélevée sur la Guerre des clans.
 function tutoBattleArmy(battleIdx){
   const cfg=TUTO_BATTLES[battleIdx]||TUTO_BATTLES[0];
   return{mon:{id:'roi'},gen:{id:'dame'},extras:[...cfg.extras],placements:{},totalValue:0,_tuto:true};
@@ -155,7 +155,7 @@ function tutoStartBattle(battleIdx){
 
 // Fin d'une bataille du tutoriel : appelée par triggerEndOfGame()
 // (js/game-flow.js), qui n'a rien réglé du tout — ni ELO, ni coffre de série,
-// ni Armurerie. Tout se décide ici.
+// ni Guerre des clans. Tout se décide ici.
 function tutoOnBattleEnd(result){
   const battleIdx=_tutoBattle;
   _tutoBattle=null;
@@ -302,7 +302,7 @@ const TUTO_STEPS=[
     at:'#cube-arrow-right',click:'#cube-arrow-right',wait:700,
   },
   {
-    text:'L\'Armurerie. Tout ce que vous possédez, vous le possédez en '+
+    text:'La Guerre des clans. Tout ce que vous possédez, vous le possédez en '+
          '<strong>exemplaires comptés</strong> — le petit nombre en haut de chaque '+
          'carte, dans la composition d\'armée.<br>'+
          'Engager une créature dans une partie, c\'est la <strong>risquer</strong>. '+
@@ -569,7 +569,7 @@ function tutoRunDrill(pieceId){
 // Le bouton donne EXACTEMENT ce que le tutoriel aurait donné, ni plus ni
 // moins : les trois créatures (Garde d'Eau, Garde de Feu, Garde de Pierre) avec leurs
 // exemplaires, plus une première armée composée au hasard — sans quoi on
-// sortirait du tutoriel dans une armurerie vide, incapable de lancer un
+// sortirait du tutoriel dans une Guerre des clans vide, incapable de lancer un
 // combat, c'est-à-dire exactement là où le tutoriel sert à ne pas être.
 const TUTO_SKIP_PIECES=['garde-eau','garde-feu','garde-pierre'];
 const TUTO_SKIP_QTY=6;   // même dotation qu'un jalon de départ (STARTER_STOCK)
@@ -581,7 +581,7 @@ const TUTO_SKIP_QTY=6;   // même dotation qu'un jalon de départ (STARTER_STOCK
 // On n'utilise surtout pas generateAIArmy() : l'IA n'est pas soumise à
 // l'économie et pioche dans tout le catalogue. L'armée offerte serait alors
 // composée de créatures que le joueur ne possède pas, donc injouable — et il
-// sortirait du tutoriel sur un refus de l'Armurerie.
+// sortirait du tutoriel sur un refus de la Guerre des clans.
 function tutoBuildRandomArmy(){
   const has=p=>(typeof VV_UNLOCKED==='undefined'||VV_UNLOCKED.has(p.id))&&
     (typeof invCount!=='function'||invCount(p.id)>=pieceDeployCount(p.id));
