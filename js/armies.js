@@ -260,7 +260,7 @@ window.startArmySelection=mode=>{
     if(!stock.ok){
       renderArmiesPage();showPage('page-armies');
       showConfirmModal('Stock insuffisant : '+stock.missing.map(m=>m.name+' ('+m.have+'/'+m.need+')').join(', ')+
-        '. Récupérez le coffre de réapprovisionnement dans l\'Armurerie, ou composez une autre armée.',()=>{},
+        '. Récupérez le coffre de réapprovisionnement dans la Guerre des clans, ou composez une autre armée.',()=>{},
         {okLabel:'Compris',cancelLabel:'Fermer',okClass:'btn-primary'});
       return;
     }
@@ -359,7 +359,7 @@ document.getElementById('ai-ar-new').addEventListener('click',()=>{builderMode='
 // on pouvait perdre au sixième coup contre un Typhon dont on n'avait jamais
 // lu le pouvoir, et sans aucun moyen d'en aligner un en retour. Un duel ne
 // se joue plus qu'à armes connues : le vivier est celui de la Voie et de
-// l'Armurerie du joueur (aiPiecePool ci-dessous), et le catalogue s'ouvre en
+// la Guerre des clans du joueur (aiPiecePool ci-dessous), et le catalogue s'ouvre en
 // face de soi au rythme où l'on débloque les pièces.
 // opts.full : réservé aux OUTILS (tools/ai-bench.js), qui mesurent la force
 //   du moteur hors de toute progression de compte. Le jeu ne le passe plus.
@@ -369,7 +369,7 @@ const ARMY_STYLE_CLASS={
   defensif:'Brute',mobile:'Primordiale',
 };
 // LE VIVIER D'UN BOT : exactement les pièces que le joueur possède.
-// « Posséder » se lit comme dans l'Armurerie (invOwnedIds, js/economy.js) :
+// « Posséder » se lit comme dans la Guerre des clans (invOwnedIds, js/economy.js) :
 // débloquée sur la Voie OU présente en stock — une pièce débloquée puis
 // tombée à zéro exemplaire reste connue du joueur, donc jouable par le bot.
 // L'IA, elle, n'est toujours pas soumise à l'économie : elle ne consomme

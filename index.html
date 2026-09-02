@@ -369,19 +369,77 @@
                  Chaque pastille ne s'allume que quand quelque chose attend
                  vraiment d'être récupéré (renderRewardsBadge,
                  js/rewards-ui.js). -->
+            <!-- CHAQUE VOIE PORTE SON EMBLÈME, ET NON PLUS UN PICTOGRAMME
+                 D'INTERFACE. Un livre fermé, un rectangle debout et un
+                 rectangle couché dessinaient littéralement la colonne et la
+                 rangée de l'échiquier : exact, et illisible à 17 px. Les trois
+                 empruntent maintenant au vocabulaire du jeu — une COURONNE DE
+                 LAURIERS pour les victoires, un ÉCLAIR pour la richesse, un
+                 LIVRE OUVERT pour le lot du jour — en silhouettes PLEINES,
+                 taillées pour cette taille-là, comme les quatre blasons du
+                 cube.
+
+                 `.jt-art` est la planche peinte qui les remplace quand elle
+                 existe (assets/ui/logo-*.png, voir assets/PROMPTS.md § 5 bis).
+                 Elle S'ENLÈVE D'ELLE-MÊME à l'erreur de chargement — même repli
+                 que le médaillon de rang — et le SVG dessiné reste seul à
+                 l'écran. Fichier absent = l'écran d'aujourd'hui, à l'identique.
+
+                 `.jt-fx` ne s'allume que sur `.jouer-track.is-ready`,
+                 c'est-à-dire quand la pastille compte quelque chose à
+                 récupérer (rwSetBadge, js/rewards-ui.js) : des flammes autour
+                 des lauriers, des éclats électriques autour de l'éclair, une
+                 spirale de lumière autour du livre. Un effet permanent ne
+                 serait plus un rappel, c'est la règle déjà posée par la
+                 pastille elle-même. -->
             <div class="jouer-tracks">
               <button class="jouer-track" id="jouer-daily">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h16v11a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 19V8Z"/><path d="M3 5.5h18V8H3z"/><path d="M12 8v12.5"/></svg>
+                <span class="jt-ico">
+                  <!-- Un livre ouvert : deux pages bombées de part et d'autre du dos. -->
+                  <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                    <path d="M2.6 4.2c3-.5 6 .1 8.6 1.7v14.5c-2.6-1.6-5.6-2.2-8.6-1.7z"/>
+                    <path d="M21.4 4.2c-3-.5-6 .1-8.6 1.7v14.5c2.6-1.6 5.6-2.2 8.6-1.7z"/>
+                  </svg>
+                  <img class="jt-art" src="assets/ui/logo-journaliere.png" alt="" aria-hidden="true" onerror="this.remove()">
+                  <span class="jt-fx jt-fx-spirale" aria-hidden="true"><i></i><i></i></span>
+                </span>
                 <span>Récompense journalière</span>
                 <span class="jouer-badge" id="jouer-daily-badge" style="display:none">1</span>
               </button>
               <button class="jouer-track" id="jouer-colonne">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3.5h8v17H8z"/><path d="M8 9h8M8 15h8"/></svg>
+                <span class="jt-ico">
+                  <!-- Une couronne de lauriers : une tige et ses cinq feuilles,
+                       dessinées UNE fois puis mises en miroir par <use> — les
+                       deux branches sont donc rigoureusement symétriques. -->
+                  <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                    <defs>
+                      <g id="jt-laurier-branche">
+                        <path d="M12.9 21.5c3.9-1.5 6.4-5.3 6.4-9.8 0-2.7-.9-5.3-2.5-7.4l-1.2.9c1.4 1.9 2.2 4.1 2.2 6.5 0 3.9-2.2 7.2-5.5 8.5z"/>
+                        <path d="M17.1 3.3c1.9.3 3.2 1.8 3.4 3.7-1.9-.3-3.2-1.8-3.4-3.7z"/>
+                        <path d="M18.6 7c2 0 3.6 1.2 4.1 3.1-2 0-3.6-1.2-4.1-3.1z"/>
+                        <path d="M19.3 11c1.9-.4 3.7.6 4.5 2.4-1.9.4-3.7-.6-4.5-2.4z"/>
+                        <path d="M18.5 15c1.7-1 3.7-.7 5 .7-1.7 1-3.7.7-5-.7z"/>
+                        <path d="M16.4 18.5c1.3-1.5 3.3-1.9 5-1-1.3 1.5-3.3 1.9-5 1z"/>
+                      </g>
+                    </defs>
+                    <use href="#jt-laurier-branche"/>
+                    <use href="#jt-laurier-branche" transform="translate(24 0) scale(-1 1)"/>
+                  </svg>
+                  <img class="jt-art" src="assets/ui/logo-victoires.png" alt="" aria-hidden="true" onerror="this.remove()">
+                  <span class="jt-fx jt-fx-flammes" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
+                </span>
                 <span>Colonne des victoires</span>
                 <span class="jouer-badge" id="jouer-colonne-badge" style="display:none">0</span>
               </button>
               <button class="jouer-track" id="jouer-rangee">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 8h17v8h-17z"/><path d="M9 8v8M15 8v8"/></svg>
+                <span class="jt-ico">
+                  <!-- Un éclair stylisé : une seule silhouette, angles francs. -->
+                  <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                    <path d="M13.6 1.5 5.2 13.2h5.1L9.4 22.5l9.2-12.6H13z"/>
+                  </svg>
+                  <img class="jt-art" src="assets/ui/logo-richesse.png" alt="" aria-hidden="true" onerror="this.remove()">
+                  <span class="jt-fx jt-fx-eclairs" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+                </span>
                 <span>Rangée de la richesse</span>
                 <span class="jouer-badge" id="jouer-rangee-badge" style="display:none">0</span>
               </button>
@@ -412,7 +470,7 @@
     <div class="cube-face" data-face="armees">
       <div class="face-viewport" id="face-viewport-armees"></div>
     </div>
-    <!-- Face 3 (arrière) : l'Armurerie (page-reserve déplacée ici) :
+    <!-- Face 3 (arrière) : la Guerre des clans (page-reserve déplacée ici) :
          inventaire des pièces, coffre quotidien, choix de l'échiquier. Les
          coffres, eux, sont passés en bas du menu principal. -->
     <div class="cube-face" data-face="reserve">
@@ -470,12 +528,11 @@
        d'œil :
          · Magasin    → une balance de marchand (on y échange des perles) ;
          · Combat     → deux épées entrecroisées ;
-         · Mes armées → le Monarque encadré de deux pièces, sur son socle ;
-         · Armurerie  → un coffre ferré, cadenassé.
-       Les creux (fente du heaume, serrure du coffre, plateaux de la balance)
-       sont de VRAIS trous, obtenus par fill-rule="evenodd" : ils restent
-       transparents sur le laiton de la face active comme sur le fond sombre
-       des trois autres.
+         · Mes armées → un bouclier, la pointe d'une lance derrière ;
+         · Guerre des clans → un coffre ferré, cadenassé.
+       Les creux (serrure du coffre, plateaux de la balance) sont de VRAIS
+       trous, obtenus par fill-rule="evenodd" : ils restent transparents sur
+       le laiton de la face active comme sur le fond sombre des trois autres.
 
        SUR ORDINATEUR, CETTE BARRE DEVIENT UN RAIL VERTICAL À GAUCHE, et les
        `.cfb-label` ci-dessous sortent de l'ombre : à la souris, il y a la
@@ -495,6 +552,7 @@
         <path d="M8.9 18.2h6.2l1.6 2.15H7.3z"/>
         <path d="M6.1 20.1h11.8v1.6H6.1z"/>
       </svg>
+      <img class="cfb-art" src="assets/ui/logo-magasin.png" alt="" aria-hidden="true" onerror="this.remove()">
       <span class="cfb-label">Magasin</span>
     </button>
     <button type="button" class="cube-facebar-btn" data-face="jouer" title="Combat" aria-label="Combat">
@@ -515,36 +573,45 @@
           <circle cx="12" cy="21.35" r="1.35"/>
         </g>
       </svg>
+      <img class="cfb-art" src="assets/ui/logo-combat.png" alt="" aria-hidden="true" onerror="this.remove()">
       <span class="cfb-label">Combat</span>
     </button>
     <button type="button" class="cube-facebar-btn" data-face="armees" title="Mes armées" aria-label="Mes armées">
+      <!-- UN BOUCLIER, ET LA POINTE D'UNE LANCE QUI DÉPASSE DERRIÈRE. Ce
+           blason a d'abord été le Monarque encadré de deux pions sur son
+           socle : trois objets, huit sous-formes et deux gorges de 1 px entre
+           les pièces. C'est un dessin qui se tient à 200 px et qui n'existe
+           pas à 22 — les trois silhouettes s'y recollent en un seul pâté, et
+           il ne reste qu'une tache large.
+           Un bouclier est UNE forme, pleine, et la plus reconnaissable de
+           tout l'arsenal à cette taille. La lance ne montre que sa pointe
+           au-dessus du bord haut : elle dit l'armée en armes sans rien
+           ajouter à la masse, et le fer se lit encore quand tout le reste est
+           bouché.
+           Aucune sous-forme ne CHEVAUCHE une autre — la hampe s'arrête à
+           10,9, exactement là où commence le bouclier. C'est la condition
+           pour que le blason reste juste sous `fill-rule:evenodd` comme sous
+           le remplissage par défaut : deux formes superposées s'y
+           annuleraient au lieu de s'additionner. -->
       <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-        <!-- Les deux pièces d'escorte sont la MÊME silhouette, réduite à 0,84
-             autour de (cx,18) : le pied reste posé sur le socle au lieu de
-             remonter avec l'échelle. -->
-        <g transform="translate(4.9 18) scale(.84) translate(-4.9 -18)">
-          <circle cx="4.9" cy="9.6" r="2.15"/>
-          <path d="M3.15 11.8h3.5c.15 1.6.9 3.2 2.25 4.6H.9c1.35-1.4 2.1-3 2.25-4.6Z"/>
-        </g>
-        <path d="M9.35 6.5 8.5 2.6l2.4 1.75L12 1.5l1.1 2.85 2.4-1.75-.85 3.9Z"/>
-        <path d="M9.5 6.9h5v1.9h-5z"/>
-        <path d="M10 9.3h4c.2 2.5 1.2 4.8 2.9 6.9H7.1c1.7-2.1 2.7-4.4 2.9-6.9Z"/>
-        <g transform="translate(19.1 18) scale(.84) translate(-19.1 -18)">
-          <circle cx="19.1" cy="9.6" r="2.15"/>
-          <path d="M17.35 11.8h3.5c.15 1.6.9 3.2 2.25 4.6h-8c1.35-1.4 2.1-3 2.25-4.6Z"/>
-        </g>
-        <path d="M4.4 16.6h15.2v1.7H4.4z"/>
-        <path d="M2.2 19h19.6v1.7H2.2z"/>
+        <!-- La lance : le fer, la douille, puis la hampe qui plonge. -->
+        <path d="M12 1.3l1.7 3.9-.7 2.5h-2l-.7-2.5z"/>
+        <path d="M10.9 7.7h2.2v1.15h-2.2z"/>
+        <path d="M11.4 8.85h1.2v2.05h-1.2z"/>
+        <!-- Le bouclier, devant, posé au bas du blason. -->
+        <path d="M3.2 10.9h17.6v4.4c0 3.7-2.9 6.4-8.8 8-5.9-1.6-8.8-4.3-8.8-8z"/>
       </svg>
+      <img class="cfb-art" src="assets/ui/logo-armees.png" alt="" aria-hidden="true" onerror="this.remove()">
       <span class="cfb-label">Mes armées</span>
     </button>
-    <button type="button" class="cube-facebar-btn" data-face="reserve" title="Armurerie" aria-label="Armurerie">
+    <button type="button" class="cube-facebar-btn" data-face="reserve" title="Guerre des clans" aria-label="Guerre des clans">
       <svg viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd" aria-hidden="true">
         <path d="M2.9 9.75V8.3c0-2.95 2.4-5.35 5.35-5.35h7.5c2.95 0 5.35 2.4 5.35 5.35v1.45h-4.7V8.3a.65.65 0 0 0-.65-.65h-7.5a.65.65 0 0 0-.65.65v1.45Z"/>
         <path d="M2.9 11.05h18.2v8.15c0 1-.8 1.8-1.8 1.8H4.7c-1 0-1.8-.8-1.8-1.8Zm7.5 2.2v3.95h3.2v-3.95Z"/>
         <path d="M10.4 7.65h3.2v2.1h-3.2z"/>
       </svg>
-      <span class="cfb-label">Armurerie</span>
+      <img class="cfb-art" src="assets/ui/logo-clans.png" alt="" aria-hidden="true" onerror="this.remove()">
+      <span class="cfb-label">Guerre des clans</span>
     </button>
   </div>
 </div>
@@ -653,7 +720,7 @@
 </div>
 </div>
 
-<!-- PAGE ARMURERIE : déplacée dans la face "reserve" du cube au démarrage
+<!-- PAGE GUERRE DES CLANS : déplacée dans la face "reserve" du cube au démarrage
      (voir js/cube-nav.js). Tout le contenu est rendu par js/economy-ui.js.
      L'identifiant page-reserve est conservé : c'est une clé interne (cube,
      showPage, comptes enregistrés), la renommer n'aurait rien changé à
@@ -662,10 +729,10 @@
   <div class="reserve-wrap">
     <div class="reserve-inner">
       <div class="rs-hdr">
-        <div class="rs-title">L'Armurerie</div>
+        <div class="rs-title">La Guerre des clans</div>
       </div>
       <!-- LE SOLDE DE PERLES N'EST PLUS ICI. On ne dépense pas de perles dans
-           l'Armurerie : elles servent à acheter les coffres, et le solde est
+           la Guerre des clans : elles servent à acheter les coffres, et le solde est
            déjà écrit dans l'en-tête du MAGASIN, là où on décide de dépenser
            (voir renderMagasinPage, js/economy-ui.js). Répété ici, il ne
            faisait qu'occuper le haut de l'écran. -->
@@ -680,7 +747,7 @@
       <!-- Il n'y a plus de section « Coffres à ouvrir » : un coffre gagné ou
            acheté s'ouvre IMMÉDIATEMENT (chestOpenNow, js/economy-ui.js).
            La file d'attente n'ajoutait qu'un aller-retour entre la fin de
-           partie et l'Armurerie avant de voir sa récompense.
+           partie et la Guerre des clans avant de voir sa récompense.
            Il n'y a plus non plus de « Boutique » ici : les six coffres et
            leur prix en perles sont sur la face MAGASIN du cube
            (#shop-chest-grid), et le lot du jour se prend dans sa propre
@@ -689,7 +756,7 @@
            possédés se lit là où il sert à décider, c'est-à-dire sur la carte de
            chaque créature dans le builder (.pc-stock) et sous chaque pièce
            posée dans la composition (.cs-stock). Répété une troisième fois en
-           bas de l'Armurerie, il ne faisait plus que rallonger la page. -->
+           bas de la Guerre des clans, il ne faisait plus que rallonger la page. -->
       <!-- Plus de choix d'échiquier ici : la matière du plateau suit
            désormais automatiquement l'ELO (voir bestUnlockedSkin(),
            js/economy-ui.js) — la présenter comme un choix laissait croire
@@ -999,7 +1066,7 @@
       <button class="btn btn-primary" id="tuto-next">Suivant</button>
       <!-- Sortie du tutoriel, disponible à toutes les étapes : elle donne les
            trois créatures et une première armée, pour ne jamais laisser
-           quelqu'un dehors avec une armurerie vide (js/tutorial.js::tutoSkip). -->
+           quelqu'un dehors avec une Guerre des clans vide (js/tutorial.js::tutoSkip). -->
       <button class="btn btn-ghost tuto-skip-btn" id="tuto-skip">Passer le tutoriel</button>
     </div>
   </div>

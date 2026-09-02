@@ -600,11 +600,18 @@ function rewardsRefreshUI(){
 // maintenant la sienne, et chacune ne s'allume que si SA voie a quelque chose
 // à donner — une pastille toujours allumée n'est plus un rappel, c'est un
 // décor.
+// La pastille ALLUME AUSSI L'EMBLÈME. `.is-ready` sur le bouton déclenche les
+// effets posés autour du pictogramme (voir .jt-fx dans css/style.css) : des
+// flammes autour des lauriers, des éclats autour de l'éclair, une spirale de
+// lumière autour du livre. C'est le MÊME chiffre qui pilote les deux — un
+// bouton ne peut donc pas crépiter sans pastille, ni l'inverse.
 function rwSetBadge(id,n){
   const b=document.getElementById(id);
   if(!b)return;
   b.textContent=n>9?'9+':String(n);
   b.style.display=n?'':'none';
+  const t=b.closest('.jouer-track');
+  if(t)t.classList.toggle('is-ready',n>0);
 }
 function renderRewardsBadge(){
   const on=(typeof CUR_ACC==='undefined')||!!CUR_ACC;

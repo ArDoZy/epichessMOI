@@ -88,7 +88,7 @@ epic-chess/
     ├── piece-art.js         # Logos de pièces dessinés en SVG (remplace les emojis)
     ├── main.js               # État global partagé + helpers (showPage, showNotif...)
     ├── cube-nav.js           # Navigation principale par cube 3D (CSS). Déplace
-    │                          # armées/partie/armurerie dans les faces (la face
+    │                          # armées/partie/Guerre des clans dans les faces (la face
     │                          # de gauche est libre, en attente de contenu).
     ├── accounts.js           # Comptes locaux (localStorage) : plusieurs par
     │                          # appareil, création automatique au premier
@@ -120,7 +120,7 @@ epic-chess/
     ├── game-flow.js          # Démarrage partie, fin de partie, résultat
     ├── voie.js                # Page "Diagonale de la Puissance" (ex-"Voie des
     │                          # Victoires") : ELO, rangs, jalons
-    ├── economy-ui.js         # Page "Armurerie" (échiquiers) + les six coffres
+    ├── economy-ui.js         # Page "Guerre des clans" (échiquiers) + les six coffres
     │                          # du menu principal + le coffre quotidien, qui
     │                          # s'ouvre tout seul (dailyChestMaybeOpen)
     ├── rewards.js            # Les deux voies qui ne dépendent pas de l'ELO :
@@ -1188,15 +1188,15 @@ catalogue.
 
 Ces batailles passent par `startGame(true,false,tutoCfg)` : le troisième
 argument impose le plateau et la couleur, **saute l'économie** (rien n'est
-prélevé sur l'Armurerie, une promotion ne crédite rien) et court-circuite la
+prélevé sur la Guerre des clans, une promotion ne crédite rien) et court-circuite la
 cinématique d'entrée. `triggerEndOfGame` les détourne vers `tutoOnBattleEnd` :
-ni ELO, ni avancée des voies, ni règlement d'Armurerie. **Aucune des quatre
+ni ELO, ni avancée des voies, ni règlement de la Guerre des clans. **Aucune des quatre
 batailles n'a de pendule** (`clockMin:0` partout) : le chronomètre arrive avec
 les vraies parties.
 
 **La visite du laboratoire.** Les étapes qui portent un `click` attendent un
 vrai clic sur le vrai bouton : à la fin, le joueur a réellement tourné le
-cube, composé une armée et ouvert son Armurerie.
+cube, composé une armée et ouvert la Guerre des clans.
 
 Il se déclenche une seule fois, à la fermeture du parchemin d'accueil d'un
 compte neuf (`tutoMaybeStart`), et se rejoue depuis les réglages
@@ -1525,7 +1525,7 @@ les suivants, et on ne le découvre qu'en ouvrant la page à la main.
 parcours : création de compte, refus expliqué, tutoriel, réglages conservés,
 galerie des douze adversaires, partie CLASSÉE contre l'un d'eux (avec un coup
 joué et la réponse de l'IA), pendule, orientation des tables position-carrés,
-destruction du Typhon dans la simulation de coup, rendu de l'Armurerie et de
+destruction du Typhon dans la simulation de coup, rendu de la Guerre des clans et de
 la Diagonale de la Puissance, cycle de la récompense journalière (ordre des
 trente lots, reprise au premier après le trentième), fourchettes de contenu des
 six coffres, colonne des victoires (ordre des trente paliers, encaissement d'un

@@ -6,9 +6,10 @@ et le prompt à donner à un générateur d'images pour chacune.
 > **Statut au dernier inventaire** : les 16 fonds d'écran (`backgrounds/`),
 > les 6 effets (`fx/`) et 6 des 7 médaillons de rang (`ranks/`, il manque
 > `acier.png`) sont posés. Restent à générer : les 4 bannières de titre
-> (`banners/`), les 5 pièces de mobilier (`ui/`), les 12 portraits
-> d'adversaires, `ranks/acier.png`, et les planches des coffres Dame et
-> Roi. Chaque section ci-dessous porte son propre état.
+> (`banners/`), les 5 pièces de mobilier et les 7 logos de navigation
+> (`ui/`), les 12 portraits d'adversaires, `ranks/acier.png`, et les
+> planches des coffres Dame et Roi. Chaque section ci-dessous porte son
+> propre état.
 
 Rien ici n'est obligatoire. Le jeu tourne aujourd'hui sans une seule de ces
 images, et il tournera encore avec la moitié manquante. C'est la règle déjà
@@ -58,6 +59,7 @@ masquer ce qu'il y a dessous au lieu de s'y ajouter :
 - `assets/ui/cadre-plateau.png`
 - `assets/ui/ornement-coin.png`
 - `assets/ui/socle.png`
+- `assets/ui/logo-*.png` (les sept emblèmes de navigation, § 5 bis)
 - `assets/ranks/*.png`
 - `assets/adversaires/*.png` (fond sombre suffit, mais l'alpha est mieux)
 
@@ -97,8 +99,8 @@ ci-dessous les interdit explicitement. **Ne le retire pas.**
 
 Ouvre une conversation ChatGPT, colle ce bloc tel quel, puis enchaîne les
 prompts des sections suivantes. Le modèle garde la charte d'une image à
-l'autre, et les soixante planches sortent du même atelier — ce qui compte
-plus que la qualité de chacune prise séparément.
+l'autre, et les soixante-sept planches sortent du même atelier — ce qui
+compte plus que la qualité de chacune prise séparément.
 
 ```
 Tu vas me générer une série d'illustrations pour un jeu d'échecs
@@ -150,7 +152,7 @@ Tous en **format paysage (1536 × 1024)**, sauf indication contraire.
 |---|---|---|
 | `main-page.png` | menu principal (face JOUER) | l'atelier, vu de loin |
 | `armees.png` | face « Mes armées » | l'établi de composition |
-| `armurerie.png` | face « Armurerie » | les étagères de créatures |
+| `armurerie.png` | face « Guerre des clans » | les étagères de créatures |
 | `magasin.png` | face « Magasin » | le comptoir du marchand |
 | `adversaires.png` | page « Les Adversaires » | la galerie des portraits |
 | `voie.png` | page « Diagonale de la Puissance » | l'ascension |
@@ -449,6 +451,176 @@ socle. Le haut du carré est entièrement transparent.
 
 ---
 
+## 5 bis. LES SEPT LOGOS — `assets/ui/`
+
+Sept emblèmes, et **c'est la famille la plus regardée du jeu** : quatre sont
+posés en permanence dans la barre de navigation (le rail de gauche sur
+ordinateur, la barre du bas sur téléphone), trois sont les boutons du menu
+principal, juste au-dessus de COMBAT. On les voit à chaque partie, plusieurs
+fois.
+
+Ils sont donc soumis à une contrainte que n'a aucune autre planche du
+catalogue : **ils sont affichés entre 17 et 26 pixels de côté.** Un logo
+peint avec trois plans, une inscription et un dégradé de fond n'y sera pas
+« un peu moins lisible » — il n'y sera qu'une tache. Les cinq règles
+ci-dessous ne sont pas du confort :
+
+1. **UNE SEULE FORME**, reconnaissable à sa silhouette seule. Si on ne
+   distingue pas l'objet en le noircissant entièrement, le logo est raté.
+2. **PAS DE DÉCOR AUTOUR.** Pas de médaillon, pas de cercle, pas d'écusson,
+   pas de socle, pas de rubans. L'objet, et rien d'autre.
+3. **FOND ENTIÈREMENT TRANSPARENT** (PNG à canal alpha) : ces logos se posent
+   sur un bouton translucide et, quand l'onglet est actif, sur une plaque de
+   laiton clair. Un fond, même sombre, ferait une vignette carrée visible.
+4. **L'OBJET REMPLIT LE CARRÉ**, avec seulement 6 à 8 % de marge. Un objet
+   petit au milieu d'un grand vide perd la moitié de ses pixels utiles.
+5. **CONTRASTE INTERNE FORT.** À 20 px, deux valeurs proches fusionnent : il
+   faut du clair franc contre du sombre franc à l'intérieur même de l'objet.
+
+Format **carré** pour les sept.
+
+| Fichier | Où ça s'affiche | Objet |
+|---|---|---|
+| `logo-combat.png` | onglet « Combat » | deux épées croisées |
+| `logo-magasin.png` | onglet « Magasin » | une balance de marchand |
+| `logo-armees.png` | onglet « Mes armées » | un bouclier, la lance derrière |
+| `logo-clans.png` | onglet « Guerre des clans » | deux bannières croisées |
+| `logo-victoires.png` | bouton « Colonne des victoires » | une couronne de lauriers |
+| `logo-richesse.png` | bouton « Rangée de la richesse » | un éclair |
+| `logo-journaliere.png` | bouton « Récompense journalière » | un livre ouvert |
+
+Chacun est **facultatif**, un par un : le jeu dessine déjà les sept en SVG,
+et l'`<img>` du logo se retire d'elle-même si le fichier manque (`onerror`,
+`index.html`). Déposer `logo-combat.png` seul allume le seul onglet Combat,
+les six autres gardent leur dessin. Câblage : `.cfb-art` et `.jt-art` dans
+`css/style.css`.
+
+### `logo-combat.png` — deux épées croisées
+
+```
+Format carré, FOND ENTIÈREMENT TRANSPARENT (PNG avec canal alpha). Deux
+épées longues croisées en X, vues strictement de face, sans perspective,
+pointes vers le HAUT et gardes vers le BAS. Lames d'acier bleui à arête
+centrale marquée, gardes droites et quillons en laiton, pommeaux ronds.
+Les deux épées sont IDENTIQUES et le croisement est exactement au centre du
+carré. Les lames occupent toute la hauteur du carré, 7 % de marge au
+maximum. AUCUN écusson, AUCUN cercle, AUCUN ruban, AUCUN fond derrière les
+épées : uniquement les deux armes, sur du vide transparent. Contraste fort
+entre le tranchant clair et le creux sombre de chaque lame.
+```
+
+### `logo-magasin.png` — la balance du marchand
+
+```
+Format carré, FOND ENTIÈREMENT TRANSPARENT (PNG avec canal alpha). Une
+balance à deux plateaux en laiton, vue strictement de face, PARFAITEMENT
+SYMÉTRIQUE et à l'équilibre : un fléau horizontal, une colonne centrale
+verticale, deux plateaux ronds suspendus par trois chaînettes chacun, un
+pied en disque. Laiton doré chaud, patiné dans les creux. Elle occupe toute
+la hauteur du carré, 7 % de marge au maximum. AUCUN objet posé dans les
+plateaux, AUCUNE pièce de monnaie, AUCUN comptoir, AUCUN fond : uniquement
+la balance sur du vide transparent.
+```
+
+### `logo-armees.png` — le bouclier et la lance
+
+Trois pièces d'échecs alignées, c'était trois silhouettes, huit sous-formes
+et deux gorges d'un pixel : un dessin qui se tient à 200 px et qui n'existe
+pas à 22, où tout se recolle en une seule tache large. Un bouclier est UNE
+forme, pleine, et la plus reconnaissable de tout l'arsenal à cette taille.
+
+**Le fer de la lance ne dépasse QUE par le haut.** C'est le seul point du
+prompt qui a besoin d'être vérifié à la livraison : ni la hampe en bas du
+bouclier, ni deux lances en croix — le bouclier est posé au sol, il n'a rien
+en dessous.
+
+```
+Format carré, FOND ENTIÈREMENT TRANSPARENT (PNG avec canal alpha). Un
+bouclier de guerre vu strictement de face, sans perspective, posé au BAS du
+carré et occupant les deux tiers inférieurs : forme d'écu à bord supérieur
+DROIT et horizontal, flancs droits, se resserrant en pointe arrondie vers le
+bas. Bois cerclé de laiton, umbo de fer bombé en son centre, rivets sur le
+pourtour. DERRIÈRE le bouclier, une lance dressée VERTICALEMENT, centrée :
+on n'en voit QUE la partie qui dépasse au-DESSUS du bord haut du bouclier —
+un fer en feuille de laurier, large et pointu, en fer poli clair, et juste
+en dessous la douille et un empan de hampe en bois sombre. RIEN de la lance
+ne dépasse sous le bouclier, ni sur les côtés : pas de talon, pas de pointe
+en bas, pas de seconde lance, pas de croix. L'ensemble occupe tout le carré,
+7 % de marge au maximum. AUCUN blason, AUCUNE lettre, AUCUN motif peint sur
+le bouclier — le bois est nu. AUCUN sol, AUCUNE ombre portée, AUCUN fond :
+uniquement le bouclier et le fer de la lance sur du vide transparent.
+```
+
+### `logo-clans.png` — deux bannières croisées
+
+```
+Format carré, FOND ENTIÈREMENT TRANSPARENT (PNG avec canal alpha). Deux
+bannières de guerre croisées en X, vues strictement de face, sans
+perspective : deux hampes de bois sombre ferrées de laiton, croisées en
+leur milieu, chacune portant en HAUT un gonfanon long à deux pointes qui
+retombe le long de la hampe. Le gonfanon de gauche est en tissu vert-de-gris
+(#3fd0b2) sombre, celui de droite en tissu braise orangée (#f26a3d) sombre ;
+tous deux bordés d'un galon de laiton. Aucun blason, aucun motif, aucune
+lettre sur les toiles : elles sont unies. Les deux hampes occupent toute la
+hauteur du carré, 7 % de marge au maximum. AUCUN fond, AUCUN écusson
+derrière : uniquement les deux bannières sur du vide transparent.
+```
+
+### `logo-victoires.png` — la couronne de lauriers
+
+```
+Format carré, FOND ENTIÈREMENT TRANSPARENT (PNG avec canal alpha). Une
+couronne de lauriers vue strictement de face : deux rameaux de laurier
+courbés en cercle, se rejoignant EN BAS où ils sont noués d'un lien de
+laiton, et OUVERTS EN HAUT — les deux pointes ne se touchent pas, il reste
+un écart net entre elles. Sept feuilles larges et pointues par rameau,
+tournées vers le haut, nettement détachées les unes des autres. Feuillage en
+laiton doré chaud martelé, ombres bleues franches entre les feuilles.
+RIGOUREUSEMENT SYMÉTRIQUE par rapport à l'axe vertical du carré. La couronne
+occupe tout le carré, 7 % de marge au maximum, et son CENTRE EST VIDE ET
+TRANSPARENT — pas de médaille, pas d'étoile, pas de ruban, rien au milieu.
+AUCUN fond.
+```
+
+### `logo-richesse.png` — l'éclair
+
+```
+Format carré, FOND ENTIÈREMENT TRANSPARENT (PNG avec canal alpha). UN SEUL
+éclair stylisé, vu strictement de face : une flèche brisée en zigzag
+descendant de l'angle haut vers l'angle bas, à ANGLES FRANCS et arêtes
+droites — une forme géométrique taillée, pas une décharge photographique.
+Matière : or en fusion, clair au cœur (#f0d189) et plus chaud sur les bords
+(#d0a950), avec une fine arête blanche sur le tranchant éclairé. L'éclair
+occupe toute la hauteur du carré en diagonale, 7 % de marge au maximum.
+AUCUN nuage, AUCUN halo, AUCUNE gerbe d'étincelles, AUCUN cercle autour,
+AUCUN fond : uniquement l'éclair sur du vide transparent.
+```
+
+### `logo-journaliere.png` — le livre ouvert
+
+```
+Format carré, FOND ENTIÈREMENT TRANSPARENT (PNG avec canal alpha). Un gros
+grimoire OUVERT à plat au milieu, vu de face et légèrement de dessus, ses
+deux pages bombées se relevant symétriquement de part et d'autre du dos.
+Couverture de cuir sombre à coins de laiton, tranche épaisse, pages en
+parchemin crème dont on voit l'épaisseur en feuillets. Les pages sont
+VIERGES : aucune lettre, aucun mot, aucune ligne d'écriture, aucun symbole,
+aucune illustration dessus. RIGOUREUSEMENT SYMÉTRIQUE par rapport à l'axe
+vertical. Le livre occupe toute la largeur du carré, 7 % de marge au
+maximum. AUCUN pupitre, AUCUN fond, AUCUNE lueur autour : uniquement le
+livre sur du vide transparent.
+```
+
+> **Les effets lumineux ne sont PAS à générer.** Les flammes qui lèchent la
+> couronne de lauriers, les éclats qui claquent autour de l'éclair et la
+> spirale de lumière qui tourne autour du livre quand une récompense attend
+> sont dessinés et animés par le navigateur (`.jt-fx`, `css/style.css`) —
+> une image fixe ne saurait pas tourner. Les trois logos doivent donc être
+> **éteints** : pas de flamme, pas d'étincelle, pas de halo peint dessus,
+> sinon les deux se superposeraient.
+
+---
+
 ## 6. LES EFFETS — `assets/fx/`
 
 **Tous sur fond parfaitement noir**, sans exception : le jeu les fond en
@@ -640,7 +812,7 @@ Puis décommenter la ligne correspondante en tête de `js/chest-break.js`.
 
 ---
 
-## 10. Récapitulatif : les soixante chemins
+## 10. Récapitulatif : les soixante-sept chemins
 
 ```
 assets/backgrounds/  main-page.png  armees.png  armurerie.png  magasin.png
@@ -650,6 +822,9 @@ assets/backgrounds/  main-page.png  armees.png  armurerie.png  magasin.png
 assets/banners/      magasin.png  adversaires.png  voie.png  recompenses.png
 assets/ui/           cadre-plateau.png  ornement-coin.png  socle.png
                      laiton.png  vert-de-gris.png
+                     logo-combat.png  logo-magasin.png  logo-armees.png
+                     logo-clans.png  logo-victoires.png  logo-richesse.png
+                     logo-journaliere.png
 assets/fx/           halo-victoire.png  onde-choc.png  braises.png
                      eclat-capture.png  flamme-echec.png  cercle-runique.png
 assets/ranks/        bois.png  pierre.png  bronze.png  acier.png

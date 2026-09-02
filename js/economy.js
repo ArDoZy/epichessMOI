@@ -203,7 +203,7 @@ function countSurvivors(gs){
 // d'un adversaire en ligne suivent d'autres branches et ne créditent rien.
 function economyOnPromotion(pieceId,gs){
   // Bataille du tutoriel : les pièces sont prêtées, promouvoir un pion ne
-  // crédite donc rien (sinon on remplirait son Armurerie avant même d'avoir
+  // crédite donc rien (sinon on remplirait sa Guerre des clans avant même d'avoir
   // débloqué la pièce).
   if(gs&&gs.tuto)return;
   if(!isOwnablePiece(pieceId))return;
@@ -273,7 +273,7 @@ function economySettle(result,gs){
 // ----------------------------------------------------------------
 // IL N'Y A PLUS DE FILE D'ATTENTE. Un coffre gagné — ou acheté — s'ouvre
 // SUR-LE-CHAMP (chestOpenNow, js/economy-ui.js). L'ancienne file mettait un
-// aller-retour par l'Armurerie entre la victoire et sa récompense, et laissait
+// aller-retour par la Guerre des clans entre la victoire et sa récompense, et laissait
 // s'accumuler des piles de « ×14 Coffre Pion » qu'il fallait cliquer une par
 // une. Le seul argument en sa faveur — « ouvrir quand on veut » — ne pesait
 // pas lourd contre ça.
@@ -494,7 +494,7 @@ function claimDailyChest(){
   return gains;
 }
 
-// Heures restantes avant le prochain coffre quotidien (affichage Armurerie).
+// Heures restantes avant le prochain coffre quotidien (affichage Guerre des clans).
 function dailyChestCountdown(){
   const now=new Date();
   const next=new Date(now.getFullYear(),now.getMonth(),now.getDate()+1,0,0,0,0);

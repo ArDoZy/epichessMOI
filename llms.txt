@@ -82,7 +82,7 @@ C'est la mécanique qui distingue le plus Epic Chess des autres variantes :
 - Engager une armée, c'est la **risquer**. En cas de **défaite**, tous les
   exemplaires engagés sont perdus. En cas de **victoire** ou de nulle, seuls
   les exemplaires réellement **capturés** sont perdus, les survivants
-  reviennent à l'Armurerie.
+  reviennent au camp.
 - Une **promotion** de pion crée un exemplaire supplémentaire de la pièce
   choisie.
 - Il existe **six raretés de coffre**, du Coffre Pion au Coffre Roi. Ils
@@ -96,7 +96,7 @@ C'est la mécanique qui distingue le plus Epic Chess des autres variantes :
 - Les coffres s'obtiennent de trois façons : la **Récompense Journalière**
   (un lot par jour), la **Colonne des Victoires** (un palier par victoire) et
   l'achat en **perles** au **Magasin**, où les six sont exposés avec leur prix.
-- L'**Armurerie** rassemble ce que le joueur possède : ses exemplaires de
+- La **Guerre des clans** rassemble ce que le joueur possède : ses exemplaires de
   pièces, le coffre de réapprovisionnement quotidien et le choix de
   l'échiquier.
 - Un **coffre de réapprovisionnement quotidien** rend 2 exemplaires de chaque

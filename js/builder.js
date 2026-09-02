@@ -111,7 +111,7 @@ function wireSlotDragSwap(g){
     });
   });
 }
-// La pastille « Armurerie : — / Prête / Manque » a été retirée de la topbar :
+// La pastille « Guerre des clans : — / Prête / Manque » a été retirée de la topbar :
 // chaque carte de pièce porte déjà son stock, et chaque slot de composition
 // répète le compte exact sous la pièce posée (.cs-stock). Trois fois la même
 // information sur un écran de téléphone, c'était deux de trop.
@@ -185,7 +185,7 @@ const renderCards=()=>{
   let html='';
   ['Monarque','Général','Primordiale','Brute','Sorcier'].forEach(cls=>{
     if(!byClass[cls]?.length)return;
-    // En-tete de section : le MEME motif que l'Armurerie (libelle court, filet
+    // En-tete de section : le MEME motif que la Guerre des clans (libelle court, filet
     // qui court jusqu'au bord, decompte a droite). C'etait le troisieme style
     // d'en-tete de l'application ; il n'y en a plus qu'un.
     html+='<div class="class-sec '+cls+'" id="cls-sec-'+cls+'">'+

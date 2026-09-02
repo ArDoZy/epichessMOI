@@ -793,7 +793,7 @@ body.has-acc .builder-inner{padding-top:var(--page-top)}
 .class-sec.Primordiale{background:color-mix(in srgb,var(--primordiale) 6%,var(--surface))}
 .class-sec.Brute{background:color-mix(in srgb,var(--brute) 6%,var(--surface))}
 .class-sec.Sorcier{background:color-mix(in srgb,var(--sorcier) 6%,var(--surface))}
-/* Le motif d'en-tête partagé avec l'Armurerie : libellé court en capitales,
+/* Le motif d'en-tête partagé avec la Guerre des clans : libellé court en capitales,
    filet jusqu'au bord, décompte à droite. */
 .class-hdr{display:flex;align-items:center;gap:10px;margin-bottom:12px}
 .class-hdr::before{content:'';flex:0 0 auto;width:2px;height:13px;border-radius:1px;
@@ -843,7 +843,7 @@ body.has-acc .builder-inner{padding-top:var(--page-top)}
 
 /* [SETTINGS] ======================================================= */
 /* SEUL CHROME RESTANT, ET SUR UN SEUL ÉCRAN. Le bouton flottait en haut à
-   droite de TOUTES les pages : la composition d'armée, la Voie, l'Armurerie,
+   droite de TOUTES les pages : la composition d'armée, la Voie, la Guerre des clans,
    le Magasin, la galerie d'adversaires et jusqu'au plateau lui rendaient une
    bande vide en haut, alors qu'on n'y touche que pour régler le son, une fois.
    Il ne reste plus que sur le menu principal — l'écran du gros bouton COMBAT,
@@ -1680,6 +1680,36 @@ body.light .cube-face[data-face="jouer"]{background:
 /* Pas de translateY sous le doigt : le pouce couvre déjà le bouton, un
    déplacement vertical se lit comme un raté de la cible. */
 .jouer-btn:active{transform:scale(.985)}
+/* LA PULSATION. Une lueur dorée qui enfle et revient, en boucle, autour du
+   bouton — le seul objet de l'écran qui bouge quand on ne touche à rien, donc
+   le seul vers lequel l'œil part tout seul.
+
+   Elle est en `z-index:-1` et NON en `box-shadow` animée : une ombre portée
+   qui grossit repeint le bouton à chaque image (elle est dans son flux de
+   peinture), là où un pseudo-élément transformé reste sur la couche du
+   compositeur. C'est la différence entre une animation à 60 images et une
+   animation qui fait tressauter le libellé.
+   `z-index:-1` la pose derrière le fond du bouton : elle ne se voit donc que
+   là où elle DÉBORDE, et ne voile jamais le mot COMBAT. Ni `.jouer-actions`
+   ni `.jouer-menu` ne peignent de fond, rien ne la recouvre.
+   Le halo est la SILHOUETTE DU BOUTON, floutée : un `filter:blur(14px)` sur
+   une plaque dorée de la taille exacte du bouton déborde de ~28 px tout
+   autour, et ce débordement EST le halo. Un dégradé radial aurait demandé de
+   régler ses arrêts sur les proportions du bouton — qui changent avec la
+   largeur de l'écran — pour finir par éteindre la lumière juste là où on
+   voulait la voir. Le flou, lui, suit la forme quelle qu'elle soit. */
+.jouer-btn::before{content:'';position:absolute;inset:0;z-index:-1;
+  border-radius:16px;pointer-events:none;
+  background:linear-gradient(180deg,var(--gold2),var(--gold));
+  filter:blur(14px);
+  animation:combatPulse 2.6s ease-in-out infinite}
+@keyframes combatPulse{
+  0%,100%{opacity:.32;transform:scale(.98)}
+  50%    {opacity:.85;transform:scale(1.055)}
+}
+@media(prefers-reduced-motion:reduce){
+  .jouer-btn::before{animation:none;opacity:.5;transform:none}
+}
 /* L'interlettrage pose un blanc APRÈS chaque lettre, y compris la dernière :
    le bloc de texte est donc plus large que le mot, et un centrage
    arithmétique le décale visiblement vers la droite. On retire ce blanc
@@ -1692,7 +1722,7 @@ body.light .cube-face[data-face="jouer"]{background:
 .jouer-actions{display:flex;flex-direction:column;align-items:center;gap:14px}
 
 /* --- Faces placeholder (Magasin / Missions / Variantes) --- */
-/* Armurerie et Magasin : mêmes matières que le menu, un ton plus neutre pour
+/* Guerre des clans et Magasin : mêmes matières que le menu, un ton plus neutre pour
    que le contenu (cartes, coffres) ressorte. */
 .cube-face[data-face="reserve"],
 .cube-face[data-face="magasin"]{background:
@@ -1702,7 +1732,7 @@ body.light .cube-face[data-face="reserve"],
 body.light .cube-face[data-face="magasin"]{background:
   radial-gradient(ellipse at 50% 8%,rgba(18,120,106,.10),transparent 58%),
   linear-gradient(165deg,#f2f1ec,#e2e1da)}
-/* L'Armurerie embarque une page longue : elle doit défiler. */
+/* La Guerre des clans embarque une page longue : elle doit défiler. */
 #face-viewport-reserve{overflow-y:auto}
 #page-reserve.cube-embedded{background:transparent}
 .face-placeholder{position:absolute;inset:0;display:flex;flex-direction:column;
@@ -1782,9 +1812,23 @@ body.light .cube-face[data-face="magasin"]{background:
    d'ordinateur, au motif que la barre n'avait de place que pour le blason —
    c'était vrai d'une pastille de 40 px, ça ne l'est plus d'une barre pleine
    largeur, où chaque onglet dispose d'un quart de l'écran. */
-.cfb-label{display:block;font-family:var(--f-ui);font-size:min(2.7vw,10px);
+/* DEUX LIGNES PLUTÔT QU'UNE TRONCATURE. « Guerre des clans » ne tient pas sur
+   un quart d'écran de téléphone en une ligne : en `nowrap`, l'onglet affichait
+   « Guerre des cl… », ce qui est pire que muet — ça se lit comme un bug. Il
+   passe donc à la ligne, et deux lignes au maximum (`line-clamp`), ce que la
+   hauteur de la barre absorbe sans bouger. Le rail d'ordinateur, lui, garde
+   une seule ligne : il a la largeur pour ([DESKTOP], .cfb-label). */
+.cfb-label{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;
+  font-family:var(--f-ui);font-size:min(2.7vw,10px);
   font-weight:800;letter-spacing:.04em;line-height:1.1;text-align:center;
-  max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  max-width:100%;overflow:hidden}
+/* Le blason peint, quand il existe : même taille et même place que le blason
+   dessiné, qu'il remplace (assets/ui/logo-*.png, voir assets/PROMPTS.md
+   § 5 bis). L'`<img>` se retire d'elle-même à l'erreur de chargement
+   (onerror, index.html) — fichier absent, le SVG reste seul. */
+.cfb-art{display:block;width:clamp(20px,6vw,26px);height:clamp(20px,6vw,26px);
+  flex:0 0 auto;object-fit:contain;pointer-events:none}
+.cube-facebar-btn:has(.cfb-art) svg{display:none}
 /* La face en cours : le blason passe en NÉGATIF sur le laiton, et l'onglet se
    soulève d'un pixel. Les creux du dessin (fente du coffre, plateaux de la
    balance) sont de vrais trous (fill-rule:evenodd), donc l'or les traverse au
@@ -2024,7 +2068,7 @@ body.light .pmv-dark{background:#c3bdae}
 .pmv-l-txt{color:var(--muted)}
 
 /* [RESERVE] =====================================================
-   Face « Armurerie » du cube : inventaire des pièces possédées et coffre de
+   Face « Guerre des clans » du cube : inventaire des pièces possédées et coffre de
    réapprovisionnement quotidien. Les six coffres, eux, sont en bas du menu
    principal (voir [MENU-CHESTS]).
    ============================================================== */
@@ -2087,7 +2131,7 @@ body.light .pmv-dark{background:#c3bdae}
 /* [MAGASIN] ======================================================
    Face « Magasin » du cube : les six coffres, en grand, en deux rangées de
    trois — le seul endroit du jeu où ils s'achètent (js/economy-ui.js,
-   renderMagasinPage/buyChestFromShop). Même matière que l'Armurerie/menu
+   renderMagasinPage/buyChestFromShop). Même matière que la Guerre des clans/menu
    principal, présentation proche de [CHEST-OPENING] (.chest-lg) mais posée en
    grille plutôt qu'en scène. */
 .shop-wrap{position:absolute;inset:0;overflow-y:auto;padding:var(--page-top) 22px var(--page-bottom)}
@@ -2677,6 +2721,114 @@ body.light .pmv-dark{background:#c3bdae}
 .jouer-track svg{width:17px;height:17px;flex-shrink:0}
 .jouer-track:hover{color:var(--gold2);border-color:var(--gold);background:rgba(193,154,69,.12)}
 
+/* --- L'EMBLÈME DE CHAQUE VOIE, ET CE QUI TOURNE AUTOUR --------------
+   `.jt-ico` est une boîte de 17 px qui ne prend aucune place de plus dans le
+   bouton : le dessin (SVG), la planche peinte (`.jt-art`) et la couche
+   d'effets (`.jt-fx`) s'y superposent tous les trois en absolu. Les effets
+   DÉBORDENT franchement de cette boîte — c'est le point : ils vivent autour
+   de l'emblème, pas dessus. Rien n'écrête (`.jouer-track` n'a pas
+   d'`overflow`), et la couche est `pointer-events:none`, donc le bouton reste
+   cliquable de bord à bord. */
+.jt-ico{position:relative;display:block;width:17px;height:17px;flex:0 0 auto}
+.jt-ico svg,.jt-art{position:absolute;inset:0;width:100%;height:100%}
+.jt-art{object-fit:contain}
+/* La planche peinte gagne contre le dessin quand elle est là — et quand elle
+   n'est pas là, l'`<img>` s'est retirée toute seule (onerror, index.html) :
+   le sélecteur ne mord plus, et le SVG reste seul. Fichier absent = l'écran
+   d'aujourd'hui, à l'identique. */
+.jt-ico:has(.jt-art) svg{display:none}
+
+/* La couche d'effets : éteinte par défaut, allumée par `.is-ready`, que
+   rwSetBadge() pose sur le bouton en même temps qu'il allume la pastille
+   (js/rewards-ui.js). Les deux disent donc toujours la même chose. */
+.jt-fx{display:none;position:absolute;inset:-9px;pointer-events:none}
+.jouer-track.is-ready .jt-fx{display:block}
+/* L'emblème lui-même passe en doré quand sa voie a quelque chose à donner :
+   sans ça, un halo de flammes tournerait autour d'un pictogramme gris. */
+.jouer-track.is-ready{color:var(--gold2);border-color:rgba(193,154,69,.55)}
+
+/* LES FLAMMES DES LAURIERS (colonne des victoires). Cinq langues de feu
+   posées sur la couronne, chacune avec sa durée et son retard : des flammes
+   synchrones se lisent comme un clignotant, pas comme du feu. La forme est
+   une goutte inversée en `border-radius` à deux rayons — pointue en haut,
+   ronde en bas — et l'origine de la transformation est le PIED de la flamme,
+   qui reste donc accroché à la couronne pendant qu'elle monte. */
+.jt-fx-flammes i{position:absolute;width:5px;height:9px;
+  border-radius:56% 56% 48% 48%/78% 78% 34% 34%;
+  background:linear-gradient(180deg,#fff4cd,#f0aa2f 48%,#d9552f);
+  box-shadow:0 0 5px rgba(240,150,45,.75);
+  transform-origin:50% 100%;opacity:0;
+  animation:jtFlamme 1.45s ease-in-out infinite}
+.jt-fx-flammes i:nth-child(1){left:1px;  top:4px;  animation-delay:0s;    animation-duration:1.45s}
+.jt-fx-flammes i:nth-child(2){left:7px;  top:-1px; animation-delay:.34s;  animation-duration:1.2s}
+.jt-fx-flammes i:nth-child(3){right:1px; top:4px;  animation-delay:.68s;  animation-duration:1.6s}
+.jt-fx-flammes i:nth-child(4){left:3px;  bottom:2px;animation-delay:.95s; animation-duration:1.3s}
+.jt-fx-flammes i:nth-child(5){right:3px; bottom:2px;animation-delay:.18s; animation-duration:1.7s}
+@keyframes jtFlamme{
+  0%,100%{opacity:0;  transform:translateY(3px)  scale(.45,.5)}
+  22%    {opacity:1;  transform:translateY(0)    scale(1,1.12)}
+  55%    {opacity:.85;transform:translateY(-3px) scale(.86,.92)}
+  82%    {opacity:0;  transform:translateY(-6px) scale(.55,.6)}
+}
+
+/* LES ÉCLATS ÉLECTRIQUES DE L'ÉCLAIR (rangée de la richesse). Quatre petits
+   éclairs découpés au `clip-path` — le même polygone que la silhouette du
+   pictogramme, en miniature. Ils ne montent pas et ne dérivent pas : un
+   éclair CLAQUE, il n'a pas de trajectoire. Toute l'animation est donc dans
+   l'opacité, avec une double frappe (la décharge, le rebond), et quatre
+   retards premiers entre eux pour que le motif ne se répète jamais à l'œil. */
+.jt-fx-eclairs i{position:absolute;width:6px;height:9px;
+  background:linear-gradient(180deg,#fffbe8,#ffd75e 52%,#ffab2e);
+  clip-path:polygon(60% 0,16% 54%,46% 54%,34% 100%,86% 40%,54% 40%);
+  filter:drop-shadow(0 0 3px rgba(255,214,94,.9));
+  opacity:0;animation:jtEclair 1.15s linear infinite}
+.jt-fx-eclairs i:nth-child(1){left:-1px; top:2px;  transform:rotate(-18deg);animation-delay:0s}
+.jt-fx-eclairs i:nth-child(2){right:-1px;top:1px;  transform:rotate(14deg); animation-delay:.29s}
+.jt-fx-eclairs i:nth-child(3){left:2px;  bottom:-1px;transform:rotate(23deg);animation-delay:.61s}
+.jt-fx-eclairs i:nth-child(4){right:2px; bottom:0;  transform:rotate(-11deg);animation-delay:.83s}
+@keyframes jtEclair{
+  0%  {opacity:0}
+  4%  {opacity:1}
+  11% {opacity:.12}
+  17% {opacity:.95}
+  27% {opacity:0}
+  100%{opacity:0}
+}
+
+/* LA SPIRALE DU LIVRE (récompense journalière). Deux pièces, un seul
+   mouvement : un ARC de lumière qui tourne — un dégradé conique dont on ne
+   garde qu'un anneau, par un masque radial — et une TÊTE brillante qui court
+   devant lui. La tête est en orbite `rotate → translateX → rotate` : le
+   deuxième rotate, exactement opposé au premier, empêche la bille de
+   tourner sur elle-même. Son rayon passe de 13 à 10 px à mi-tour et sa
+   taille de 1 à .72 : le cercle devient une spirale vue de trois quarts,
+   qui plonge derrière le livre et revient devant. */
+.jt-fx-spirale i:first-child{position:absolute;inset:0;border-radius:50%;
+  background:conic-gradient(from 0deg,
+    rgba(255,214,120,0) 0deg,rgba(255,214,120,0) 205deg,
+    rgba(255,226,150,.88) 332deg,rgba(255,246,214,0) 360deg);
+  -webkit-mask:radial-gradient(closest-side,transparent 70%,#000 80%,#000 94%,transparent 100%);
+          mask:radial-gradient(closest-side,transparent 70%,#000 80%,#000 94%,transparent 100%);
+  animation:jtSpiraleTour 2.4s linear infinite}
+.jt-fx-spirale i:last-child{position:absolute;top:50%;left:50%;
+  width:4px;height:4px;margin:-2px 0 0 -2px;border-radius:50%;
+  background:#fff6d8;box-shadow:0 0 7px 2px rgba(255,224,140,.9);
+  animation:jtSpiraleTete 2.4s linear infinite}
+@keyframes jtSpiraleTour{to{transform:rotate(360deg)}}
+@keyframes jtSpiraleTete{
+  0%  {transform:rotate(0)      translateX(13px) rotate(0)       scale(1)}
+  50% {transform:rotate(180deg) translateX(10px) rotate(-180deg) scale(.72)}
+  100%{transform:rotate(360deg) translateX(13px) rotate(-360deg) scale(1)}
+}
+
+/* Mouvement réduit : l'information reste (l'emblème est doré, la pastille est
+   allumée), c'est le mouvement qui part. */
+@media(prefers-reduced-motion:reduce){
+  .jt-fx-flammes i,.jt-fx-eclairs i{animation:none;opacity:.9}
+  .jt-fx-spirale i:first-child{animation:none}
+  .jt-fx-spirale i:last-child{animation:none;transform:translateX(13px)}
+}
+
 /* La fenêtre. « Assez large » et VERTICALE : c'est une colonne de trente
    lots, sa hauteur est ce qui compte. */
 .streak-modal{position:fixed;inset:0;z-index:9100;display:none;
@@ -3072,7 +3224,7 @@ body.light .pmv-dark{background:#c3bdae}
 
 /* [ECONOMY-INLINE] : rappels d'économie dans les écrans existants ====
    Le stock possédé doit être visible LÀ OÙ on compose et LÀ OÙ on engage,
-   pas seulement dans l'Armurerie : sinon on découvre qu'on ne peut pas jouer
+   pas seulement dans la Guerre des clans : sinon on découvre qu'on ne peut pas jouer
    au moment de cliquer « Combattre ».
    ============================================================== */
 /* Le stock sur une carte de pièce se lit désormais dans son pied
@@ -3124,8 +3276,18 @@ body.light .pmv-dark{background:#c3bdae}
    bouton COMBAT et le pseudo — même famille, mêmes matières.
    La hauteur de ligne est celle que --menu-title-h réserve en haut de la
    colonne du menu (voir .jouer-menu) : les deux se suivent. */
+/* LE « H » ET LE « E » DE « CHESS » NE SE TOUCHENT PLUS. Cinzel Decorative
+   porte des ligatures et un crénage serré taillés pour un titre gravé, pas
+   pour une enseigne de 52 px : à ce corps-là, la barre du H et la panse du E
+   se rejoignaient et le mot se lisait « CHSS ». Les ligatures et le crénage
+   sont donc coupés (`font-variant-ligatures`, `font-kerning`, et les mêmes
+   fonctions refusées une seconde fois en `font-feature-settings` pour les
+   moteurs qui n'écoutent que celui-là), et l'interlettrage passe de .06 à
+   .085em : les lettres se suivent, elles ne se chevauchent plus. */
 .menu-title{font-family:var(--f-display);font-weight:900;
-  font-size:clamp(28px,7.6vw,52px);letter-spacing:.06em;line-height:1;margin:0;
+  font-variant-ligatures:none;font-kerning:none;
+  font-feature-settings:"liga" 0,"clig" 0,"dlig" 0,"hlig" 0,"kern" 0;
+  font-size:clamp(28px,7.6vw,52px);letter-spacing:.085em;line-height:1;margin:0;
   background:linear-gradient(180deg,#f6e3ad,var(--gold) 52%,#8a6a1a);
   -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
   filter:drop-shadow(0 6px 26px rgba(201,162,39,.38));
@@ -5215,7 +5377,7 @@ body.light .art-banner::before{opacity:.55;filter:saturate(.7)}
   .adv-rec{font-size:clamp(7.5px,2.2vw,9.5px);gap:4px}
   .adv-advised{font-size:clamp(6.5px,2vw,8.5px)}
 
-  /* --- Armurerie --- */
+  /* --- Guerre des clans --- */
   .reserve-wrap{padding:var(--page-top) 3.5vw var(--page-bottom)}
   .rs-sec{margin-top:5vw}
   .chest-grid{grid-template-columns:repeat(auto-fill,minmax(clamp(104px,30vw,150px),1fr));
@@ -5329,10 +5491,15 @@ body.desk .cube-facebar-btn{
 body.desk .cube-facebar-btn.is-active{transform:none}
 /* L'icône garde une taille FIXE : en pourcentage, elle enflait avec la
    hauteur du bouton et écrasait le libellé. */
-body.desk .cube-facebar-btn svg{width:24px;height:24px;flex:0 0 24px}
+body.desk .cube-facebar-btn svg,body.desk .cfb-art{width:24px;height:24px;flex:0 0 24px}
 /* Le libellé existe des deux côtés — la barre du bas le porte aussi depuis
    qu'elle est pleine largeur (voir .cfb-label dans [CUBE]) — mais le rail a la
    place de l'écrire en grand, à côté du blason plutôt qu'en dessous. */
+/* Deux lignes ici aussi. Le rail fait 150 px de large : une fois le blason et
+   sa gouttière retirés, « Guerre des clans » n'entre pas sur une ligne à
+   13,5 px, et l'onglet affichait « Guerre des cl… ». Il garde donc le
+   `line-clamp:2` de la barre du bas — la rangée fait 52 px de haut, deux
+   lignes en tiennent 30. */
 body.desk .cfb-label{font-size:13.5px;font-weight:700;letter-spacing:.3px;text-align:left}
 
 /* Les deux flèches de rotation s'en vont : elles étaient déjà le secours du
@@ -5409,7 +5576,7 @@ body.desk .jouer-tracks{max-width:440px}
 
 /* --- LES LARGEURS DE CONTENU -------------------------------------
    Chaque page plafonne sa colonne de contenu à une valeur écrite en dur
-   (980 px pour les armées, 1000 pour l'Armurerie, 860 pour la Voie…).
+   (980 px pour les armées, 1000 pour la Guerre des clans, 860 pour la Voie…).
    C'étaient des plafonds de LISIBILITÉ pensés pour un téléphone, où ils ne
    servent jamais : l'écran est toujours plus étroit. Sur un écran de 1500 px
    ils devenaient un plafond de gâchis — on défilait beaucoup pendant que la

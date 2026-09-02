@@ -334,7 +334,7 @@
   //
   // Deux garde-fous, sinon le geste se déclenche tout le temps :
   //   · le glissement doit être franchement HORIZONTAL (sinon c'est un
-  //     défilement de la page : l'Armurerie et « Mes armées » défilent) ;
+  //     défilement de la page : la Guerre des clans et « Mes armées » défilent) ;
   //   · il doit couvrir au moins 12 % de la largeur de l'écran — un seuil en
   //     pourcentage, pas en pixels, pour se comporter pareil sur un petit
   //     téléphone et sur une tablette.
