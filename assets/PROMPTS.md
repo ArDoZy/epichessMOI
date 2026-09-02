@@ -483,7 +483,7 @@ Format **carré** pour les sept.
 |---|---|---|
 | `logo-combat.png` | onglet « Combat » | deux épées croisées |
 | `logo-magasin.png` | onglet « Magasin » | une balance de marchand |
-| `logo-armees.png` | onglet « Mes armées » | le Monarque et son escorte |
+| `logo-armees.png` | onglet « Mes armées » | un bouclier, la lance derrière |
 | `logo-clans.png` | onglet « Guerre des clans » | deux bannières croisées |
 | `logo-victoires.png` | bouton « Colonne des victoires » | une couronne de lauriers |
 | `logo-richesse.png` | bouton « Rangée de la richesse » | un éclair |
@@ -522,18 +522,33 @@ plateaux, AUCUNE pièce de monnaie, AUCUN comptoir, AUCUN fond : uniquement
 la balance sur du vide transparent.
 ```
 
-### `logo-armees.png` — le Monarque et son escorte
+### `logo-armees.png` — le bouclier et la lance
+
+Trois pièces d'échecs alignées, c'était trois silhouettes, huit sous-formes
+et deux gorges d'un pixel : un dessin qui se tient à 200 px et qui n'existe
+pas à 22, où tout se recolle en une seule tache large. Un bouclier est UNE
+forme, pleine, et la plus reconnaissable de tout l'arsenal à cette taille.
+
+**Le fer de la lance ne dépasse QUE par le haut.** C'est le seul point du
+prompt qui a besoin d'être vérifié à la livraison : ni la hampe en bas du
+bouclier, ni deux lances en croix — le bouclier est posé au sol, il n'a rien
+en dessous.
 
 ```
-Format carré, FOND ENTIÈREMENT TRANSPARENT (PNG avec canal alpha). Trois
-pièces d'échecs en marbre, vues strictement de face, sans perspective,
-alignées sur un même sol : au CENTRE une pièce de roi, haute, couronnée de
-cinq pointes ; de part et d'autre deux pions IDENTIQUES et nettement plus
-petits, à tête ronde. Le groupe est parfaitement symétrique, le roi dépasse
-les pions d'un bon tiers. Marbre clair veiné, arêtes tournées nettes,
-ombres bleues franches dans les gorges. Le groupe occupe toute la largeur du
-carré, 7 % de marge au maximum. AUCUN damier, AUCUN socle sous le groupe,
-AUCUN fond : uniquement les trois pièces sur du vide transparent.
+Format carré, FOND ENTIÈREMENT TRANSPARENT (PNG avec canal alpha). Un
+bouclier de guerre vu strictement de face, sans perspective, posé au BAS du
+carré et occupant les deux tiers inférieurs : forme d'écu à bord supérieur
+DROIT et horizontal, flancs droits, se resserrant en pointe arrondie vers le
+bas. Bois cerclé de laiton, umbo de fer bombé en son centre, rivets sur le
+pourtour. DERRIÈRE le bouclier, une lance dressée VERTICALEMENT, centrée :
+on n'en voit QUE la partie qui dépasse au-DESSUS du bord haut du bouclier —
+un fer en feuille de laurier, large et pointu, en fer poli clair, et juste
+en dessous la douille et un empan de hampe en bois sombre. RIEN de la lance
+ne dépasse sous le bouclier, ni sur les côtés : pas de talon, pas de pointe
+en bas, pas de seconde lance, pas de croix. L'ensemble occupe tout le carré,
+7 % de marge au maximum. AUCUN blason, AUCUNE lettre, AUCUN motif peint sur
+le bouclier — le bois est nu. AUCUN sol, AUCUNE ombre portée, AUCUN fond :
+uniquement le bouclier et le fer de la lance sur du vide transparent.
 ```
 
 ### `logo-clans.png` — deux bannières croisées
