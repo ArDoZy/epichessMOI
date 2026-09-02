@@ -508,6 +508,57 @@ function applyDresseurEffect(move,board,p,gs){
 // et le plateau : d'où ce guichet, plutôt que trois fois la même précaution.
 // La créature est lue APRÈS coup sur le plateau, parce que c'est elle qui
 // donne sa couleur à l'effet, et pas le pion qu'elle vient de remplacer.
+// ----------------------------------------------------------------
+// LA SIGNATURE D'UNE CRÉATURE QUI VIENT DE JOUER
+// ----------------------------------------------------------------
+// fxPlayMove (js/combat-fx.js) reçoit déjà le coup et ses trois pouvoirs
+// DESTRUCTEURS — la charge, l'orage, le hurlement —, qui ont en commun de
+// faire disparaître quelque chose. Les trois qui suivent ne détruisent rien,
+// et c'est pour cela qu'ils n'avaient aucune image : ils changent une RÈGLE.
+//
+// Un pouvoir qui change une règle sans rien montrer n'est pas discret, il est
+// absent : le joueur d'en face voit ses pions refuser d'avancer de deux cases
+// et n'a aucun moyen de relier ce refus au Grand Maître posé six cases plus
+// loin. Chacun reçoit donc son geste, à l'instant où il prend effet.
+//
+// Appelé APRÈS fxPlayMove pour que la signature se pose par-dessus la traînée
+// du coup, et jamais l'inverse.
+function fxCreatureSignature(p,to,board,gs){
+  if(typeof fxPower!=='function'||!p)return;
+  switch(p.pieceId){
+    // FOI INÉBRANLABLE : le dôme s'ouvre là où le Prêtre se pose. Les alliées
+    // qu'il couvre portent leur liseré en permanence (.pc-warded,
+    // js/game-render.js) : ici l'ÉVÉNEMENT, là-bas l'ÉTAT.
+    case 'pretre':
+      fxPower('foi',to.r,to.c);
+      break;
+    // ESPADON : l'Empereur ne menace en cavalier que s'il menace VRAIMENT.
+    // L'effet ne se déclenche donc pas à chacun de ses coups, mais au seul
+    // instant où son pouvoir mord — sinon deux lames se croiseraient sur le
+    // plateau toutes les trois secondes sans rien vouloir dire.
+    case 'empereur':{
+      const foe=opp(p.color);
+      for(const[dr,dc] of[[1,2],[2,1],[-1,2],[-2,1],[1,-2],[2,-1],[-1,-2],[-2,-1]]){
+        const kr=to.r+dr,kc=to.c+dc;
+        if(!inB(kr,kc))continue;
+        const t=board[kr][kc];
+        if(t&&t.color===foe&&(t.isKing||t.type==='k')){fxPower('espadon',to.r,to.c);break;}
+      }
+      break;
+    }
+    // DOMINATION : UNE SEULE FOIS PAR PARTIE, et c'est tout le raisonnement.
+    // La Domination est vraie tant que le Grand Maître vit — c'est un état,
+    // porté en permanence par la pièce (.pc-dominant). En rejouer l'onde à
+    // chacun de ses coups reviendrait à annoncer une nouvelle à chaque fois
+    // qu'on la répète : au troisième coup, on ne la lit plus. Elle est donc
+    // posée au premier coup du Grand Maître, là où le joueur d'en face
+    // découvre à qui il a affaire, et plus jamais ensuite.
+    case 'grand-maitre':
+      if(!p._dominShown){p._dominShown=true;fxPower('domination',to.r,to.c);}
+      break;
+  }
+}
+
 function fxPromoteAt(board,to){
   if(typeof fxPromote!=='function')return;
   const np=board&&board[to.r]&&board[to.r][to.c];
@@ -566,6 +617,9 @@ function executeGameMove(from,to,gs){
       pieceId:p.pieceId,captured:captured?captured.pieceId:null,
       castle:to.castle||null,rook:rook,rookPieceId:rookPieceId,power:power,
     });
+    // Les pouvoirs qui ne détruisent rien mais changent une règle : le dôme du
+    // Prêtre, l'Espadon de l'Empereur, la Domination du Grand Maître.
+    fxCreatureSignature(p,to,b,gs);
   }
 
   gs.enPassant=null;

@@ -368,10 +368,28 @@ function fxPower(kind,r,c){
     // L'ORAGE SANGUINAIRE : un vortex qui s'ouvre sous la créature et balaie
     // ses quatre diagonales. Les pièces détruites, elles, ont déjà leur
     // bouffée de poussière par la voie normale (fxPuff).
+    //
+    // LA SUCCION VIENT AVANT L'ÉCLATEMENT, et c'est ce qui a changé : le
+    // vortex tournait sur lui-même pendant que les victimes mouraient chacune
+    // dans son coin, sans qu'aucune image ne relie les deux. Huit traits
+    // partent maintenant des cases voisines et convergent vers le centre —
+    // le Typhon ASPIRE, puis il détruit, et l'œil fait le lien tout seul.
     case 'typhon':{
       const node=fxCellNode(r,c,'fx-vortex');
       node.innerHTML='<span class="fx-swirl"></span><span class="fx-swirl fx-swirl2"></span>';
       fxMount('under',node,900);
+      const suck=fxCellNode(r,c,'fx-suck');
+      let sh='';
+      for(let i=0;i<8;i++){
+        const a=(i/8)*Math.PI*2;
+        sh+='<span class="fx-suck-line" style="'+
+          '--dx:'+(Math.cos(a)*100).toFixed(1)+'%;'+
+          '--dy:'+(Math.sin(a)*100).toFixed(1)+'%;'+
+          '--rot:'+(a*180/Math.PI).toFixed(1)+'deg;'+
+          '--del:'+(i*26)+'ms"></span>';
+      }
+      suck.innerHTML=sh;
+      fxMount('under',suck,700);
       fxShockwave(r,c,'fx-shock-typhon');
       break;
     }
@@ -392,14 +410,129 @@ function fxPower(kind,r,c){
       fxMount('over',node,720);
       break;
     }
-    // LA CHARGE DE L'ÉLÉPHANT : la case écrasée sur son passage.
+    // LA CASE ÉCRASÉE sur le passage de l'Éléphant. Elle n'est plus posée
+    // seule : fxCharge (plus bas) en sème une par case traversée, décalées
+    // dans le temps, pour que le balayage se LISE comme un balayage.
     case 'charge':{
       const node=fxCellNode(r,c,'fx-crush');
       node.innerHTML='<span class="fx-dustring"></span>';
       fxMount('under',node,620);
       break;
     }
+    // ---- LES POUVOIRS QUI NE SE VOYAIENT PAS -------------------------
+    // Les quatre qui suivent s'appliquaient en silence complet. Un joueur
+    // dont le pion refuse d'avancer de deux cases, ou dont la prise est
+    // refusée sans un mot, ne conclut pas « le Grand Maître me domine » : il
+    // conclut que le jeu est cassé. Une règle invisible n'est pas une
+    // subtilité, c'est un bug aux yeux de celui qui la subit.
+
+    // RETOUR À L'ÉTAT FONDAMENTAL : le Garde de Pierre s'ancre. Six éclats
+    // convergent vers lui et se figent — le geste est l'INVERSE d'une
+    // explosion, parce que le pouvoir est l'inverse d'une destruction : la
+    // matière se referme au lieu de se disperser.
+    case 'ancre':{
+      const node=fxCellNode(r,c,'fx-anchor');
+      let html='<span class="fx-anchor-core"></span>';
+      for(let i=0;i<6;i++){
+        const a=(i/6)*Math.PI*2;
+        html+='<span class="fx-anchor-shard" style="'+
+          '--dx:'+(Math.cos(a)*62).toFixed(1)+'%;'+
+          '--dy:'+(Math.sin(a)*62).toFixed(1)+'%;'+
+          '--rot:'+((a*180/Math.PI)|0)+'deg;'+
+          '--del:'+(i*34)+'ms"></span>';
+      }
+      node.innerHTML=html;
+      fxMount('over',node,900);
+      fxShockwave(r,c,'fx-shock-gold');
+      break;
+    }
+    // ESPADON : l'Empereur menace en cavalier. Deux arcs se croisent sur sa
+    // case — c'est une lame qu'on dessine, donc deux traits fins et rapides,
+    // et surtout pas un halo : rien de ce qui coupe n'est flou.
+    case 'espadon':{
+      const node=fxCellNode(r,c,'fx-sword');
+      node.innerHTML='<span class="fx-slash"></span><span class="fx-slash fx-slash2"></span>';
+      fxMount('over',node,620);
+      break;
+    }
+    // FOI INÉBRANLABLE : le dôme du Prêtre. Il s'ouvre sur SA case, et les
+    // alliées qu'il couvre portent leur liseré en permanence (.pc-warded,
+    // js/game-render.js) : ici l'ÉVÉNEMENT, là-bas l'ÉTAT — le même partage
+    // que la pétrification de la Méduse.
+    case 'foi':{
+      const node=fxCellNode(r,c,'fx-ward');
+      node.innerHTML='<span class="fx-dome"></span><span class="fx-dome fx-dome2"></span>';
+      fxMount('under',node,1000);
+      break;
+    }
+    // CUIRASSE : un pion vient de se briser sur le Preux Chevalier. Un éclat
+    // sec et court, sur la case du CHEVALIER et non du pion : c'est lui qui
+    // vient d'agir, même s'il n'a pas bougé.
+    case 'cuirasse':{
+      const node=fxCellNode(r,c,'fx-guard');
+      node.innerHTML='<span class="fx-guard-arc"></span><span class="fx-spark"></span>';
+      fxMount('over',node,560);
+      break;
+    }
+    // DOMINATION : le Grand Maître entre en jeu. Une onde lente traverse le
+    // plateau depuis sa case — elle ne dit pas « regardez-moi », elle dit
+    // « à partir de maintenant, les pions d'en face n'avancent plus de deux ».
+    case 'domination':{
+      const node=fxCellNode(r,c,'fx-domin');
+      node.innerHTML='<span class="fx-domin-ring"></span><span class="fx-domin-ring fx-domin-ring2"></span>';
+      fxMount('under',node,1300);
+      break;
+    }
   }
+}
+
+// ----------------------------------------------------------------
+// LA CHARGE DE L'ÉLÉPHANT : le balayage, et non quatre écrasements
+// ----------------------------------------------------------------
+// La charge posait UNE case écrasée, à l'arrivée. Or le pouvoir détruit tout
+// ce qui se trouve ENTRE le départ et l'arrivée : la seule case marquée était
+// précisément celle où il ne s'était rien passé de spécial.
+//
+// Chaque case traversée reçoit maintenant son écrasement, RETARDÉ à
+// proportion de sa position sur le trajet — le premier tombe quand l'Éléphant
+// quitte sa case, le dernier quand il arrive. C'est le même principe que le
+// sillage (fxDust) et pour la même raison : un chapelet qui s'allume d'un
+// bloc ne raconte pas un passage, il raconte une zone.
+//
+// Par-dessus vient la LAME DE FOND : une barre posée sur toute la longueur du
+// trajet, qui s'ouvre depuis le départ. C'est elle qui dit que la charge est
+// UN geste et non une suite d'impacts.
+function fxCharge(from,to,pieceId){
+  if(!fxOn())return;
+  const dr=Math.sign(to.r-from.r),dc=Math.sign(to.c-from.c);
+  const steps=Math.max(Math.abs(to.r-from.r),Math.abs(to.c-from.c));
+  if(steps<1)return;
+
+  // La lame de fond, sous les pièces : elle balaie, elle ne masque pas.
+  const a=fxCenter(from.r,from.c),b=fxCenter(to.r,to.c);
+  const dx=b.x-a.x,dy=b.y-a.y;
+  const len=Math.sqrt(dx*dx+dy*dy);
+  if(len>=1){
+    const bar=document.createElement('div');
+    bar.className='fx-sweep';
+    bar.style.left=a.x+'%';
+    bar.style.top=a.y+'%';
+    bar.style.width=len+'%';
+    bar.style.setProperty('--rot',(Math.atan2(dy,dx)*180/Math.PI).toFixed(1)+'deg');
+    bar.style.setProperty('--fx-c',fxPieceColor(pieceId));
+    fxMount('under',bar,700);
+  }
+
+  // Une case écrasée par case traversée, la dernière comprise.
+  for(let i=1;i<=steps;i++){
+    const rr=from.r+dr*i,cc=from.c+dc*i;
+    const node=fxCellNode(rr,cc,'fx-crush');
+    node.style.setProperty('--del',Math.round((i-1)/steps*170)+'ms');
+    node.innerHTML='<span class="fx-dustring"></span>';
+    fxMount('under',node,760);
+  }
+  // L'onde de choc tombe à l'ARRIVÉE : c'est là que la masse s'arrête.
+  fxShockwave(to.r,to.c,'fx-shock-charge');
 }
 
 // L'onde de choc : le seul effet qui va chercher une planche dessinée
@@ -620,5 +753,10 @@ function fxPlayMove(d){
     const at=d.capAt||d.to;
     fxImpact(at.r,at.c,d.captured);
   }
-  if(d.power)fxPower(d.power,d.to.r,d.to.c);
+  // LA CHARGE EST LE SEUL POUVOIR QUI A BESOIN DU TRAJET. Tous les autres
+  // s'appliquent autour de la case d'arrivée et se contentent donc de
+  // fxPower(kind, r, c) ; celui-ci détruit une LIGNE, et une ligne ne se
+  // dessine pas depuis un point.
+  if(d.power==='charge')fxCharge(d.from,d.to,d.pieceId);
+  else if(d.power)fxPower(d.power,d.to.r,d.to.c);
 }
