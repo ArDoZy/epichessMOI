@@ -341,61 +341,78 @@ function triggerEndOfGame(result){
     return;
   }
   const oldElo=vvLoadElo();const aiElo=vvEstimateAiElo();
-  // Partie non classée (mode admin uniquement, hors tutoriel qui sort plus
-  // haut) : les duels contre les adversaires du laboratoire, eux, comptent.
-  // l'ELO ne bouge pas d'un point, donc aucun déblocage par palier non plus.
-  // Le reste de la fin de partie est inchangé : la série de victoires, les
-  // coffres et le règlement des pièces engagées valent dans tous les modes.
+  // Partie non classée (mode admin ou compte admin, hors tutoriel qui sort
+  // plus haut) : les duels contre les adversaires du laboratoire, eux,
+  // comptent. L'ELO ne bouge pas d'un point, donc aucun déblocage par palier
+  // non plus. Le reste de la fin de partie est inchangé : la série de
+  // victoires, les coffres et le règlement des pièces engagées valent dans
+  // tous les modes.
   const noEloReason=(typeof vvNoEloReason==='function')?vvNoEloReason(GS):null;
-  let newElo=oldElo,delta=0,newUnlocks=[],eloCalc=null;
-  if(!noEloReason){
-    // vvCalcNewElo lit le compteur de parties classées pour choisir son
-    // K-facteur : on l'appelle AVANT vvNoteRankedGame(), sinon la première
-    // partie du compte serait déjà comptée comme jouée et perdrait son K de
-    // placement.
-    eloCalc=vvCalcNewElo(oldElo,aiElo,result);
-    newElo=eloCalc.newElo;delta=eloCalc.delta;
-    if(typeof vvNoteRankedGame==='function')vvNoteRankedGame(result);
-    // vvSaveElo (js/accounts.js) a déjà relevé elo_peak si besoin ; rank_max
-    // en découle et reste écrit pour les écrans qui le lisent.
-    const newRankIdx=(typeof vvRankIdx==='function')?vvRankIdx():vvGetRankIdx(newElo);
-    if(newRankIdx>vvLoadRankMax())vvSaveRankMax(newRankIdx);
-    newUnlocks=vvCheckNewUnlocks(oldElo,newElo);
-    if(typeof vvCheckRewardMilestones==='function')vvCheckRewardMilestones(oldElo,newElo);
-    vvSaveElo(newElo);
-  }
-  const foeId=(!GS.multiplayer&&typeof aiCurrentOpponent==='function')?aiCurrentOpponent().id:null;
-  if(foeId&&typeof advNoteResult==='function')advNoteResult(foeId,result);
-  // CE QUI EST ENREGISTRÉ D'UNE PARTIE. L'entrée portait le résultat et les
-  // deux ELO ; elle porte maintenant aussi l'ARMÉE alignée et le MODE, ce qui
-  // permet à la page Comptes de dire « votre Méduse gagne 62 % du temps » ou
-  // « en ligne : 14 victoires sur 23 » plutôt qu'un simple total.
+
+  // -- CE QUI EST ENVOYÉ AU SERVEUR ------------------------------------
+  // Le jeu DÉCLARE une partie, il n'annonce pas un classement : c'est le
+  // serveur qui recalcule l'ELO (ec_report_match, supabase/schema.sql) et
+  // renvoie la fiche à jour. Trafiquer le navigateur ne rapporte donc rien.
   const armee=(currentArmyData&&Array.isArray(currentArmyData.extras))
     ?currentArmyData.extras.slice(0,3):[];
   const mode=GS.multiplayer?'ligne':'ia';
-  const history=vvLoadHistory();
-  history.push({result,oldElo,newElo,delta,date:Date.now(),aiElo,
-    ranked:!noEloReason,opp:foeId,army:armee,mode});
-  vvSaveHistory(history);
-  // Les agrégats de carrière ne dépendent pas des 30 dernières parties (voir
-  // vvNotePieceStats, js/accounts.js). Le tutoriel et le mode test en sont
-  // exclus : ils sortent plus haut ou n'écrivent rien.
-  if(!noEloReason&&typeof vvNotePieceStats==='function')
-    vvNotePieceStats(armee,result==='win');
+  const foeId=(!GS.multiplayer&&typeof aiCurrentOpponent==='function')?aiCurrentOpponent().id:null;
+  const foeName=GS.multiplayer?(MP&&MP.oppName)||'Adversaire':foeId;
+  if(foeId&&typeof advNoteResult==='function')advNoteResult(foeId,result);
+
+  // LE CALCUL LOCAL N'EST QU'UNE PRÉVISION. Il tourne quand même, avec la
+  // même formule que le serveur, pour deux raisons : il alimente les phrases
+  // d'explication du modal (partie de placement, bonus d'ascension), et il
+  // sert de repli si la réponse tarde plus que la cinématique. Dès que le
+  // serveur répond, ce sont SES nombres qui sont affichés et enregistrés.
+  let eloCalc=null,preview={old:oldElo,neu:oldElo,delta:0};
+  if(!noEloReason){
+    eloCalc=vvCalcNewElo(oldElo,aiElo,result);
+    preview={old:oldElo,neu:eloCalc.newElo,delta:eloCalc.delta};
+  }
+
+  // Le MODE TEST (/?test) n'écrit rien du tout, pas même une ligne
+  // d'historique : on y entre et on en sort sans laisser de trace.
+  let report=null;
+  const reportP=(typeof vvAdmin==='function'&&vvAdmin())?Promise.resolve(null):ecReportMatch({
+    result,ranked:!noEloReason,opp_elo:aiElo,opp_name:foeName,mode,army:armee,
+  }).then(r=>{report=r;return r;}).catch(e=>{
+    // Le rapport est mis de côté et rejoué au prochain lancement
+    // (ecPushPendingMatch, js/server.js). On ne bloque pas la fin de partie
+    // pour autant : le joueur a le droit de voir son résultat.
+    console.warn('[EC] rapport de partie différé :',e&&e.message);
+    return null;
+  });
+
+  // Le modal n'apparaît qu'une fois le verdict du serveur connu — ou au bout
+  // de REPORT_WAIT, pour ne jamais laisser le joueur devant un écran vide à
+  // cause du réseau.
+  const REPORT_WAIT=3500;
+  const showModal=()=>{
+    const paint=()=>{
+      const oe=report?report.old_elo:preview.old;
+      const ne=report?report.new_elo:preview.neu;
+      const dl=report?report.delta:preview.delta;
+      // Les déblocages se lisent sur l'écart RÉELLEMENT enregistré : les
+      // calculer sur la prévision offrirait — ou retirerait — une créature
+      // sur la foi d'un nombre que le serveur n'a pas validé.
+      let newUnlocks=[];
+      if(!noEloReason){
+        newUnlocks=vvCheckNewUnlocks(oe,ne);
+        if(typeof vvCheckRewardMilestones==='function')vvCheckRewardMilestones(oe,ne);
+      }
+      updateCab();
+      showResultModal(result,oe,ne,dl,newUnlocks,noEloReason,eloCalc);
+    };
+    if(report||noEloReason)paint();
+    else Promise.race([reportP,new Promise(r=>setTimeout(r,REPORT_WAIT))]).then(paint);
+  };
+
   // Règlement des pièces engagées AVANT l'affichage : la cinématique montre
   // le décompte réel, pas une estimation. settleAndCelebrate (economy-ui.js)
   // enchaîne ensuite cinématique d'issue → modal de verdict.
-  const showModal=()=>showResultModal(result,oldElo,newElo,delta,newUnlocks,noEloReason,eloCalc);
   if(typeof settleAndCelebrate==='function')settleAndCelebrate(result,GS,showModal);
   else setTimeout(showModal,400);
-  // LA MEILLEURE SÉRIE SE RELÈVE APRÈS LE RÈGLEMENT, et pas avant : c'est
-  // economySettle (appelée par settleAndCelebrate) qui incrémente
-  // 'win_streak'. Lue plus haut, on enregistrerait toujours la série de la
-  // partie PRÉCÉDENTE — et le record n'atteindrait jamais sa vraie valeur.
-  // La série ne commande plus aucune récompense (voir economySettle) : elle ne
-  // sert plus qu'à cette ligne de la fiche de compte, « Meilleure série ».
-  if(!noEloReason&&typeof vvNoteStreak==='function')
-    vvNoteStreak(accGet('win_streak',0));
   // Après trois victoires, et une seule fois, le jeu propose de s'installer
   // sur l'écran d'accueil (voir js/pwa.js). Le moment n'est pas anodin : à
   // l'arrivée, le visiteur n'a aucune raison d'installer quoi que ce soit ;

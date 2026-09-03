@@ -1,7 +1,13 @@
 // ================================================================
 // MULTIPLAYER.JS : Parties en ligne joueur contre joueur via
-// Supabase Realtime (broadcast + presence), sans base de données.
+// Supabase Realtime (broadcast + presence).
 // ================================================================
+// LES PARTIES ELLES-MÊMES NE PASSENT PAS PAR LA BASE : un coup n'a pas
+// à être écrit sur un disque, il a à arriver tout de suite chez
+// l'adversaire. Tout ce fichier tient donc dans des canaux Realtime.
+// La base (supabase/schema.sql, js/server.js) intervient de deux façons
+// seulement : elle donne l'ELO et le pseudo qui voyagent avec l'armée
+// (mpMyCard), et elle enregistre le résultat à la fin (game-flow.js).
 // PARCOURS UTILISATEUR :
 //   Menu → COMBAT → choisir son armée → page d'engagement en ligne →
 //   « Chercher un adversaire » (appariement automatique), « Partie privée »
@@ -21,14 +27,12 @@
 // complet (journal, rattrapage, battement de cœur, reconnexion, délai de
 // grâce avant de déclarer un adversaire parti).
 //
-// AVANT DE POUVOIR JOUER EN LIGNE : renseignez SUPABASE_URL ci-dessous
-// (Settings > API de votre projet supabase.com > "Project URL"). Ce n'est
-// PAS l'adresse de ce site, mais celle du projet Supabase, de la forme
-// https://abcdefghijk.supabase.co
-//
-// La clé publishable est publique par conception : elle est faite pour
-// vivre dans le code d'un site web. La clé "secret", elle, ne doit JAMAIS
-// apparaître ici : elle contourne toutes les règles de sécurité.
+// AVANT DE POUVOIR JOUER EN LIGNE : renseignez SUPABASE_URL dans
+// js/server.js (Settings > API de votre projet supabase.com >
+// "Project URL"). Ce n'est PAS l'adresse de ce site, mais celle du projet
+// Supabase, de la forme https://abcdefghijk.supabase.co. Le multijoueur et
+// les comptes partagent le même projet, donc la même adresse : elle n'est
+// écrite qu'une fois.
 //
 // Dépendances : SDK supabase-js (chargé via CDN dans index.html),
 // rules-engine.js (executeGameMove, GS), game-flow.js (startGame,
@@ -37,10 +41,11 @@
 // qui ouvrent la fenêtre du salon directement sur le bon écran).
 // ================================================================
 
-// Project URL du projet Supabase, sans chemin : le SDK ajoute lui-même
-// /rest/v1 ou /realtime/v1 selon ce qu'il appelle.
-const SUPABASE_URL='https://qwtlmaacjfxlbvrvooim.supabase.co';
-const SUPABASE_PUBLISHABLE_KEY='sb_publishable_8PgQoH4YhF6oitNVRh3JBQ_T9fcNwwQ';
+// SUPABASE_URL et SUPABASE_PUBLISHABLE_KEY sont déclarés dans
+// js/server.js : c'est lui qui parle au projet Supabase pour les données
+// de compte, et il est chargé bien avant ce fichier. Une seconde
+// déclaration ici ferait deux endroits à corriger le jour d'un changement
+// de projet — et, `const` étant global, planterait le chargement.
 
 const MP={
   client:null,
@@ -85,7 +90,10 @@ const MP={
 function mpMyCard(){
   return{
     name:(typeof CUR_ACC==='string'&&CUR_ACC)?CUR_ACC:'Joueur',
+    // L'ELO vient de la fiche du serveur (js/server.js) : c'est le même
+    // nombre que celui du classement général, et le seul qui fasse foi.
     elo:(typeof vvLoadElo==='function')?vvLoadElo():0,
+    pid:(typeof ECP!=='undefined'&&ECP)?ECP.id:null,
   };
 }
 
@@ -143,7 +151,7 @@ function mpDiagnose(){
     if(r.status===401||r.status===403){
       return{
         kind:'key',
-        msg:'Le serveur répond mais refuse la clé du jeu. Elle a probablement été régénérée : il faut mettre à jour SUPABASE_PUBLISHABLE_KEY dans js/multiplayer.js.',
+        msg:'Le serveur répond mais refuse la clé du jeu. Elle a probablement été régénérée : il faut mettre à jour SUPABASE_PUBLISHABLE_KEY dans js/server.js.',
       };
     }
     return{
@@ -1617,7 +1625,7 @@ function mpOpenModal(){
   mpLeave();
   mpShowScreen('quick');
   mpStatus('');
-  if(!mpIsConfigured())mpStatus('Multijoueur pas encore configuré : renseignez l\'URL de votre projet Supabase (Settings > API > Project URL) dans js/multiplayer.js.','err');
+  if(!mpIsConfigured())mpStatus('Multijoueur pas encore configuré : renseignez l\'URL de votre projet Supabase (Settings > API > Project URL) dans js/server.js.','err');
   document.getElementById('mp-modal').classList.add('show');
 }
 
@@ -1629,4 +1637,249 @@ function mpOpenModal(){
 document.getElementById('mp-cancel')?.addEventListener('click',()=>{
   mpLeave();
   mpCloseModal();
+});
+
+// ================================================================
+// SALON DE PRÉSENCE : QUI EST EN LIGNE, ET LES DÉFIS
+// ================================================================
+// Un canal Realtime unique où TOUT LE MONDE se déclare dès l'entrée
+// dans le jeu — et non plus seulement pendant une recherche de partie.
+// Il rend deux services que le classement réclamait :
+//
+//   1. SAVOIR QUI EST LÀ, TOUT DE SUITE. La pastille verte à côté d'un
+//      pseudo, au classement comme dans la recherche, se lit dans la
+//      présence de ce canal : c'est instantané, là où le last_seen_at
+//      du serveur a jusqu'à 30 secondes de retard. Le serveur reste le
+//      repli — un joueur peut être « vu il y a 12 s » sans figurer
+//      dans la présence, le temps que son canal se rétablisse.
+//
+//   2. PORTER LES DÉFIS. Défier quelqu'un, c'est lui envoyer un
+//      message maintenant : une table de défis obligerait chaque
+//      client à interroger le serveur en boucle pour un événement qui
+//      arrive trois fois par jour. Un broadcast adressé (`to`) fait le
+//      travail, et un défi non reçu n'a de toute façon aucun sens —
+//      on ne défie que quelqu'un qui est en ligne.
+//
+// LA CLÉ DE PRÉSENCE EST L'IDENTIFIANT DU COMPTE (celui du serveur), et
+// non l'identifiant de session : c'est ce qui permet de relier une
+// ligne du classement à quelqu'un qui est effectivement devant son
+// écran.
+const MP_PRESENCE='epichess-presence-v1';
+const MP_DUEL_TIMEOUT=30000;   // au-delà, un défi lancé est abandonné
+
+MP.presence=null;
+MP.presenceReady=false;
+MP.duelOut=null;    // défi que j'ai lancé  {to, name, code, timerId}
+MP.duelIn=null;     // défi que j'ai reçu   {from, name, elo, code}
+
+// Rejoint le salon de présence. Appelée à l'entrée dans le jeu
+// (enterAccount, js/accounts.js) et jamais quittée : on reste visible
+// tant que l'onglet est ouvert.
+function mpPresenceJoin(){
+  if(MP.presence)return;
+  // Le SDK vient d'un CDN qu'un bloqueur peut avoir filtré. mpInitClient
+  // le dirait dans le bandeau du salon — sauf qu'ici personne n'a rien
+  // demandé : on entre juste dans le jeu. On se tait, et le message
+  // reviendra au moment où il a un sens, quand le joueur cherche une
+  // partie. Le classement, lui, continue de fonctionner : la présence ne
+  // fait qu'ajouter l'instantané au « vu il y a peu » du serveur.
+  if(typeof supabase==='undefined')return;
+  const client=mpInitClient();if(!client)return;
+  const card=mpMyCard();
+  if(!card.pid)return;              // pas encore de fiche serveur
+  MP.presence=client.channel(MP_PRESENCE,{config:{presence:{key:card.pid}}});
+
+  MP.presence.on('broadcast',{event:'duel'},({payload})=>mpDuelReceive(payload));
+  MP.presence.on('broadcast',{event:'duel-ok'},({payload})=>mpDuelAccepted(payload));
+  MP.presence.on('broadcast',{event:'duel-no'},({payload})=>mpDuelDeclined(payload));
+  MP.presence.on('presence',{event:'sync'},()=>{
+    if(typeof lbPaintOnline==='function')lbPaintOnline();
+  });
+
+  MP.presence.subscribe(status=>{
+    if(status==='SUBSCRIBED'){
+      MP.presenceReady=true;
+      mpPresenceRefresh();
+    }else if(status==='CLOSED'||status==='CHANNEL_ERROR'){
+      MP.presenceReady=false;
+    }
+  });
+}
+
+// Republie ma carte : après un renommage, ou quand l'ELO a changé.
+function mpPresenceRefresh(){
+  if(!MP.presence||!MP.presenceReady)return;
+  const card=mpMyCard();
+  try{MP.presence.track({id:card.pid,name:card.name,elo:card.elo,at:Date.now()});}catch(e){}
+}
+
+// Les identifiants de compte actuellement présents. Le classement et la
+// recherche s'en servent pour allumer leur pastille.
+function mpOnlineIds(){
+  const set=new Set();
+  if(!MP.presence)return set;
+  let st={};
+  try{st=MP.presence.presenceState()||{};}catch(e){return set;}
+  Object.keys(st).forEach(k=>set.add(k));
+  return set;
+}
+function mpIsOnline(playerId){
+  return !!playerId&&mpOnlineIds().has(playerId);
+}
+
+// ----------------------------------------------------------------
+// LANCER UN DÉFI
+// ----------------------------------------------------------------
+// Le code du salon est tiré ici et voyage avec le défi : les deux camps
+// se retrouvent donc dans la même pièce sans que le serveur ait à
+// arbitrer quoi que ce soit.
+function mpDuelCode(){
+  return 'd-'+Math.random().toString(36).slice(2,10);
+}
+
+function mpChallenge(playerId,playerName){
+  if(!playerId)return;
+  if(typeof ECP!=='undefined'&&ECP&&playerId===ECP.id){
+    showNotif('Vous ne pouvez pas vous défier vous-même.','err');return;
+  }
+  if(!MP.presence||!MP.presenceReady){
+    showNotif('Connexion au salon en cours, réessayez dans un instant.','err');return;
+  }
+  if(!mpIsOnline(playerId)){
+    showNotif(playerName+' vient de se déconnecter.','err');return;
+  }
+  if(MP.duelOut){showNotif('Un défi est déjà en attente.','err');return;}
+  // L'armée est vérifiée AVANT d'envoyer quoi que ce soit : rien de pire
+  // que de lancer un défi, de le faire accepter, et de découvrir alors
+  // qu'on n'a pas d'armée à aligner.
+  if(!mpDuelArmyReady())return;
+  const code=mpDuelCode();
+  const card=mpMyCard();
+  MP.duelOut={to:playerId,name:playerName,code,timerId:setTimeout(()=>{
+    mpDuelCancel();
+    showNotif(playerName+' n\'a pas répondu.','err');
+  },MP_DUEL_TIMEOUT)};
+  MP.presence.send({type:'broadcast',event:'duel',payload:{
+    to:playerId,code,from:card.pid,name:card.name,elo:card.elo,
+  }});
+  showNotif('Défi envoyé à '+playerName+'…','ok');
+  if(typeof lbPaintDuel==='function')lbPaintDuel();
+}
+
+function mpDuelCancel(){
+  if(!MP.duelOut)return;
+  clearTimeout(MP.duelOut.timerId);
+  MP.duelOut=null;
+  if(typeof lbPaintDuel==='function')lbPaintDuel();
+}
+
+// L'armée du joueur est-elle prête à partir en duel ? Mêmes garde-fous
+// que le bouton COMBAT (armée complète, stock suffisant) : un défi ne
+// doit pas être un chemin détourné pour les contourner.
+function mpDuelArmyReady(){
+  if(typeof pLoaded!=='undefined'&&!pLoaded&&typeof pLoad==='function'){pLoad();pLoaded=true;}
+  if(typeof pArmyValid==='function'&&!pArmyValid()){
+    showNotif('Votre armée est incomplète : composez-la avant de défier.','err');
+    return false;
+  }
+  const a=(typeof savedArmies!=='undefined')&&savedArmies[0];
+  if(!a){showNotif('Composez d\'abord votre armée.','err');return false;}
+  if(typeof armyStock==='function'){
+    const st=armyStock(a);
+    if(!st.ok){
+      showNotif('Stock insuffisant : '+st.missing.map(m=>m.name+' ('+m.have+'/'+m.need+')').join(', '),'err');
+      return false;
+    }
+  }
+  return true;
+}
+
+// ----------------------------------------------------------------
+// RECEVOIR UN DÉFI
+// ----------------------------------------------------------------
+function mpDuelReceive(payload){
+  const card=mpMyCard();
+  if(!payload||payload.to!==card.pid)return;
+  if(MP.started||MP.duelIn||MP.duelOut)return;   // déjà occupé : silence
+  MP.duelIn={from:payload.from,name:payload.name||'Un joueur',
+             elo:payload.elo||0,code:payload.code};
+  mpDuelPaintInvite();
+}
+
+function mpDuelDecline(){
+  const d=MP.duelIn;if(!d)return;
+  MP.duelIn=null;
+  document.getElementById('mp-duel-invite')?.classList.remove('show');
+  MP.presence?.send({type:'broadcast',event:'duel-no',payload:{to:d.from}});
+}
+
+function mpDuelAccept(){
+  const d=MP.duelIn;if(!d)return;
+  if(!mpDuelArmyReady())return;
+  MP.duelIn=null;
+  document.getElementById('mp-duel-invite')?.classList.remove('show');
+  MP.presence?.send({type:'broadcast',event:'duel-ok',payload:{to:d.from,code:d.code}});
+  // Le DÉFIÉ est l'invité (les Noirs) : le défieur est l'hôte, comme
+  // dans une invitation ordinaire.
+  mpStartDuel(d.code,false);
+}
+
+// Le défié a dit oui : l'hôte entre dans le salon.
+function mpDuelAccepted(payload){
+  const card=mpMyCard();
+  if(!payload||payload.to!==card.pid||!MP.duelOut)return;
+  if(payload.code!==MP.duelOut.code)return;
+  clearTimeout(MP.duelOut.timerId);
+  const name=MP.duelOut.name;const code=MP.duelOut.code;
+  MP.duelOut=null;
+  if(typeof lbPaintDuel==='function')lbPaintDuel();
+  showNotif(name+' accepte le duel !','ok');
+  mpStartDuel(code,true);
+}
+
+function mpDuelDeclined(payload){
+  const card=mpMyCard();
+  if(!payload||payload.to!==card.pid||!MP.duelOut)return;
+  const name=MP.duelOut.name;
+  mpDuelCancel();
+  showNotif(name+' a décliné le défi.','err');
+}
+
+// Entrée dans le salon d'un duel : même chemin qu'une partie trouvée
+// par appariement, à ceci près que le code est connu d'avance et que
+// l'on sait déjà qui est en face.
+function mpStartDuel(code,asHost){
+  if(!mpDuelArmyReady())return false;
+  const a=savedArmies[0];
+  if(typeof loadArmyForEdit==='function')loadArmyForEdit(a);
+  currentArmyData=a;
+  if(typeof combatStockOk==='function'&&!combatStockOk())return false;
+  if(typeof closeLeaderboardPage==='function')closeLeaderboardPage();
+  mpLeave();
+  if(typeof mpOpenModal==='function')mpOpenModal();
+  mpStatus('Duel : connexion au salon…','wait');
+  mpConnect(code,asHost);
+  return true;
+}
+
+// ----------------------------------------------------------------
+// LA FENÊTRE D'INVITATION
+// ----------------------------------------------------------------
+// Elle s'impose à l'écran : un défi a une durée de vie de trente
+// secondes, le manquer parce qu'il était rangé dans un coin serait
+// pire que de ne pas l'avoir reçu.
+function mpDuelPaintInvite(){
+  const el=document.getElementById('mp-duel-invite');
+  const d=MP.duelIn;
+  if(!el||!d)return;
+  const rank=(typeof vvGetRank==='function')?vvGetRank(d.elo):null;
+  el.querySelector('#mp-duel-who').textContent=d.name;
+  el.querySelector('#mp-duel-elo').textContent=
+    (rank?rank.name+' · ':'')+d.elo+' ELO';
+  el.classList.add('show');
+}
+
+document.addEventListener('DOMContentLoaded',()=>{
+  document.getElementById('mp-duel-accept')?.addEventListener('click',mpDuelAccept);
+  document.getElementById('mp-duel-decline')?.addEventListener('click',mpDuelDecline);
 });

@@ -126,7 +126,13 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
   };
 
   console.log('\nEpic Chess · test de fumée\n');
-  await page.goto('http://localhost:'+PORT+'/',{waitUntil:'domcontentloaded'});
+  // `?mock` : le serveur de comptes (js/server.js) est remplacé par sa
+  // version en mémoire. Le test n'a pas de projet Supabase — et n'en veut
+  // pas : il doit tourner hors ligne, et vérifier les RÈGLES du serveur
+  // (pseudos uniques, ELO recalculé, clés de classement inaccessibles),
+  // pas la disponibilité d'un service tiers. Le drapeau est collant :
+  // les navigations suivantes le gardent sans avoir à le répéter.
+  await page.goto('http://localhost:'+PORT+'/?mock',{waitUntil:'domcontentloaded'});
 
   // PREMIÈRE VISITE : AUCUN ÉCRAN AVANT LE JEU. Il y a eu successivement une
   // page de connexion puis un voile de choix du pseudo ; les deux posaient un
@@ -270,10 +276,11 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
       // contrediraient.
       for(let i=0;i<12;i++)h.push({result:i%3===0?'loss':'win',oldElo:400+i*5,newElo:405+i*5,
         delta:5,date:Date.now()-(11-i)*86400000,ranked:true,army:['garde-eau','fourmi'],mode:'ia'});
-      accSet('match_history',h);
-      accSet('piece_stats',{'garde-eau':{g:12,w:8},fourmi:{g:3,w:3}});
-      accSet('best_streak',7);
-      accSet('ranked_games',12);accSet('ranked_wins',8);
+      // Ces cinq clés appartiennent au SERVEUR : accSet les refuse, et
+      // c'est exactement ce qu'on veut. On sème donc par la porte du bac
+      // à sable (ecMockSeed, js/server.js), qui n'existe qu'en `?mock`.
+      ecMockSeed({history:h,piece_stats:{'garde-eau':{g:12,w:8},fourmi:{g:3,w:3}},
+                  best_streak:7,ranked_games:12,ranked_wins:8});
       renderAccountPage();
     });
     const bad=await page.evaluate(()=>{
@@ -307,35 +314,67 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
     if(bad.length)throw new Error(bad.join(' · '));
   });
 
-  await step('une partie nourrit les statistiques de carrière',async()=>{
-    const bad=await page.evaluate(()=>{
+  // LES STATISTIQUES DE CARRIÈRE SONT COMPTÉES PAR LE SERVEUR, et plus par
+  // le navigateur : c'est tout l'objet de ec_report_match. On déclare donc
+  // une vraie partie et on regarde ce que le serveur en fait — y compris ce
+  // qu'il refuse au client d'écrire lui-même.
+  await step('le serveur compte la partie, pas le navigateur',async()=>{
+    const bad=await page.evaluate(async()=>{
       const out=[];
       const avant=JSON.parse(JSON.stringify(vvLoadPieceStats()));
-      vvNotePieceStats(['garde-eau','garde-eau','fourmi'],true);
+      const eloAvant=vvLoadElo();
+      // 1. Le client ne peut PAS s'attribuer un classement.
+      accSet('elo',9999);
+      if(vvLoadElo()!==eloAvant)out.push('le client a pu écrire son propre ELO');
+      // 2. Une partie déclarée, et c'est le serveur qui tranche.
+      const r=await ecReportMatch({result:'win',ranked:true,opp_elo:eloAvant,
+        mode:'ia',army:['garde-eau','garde-eau','fourmi']});
+      if(!r||typeof r.delta!=='number')out.push('le serveur n\'a pas répondu au rapport de partie');
+      else{
+        if(r.delta<=0)out.push('une victoire ne rapporte rien : '+r.delta);
+        if(vvLoadElo()!==r.new_elo)out.push('l\'ELO affiché ne suit pas celui du serveur');
+      }
       const apres=vvLoadPieceStats();
       // Une créature alignée en double ne compte qu'UNE partie : on mesure
       // les parties jouées avec elle, pas les exemplaires posés.
-      if(apres['garde-eau'].g!==avant['garde-eau'].g+1)
-        out.push('une créature en double compte deux fois : '+avant['garde-eau'].g+' -> '+apres['garde-eau'].g);
-      if(apres['garde-eau'].w!==avant['garde-eau'].w+1)out.push('la victoire n\'est pas comptée');
-      vvNoteStreak(3);
-      if(vvLoadBestStreak()!==7)out.push('une série plus courte a écrasé le record : '+vvLoadBestStreak());
-      vvNoteStreak(11);
-      if(vvLoadBestStreak()!==11)out.push('un nouveau record n\'est pas retenu');
+      const g0=(avant['garde-eau']&&avant['garde-eau'].g)||0;
+      const w0=(avant['garde-eau']&&avant['garde-eau'].w)||0;
+      if(apres['garde-eau'].g!==g0+1)
+        out.push('une créature en double compte deux fois : '+g0+' -> '+apres['garde-eau'].g);
+      if(apres['garde-eau'].w!==w0+1)out.push('la victoire n\'est pas comptée');
+      // 3. Le record de série ne redescend pas.
+      if(vvLoadBestStreak()<7)out.push('le record de série a été écrasé : '+vvLoadBestStreak());
       return out;
     });
     if(bad.length)throw new Error(bad.join(' · '));
+  });
+
+  // LE PSEUDO EST UNIQUE POUR TOUT LE MONDE, et c'est le SERVEUR qui le dit.
+  // La vérification du client ne connaît que cet appareil : deux joueurs sur
+  // deux téléphones pouvaient donc porter le même nom, et le classement en
+  // aurait montré deux.
+  await step('le serveur refuse un pseudo déjà pris par quelqu\'un d\'autre',async()=>{
+    const r=await page.evaluate(async()=>{
+      const pris=CUR_ACC;
+      try{
+        // Une inscription qui n'est pas la nôtre, avec un nom déjà porté.
+        await ecRpc('ec_signup',{p_username:pris,p_secret:'0123456789abcdef0123456789abcdef'});
+        return{refuse:false};
+      }catch(e){return{refuse:true,msg:e.message,code:e.code};}
+    });
+    if(!r.refuse)throw new Error('un pseudo déjà pris a été accepté par le serveur');
+    if(!/déjà pris/i.test(r.msg||''))throw new Error('refus au motif inattendu : '+r.msg);
   });
 
   await step('le compte se renomme',async()=>{
     await page.click('#acc-rename-open');
     await page.fill('#acc-rename-input','SmokeTest');
     await page.click('#acc-rename-ok');
-    await page.waitForTimeout(200);
-    if(await page.evaluate(()=>CUR_ACC)!=='SmokeTest')throw new Error('le renommage n\'a pas pris');
-    // Le renommage recopie les clés mc_p_<pseudo>_* : la progression doit
-    // suivre le nouveau nom, sinon le joueur perd tout en se renommant.
-    const armees=await page.evaluate(()=>accGetFor('SmokeTest','armies',null));
+    // Le renommage passe par le serveur : on attend son verdict.
+    await page.waitForFunction(()=>CUR_ACC==='SmokeTest',null,{timeout:8000});
+    // Le pseudo n'est plus la clé de stockage, seulement une colonne : rien
+    // ne bouge en se renommant, et c'est justement ce qu'on vérifie.
+    const armees=await page.evaluate(()=>accGet('armies',null));
     if(!armees||!armees.length)throw new Error('les données n\'ont pas suivi le renommage');
     if(!await page.evaluate(()=>accountsList().includes('SmokeTest')))
       throw new Error('la liste des comptes garde l\'ancien pseudo');
@@ -2193,9 +2232,10 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
       if(vides.length)out.push('sans stock : '+vides.join(','));
       if(!pearlInfinite())out.push('perles non illimitees');
       if(!pearlSpend(chestPearlPrice('roi')))out.push('achat de coffre refuse');
-      // Rien ne doit avoir été écrit sur le compte.
-      if(localStorage.getItem(accKey(CUR_ACC,'inventory'))&&
-         JSON.parse(localStorage.getItem(accKey(CUR_ACC,'inventory')))[PIECES[0].id]===999)
+      // Rien ne doit avoir été écrit sur le compte. L'inventaire vit
+      // maintenant dans la fiche du serveur (ECP.state) : on l'y lit.
+      const inv=(ECP&&ECP.state&&ECP.state.inventory)||null;
+      if(inv&&inv[PIECES[0].id]===999)
         out.push('l inventaire du mode test a ete enregistre');
       return out;
     });
@@ -2340,11 +2380,14 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
       // Le rang ne vit PAS sur le classement du moment mais sur le sommet
       // atteint (elo_peak). C'est ce qui permet à l'ELO de redescendre sans
       // que le joueur perde son rang, ses créatures ou ses échiquiers.
+      // L'ELO NE S'ÉCRIT PLUS DEPUIS LE JEU : c'est le serveur qui le
+      // calcule (voir ACC_SERVER_KEYS, js/accounts.js). On le pose donc
+      // par la porte du bac à sable, comme le ferait un rapport de partie.
       const eloAvant=vvLoadElo(),peakAvant=vvLoadPeakElo();
-      vvSaveElo(1300);                                  // on monte à Obsidienne
+      ecMockSeed({elo:1300,elo_peak:Math.max(1300,peakAvant)});
       if(vvRank().id!=='obsidienne')out.push('1300 ELO ne donne pas Obsidienne : '+vvRank().id);
       const skinsHaut=BOARD_SKINS.filter(boardSkinUnlocked).length;
-      vvSaveElo(250);                                   // puis on retombe très bas
+      ecMockSeed({elo:250});                            // puis on retombe très bas
       if(vvLoadPeakElo()!==1300)out.push('le sommet a bougé : '+vvLoadPeakElo());
       if(vvRank().id!=='obsidienne')out.push('le rang a été reperdu en redescendant : '+vvRank().id);
       if(BOARD_SKINS.filter(boardSkinUnlocked).length!==skinsHaut)
@@ -2353,8 +2396,7 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
       const c=vvCalcNewElo(250,250,'loss',40);
       if(!/acquis/.test(vvEloExplain(c,'loss',1300)))
         out.push('descendre sous son rang n\'est pas expliqué au joueur');
-      vvSaveElo(eloAvant);
-      accSet('elo_peak',peakAvant);
+      ecMockSeed({elo:eloAvant,elo_peak:peakAvant});
       return out;
     });
     if(bad.length)throw new Error(bad.join(' · '));

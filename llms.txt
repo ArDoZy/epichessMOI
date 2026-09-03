@@ -169,6 +169,12 @@ C'est la mécanique qui distingue le plus Epic Chess des autres variantes :
 - **La force de l'adversaire décide de tout**, comme dans n'importe quel Elo :
   battre plus fort que soi rapporte beaucoup, battre plus faible rapporte peu,
   perdre contre plus fort coûte peu, perdre contre plus faible coûte cher.
+- Le **Classement général** réunit tous les joueurs, du meilleur ELO au moins
+  bon. On y cherche un joueur par son pseudo, on ouvre son profil (rang, ELO,
+  parties, taux de victoire, meilleure série, créature fétiche, dix dernières
+  parties), on voit **s'il est en ligne**, et on peut le **défier** en duel
+  direct. Le classement est calculé par le serveur : c'est lui, et non le
+  navigateur du joueur, qui décide de ce que vaut une partie.
 - La **Récompense Journalière** donne **un lot par jour**, sans rien exiger :
   ni victoire, ni quête. Le cycle fait **30 jours** — coffres, perles et
   jokers — puis **recommence indéfiniment**. Un jour manqué ne coûte rien : le
@@ -185,16 +191,22 @@ C'est la mécanique qui distingue le plus Epic Chess des autres variantes :
 
 ## Confidentialité
 
-Les comptes sont créés et stockés **localement dans le navigateur**
-(localStorage). Aucune adresse e-mail n'est demandée, aucun mot de passe,
-aucune donnée n'est envoyée à un serveur, et le jeu ne contient ni publicité
-ni traqueur.
+Les comptes sont **enregistrés sur le serveur du jeu** (une base Postgres
+hébergée chez Supabase) : c'est ce qui permet un classement général et le fait
+qu'une progression ne disparaisse plus avec un cache vidé. Y sont stockés le
+pseudo, le classement, les créatures débloquées et l'avancement du jeu — et
+rien d'autre. **Aucune adresse e-mail n'est demandée, aucun mot de passe**,
+et le jeu ne contient ni publicité ni traqueur. Le navigateur ne garde qu'une
+clé tirée au sort, qui sert à prouver que le compte est le sien.
 
 **Il n'y a aucun écran d'inscription** : la première ouverture crée elle-même
 un compte au nom d'Alchimiste tiré au sort et entre directement dans le jeu.
 Le joueur se renomme quand il le souhaite depuis la page Comptes (accessible
 par le bouton de réglages), où il peut aussi créer plusieurs comptes sur le
-même appareil et passer de l'un à l'autre.
+même appareil, passer de l'un à l'autre, et **supprimer définitivement** un
+compte — la suppression efface aussi ses données sur le serveur.
+
+Les **pseudos sont uniques** : deux joueurs ne peuvent pas porter le même nom.
 
 ## Questions fréquentes
 

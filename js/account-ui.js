@@ -16,8 +16,9 @@
 //      montre que ce qui reste à débloquer (voir renderVoiePage, js/voie.js).
 //
 //   2. LES AUTRES COMPTES. Une ligne par compte, avec son rang et son ELO
-//      lus SANS s'y connecter (accGetFor, js/accounts.js). Toucher la ligne
-//      bascule dessus, la corbeille l'efface.
+//      lus sur le SERVEUR, sans s'y connecter (ec_profile). Toucher la
+//      ligne bascule dessus, la corbeille efface le compte — sur le serveur
+//      aussi, et définitivement.
 //
 //   3. NOUVEAU COMPTE. Un champ, un bouton. Le compte créé reçoit le Lore et
 //      le tutoriel, comme un premier lancement.
@@ -27,8 +28,9 @@
 // « sauvegarde de partie en cours », abandonner le plateau le perdrait
 // vraiment (et, en ligne, laisserait l'adversaire seul).
 //
-// Dépendances : accounts.js (CUR_ACC, accountsList, accGetFor, accountCreate,
-// accountSwitch, accountRename, accountDelete, accountsNameError),
+// Dépendances : server.js (ECP, ecProfileOf), accounts.js (CUR_ACC,
+// accountsList, accountCreate, accountSwitch, accountRename, accountDelete,
+// accountsNameError),
 // data-pieces.js (vvGetRank, RANKS), economy.js (pearlBalance),
 // main.js (escH, showPage, showNotif, showConfirmModal),
 // cube-nav.js (goToMainMenu).
@@ -66,30 +68,61 @@ function accountUIRefresh(){
 // ----------------------------------------------------------------
 // PETITES LECTURES
 // ----------------------------------------------------------------
-// Le résumé d'un compte, lu depuis ses clés de stockage. Fonctionne pour
-// N'IMPORTE QUEL compte, courant ou non : c'est ce qui permet d'afficher la
-// liste sans se connecter à chacun.
-function accountSummary(username){
-  const elo=accGetFor(username,'elo',0)||0;
-  // Le rang vient du SOMMET atteint : il est acquis et ne redescend jamais,
-  // même si le classement du moment est repassé dessous (voir vvLoadPeakElo,
-  // js/accounts.js). Sur un compte antérieur à elo_peak, le sommet vaut
-  // l'ELO courant — ce qui est exact, l'ancien plancher l'empêchait de
-  // descendre sous son rang.
-  const peak=Math.max(elo,accGetFor(username,'elo_peak',elo)||0);
+// Le résumé d'un compte. Celui du joueur vient de la fiche que le serveur a
+// donnée (ECP, js/server.js) : c'est la seule source, il n'y a plus rien à
+// lire dans le navigateur. Celui d'un AUTRE compte de cet appareil vient de sa
+// fiche publique, rapatriée à l'ouverture de la page — d'où le cache
+// ci-dessous et le rendu en deux temps : la ligne s'affiche tout de suite avec
+// son pseudo, ses chiffres arrivent une fraction de seconde plus tard.
+const _accOther={};      // pseudo → fiche publique du serveur
+let _accMyRank=null;     // ma place au classement général, null tant qu'inconnue
+
+function accountSummaryFrom(p,username){
+  const elo=p?(p.elo|0):0;
+  const peak=p?Math.max(elo,p.elo_peak|0):0;
   const rank=(typeof vvGetRank==='function')?vvGetRank(peak):{name:'',color:'var(--muted)'};
-  // ranked_games / ranked_wins comptent depuis toujours. On retombe sur
-  // l'historique (30 dernières parties) pour les comptes créés avant ces deux
-  // clés : c'est faux à la baisse, mais c'est mieux qu'un zéro sur un compte
-  // qui a réellement joué.
-  const history=accGetFor(username,'match_history',[])||[];
-  const games=accGetFor(username,'ranked_games',history.length)||0;
-  const wins=accGetFor(username,'ranked_wins',
-    history.filter(h=>h&&h.result==='win').length)||0;
-  const pearls=accGetFor(username,'pearls',0)||0;
-  const bestStreak=accGetFor(username,'best_streak',0)||0;
-  const pieceStats=accGetFor(username,'piece_stats',{})||{};
-  return{username,elo,peak,rank,games,wins,pearls,bestStreak,pieceStats,history};
+  return{
+    username:(p&&p.username)||username,
+    elo,peak,rank,
+    games:p?(p.ranked_games|0):0,
+    wins:p?(p.ranked_wins|0):0,
+    bestStreak:p?(p.best_streak|0):0,
+    pieceStats:(p&&p.piece_stats)||{},
+    history:(p&&(p.history||p.match_history))||[],
+    pearls:0,
+    loading:!p,
+  };
+}
+
+function accountSummary(username){
+  if(username===CUR_ACC&&typeof ECP!=='undefined'&&ECP){
+    const s=accountSummaryFrom(ECP,username);
+    s.pearls=accGet('pearls',0)||0;
+    s.rankPos=_accMyRank;
+    return s;
+  }
+  return accountSummaryFrom(_accOther[username]||null,username);
+}
+
+// Rapatrie ce qui manque : ma place au classement, et la fiche des autres
+// comptes de cet appareil. Chaque réponse re-rend la page — elle est courte,
+// et c'est plus honnête qu'un écran figé le temps de tout attendre.
+function accountFetchRemote(){
+  if(typeof ECP!=='undefined'&&ECP&&_accMyRank===null){
+    _accMyRank=0;   // « demandé », pour ne pas redemander à chaque rendu
+    ecProfileOf({id:ECP.id}).then(p=>{
+      _accMyRank=(p&&p.found&&typeof p.rank==='number')?p.rank:null;
+      accountUIRefresh();
+    }).catch(()=>{_accMyRank=null;});
+  }
+  accountsList().forEach(u=>{
+    if(u===CUR_ACC||_accOther[u])return;
+    _accOther[u]={username:u,elo:0,elo_peak:0,ranked_games:0,ranked_wins:0,best_streak:0,_pending:true};
+    ecProfileOf({username:u}).then(p=>{
+      if(p&&p.found)_accOther[u]=p;
+      accountUIRefresh();
+    }).catch(()=>{});
+  });
 }
 
 // LA CRÉATURE FÉTICHE : celle qu'on aligne le plus, avec ce qu'elle rapporte
@@ -147,6 +180,7 @@ let _accRenameDraft=null;
 function renderAccountPage(){
   const host=document.getElementById('account-body');
   if(!host||!CUR_ACC)return;
+  accountFetchRemote();
   const me=accountSummary(CUR_ACC);
   const others=accountsList().filter(u=>u!==CUR_ACC).map(accountSummary);
   const full=accountsList().length>=ACC_MAX;
@@ -196,6 +230,10 @@ function accountSealHTML(s){
           '<span class="acc-rank" style="color:'+s.rank.color+'">'+escH(s.rank.name)+'</span>'+
           '<span class="acc-dot"></span>'+
           '<span class="acc-elo">'+s.elo+' ELO</span>'+
+          // LA PLACE AU CLASSEMENT GÉNÉRAL. Elle n'existait pas : sans
+          // serveur, un ELO ne se comparait à personne. Toucher la pastille
+          // ouvre le classement, à sa propre ligne.
+          (s.rankPos?'<button class="acc-worldrank" id="acc-open-lb" title="Voir le classement général">#'+s.rankPos+' mondial</button>':'')+
         '</div>'+
       '</div>'+
     '</div>'+
@@ -235,8 +273,10 @@ function accountFormHTML(s){
 }
 
 // LA CRÉATURE FÉTICHE. Elle répond à la question que se pose un joueur devant
-// son armée : « est-ce que celle-là me réussit ? ». Sans serveur on ne peut
-// pas la comparer aux autres joueurs, mais on peut la comparer à soi-même.
+// son armée : « est-ce que celle-là me réussit ? ». La même fiche se lit
+// maintenant sur le profil de n'importe qui (lbFavouriteHTML,
+// js/leaderboard.js) : on peut donc comparer sa fétiche à celle d'un
+// adversaire avant de le défier.
 function accountFavouriteHTML(s){
   const f=accountFavourite(s);
   if(!f)return '';
@@ -333,21 +373,29 @@ function wireAccountPage(){
     // qui re-rend cette page. Le laisser ouvert ferait dessiner le champ une
     // fois de trop, avec le focus perdu entre les deux.
     _accRenaming=false;
-    const err=accountRename(v);
-    if(err){
-      _accRenaming=true;_accRenameDraft=v;
-      showNotif(err,'err');renderAccountPage();
-      document.getElementById('acc-rename-input')?.focus();
-      return;
-    }
-    _accRenameDraft=null;
-    showNotif('Compte renommé.','ok');
     renderAccountPage();
+    // LE VERDICT VIENT DU SERVEUR, et lui seul : c'est là qu'un pseudo est
+    // unique pour tout le monde. On referme le champ pendant l'aller-retour
+    // et on le rouvre, garni de ce qui a été tapé, si le nom est refusé.
+    accountRename(v).then(()=>{
+      _accRenameDraft=null;
+      showNotif('Compte renommé.','ok');
+      renderAccountPage();
+    }).catch(e=>{
+      _accRenaming=true;_accRenameDraft=v;
+      showNotif((e&&e.message)||'Renommage impossible.','err');
+      renderAccountPage();
+      document.getElementById('acc-rename-input')?.focus();
+    });
   };
   host.querySelector('#acc-rename-ok')?.addEventListener('click',doRename);
   host.querySelector('#acc-rename-input')?.addEventListener('keydown',e=>{
     if(e.key==='Enter')doRename();
     if(e.key==='Escape'){_accRenaming=false;_accRenameDraft=null;renderAccountPage();}
+  });
+
+  host.querySelector('#acc-open-lb')?.addEventListener('click',()=>{
+    if(typeof openLeaderboardPage==='function')openLeaderboardPage();
   });
 
   host.querySelectorAll('[data-switch]').forEach(b=>{
@@ -368,8 +416,8 @@ function wireAccountPage(){
     showConfirmModal(
       'Créer le compte « '+v.trim()+' » et basculer dessus ? Le compte '+CUR_ACC+' est conservé.',
       ()=>{
-        const e2=accountCreate(v);
-        if(e2)showNotif(e2,'err');
+        showNotif('Création du compte…','ok');
+        accountCreate(v).catch(e=>showNotif((e&&e.message)||'Création impossible.','err'));
       },
       {okLabel:'Créer',okClass:'btn-primary'});
   };
@@ -420,9 +468,11 @@ function accountAskDelete(username){
   showConfirmModal(
     'Supprimer définitivement « '+username+' » ? Cette action est irréversible.',
     ()=>{
-      accountDelete(username);
-      showNotif('Compte « '+username+' » supprimé.','ok');
-      renderAccountPage();
+      accountDelete(username).then(()=>{
+        delete _accOther[username];
+        showNotif('Compte « '+username+' » supprimé.','ok');
+        renderAccountPage();
+      }).catch(e=>showNotif((e&&e.message)||'Suppression impossible.','err'));
     },
     {okLabel:'Supprimer',okClass:'btn-danger'});
 }

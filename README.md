@@ -29,6 +29,12 @@ epic-chess/
 ├── robots.txt               # Autorise les crawlers, y compris ceux des IA
 ├── sitemap.xml              # Une seule URL (le jeu est une SPA)
 ├── llms.txt                 # Résumé factuel du jeu pour les moteurs IA
+├── supabase/
+│   └── schema.sql           # LE SERVEUR. Tables, verrouillage (RLS sans
+│                            #  policy) et les onze fonctions ec_* qui sont la
+│                            #  seule porte d'entrée. À coller dans l'éditeur
+│                            #  SQL du projet Supabase. Contient le calcul
+│                            #  d'ELO qui fait autorité.
 ├── site.webmanifest         # Métadonnées d'installation (icône, couleurs)
 ├── sw.js                    # Service worker : coquille hors ligne (réseau
 │                            # d'abord pour le code, cache d'abord pour les médias)
@@ -90,11 +96,18 @@ epic-chess/
     ├── cube-nav.js           # Navigation principale par cube 3D (CSS). Déplace
     │                          # armées/partie/Guerre des clans dans les faces (la face
     │                          # de gauche est libre, en attente de contenu).
-    ├── accounts.js           # Comptes locaux (localStorage) : plusieurs par
-    │                          # appareil, création automatique au premier
-    │                          # lancement, bascule/renommage/suppression
+    ├── server.js             # LA SEULE PORTE vers le serveur : sessions,
+    │                          # appels ec_*, envoi groupé des écritures,
+    │                          # rapport de fin de partie, présence. Contient
+    │                          # aussi le bac à sable `?mock` (hors ligne)
+    ├── accounts.js           # Comptes, tenus par le serveur : accGet/accSet
+    │                          # sur la fiche rapatriée, démarrage asynchrone,
+    │                          # bascule/renommage/suppression
     ├── account-ui.js         # Page "Comptes" (#page-account) : sceau du compte
     │                          # courant, bascule entre comptes, création
+    ├── leaderboard.js        # Page "Classement" (#page-classement) : tableau
+    │                          # général, recherche de joueurs, profil public,
+    │                          # bouton "Défier"
     ├── economy.js            # Possession des pièces, mise en jeu, coffres
     ├── ai-level-modal.js     # Réduit à selectedAILevel/selectedTimeControl
     ├── piece-card.js         # LA carte de pièce (format portrait : logo, nom,
@@ -398,61 +411,93 @@ ordinaire, où le chiffre se suffit.
 modal de résultat (js/game-flow.js). Un nouvel écran qui afficherait un rang
 doit s'ajouter à cette liste, sinon il rétrograde le joueur tout seul.
 
-### 1 quater. Les comptes (`js/accounts.js`, `js/account-ui.js`)
+### 1 quater. Les comptes, tenus par le serveur (`js/server.js`, `js/accounts.js`, `js/account-ui.js`)
 
-**Il n'y a plus aucun écran avant le jeu.** Le jeu s'est ouvert successivement
-sur une page de connexion puis sur un voile « Choisissez votre pseudo » :
-dans les deux cas un formulaire posé entre quelqu'un qui vient de cliquer sur
-un lien et le jeu qu'il est venu voir — c'est-à-dire le moment exact où l'on
-perd un visiteur, pour une information qui ne sert à rien tant qu'on n'a pas
-joué. La **première ouverture crée elle-même un compte** au nom d'Alchimiste
-tiré au sort (`accountsGuestName`) et entre directement dans le Lore puis le
-tutoriel.
+**Toute la progression vit sur le serveur.** ELO, sommet atteint, créatures et
+pouvoirs débloqués, perles, inventaire, armées, statistiques, historique des
+parties, avancement du tutoriel : tout est dans une table Postgres du projet
+Supabase (`supabase/schema.sql`). Le navigateur n'en garde qu'une **copie de
+travail en mémoire** (`ECP`, js/server.js), rapatriée au démarrage et
+repoussée vers le serveur à chaque changement. Avant, tout était dans le
+`localStorage` : chacun était propriétaire de son propre classement, et une
+progression disparaissait avec un cache vidé ou un changement de téléphone.
 
-Le joueur gère ensuite son identité depuis la **page Comptes**
-(`#page-account`), ouverte par la ligne « Compte » du panneau de réglages :
-se renommer, créer un autre compte, basculer entre eux, en supprimer un.
+**Le reste du jeu n'a pas bougé d'une ligne.** `accGet('ma_cle', défaut)` et
+`accSet('ma_cle', valeur)` sont toujours l'unique moyen de persister quoi que
+ce soit : les trente modules qui s'en servent écrivaient dans `localStorage`
+sans le savoir, ils écrivent sur le serveur sans le savoir davantage. Les
+écritures sont **accumulées et poussées en un seul appel** après une courte
+accalmie (`ecQueueState` → `ec_save_state`), réessayées en cas d'échec, et
+vidées d'urgence quand l'onglet se ferme (`pagehide`, `fetch` avec
+`keepalive`).
 
-Trois choses à savoir avant d'y toucher :
+**Sept clés sont en LECTURE SEULE, et `accSet` les ignore silencieusement** :
+`elo`, `elo_peak`, `ranked_games`, `ranked_wins`, `best_streak`,
+`piece_stats`, `match_history` (plus `rank_max`, déduit du sommet). Elles ne
+bougent que par le **rapport de fin de partie** (`ecReportMatch` →
+`ec_report_match`), où c'est le serveur qui recalcule l'ELO. Voir la section
+« Le serveur fait autorité » plus bas : c'est là qu'est expliqué pourquoi ce
+silence est un garde-fou et non une négligence.
 
-- **Le stockage était déjà multi-comptes.** Toutes les données de jeu sont
-  préfixées par le pseudo (`accGet`/`accSet` → `mc_p_<pseudo>_<clé>`) :
-  plusieurs comptes cohabitent sans qu'une seule ligne du reste du jeu ait à
-  le savoir. `accGetFor(pseudo, clé)` lit un **autre** compte que le courant,
-  en lecture seule — c'est ce qui permet à la page Comptes d'afficher le rang
-  et l'ELO de chaque compte sans s'y connecter.
-- **Changer de compte recharge la page**, délibérément. Une trentaine de
-  variables globales (`savedArmies`, `VV_UNLOCKED`, l'inventaire, l'état du
-  tutoriel, les récompenses, le cube…) portent l'état du compte courant : les
-  remettre à zéro une par une, c'est se condamner à en oublier une le jour où
-  l'on en ajoutera une trente-et-unième. Renommer, en revanche, ne recharge
-  pas : seul le préfixe de stockage bouge, rien en mémoire ne change.
-- **On ne devine pas un compte en balayant les clés.** Les clés de jeu
-  contiennent elles-mêmes des tirets bas (`unlocked_pieces`, `win_streak`,
-  `match_history`…) : il est impossible de savoir où finit le pseudo et où
-  commence la clé. Un tel balayage inventerait des comptes fantômes. La liste
-  fait autorité (`ec_accounts_v2`).
+**Il n'y a toujours aucun écran avant le jeu.** La première ouverture crée
+elle-même un compte au nom d'Alchimiste tiré au sort (`accountsGuestName`) et
+entre directement dans le Lore puis le tutoriel. Ce qui a changé : le
+démarrage passe désormais par le réseau, `accountsBoot` est donc **asynchrone**
+et montre un voile (`#ec-boot`) le temps de l'aller-retour, avec un bouton
+« Réessayer » si le serveur ne répond pas. Le jeu ne peut pas commencer sans sa
+fiche : il afficherait un compte vide et écrirait par-dessus la vraie
+progression au premier coup joué.
 
-**« Se déconnecter » n'existe pas, et c'est volontaire.** Il n'y a pas de
-connexion : rien à oublier, aucun mot de passe, aucune session. Le bouton a
-existé (`accountLogout()`) ; il posait le joueur sur une autre identité, faute
-d'écran de connexion où le renvoyer. Il est parti : quitter un compte n'est
-rien d'autre que passer sur un autre, ce que la liste « Changer de compte »
-fait déjà d'un geste — et mieux, puisqu'on y choisit lequel.
+**L'identité, sans mot de passe.** À la création, le navigateur tire au sort
+une **clé d'appareil** de 32 caractères qu'il garde et n'envoie qu'au serveur
+(qui n'en stocke que l'empreinte SHA-256). Le couple `(id du compte, clé)`
+tient lieu de session. C'est la **seule** chose qui reste dans le
+`localStorage` : `ec_sessions_v1` (la liste, jusqu'à 8 comptes sur un
+appareil) et `ec_current_v1` (lequel est courant).
+
+**Les pseudos sont uniques pour tout le monde**, et plus seulement sur
+l'appareil : contrainte `UNIQUE` sur `username_key` (le pseudo replié en
+minuscules, espaces normalisés — « Bob  L'Alchimiste » et « bob l'alchimiste »
+sont le même nom). `accountsNameError()` côté client ne sert qu'à répondre
+tout de suite aux fautes évidentes ; le verdict qui fait foi est celui du
+serveur, et il arrive dans une promesse — `accountCreate`, `accountRename` et
+`accountDelete` en renvoient donc une.
+
+**Les anciens comptes locaux sont effacés**, une fois, au premier lancement de
+cette version (`ecPurgeLegacyAccounts`) : `mc_p_*`, `ec_accounts_v2`,
+`ec_username_v1`, `mc_accs_v3`. Ils n'existaient que dans un navigateur et
+leurs pseudos n'étaient uniques nulle part ; en garder des reliquats donnerait
+deux progressions concurrentes sur le même écran.
+
+**Changer de compte recharge la page**, délibérément, comme avant. Une
+trentaine de variables globales (`savedArmies`, `VV_UNLOCKED`, l'inventaire,
+l'état du tutoriel, les récompenses, le cube…) portent l'état du compte
+courant : les remettre à zéro une par une, c'est se condamner à en oublier une.
+**Renommer, en revanche, ne recharge pas** — et ne déplace plus rien du tout :
+le pseudo n'est plus la clé de stockage, seulement une colonne.
 
 **ON NE FAIT CONFIRMER QUE CE QUI SE PERD.** Changer de compte ne détruit rien
 et se défait en touchant la ligne d'à côté : `accountAskSwitch()` bascule
-directement. Supprimer, oui — et la confirmation ne récite plus l'inventaire du
-compte (« ses 13 parties classées, ses créatures et ses 903 perles ») : trois
-chiffres à lire au moment où l'on veut juste savoir si on appuie.
-« Définitivement » et « irréversible » suffisent à décider. Le seul refus qui
-reste sur la bascule est `accountBusy()`, en pleine partie : celui-là
-abandonnerait vraiment quelque chose.
+directement. Supprimer, oui — et la suppression est maintenant réelle, côté
+serveur (`ec_delete`). La confirmation ne récite pas l'inventaire du compte :
+« définitivement » et « irréversible » suffisent à décider. Le seul refus qui
+reste sur la bascule est `accountBusy()`, en pleine partie.
 
 Un compte créé depuis la page Comptes doit recevoir le Lore et le tutoriel
 comme un premier lancement — mais après le rechargement, plus rien ne le
 distingue d'un compte ordinaire. D'où le drapeau `ec_fresh_account_v1`, posé
 par `accountCreate` et consommé par `accountsBoot`.
+
+**Le bac à sable `?mock`.** Depuis que le serveur détient les comptes, ouvrir
+`index.html` sans réseau ne mène nulle part. `/?mock` remplace les onze
+fonctions du serveur par la même API tenue en `localStorage`, avec exactement
+les mêmes règles (pseudos uniques, ELO recalculé par `vvCalcNewElo`, clés de
+classement inaccessibles en écriture). C'est ce qui permet de travailler hors
+ligne et de faire tourner `npm test` sans projet Supabase. **Il ne s'allume
+jamais tout seul** : ni au premier échec réseau, ni au centième — un repli
+automatique donnerait à quelqu'un un compte fantôme et une progression qui ne
+remonterait jamais. Le drapeau est collant (`ec_mock_v1`) parce que le jeu
+réécrit son adresse et recharge la page quand on change de compte.
 
 ### 1 quinquies. Le son et l'haptique (`js/sfx.js`)
 
@@ -1367,6 +1412,132 @@ joueurs en attente et la fenêtre courante, et propose un adversaire du
 laboratoire au bout de 40 secondes. Le salon d'attente a changé de nom (`epichess-lobby-v2`) :
 les anciens clients ne peuvent pas s'y tromper de protocole.
 
+## Le serveur fait autorité (`supabase/schema.sql`, `js/server.js`)
+
+**Le fichier à connaître, c'est `supabase/schema.sql`.** On le colle en entier
+dans l'éditeur SQL du projet Supabase (Dashboard → SQL Editor → New query →
+Run). Il est idempotent, et sa **première instruction efface la table des
+joueurs** : c'est la remise à zéro voulue. Si on le rejoue plus tard pour
+mettre à jour les fonctions, il faut **commenter le `DROP TABLE`**, sinon on
+efface tous les comptes existants.
+
+### Ce que « autorité » veut dire ici, concrètement
+
+1. **Aucun accès direct à la table.** `ec_players` a RLS activé et **aucune
+   policy** : la clé publishable du jeu, qui est publique par conception, ne
+   peut ni lire ni écrire une seule ligne. On ne peut qu'appeler les onze
+   fonctions `ec_*`, déclarées `SECURITY DEFINER`, qui valident tout ce qui
+   les traverse. C'est vérifiable en une ligne : `set role anon; select * from
+   ec_players;` répond `permission denied`.
+
+2. **Le client ne choisit pas son classement.** Le navigateur ne peut écrire
+   ni `elo`, ni `elo_peak`, ni les compteurs, ni les statistiques, ni
+   l'historique : `ec_save_state` retire ces clés du patch qu'on lui envoie.
+   Le jeu **déclare une partie** (`ec_report_match` : résultat, ELO de
+   l'adversaire, armée alignée, mode) et le serveur recalcule tout —
+   nouvel ELO, sommet, parties, victoires, série, statistiques par créature,
+   ligne d'historique — puis renvoie la fiche à jour, que le client adopte
+   telle quelle. Trafiquer son `localStorage` ne rapporte donc rien.
+
+3. **Les pseudos sont uniques pour tout le monde**, par contrainte de base et
+   non par convention de client.
+
+4. **Les comptes admin ne sont jamais comptabilisés.** `is_admin = true` : ni
+   au classement, ni dans la recherche, et leurs parties ne déplacent rien
+   (le drapeau force `ranked = false` dans `ec_report_match`). Ils jouent avec
+   tout débloqué et 10 000 ELO — les compter reviendrait à mettre le patron du
+   jeu en tête de son propre tableau. Pour promouvoir un compte :
+   `update ec_players set is_admin = true where username_key = 'mon pseudo';`
+   Le jeu s'en aperçoit à la connexion et allume le mode test pour lui.
+
+### La formule d'ELO existe en deux exemplaires, et c'est assumé
+
+`ec_elo_calc` (SQL) est la **transcription exacte** de `vvCalcNewElo`
+(`js/voie.js`). Si on touche à l'un, on touche à l'autre. Deux détails
+comptent :
+
+- `Math.round()` de JavaScript arrondit **vers +∞** à la demie (`-2,5 → -2`),
+  là où `round()` de Postgres s'éloigne de zéro (`-2,5 → -3`). D'où
+  `ec_jsround(x) = floor(x + 0,5)`. Sans lui, serveur et client afficheraient
+  parfois un point d'écart — le genre de désaccord qui fait croire à une
+  triche.
+- Le client **continue de calculer** l'écart en fin de partie, mais seulement
+  comme **prévision** : elle alimente les phrases d'explication du modal
+  (partie de placement, bonus d'ascension) et sert de repli si la réponse
+  tarde plus que la cinématique (`REPORT_WAIT`, 3,5 s). Dès que le serveur
+  répond, ce sont ses nombres qui sont affichés **et** sur lesquels les
+  déblocages sont calculés.
+
+La concordance des deux formules se vérifie en les comparant sur une grille
+(`ec_elo_calc` contre `vvCalcNewElo` pour toutes les combinaisons d'ELO,
+d'adversaire, de résultat et de nombre de parties) : elles doivent donner le
+même écart, à l'unité près, dans tous les cas.
+
+### Un rapport de partie ne se perd pas
+
+S'il échoue (réseau coupé au mauvais moment), il est mis de côté
+(`ec_pending_matches_v1`) et **rejoué au lancement suivant**, en série et non
+en parallèle — l'ELO de chaque partie dépend de celui que laisse la
+précédente. Le voile de démarrage attend ce rattrapage avant d'entrer dans le
+jeu : les déblocages se lisent sur le sommet atteint, et le lire avant que ces
+parties soient enregistrées ferait clignoter une créature déjà gagnée.
+
+Pendant une coupure, le bandeau `#ec-link-warn` le dit au joueur — sans
+interrompre quoi que ce soit, puisque tout est réessayé.
+
+### Qui est en ligne : deux sources, et c'est voulu
+
+- Le serveur tient un `last_seen_at`, rafraîchi par `ec_touch` toutes les 30 s
+  tant que l'onglet est **visible** (quelqu'un qui a laissé le jeu ouvert
+  derrière son navigateur n'est pas disponible pour un défi). « En ligne » =
+  vu il y a moins de 75 s. C'est fiable, mais avec jusqu'à 30 s de retard.
+- Le salon de présence Realtime (`mpPresenceJoin`, `js/multiplayer.js`) est
+  **instantané**, mais peut manquer quelqu'un dont le canal se rétablit.
+
+La pastille s'allume si **l'une ou l'autre** dit oui : un faux « hors ligne »
+coûte un défi qu'on n'ose pas lancer, un faux « en ligne » coûte trente
+secondes d'attente.
+
+## Le classement, la recherche et les défis (`js/leaderboard.js`)
+
+Une seule page (`#page-classement`, ouverte par le bouton « Classement » du
+menu principal), parce que les trois répondent à la même question — « qui
+d'autre joue à ça ? » — et que passer de l'une à l'autre ne doit pas coûter une
+navigation.
+
+- **Le tableau général** (`ec_leaderboard`) : du meilleur ELO au moins bon,
+  ma ligne teintée et non déplacée (épingler son rang en tête ferait mentir la
+  colonne des places). Les comptes admin n'y figurent pas, ni ceux sans une
+  seule partie classée — un classement se gagne, il ne s'obtient pas en créant
+  un compte.
+- **La recherche** (`ec_search`) : les joueurs **en ligne d'abord**. On cherche
+  quelqu'un pour le défier, autant voir tout de suite qui est disponible.
+- **Le profil public** (`ec_profile`) : rang, ELO, sommet, place mondiale,
+  parties, taux de victoire, meilleure série, créature fétiche et dix
+  dernières parties. Il emprunte toute la carrosserie de la page Comptes
+  (`.acc-seal`, `.acc-stats`, `.acc-form`) : un profil, qu'il soit le sien ou
+  celui d'un inconnu, doit se lire exactement pareil — c'est ce qui rend la
+  comparaison immédiate. `state` n'en sort jamais : l'inventaire et les armées
+  d'un joueur ne regardent que lui.
+- **Le défi**. Un profil qu'on ne peut que lire est une impasse : la seule
+  chose qu'on ait envie de faire devant le profil de quelqu'un de meilleur que
+  soi, c'est de l'affronter. `mpChallenge()` diffuse une invitation sur le
+  salon de présence, adressée à l'identifiant du compte visé ; le défié voit
+  `#mp-duel-invite` et, s'il accepte, les deux camps entrent dans le même
+  salon de partie (`mpStartDuel`, code tiré par le défieur et transporté par
+  l'invitation). Le défieur est l'hôte, donc les Blancs. Trente secondes sans
+  réponse abandonnent le défi.
+
+**Pourquoi le défi passe par un broadcast et non par une table.** Une table de
+défis obligerait chaque client à interroger le serveur en boucle pour un
+événement qui arrive trois fois par jour — et un défi non reçu n'a de toute
+façon aucun sens, puisqu'on ne défie que quelqu'un qui est en ligne.
+
+Les deux garde-fous du bouton COMBAT (armée complète, stock suffisant)
+s'appliquent **avant d'envoyer l'invitation** (`mpDuelArmyReady`) : rien de
+pire que de lancer un défi, de le faire accepter, et de découvrir alors qu'on
+n'a pas d'armée à aligner.
+
 ## Le multijoueur et la mise en veille de Supabase
 
 Le jeu en ligne repose sur Supabase Realtime. Un projet du **plan gratuit
@@ -1470,7 +1641,7 @@ L'ordre des `<script>` est important car il n'y a pas de système de modules :
 chaque fichier suppose que les globals des fichiers précédents existent déjà.
 
 ```
-data-pieces.js → piece-art.js → main.js → cube-nav.js → accounts.js
+server.js → data-pieces.js → piece-art.js → main.js → cube-nav.js → accounts.js
 → economy.js → ai-level-modal.js → piece-card.js → builder.js → armies.js
 → adversaires.js
 → combat-intro.js
@@ -1480,9 +1651,18 @@ data-pieces.js → piece-art.js → main.js → cube-nav.js → accounts.js
 → ai-engine.js → game-flow.js → voie.js → economy-ui.js
 → rewards.js → rewards-ui.js → tuto-drill.js
 → tutorial.js
-→ pwa.js → account-ui.js → settings-admin.js → multiplayer.js → (script inline) initApp()
+→ pwa.js → account-ui.js → leaderboard.js → settings-admin.js → multiplayer.js
+→ (script inline) initApp()
 ```
 
+`server.js` vient **en premier** : il porte l'adresse du serveur, la fiche du
+compte (`ECP`) et la purge des anciens comptes locaux, dont `accounts.js` a
+besoin dès son démarrage. Il déclare aussi `SUPABASE_URL` et
+`SUPABASE_PUBLISHABLE_KEY`, que `multiplayer.js` réutilise — les redéclarer
+là-bas planterait le chargement (`const` est global).
+`leaderboard.js` peut venir n'importe où après `server.js` et `data-pieces.js`
+(il lit `vvGetRank` et `PIECES`) ; il est posé près de `account-ui.js` parce
+qu'il partage sa carrosserie.
 `economy.js` doit venir après `accounts.js` (il utilise `accGet`/`accSet`) et
 avant tous les modules de page qui affichent des stocks. `piece-art.js` doit
 venir juste après `data-pieces.js` : à peu près tous les rendus l'utilisent.
@@ -1537,9 +1717,19 @@ npm i -D playwright && npx playwright install chromium   # une seule fois
 npm test
 ```
 
+**Il tourne hors ligne**, sur le bac à sable `/?mock` (voir « Les comptes,
+tenus par le serveur ») : il n'a pas de projet Supabase, et n'en veut pas.
+Ce qu'il doit vérifier, ce sont les **règles** du serveur — pseudos uniques,
+ELO recalculé par lui et non par le navigateur, clés de classement
+inaccessibles en écriture — pas la disponibilité d'un service tiers. La
+version en mémoire applique exactement les mêmes règles ; `ecMockSeed()`, qui
+n'existe QUE là-dedans, lui permet de semer une fiche (douze parties, un ELO,
+une créature fétiche) pour vérifier que les écrans la racontent.
+
 Il ne fait **pas** partie du jeu : rien dans `index.html` ne le charge, il n'y
 a toujours aucune dépendance de production, et le jeu continue de s'ouvrir en
-double-cliquant sur `index.html`. Si Chromium est déjà présent sur la machine
+double-cliquant sur `index.html` (avec `?mock` si l'on n'a pas de serveur sous
+la main). Si Chromium est déjà présent sur la machine
 mais dans une version que Playwright refuse, le script le retrouve tout seul
 (ou suit `CHROMIUM_PATH`).
 
@@ -1590,7 +1780,14 @@ mais dans une version que Playwright refuse, le script le retrouve tout seul
 | Changer le fond du menu principal | `assets/backgrounds/main-page.webp` (ou `.png`, voir `tools/opt-images.js`) + section `[LAB-BG]` de `css/style.css` |
 | Modifier le bloc pseudo/rang/ELO du menu principal | `renderMenuIdentity()` dans `js/accounts.js` + `[MENU]` de `css/style.css` |
 | Régler la vitesse de rotation du cube | `js/cube-nav.js` (`ROTATE_MS`) **et** la transition de `#cube` dans `css/style.css` |
-| Modifier le système de comptes/sauvegarde | `js/accounts.js` |
+| Modifier le système de comptes/sauvegarde | `js/accounts.js` (copie de travail) + `js/server.js` (échanges) |
+| Ajouter un champ stocké par compte | `accGet`/`accSet` comme avant — rien à toucher ailleurs, le serveur stocke `state` sans l'interpréter |
+| Changer une règle du serveur (ELO, unicité, classement) | `supabase/schema.sql`, puis le recoller dans l'éditeur SQL Supabase (en **commentant le `DROP TABLE`**) |
+| Changer la formule d'ELO | `vvCalcNewElo` (`js/voie.js`) **et** `ec_elo_calc` (`supabase/schema.sql`) — les deux, sinon le serveur et l'écran ne disent plus la même chose |
+| Rendre un compte admin (hors classement) | `update ec_players set is_admin = true where username_key = '<pseudo en minuscules>';` |
+| Modifier le classement / la recherche / le profil public | `js/leaderboard.js` + `ec_leaderboard`/`ec_search`/`ec_profile` dans `supabase/schema.sql` + `[LEADERBOARD]` de `css/style.css` |
+| Modifier les défis entre joueurs | section « SALON DE PRÉSENCE » de `js/multiplayer.js` |
+| Travailler sans réseau / faire tourner les tests | ouvrir `/?mock` (bac à sable, bas de `js/server.js`) |
 | Modifier la page Comptes (sceau, bascule, création) | `js/account-ui.js` + `[ACCOUNT-PAGE]` de `css/style.css` |
 | Ajouter ou retoucher un bruitage | `SFX_RECIPES` dans `js/sfx.js` (rien d'autre à toucher) |
 | Changer le rendu du plateau, l'animation des pièces | `syncPieces()` / `paintBoardCells()` dans `js/game-render.js` + `[BOARD-MOTION]` de `css/style.css` |
@@ -1646,10 +1843,17 @@ mais dans une version que Playwright refuse, le script le retrouve tout seul
   - `currentArmyData` / `aiArmyData` : armées sélectionnées pour le combat
   - `VV_UNLOCKED` : `Set` des ids de pièces débloquées pour le compte courant
   - `CUR_ACC` : pseudo du compte actuellement connecté
+  - `ECP` (déclaré dans `server.js`) : la fiche du compte telle que le serveur
+    la donne. C'est LA vérité : tout ce que le jeu affiche d'un compte en sort
 - **Persistance** : tout passe par `accGet(clé, défaut)` / `accSet(clé,
-  valeur)` (définis dans `accounts.js`), qui préfixent automatiquement la clé
-  localStorage avec le pseudo du compte connecté. Ne jamais utiliser
-  `localStorage` directement ailleurs que dans `accounts.js`.
+  valeur)` (définis dans `accounts.js`), qui lisent et écrivent la **fiche du
+  compte rapatriée du serveur** (`ECP.state`) et poussent les changements par
+  paquets. Ne jamais utiliser `localStorage` directement ailleurs que dans
+  `server.js` — il n'y reste que la session (id de compte + clé d'appareil).
+  Sept clés sont en lecture seule (`elo`, `elo_peak`, `ranked_games`,
+  `ranked_wins`, `best_streak`, `piece_stats`, `match_history`) : `accSet` les
+  ignore, elles n'appartiennent qu'au serveur. Voir « Le serveur fait
+  autorité ».
 - **Le Web Worker IA** (`js/ai-engine.js`, fonction `getWorkerCode`) sérialise
   du code JS existant (fonctions de `rules-engine.js` et `ai-engine.js`) en
   texte pour construire le script du Worker à la volée. Si tu modifies une
