@@ -2409,11 +2409,93 @@ body.light .pmv-dark{background:#c3bdae}
 .pb-scene{position:absolute;inset:0;
   -webkit-mask-image:radial-gradient(ellipse 50% 52% at 50% 52%,#000 52%,transparent 100%);
   mask-image:radial-gradient(ellipse 50% 52% at 50% 52%,#000 52%,transparent 100%)}
+/* LES HUIT PLANCHES SONT SUPERPOSÉES, JAMAIS ÉCHANGÉES DANS LE FLUX. Toutes
+   sont `absolute; inset:0` dans la MÊME scène : elles ont donc exactement la
+   même boîte de base, et passer de l'une à l'autre ne coûte pas une seule
+   reprise de disposition — c'est une opacité qui monte, rien d'autre ne
+   bouge. `transform-origin` est posé explicitement au centre : c'est le
+   point d'où l'explosion doit partir, et un jour où l'on ajoutera un
+   `transform-origin` ailleurs sur `.pbreak`, il ne descendra pas jusqu'ici. */
 .pb-frame{position:absolute;inset:0;width:100%;height:100%;opacity:0;pointer-events:none;
   object-fit:cover;object-position:50% 56%;
+  transform-origin:center center;
   filter:brightness(var(--pb-lum,1)) var(--pb-tint,hue-rotate(var(--pb-rot,0deg)) saturate(var(--pb-sat,1)));
   transition:opacity var(--pb-fade,240ms) ease-out}
 .pb-frame.on{opacity:1}
+
+/* ============================================================
+   L'EXPLOSION NE RECULE JAMAIS
+   ============================================================
+   Deux planches se suivent : l'ÉCLATEMENT (06) puis sa SUITE (07). Elles se
+   lisaient comme exploser → imploser → réexploser, et la cause tenait en une
+   ligne : l'échelle n'était pas portée par les planches mais par la SCÈNE,
+   et la première planche n'avait aucune rampe du tout. Elle arrivait donc à
+   1.0 d'un coup (sa seule variation d'échelle était le `zoom` de la
+   secousse, qui RETOMBE à 1.0 par construction), puis la seconde repartait
+   de sa propre rampe posée sur toute la pile. Entre les deux, aucune
+   continuité : la taille du souffle sautait d'une planche à l'autre.
+
+   La rampe descend donc d'un cran, de la scène vers CHAQUE planche, et les
+   deux morceaux s'emboîtent bout à bout :
+
+       frame 1   0.35 ────────► 1.00     (220 ms, détente rapide)
+       frame 2   1.10 ────────► 1.75     (520 ms, décélération longue)
+
+   Le départ de la seconde est STRICTEMENT au-dessus de l'arrivée de la
+   première : il ne peut plus exister d'image où le souffle est plus petit
+   que sur l'image d'avant. La courbe est monotone croissante du premier
+   éclat au voile blanc.
+
+   Poser la rampe sur les planches et non sur la scène a un second effet,
+   plus discret : le calque de brûlure n'est plus mis à l'échelle avec
+   l'image. Il couvre la scène, il n'a aucune raison de grandir — c'est
+   autant de surface en moins à recomposer à chaque image. Le halo, lui,
+   suit la planche : il en est la copie (voir plus bas). */
+
+/* FRAME 1 — L'ÉCLATEMENT. La pièce part en mille morceaux propulsés vers
+   l'extérieur : la planche naît petite au centre et s'ouvre jusqu'à remplir
+   sa boîte. Détente rapide, presque toute la course est faite au tiers du
+   temps — c'est ce qui donne le COUP. Seule la transformation est animée :
+   l'opacité reste au fondu d'étape (--pb-fade), sans quoi le remplissage
+   `forwards` la figerait et l'étape `solo` ne pourrait plus l'éteindre. */
+.pb-frame.pb-burst{animation:pbBurstIn var(--pb-burstdur,220ms) cubic-bezier(.15,.85,.25,1) forwards}
+@keyframes pbBurstIn{
+  0%  {transform:scale(.35)}
+  100%{transform:scale(1)}
+}
+/* LE HALO PART AVEC ELLE. Il est une copie floutée de la planche : le laisser
+   à sa taille pendant que la planche s'ouvre reviendrait à peindre une auréole
+   grandeur nature autour d'un éclatement encore minuscule — et c'est cette
+   auréole, éclairée, qui rendait visible l'arête franche de la planche
+   réduite. Il porte donc la même rampe, en plus de sa respiration : les deux
+   animations ne touchent pas aux mêmes propriétés (transformation d'un côté,
+   opacité de l'autre), elles cohabitent sans se marcher dessus.
+   Le déferlement, lui, ne le concerne pas : la planche est alors plein écran
+   et le recouvre entièrement. */
+.pb-bloom{transform-origin:center center}
+.pb-bloom.pb-burst{animation:pbBloom var(--pb-bt,2.6s) ease-in-out infinite,
+  pbBurstIn var(--pb-burstdur,220ms) cubic-bezier(.15,.85,.25,1) forwards}
+
+/* FRAME 2 — LA SUITE. Elle est DÉJÀ montée à 1.10 quand la première
+   s'efface : le souffle reprend au-dessus de là où il s'était arrêté, puis
+   décélère jusqu'à 1.75 en s'effaçant dans la lumière. La courbe est une
+   décélération franche (.15,.7,.3,1) : l'essentiel de la course est donné
+   tout de suite, la fin ne fait plus que dériver — un souffle qui perd sa
+   vitesse, pas une image qu'on agrandit. */
+.pb-frame.pb-blast{animation:pbBlastIn var(--pb-blastdur,520ms) cubic-bezier(.15,.7,.3,1) forwards}
+@keyframes pbBlastIn{
+  /* AUCUN `filter` ICI. La luminosité montait autrefois de 1 à 6 sur cette
+     animation-là : un filtre animé sur une image PLEIN ÉCRAN qu'on est en
+     train de mettre à l'échelle oblige le navigateur à refiltrer toute
+     l'image à chaque image — c'est le pic de coût de tout le jeu, et c'est
+     exactement là que l'ouverture de coffre saccadait sur un téléphone
+     modeste. La brûlure est un CALQUE BLANC dont l'opacité monte (voir plus
+     bas) : même montée vers le blanc, à la charge d'un compositeur au lieu
+     d'un filtre. */
+  0%  {transform:scale(1.10);opacity:1}
+  82% {transform:scale(1.66);opacity:1}
+  100%{transform:scale(1.75);opacity:.9}
+}
 
 /* LA COULEUR DU RANG (variables posées par chestBreakPaint, js/chest-break.js).
    Les planches sont rendues UNE fois, en lumière chaude ; la teinte du coffre
@@ -2443,38 +2525,13 @@ body.light .pmv-dark{background:#c3bdae}
    de couleur, aucune ne rééchantillonne l'image : sur un GPU c'est gratuit,
    contrairement au flou du halo. */
 
-/* L'EMBALLEMENT. L'image déferle — elle grandit et dépasse l'écran — pendant
-   que sa luminosité monte jusqu'à la brûlure. Seule, elle ne blanchirait que
-   là où elle est ; c'est .pb-white qui emporte le reste de l'écran, les deux
-   montent ensemble.
-
-   ELLE NE PART PLUS D'EN DESSOUS. La planche commune à tous les coffres
-   (07-explosion-suite) dessine son souffle plus petit dans son cadre que
-   l'éclatement qui la précède (06-explosion) : arrivée à `scale(.58)`, elle
-   était NETTEMENT plus petite que ce qu'on venait de voir, et l'explosion
-   avait l'air de se rétracter pendant quelques images avant de repartir —
-   explosion, implosion, ré-explosion. La rampe part donc au-dessus de la
-   taille de l'écran et ne fait plus que MONTER : le souffle ne recule jamais.
-   C'est aussi ce qui donne à cette planche la taille des autres, elle qui
-   est rendue une fois pour les six coffres. */
-.pb-scene.blast{animation:pbBlastIn var(--pb-bldur,440ms) linear forwards}
-@keyframes pbBlastIn{
-  /* Elle DÉFERLE (0→18%), puis elle TIENT (18→55%) : la matière en fusion
-     reste lisible une demi-seconde à luminosité presque normale. Ce n'est
-     qu'après qu'elle s'emballe vers la brûlure. */
-  /* AUCUN `filter` ICI. La luminosité montait de 1 à 6 sur cette
-     animation-là : un filtre animé sur une image PLEIN ÉCRAN qu'on est en
-     train de mettre à l'échelle oblige le navigateur à refiltrer toute
-     l'image à chaque image — c'est le pic de coût de tout le jeu, et c'est
-     exactement là que l'ouverture de coffre saccadait sur un téléphone
-     modeste. La brûlure est maintenant un CALQUE BLANC dont l'opacité monte
-     (voir juste en dessous) : même montée vers le blanc, à la charge d'un
-     compositeur au lieu d'un filtre. */
-  0%  {transform:scale(1.10)}
-  18% {transform:scale(1.42)}
-  55% {transform:scale(1.50)}
-  100%{transform:scale(1.72)}
-}
+/* L'EMBALLEMENT LUMINEUX. Il ne porte plus l'échelle — celle-ci est passée
+   sur les planches elles-mêmes (pbBurstIn / pbBlastIn, plus haut) — mais il
+   garde son propre temps, `--pb-bldur`, réglé contre le voile blanc : la
+   géométrie du souffle se joue en une demi-seconde, la montée vers la
+   brûlure dure deux fois plus et va rejoindre .pb-white au moment exact où
+   l'écran bascule. Les deux rampes sont indépendantes parce qu'elles ne
+   racontent pas la même chose. */
 /* LA BRÛLURE. Le blanc qui monte sur la scène elle-même — donc sous le masque
    ovale, comme l'image : c'est ce qui la distingue du voile plein écran
    (.pb-white), qui vient après et emporte le reste. */
@@ -2657,6 +2714,10 @@ body.light .pmv-dark{background:#c3bdae}
   .pb-shake.go,.pb-trem.live{animation:none}
   .pb-bloom{animation:none;opacity:var(--pb-b1,0);transition:opacity .5s ease}
   .pb-spark{display:none}
+  /* Les deux rampes d'échelle de l'explosion sont coupées ici comme elles
+     l'étaient quand elles vivaient sur la scène : il reste la montée de
+     lumière, qui raconte la même chose sans rien déplacer. */
+  .pb-frame.pb-burst,.pb-frame.pb-blast,.pb-bloom.pb-burst{animation:none}
   .pb-scene.blast{animation:none;filter:brightness(1.8)}
   .pb-white.go{animation:pbWhiteCalm var(--pb-wdur,820ms) linear}
   @keyframes pbWhiteCalm{0%{opacity:0}30%{opacity:.82}48%{opacity:.82}100%{opacity:0}}

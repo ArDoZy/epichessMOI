@@ -64,7 +64,16 @@
 //   bt      période de cette respiration — elle raccourcit, la pièce panique
 //   trem    amplitude (px) du tremblement continu entre deux frappes
 //   sparks  nombre d'étincelles projetées
+//   burst   durée (ms) de la rampe d'échelle de l'ÉCLATEMENT : la planche
+//           naît petite au centre (.35) et s'ouvre jusqu'à remplir sa boîte
 //   blast   l'image DÉFERLE : elle grandit et sa luminosité s'emballe
+//   bsdur   durée (ms) de la rampe d'échelle du déferlement. Elle repart
+//           AU-DESSUS de l'arrivée de `burst` et ne fait plus que monter :
+//           c'est ce qui interdit à l'explosion de rétrécir d'une planche à
+//           l'autre. À ne pas confondre avec `bldur`, qui est le temps de la
+//           montée de LUMIÈRE, réglé, lui, contre le voile blanc
+//   xfade   fondu croisé (ms) : les planches du dessous s'effacent pendant
+//           que celle-ci monte, au lieu de rester allumées derrière
 //   white   voile blanc plein écran, en ms : c'est lui qui fait le flash
 //   full    la scène quitte sa boîte et prend l'écran. 'bleed' : elle déborde
 //           de partout, sans découpe (l'explosion). 'boxed' : elle garde le
@@ -117,9 +126,18 @@ function chestBreakTail(){
     // L'ÉCLATEMENT. La pièce part en morceaux mais le socle est encore là,
     // et la scène tient encore dans son ovale : c'est le dernier plan où
     // l'on voit d'où vient l'explosion. Il ne dure qu'un battement.
+    //
+    // `burst` EST LA MOITIÉ MANQUANTE DE L'EXPLOSION. Cette planche arrivait
+    // à sa taille définitive d'un seul coup : sa seule variation d'échelle
+    // était le `zoom` de la secousse, qui RETOMBE à 1 par construction — le
+    // souffle finissait donc plus petit qu'au sommet de l'impact, et la
+    // planche suivante repartait d'ailleurs. Elle s'ouvre maintenant de .35
+    // à 1 en 220 ms : les morceaux sont propulsés vers l'extérieur, et le
+    // déferlement qui suit reprend au-dessus de 1, jamais en dessous.
     {src:'06-explosion.webp', hint:'', fade:90, dir:CHEST_BREAK_FORALL, hush:true,
      shake:22, zoom:1.13, flash:.86, fdur:300, bloom:[.30,.72], bt:'.7s',
-     sparks:44, sparkR:1.6, trem:2.2, hold:260, snd:{n:'blast',f:.7}},
+     sparks:44, sparkR:1.6, trem:2.2, burst:220, xfade:90, hold:260,
+     snd:{n:'blast',f:.7}},
 
     // L'EXPLOSION. Elle sort de sa boîte : plein écran, en `cover` — une
     // déflagration n'a pas de composition à préserver, on peut la rogner
@@ -130,15 +148,24 @@ function chestBreakTail(){
     // ELLE DOIT SE REGARDER. Première version : le voile blanc montait dès
     // la première image, et la planche d'explosion était mangée par le
     // flash avant d'avoir été vue — on payait une image pour ne jamais
-    // l'afficher. Elle arrive maintenant plein écran en 200 ms, puis TIENT
-    // nue pendant une demi-seconde, à luminosité presque normale : le temps
-    // de voir la matière en fusion. Ce n'est qu'ensuite que ça s'emballe.
-    // `bldur` est la durée de l'emballement (pbBlastIn, css/style.css), dont
-    // les images-clés partent maintenant AU-DESSUS de la taille de l'écran :
-    // l'explosion ne peut plus commencer plus petite que l'éclatement qui la
-    // précède (voir le commentaire de pbBlastIn).
-    {src:'07-explosion-suite.webp', hint:'', fade:70, dir:CHEST_BREAK_FORALL, hush:true,
-     full:'bleed', blast:true, bldur:1150, white:1500, flash:.9, fdur:520,
+    // l'afficher. La montée de lumière (`bldur`) prend donc son temps et ne
+    // rejoint le voile blanc qu'à la toute fin.
+    //
+    // DEUX TEMPS, DEUX RAMPES. `bsdur` est le temps de la GÉOMÉTRIE : le
+    // souffle repart de 1.10 — au-dessus du 1 où l'éclatement s'est arrêté —
+    // et décélère jusqu'à 1.75 en un demi-battement. `bldur` est le temps de
+    // la LUMIÈRE, deux fois plus long, calé sur le voile blanc. Les
+    // confondre était l'origine du défaut : une seule durée forçait la
+    // géométrie à s'étirer sur le temps de la lumière, et le raccord entre
+    // les deux planches ne pouvait plus se faire au bon endroit.
+    //
+    // `xfade` efface la pile du dessous pendant que celle-ci monte. Elle
+    // couvre tout l'écran et rien ne se lit à travers, mais les planches
+    // laissées allumées derrière ressortiraient à la moindre baisse
+    // d'opacité — et la fin de la rampe en est une.
+    {src:'07-explosion-suite.webp', hint:'', fade:60, dir:CHEST_BREAK_FORALL, hush:true,
+     full:'bleed', blast:true, bsdur:520, bldur:1150, xfade:60,
+     white:1500, flash:.9, fdur:520,
      sparks:54, sparkR:3.2, hold:1050,
      snd:{n:'blast',f:1}},
 
@@ -641,19 +668,51 @@ function chestBreakMount(chestId,onDone){
       // avoir explosé. On remet la durée à zéro avant de les couper : la pile
       // s'éteint en une seule image, à couvert sous le voile blanc, et il ne
       // reste que le socle vide qui monte.
-      const f=frames[i];
-      if(st.solo)frames.forEach(o=>{
+      //
+      // `xfade` EST L'AUTRE FAÇON D'ÉTEINDRE LA PILE, celle de l'explosion :
+      // la même coupe, mais étalée sur quelques images pendant que la
+      // planche du dessus monte — un fondu croisé. Ce que la planche du
+      // dessus fait apparaître, celle du dessous le libère au même rythme.
+      //
+      // Dans les deux cas on retire AUSSI les classes d'échelle : elles se
+      // figent sur leur dernière image (`forwards`), et une opacité figée
+      // par une animation l'emporte sur celle qu'on vient de remettre à
+      // zéro — la planche resterait à l'écran par-dessus la suivante.
+      const f=frames[i],cut=st.solo?0:(st.xfade||0);
+      if(st.solo||st.xfade)frames.forEach(o=>{
         if(o===f)return;
-        o.style.setProperty('--pb-fade','0ms');
-        o.classList.remove('on');
+        o.style.setProperty('--pb-fade',cut+'ms');
+        o.classList.remove('on','pb-burst','pb-blast');
       });
       f.style.setProperty('--pb-fade',(st.fade||240)+'ms');
       f.classList.add('on');
 
-      // L'EMBALLEMENT. `blast` fait grandir l'image et monte sa luminosité
-      // jusqu'à la brûlure ; le voile blanc monte par-dessus et finit le
-      // travail. Retirer la classe à l'étape suivante rend sa luminosité
-      // normale à la scène — sous le voile, donc invisiblement.
+      // LES DEUX RAMPES D'ÉCHELLE DE L'EXPLOSION. Elles sont portées par la
+      // PLANCHE, pas par la scène : c'est ce qui permet à la seconde de
+      // repartir exactement là où la première s'arrête, et à toute la
+      // séquence d'être monotone croissante — le souffle ne rétrécit jamais.
+      // Voir pbBurstIn / pbBlastIn dans css/style.css.
+      f.classList.remove('pb-burst','pb-blast');
+      if(bloom)bloom.classList.remove('pb-burst');
+      if(st.burst){
+        host.style.setProperty('--pb-burstdur',st.burst+'ms');
+        pbRestart(f,'pb-burst');
+        // Le halo est une copie de la planche : il s'ouvre avec elle, sans
+        // quoi il resterait grandeur nature autour d'un éclatement encore
+        // minuscule.
+        if(bloom)pbRestart(bloom,'pb-burst');
+      }
+      if(st.blast){
+        host.style.setProperty('--pb-blastdur',(st.bsdur||520)+'ms');
+        pbRestart(f,'pb-blast');
+      }
+
+      // L'EMBALLEMENT LUMINEUX. `blast` monte la luminosité de la scène
+      // jusqu'à la brûlure, sur son propre temps (`bldur`, calé sur le voile
+      // blanc, et non sur la rampe d'échelle ci-dessus) ; le voile monte
+      // par-dessus et finit le travail. Retirer la classe à l'étape suivante
+      // rend sa luminosité normale à la scène — sous le voile, donc
+      // invisiblement.
       scene.classList.toggle('blast',!!st.blast);
       if(st.blast){
         host.style.setProperty('--pb-bldur',(st.bldur||440)+'ms');
