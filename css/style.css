@@ -1479,12 +1479,13 @@ body:not(.main-menu) #settings-panel{display:none}
    est déjà exactement celle de la zone visible : il n'y a rien à imposer. */
 #page-voie{padding:0;background:var(--bg)}
 #page-voie.active{display:flex;flex-direction:column;overflow:hidden}
-/* La page Comptes (#page-account) emprunte exactement la même carrosserie :
-   colonne flex pleine hauteur, zone défilante, pastille OK en bas. Elle est
-   listée ici plutôt que dupliquée dans [ACCOUNT-PAGE] pour que ces deux
-   pages ne puissent pas diverger sans qu'on le voie. */
-#page-account{padding:0;background:var(--bg)}
-#page-account.active{display:flex;flex-direction:column;overflow:hidden}
+/* La page Comptes (#page-account) et la page Classement (#page-classement)
+   empruntent exactement la même carrosserie : colonne flex pleine hauteur,
+   zone défilante, pastille OK en bas. Elles sont listées ici plutôt que
+   dupliquées dans [ACCOUNT-PAGE] et [LEADERBOARD] pour que ces trois pages
+   ne puissent pas diverger sans qu'on le voie. */
+#page-account,#page-classement{padding:0;background:var(--bg)}
+#page-account.active,#page-classement.active{display:flex;flex-direction:column;overflow:hidden}
 /* Le rembourrage du bas dégage la hauteur de la pastille « OK » (8 % de la
    hauteur de l'écran + zone sûre) plus une marge de respiration : le dernier
    palier de la Voie doit pouvoir être lu en entier, pas finir sous le bouton.
