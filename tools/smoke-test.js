@@ -1046,9 +1046,21 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
   // s'adaptait donc pas du tout — colonne de téléphone au milieu du vide, et
   // une barre des faces flottante qui RECOUVRAIT le contenu (sur « Mes
   // armées », elle masquait deux noms de cartes en plein milieu de l'écran).
-  // Ce test tient les trois promesses du mode bureau : le drapeau s'allume,
-  // le rail ne recouvre plus rien, et la colonne de droite déplie le cycle
-  // journalier.
+  // Ce test tient les deux promesses du mode bureau : le drapeau s'allume, et
+  // le rail ne recouvre plus rien.
+  //
+  // IL EN VÉRIFIAIT UNE TROISIÈME, ET ELLE N'EXISTE PLUS. La colonne de droite
+  // (#menu-side) dépliait le cycle journalier sur grand écran ; le commit
+  // « Remove redundant desktop sidebar » l'a retirée à dessein — elle
+  // redoublait la récompense journalière, la colonne des victoires et la
+  // rangée de la richesse, toutes trois déjà à un clic — sans mettre ce test à
+  // jour. Il réclamait donc un élément volontairement supprimé, et échouait à
+  // chaque exécution depuis.
+  //
+  // Un test rouge en permanence ne signale plus rien : il apprend à lire « 1
+  // problème » comme un état normal, et le vrai deuxième échec passe alors
+  // inaperçu. Les deux assertions sur #menu-side sont retirées ; celles du
+  // rail, qui décrivent ce que le mode bureau fait ENCORE, restent.
   // La fenêtre du test fait 1400 px avec un pointeur fin : elle est donc en
   // mode bureau, comme un vrai ordinateur.
   await step('le mode bureau pose son rail sans recouvrir le contenu',async()=>{
@@ -1071,10 +1083,6 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
         // Les libellés sortent de l'ombre : à la souris, il y a la place.
         libelles:[...bar.querySelectorAll('.cfb-label')]
           .filter(el=>getComputedStyle(el).display!=='none').length,
-        // La colonne de droite déplie le cycle journalier en entier.
-        sideRows:document.querySelectorAll('#ms-daily .streak-row').length,
-        sideVisible:!!document.getElementById('menu-side')&&
-          getComputedStyle(document.getElementById('menu-side')).display!=='none',
       };
     });
     if(!r.desk)throw new Error('body.desk ne s\'allume pas sur un écran d\'ordinateur');
@@ -1082,8 +1090,6 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
     if(!r.railGauche||!r.railHaut)throw new Error('la barre des faces n\'est pas devenue un rail latéral');
     if(!r.gouttiere)throw new Error('la zone utile ne recule pas derrière le rail : il recouvre le contenu');
     if(r.libelles!==4)throw new Error(r.libelles+' libellés visibles sur le rail au lieu de 4');
-    if(!r.sideVisible)throw new Error('la colonne de droite du menu est absente');
-    if(r.sideRows!==30)throw new Error(r.sideRows+' lots dans la colonne de droite au lieu de 30');
   });
 
   // Et le retrait doit DISPARAÎTRE avec le rail : pendant une partie, le cube
@@ -2626,6 +2632,142 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
       await new Promise(res=>setTimeout(res,2200));
       if(board.querySelectorAll('.fx-layer > *').length)
         out.push('les effets du mat sont restés sur le plateau');
+      return out;
+    });
+    if(r.length)throw new Error(r.join(' · '));
+  });
+
+  // LE GESTE DE CHAQUE CRÉATURE (js/game-render.js::markMoveStyle + [BOARD-MOTION]).
+  // Le piège de ce chantier est SILENCIEUX : markMoveStyle pose une classe, et
+  // si le CSS correspondant manque ou est mal orthographié, il ne se passe
+  // rien du tout. Pas d'erreur, pas de console, pas de pièce figée — juste
+  // dix-neuf créatures qui glissent à nouveau toutes pareil, et personne pour
+  // s'en apercevoir avant de comparer deux vidéos.
+  //
+  // Ce test relie donc les deux bouts : pour CHAQUE pièce du jeu, il joue un
+  // déplacement, relit la classe réellement posée sur .gc-art, et vérifie que
+  // cette classe porte une animation CSS existante et non nulle.
+  await step('chaque créature a son geste, et le geste a son animation',async()=>{
+    await page.goto('http://localhost:'+PORT+'/',{waitUntil:'domcontentloaded'});
+    await page.waitForSelector('#cube-jouer-btn',{state:'visible',timeout:8000});
+    const r=await page.evaluate(()=>{
+      const out=[];
+      if(typeof MOVE_GESTURE!=='object')return['MOVE_GESTURE n\'est pas exposé'];
+      if(typeof markMoveStyle!=='function')return['markMoveStyle n\'est pas exposé'];
+
+      // Un faux nœud de pièce, monté dans le plateau pour que le CSS
+      // s'applique : getComputedStyle ne dit rien d'un élément détaché.
+      const board=document.getElementById('game-board');
+      if(!board)return['pas de plateau'];
+      const node=document.createElement('div');
+      node.className='gc-piece';
+      node.innerHTML='<span class="gc-art"></span>';
+      board.appendChild(node);
+      const art=node.querySelector('.gc-art');
+
+      // 1. TOUTES les créatures jouables ont un geste déclaré. Une pièce
+      //    ajoutée sans entrée retomberait sur gc-land sans que rien ne le
+      //    signale — jouable, mais muette.
+      const sans=PIECES.filter(x=>!MOVE_GESTURE[x.id]).map(x=>x.id);
+      if(sans.length)out.push('sans geste déclaré : '+sans.join(', '));
+
+      // 2. Chaque classe de geste porte une VRAIE animation. C'est le test qui
+      //    compte : il attrape la classe posée par le JS mais absente du CSS.
+      for(const cls of GESTURE_CLASSES){
+        art.className='gc-art '+cls;
+        const cs=getComputedStyle(art);
+        if(cs.animationName==='none'||!cs.animationName)
+          out.push(cls+' ne déclenche aucune animation (règle CSS absente ?)');
+        else if(parseFloat(cs.animationDuration)<=0)
+          out.push(cls+' a une animation de durée nulle');
+      }
+      art.className='gc-art';
+
+      // 3. markMoveStyle pose bien LE geste de la créature, et pas un autre.
+      //    On joue un coup ALIGNÉ (une colonne), que tous les gestes acceptent :
+      //    un coup en L ferait légitimement retomber sur gc-leap les créatures
+      //    qui ne savent pas sauter (`air:false`), et le test dirait faux.
+      for(const pc of PIECES){
+        const g=MOVE_GESTURE[pc.id];
+        if(!g)continue;
+        markMoveStyle(node,4,4,2,4,pc.id,false);
+        if(!art.classList.contains(g.cls))
+          out.push(pc.id+' devrait poser '+g.cls+' et pose « '+art.className+' »');
+        // Une seule classe de geste à la fois : deux animations concurrentes
+        // sur le même élément, et c'est la dernière déclarée qui gagne.
+        const n=GESTURE_CLASSES.filter(c=>art.classList.contains(c)).length;
+        if(n!==1)out.push(pc.id+' porte '+n+' classes de geste au lieu d\'une');
+      }
+
+      // 4. Les variables du geste sont posées, et JAMAIS vides : un calc() sur
+      //    une variable absente invalide tout le transform et fige la pièce.
+      markMoveStyle(node,4,4,4,7,'dresseur-elephant',false);
+      if(art.style.getPropertyValue('--glean')!=='1')
+        out.push('--glean ne suit pas le sens du départ à l\'écran');
+      // Retourné, le même coup part dans l'autre sens : sinon le joueur des
+      // Noirs voit ses charges pencher à contresens.
+      markMoveStyle(node,4,4,4,7,'dresseur-elephant',true);
+      if(art.style.getPropertyValue('--glean')!=='-1')
+        out.push('--glean ignore l\'orientation du plateau');
+      if(!art.style.getPropertyValue('--gspan'))
+        out.push('--gspan n\'est pas posé');
+
+      node.remove();
+      return out;
+    });
+    if(r.length)throw new Error(r.join(' · '));
+  });
+
+  // LES POUVOIRS QUI NE SE VOYAIENT PAS. Cinq pouvoirs s'appliquaient dans le
+  // silence : l'ancrage, l'Espadon, la Foi, la Cuirasse, la Domination. Trois
+  // ont reçu un effet jetable, trois un état permanent sur la pièce — et les
+  // deux mécanismes cassent de façons différentes, d'où les deux moitiés.
+  await step('les pouvoirs muets ont tous leur image',async()=>{
+    const r=await page.evaluate(async()=>{
+      const out=[];
+      const board=document.getElementById('game-board');
+      if(!board)return['pas de plateau'];
+      fxSetLevel(1);fxSetFlipped(false);
+
+      // -- Les ÉVÉNEMENTS : chaque pouvoir pose quelque chose, et le retire.
+      for(const kind of ['ancre','espadon','foi','cuirasse','domination','typhon','banshee','meduse']){
+        const avant=board.querySelectorAll('.fx-layer > *').length;
+        fxPower(kind,4,4);
+        if(board.querySelectorAll('.fx-layer > *').length<=avant)
+          out.push('le pouvoir « '+kind+' » ne pose aucun effet');
+      }
+      // La charge a besoin du TRAJET : elle ne se dessine pas depuis un point.
+      const avantCharge=board.querySelectorAll('.fx-layer > *').length;
+      fxCharge({r:4,c:1},{r:4,c:5},'dresseur-elephant');
+      const poseCharge=board.querySelectorAll('.fx-layer > *').length-avantCharge;
+      // Quatre cases traversées + la lame de fond + l'onde d'arrivée.
+      if(poseCharge<5)out.push('la charge ne marque pas les cases traversées ('+poseCharge+' effets)');
+
+      await new Promise(res=>setTimeout(res,1800));
+      const restants=board.querySelectorAll('.fx-layer > *').length;
+      if(restants)out.push(restants+' effet(s) de pouvoir sont restés sur le plateau');
+
+      // -- Les ÉTATS : portés par la pièce, ils ne doivent RIEN animer. Trente-
+      //    deux pièces qui palpiteraient en permanence coûteraient une image
+      //    sur deux à un téléphone lent, et rendraient le plateau illisible.
+      const node=document.createElement('div');
+      node.className='gc-piece';
+      node.innerHTML='<span class="gc-art"></span>';
+      board.appendChild(node);
+      for(const cls of ['pc-cuirasse','pc-dominant','pc-warded']){
+        node.className='gc-piece '+cls;
+        const before=getComputedStyle(node,'::before');
+        if(before.content==='none')out.push(cls+' ne peint aucune lueur');
+        if(before.animationName&&before.animationName!=='none')
+          out.push(cls+' anime sa lueur : trente-deux pièces qui palpitent');
+        // Le piège de perf documenté en [BOARD] : un drop-shadow de plus sur
+        // une pièce qui se déplace, c'est un re-rendu hors compositeur à
+        // chaque image. Ces trois états couvrent des pièces qui BOUGENT.
+        const art=getComputedStyle(node.querySelector('.gc-art'));
+        if(art.filter&&art.filter.split('drop-shadow').length>2)
+          out.push(cls+' empile un filtre sur une pièce mobile');
+      }
+      node.remove();
       return out;
     });
     if(r.length)throw new Error(r.join(' · '));

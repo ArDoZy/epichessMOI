@@ -1302,6 +1302,70 @@ body:not(.main-menu) #settings-panel{display:none}
    deux états qui doivent se voir sans lire le journal. */
 .gc-piece.pc-para .gc-art{filter:grayscale(1) brightness(.6) drop-shadow(0 0 6px var(--sorcier))}
 .gc-piece.gc-anchored .gc-art{filter:drop-shadow(0 0 7px var(--gold2)) drop-shadow(0 2px 2px rgba(0,0,0,.5))}
+
+/* ---- LES TROIS POUVOIRS PASSIFS, PORTÉS PAR LA PIÈCE ------------
+   La Cuirasse du Preux Chevalier, la Domination du Grand Maître, la Foi
+   Inébranlable du Prêtre sur ses voisines. Aucun des trois ne se déclenche :
+   ils sont VRAIS tant que la créature vit. Un pouvoir permanent ne peut donc
+   pas être un effet jetable — il n'a pas d'instant — et devient un état sur la
+   pièce, comme la pétrification et l'ancrage juste au-dessus.
+
+   AUCUN `filter` ICI, ET C'EST TOUT LE POINT. Les deux états ci-dessus se
+   payent un empilement de `drop-shadow` parce qu'ils portent sur des pièces
+   IMMOBILES : une pièce pétrifiée et une pièce ancrée ne se déplacent pas, le
+   filtre est calculé une fois. Ces trois-là couvrent au contraire des pièces
+   qui bougent tout le temps — et un `drop-shadow` de plus sur un SVG en cours
+   de translation, c'est un re-rendu hors compositeur à chaque image, sur
+   jusqu'à seize pièces en même temps.
+
+   La lueur est donc peinte dans un ::before en `z-index:-1` : un dégradé, une
+   seule couche, composité, gratuit. Il reste derrière le dessin parce que
+   .gc-art n'est pas positionné (il peint dans la phase des blocs, au-dessus
+   des z-index négatifs), et il ne s'échappe pas sous le plateau parce que le
+   `transform` inline de .gc-piece lui ouvre son propre contexte d'empilement.
+
+   L'OR EST LA COULEUR DE CE QUI PROTÈGE (même règle que [COMBAT-FX]) : la
+   Cuirasse et la Foi le portent. La Domination n'est pas une protection mais
+   une CONTRAINTE imposée à l'adversaire : elle prend le bleu des Généraux,
+   celui de la classe du Grand Maître. */
+.gc-piece.pc-cuirasse::before,
+.gc-piece.pc-dominant::before,
+.gc-piece.pc-warded::before{
+  content:'';position:absolute;left:50%;top:72%;
+  transform:translate(-50%,-50%);
+  border-radius:50%;pointer-events:none;z-index:-1}
+
+/* CUIRASSE : un socle net et dense. C'est une armure — ça a un bord. */
+/* L'ALPHA A ÉTÉ RELEVÉ APRÈS COUP, ET LA RAISON MÉRITE D'ÊTRE ÉCRITE : ces
+   lueurs ont été réglées sur un plateau sombre, où elles se détachaient très
+   bien — et elles disparaissaient purement et simplement sur les plateaux de
+   BOIS CLAIR, qui sont la moitié du catalogue (assets/boards). Un or à 34 %
+   sur du chêne clair ne se voit pas. Le cerne sombre sous le halo est là pour
+   ça : il donne un bord à la lueur quel que soit le plateau dessous, au lieu
+   de compter sur un contraste que le joueur peut changer d'un clic. */
+.gc-piece.pc-cuirasse::before{
+  width:88%;height:32%;
+  background:radial-gradient(ellipse,rgba(193,154,69,.88) 0%,rgba(193,154,69,.4) 50%,transparent 74%);
+  box-shadow:0 0 9px 2px rgba(193,154,69,.45),0 0 0 1px rgba(58,38,8,.3)}
+
+/* DOMINATION : large et diffuse, elle déborde de la case. Le Grand Maître
+   n'impose rien sur SA case, il impose à tout le plateau. */
+/* La Domination, elle, reste CENTRÉE sur la pièce et non posée à son socle :
+   les deux autres sont des lueurs au sol — une armure et une bénédiction se
+   portent —, tandis que celle-ci enveloppe le Grand Maître tout entier. */
+.gc-piece.pc-dominant::before{
+  top:50%;width:126%;height:126%;
+  background:radial-gradient(circle,rgba(90,150,214,.42) 0%,rgba(90,150,214,.17) 46%,transparent 70%)}
+
+/* FOI INÉBRANLABLE : la plus discrète des trois, et elle doit le rester. Ce
+   n'est pas la pièce qui est puissante, c'est quelqu'un d'autre qui la
+   couvre — et jusqu'à huit alliées peuvent la porter en même temps autour de
+   deux Prêtres. Au-delà de cette densité, le plateau devient une guirlande. */
+.gc-piece.pc-warded::before{
+  width:70%;height:24%;
+  background:radial-gradient(ellipse,rgba(193,154,69,.56) 0%,rgba(193,154,69,.2) 54%,transparent 76%);
+  box-shadow:0 0 6px 1px rgba(193,154,69,.3)}
+
 .drag-ghost{position:fixed;pointer-events:none;z-index:9999;width:64px;height:64px;
   transform:translate(-50%,-50%);opacity:.9;display:none;filter:drop-shadow(0 6px 8px rgba(0,0,0,.6))}
 .ctx-menu{position:fixed;background:var(--surface2);border:1px solid var(--border2);border-radius:13px;
@@ -4093,6 +4157,232 @@ body.cube-active:not(.nav-overlay) .notif-host{bottom:92px}
 }
 .gc-piece .gc-art.gc-land{animation:gcLand .16s ease-out .2s both}
 
+/* ================================================================
+   LE GESTE DE CHAQUE CRÉATURE
+   ================================================================
+   Les deux animations ci-dessus (gcLeap, gcLand) disaient la GÉOMÉTRIE d'un
+   coup : ça enjambe, ou ça se pose. Elles ne disaient jamais QUI joue. Ce qui
+   suit donne à chaque créature son mouvement propre, et c'est la seule façon
+   d'animer une pièce qui ne coûte rien : `transform` et `opacity` sont les
+   deux seules propriétés que le compositeur joue sans repeindre — aucun
+   maillage, aucune texture, aucun fichier à charger, et le geste survit à
+   n'importe quel dessin de pièce.
+
+   TROIS RÈGLES, ET LA PREMIÈRE EST NON NÉGOCIABLE :
+
+     1. L'ARC TOUCHE TERRE À 200 ms. La POSITION est portée par la transition
+        de .gc-piece (BOARD_MOVE_MS = 200 ms) ; le geste est une animation
+        SÉPARÉE. Chaque bloc porte donc en commentaire « durée × pourcentage
+        = 200 ms ». Une animation qui retombe après, et la pièce redescend
+        alors qu'elle est arrivée : le geste se lit comme un tressaillement.
+
+     2. AUCUN `filter` ANIMÉ. C'est la règle héritée de gcLeap, et elle vaut
+        pour les quinze gestes : `filter` sur un SVG force un re-rendu complet
+        de la pièce à chaque image, hors compositeur. Sur un téléphone
+        d'entrée de gamme, le plateau saute des images. `opacity` et
+        `transform` seuls.
+
+     3. DEUX VARIABLES, POSÉES PAR markMoveStyle (js/game-render.js) :
+          --glean  -1, 0 ou +1 : le sens du départ À L'ÉCRAN (et non sur le
+                   plateau : sinon une charge vers la droite pencherait à
+                   gauche pour le joueur des Noirs).
+          --gspan  0 à 1 : la distance parcourue sur les sept cases. Un geste
+                   ample doit s'amplifier avec la course, sinon la même
+                   embardée sur une case paraît ridicule.
+        Elles ont une valeur de repli ici : une pièce posée par un chemin qui
+        n'appelle pas markMoveStyle (retour d'historique) ne doit pas hériter
+        d'un `calc()` sur une variable vide, qui invaliderait tout le
+        transform et figerait la pièce. */
+.gc-art{--glean:0;--gspan:.3}
+
+/* CHARGER — l'Éléphant de guerre. 420 ms × 48 % = 200 ms.
+   C'est le geste le plus appuyé du jeu, et il le mérite : c'est la seule
+   créature qui détruit TOUT sur son passage. Il s'arc-boute en arrière (il
+   prend son élan), s'étire dans sa course, puis s'écrase à l'arrivée avec un
+   contrecoup. Le poids est dans l'asymétrie : 24 % de large contre 78 % de
+   haut, c'est une masse qui s'aplatit, pas une balle qui rebondit. */
+@keyframes gcCharge{
+  0%  {transform:translateX(0) scaleX(1) scaleY(1) rotate(0)}
+  11% {transform:translateX(calc(var(--glean) * -7%)) scaleX(.9) scaleY(1.1)
+       rotate(calc(var(--glean) * -6deg))}
+  30% {transform:translateX(calc(var(--glean) * 4%)) scaleX(1.16) scaleY(.9)
+       rotate(calc(var(--glean) * 8deg))}
+  48% {transform:translateX(0) scaleX(calc(1.1 + var(--gspan) * .18))
+       scaleY(calc(.86 - var(--gspan) * .08)) rotate(calc(var(--glean) * 4deg))}
+  64% {transform:translateX(0) scaleX(.95) scaleY(1.07) rotate(0)}
+  82% {transform:translateX(0) scaleX(1.04) scaleY(.97) rotate(0)}
+  100%{transform:translateX(0) scaleX(1) scaleY(1) rotate(0)}
+}
+.gc-piece .gc-art.gc-charge{animation:gcCharge .42s cubic-bezier(.3,.02,.4,1) both}
+
+/* PIÉTINER — le Preux Chevalier et le Garde de Pierre. 360 ms × 56 % = 200 ms.
+   Un homme en armure et un bloc de pierre ne s'élèvent pas : ils se portent.
+   Pas de translation verticale du tout, seulement l'écrasement d'arrivée —
+   et il est franc, parce que c'est tout ce qui reste pour dire le poids. */
+@keyframes gcStomp{
+  0%  {transform:scaleX(1) scaleY(1)}
+  30% {transform:scaleX(.96) scaleY(1.05)}
+  56% {transform:scaleX(1.16) scaleY(.85)}
+  74% {transform:scaleX(.98) scaleY(1.03)}
+  100%{transform:scaleX(1) scaleY(1)}
+}
+.gc-piece .gc-art.gc-stomp{animation:gcStomp .36s cubic-bezier(.35,0,.35,1) both}
+
+/* COULER — le Garde d'Eau. 380 ms × 53 % = 200 ms.
+   Il ne marche pas d'une case à l'autre : il s'y verse. L'étirement précède
+   toujours le déplacement (le liquide part avant le récipient), et l'arrivée
+   n'a pas d'impact sec mais un ballotement qui s'amortit. */
+@keyframes gcFlow{
+  0%  {transform:scaleX(1) scaleY(1) rotate(0)}
+  22% {transform:scaleX(.86) scaleY(1.18) rotate(calc(var(--glean) * -4deg))}
+  53% {transform:scaleX(1.18) scaleY(.86) rotate(calc(var(--glean) * 3deg))}
+  70% {transform:scaleX(.93) scaleY(1.08) rotate(0)}
+  86% {transform:scaleX(1.04) scaleY(.97) rotate(0)}
+  100%{transform:scaleX(1) scaleY(1) rotate(0)}
+}
+.gc-piece .gc-art.gc-flow{animation:gcFlow .38s cubic-bezier(.4,.1,.3,1) both}
+
+/* VACILLER — le Garde de Feu. 340 ms × 59 % = 200 ms.
+   Une flamme ne glisse pas : elle bat. Trois pulsations serrées pendant la
+   course, et l'`opacity` en fait partie — c'est le seul geste où elle sert,
+   parce que c'est la seule créature dont la matière même est instable. */
+@keyframes gcFlicker{
+  0%  {transform:scaleY(1) scaleX(1);opacity:1}
+  18% {transform:scaleY(1.14) scaleX(.9);opacity:.72}
+  34% {transform:scaleY(.94) scaleX(1.06);opacity:1}
+  50% {transform:scaleY(1.1) scaleX(.93);opacity:.8}
+  59% {transform:scaleY(.9) scaleX(1.12);opacity:1}
+  78% {transform:scaleY(1.05) scaleX(.97);opacity:.94}
+  100%{transform:scaleY(1) scaleX(1);opacity:1}
+}
+.gc-piece .gc-art.gc-flicker{animation:gcFlicker .34s ease-in-out both}
+
+/* TROTTINER — la Fourmi. 300 ms × 67 % = 200 ms.
+   La plus petite pièce du jeu, et la plus pressée : quatre appuis minuscules
+   et secs, jamais plus de 7 % d'élévation. L'amplitude est ce qui dit la
+   taille — un grand geste sur une fourmi en ferait un éléphant. */
+@keyframes gcScuttle{
+  0%  {transform:translateY(0) rotate(0)}
+  16% {transform:translateY(-7%) rotate(calc(var(--glean) * 5deg))}
+  32% {transform:translateY(0) rotate(0)}
+  48% {transform:translateY(-6%) rotate(calc(var(--glean) * -4deg))}
+  67% {transform:translateY(0) rotate(0)}
+  82% {transform:translateY(-3%) rotate(0)}
+  100%{transform:translateY(0) rotate(0)}
+}
+.gc-piece .gc-art.gc-scuttle{animation:gcScuttle .3s cubic-bezier(.35,.05,.4,1) both}
+
+/* TOURNOYER — le Typhon. 420 ms × 48 % = 200 ms.
+   Il ne se déplace pas vers une case : il y TOURNE. Un tour complet, et
+   l'échelle se creuse au milieu de la course — un tourbillon vu de face se
+   resserre quand il accélère. C'est le seul geste qui fait un tour entier, et
+   c'est ce qui le rend reconnaissable à l'autre bout du plateau. */
+@keyframes gcSpin{
+  0%  {transform:rotate(0) scale(1)}
+  25% {transform:rotate(140deg) scale(.9)}
+  48% {transform:rotate(272deg) scale(1.08)}
+  70% {transform:rotate(340deg) scale(.97)}
+  100%{transform:rotate(360deg) scale(1)}
+}
+.gc-piece .gc-art.gc-spin{animation:gcSpin .42s cubic-bezier(.35,.05,.35,1) both}
+
+/* SE DÉPHASER — la Banshee. 360 ms × 56 % = 200 ms.
+   Elle est la seule à franchir une case occupée en diagonale : le geste doit
+   dire qu'elle ne PASSE pas, elle s'absente. Elle s'efface presque
+   complètement au milieu du trajet et se recompose à l'arrivée, un peu trop
+   grande d'abord — quelque chose qui se reforme dépasse toujours sa taille
+   avant de la trouver. */
+@keyframes gcPhase{
+  0%  {opacity:1;transform:scale(1)}
+  28% {opacity:.16;transform:scale(.78)}
+  44% {opacity:.1;transform:scale(.72)}
+  56% {opacity:.85;transform:scale(1.14)}
+  74% {opacity:1;transform:scale(.97)}
+  100%{opacity:1;transform:scale(1)}
+}
+.gc-piece .gc-art.gc-phase{animation:gcPhase .36s ease-in-out both}
+
+/* ONDULER — la Méduse. 400 ms × 50 % = 200 ms.
+   Rien de sec dans ce geste : ni impact, ni écrasement. Elle respire en
+   montant, dérive au-delà de sa case et revient — la seule créature dont
+   l'arrivée DÉPASSE la destination avant de se poser. */
+@keyframes gcDrift{
+  0%  {transform:translateY(0) scaleX(1) scaleY(1)}
+  26% {transform:translateY(-9%) scaleX(.92) scaleY(1.12)}
+  50% {transform:translateY(-4%) scaleX(1.1) scaleY(.92)}
+  72% {transform:translateY(-7%) scaleX(.96) scaleY(1.06)}
+  100%{transform:translateY(0) scaleX(1) scaleY(1)}
+}
+.gc-piece .gc-art.gc-drift{animation:gcDrift .4s ease-in-out both}
+
+/* S'AVANCER — le Prêtre. 400 ms × 50 % = 200 ms.
+   Le geste le plus dépouillé du jeu, et c'est volontaire : il monte un peu,
+   il redescend, il ne s'écrase pas. Une créature qui protège les autres ne
+   doit rien avoir d'agité — la dignité, à l'écran, c'est l'absence de
+   contrecoup. */
+@keyframes gcSolemn{
+  0%  {transform:translateY(0) scale(1)}
+  50% {transform:translateY(-11%) scale(1.03)}
+  100%{transform:translateY(0) scale(1)}
+}
+.gc-piece .gc-art.gc-solemn{animation:gcSolemn .4s cubic-bezier(.4,0,.4,1) both}
+
+/* SE PORTER — les Monarques et les Généraux. 360 ms × 56 % = 200 ms.
+   Le Roi, l'Empereur, la Dame, l'Amazone, le Grand Maître. Ils s'élèvent d'un
+   rien et se posent d'aplomb : une pièce qui vaut treize points n'a pas
+   besoin de s'agiter pour qu'on la regarde. L'élévation suit --gspan — une
+   travée d'un bout à l'autre du plateau a le droit à plus d'ampleur qu'un pas
+   de côté. */
+@keyframes gcRegal{
+  0%  {transform:translateY(0) scaleX(1) scaleY(1)}
+  30% {transform:translateY(calc(-8% - var(--gspan) * 8%)) scaleX(.97) scaleY(1.05)}
+  56% {transform:translateY(0) scaleX(1.08) scaleY(.93)}
+  76% {transform:translateY(0) scaleX(.98) scaleY(1.02)}
+  100%{transform:translateY(0) scaleX(1) scaleY(1)}
+}
+.gc-piece .gc-art.gc-regal{animation:gcRegal .36s cubic-bezier(.35,.02,.35,1) both}
+
+/* GALOPER — le Centaure. 380 ms × 53 % = 200 ms.
+   Un galop est à DEUX temps, et c'est tout ce qu'il faut retenir : deux
+   foulées inégales, la première ample, la seconde ramassée. Un seul bond en
+   ferait un cavalier ; deux bonds égaux en feraient un lapin. */
+@keyframes gcGallop{
+  0%  {transform:translateY(0) rotate(0)}
+  20% {transform:translateY(calc(-16% - var(--gspan) * 8%)) rotate(calc(var(--glean) * 7deg))}
+  36% {transform:translateY(-2%) rotate(calc(var(--glean) * 2deg))}
+  53% {transform:translateY(-11%) rotate(calc(var(--glean) * 5deg))}
+  72% {transform:translateY(0) rotate(0) scaleY(.93) scaleX(1.07)}
+  100%{transform:translateY(0) rotate(0) scaleY(1) scaleX(1)}
+}
+.gc-piece .gc-art.gc-gallop{animation:gcGallop .38s cubic-bezier(.3,.05,.4,1) both}
+
+/* POUSSER — la Tour Primordiale. 340 ms × 59 % = 200 ms.
+   Elle ne quitte JAMAIS le sol : c'est une tour. Tout le geste tient dans
+   l'arrêt — elle arrive à pleine vitesse et s'écrase net, sans le moindre
+   rebond. C'est le contraire exact du galop, et les deux se lisent d'un coup
+   d'œil parce qu'ils n'ont aucune image en commun. */
+@keyframes gcSlam{
+  0%  {transform:scaleX(1) scaleY(1)}
+  40% {transform:scaleX(1.05) scaleY(.98)}
+  59% {transform:scaleX(1.2) scaleY(.82)}
+  80% {transform:scaleX(.97) scaleY(1.03)}
+  100%{transform:scaleX(1) scaleY(1)}
+}
+.gc-piece .gc-art.gc-slam{animation:gcSlam .34s cubic-bezier(.25,0,.3,1) both}
+
+/* FILER — le Fou Primordial. 340 ms × 59 % = 200 ms.
+   Il s'incline dans sa diagonale comme une voile prend le vent, et se
+   redresse en arrivant. L'inclinaison est le geste ENTIER : pas d'élévation,
+   pas d'écrasement — une pièce qui file en biais ne pèse rien. */
+@keyframes gcGlide{
+  0%  {transform:rotate(0) scale(1)}
+  30% {transform:rotate(calc(var(--glean) * 13deg)) scale(1.04)}
+  59% {transform:rotate(calc(var(--glean) * 7deg)) scale(1)}
+  80% {transform:rotate(calc(var(--glean) * -3deg)) scale(.99)}
+  100%{transform:rotate(0) scale(1)}
+}
+.gc-piece .gc-art.gc-glide{animation:gcGlide .34s cubic-bezier(.3,.05,.35,1) both}
+
 /* LE PRÉMOUVEMENT (js/game-render.js, section du même nom). Ses marques ne
    ressemblent à AUCUNE autre du plateau, et c'est délibéré : ce qu'elles
    montrent n'est pas joué, et peut ne jamais l'être. Le vert est la couleur
@@ -4118,6 +4408,14 @@ body.cube-active:not(.nav-overlay) .notif-host{bottom:92px}
   .gc-piece{transition:none}
   .gc-piece.gc-dying .gc-art,.gc-piece.gc-born .gc-art,.gc-piece .gc-art.gc-morph{animation:none}
   .gc-piece .gc-art.gc-leap,.gc-piece .gc-art.gc-land{animation:none}
+  /* Les treize gestes de créature tombent sous la même règle : quelqu'un qui
+     coupe le mouvement n'a pas demandé un galop plus discret, il a demandé
+     qu'il n'y en ait pas. */
+  .gc-piece .gc-art.gc-charge,.gc-piece .gc-art.gc-stomp,.gc-piece .gc-art.gc-flow,
+  .gc-piece .gc-art.gc-flicker,.gc-piece .gc-art.gc-scuttle,.gc-piece .gc-art.gc-spin,
+  .gc-piece .gc-art.gc-phase,.gc-piece .gc-art.gc-drift,.gc-piece .gc-art.gc-solemn,
+  .gc-piece .gc-art.gc-regal,.gc-piece .gc-art.gc-gallop,.gc-piece .gc-art.gc-slam,
+  .gc-piece .gc-art.gc-glide{animation:none;opacity:1}
   .gc.pm-from::after,.gc.pm-to::after{animation:none;opacity:1}
 }
 
@@ -4410,6 +4708,176 @@ body.cube-active:not(.nav-overlay) .notif-host{bottom:92px}
   25%{opacity:1}
   100%{opacity:0;transform:scale(1.7)}
 }
+/* LE RETARD DE CHAQUE CASE ÉCRASÉE. fxCharge en sème une par case traversée
+   et les décale dans le temps (--del) : la première tombe quand l'Éléphant
+   quitte sa case, la dernière quand il arrive. Sans ce retard, les quatre
+   cases s'allument d'un bloc et le balayage se lit comme une zone d'effet. */
+.fx-crush .fx-dustring{animation-delay:var(--del,0ms)}
+
+/* --- LA LAME DE FOND DE LA CHARGE -------------------------------- */
+/* Les cases écrasées disent OÙ la charge est passée ; elles ne disent pas que
+   c'est UN SEUL geste. Cette barre s'ouvre depuis la case de départ jusqu'à
+   l'arrivée, à la vitesse de la bête. Même géométrie que la traînée (ancrée
+   au centre du départ, pivot à gauche, --rot pour l'angle) mais quatre fois
+   plus épaisse et bien plus brève : ce n'est pas un sillage qu'on suit, c'est
+   un coup qu'on encaisse. */
+.fx-sweep{position:absolute;height:9%;border-radius:99px;
+  transform-origin:0 50%;mix-blend-mode:screen;
+  background:linear-gradient(90deg,transparent 0%,var(--fx-c) 45%,#fff 92%,transparent 100%);
+  filter:blur(3px);
+  animation:fxSweep .5s cubic-bezier(.15,.85,.3,1) both}
+@keyframes fxSweep{
+  0%  {opacity:0;transform:translateY(-50%) rotate(var(--rot)) scaleX(.05) scaleY(.4)}
+  22% {opacity:.95;transform:translateY(-50%) rotate(var(--rot)) scaleX(1) scaleY(1)}
+  100%{opacity:0;transform:translateY(-50%) rotate(var(--rot)) scaleX(1) scaleY(.25)}
+}
+/* L'onde d'arrivée de la charge : plus large et plus terreuse que celle du
+   Typhon, parce qu'une masse qui s'arrête soulève de la poussière, elle ne
+   déchire pas l'air. */
+.fx-shock-charge::before{filter:hue-rotate(-12deg) saturate(1.25) brightness(1.05)}
+
+/* --- L'ASPIRATION DU TYPHON -------------------------------------- */
+/* Le vortex tournait sur lui-même pendant que ses victimes mouraient chacune
+   dans son coin : rien à l'écran ne reliait le tourbillon aux quatre pièces
+   effacées. Huit traits convergent maintenant vers le centre AVANT
+   l'éclatement — le Typhon aspire, puis il détruit, et l'œil fait le lien.
+
+   Chaque trait occupe TOUTE LA CASE et n'est qu'une ellipse peinte en son
+   centre : c'est le procédé documenté sur .fx-shard, et pour la même raison —
+   un pourcentage dans un `translate()` se mesure sur l'élément lui-même, donc
+   un petit trait poussé de « 100 % » ne bougerait que de sa propre longueur.
+   La rotation aligne l'ellipse sur le rayon : elle pointe vers le centre. */
+.fx-suck{mix-blend-mode:screen}
+.fx-suck-line{width:100%;height:100%;
+  background:radial-gradient(ellipse 9px 2px at 50% 50%,
+    #fff 0%,var(--sorcier) 40%,transparent 72%);
+  animation:fxSuck .46s cubic-bezier(.35,0,.25,1) both;
+  animation-delay:var(--del,0ms)}
+@keyframes fxSuck{
+  0%  {opacity:0;transform:translate(var(--dx),var(--dy)) rotate(var(--rot)) scale(1)}
+  30% {opacity:1}
+  100%{opacity:0;transform:translate(0,0) rotate(var(--rot)) scale(.45)}
+}
+
+/* ================================================================
+   LES POUVOIRS QUI NE SE VOYAIENT PAS
+   ================================================================
+   Quatre pouvoirs s'appliquaient dans le silence complet : l'ancrage du Garde
+   de Pierre, l'Espadon de l'Empereur, la Foi Inébranlable du Prêtre, la
+   Domination du Grand Maître, et la Cuirasse du Preux Chevalier. Un joueur
+   dont le pion refuse d'avancer de deux cases ne conclut pas « le Grand
+   Maître me domine » : il conclut que le jeu est cassé. UNE RÈGLE INVISIBLE
+   N'EST PAS UNE SUBTILITÉ, C'EST UN BUG AUX YEUX DE CELUI QUI LA SUBIT.
+
+   L'OR EST LA COULEUR DE CE QUI PROTÈGE, dans tout ce bloc. Le jeu s'en sert
+   déjà pour l'ancrage (.gc-anchored, [BOARD]) et pour la promotion : une
+   lueur dorée dit « ceci est acquis, ceci tient ». Le violet du Sorcier reste
+   à ce qui ATTAQUE — la pétrification, le vortex —, sans quoi le Prêtre qui
+   couvre et la Méduse qui paralyse porteraient la même lumière. */
+
+/* RETOUR À L'ÉTAT FONDAMENTAL. Le geste est l'INVERSE d'une explosion : six
+   éclats convergent et se figent, parce que le pouvoir est l'inverse d'une
+   destruction — la matière se referme au lieu de se disperser. C'est la seule
+   animation du fichier qui finit à `scale(0)` : rien ne subsiste, tout s'est
+   ramassé au centre. */
+.fx-anchor{mix-blend-mode:screen}
+.fx-anchor-core{width:70%;height:70%;border-radius:50%;
+  background:radial-gradient(circle,#fff 0%,var(--gold2) 38%,transparent 70%);
+  animation:fxAnchorCore .8s cubic-bezier(.2,.7,.3,1) both}
+@keyframes fxAnchorCore{
+  0%  {opacity:0;transform:scale(1.5)}
+  55% {opacity:.9;transform:scale(.9)}
+  100%{opacity:0;transform:scale(1.05)}
+}
+.fx-anchor-shard{width:100%;height:100%;
+  background:radial-gradient(ellipse 8px 3px at 50% 50%,
+    #fff 0%,var(--gold2) 42%,transparent 74%);
+  animation:fxAnchorIn .58s cubic-bezier(.3,0,.2,1) both;
+  animation-delay:var(--del,0ms)}
+@keyframes fxAnchorIn{
+  0%  {opacity:0;transform:translate(var(--dx),var(--dy)) rotate(var(--rot)) scale(1.1)}
+  35% {opacity:1}
+  100%{opacity:0;transform:translate(0,0) rotate(var(--rot)) scale(0)}
+}
+
+/* ESPADON. Une lame se dessine avec des TRAITS, jamais avec un halo : rien de
+   ce qui coupe n'est flou. Deux arcs se croisent, le second retardé — un
+   croisement simultané ferait une croix, et une croix ne coupe pas, elle
+   marque. */
+.fx-sword{mix-blend-mode:screen;overflow:visible}
+.fx-slash{width:150%;height:5%;border-radius:99px;
+  background:linear-gradient(90deg,transparent,#fff 30%,var(--monarque) 55%,transparent);
+  filter:blur(.6px);
+  animation:fxSlash .34s cubic-bezier(.2,.8,.3,1) both}
+.fx-slash2{animation-delay:.11s;animation-duration:.38s}
+@keyframes fxSlash{
+  0%  {opacity:0;transform:rotate(-42deg) scaleX(.1)}
+  30% {opacity:1;transform:rotate(-42deg) scaleX(1)}
+  100%{opacity:0;transform:rotate(-42deg) scaleX(1.15)}
+}
+.fx-slash2{transform-origin:50% 50%}
+@keyframes fxSlash2{
+  0%  {opacity:0;transform:rotate(38deg) scaleX(.1)}
+  30% {opacity:1;transform:rotate(38deg) scaleX(1)}
+  100%{opacity:0;transform:rotate(38deg) scaleX(1.15)}
+}
+.fx-slash.fx-slash2{animation-name:fxSlash2}
+
+/* FOI INÉBRANLABLE. Un dôme, et il monte LENTEMENT — c'est le seul effet du
+   jeu qui dure une seconde entière. Tout le reste du plateau est sec et
+   bref ; une protection qui claque comme un impact ne protégerait pas, elle
+   frapperait. Il est posé SOUS les pièces : ce qu'il couvre doit rester
+   parfaitement lisible au travers. */
+.fx-ward{mix-blend-mode:screen}
+.fx-dome{width:290%;height:290%;border-radius:50%;
+  border:2px solid var(--gold2);
+  background:radial-gradient(circle,transparent 58%,rgba(193,154,69,.18) 78%,transparent 92%);
+  animation:fxDome .95s cubic-bezier(.25,.6,.3,1) both}
+.fx-dome2{width:200%;height:200%;animation-duration:.8s;animation-delay:.12s;opacity:.7}
+@keyframes fxDome{
+  0%  {opacity:0;transform:scale(.25)}
+  40% {opacity:.9;transform:scale(1)}
+  100%{opacity:0;transform:scale(1.08)}
+}
+
+/* CUIRASSE. Un pion vient de se briser sur le Preux Chevalier. Court et sec —
+   c'est un refus, pas une victoire : l'arc de bouclier s'allume, une étincelle
+   part, et c'est fini en une demi-seconde. */
+.fx-guard{mix-blend-mode:screen}
+.fx-guard-arc{width:78%;height:78%;border-radius:50%;
+  border:3px solid var(--gold2);border-bottom-color:transparent;border-left-color:transparent;
+  animation:fxGuard .5s cubic-bezier(.15,.75,.3,1) both}
+@keyframes fxGuard{
+  0%  {opacity:0;transform:scale(.6) rotate(-30deg)}
+  30% {opacity:1;transform:scale(1.08) rotate(0)}
+  100%{opacity:0;transform:scale(1.2) rotate(14deg)}
+}
+.fx-spark{width:46%;height:46%;border-radius:50%;
+  background:radial-gradient(circle,#fff 0%,var(--gold2) 45%,transparent 72%);
+  animation:fxSpark .34s ease-out both}
+@keyframes fxSpark{
+  0%{opacity:0;transform:scale(.2)}
+  35%{opacity:1;transform:scale(1)}
+  100%{opacity:0;transform:scale(1.4)}
+}
+
+/* DOMINATION. L'onde la plus lente et la plus large du jeu : 1,3 s, et elle
+   déborde très au-delà de la case. Elle ne dit pas « regardez-moi », elle dit
+   « à partir de maintenant, les pions d'en face n'avancent plus de deux ».
+   C'est une règle qui change, pas un coup qui se joue — d'où l'ampleur et la
+   lenteur, qui ne ressemblent à rien d'autre sur ce plateau. */
+.fx-domin{mix-blend-mode:screen}
+.fx-domin-ring{width:180%;height:180%;border-radius:50%;
+  border:2px solid var(--general);
+  box-shadow:0 0 20px rgba(0,0,0,0),inset 0 0 24px rgba(0,0,0,0);
+  animation:fxDomin 1.25s cubic-bezier(.2,.55,.3,1) both}
+.fx-domin-ring2{animation-delay:.22s;opacity:.55}
+@keyframes fxDomin{
+  0%  {opacity:0;transform:scale(.2)}
+  25% {opacity:.8}
+  100%{opacity:0;transform:scale(2.6)}
+}
+
 
 /* --- LA PRISE EN MAIN ------------------------------------------- */
 /* LE HALO SOUS LA PIÈCE, ET RIEN D'AUTRE. Une onde partait aussi sur chaque

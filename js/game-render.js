@@ -39,6 +39,19 @@ function showCtxMenu(e,r,c,gs){
 // à l'identique par un adversaire en ligne (mpApplyRemotePower).
 function applyGardePierre(r,c,color,gs){
   gs.anchored=gs.anchored||new Set();gs.anchored.add(`${r},${c}`);gs.gardePierreUsed[color]=true;
+  // LE SEUL POUVOIR QU'ON DÉCLENCHE À LA MAIN N'AVAIT AUCUN GESTE. Le joueur
+  // choisissait « Retour à l'État Fondamental » dans un menu, la pièce prenait
+  // un halo doré permanent, et rien ne marquait l'INSTANT. C'est pourtant le
+  // seul moment du jeu où l'on dépense un pouvoir à usage unique : il mérite
+  // son image. Posé ici et non dans activatePower() parce que ce guichet est
+  // aussi celui de l'adversaire en ligne (mpApplyRemotePower) — les deux
+  // plateaux doivent montrer la même chose.
+  if(typeof fxPower==='function')fxPower('ancre',r,c);
+  // `choc` est la recette de « la masse qui rencontre la masse » (js/sfx.js) :
+  // c'est exactement ce qu'est un Garde de Pierre qui se referme sur lui-même.
+  // L'œil et l'oreille doivent dire la même chose — c'est la règle que suit
+  // déjà toute la table des effets (voir fxForce, js/combat-fx.js).
+  if(typeof playSound==='function')playSound('choc',{force:0.5});
   recordMove(gs.board[r][c],{r,c},false,gs,{r,c});gs.turn=opp(gs.turn);gs.turnCount++;
   postMoveUpdate(gs);
 }
@@ -451,7 +464,7 @@ function syncPieces(gs,boardEl,flipped,board){
         // s'élève donc au-dessus du plateau et retombe, sans que le module
         // ait à connaître un seul identifiant. Les autres, elles, marquent
         // seulement l'ARRIVÉE : un poids qui se pose.
-        markMoveStyle(node,+node.dataset.r,+node.dataset.c,r,c);
+        markMoveStyle(node,+node.dataset.r,+node.dataset.c,r,c,cell.pieceId,flipped);
       }
     }
 
@@ -462,6 +475,26 @@ function syncPieces(gs,boardEl,flipped,board){
     node._pid=cell.pieceId;
     node.classList.toggle('pc-para',!!(gs.medusaParalyzed&&gs.medusaParalyzed.has(key)));
     node.classList.toggle('gc-anchored',!!(gs.anchored&&gs.anchored.has(key)));
+    // ---- LES POUVOIRS PASSIFS, PORTÉS PAR LA PIÈCE ELLE-MÊME ----------
+    // Trois pouvoirs ne se déclenchent jamais : ils sont VRAIS tant que la
+    // créature vit. La Cuirasse du Preux Chevalier, la Domination du Grand
+    // Maître, la Foi Inébranlable du Prêtre sur ses voisines. Un pouvoir
+    // permanent ne peut pas être un effet jetable — il n'a pas d'instant. Il
+    // devient donc un ÉTAT sur la pièce, comme la pétrification de la Méduse
+    // (.pc-para) et l'ancrage du Garde de Pierre (.gc-anchored) avant lui.
+    //
+    // C'est ce qui transforme trois règles invisibles en trois choses qu'on
+    // VOIT sur le plateau — et une partie où l'on comprend pourquoi un coup
+    // est refusé est une partie qu'on a envie de rejouer.
+    //
+    // Aucune de ces classes n'anime quoi que ce soit : ce sont des ombres
+    // portées statiques. Trente-deux pièces qui palpiteraient en permanence
+    // coûteraient une image sur deux à un téléphone d'entrée de gamme, et
+    // rendraient le plateau illisible bien avant.
+    node.classList.toggle('pc-cuirasse',cell.pieceId==='preux-chevalier');
+    node.classList.toggle('pc-dominant',cell.pieceId==='grand-maitre');
+    node.classList.toggle('pc-warded',
+      !!(gs.pretreProtected&&gs.pretreProtected.has(cell.color+':'+key)));
     node.dataset.r=r;node.dataset.c=c;
     at[r][c]=node;
   }
@@ -485,19 +518,110 @@ function syncPieces(gs,boardEl,flipped,board){
   _pieceAt=at;
 }
 
-// Le geste du déplacement : saut ou atterrissage. Il porte sur .gc-art et
-// jamais sur .gc-piece, dont le transform tient la POSITION — c'est la règle
-// de la couche des pièces, et la seule chose à ne pas casser ici.
-function markMoveStyle(node,fromR,fromC,toR,toC){
+// ----------------------------------------------------------------
+// LE GESTE D'UNE CRÉATURE : chaque pièce se déplace comme elle-même
+// ----------------------------------------------------------------
+// Toutes les pièces partageaient DEUX gestes : le SAUT quand le déplacement
+// n'était ni une ligne, ni une colonne, ni une diagonale, et l'ATTERRISSAGE
+// partout ailleurs. C'était déjà mieux qu'un glissement uniforme, mais ça ne
+// disait que la GÉOMÉTRIE du coup — jamais QUI le joue. Un Éléphant de guerre
+// qui charge deux cases et une Méduse qui dérive d'une diagonale avaient
+// rigoureusement le même mouvement.
+//
+// Chaque créature a maintenant son geste. C'est la seule manière d'animer une
+// pièce qui ne coûte RIEN : tout est en `transform` et en `opacity`, les deux
+// seules propriétés que le compositeur sait jouer sans repeindre. Pas un
+// fichier à charger, pas un maillage, pas une texture — et le geste survit à
+// n'importe quel dessin de pièce, présent ou futur.
+//
+// -- LA RÈGLE QUI TIENT TOUT LE TABLEAU ---------------------------------
+// L'ARC DOIT TOUCHER TERRE À BOARD_MOVE_MS. La POSITION est portée par la
+// transition de .gc-piece (200 ms) ; le geste, lui, est une animation
+// indépendante. Si elle retombe APRÈS 200 ms, la pièce est déjà arrivée
+// pendant qu'elle redescend, et le geste se lit comme un sursaut sur place.
+// Chaque animation de [BOARD-MOTION] porte donc en commentaire sa durée ET le
+// pourcentage auquel elle touche terre : le produit des deux vaut 200 ms.
+//
+// -- `air` : LA CRÉATURE SAIT-ELLE SAUTER ELLE-MÊME ? ---------------------
+// Un déplacement qui n'est ni aligné ni diagonal ENJAMBE, par définition. Un
+// geste qui reste au sol (la poussée de la Tour, le pas du Preux Chevalier)
+// mentirait sur un tel coup : ces créatures-là repassent alors au saut
+// générique. Celles dont le geste emporte déjà la pièce — la charge, le
+// galop, la phase, le tourbillon — le gardent, saut ou pas.
+const MOVE_GESTURE={
+  // BRUTES. Le poids se lit à l'arrivée : ce sont les seules créatures dont
+  // l'écrasement dépasse ce qu'on remarque, et c'est tout leur propos.
+  'dresseur-elephant': {cls:'gc-charge',  air:true},   // il s'arc-boute, puis il part
+  'preux-chevalier':   {cls:'gc-stomp',   air:false},  // le pas d'un homme en armure
+  'garde-pierre':      {cls:'gc-stomp',   air:false},
+  'garde-eau':         {cls:'gc-flow',    air:true},   // il se verse d'une case à l'autre
+  'garde-feu':         {cls:'gc-flicker', air:true},   // il vacille au lieu de glisser
+  'fourmi':            {cls:'gc-scuttle', air:true},   // pressee, minuscule, saccadee
+
+  // SORCIERS. Aucun ne touche vraiment le sol : ils se déplacent par un autre
+  // moyen que la marche, et le geste est ce qui le dit sans une ligne de texte.
+  'typhon':            {cls:'gc-spin',    air:true},   // il EST le tourbillon
+  'banshee':           {cls:'gc-phase',   air:true},   // elle s'efface et se repose ailleurs
+  'meduse':            {cls:'gc-drift',   air:true},   // elle ondule, elle ne marche pas
+  'pretre':            {cls:'gc-solemn',  air:false},  // lent, droit, sans écrasement
+
+  // GÉNÉRAUX ET MONARQUES. La retenue est leur signature : ils s'élèvent d'un
+  // rien et se posent d'aplomb. Une pièce qui vaut treize points n'a pas
+  // besoin de s'agiter pour qu'on la regarde.
+  'roi':               {cls:'gc-regal',   air:false},
+  'empereur':          {cls:'gc-regal',   air:false},
+  'dame':              {cls:'gc-regal',   air:false},
+  'amazone':           {cls:'gc-regal',   air:false},
+  'grand-maitre':      {cls:'gc-regal',   air:false},
+  'chevaucheur-rhinoceros':{cls:'gc-gallop',air:true}, // deux temps, comme un galop
+
+  // PRIMORDIALES. Le vocabulaire de base du plateau, et leurs gestes sont les
+  // trois façons élémentaires d'aller d'une case à l'autre : enjamber,
+  // pousser en ligne, filer en biais.
+  'cavalier-primordial':{cls:'gc-leap',   air:true},
+  'tour-primordiale':  {cls:'gc-slam',    air:false},  // elle ne s'élève jamais
+  'fou-primordial':    {cls:'gc-glide',   air:false},  // il s'incline dans sa diagonale
+};
+// Toutes les classes de geste, pour le nettoyage : un nom oublié ici et deux
+// gestes se superposent sur la même pièce au coup suivant.
+const GESTURE_CLASSES=['gc-leap','gc-land','gc-charge','gc-stomp','gc-flow','gc-flicker',
+  'gc-scuttle','gc-spin','gc-phase','gc-drift','gc-solemn','gc-regal','gc-gallop',
+  'gc-slam','gc-glide'];
+
+// Le geste du déplacement. Il porte sur .gc-art et jamais sur .gc-piece, dont
+// le transform tient la POSITION — c'est la règle de la couche des pièces, et
+// la seule chose à ne pas casser ici.
+//
+// `flipped` n'est pas un détail : l'inclinaison se prend dans le sens OÙ LA
+// PIÈCE PART À L'ÉCRAN. Calculée sur les coordonnées du plateau, une charge
+// vers la droite pencherait à gauche pour le joueur des Noirs.
+function markMoveStyle(node,fromR,fromC,toR,toC,pieceId,flipped){
   const art=node.querySelector('.gc-art');
   if(!art)return;
   const dr=Math.abs(toR-fromR),dc=Math.abs(toC-fromC);
   const leap=dr>0&&dc>0&&dr!==dc;
-  art.classList.remove('gc-leap','gc-land');
+  const g=MOVE_GESTURE[pieceId];
+  // Sans entrée au tableau, la pièce garde exactement les deux gestes
+  // d'avant : le jeu reste jouable si une créature est ajoutée sans geste.
+  const cls=(!g||(leap&&!g.air))?(leap?'gc-leap':'gc-land'):g.cls;
+
+  // L'inclinaison, en sens ÉCRAN : -1 vers la gauche, +1 vers la droite, 0
+  // pour un coup purement vertical, qu'aucun geste ne doit faire pencher.
+  const vdc=flipped?(fromC-toC):(toC-fromC);
+  art.style.setProperty('--glean',vdc>0?'1':(vdc<0?'-1':'0'));
+  // La DISTANCE, de 0 à 1 sur les sept cases du plateau. Une charge de deux
+  // cases et une travée de Dame d'un bout à l'autre ne s'élancent pas pareil :
+  // c'est ce qui évite qu'un geste ample paraisse ridicule sur une case.
+  const span=Math.max(dr,dc);
+  art.style.setProperty('--gspan',Math.min(1,span/7).toFixed(2));
+
+  art.classList.remove.apply(art.classList,GESTURE_CLASSES);
   void art.offsetWidth;                     // redémarre sur deux coups d'affilée
-  art.classList.add(leap?'gc-leap':'gc-land');
+  art.classList.add(cls);
   clearTimeout(art._gestTid);
-  art._gestTid=setTimeout(()=>art.classList.remove('gc-leap','gc-land'),BOARD_MOVE_MS+260);
+  art._gestTid=setTimeout(()=>{
+    art.classList.remove.apply(art.classList,GESTURE_CLASSES);
+  },BOARD_MOVE_MS+320);
 }
 
 function renderGame(gs){
@@ -1048,6 +1172,29 @@ function handleGameClick(r,c,gs){
       gs.lastMove={from:gs.selected,to:move,capture:!!b[move.r][move.c]};const from={...gs.selected};gs.selected=null;gs.legalMoves=[];executeGameMove(from,move,gs);return;
     }
     if(cell&&cell.color===playerCol){gs.selected={r,c};gs.legalMoves=getLegalMoves(b,r,c,gs);renderGame(gs);return;}
+    // LA CUIRASSE, AU SEUL INSTANT OÙ ELLE S'EXPLIQUE. Le pouvoir du Preux
+    // Chevalier — les pions adverses ne peuvent pas le capturer — vit dans la
+    // GÉNÉRATION des coups : la prise n'est jamais proposée, et le joueur qui
+    // clique dessus voit sa pièce se désélectionner sans un mot. Il n'en
+    // conclut pas « ce chevalier est cuirassé », il en conclut que le jeu ne
+    // répond pas.
+    //
+    // C'est le bon endroit, et le seul : on ne peut RIEN poser dans la
+    // génération de coups, qui tourne des milliers de fois par seconde dans la
+    // recherche de l'IA. Ici, on est sur un clic humain refusé, une fois.
+    // Trois conditions, pour ne jamais mentir : un VRAI pion (la Fourmi, elle,
+    // peut le prendre — voir TRUE_PAWN_IDS), une case en diagonale AVANT lui,
+    // et un Preux Chevalier adverse dessus.
+    if(typeof fxPower==='function'&&selCell&&typeof isTruePawn==='function'&&isTruePawn(selCell)
+       &&cell&&cell.pieceId==='preux-chevalier'&&cell.color!==selCell.color){
+      const dir=selCell.color==='w'?-1:1;
+      if(r===gs.selected.r+dir&&Math.abs(c-gs.selected.c)===1){
+        fxPower('cuirasse',r,c);
+        // `deny` est LA recette du coup refusé (js/sfx.js). Un refus qu'on
+        // voit sans l'entendre reste ambigu : on croit avoir mal cliqué.
+        if(typeof playSound==='function')playSound('deny');
+      }
+    }
     gs.selected=null;gs.legalMoves=[];renderGame(gs);return;
   }
   if(cell&&cell.color===playerCol){gs.selected={r,c};gs.legalMoves=getLegalMoves(b,r,c,gs);renderGame(gs);}
