@@ -95,19 +95,44 @@ function accServerRead(k,fb){
   return fb;
 }
 
+// accGet REND UNE COPIE, ET C'EST ESSENTIEL. La version localStorage
+// faisait un JSON.parse à chaque lecture : elle rendait donc, sans y
+// penser, un objet neuf à chaque fois. Une bonne part du jeu compte
+// là-dessus — `const l = accGet('liste',[]); l.push(x); accSet('liste',l);`
+// est le geste courant, et il suppose que la liste lue n'est PAS celle qui
+// est stockée. Rendre la référence vive aurait deux effets, tous deux
+// silencieux : une modification serait « enregistrée » sans jamais passer
+// par accSet, donc sans jamais partir vers le serveur ; et deux lectures
+// successives, prises pour un avant et un après, seraient le même objet.
+// On ne clone que les objets et les tableaux : les nombres et les chaînes
+// — la grande majorité des lectures, et les plus fréquentes — n'en ont pas
+// besoin.
+function accClone(v){
+  if(v===null||typeof v!=='object')return v;
+  if(typeof structuredClone==='function'){
+    try{return structuredClone(v);}catch(e){}
+  }
+  try{return JSON.parse(JSON.stringify(v));}catch(e){return v;}
+}
+
 function accGet(k,fb){
-  if(ACC_SERVER_KEYS[k])return accServerRead(k,fb);
+  if(ACC_SERVER_KEYS[k])return accClone(accServerRead(k,fb));
   if(!ECP||!ECP.state)return fb;
   const v=ECP.state[k];
-  return (v===undefined||v===null)?fb:v;
+  return (v===undefined||v===null)?fb:accClone(v);
 }
 
 function accSet(k,v){
   if(ACC_SERVER_KEYS[k])return;   // propriété du serveur, voir plus haut
   if(!ECP)return;
   if(!ECP.state)ECP.state={};
-  ECP.state[k]=v;
-  ecQueueState(k,v);              // envoi groupé, réessayé (js/server.js)
+  // Symétrique de accGet : on range une COPIE. L'appelant garde souvent la
+  // sienne et continue de la manipuler ; sans cela, ce qu'il ferait ensuite
+  // modifierait l'état enregistré sans le dire, et ne partirait pas vers le
+  // serveur.
+  const copy=accClone(v);
+  ECP.state[k]=copy;
+  ecQueueState(k,copy);           // envoi groupé, réessayé (js/server.js)
 }
 
 // ----------------------------------------------------------------
