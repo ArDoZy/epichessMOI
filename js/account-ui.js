@@ -48,6 +48,10 @@ function openAccountPage(){
   // menu principal, la page Comptes le recouvre, et on le retrouve ouvert
   // en revenant.
   document.getElementById('settings-panel')?.classList.remove('open');
+  // À chaque ouverture, on redemande : la place au classement bouge à chaque
+  // partie — la sienne comme celles des autres. Une valeur mise en cache
+  // d'une visite à l'autre serait fausse la plupart du temps.
+  accountForgetRemote();
   renderAccountPage();
   showPage(ACCOUNT_PAGE_ID);
 }
@@ -75,7 +79,14 @@ function accountUIRefresh(){
 // ci-dessous et le rendu en deux temps : la ligne s'affiche tout de suite avec
 // son pseudo, ses chiffres arrivent une fraction de seconde plus tard.
 const _accOther={};      // pseudo → fiche publique du serveur
-let _accMyRank=null;     // ma place au classement général, null tant qu'inconnue
+let _accMyRank=null;     // ma place au classement général, null si je n'y figure pas
+// L'ÉTAT DE LA DEMANDE EST À PART DE SA VALEUR, et ce n'est pas de la
+// coquetterie : `null` est une RÉPONSE parfaitement valable — c'est celle
+// qu'on reçoit tant qu'on n'a pas joué de partie classée. Confondre les deux
+// (« null = pas encore demandé ») faisait redemander à chaque rendu, et
+// comme chaque réponse re-rend la page, la page Comptes se figeait dans une
+// boucle sur tout compte neuf. NE PAS REVENIR EN ARRIÈRE.
+let _accRankState='idle';   // 'idle' | 'pending' | 'done'
 
 function accountSummaryFrom(p,username){
   const elo=p?(p.elo|0):0;
@@ -108,21 +119,33 @@ function accountSummary(username){
 // comptes de cet appareil. Chaque réponse re-rend la page — elle est courte,
 // et c'est plus honnête qu'un écran figé le temps de tout attendre.
 function accountFetchRemote(){
-  if(typeof ECP!=='undefined'&&ECP&&_accMyRank===null){
-    _accMyRank=0;   // « demandé », pour ne pas redemander à chaque rendu
+  if(_accRankState==='idle'&&typeof ECP!=='undefined'&&ECP){
+    _accRankState='pending';
     ecProfileOf({id:ECP.id}).then(p=>{
+      _accRankState='done';
       _accMyRank=(p&&p.found&&typeof p.rank==='number')?p.rank:null;
       accountUIRefresh();
-    }).catch(()=>{_accMyRank=null;});
+    }).catch(()=>{_accRankState='done';});   // 'done' même en échec : on ne réessaie pas en boucle
   }
+  // Même règle pour les autres comptes : la fiche vide posée AVANT l'appel
+  // marque la demande, donc un compte introuvable n'est pas redemandé à
+  // chaque rendu.
   accountsList().forEach(u=>{
     if(u===CUR_ACC||_accOther[u])return;
-    _accOther[u]={username:u,elo:0,elo_peak:0,ranked_games:0,ranked_wins:0,best_streak:0,_pending:true};
+    _accOther[u]={username:u,elo:0,elo_peak:0,ranked_games:0,ranked_wins:0,best_streak:0};
     ecProfileOf({username:u}).then(p=>{
       if(p&&p.found)_accOther[u]=p;
       accountUIRefresh();
     }).catch(()=>{});
   });
+}
+
+// Le rang et les fiches voisines sont à redemander après un changement qui
+// les périme : une partie classée vient d'être jouée, un compte vient d'être
+// supprimé. Sans cela, la page montrerait la place d'avant.
+function accountForgetRemote(){
+  _accRankState='idle';
+  Object.keys(_accOther).forEach(k=>{delete _accOther[k];});
 }
 
 // LA CRÉATURE FÉTICHE : celle qu'on aligne le plus, avec ce qu'elle rapporte
@@ -469,7 +492,7 @@ function accountAskDelete(username){
     'Supprimer définitivement « '+username+' » ? Cette action est irréversible.',
     ()=>{
       accountDelete(username).then(()=>{
-        delete _accOther[username];
+        accountForgetRemote();
         showNotif('Compte « '+username+' » supprimé.','ok');
         renderAccountPage();
       }).catch(e=>showNotif((e&&e.message)||'Suppression impossible.','err'));
