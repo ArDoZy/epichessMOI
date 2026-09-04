@@ -203,11 +203,11 @@ const VV_ELITE_ELO=2000;
 // chiffres, et vvCalcNewElo lit le premier pour choisir son K-facteur.
 function vvRankedGames(){return accGet('ranked_games',0);}
 function vvRankedWins(){return accGet('ranked_wins',0);}
-function vvNoteRankedGame(result){
-  if(vvAdmin())return;
-  accSet('ranked_games',vvRankedGames()+1);
-  if(result==='win')accSet('ranked_wins',vvRankedWins()+1);
-}
+// Le compteur n'est plus incrémenté ici : c'est le SERVEUR qui compte les
+// parties classées, au moment où il enregistre le résultat
+// (ec_report_match, supabase/schema.sql). vvRankedGames() ci-dessus lit
+// donc ce que le serveur a compté, et vvCalcNewElo s'en sert pour choisir
+// son K-facteur — exactement comme la fonction serveur qui fait foi.
 
 function vvKFactor(playerElo,games){
   if(playerElo>=VV_ELITE_ELO)return VV_K_ELITE;

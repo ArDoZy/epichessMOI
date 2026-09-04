@@ -1,212 +1,293 @@
 // ================================================================
-// ACCOUNTS.JS : les comptes locaux (localStorage)
+// ACCOUNTS.JS : les comptes, tenus par le serveur
 // ================================================================
-// PLUSIEURS COMPTES SUR UN APPAREIL, ET AUCUN ÉCRAN AVANT LE JEU.
+// LE COMPTE N'EST PLUS DANS LE NAVIGATEUR, IL EST SUR LE SERVEUR.
+// Toute la progression — ELO, sommet atteint, créatures et pouvoirs
+// débloqués, perles, inventaire, armées, statistiques, historique des
+// parties, avancement du tutoriel — vit dans la base Postgres du projet
+// Supabase (voir supabase/schema.sql et js/server.js). Ce fichier n'est
+// plus qu'une COPIE DE TRAVAIL en mémoire, chargée au démarrage depuis
+// le serveur et repoussée vers lui à chaque changement.
 //
-// Le jeu s'ouvrait sur un voile « Choisissez votre pseudo » : un formulaire,
-// c'est-à-dire un mur, posé entre quelqu'un qui vient de cliquer sur un lien
-// et le jeu qu'il est venu voir. C'est le moment exact où l'on perd un
-// visiteur, et il ne rendait aucun service : le pseudo ne sert à rien tant
-// qu'on n'a pas joué.
+// CE QUI NE CHANGE PAS POUR LE RESTE DU JEU : accGet('ma_cle', défaut)
+// et accSet('ma_cle', valeur), exactement comme avant. Les trente
+// modules qui persistent quelque chose n'ont pas eu à bouger d'une
+// ligne — ils écrivaient dans localStorage sans le savoir, ils écrivent
+// maintenant sur le serveur sans le savoir davantage.
 //
-// Maintenant, la PREMIÈRE OUVERTURE CRÉE ELLE-MÊME UN COMPTE (un pseudo
-// d'Alchimiste tiré au sort, voir accountsGuestName) et entre directement
-// dans le jeu — Lore puis tutoriel, exactement comme avant. Le joueur se
-// renomme quand il en a envie, depuis la page Comptes.
+// CE QUI CHANGE VRAIMENT :
 //
-// Cette page Comptes (js/account-ui.js, ouverte par le rouage des réglages)
-// est le seul endroit où l'on gère son identité : se renommer, créer un autre
-// compte, passer de l'un à l'autre, en supprimer un. Toutes les données de
-// jeu sont déjà préfixées par le pseudo (accGet/accSet → mc_p_<pseudo>_<clé>),
-// donc plusieurs comptes cohabitent sans qu'une seule ligne du reste du jeu
-// ait à le savoir.
+//   · LES CLÉS DE CLASSEMENT SONT EN LECTURE SEULE. elo, elo_peak,
+//     ranked_games, ranked_wins, best_streak, piece_stats et
+//     match_history ne s'écrivent PLUS depuis le jeu : accSet les
+//     ignore. Elles ne bougent que par ec_report_match, où c'est le
+//     SERVEUR qui recalcule l'ELO à partir du résultat déclaré. Un
+//     joueur qui trafique son navigateur ne gagne donc pas un point.
 //
-// CHANGER DE COMPTE RECHARGE LA PAGE. C'est délibéré : une trentaine de
-// variables globales (savedArmies, VV_UNLOCKED, l'inventaire, l'état du
-// tutoriel, les récompenses, le cube...) portent l'état du compte courant.
-// Les remettre à zéro une par une, c'est se condamner à en oublier une le
-// jour où l'on en ajoutera une trente-et-unième. Un rechargement est instantané
-// (le jeu tient dans le cache du navigateur) et ne peut rien laisser derrière.
+//   · LES PSEUDOS SONT UNIQUES POUR TOUT LE MONDE, et plus seulement
+//     sur l'appareil : la contrainte est dans la base, la vérification
+//     du client n'est qu'une politesse pour répondre vite.
 //
-// Dépendances : data-pieces.js (UNLOCK_TABLE, UNLOCK_MILESTONES),
+//   · LE DÉMARRAGE PASSE PAR LE RÉSEAU. accountsBoot est donc
+//     asynchrone et montre un voile le temps de la connexion, avec un
+//     bouton « Réessayer » si le serveur ne répond pas. Le jeu ne peut
+//     pas commencer sans son compte : ce serait jouer sur une
+//     progression qu'on ne pourrait pas enregistrer.
+//
+//   · LES ANCIENS COMPTES LOCAUX SONT EFFACÉS au premier lancement
+//     (ecPurgeLegacyAccounts, js/server.js). Ils n'existaient que dans
+//     un navigateur et leurs pseudos n'étaient uniques nulle part.
+//
+// CHANGER DE COMPTE RECHARGE LA PAGE, comme avant et pour la même
+// raison : une trentaine de variables globales (savedArmies,
+// VV_UNLOCKED, l'inventaire, le tutoriel, les récompenses, le cube…)
+// portent l'état du compte courant, et les remettre à zéro une par une,
+// c'est se condamner à en oublier une.
+//
+// Dépendances : server.js (ECP, ecLogin, ecSignup, accès serveur),
+// data-pieces.js (UNLOCK_TABLE, UNLOCK_MILESTONES),
 // main.js (army, showPage, showNotif).
-// Utilisé par : tous les modules qui persistent des données de jeu
-// (armies.js, voie.js, game-flow.js...) via accGet/accSet, et
-// account-ui.js pour la page Comptes.
-//
-// Pour ajouter un nouveau champ de sauvegarde par compte : utiliser
-// accGet('ma_cle', valeurParDefaut) / accSet('ma_cle', valeur), inutile de
-// toucher à ce fichier, le préfixage par compte est automatique.
+// Utilisé par : tous les modules qui persistent des données de jeu via
+// accGet/accSet, et account-ui.js pour la page Comptes.
 // ================================================================
 
-const CUR_USERNAME_KEY='ec_username_v1';   // pseudo du compte courant
-const ACCOUNTS_KEY='ec_accounts_v2';       // liste des comptes de cet appareil
-const ACC_PREFIX='mc_p_';
-const ACC_MAX=8;                           // au-delà, la page Comptes devient une liste sans fin
+const ACC_MAX=8;                           // comptes cohabitant sur un appareil
 const ACC_NAME_MIN=2,ACC_NAME_MAX=20;
 
-function accKey(u,k){return ACC_PREFIX+u+'_'+k;}
-function accGet(k,fb){
-  if(!CUR_ACC)return fb;
-  const r=localStorage.getItem(accKey(CUR_ACC,k));
-  if(r===null)return fb;try{return JSON.parse(r);}catch{return fb;}
-}
-function accSet(k,v){if(!CUR_ACC)return;localStorage.setItem(accKey(CUR_ACC,k),JSON.stringify(v));}
+// Le pseudo du compte courant. Reste une variable globale et une chaîne :
+// une bonne moitié du jeu la lit (bandeaux, multijoueur, page Comptes).
 let CUR_ACC=null;
 
-// Lecture d'une clé d'un AUTRE compte que le courant. La page Comptes en a
-// besoin pour afficher le rang et l'ELO de chaque compte sans avoir à s'y
-// connecter — le seul usage, et il est en lecture seule : rien n'écrit jamais
-// dans un compte qui n'est pas le compte courant.
-function accGetFor(username,k,fb){
-  if(!username)return fb;
-  const r=localStorage.getItem(accKey(username,k));
-  if(r===null)return fb;try{return JSON.parse(r);}catch{return fb;}
+// ----------------------------------------------------------------
+// LA COPIE DE TRAVAIL
+// ----------------------------------------------------------------
+// ECP (js/server.js) est la fiche que le serveur a donnée. `ECP.state`
+// porte la progression que le client pilote ; les colonnes nommées
+// portent celle dont le serveur est propriétaire.
+//
+// LES CLÉS DE CLASSEMENT SONT EN LECTURE SEULE, et accSet les ignore
+// SILENCIEUSEMENT. Ce n'est pas de la négligence : c'est un garde-fou.
+// N'importe quel module peut se retrouver, un jour, à écrire accSet('elo')
+// — par habitude, par copier-coller, ou parce qu'un joueur curieux
+// l'appelle depuis la console. Le seul chemin vers ces nombres est le
+// rapport de fin de partie (ecReportMatch), où le SERVEUR calcule et
+// renvoie la fiche complète ; tout le reste doit être sans effet, sinon
+// « le serveur fait autorité » n'est plus qu'une intention.
+const ACC_SERVER_KEYS={
+  elo:1,elo_peak:1,ranked_games:1,ranked_wins:1,
+  best_streak:1,piece_stats:1,match_history:1,rank_max:1,
+};
+
+function accServerRead(k,fb){
+  if(!ECP)return fb;
+  switch(k){
+    case 'elo':          return ECP.elo|0;
+    case 'elo_peak':     return ECP.elo_peak|0;
+    case 'ranked_games': return ECP.ranked_games|0;
+    case 'ranked_wins':  return ECP.ranked_wins|0;
+    case 'best_streak':  return ECP.best_streak|0;
+    case 'piece_stats':  return ECP.piece_stats||{};
+    case 'match_history':return ECP.history||[];
+    // Le « meilleur rang atteint » ne mérite pas une colonne : il se
+    // déduit exactement du sommet d'ELO, qui, lui, est au serveur.
+    case 'rank_max':     return (typeof vvGetRankIdx==='function')?vvGetRankIdx(ECP.elo_peak|0):(fb||0);
+  }
+  return fb;
+}
+
+// accGet REND UNE COPIE, ET C'EST ESSENTIEL. La version localStorage
+// faisait un JSON.parse à chaque lecture : elle rendait donc, sans y
+// penser, un objet neuf à chaque fois. Une bonne part du jeu compte
+// là-dessus — `const l = accGet('liste',[]); l.push(x); accSet('liste',l);`
+// est le geste courant, et il suppose que la liste lue n'est PAS celle qui
+// est stockée. Rendre la référence vive aurait deux effets, tous deux
+// silencieux : une modification serait « enregistrée » sans jamais passer
+// par accSet, donc sans jamais partir vers le serveur ; et deux lectures
+// successives, prises pour un avant et un après, seraient le même objet.
+// On ne clone que les objets et les tableaux : les nombres et les chaînes
+// — la grande majorité des lectures, et les plus fréquentes — n'en ont pas
+// besoin.
+function accClone(v){
+  if(v===null||typeof v!=='object')return v;
+  if(typeof structuredClone==='function'){
+    try{return structuredClone(v);}catch(e){}
+  }
+  try{return JSON.parse(JSON.stringify(v));}catch(e){return v;}
+}
+
+function accGet(k,fb){
+  if(ACC_SERVER_KEYS[k])return accClone(accServerRead(k,fb));
+  if(!ECP||!ECP.state)return fb;
+  const v=ECP.state[k];
+  return (v===undefined||v===null)?fb:accClone(v);
+}
+
+function accSet(k,v){
+  if(ACC_SERVER_KEYS[k])return;   // propriété du serveur, voir plus haut
+  if(!ECP)return;
+  if(!ECP.state)ECP.state={};
+  // Symétrique de accGet : on range une COPIE. L'appelant garde souvent la
+  // sienne et continue de la manipuler ; sans cela, ce qu'il ferait ensuite
+  // modifierait l'état enregistré sans le dire, et ne partirait pas vers le
+  // serveur.
+  const copy=accClone(v);
+  ECP.state[k]=copy;
+  ecQueueState(k,copy);           // envoi groupé, réessayé (js/server.js)
 }
 
 // ----------------------------------------------------------------
-// LA LISTE DES COMPTES
+// LES COMPTES DE CET APPAREIL
 // ----------------------------------------------------------------
-// Un simple tableau de pseudos, du plus récemment utilisé au plus ancien :
-// c'est l'ordre dans lequel la page Comptes les présente, et c'est le seul
-// tri qui a du sens quand on jongle entre deux comptes.
-function accountsList(){
-  try{
-    const raw=JSON.parse(localStorage.getItem(ACCOUNTS_KEY)||'[]');
-    if(Array.isArray(raw))return raw.filter(u=>typeof u==='string'&&u.length);
-  }catch{}
-  return [];
+// Ce ne sont plus des dossiers de données mais des SESSIONS : un
+// identifiant de compte et sa clé d'appareil (js/server.js). La liste
+// va du plus récemment utilisé au plus ancien, seul ordre qui ait du
+// sens quand on jongle entre deux comptes.
+function accountsList(){return ecSessions().map(s=>s.username).filter(Boolean);}
+function accountsExists(u){
+  return accountsList().some(x=>String(x).toLowerCase()===String(u||'').toLowerCase());
 }
-function accountsSaveList(arr){
-  try{localStorage.setItem(ACCOUNTS_KEY,JSON.stringify(arr.slice(0,ACC_MAX)));}catch{}
-}
-function accountsExists(u){return accountsList().some(x=>x.toLowerCase()===String(u||'').toLowerCase());}
-function accountsTouch(u){
-  const list=accountsList().filter(x=>x!==u);
-  list.unshift(u);
-  accountsSaveList(list);
+function accountsSessionFor(username){
+  const u=String(username||'').toLowerCase();
+  return ecSessions().find(s=>String(s.username||'').toLowerCase()===u)||null;
 }
 
-// Validation d'un pseudo. Renvoie null si tout va bien, sinon la phrase à
-// montrer — l'appelant n'a jamais à formuler l'erreur lui-même.
+// Validation d'un pseudo, côté client : elle sert à répondre TOUT DE
+// SUITE aux fautes évidentes (trop court, caractères invisibles). Le
+// verdict qui fait foi est celui du serveur, et notamment l'unicité :
+// un pseudo libre ici peut avoir été pris à l'autre bout du monde une
+// seconde plus tôt. Renvoie null si tout va bien, sinon la phrase à
+// montrer.
 function accountsNameError(raw,{allowCurrent}={}){
   const u=String(raw||'').trim();
   if(u.length<ACC_NAME_MIN||u.length>ACC_NAME_MAX)
     return 'Le pseudo doit faire entre '+ACC_NAME_MIN+' et '+ACC_NAME_MAX+' caractères.';
-  // Aucun caractère n'est interdit pour des raisons de stockage : la clé
-  // mc_p_<pseudo>_<clé> n'est jamais relue à l'envers, un pseudo à espaces ou
-  // à tirets bas ne casse donc rien. Seuls les caractères de contrôle sont
-  // écartés : ils ne s'affichent pas, et deux comptes n'en différant que par
-  // eux seraient visuellement identiques.
+  // Seuls les caractères de contrôle sont écartés : ils ne s'affichent
+  // pas, et deux pseudos n'en différant que par eux seraient
+  // visuellement identiques.
   for(let i=0;i<u.length;i++){
     const c=u.charCodeAt(i);
     if(c<32||c===127)return 'Ce pseudo contient des caractères invisibles.';
   }
-  // La comparaison de doublon est insensible à la casse (deux comptes
-  // « bob » et « Bob » seraient indiscernables dans la liste), et
-  // l'exception pour le compte courant doit l'être aussi : sans cela, se
-  // renommer « bob » en « Bob » se heurterait à son propre compte.
   const sameAsCurrent=allowCurrent&&!!CUR_ACC&&u.toLowerCase()===CUR_ACC.toLowerCase();
   if(accountsExists(u)&&!sameAsCurrent)return 'Un compte porte déjà ce pseudo sur cet appareil.';
   return null;
 }
 
-// Pseudo d'ouverture, tiré au sort. Il doit se lire comme un nom du monde du
-// jeu et non comme « Joueur1 » : le premier écran doit sentir l'alchimie, pas
-// le formulaire. Le joueur le remplace quand il veut (page Comptes).
+// Pseudo d'ouverture, tiré au sort. Il doit se lire comme un nom du
+// monde du jeu et non comme « Joueur1 » : le premier écran doit sentir
+// l'alchimie, pas le formulaire. Le nombre à quatre chiffres n'est plus
+// une coquetterie : les pseudos étant désormais uniques pour tout le
+// monde, il faut de quoi éviter la collision au premier essai.
 const ACC_GUEST_TITLES=['Alchimiste','Apprenti','Adepte','Souffleur','Artisan','Disciple'];
 function accountsGuestName(){
-  for(let i=0;i<40;i++){
-    const t=ACC_GUEST_TITLES[Math.floor(Math.random()*ACC_GUEST_TITLES.length)];
-    const n=String(Math.floor(1000+Math.random()*9000));
-    const name=t+' '+n;
-    if(!accountsExists(name))return name;
-  }
-  return 'Alchimiste '+Date.now().toString(36).slice(-5);
+  const t=ACC_GUEST_TITLES[Math.floor(Math.random()*ACC_GUEST_TITLES.length)];
+  return t+' '+String(Math.floor(1000+Math.random()*9000));
 }
 
 // ----------------------------------------------------------------
-// MIGRATIONS DES ANCIENNES SAUVEGARDES
+// LE VOILE DE DÉMARRAGE
 // ----------------------------------------------------------------
-// Deux systèmes ont précédé celui-ci et une progression déjà entamée ne doit
-// jamais disparaître :
-//   · mc_accs_v3   : pseudo + mot de passe, plusieurs comptes possibles ;
-//   · ec_username_v1 seul : le compte unique, sans liste.
-// Dans les deux cas on récupère les pseudos et on les inscrit dans la liste.
-function accountsMigrate(){
-  let list=accountsList();
-  if(list.length)return list;
-  const found=[];
-  const cur=localStorage.getItem(CUR_USERNAME_KEY);
-  if(cur)found.push(cur);
-  try{
-    const legacy=JSON.parse(localStorage.getItem('mc_accs_v3')||'{}');
-    Object.keys(legacy).forEach(n=>{if(!found.includes(n))found.push(n);});
-  }catch{}
-  // On ne tente PAS de deviner d'autres comptes en balayant les clés
-  // mc_p_<pseudo>_<clé> : les clés de jeu contiennent elles-mêmes des tirets
-  // bas ('unlocked_pieces', 'win_streak', 'match_history'...), il est donc
-  // impossible de savoir où finit le pseudo et où commence la clé. Un tel
-  // balayage inventerait des comptes fantômes.
-  if(found.length){accountsSaveList(found);list=found;}
-  return list;
+// Le jeu ne peut pas s'ouvrir avant d'avoir sa fiche : sans elle il
+// afficherait un compte vide et écrirait par-dessus la vraie
+// progression au premier coup joué. Le voile dit où l'on en est, et
+// donne un bouton plutôt qu'un cul-de-sac quand le serveur ne répond
+// pas.
+function accountsBootVeil(msg,retry){
+  const el=document.getElementById('ec-boot');
+  if(!el)return;
+  el.querySelector('#ec-boot-msg').textContent=msg||'';
+  const btn=el.querySelector('#ec-boot-retry');
+  btn.style.display=retry?'':'none';
+  el.querySelector('#ec-boot-spin').style.display=retry?'none':'';
+  el.classList.add('show');
+}
+function accountsBootDone(){
+  document.getElementById('ec-boot')?.classList.remove('show');
 }
 
 // ----------------------------------------------------------------
 // DÉMARRAGE
 // ----------------------------------------------------------------
-// Appelée une seule fois au chargement (voir initApp, js/main.js). Elle ne
-// pose JAMAIS de question : soit elle reprend le compte courant, soit elle en
-// crée un et entre dans le jeu. Il n'y a plus d'écran avant le jeu.
+// Appelée une fois au chargement (initApp, js/main.js). Elle ne pose
+// JAMAIS de question : soit elle reprend le compte connu de cet
+// appareil, soit elle en crée un et entre dans le jeu. Il n'y a pas
+// d'écran de connexion — juste, désormais, le temps d'un aller-retour.
 function accountsBoot(){
-  const list=accountsMigrate();
-  let u=localStorage.getItem(CUR_USERNAME_KEY);
-  if(!u||!list.includes(u))u=list[0]||null;
+  ecPurgeLegacyAccounts();
+  accountsBootVeil('Connexion au serveur…');
+  const fresh=accountsConsumeFreshFlag();
+  const sess=ecCurrentSession();
+  const step=sess?ecLogin().catch(e=>{
+    // Le compte n'existe plus côté serveur (supprimé ailleurs, base
+    // remise à zéro) : on oublie cette session et on repart sur un
+    // compte neuf plutôt que de bloquer le joueur devant une erreur
+    // qu'il ne peut pas résoudre.
+    if(e&&!e.offline){ecForgetSession(sess.id);return accountsCreateGuest(true);}
+    throw e;
+  }):accountsCreateGuest(true);
 
-  if(u){
-    localStorage.setItem(CUR_USERNAME_KEY,u);
-    accountsTouch(u);
-    // Un compte créé à l'instant depuis la page Comptes vient de faire
-    // recharger la page : plus rien ne le distingue d'un compte ordinaire. Le
-    // drapeau posé par accountCreate est la seule façon de savoir qu'il lui
-    // faut encore le Lore et le tutoriel.
-    enterAccount(u,accountsConsumeFreshFlag(u));
-    return;
-  }
-  // Première ouverture de toute la vie du navigateur : on crée le compte
-  // d'ouverture et on entre. isNewAccount=true déclenche le Lore puis le
-  // tutoriel, exactement comme le faisait le formulaire de pseudo.
-  const guest=accountsGuestName();
-  localStorage.setItem(CUR_USERNAME_KEY,guest);
-  accountsTouch(guest);
-  enterAccount(guest,true);
+  step.then(profile=>{
+    // Les parties restées en rade (réseau coupé en fin de match) sont
+    // rejouées AVANT d'entrer : leur ELO doit être compté, et les
+    // déblocages calculés à l'entrée (loadAccountGlobals) se lisent sur le
+    // sommet atteint — le lire avant que ces parties soient enregistrées
+    // ferait clignoter une créature déjà gagnée.
+    return ecFlushPendingMatches().then(()=>{
+      accountsBootDone();
+      ecStartHeartbeat();
+      enterAccount(ECP.username,fresh||profile._isNew===true);
+    });
+  }).catch(e=>{
+    console.warn('[EC] démarrage impossible :',e);
+    accountsBootVeil(
+      (e&&e.message)||'Le serveur du jeu est injoignable.',true);
+  });
 }
+
+// Crée le compte d'ouverture. Le pseudo est tiré au sort et peut tomber
+// sur un nom déjà pris : on réessaie, c'est le prix de l'unicité
+// mondiale des pseudos et le joueur n'en voit rien.
+function accountsCreateGuest(markNew){
+  let tries=0;
+  const attempt=()=>ecSignup(accountsGuestName()).catch(e=>{
+    if(e&&e.code==='23505'&&tries++<8)return attempt();
+    throw e;
+  });
+  return attempt().then(p=>{if(markNew)p._isNew=true;return p;});
+}
+
+document.addEventListener('DOMContentLoaded',()=>{
+  document.getElementById('ec-boot-retry')?.addEventListener('click',()=>{
+    accountsBootVeil('Nouvelle tentative…');
+    setTimeout(accountsBoot,200);
+  });
+});
 
 function enterAccount(username,isNewAccount){
   CUR_ACC=username;
+  // UN COMPTE ADMIN EST UN BAC À SABLE. Il joue avec tout débloqué et
+  // n'est jamais classé (voir ec_report_match et ec_leaderboard) : le
+  // mode test du jeu est exactement cet état, on l'allume donc.
+  if(ECP&&ECP.is_admin&&typeof ADMIN_MODE!=='undefined')ADMIN_MODE=true;
   loadAccountGlobals();
-  // Économie (js/economy.js) : dotation de départ pour les pièces débloquées
-  // qui n'ont pas encore de stock, et restitution des pièces d'une partie
-  // interrompue (onglet fermé en cours de jeu). Une interruption n'est pas
-  // une défaite, les exemplaires engagés doivent revenir.
+  // Économie (js/economy.js) : dotation de départ pour les pièces
+  // débloquées qui n'ont pas encore de stock, et restitution des pièces
+  // d'une partie interrompue (onglet fermé en cours de jeu). Une
+  // interruption n'est pas une défaite.
   if(typeof invEnsureStarter==='function')invEnsureStarter();
   if(typeof economyRecoverOrphanEngagement==='function')economyRecoverOrphanEngagement();
-  // Adversaire choisi la dernière fois (js/ai-level-modal.js).
   if(typeof aiLoadOpponent==='function')aiLoadOpponent();
   updateCab();
   document.body.classList.add('has-acc');
   army={mon:null,gen:null,extras:[]};
   editingArmyId=null;builderMode='player';
   if(typeof pLoaded!=='undefined')pLoaded=false;
-  // Après connexion : on prépare le builder (bannière + rendu) puis on
-  // affiche le MENU PRINCIPAL du cube (face JOUER), pas directement le
-  // builder, la face builder est atteinte en tournant le cube.
   updateBuilderBanner();updAll();
   if(typeof renderMenuChests==='function')renderMenuChests();
   if(typeof goToMainMenu==='function')goToMainMenu();else showPage('page-builder');
-  // Le Lore, en quatre pages : uniquement au tout premier lancement (pas à
-  // chaque ouverture du jeu), voir showLoreIntro() dans js/lore-intro.js. Le
-  // tutoriel prend le relais à la fin de la quatrième page.
+  // Le salon de présence : c'est lui qui dit aux autres joueurs qu'on
+  // est là, et qui apporte les défis (js/multiplayer.js).
+  if(typeof mpPresenceJoin==='function')mpPresenceJoin();
   if(isNewAccount && typeof showLoreIntro==='function')showLoreIntro();
   else if(typeof tutoMaybeStart==='function')tutoMaybeStart();
 }
@@ -214,128 +295,90 @@ function enterAccount(username,isNewAccount){
 // ----------------------------------------------------------------
 // CRÉER / CHANGER / RENOMMER / SUPPRIMER
 // ----------------------------------------------------------------
-// Ces quatre fonctions sont l'API de la page Comptes (js/account-ui.js).
-// Les trois premières rechargent la page (voir l'en-tête du fichier) ; c'est
-// à l'appelant d'avoir déjà prévenu le joueur si une partie est en cours.
+// L'API de la page Comptes (js/account-ui.js). Elles passent toutes par
+// le serveur et renvoient donc des PROMESSES : une promesse résolue
+// veut dire que le serveur a accepté, et rien d'autre ne le veut dire.
 
-// Marque un compte comme courant et recharge. Le pseudo doit exister.
+// Marque un compte de cet appareil comme courant et recharge.
 function accountSwitch(username){
-  if(!username||username===CUR_ACC)return false;
-  if(!accountsExists(username))return false;
-  localStorage.setItem(CUR_USERNAME_KEY,username);
-  accountsTouch(username);
+  const s=accountsSessionFor(username);
+  if(!s||s.username===CUR_ACC)return false;
+  ecFlushNow();                 // ce qui n'est pas encore parti part maintenant
+  ecSetCurrent(s.id);
   location.reload();
   return true;
 }
 
-// Crée un compte vierge et bascule dessus. Le nouveau compte reçoit le Lore
-// et le tutoriel au démarrage suivant, comme un premier lancement : c'est le
-// rôle du drapeau ci-dessous, que accountsBoot ne peut pas deviner puisque,
-// après rechargement, le compte ressemble à n'importe quel compte neuf.
+// Crée un compte sur le SERVEUR et bascule dessus. Le nouveau compte
+// reçoit le Lore et le tutoriel au démarrage suivant, comme un premier
+// lancement : c'est le rôle du drapeau ci-dessous, que accountsBoot ne
+// peut pas deviner puisqu'après rechargement le compte ressemble à
+// n'importe quel compte neuf.
 const ACC_FRESH_KEY='ec_fresh_account_v1';
 function accountCreate(rawName){
   const name=String(rawName||'').trim();
   const err=accountsNameError(name);
-  if(err)return err;
-  if(accountsList().length>=ACC_MAX)
-    return 'Cet appareil porte déjà '+ACC_MAX+' comptes. Supprimez-en un d\'abord.';
-  localStorage.setItem(CUR_USERNAME_KEY,name);
-  localStorage.setItem(ACC_FRESH_KEY,name);
-  accountsTouch(name);
-  location.reload();
-  return null;
+  if(err)return Promise.reject(new Error(err));
+  if(ecSessions().length>=ACC_MAX)
+    return Promise.reject(new Error(
+      'Cet appareil porte déjà '+ACC_MAX+' comptes. Supprimez-en un d\'abord.'));
+  ecFlushNow();
+  return ecSignup(name).then(()=>{
+    try{localStorage.setItem(ACC_FRESH_KEY,'1');}catch(e){}
+    location.reload();
+  });
 }
 
-// Renomme le compte COURANT : toutes ses clés mc_p_<ancien>_* sont recopiées
-// sous mc_p_<nouveau>_* puis les anciennes effacées. Pas de rechargement —
-// rien de l'état en mémoire ne change, seul le préfixe de stockage bouge.
+// Renomme le compte COURANT. Aucune donnée ne bouge : le pseudo n'est
+// plus la clé de stockage, seulement une colonne. C'est le serveur qui
+// refuse un nom déjà pris — par n'importe qui, sur n'importe quel
+// appareil.
 function accountRename(rawName){
   const name=String(rawName||'').trim();
-  if(!CUR_ACC)return 'Aucun compte connecté.';
-  if(name===CUR_ACC)return null;
+  if(!CUR_ACC)return Promise.reject(new Error('Aucun compte connecté.'));
+  if(name===CUR_ACC)return Promise.resolve();
   const err=accountsNameError(name,{allowCurrent:true});
-  if(err)return err;
-  const oldPrefix=ACC_PREFIX+CUR_ACC+'_';
-  const moves=[];
-  try{
-    for(let i=0;i<localStorage.length;i++){
-      const k=localStorage.key(i);
-      if(k&&k.startsWith(oldPrefix))moves.push(k);
-    }
-    // On copie TOUT avant d'effacer quoi que ce soit : si le stockage sature
-    // en cours de route, l'ancien compte est encore intact.
-    moves.forEach(k=>{
-      const v=localStorage.getItem(k);
-      if(v!==null)localStorage.setItem(ACC_PREFIX+name+'_'+k.slice(oldPrefix.length),v);
-    });
-    moves.forEach(k=>localStorage.removeItem(k));
-  }catch(e){return 'Le stockage du navigateur est plein : renommage impossible.';}
-  const list=accountsList().map(u=>u===CUR_ACC?name:u);
-  accountsSaveList(list);
-  localStorage.setItem(CUR_USERNAME_KEY,name);
-  CUR_ACC=name;
-  updateCab();
-  return null;
+  if(err)return Promise.reject(new Error(err));
+  return ecRename(name).then(p=>{
+    CUR_ACC=p.username;
+    updateCab();
+    if(typeof mpPresenceRefresh==='function')mpPresenceRefresh();
+  });
 }
 
-// IL N'Y A PLUS DE « QUITTER CE COMPTE ». Le bouton a existé sur la page
-// Comptes ; il posait le joueur sur une autre identité, faute d'écran de
-// connexion où le renvoyer. C'était répondre à une question que le jeu ne pose
-// plus : sans mot de passe ni session, quitter un compte n'est rien d'autre
-// que passer sur un autre, ce que la liste « Changer de compte » fait déjà
-// d'un geste — et mieux, puisqu'on y choisit lequel.
-
-// Supprime un compte et TOUTES ses données, définitivement. Supprimer le
-// compte courant bascule sur le suivant de la liste — et s'il n'en reste
-// aucun, accountsBoot en recréera un au rechargement, donc le joueur retombe
-// dans le jeu et jamais sur un écran vide.
+// Supprime un compte et TOUTES ses données, définitivement, sur le
+// serveur. Supprimer le compte courant bascule sur le suivant de la
+// liste — et s'il n'en reste aucun, accountsBoot en recréera un au
+// rechargement : le joueur retombe dans le jeu, jamais sur un écran
+// vide.
 function accountDelete(username){
-  if(!username)return false;
-  const prefix=ACC_PREFIX+username+'_';
-  try{
-    const doomed=[];
-    for(let i=0;i<localStorage.length;i++){
-      const k=localStorage.key(i);
-      if(k&&k.startsWith(prefix))doomed.push(k);
-    }
-    doomed.forEach(k=>localStorage.removeItem(k));
-  }catch{}
-  const list=accountsList().filter(u=>u!==username);
-  accountsSaveList(list);
-  if(username===CUR_ACC){
-    if(list.length)localStorage.setItem(CUR_USERNAME_KEY,list[0]);
-    else localStorage.removeItem(CUR_USERNAME_KEY);
-    location.reload();
-    return true;
-  }
-  return true;
+  const s=accountsSessionFor(username);
+  if(!s)return Promise.reject(new Error('Compte inconnu sur cet appareil.'));
+  const wasCurrent=(s.username===CUR_ACC);
+  return ecDeleteAccount(s.id,s.secret).then(()=>{
+    if(wasCurrent)location.reload();
+  });
 }
 
-// Un compte tout juste créé depuis la page Comptes doit recevoir le Lore et
-// le tutoriel, comme un premier lancement. accountCreate pose le drapeau
-// avant de recharger, loadAccountGlobals le consomme ici.
-function accountsConsumeFreshFlag(username){
+// Un compte tout juste créé depuis la page Comptes doit recevoir le
+// Lore et le tutoriel, comme un premier lancement.
+function accountsConsumeFreshFlag(){
   try{
-    if(localStorage.getItem(ACC_FRESH_KEY)!==username)return false;
+    if(localStorage.getItem(ACC_FRESH_KEY)!=='1')return false;
     localStorage.removeItem(ACC_FRESH_KEY);
     return true;
-  }catch{return false;}
+  }catch(e){return false;}
 }
 
 function loadAccountGlobals(){
   savedArmies=accGet('armies',[]);
-  // UNE SEULE ARMÉE : un compte créé avant la fusion de "Mes armées" et de
-  // la composition (voir js/armies.js) peut avoir plusieurs armées
-  // enregistrées. On ne garde que la première et on écrit tout de suite la
-  // troncature, pour ne pas la refaire à chaque connexion.
+  // UNE SEULE ARMÉE : un compte créé avant la fusion de « Mes armées »
+  // et de la composition (voir js/armies.js) peut en avoir plusieurs.
   if(savedArmies.length>1){savedArmies=[savedArmies[0]];saveArmies();}
   savedAiArmies=accGet('ai_armies',[]);
   // Dotation de départ : le Monarque et le Général, rien de plus. Les
-  // créatures s'obtiennent dans les coffres (les trois premières pendant le
-  // tutoriel), les paliers d'ELO ouvrant le reste.
-  // Mode test (/?test) : tout le catalogue est débloqué, et RIEN n'est écrit
-  // (vvSaveUnlocked ne fait rien là-dedans) — la progression réelle du compte
-  // reste intacte quand on en ressort.
+  // créatures s'obtiennent dans les coffres (les trois premières
+  // pendant le tutoriel), les paliers d'ELO ouvrant le reste.
   if(typeof ADMIN_MODE!=='undefined'&&ADMIN_MODE){
     VV_UNLOCKED=new Set(PIECES.map(p=>p.id));
     return;
@@ -344,7 +387,9 @@ function loadAccountGlobals(){
   const stored=accGet('unlocked_pieces',null);
   VV_UNLOCKED=new Set(stored||defs);
   // Les déblocages suivent le SOMMET atteint, jamais le classement du
-  // moment : une mauvaise série ne doit pas retirer une créature gagnée.
+  // moment : une mauvaise série ne doit pas retirer une créature
+  // gagnée. Et le sommet vient du serveur, donc ce calcul n'est plus
+  // une décision du navigateur mais une lecture.
   const peak=vvLoadPeakElo();
   UNLOCK_MILESTONES.forEach(u=>{
     if(!u.pieceId||u.coffre)return;
@@ -355,23 +400,23 @@ function loadAccountGlobals(){
 function saveArmies(){accSet('armies',savedArmies);}
 function saveAiArmies(){accSet('ai_armies',savedAiArmies);}
 
-// Le bandeau du haut a disparu : il n'y portait qu'un rond avec l'initiale du
-// pseudo, pour rogner le haut de toutes les pages. Le pseudo et l'ELO sont sur
-// le menu principal, en toutes lettres. La fonction subsiste sous son nom
-// (une douzaine d'appels y mènent) et ne rafraîchit plus que ce menu.
+// Le bandeau du haut a disparu : le pseudo et l'ELO sont sur le menu
+// principal, en toutes lettres. La fonction subsiste sous son nom (une
+// douzaine d'appels y mènent) et ne rafraîchit plus que ce menu.
 function updateCab(){
   if(!CUR_ACC)return;
   renderMenuIdentity();
   if(typeof accountUIRefresh==='function')accountUIRefresh();
+  // L'ELO vient de changer : les autres joueurs doivent voir le bon
+  // nombre à côté de mon pseudo dans le salon de présence.
+  if(typeof mpPresenceRefresh==='function')mpPresenceRefresh();
 }
 
 // ----------------------------------------------------------------
 // IDENTITÉ SUR LE MENU PRINCIPAL
 // ----------------------------------------------------------------
-// Pseudo en haut au milieu, rang et ELO juste dessous, et le bouton qui ouvre
-// la Diagonale de la Puissance à côté du chiffre — c'est là qu'on va quand on se
-// demande ce que cet ELO débloque. Appelée à la connexion, à chaque
-// changement d'ELO (vvSaveElo) et à l'arrivée sur la face JOUER.
+// Pseudo en haut au milieu, rang et ELO juste dessous, et le bouton qui
+// ouvre la Diagonale de la Puissance à côté du chiffre.
 function renderMenuIdentity(){
   const nameEl=document.getElementById('jouer-name');
   const rankEl=document.getElementById('jouer-rank');
@@ -379,116 +424,81 @@ function renderMenuIdentity(){
   if(!nameEl||!rankEl||!eloEl)return;
   if(!CUR_ACC){nameEl.textContent='';rankEl.textContent='';eloEl.textContent='';return;}
   // Le RANG vient du sommet atteint (il est acquis), le NOMBRE est le
-  // classement du moment (il bouge). Les deux se lisent côte à côte, et
-  // c'est exactement ce qu'ils veulent dire.
+  // classement du moment (il bouge). Les deux se lisent côte à côte.
   const elo=vvLoadElo(),rank=vvRank();
   nameEl.textContent=CUR_ACC;
   rankEl.textContent=rank.name;
   rankEl.style.color=rank.color;
-  // L'ELO réel reste affiché en mode admin : il ne bouge plus d'un point
-  // là-dedans, il n'y a donc rien à masquer. Le suffixe rappelle simplement
-  // que les parties en cours ne sont pas classées.
   eloEl.textContent=elo+' ELO'+(ADMIN_MODE?' · ADMIN':'');
   eloEl.classList.toggle('admin-elo',!!ADMIN_MODE);
 }
 
 // ----------------------------------------------------------------
-// PROGRESSION ELO / DÉBLOCAGES / HISTORIQUE : wrappers accGet/accSet
-// (utilisés par voie.js, game-flow.js)
+// PROGRESSION ELO / DÉBLOCAGES / HISTORIQUE
 // ----------------------------------------------------------------
-// MODE TEST (/?test) : l'ELO affiché est 10 000 — tout est donc débloqué, y
-// compris les échiquiers — et rien ne s'écrit sur le compte. On y entre et on
-// en sort sans laisser de trace (voir js/economy.js pour l'inventaire et les
-// perles, et loadAccountGlobals ci-dessus pour les pièces).
+// Ces fonctions ne sont plus que des LECTURES de la fiche du serveur.
+// Les « save » qui subsistent (vvSaveElo, vvSaveHistory…) ne servent
+// qu'à rafraîchir l'affichage : la valeur, elle, est arrivée du serveur
+// avec la réponse au rapport de partie.
+//
+// MODE TEST (/?test) et COMPTES ADMIN : l'ELO affiché est 10 000 — tout
+// est donc débloqué, y compris les échiquiers — et rien n'est
+// enregistré. On y entre et on en sort sans laisser de trace.
 const ADMIN_ELO=10000;
 function vvAdmin(){return typeof ADMIN_MODE!=='undefined'&&ADMIN_MODE;}
 function vvLoadElo(){return vvAdmin()?ADMIN_ELO:accGet('elo',0);}
 
-// ----------------------------------------------------------------
-// DEUX NOMBRES, DEUX RÔLES : LE CLASSEMENT ET LE RANG
-// ----------------------------------------------------------------
-// `elo` est le CLASSEMENT VIVANT : il monte et il descend, et une défaite
-// coûte toujours au moins un point (voir vvCalcNewElo, js/voie.js).
+// DEUX NOMBRES, DEUX RÔLES : LE CLASSEMENT ET LE RANG.
 //
-// `elo_peak` est le PLUS HAUT ELO JAMAIS ATTEINT, et il ne descend jamais.
-// C'est LUI qui décide du rang affiché et de tout ce qui se débloque :
-// créatures, échiquiers, jalons de la Diagonale. Un joueur qui a touché
-// Bronze reste Bronze pour toujours, et ne reperd jamais une créature — même
-// si son classement retombe à 400.
+// `elo` est le CLASSEMENT VIVANT : il monte et il descend, et une
+// défaite coûte toujours au moins un point (voir ec_elo_calc dans
+// supabase/schema.sql, transcription de vvCalcNewElo).
 //
-// POURQUOI DEUX NOMBRES PLUTÔT QU'UN PLANCHER SUR L'ELO. Le plancher au
-// minimum du rang courant tenait la même promesse, mais un joueur assis
-// exactement dessus (500, 800, 1200…) ne perdait plus RIEN en cas de
-// défaite : un point de stationnement à risque zéro, avec des essais
-// illimités pour remonter. En séparant les deux, la défaite coûte toujours
-// et le rang ne se perd jamais.
+// `elo_peak` est le PLUS HAUT ELO JAMAIS ATTEINT, et il ne descend
+// jamais. C'est LUI qui décide du rang affiché et de tout ce qui se
+// débloque : créatures, échiquiers, jalons de la Diagonale. Un joueur
+// qui a touché Bronze reste Bronze pour toujours, et ne reperd jamais
+// une créature — même si son classement retombe à 400.
 //
-// Un compte antérieur à `elo_peak` récupère son ELO courant comme sommet :
-// c'est exact, puisque l'ancien plancher l'empêchait justement d'être
-// descendu sous son rang.
+// Les deux sont tenus par le serveur : c'est lui qui relève le sommet
+// au moment où il calcule le nouvel ELO (greatest(elo_peak, new_elo)),
+// et le navigateur ne peut ni l'avancer ni le reculer.
 function vvLoadPeakElo(){
   if(vvAdmin())return ADMIN_ELO;
-  const elo=accGet('elo',0);
-  const peak=accGet('elo_peak',null);
-  return (typeof peak==='number')?Math.max(peak,elo):elo;
+  return Math.max(accGet('elo_peak',0),accGet('elo',0));
 }
-function vvSaveElo(v){
-  if(vvAdmin())return;
-  // LE SOMMET SE LIT AVANT D'ÉCRIRE LE NOUVEL ELO. vvLoadPeakElo() retombe
-  // sur l'ELO courant quand elo_peak n'existe pas encore (comptes créés
-  // avant cette clé) : l'interroger APRÈS accSet('elo') lui faisait donc
-  // renvoyer la valeur qu'on vient d'écrire, la comparaison `v>peak` était
-  // toujours fausse, et elo_peak n'était JAMAIS enregistré. Le rang
-  // redescendait alors avec le classement — exactement ce que ce code est
-  // censé empêcher.
-  const peak=vvLoadPeakElo();
-  accSet('elo',v);
-  if(v>peak)accSet('elo_peak',v);
-  updateCab();
-}
-// LE RANG ACQUIS : la seule fonction à utiliser pour AFFICHER un rang ou
-// pour décider d'un déblocage. vvGetRank(vvLoadElo()) donnerait le rang du
-// classement du moment, qui peut être plus bas — et retirerait alors au
-// joueur un rang qu'il a gagné.
+// LE RANG ACQUIS : la seule fonction à utiliser pour AFFICHER un rang
+// ou pour décider d'un déblocage. vvGetRank(vvLoadElo()) donnerait le
+// rang du classement du moment, qui peut être plus bas — et retirerait
+// alors au joueur un rang qu'il a gagné.
 function vvRank(){return vvGetRank(vvLoadPeakElo());}
 function vvRankIdx(){return vvGetRankIdx(vvLoadPeakElo());}
-
 function vvLoadRankMax(){return accGet('rank_max',0);}
-function vvSaveRankMax(v){if(vvAdmin())return;accSet('rank_max',v);}
-function vvSaveUnlocked(s){if(vvAdmin())return;accSet('unlocked_pieces',[...s]);}
 function vvLoadHistory(){return accGet('match_history',[]);}
-function vvSaveHistory(arr){accSet('match_history',arr.slice(-30));}
+
+// LES ÉCRITURES DE CLASSEMENT N'EXISTENT PLUS. vvSaveElo, vvSaveHistory,
+// vvSaveRankMax, vvNotePieceStats et vvNoteStreak ont été supprimées
+// plutôt que vidées : une fonction qui ne fait rien se rappelle par
+// erreur, et le jour où quelqu'un la rappelle, il croit avoir enregistré
+// quelque chose. Le seul chemin vers ces nombres est le rapport de fin de
+// partie (ecReportMatch, js/server.js), et il rapatrie la fiche complète.
+//
+// Ce qui reste écrit par le jeu, en revanche, l'est toujours : les
+// créatures débloquées suivent l'ouverture des coffres autant que les
+// paliers d'ELO, et le serveur ne connaît pas les coffres.
+function vvSaveUnlocked(s){if(vvAdmin())return;accSet('unlocked_pieces',[...s]);}
 
 // ----------------------------------------------------------------
 // CE QU'UN COMPTE A VÉCU
 // ----------------------------------------------------------------
-// L'ELO était un NOMBRE NU : le jeu enregistrait le résultat de chaque
-// partie et n'en montrait rien. Un joueur ne pouvait savoir ni son taux de
-// victoire, ni sa meilleure série, ni quelle créature lui réussit — c'est-à-
-// dire précisément ce qu'on vient chercher quand on regarde son profil.
-//
-// Deux agrégats suffisent, et ils tiennent en quelques octets. On ne les
-// déduit PAS de match_history, qui ne garde que les 30 dernières parties :
-// une statistique de carrière lue sur un mois de jeu serait fausse et
+// Taux de victoire, meilleure série, créature fétiche : ce sont des
+// agrégats de CARRIÈRE, et le serveur les tient au moment où il
+// enregistre chaque partie (ec_report_match). On ne les déduit surtout
+// PAS de match_history, qui ne garde que les 30 dernières parties : une
+// statistique de carrière lue sur un mois de jeu serait fausse et
 // changerait de valeur toute seule au fil des parties.
 //
-//   piece_stats  {pieceId: {g, w}}  parties et victoires, par créature alignée
-//   best_streak                     la plus longue série de victoires, à vie
+//   piece_stats  {pieceId: {g, w}}  parties et victoires, par créature
+//   best_streak                     la plus longue série de victoires
 function vvLoadPieceStats(){const o=accGet('piece_stats',{});return (o&&typeof o==='object')?o:{};}
-function vvNotePieceStats(pieceIds,won){
-  if(vvAdmin()||!Array.isArray(pieceIds)||!pieceIds.length)return;
-  const st=vvLoadPieceStats();
-  // Une créature alignée en double dans la même armée ne compte qu'une fois :
-  // on mesure « les parties où je l'ai jouée », pas « les exemplaires posés ».
-  new Set(pieceIds.filter(Boolean)).forEach(id=>{
-    const e=st[id]||{g:0,w:0};
-    e.g++;if(won)e.w++;
-    st[id]=e;
-  });
-  accSet('piece_stats',st);
-}
 function vvLoadBestStreak(){return accGet('best_streak',0);}
-function vvNoteStreak(n){
-  if(vvAdmin())return;
-  if(n>vvLoadBestStreak())accSet('best_streak',n);
-}

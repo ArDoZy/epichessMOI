@@ -456,6 +456,7 @@ function dailyChestBusy(){
      el.style.display==='flex');};
   if(shown('result-modal')||shown('chest-modal')||shown('confirm-modal')||
      shown('mp-modal')||shown('lore-intro')||shown('page-account')||
+     shown('page-classement')||shown('mp-duel-invite')||shown('ec-boot')||
      shown('daily-modal')||shown('joker-modal'))return true;
   return false;
 }
