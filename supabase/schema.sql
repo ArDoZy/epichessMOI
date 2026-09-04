@@ -46,7 +46,19 @@
 -- vous rejouez ce script sur une base déjà en service.
 drop table if exists public.ec_players cascade;
 
-create extension if not exists pgcrypto;
+-- AUCUNE EXTENSION N'EST REQUISE, et c'est délibéré. Ce fichier a d'abord
+-- appelé digest() de pgcrypto pour l'empreinte des clés d'appareil. Sur
+-- Supabase, pgcrypto n'est PAS installé dans `public` mais dans le schéma
+-- `extensions` : les fonctions ci-dessous étant déclarées
+-- `set search_path = public` — ce qu'elles doivent être, sinon un SECURITY
+-- DEFINER est détournable en posant un schéma devant —, digest() y était
+-- introuvable et TOUTE connexion échouait sur
+-- « function digest(text, unknown) does not exist ».
+--
+-- On n'écrit donc plus une seule ligne qui dépende d'une extension :
+-- sha256() (PostgreSQL 11+) et gen_random_uuid() (PostgreSQL 13+) sont des
+-- fonctions natives, dans pg_catalog, joignables quel que soit le
+-- search_path. NE PAS RÉINTRODUIRE pgcrypto ici.
 
 -- -----------------------------------------------------------------
 -- LA TABLE DES JOUEURS
@@ -122,7 +134,7 @@ end $$;
 
 create or replace function public.ec_hash(p_secret text) returns text
 language sql immutable as $$
-  select encode(digest('epicchess:' || coalesce(p_secret,''), 'sha256'), 'hex')
+  select encode(sha256(convert_to('epicchess:' || coalesce(p_secret,''), 'UTF8')), 'hex')
 $$;
 
 -- Authentification : l'identifiant du compte et son secret, tel que le
