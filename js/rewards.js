@@ -7,20 +7,22 @@
 //   · la DIAGONALE DE LA PUISSANCE (js/voie.js, ex-« Voie des Victoires ») :
 //     l'ELO. Elle monte en zigzag, elle débloque les créatures, et elle ne se
 //     gagne qu'en battant plus fort que soi.
-//   · la COLONNE DES VICTOIRES (ici) : trente paliers, un par victoire,
+//   · la COLONNE DES VICTOIRES (ici) : trente paliers, payés en LAURIERS,
 //     coffres et jokers. Elle ne se perd jamais et ne se remet jamais à zéro.
 //   · la RANGÉE DE LA RICHESSE (ici) : vingt-cinq paliers de perles, payés en
 //     TICKETS, et les tickets s'obtiennent en accomplissant des quêtes.
 //
 // À CÔTÉ DES TROIS VOIES, LA RÉCOMPENSE JOURNALIÈRE (plus bas dans ce
-// fichier) : un lot par jour, dans un cycle de trente qui recommence
+// fichier) : un lot par jour, dans un cycle de seize qui recommence
 // indéfiniment (DAILY_REWARDS, js/data-pieces.js). Elle ne demande RIEN — ni
 // victoire, ni quête : juste de revenir.
 //
-// POURQUOI LA COLONNE EXISTE. Elle avance d'un cran à CHAQUE victoire, sans
-// verrou quotidien et sans qu'une défaite n'y touche, et elle a une fin
-// (trente paliers, une seule fois par compte). C'est la voie de celui qui
-// gagne, là où la journalière est celle de celui qui revient.
+// POURQUOI LA COLONNE EXISTE. Elle avance à CHAQUE victoire, sans verrou
+// quotidien et sans qu'une défaite n'y touche, et elle a une fin (trente
+// paliers, une seule fois par compte). C'est la voie de celui qui gagne, là où
+// la journalière est celle de celui qui revient — et depuis les lauriers, la
+// voie de celui qui gagne VITE : cinq lauriers par palier, de cinq à dix par
+// victoire selon sa longueur (voir LAUREL_SCALE plus bas).
 //
 // POURQUOI LA RANGÉE EXISTE. Tout ce qui rapporte se gagne au tableau
 // d'affichage : gagner, gagner encore, gagner d'affilée. La rangée récompense
@@ -38,7 +40,9 @@
 // échec et mat).
 //
 // TOUT EST ÉCRIT PAR COMPTE via accGet/accSet. Clés utilisées :
-//   col_wins       victoires comptées par la colonne (plafonnées à sa longueur)
+//   col_laurels    lauriers acquis sur la colonne (plafonnés à 5 × sa longueur)
+//   col_wins       ANCIENNE clé : victoires comptées avant les lauriers. Elle
+//                  n'est plus écrite, seulement lue une fois pour convertir
 //   col_claimed    paliers de la colonne déjà encaissés
 //   jokers         jokers en attente de conversion
 //   tickets        tickets en réserve
@@ -83,7 +87,7 @@ function dailyRewardStep(i){
 // avant, et c'est le lot que la journée d'aujourd'hui donne.
 function dailyRewardCursor(){const t=dailyRewardTotal();return t?dailyRewardIdx()%t:0;}
 // Combien de tours complets ont été bouclés : la fenêtre l'affiche (« cycle
-// n° 3 »), sinon revenir au Coffre Pion après trente jours se lit comme une
+// n° 3 »), sinon revenir au Coffre Pion après seize jours se lit comme une
 // remise à zéro.
 function dailyRewardCycle(){const t=dailyRewardTotal();return t?Math.floor(dailyRewardIdx()/t)+1:1;}
 function dailyRewardAvailable(){
@@ -109,7 +113,7 @@ function dailyRewardClaim(){
 }
 
 // ----------------------------------------------------------------
-// LA COLONNE DES VICTOIRES : trente paliers, un par victoire
+// LA COLONNE DES VICTOIRES : trente paliers, payés en LAURIERS
 // ----------------------------------------------------------------
 // L'ordre est celui de la colonne, du premier palier au dernier. Deux natures
 // de lot seulement :
@@ -131,28 +135,104 @@ const VICTORY_COLUMN=[
   {chest:'pion'},    {jokers:15},        {chest:'pion'},  {chest:'tour'},     {chest:'roi'},
 ];
 
+// ----------------------------------------------------------------
+// LES LAURIERS : ce qui fait descendre la colonne
+// ----------------------------------------------------------------
+// UNE VICTOIRE NE VALAIT PAS UNE VICTOIRE. La colonne avançait d'un cran par
+// partie gagnée, quelle qu'elle soit : étouffer l'adversaire en huit coups et
+// gagner une finale de tours au soixante-dixième rapportaient exactement la
+// même chose. Le seul levier que le joueur avait sur la colonne était donc le
+// NOMBRE de parties — c'est-à-dire le temps passé, pas la manière.
+//
+// Un palier coûte maintenant cinq LAURIERS, et une victoire en rapporte de
+// cinq à dix selon sa longueur : la victoire nette et rapide vaut deux fois la
+// victoire arrachée, et la colonne descend deux fois plus vite pour qui joue
+// bien. Une victoire, même la plus longue, rapporte toujours au moins la
+// moitié d'un palier : on n'y perd jamais son temps.
+//
+// LE BARÈME SE LIT EN COUPS, PAS EN PLIS. « Dix coups » est ce que le journal
+// des coups numérote — un coup blanc et sa réponse noire —, donc exactement ce
+// que le joueur compte des yeux pendant la partie.
+const LAURELS_PER_STEP=5;
+// Bornes SUPÉRIEURES INCLUSES, du plus court au plus long. En dessous de la
+// première, on prend le maximum ; au-delà de la dernière, le plancher.
+const LAUREL_SCALE=[
+  {upTo:10,laurels:10},
+  {upTo:15,laurels:9},
+  {upTo:20,laurels:8},
+  {upTo:30,laurels:7},
+  {upTo:50,laurels:6},
+];
+const LAURELS_FLOOR=5;
+function laurelsForMoves(moves){
+  const m=Math.max(0,Math.round(Number(moves)||0));
+  for(const t of LAUREL_SCALE)if(m<=t.upTo)return t.laurels;
+  return LAURELS_FLOOR;
+}
+// Le nombre de COUPS d'une partie, tel que le journal les numérote. À défaut
+// de journal (partie reconstruite, état incomplet), on retombe sur le compte
+// de plis, et à défaut de tout on prend la longueur la plus défavorable :
+// mieux vaut créditer cinq lauriers de trop peu que dix de trop.
+function laurelsMoveCount(gs){
+  if(!gs)return Infinity;
+  if(Array.isArray(gs.movePairs)&&gs.movePairs.length)return gs.movePairs.length;
+  const t=gs.turnCount|0;
+  return t>0?Math.ceil(t/2):Infinity;
+}
+
 function colTotal(){return VICTORY_COLUMN.length;}
-// Victoires comptées par la colonne. Plafonnées à sa longueur : une fois les
-// trente paliers atteints, continuer à gagner n'accumule pas un crédit qui ne
-// mènerait nulle part.
-function colWins(){const n=rwGet('col_wins',0);return Math.max(0,Math.min(colTotal(),typeof n==='number'?n:0));}
+// Le total de lauriers que la colonne entière demande : au-delà, en gagner
+// d'autres n'ouvrirait rien.
+function colLaurelMax(){return colTotal()*LAURELS_PER_STEP;}
+// Lauriers acquis. Les comptes d'avant les lauriers ont une colonne comptée en
+// VICTOIRES (`col_wins`) : elle est convertie une seule fois, à raison d'un
+// palier complet par victoire, pour que personne ne perde un cran en route.
+function colLaurels(){
+  let n=rwGet('col_laurels',null);
+  if(n===null||n===undefined){
+    const w=rwGet('col_wins',0);
+    n=Math.max(0,(typeof w==='number'?w:0))*LAURELS_PER_STEP;
+    if(n>0)rwSet('col_laurels',n);
+  }
+  return Math.max(0,Math.min(colLaurelMax(),typeof n==='number'?n:0));
+}
+// Paliers OUVERTS par les lauriers acquis. Plafonnés à la longueur de la
+// colonne : une fois les trente paliers atteints, continuer à gagner
+// n'accumule pas un crédit qui ne mènerait nulle part.
+function colSteps(){return Math.min(colTotal(),Math.floor(colLaurels()/LAURELS_PER_STEP));}
+// Lauriers déjà posés sur le palier en cours (0 à 4), et ce qu'il reste à
+// gagner pour l'ouvrir. C'est la seule jauge de la page : elle dit combien il
+// manque, pas combien on a.
+function colLaurelInStep(){
+  if(colSteps()>=colTotal())return LAURELS_PER_STEP;
+  return colLaurels()%LAURELS_PER_STEP;
+}
+function colLaurelToNext(){return Math.max(0,LAURELS_PER_STEP-colLaurelInStep());}
 function colClaimed(){const n=rwGet('col_claimed',0);return Math.max(0,Math.min(colTotal(),typeof n==='number'?n:0));}
 // Paliers gagnés mais pas encore encaissés : c'est ce que le bouton
 // « Récupérer » de la page des récompenses déclenche, un par un.
-function colPending(){return Math.max(0,colWins()-colClaimed());}
-// L'index (0-based) du palier que la prochaine victoire ouvrirait, ou -1 si la
-// colonne est finie.
-function colNextIdx(){const w=colWins();return w>=colTotal()?-1:w;}
+function colPending(){return Math.max(0,colSteps()-colClaimed());}
+// L'index (0-based) du palier que les prochains lauriers ouvriraient, ou -1 si
+// la colonne est finie.
+function colNextIdx(){const w=colSteps();return w>=colTotal()?-1:w;}
 
 // Une victoire de plus. Appelée UNE SEULE FOIS par partie gagnée, depuis
 // economySettle (js/economy.js) : c'est le seul endroit par lequel passe le
 // règlement d'une partie, tutoriel et mode test exclus.
-function colNoteWin(){
-  if(rewardsAdmin())return 0;
-  const w=colWins();
-  if(w>=colTotal())return 0;
-  rwSet('col_wins',w+1);
-  return w+1;
+//
+// Renvoie ce que la victoire a rapporté — {gain, laurels, steps, opened} —
+// pour que la cérémonie de fin de partie puisse l'annoncer : une récompense
+// qu'on ne voit pas arriver n'en est pas une.
+function colNoteWin(gs){
+  const gain=laurelsForMoves(laurelsMoveCount(gs));
+  const before=colLaurels(),stepsBefore=colSteps();
+  if(rewardsAdmin()||before>=colLaurelMax())
+    return{gain:0,laurels:before,steps:stepsBefore,opened:0,moves:laurelsMoveCount(gs)};
+  const after=Math.min(colLaurelMax(),before+gain);
+  rwSet('col_laurels',after);
+  const steps=Math.min(colTotal(),Math.floor(after/LAURELS_PER_STEP));
+  return{gain:after-before,laurels:after,steps,opened:steps-stepsBefore,
+         moves:laurelsMoveCount(gs)};
 }
 
 // Encaisse le prochain palier dû et renvoie sa description ({chest} ou

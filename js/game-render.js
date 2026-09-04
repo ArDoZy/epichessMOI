@@ -46,7 +46,7 @@ function applyGardePierre(r,c,color,gs){
   // son image. Posé ici et non dans activatePower() parce que ce guichet est
   // aussi celui de l'adversaire en ligne (mpApplyRemotePower) — les deux
   // plateaux doivent montrer la même chose.
-  if(typeof fxPower==='function')fxPower('ancre',r,c);
+  if(typeof fxPower==='function'&&!REPLAYING)fxPower('ancre',r,c);
   // `choc` est la recette de « la masse qui rencontre la masse » (js/sfx.js) :
   // c'est exactement ce qu'est un Garde de Pierre qui se referme sur lui-même.
   // L'œil et l'oreille doivent dire la même chose — c'est la règle que suit
@@ -689,9 +689,14 @@ function renderClocks(gs){
 // L'échiquier est borné par la HAUTEUR d'écran sur un téléphone, et la page
 // réservait pour le reste une constante — 200 px — qui était fausse : il y a
 // le chrome du haut, les deux bandeaux de joueur, la barre de statut, les
-// boutons de partie et la zone sous le plateau, qui GRANDIT quand on y ouvre
-// le journal ou la discussion. Plus de 400 px sur un petit écran, et
-// « Abandonner » finissait hors de l'écran.
+// boutons de partie et le contenu de la zone sous le plateau. Plus de 400 px
+// sur un petit écran, et « Abandonner » finissait hors de l'écran.
+//
+// CETTE MESURE NE DÉPEND PAS DES PANNEAUX. Le journal et la discussion se
+// posent en `position:absolute` sur une zone qui occupe déjà tout l'espace
+// libre : les ouvrir ne change donc RIEN au calcul, et le plateau ne bouge
+// pas d'un pixel — c'était l'inverse avant, et l'échiquier changeait de
+// taille sous les yeux du joueur chaque fois qu'il consultait un coup.
 //
 // On mesure donc la somme réelle et on la publie en variable CSS : ce qu'il y
 // a AU-DESSUS du plateau (sa position à l'écran) plus ce qu'il y a EN DESSOUS
@@ -703,7 +708,28 @@ function renderClocks(gs){
 // premier jet observait la page dès DOMContentLoaded : à cet instant
 // #page-game est masquée et tout mesure zéro. D'où l'appel depuis
 // renderGame(), c'est-à-dire à chaque rendu de partie, plus au
-// redimensionnement, à la rotation et à l'ouverture d'un panneau.
+// redimensionnement et à la rotation.
+// La hauteur du CONTENU de la zone sous le plateau : le bouton « Annuler
+// coup » et la rangée d'outils, plus l'écart entre eux. Les panneaux, eux,
+// sont en `position:absolute` — ils ne sont pas dans le flux et ne comptent
+// pas, c'est tout l'intérêt : ouvrir le journal ne change pas d'un pixel la
+// place que le plateau doit céder.
+function gameUnderContentH(under){
+  if(!under)return 0;
+  const cs=getComputedStyle(under);
+  const gap=parseFloat(cs.rowGap||cs.gap)||0;
+  let h=0,n=0;
+  for(const el of under.children){
+    if(el.hidden)continue;
+    const st=getComputedStyle(el);
+    if(st.position==='absolute'||st.position==='fixed'||st.display==='none')continue;
+    const r=el.getBoundingClientRect();
+    if(r.height<=0)continue;
+    h+=r.height;n++;
+  }
+  return n?h+gap*(n-1):0;
+}
+
 function gameSyncChrome(){
   const board=document.getElementById('game-board');
   const btns=document.querySelector('.game-btns');
@@ -729,12 +755,19 @@ function gameSyncChrome(){
   const m=main.getBoundingClientRect();
   let below=Math.max(0,m.bottom-b.bottom);    // repères de colonnes, marges internes
   let n=0;
+  const under=document.getElementById('game-under');
   for(const el of [document.getElementById('human-player-bar'),
                    document.getElementById('game-status'),
-                   document.getElementById('game-under'),
+                   under,
                    btns]){
     if(!el||el.offsetParent===null)continue;
-    below+=el.getBoundingClientRect().height;
+    // LA ZONE SOUS LE PLATEAU EST MESURÉE PAR SON CONTENU, PAS PAR SA BOÎTE.
+    // Elle s'étend sur tout l'espace libre (`flex:1`, voir [GAME-PANEL]) pour
+    // que le journal puisse s'y ouvrir sans rien déplacer ; compter cette
+    // extension comme un encombrement rendrait le calcul récursif — plus le
+    // plateau rétrécirait, plus le vide grandirait, plus le plateau
+    // rétrécirait. On ne somme donc que ce qu'elle porte VRAIMENT.
+    below+=(el===under)?gameUnderContentH(el):el.getBoundingClientRect().height;
     n++;
   }
   below+=gap*n+padB;
@@ -1466,8 +1499,9 @@ function gamePanelClose(){
   _openPanel=null;
   const under=document.getElementById('game-under');
   if(under)under.classList.remove('gu-open','gu-chat');
-  // La zone rétrécit : le plateau récupère sa place au même instant, sans
-  // quoi il resterait petit jusqu'au coup suivant.
+  // La zone ne change pas de hauteur en se fermant (voir [GAME-PANEL]) : rien
+  // à resynchroniser, sinon les hauteurs de police et de bouton qui ont pu
+  // bouger entre-temps. L'appel est conservé pour ce seul rattrapage.
   gameSyncChrome();
 }
 

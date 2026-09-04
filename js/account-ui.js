@@ -100,6 +100,12 @@ function accountSummaryFrom(p,username){
     bestStreak:p?(p.best_streak|0):0,
     pieceStats:(p&&p.piece_stats)||{},
     history:(p&&(p.history||p.match_history))||[],
+    // CE QUE LE JOUEUR PEUT ALIGNER (voir profileArsenalHTML, js/replay.js).
+    // Pour les autres comptes de l'appareil, ça vient de leur fiche publique ;
+    // pour le compte courant, accountSummary() le remplace par l'état local,
+    // qui est plus frais que la copie serveur d'il y a trois secondes.
+    army:(p&&p.pub_army)||[],
+    unlocked:(p&&p.pub_unlocked)||[],
     pearls:0,
     loading:!p,
   };
@@ -110,6 +116,12 @@ function accountSummary(username){
     const s=accountSummaryFrom(ECP,username);
     s.pearls=accGet('pearls',0)||0;
     s.rankPos=_accMyRank;
+    // Sur SON PROPRE profil, l'armée et les déblocages se lisent en mémoire :
+    // ECP.pub_army n'existe pas (la fiche complète porte `state`, pas la
+    // projection publique) et, surtout, une pièce débloquée il y a dix
+    // secondes doit apparaître tout de suite.
+    if(typeof savedArmies!=='undefined')s.army=savedArmies;
+    if(typeof VV_UNLOCKED!=='undefined')s.unlocked=[...VV_UNLOCKED];
     return s;
   }
   return accountSummaryFrom(_accOther[username]||null,username);
@@ -265,6 +277,12 @@ function accountSealHTML(s){
     '</div>'+
     accountFormHTML(s)+
     accountFavouriteHTML(s)+
+    // CE QU'ON ALIGNE, ET CE QU'ON A REJOUABLE. Les deux mêmes blocs que sur
+    // le profil de n'importe qui d'autre (js/replay.js) : un profil doit se
+    // lire pareil qu'il soit le sien ou celui d'un inconnu, sinon on ne peut
+    // rien comparer avant un duel.
+    ((typeof profileArsenalHTML==='function')?profileArsenalHTML(s.army,s.unlocked):'')+
+    ((typeof replayListHTML==='function')?replayListHTML(s.history):'')+
     // PLUS DE « QUITTER CE COMPTE ». Il n'y a rien à quitter : le jeu n'a ni
     // mot de passe ni session, et la seule chose que le bouton faisait —
     // repasser par la page de connexion — se fait déjà en choisissant un
@@ -283,7 +301,7 @@ function accountFormHTML(s){
   const lbl={win:'Victoire',loss:'Défaite',draw:'Nulle'};
   return ''+
   '<div class="acc-form">'+
-    '<div class="acc-form-k">10 dernières parties</div>'+
+    '<div class="acc-form-k">Forme récente</div>'+
     '<div class="acc-form-dots">'+
       recent.map(h=>{
         const cls=h.result==='win'?'w':h.result==='loss'?'l':'d';
@@ -381,6 +399,16 @@ function accountCreateHTML(full){
 function wireAccountPage(){
   const host=document.getElementById('account-body');
   if(!host)return;
+
+  // Ses dix dernières parties : chaque ligne ouvre le mode analyse
+  // (js/replay.js), et « Retour » ramène ici — pas au menu, sinon relire deux
+  // parties à la suite demanderait de refaire tout le chemin.
+  if(typeof wireReplayList==='function'&&CUR_ACC){
+    wireReplayList(host,accountSummary(CUR_ACC).history,{
+      me:CUR_ACC,meSub:((typeof vvLoadElo==='function')?vvLoadElo():0)+' ELO',
+      back:()=>{if(typeof openAccountPage==='function')openAccountPage();},
+    });
+  }
 
   host.querySelector('#acc-rename-open')?.addEventListener('click',()=>{
     _accRenaming=true;_accRenameDraft=null;renderAccountPage();

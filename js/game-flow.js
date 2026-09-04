@@ -356,6 +356,13 @@ function triggerEndOfGame(result){
   const armee=(currentArmyData&&Array.isArray(currentArmyData.extras))
     ?currentArmyData.extras.slice(0,3):[];
   const mode=GS.multiplayer?'ligne':'ia';
+  // LA PARTIE ELLE-MÊME, ET PAS SEULEMENT SON RÉSULTAT. Une ligne
+  // d'historique ne portait qu'un verdict et un écart d'ELO : aucune partie
+  // n'était relisible, ni la sienne d'hier ni celle du joueur qu'on
+  // s'apprête à défier. On joint donc de quoi la REJOUER — les deux armées,
+  // la couleur du joueur, et la liste compacte des coups (voir replayNote,
+  // js/rules-engine.js). C'est le mode analyse des profils (js/replay.js).
+  const rejouable=(typeof buildReplayRecord==='function')?buildReplayRecord(GS):null;
   const foeId=(!GS.multiplayer&&typeof aiCurrentOpponent==='function')?aiCurrentOpponent().id:null;
   const foeName=GS.multiplayer?(MP&&MP.oppName)||'Adversaire':foeId;
   if(foeId&&typeof advNoteResult==='function')advNoteResult(foeId,result);
@@ -376,6 +383,7 @@ function triggerEndOfGame(result){
   let report=null;
   const reportP=(typeof vvAdmin==='function'&&vvAdmin())?Promise.resolve(null):ecReportMatch({
     result,ranked:!noEloReason,opp_elo:aiElo,opp_name:foeName,mode,army:armee,
+    replay:rejouable,
   }).then(r=>{report=r;return r;}).catch(e=>{
     // Le rapport est mis de côté et rejoué au prochain lancement
     // (ecPushPendingMatch, js/server.js). On ne bloque pas la fin de partie
@@ -447,6 +455,10 @@ document.getElementById('game-undo').addEventListener('click',()=>{
     GS.board=cloneBoard(h.board);GS.turn=h.turn;GS.enPassant=h.enPassant;GS.halfmoveClock=h.halfmoveClock;
     GS.capturedW=[...h.capturedW];GS.capturedB=[...h.capturedB];
     if(h.movePairs)GS.movePairs=JSON.parse(JSON.stringify(h.movePairs));
+    // La trace rejouable recule avec le reste : un coup annulé ne doit pas
+    // rester dans la partie qu'on relira plus tard (voir replayNote,
+    // js/rules-engine.js).
+    if(h.replay)GS.replay=h.replay.slice();
     if(h.anchored)GS.anchored=new Set(h.anchored);
     if(h.grandMaitreAlive)GS.grandMaitreAlive={...h.grandMaitreAlive};
     if(h.turnCount!==undefined)GS.turnCount=h.turnCount;

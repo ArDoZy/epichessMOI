@@ -1,7 +1,7 @@
 // ================================================================
 // REWARDS-UI.JS : la récompense journalière et la page des deux voies
 // ================================================================
-// La FENÊTRE DE LA RÉCOMPENSE JOURNALIÈRE (#daily-modal) : le cycle de trente
+// La FENÊTRE DE LA RÉCOMPENSE JOURNALIÈRE (#daily-modal) : le cycle de seize
 // lots, celui d'aujourd'hui au milieu, un bouton pour le prendre. Elle a
 // remplacé la fenêtre de la « série du jour » et en garde toute la
 // carrosserie (classes .streak-* de css/style.css) : c'est la même chose, une
@@ -10,7 +10,8 @@
 // Puis la PAGE des deux voies, deux onglets, et rien d'autre :
 //
 //   COLONNE DES VICTOIRES  une colonne verticale de trente paliers, qu'on
-//                          descend d'un cran par victoire. Le palier dû
+//                          descend en LAURIERS — cinq par palier, de cinq à
+//                          dix par victoire selon sa longueur. Le palier dû
 //                          s'encaisse à la main : coffre (vraie cérémonie
 //                          d'ouverture) ou jokers (fenêtre de conversion).
 //   RANGÉE DE LA RICHESSE  une rangée horizontale de vingt-cinq paliers de
@@ -53,6 +54,42 @@ function ticketIcon(em){
     '<path d="M3 7.6A1.6 1.6 0 0 1 4.6 6h14.8A1.6 1.6 0 0 1 21 7.6v2.05a2.5 2.5 0 0 0 0 4.7v2.05A1.6 1.6 0 0 1 19.4 18H4.6A1.6 1.6 0 0 1 3 16.4v-2.05a2.5 2.5 0 0 0 0-4.7Z" fill="url(#'+gid+')"/>'+
     '<path d="M14.2 7.4v9.2" stroke="#0d221c" stroke-width="1.1" stroke-dasharray="1.6 1.7" opacity=".85"/>'+
   '</svg>';
+}
+// LE LAURIER : ce qui fait descendre la colonne des victoires. Deux rameaux
+// qui se referment, comme la couronne qu'on pose sur la tête du vainqueur —
+// dessinés et non écrits, pour la même raison que la perle et le ticket : un
+// emoji « laurier » n'existe pas, et un « 🏆 » dirait autre chose.
+function laurelIcon(em){
+  const s=(em||1.2)+'em';
+  const gid='lauG'+(++_rwGradSeq);
+  return '<svg class="laurel-icon" style="width:'+s+';height:'+s+'" viewBox="0 0 24 24" aria-hidden="true">'+
+    '<defs><linearGradient id="'+gid+'" x1="0" y1="0" x2="0" y2="1">'+
+      '<stop offset="0%" stop-color="#e4d288"/><stop offset="55%" stop-color="#c1a145"/>'+
+      '<stop offset="100%" stop-color="#7d6427"/></linearGradient></defs>'+
+    // Les deux TIGES : deux arcs presque circulaires qui se rejoignent en bas
+    // et s'ouvrent en haut. Deux courbes plus droites donnaient, à la taille
+    // d'une pastille, deux accolades — « {} » — et non une couronne.
+    '<g fill="none" stroke="url(#'+gid+')" stroke-width="1.5" stroke-linecap="round">'+
+      '<path d="M12 21.4A9.4 9.4 0 0 1 9.7 4.1"/>'+
+      '<path d="M12 21.4a9.4 9.4 0 0 0 2.3-17.3"/>'+
+    '</g>'+
+    // Les FEUILLES, quatre par rameau, posées à l'extérieur de l'arc et
+    // inclinées comme lui. Elles sont volontairement grosses : c'est ce qui
+    // fait lire une couronne à seize pixels de côté.
+    '<g fill="url(#'+gid+')">'+
+      '<ellipse cx="5.0" cy="16.4" rx="2.7" ry="1.45" transform="rotate(38 5.0 16.4)"/>'+
+      '<ellipse cx="3.1" cy="12.2" rx="2.7" ry="1.45" transform="rotate(4 3.1 12.2)"/>'+
+      '<ellipse cx="4.2" cy="7.9" rx="2.7" ry="1.45" transform="rotate(-30 4.2 7.9)"/>'+
+      '<ellipse cx="7.3" cy="4.7" rx="2.7" ry="1.45" transform="rotate(-58 7.3 4.7)"/>'+
+      '<ellipse cx="19.0" cy="16.4" rx="2.7" ry="1.45" transform="rotate(-38 19.0 16.4)"/>'+
+      '<ellipse cx="20.9" cy="12.2" rx="2.7" ry="1.45" transform="rotate(-4 20.9 12.2)"/>'+
+      '<ellipse cx="19.8" cy="7.9" rx="2.7" ry="1.45" transform="rotate(30 19.8 7.9)"/>'+
+      '<ellipse cx="16.7" cy="4.7" rx="2.7" ry="1.45" transform="rotate(58 16.7 4.7)"/>'+
+    '</g>'+
+  '</svg>';
+}
+function laurelAmountHTML(n,em){
+  return '<span class="laurel-amt">'+laurelIcon(em)+'<span>'+n+'</span></span>';
 }
 function ticketAmountHTML(n,em){
   return '<span class="ticket-amt">'+ticketIcon(em)+'<span>'+n+'</span></span>';
@@ -255,14 +292,42 @@ function rewardsScrollCurrent(){
 // css/style.css), pour qu'on n'ait pas deux vocabulaires visuels à apprendre :
 //   rw-got    palier déjà encaissé
 //   rw-due    palier gagné, pas encore encaissé — c'est lui qui pulse
-//   rw-next   ce que la prochaine victoire ouvrirait
+//   rw-next   ce que les prochains lauriers ouvriraient
 //   rw-far    encore loin
 function rwColState(i){
-  const claimed=colClaimed(),wins=colWins();
+  const claimed=colClaimed(),steps=colSteps();
   if(i<claimed)return 'rw-got';
-  if(i<wins)return 'rw-due';
-  if(i===wins)return 'rw-next';
+  if(i<steps)return 'rw-due';
+  if(i===steps)return 'rw-next';
   return 'rw-far';
+}
+
+// ----------------------------------------------------------------
+// LA JAUGE DE LAURIERS, EN TÊTE DE LA COLONNE
+// ----------------------------------------------------------------
+// UN PALIER NE S'OUVRE PLUS D'UNE VICTOIRE, IL S'ACHÈTE EN LAURIERS — cinq
+// par palier, de cinq à dix par victoire selon sa longueur. Sans cette bande,
+// la colonne n'aurait aucun moyen de dire pourquoi elle a avancé de deux crans
+// un soir et d'un seul le lendemain : elle porte donc le compte du palier en
+// cours, cinq pastilles qu'on remplit, et le barème en toutes lettres.
+function rwLaurelBarHTML(){
+  if(typeof colLaurels!=='function')return '';
+  const fini=colSteps()>=colTotal();
+  const on=colLaurelInStep(),reste=colLaurelToNext();
+  let pips='';
+  for(let i=0;i<LAURELS_PER_STEP;i++)
+    pips+='<span class="rw-pip'+(i<on?' rw-pip-on':'')+'">'+laurelIcon(1.05)+'</span>';
+  return '<div class="rw-laurels'+(fini?' rw-laurels-done':'')+'">'+
+    '<div class="rw-laurels-head">'+
+      '<span class="rw-laurels-n">'+laurelAmountHTML(colLaurels(),1.25)+'</span>'+
+      '<span class="rw-laurels-lbl">'+(fini
+        ? 'Colonne terminée'
+        : reste+' laurier'+(reste>1?'s':'')+' pour le palier suivant')+'</span>'+
+    '</div>'+
+    '<div class="rw-pips">'+pips+'</div>'+
+    '<div class="rw-laurels-scale">Une victoire rapporte de 5 à 10 lauriers : '+
+      '10 en 10 coups ou moins, puis 9, 8, 7, 6, et 5 au-delà de 50 coups.</div>'+
+  '</div>';
 }
 // Le visuel d'un palier : le coffre dessiné (le même que partout ailleurs) ou
 // la carte de joker.
@@ -291,7 +356,7 @@ function rwColRowsHTML(){
     const mark=state==='rw-got'?'<span class="streak-mark streak-mark-ok">✓</span>'
       :claimable?'<span class="streak-mark streak-mark-next">Touchez pour récupérer</span>'
       :state==='rw-due'?'<span class="streak-mark rw-mark-next">Gagné · à la suite</span>'
-      :state==='rw-next'?'<span class="streak-mark rw-mark-next">Prochaine victoire</span>':'';
+      :state==='rw-next'?'<span class="streak-mark rw-mark-next">Encore '+colLaurelToNext()+' laurier'+(colLaurelToNext()>1?'s':'')+'</span>':'';
     return '<div class="rw-step '+state+(claimable?' rw-claimable':'')+'" data-idx="'+i+'">'+
       '<div class="rw-step-num">'+(i+1)+'</div>'+
       rwStepVisual(step,state)+
@@ -316,7 +381,8 @@ function rwColRowsHTML(){
 function renderRewardsColonne(){
   const pane=document.getElementById('rw-pane-colonne');
   if(!pane)return;
-  pane.innerHTML='<div class="rw-col-strip" id="rw-col-strip">'+rwColRowsHTML()+'</div>';
+  pane.innerHTML=rwLaurelBarHTML()+
+    '<div class="rw-col-strip" id="rw-col-strip">'+rwColRowsHTML()+'</div>';
   // UN SEUL ÉCOUTEUR, POSÉ SUR LA BANDE. Trente paliers redessinés à chaque
   // encaissement, c'est trente écouteurs à reposer à chaque fois ; la
   // délégation survit au rendu suivant sans rien à recâbler.
@@ -637,6 +703,7 @@ function menuRewardsCardHTML(){
       '<div class="ms-next-txt">'+
         '<div class="ms-next-name">'+(next?escH(rwStepName(next)):'Colonne terminée')+'</div>'+
         '<div class="ms-next-elo">Colonne · '+colClaimed()+'/'+colTotal()+
+          ' · '+colLaurels()+' laurier'+(colLaurels()>1?'s':'')+
           (due?' · '+due+' à prendre':'')+'</div>'+
       '</div>'+
     '</div>'+

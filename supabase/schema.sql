@@ -156,9 +156,31 @@ language sql stable as $$
 $$;
 
 -- La fiche PUBLIQUE : ce que le classement, la recherche et le profil
--- d'un autre joueur ont le droit de montrer. Ni secret, ni `state`
--- (l'inventaire et les armées d'un joueur ne regardent que lui), mais
--- l'historique récent et les statistiques : c'est ce qu'on vient voir.
+-- d'un autre joueur ont le droit de montrer. Jamais le secret, jamais
+-- `state` EN ENTIER, mais l'historique récent et les statistiques :
+-- c'est ce qu'on vient voir.
+--
+-- DEUX CHOSES SORTENT MAINTENANT DE `state`, ET DEUX SEULEMENT.
+-- Un profil ne disait rien de ce que le joueur ALIGNE. On y lisait son
+-- ELO, sa forme et sa créature fétiche, puis on cliquait « Défier » sans
+-- avoir la moindre idée de ce qu'on allait avoir en face — alors que
+-- l'armée est justement ce qui distingue deux joueurs de même niveau.
+--
+--   pub_army      l'armée choisie : cinq identifiants de pièces. C'est ce
+--                 que l'adversaire va aligner, et il l'aligne DÉJÀ sous
+--                 les yeux de tout le monde à chaque partie.
+--   pub_unlocked  les pièces débloquées : le catalogue dont il dispose,
+--                 dont se déduisent les pouvoirs qu'il connaît.
+--
+-- CE QUI NE SORT PAS : l'inventaire (le nombre d'exemplaires de chaque
+-- créature), les perles, les tickets, les jokers, la progression des
+-- voies, les armées de l'IA, l'état du tutoriel. Rien de ce qui touche à
+-- la RESSOURCE d'un joueur — savoir qu'il n'a plus qu'un exemplaire de sa
+-- pièce maîtresse serait un renseignement, pas une présentation.
+--
+-- `->` et non `->>` : on renvoie les valeurs JSON telles quelles
+-- (tableau d'armées, tableau d'identifiants), et `coalesce` garantit un
+-- tableau vide plutôt qu'un `null` aux comptes qui n'ont rien enregistré.
 create or replace function public.ec_public(p public.ec_players) returns jsonb
 language sql stable as $$
   select jsonb_build_object(
@@ -170,6 +192,8 @@ language sql stable as $$
     'history', (select coalesce(jsonb_agg(e), '[]'::jsonb)
                 from (select e from jsonb_array_elements(p.history) e
                       offset greatest(0, jsonb_array_length(p.history) - 10)) s),
+    'pub_army', coalesce(p.state->'armies', '[]'::jsonb),
+    'pub_unlocked', coalesce(p.state->'unlocked_pieces', '[]'::jsonb),
     'created_at', p.created_at, 'last_seen_at', p.last_seen_at,
     'online', p.last_seen_at > now() - ec_online_window())
 $$;
@@ -406,12 +430,20 @@ begin
   end if;
 
   -- L'historique : les 30 dernières parties, classées ou non.
+  -- `replay` : de quoi REJOUER la partie coup par coup (les deux armées, la
+  -- couleur du joueur, la liste compacte des coups — voir replayNote dans
+  -- js/rules-engine.js). Une ligne d'historique ne portait qu'un résultat et
+  -- un écart d'ELO : on ne pouvait relire aucune partie, ni la sienne ni
+  -- celle de quelqu'un qu'on s'apprête à défier. Deux cents octets par
+  -- partie, trente parties gardées : c'est le poste le moins cher de la
+  -- table, et le seul qui rende l'historique consultable.
   entry := jsonb_build_object(
     'result', res, 'oldElo', p.elo, 'newElo', new_elo, 'delta', delta,
     'date', (extract(epoch from now()) * 1000)::bigint,
     'aiElo', opp_elo, 'ranked', ranked,
     'opp', p_payload->>'opp_name',
     'army', coalesce(p_payload->'army','[]'::jsonb),
+    'replay', coalesce(p_payload->'replay', 'null'::jsonb),
     'mode', coalesce(p_payload->>'mode','ia'));
   hist := (select coalesce(jsonb_agg(e), '[]'::jsonb)
              from (select e from jsonb_array_elements(p.history || jsonb_build_array(entry)) e

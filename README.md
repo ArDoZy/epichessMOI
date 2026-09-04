@@ -245,9 +245,9 @@ lire le titre pour savoir où l'on est.
 
 | Voie | Ce qui la fait avancer | Ce qu'elle donne | Où |
 |---|---|---|---|
-| **Récompense Journalière** | revenir, une fois par jour | cycle sans fin de 30 lots : coffres, perles, jokers | `DAILY_REWARDS`, `js/rewards.js` |
+| **Récompense Journalière** | revenir, une fois par jour | cycle sans fin de 16 lots : coffres, perles, jokers | `DAILY_REWARDS`, `js/data-pieces.js` |
 | **Diagonale de la Puissance** | l'ELO (parties classées) | créatures, échiquiers, petits lots | `js/voie.js`, `UNLOCK_TABLE` |
-| **Colonne des Victoires** | une victoire = un palier | 30 paliers : coffres et jokers | `VICTORY_COLUMN`, `js/rewards.js` |
+| **Colonne des Victoires** | des **lauriers** : 5 par palier, 5 à 10 par victoire selon sa longueur | 30 paliers : coffres et jokers | `VICTORY_COLUMN`, `LAUREL_SCALE`, `js/rewards.js` |
 | **Rangée de la Richesse** | les tickets des quêtes du jour | 25 paliers de perles (2→6) | `WEALTH_TIERS`, `js/rewards.js` |
 
 La « Voie des Victoires » S'APPELLE MAINTENANT la Diagonale de la Puissance.
@@ -292,6 +292,18 @@ Trois règles à ne pas casser :
   gagnée, et jamais en tutoriel ni en mode test. Toute nouvelle façon de
   terminer une partie qui passerait à côté d'`economySettle` la laisserait
   sur place.
+- **UN PALIER SE PAIE EN LAURIERS, ET UNE VICTOIRE NE VAUT PAS UNE VICTOIRE.**
+  La colonne avançait d'un cran par partie gagnée : étouffer l'adversaire en
+  huit coups et arracher une finale au soixante-dixième rapportaient
+  exactement la même chose, et le seul levier du joueur était le NOMBRE de
+  parties. Un palier coûte maintenant `LAURELS_PER_STEP` (5) lauriers, et
+  `laurelsForMoves()` en donne de 5 à 10 selon la longueur de la partie
+  (`LAUREL_SCALE` : ≤10 coups → 10, ≤15 → 9, ≤20 → 8, ≤30 → 7, ≤50 → 6, puis
+  5). Le barème se lit en COUPS, tels que le journal les numérote
+  (`gs.movePairs.length`), pas en demi-coups. Les comptes d'avant les lauriers
+  sont convertis une seule fois, à raison d'un palier complet par victoire
+  (`colLaurels()` lit l'ancienne clé `col_wins` quand `col_laurels` est
+  absente) : personne ne perd un cran en route.
 - **Les quêtes se remplissent par de vrais faits de jeu**, posés au seul
   endroit par lequel ces faits passent : `recordMove()` (déplacements et
   prises), `updateStatus()` (échec et mat), `economyOnPromotion()` (promotion)
@@ -1513,12 +1525,25 @@ navigation.
 - **La recherche** (`ec_search`) : les joueurs **en ligne d'abord**. On cherche
   quelqu'un pour le défier, autant voir tout de suite qui est disponible.
 - **Le profil public** (`ec_profile`) : rang, ELO, sommet, place mondiale,
-  parties, taux de victoire, meilleure série, créature fétiche et dix
-  dernières parties. Il emprunte toute la carrosserie de la page Comptes
+  parties, taux de victoire, meilleure série, créature fétiche, puis **ce
+  qu'il peut aligner** — son armée choisie, ses pièces débloquées, ses
+  pouvoirs — et ses **dix dernières parties, rejouables** (voir « Le mode
+  analyse » plus bas). Il emprunte toute la carrosserie de la page Comptes
   (`.acc-seal`, `.acc-stats`, `.acc-form`) : un profil, qu'il soit le sien ou
   celui d'un inconnu, doit se lire exactement pareil — c'est ce qui rend la
-  comparaison immédiate. `state` n'en sort jamais : l'inventaire et les armées
-  d'un joueur ne regardent que lui.
+  comparaison immédiate.
+
+  **DEUX CHOSES SORTENT DE `state`, ET DEUX SEULEMENT** : `pub_army` (l'armée
+  enregistrée) et `pub_unlocked` (les pièces débloquées, dont se déduisent les
+  pouvoirs). On partait au duel sans la moindre idée de ce qu'on allait avoir
+  en face, alors que l'armée est justement ce qui distingue deux joueurs de
+  même niveau — et qu'elle se voit de toute façon au premier coup de la
+  partie. Ce qui reste privé : l'inventaire (le nombre d'exemplaires), les
+  perles, les tickets, les jokers, la progression des voies, les armées de
+  l'IA, l'état du tutoriel. Savoir qu'un adversaire n'a plus qu'un exemplaire
+  de sa pièce maîtresse serait un renseignement, pas une présentation.
+  `ec_public` (`supabase/schema.sql`) et `ecMockPublic` (`js/server.js`)
+  doivent rester en miroir.
 - **Le défi**. Un profil qu'on ne peut que lire est une impasse : la seule
   chose qu'on ait envie de faire devant le profil de quelqu'un de meilleur que
   soi, c'est de l'affronter. `mpChallenge()` diffuse une invitation sur le
@@ -1537,6 +1562,58 @@ Les deux garde-fous du bouton COMBAT (armée complète, stock suffisant)
 s'appliquent **avant d'envoyer l'invitation** (`mpDuelArmyReady`) : rien de
 pire que de lancer un défi, de le faire accepter, et de découvrir alors qu'on
 n'a pas d'armée à aligner.
+
+## Le mode analyse : revoir une partie jouée (`js/replay.js`)
+
+Une ligne d'historique ne portait qu'un verdict et un écart d'ELO —
+« Défaite, −18 ». La partie elle-même, ses coups, l'armée d'en face, le moment
+où ça a basculé : rien de tout cela n'existait une seconde après le modal de
+fin. On ne pouvait donc ni relire sa propre défaite, ni voir comment joue
+quelqu'un qu'on s'apprête à défier.
+
+**Une partie est enregistrée sous sa forme la plus courte qui se rejoue.**
+`replayNote()` (`js/rules-engine.js`) note chaque coup en quatre chiffres — les
+coordonnées de départ et d'arrivée — suivis de `:<pieceId>` s'il y a eu
+promotion. `buildReplayRecord()` y joint les deux armées et la couleur du
+joueur. Deux cents octets par partie, trente parties gardées par compte : le
+poste le moins cher de la table, et le seul qui rende l'historique
+consultable. Le bloc voyage dans la ligne d'historique (`replay`, voir
+`ec_report_match`), donc les dix dernières parties de n'importe quel joueur
+sont rejouables depuis son profil.
+
+**La relecture repasse par le MOTEUR, pas par une copie des règles.**
+`replayFrames()` appelle `executeGameMove()`, le même que la partie en direct,
+et redemande les coups légaux à `getLegalMoves()` pour retrouver les drapeaux
+(roque, prise en passant, charge du Dresseur) que les deux cases seules ne
+disent pas. C'est la seule façon d'être certain qu'une partie relue se déroule
+comme elle s'est jouée — un second moteur écrit pour la relecture aurait
+divergé du vrai au premier pouvoir modifié. C'est aussi pour cela que le roque
+et les pouvoirs n'ont rien à noter dans l'enregistrement.
+
+**`REPLAYING` (`js/rules-engine.js`) est ce qui rend l'opération sans effet de
+bord.** Rejouer trente coups à la file ne doit ni jouer trente bruits de
+prise, ni allumer trente gerbes d'étincelles sur un plateau qui n'est pas à
+l'écran, ni faire avancer les quêtes du jour, ni réveiller l'IA, ni déclencher
+une fin de partie. Le drapeau coupe tout cela et ne laisse que la mutation du
+plateau et l'écriture de la notation ; il est toujours rabaissé dans un
+`finally`. **Toute nouvelle action de fin de coup doit le consulter** —
+oublier de le faire est le seul moyen de casser ce module.
+
+Un cas particulier : l'**ancrage du Garde de Pierre** ne passe pas par
+`executeGameMove()` (la pièce ne bouge pas). Il se reconnaît à cela — case de
+départ et case d'arrivée confondues — et se rejoue par `applyGardePierre()`.
+
+L'écran (`#page-replay`) ne réutilise rien de l'écran de partie, qui est marié
+à `GS`, à la sélection, au prémouvement et aux effets : il redessine
+soixante-quatre cases, les deux armées, la barre ⏮ ◀ ▶ ⏭ et le journal
+complet. On avance au bouton, à la flèche du clavier ou en balayant le
+plateau ; toucher un demi-coup du journal saute à sa position. Toutes les
+positions sont calculées à l'ouverture — parcourir une partie de quarante
+coups en avant et en arrière doit être instantané.
+
+Une partie enregistrée avant ce mode (ou dont une créature a disparu du
+catalogue) n'a pas de bloc `replay` : sa ligne reste dans la liste, désactivée
+et étiquetée, plutôt que de disparaître.
 
 ## Le multijoueur et la mise en veille de Supabase
 
@@ -1651,7 +1728,8 @@ server.js → data-pieces.js → piece-art.js → main.js → cube-nav.js → ac
 → ai-engine.js → game-flow.js → voie.js → economy-ui.js
 → rewards.js → rewards-ui.js → tuto-drill.js
 → tutorial.js
-→ pwa.js → account-ui.js → leaderboard.js → settings-admin.js → multiplayer.js
+→ pwa.js → account-ui.js → replay.js → leaderboard.js → settings-admin.js
+→ multiplayer.js
 → (script inline) initApp()
 ```
 
@@ -1663,6 +1741,12 @@ là-bas planterait le chargement (`const` est global).
 `leaderboard.js` peut venir n'importe où après `server.js` et `data-pieces.js`
 (il lit `vvGetRank` et `PIECES`) ; il est posé près de `account-ui.js` parce
 qu'il partage sa carrosserie.
+`replay.js` doit venir après `rules-engine.js`, `game-flow.js` et
+`game-render.js` — il rejoue les parties EN PASSANT PAR LE MOTEUR
+(`executeGameMove`, `buildGameBoard`, `applyGardePierre`) — et avant les deux
+écrans de profil, qui appellent `profileArsenalHTML()` et `replayListHTML()`.
+Ce ne sont que des appels à l'exécution, donc l'ordre réel n'est contraint que
+par ce dernier point ; le poser là le rend lisible.
 `economy.js` doit venir après `accounts.js` (il utilise `accGet`/`accSet`) et
 avant tous les modules de page qui affichent des stocks. `piece-art.js` doit
 venir juste après `data-pieces.js` : à peu près tous les rendus l'utilisent.
@@ -1762,6 +1846,11 @@ mais dans une version que Playwright refuse, le script le retrouve tout seul
 | Modifier la carte d'une pièce (ce qui s'y affiche, les deux boutons) | `pieceCardHTML()` / `wirePieceCards()` dans `js/piece-card.js` + section `[PCARD]` de `css/style.css` |
 | Modifier la fiche d'une pièce (bottom sheet : déplacement, pouvoir) | `openPieceSheet()` / `piecePowerHTML()` dans `js/piece-card.js` + le balisage `#piece-sheet` dans `index.html` + section `[PSHEET]` de `css/style.css` |
 | Ajouter l'icône d'un nouveau pouvoir | `POWER_ICONS` dans `js/piece-card.js` (clé = id de la pièce) |
+| Modifier les emplacements de l'armée du joueur (les deux rangées) | `pUpdSlots()` dans `js/armies.js` + `.comp-grid-cards` / `.ar-army-row-*` dans la section `[BUILDER]` de `css/style.css` (et son rappel dans `[MOBILE-APP]` / `[DESKTOP]`) |
+| Changer le barème des lauriers | `LAUREL_SCALE` / `LAURELS_PER_STEP` dans `js/rewards.js` — la jauge (`rwLaurelBarHTML`) et la cérémonie de fin de partie (`laurelBoxHTML`, `js/cinematics.js`) les lisent |
+| Changer ce qu'un profil montre d'un joueur | `profileArsenalHTML()` dans `js/replay.js` (armée, pièces, pouvoirs) + `ec_public` dans `supabase/schema.sql` ET `ecMockPublic()` dans `js/server.js`, qui doivent rester en miroir |
+| Modifier le mode analyse (relecture d'une partie) | `js/replay.js` + `#page-replay` dans `index.html` + section `[REPLAY]` de `css/style.css`. Toute nouvelle action de fin de coup doit consulter `REPLAYING` (`js/rules-engine.js`) |
+| Changer ce qu'une partie enregistre pour être rejouée | `replayNote()` et le champ `replay` de l'instantané dans `js/rules-engine.js`, `buildReplayRecord()` dans `js/replay.js`, `replay` dans le rapport de partie (`js/game-flow.js`) et l'entrée d'historique (`ec_report_match`) |
 | Changer quand le coffre de réapprovisionnement s'ouvre | `dailyChestMaybeOpen()` / `dailyChestBusy()` dans `js/economy-ui.js` |
 | Ajuster la mise en page téléphone d'un écran | section `[MOBILE-APP]` de `css/style.css` (en dernier dans le fichier, elle l'emporte sur les sections d'origine) |
 | Ajuster la mise en page ordinateur d'un écran | section `[DESKTOP]` de `css/style.css` (tout à la fin, après `[MOBILE-APP]`), sous `body.desk` |
