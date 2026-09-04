@@ -104,6 +104,25 @@ function playCombatCinematic(playerArmy,oppArmy,oppName,playerColor,onDone){
 // 2. ISSUE DU COMBAT
 // ----------------------------------------------------------------
 // report vient de economySettle() : {lost, returned, gained, streak, chest}.
+// La récolte de lauriers d'une victoire, et ce qu'elle ouvre. Rien du tout si
+// la partie n'est pas gagnée, ou si la colonne est déjà entièrement descendue :
+// une pastille « +0 laurier » ne récompense rien et ne fait qu'occuper la place.
+function laurelBoxHTML(report){
+  const l=report&&report.laurels;
+  if(!l||!l.gain)return '';
+  const ico=(typeof laurelIcon==='function')?laurelIcon(1.6):'';
+  const coups=(l.moves&&isFinite(l.moves))?l.moves+' coup'+(l.moves>1?'s':''):'';
+  const fini=(typeof colTotal==='function')&&l.steps>=colTotal();
+  const reste=(typeof colLaurelToNext==='function')?colLaurelToNext():0;
+  const suite=fini?'Colonne terminée'
+    :l.opened>0?(l.opened>1?l.opened+' paliers ouverts':'Palier ouvert')
+    :'Encore '+reste+' pour le palier';
+  return '<div class="tally-box tally-laurel"><div class="tally-lbl">Lauriers'+
+    (coups?' · '+coups:'')+'</div>'+
+    '<div class="tally-row"><span class="tally-q">+'+l.gain+'</span>'+ico+
+    '<span class="tally-note">'+suite+'</span></div></div>';
+}
+
 function playOutcomeCinematic(result,report,onDone){
   const verdict={win:'VICTOIRE',loss:'DÉFAITE',draw:'NULLE'}[result]||'FIN';
   const cls={win:'v-win',loss:'v-loss',draw:'v-draw'}[result]||'v-draw';
@@ -128,6 +147,14 @@ function playOutcomeCinematic(result,report,onDone){
   // coffre selon la série du jour ; elle fait maintenant avancer la COLONNE
   // DES VICTOIRES (js/rewards.js), dont le palier s'encaisse à la main sur sa
   // page. Ce n'est donc plus un gain de fin de partie à récapituler.
+  //
+  // LES LAURIERS, EUX, SE COMPTENT ICI. Leur montant dépend de la LONGUEUR de
+  // la partie (de cinq à dix, voir LAUREL_SCALE dans js/rewards.js) : c'est la
+  // seule récompense du jeu que la manière de gagner fait varier, et elle
+  // serait invisible si le joueur ne la voyait pas tomber à l'écran. La ligne
+  // dit le nombre de coups, sinon on ne peut pas comprendre pourquoi la même
+  // victoire vaut dix un jour et six le lendemain.
+  boxes+=laurelBoxHTML(report);
 
   // Braises pour une défaite, poussière d'or pour une victoire.
   const moteColor=result==='win'?'#e6c576':result==='loss'?'#d9552f':'#8698a1';

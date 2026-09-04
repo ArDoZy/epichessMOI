@@ -84,11 +84,30 @@ function pAutosave(){
 }
 
 // ----------------------------------------------------------------
-// LES CINQ EMPLACEMENTS, TOUT EN HAUT — format carte (aspect-ratio 3/4,
-// voir .comp-grid-cards dans css/style.css [ARMIES]). Une pièce posée
-// remplit tout l'emplacement, comme sur sa carte dans le catalogue.
-// PAS DE CROIX : on retire une pièce en appuyant sur son emplacement.
+// LES CINQ EMPLACEMENTS, TOUT EN HAUT — SUR DEUX RANGÉES
 // ----------------------------------------------------------------
+// L'ARMÉE CHOISIE EST LE SUJET DE CET ÉCRAN, ET ELLE DOIT ÊTRE CE QU'ON Y
+// VOIT DE PLUS GRAND. Les cinq emplacements ont longtemps formé UNE rangée de
+// cinq colonnes égales : sur un téléphone, chacun faisait un cinquième de la
+// largeur, c'est-à-dire moins qu'une carte du catalogue juste en dessous.
+// L'écran mettait donc en avant ce qu'on n'a pas encore engagé et rapetissait
+// ce qu'on a choisi — exactement l'inverse de ce qu'il doit faire.
+//
+// Deux rangées, et la hiérarchie du plateau :
+//   1. Monarque + Général, en grand — le Monarque le plus large des deux,
+//      c'est la pièce qu'on perd ou qu'on sauve.
+//   2. Les trois pièces libres, dans l'ordre de la composition : pièce 1 à
+//      gauche, pièce 3 à droite. Cet ordre N'EST PAS décoratif — c'est lui
+//      qui décide de leur place sur le plateau (derivePlacements,
+//      js/builder.js), d'où le glisser-déposer entre elles.
+// Les trois pièces libres restent plus grandes qu'une carte du catalogue (un
+// tiers de la largeur contre un quart) : même la plus petite pièce de l'armée
+// pèse plus lourd à l'écran que la plus grosse carte du catalogue.
+//
+// Format carte (voir .comp-grid-cards dans css/style.css [BUILDER]) : une
+// pièce posée remplit tout l'emplacement, comme sur sa carte dans le
+// catalogue. PAS DE CROIX : on retire une pièce en appuyant sur son
+// emplacement.
 function pUpdSlots(){
   const g=document.getElementById('ar-comp-grid');if(!g)return;
   const all=pExtraPieces();
@@ -101,9 +120,12 @@ function pUpdSlots(){
        '<div class="cs-val">'+p.value+' pts</div>'+
      '</div>'
     :'<div class="comp-slot'+(req?' cs-req '+cls:' cs-free')+'"><div class="cs-label">'+lbl+'</div><div class="cs-ph">'+(req?'':'+')+'</div></div>';
-  let h=mk('Monarque','Monarque',pArmy.mon,'mon',null,true)
-       +mk('Général','Général',pArmy.gen,'gen',null,true);
-  for(let i=0;i<3;i++)h+=mk(all[i]?.class||'','Libre',all[i],'pc',all[i]?i:null,false);
+  let h='<div class="ar-army-row ar-army-row-1">'+
+          mk('Monarque','Monarque',pArmy.mon,'mon',null,true)+
+          mk('Général','Général',pArmy.gen,'gen',null,true)+
+        '</div><div class="ar-army-row ar-army-row-2">';
+  for(let i=0;i<3;i++)h+=mk(all[i]?.class||'','Pièce '+(i+1),all[i],'pc',all[i]?i:null,false);
+  h+='</div>';
   g.innerHTML=h;
   g.querySelectorAll('.comp-slot.filled[data-pid]').forEach(el=>{
     el.addEventListener('click',()=>{

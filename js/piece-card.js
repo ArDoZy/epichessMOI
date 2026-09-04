@@ -9,12 +9,13 @@
 //
 // LE PRINCIPE : la carte IDENTIFIE, la fiche EXPLIQUE.
 //
-//   Sur la carte, et rien de plus, dans cet ordre de lecture :
-//     1. le logo de la pièce      (le plus gros élément)
-//     2. son nom                  (très visible)
-//     3. sa valeur en points
-//     4. le stock possédé
-//   Format PORTRAIT et compact : on en voit huit à l'écran d'un téléphone,
+//   Sur la carte, et rien de plus :
+//     · deux BULLES dans les coins du haut — le coût à gauche, le nombre
+//       d'exemplaires possédés à droite —, pleines, dans la couleur de la
+//       classe, en blanc : deux chiffres qui se lisent à bout de bras.
+//     · le LOGO, en grand, qui prend tout le reste de la carte.
+//     · le NOM, tout en bas.
+//   Format PORTRAIT et compact : on en voit douze à l'écran d'un téléphone,
 //   ce qui permet de parcourir le catalogue au pouce sans jamais défiler à
 //   l'aveugle.
 //
@@ -127,14 +128,15 @@ function piecePowerHTML(p){
 // LA CARTE
 // ----------------------------------------------------------------
 // opts :
-//   locked     true  → la pièce n'est pas débloquée (contenu voilé, cadenas)
-//   lockLabel  ce qu'il faut pour l'obtenir (« Coffre », « Bronze (150 ELO) »)
+//   locked     true  → la pièce n'est pas débloquée (silhouette, cadenas)
+//   lockLabel  ce qu'il faut pour l'obtenir (« Coffre », « 480 ELO »)
 //   selected   true  → déjà engagée dans l'armée en cours
-//   actions    false → carte purement décorative (aucun bouton à l'appui)
 //
-// Le stock n'est affiché que pour les pièces qui se possèdent en exemplaires
-// (isOwnablePiece) : écrire « 0 » sous une pièce qui ne se stocke pas serait
-// un mensonge.
+// La bulle de stock n'est affichée que pour les pièces qui se possèdent en
+// exemplaires (isOwnablePiece) : écrire « 0 » sur une pièce qui ne se stocke
+// pas serait un mensonge. Une pièce verrouillée n'en a pas non plus — on ne
+// possède rien de ce qu'on n'a pas débloqué —, mais elle garde sa bulle de
+// COÛT : c'est elle qui dit si la créature tiendra un jour dans une armée.
 function pieceCardHTML(p,opts){
   const o=opts||{};
   const ownable=(typeof isOwnablePiece==='function')&&isOwnablePiece(p.id);
@@ -145,7 +147,7 @@ function pieceCardHTML(p,opts){
   if(o.locked)cls.push('pcard-locked');
   if(o.selected)cls.push('pcard-sel');
   if(out&&!o.locked)cls.push('pcard-out');
-  // UNE SEULE ANATOMIE, VERROUILLÉE OU NON — logo, nom, pied.
+  // UNE SEULE ANATOMIE, VERROUILLÉE OU NON — deux bulles, un logo, un nom.
   // Avant, une carte verrouillée n'avait plus rien de commun avec une carte
   // débloquée : logo et nom passaient sous un `blur(5px)`, et un voile noir
   // couvrait la carte entière pour y poser un cadenas et un pavé de texte.
@@ -153,27 +155,38 @@ function pieceCardHTML(p,opts){
   // lisait plus comme une grille — et surtout, ON NE PEUT PAS DÉSIRER CE
   // QU'ON NE VOIT PAS : le voile supprimait précisément l'image qui donne
   // envie de débloquer la créature.
-  // Désormais la structure ne bouge pas d'un pixel : le logo devient une
-  // SILHOUETTE (dégrisée, pas floutée), le nom reste parfaitement lisible, et
-  // seul le PIED change de contenu — la valeur et le stock, qui n'ont pas de
-  // sens pour une pièce qu'on ne possède pas, cèdent la place au palier à
-  // atteindre. Le cadenas se réduit à une pastille posée sur le logo.
+  //
+  // LES DEUX CHIFFRES ONT QUITTÉ LE PIED POUR LES COINS DU HAUT. Ils y
+  // formaient une troisième ligne, sous le nom, qui volait au logo la moitié
+  // de la carte : à quatre cartes par rangée sur un téléphone, il ne restait
+  // au dessin qu'une vignette. Le coût est maintenant en haut à GAUCHE, le
+  // nombre d'exemplaires en haut à DROITE — deux pastilles pleines, dans la
+  // couleur de la classe, texte blanc, lisibles à bout de bras — et tout le
+  // reste de la carte appartient au logo, avec le nom posé tout en bas.
+  //
+  // Deux pastilles pleines dispensent d'ailleurs du liseré de classe qui
+  // courait en haut de la carte : la couleur est déjà là, deux fois.
+  const bulles=
+    '<span class="pcard-bub pcard-bub-cost" title="Valeur : '+p.value+' points">'+p.value+'</span>'+
+    (ownable&&!o.locked
+      ? '<span class="pcard-bub pcard-bub-qty'+(out?' pcard-bub-out':'')+
+        '" title="'+have+' en stock'+(need?', '+need+' requis pour une armée':'')+'">'+have+'</span>'
+      : '');
   return '<article class="'+cls.join(' ')+'" data-id="'+p.id+'" tabindex="0" '+
-      'role="button" aria-label="'+escH(p.name)+
+      'role="button" aria-label="'+escH(p.name)+' — '+p.value+' points'+
+      (ownable&&!o.locked?', '+have+' en stock':'')+
       (o.locked?' — verrouillée'+(o.lockLabel?' : '+escH(o.lockLabel):''):'')+'">'+
-    // 1. LOGO (+ le cadenas, posé dessus et non sur toute la carte)
+    // 1. LES DEUX BULLES, dans les coins du haut
+    bulles+
+    // 2. LE LOGO — il occupe tout ce que la carte n'a pas donné aux bulles et
+    //    au nom : c'est par lui qu'on reconnaît une pièce avant de la lire.
     '<span class="pcard-logo">'+pieceIcon(p.id,'n')+
       (o.locked?'<span class="pcard-lockbadge"><span class="lock-icon"></span></span>':'')+
     '</span>'+
-    // 2. NOM — le VRAI nom, y compris verrouillé
+    // 3. LE NOM, TOUT EN BAS — le VRAI nom, y compris verrouillé
     '<div class="pcard-name">'+escH(p.name)+'</div>'+
-    // 3. VALEUR · STOCK   —   ou, verrouillée, le palier à atteindre
-    '<div class="pcard-foot">'+
-      (o.locked
-        ? (o.lockLabel?'<span class="pcard-req">'+escH(o.lockLabel)+'</span>':'')
-        : '<span class="pcard-val">'+p.value+'</span>'+
-          (ownable?'<span class="pcard-stock'+(out?' pcard-stock-out':'')+'">×'+have+'</span>':''))+
-    '</div>'+
+    // 4. Le palier à atteindre, et rien d'autre, sur une carte verrouillée.
+    (o.locked&&o.lockLabel?'<div class="pcard-req">'+escH(o.lockLabel)+'</div>':'')+
     // Les deux actions, révélées au premier appui sur la carte. Elles sont
     // posées SOUS la carte et par-dessus ses voisines (position absolue) :
     // la grille ne bouge pas d'un pixel quand on ouvre une carte.
@@ -292,31 +305,84 @@ document.addEventListener('keydown',e=>{
   if(sheet&&sheet.classList.contains('show')){e.stopPropagation();closePieceSheet();}
 },true);
 
-// Glissement vers le bas sur la poignée ou l'en-tête : le geste attendu d'un
-// bottom sheet. En dessous de 60 px, la feuille revient en place.
+// LE GLISSEMENT VERS LE BAS FERME LA FICHE, DEPUIS N'IMPORTE OÙ.
+//
+// Il ne partait que de la POIGNÉE et de l'EN-TÊTE — quatre pixels de ruban et
+// une ligne de titre —, au motif que le corps de la fiche défile. Mais le
+// corps est justement l'endroit où le pouce se trouve : on lit le schéma de
+// déplacement, on lit le pouvoir, et pour refermer il fallait remonter viser
+// la croix ou une poignée de 4 px de haut. Le geste que tout le monde essaie
+// d'abord — tirer la feuille vers le bas, là où on la tient — ne faisait rien.
+//
+// Il part donc de partout, avec la seule règle qui rend les deux gestes
+// compatibles : ON NE TIRE LA FEUILLE QUE QUAND LE CORPS EST DÉJÀ EN HAUT DE
+// SON DÉFILEMENT. Une fiche défilée vers le bas défile normalement ; arrivée
+// en butée haute, le geste suivant vers le bas emmène la feuille. C'est le
+// comportement de tous les bottom sheets, et il ne coûte pas une ligne de
+// défilement à qui lit.
+//
+// La poignée et l'en-tête, eux, tirent TOUJOURS : ils ne défilent pas, il n'y
+// a donc aucune ambiguïté à lever.
 (function(){
   const panel=document.querySelector('#piece-sheet .psheet-panel');
   if(!panel)return;
-  let y0=null,dy=0;
+  const body=document.getElementById('psheet-body')||document.querySelector('#piece-sheet .psheet-body');
+  let y0=null,x0=null,dy=0,armed=false,decided=false;
   const start=e=>{
-    if(e.touches.length!==1)return;
-    // On ne capte que la poignée et l'en-tête : le corps de la fiche défile.
-    if(!e.target.closest('.psheet-grab,.psheet-head'))return;
-    y0=e.touches[0].clientY;dy=0;panel.style.transition='none';
+    if(e.touches.length!==1){y0=null;return;}
+    const t=e.touches[0];
+    y0=t.clientY;x0=t.clientX;dy=0;decided=false;
+    // La zone de préhension franche (poignée, en-tête) tire sans condition.
+    // Ailleurs, on n'arme le geste que si le contenu est déjà en butée haute.
+    const grab=e.target.closest('.psheet-grab,.psheet-head');
+    armed=!!grab||!body||body.scrollTop<=0;
+    panel.style.transition='none';
   };
   const move=e=>{
-    if(y0===null)return;
-    dy=Math.max(0,e.touches[0].clientY-y0);
+    if(y0===null||!armed)return;
+    const t=e.touches[0];
+    const d=t.clientY-y0;
+    // Un geste HORIZONTAL (on fait défiler le schéma de déplacement de côté)
+    // ou vers le HAUT n'est pas une fermeture : on rend la main une bonne
+    // fois pour toutes, plutôt que de tressauter à chaque image.
+    if(!decided){
+      if(Math.abs(d)<6&&Math.abs(t.clientX-x0)<6)return;
+      decided=true;
+      if(d<=0||Math.abs(t.clientX-x0)>Math.abs(d)){armed=false;return;}
+    }
+    dy=Math.max(0,d);
     panel.style.transform='translateY('+dy+'px)';
   };
   const end=()=>{
     if(y0===null)return;
     panel.style.transition='';panel.style.transform='';
-    if(dy>60)closePieceSheet();
-    y0=null;dy=0;
+    if(armed&&dy>60)closePieceSheet();
+    y0=null;x0=null;dy=0;armed=false;decided=false;
   };
   panel.addEventListener('touchstart',start,{passive:true});
   panel.addEventListener('touchmove',move,{passive:true});
   panel.addEventListener('touchend',end);
   panel.addEventListener('touchcancel',end);
+
+  // LA SOURIS AUSSI. La fiche s'ouvre sur ordinateur (clic droit, « Infos »),
+  // et le même geste doit y marcher : on attrape la feuille et on la descend.
+  // Le bouton principal seulement, et jamais depuis un bouton de la fiche.
+  let my0=null,mdy=0,mDown=false;
+  panel.addEventListener('mousedown',e=>{
+    if(e.button!==0)return;
+    if(e.target.closest('button,a,input'))return;
+    if(!e.target.closest('.psheet-grab,.psheet-head')&&body&&body.scrollTop>0)return;
+    mDown=true;my0=e.clientY;mdy=0;panel.style.transition='none';
+  });
+  document.addEventListener('mousemove',e=>{
+    if(!mDown)return;
+    mdy=Math.max(0,e.clientY-my0);
+    if(mdy>0)panel.style.transform='translateY('+mdy+'px)';
+  });
+  document.addEventListener('mouseup',()=>{
+    if(!mDown)return;
+    mDown=false;panel.style.transition='';panel.style.transform='';
+    if(mdy>60)closePieceSheet();
+    my0=null;mdy=0;
+  });
 })();

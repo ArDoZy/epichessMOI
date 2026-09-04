@@ -842,19 +842,21 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
   // rétrécit de ce qu'il faut (--game-chrome), et c'est ce que ce contrôle
   // vérifie — l'ancienne feuille du journal, elle, coupait « Abandonner » en
   // deux sur les écrans courts.
-  await step('sur téléphone, le panneau prend sa place sans pousser Abandonner dehors',async()=>{
+  await step('sur téléphone, ouvrir un panneau ne déforme et ne déplace rien',async()=>{
     await page.setViewportSize({width:390,height:780});
     await page.waitForTimeout(500);
     const mesure=async()=>page.evaluate(()=>{
       const b=document.getElementById('game-board').getBoundingClientRect();
       const q=document.getElementById('game-quit').getBoundingClientRect();
       const o=document.getElementById('game-tools').getBoundingClientRect();
+      const st=document.getElementById('game-status').getBoundingClientRect();
       const p=document.getElementById('panel-history');
       const pr=p.hidden?null:p.getBoundingClientRect();
       return{
         plateau:{t:b.top,b:b.bottom,l:b.left,r:b.right,h:b.height},
         quitter:{t:q.top,b:q.bottom},
         outils:{t:o.top,b:o.bottom},
+        statut:{t:st.top,b:st.bottom},
         panneau:pr?{t:pr.top,b:pr.bottom,l:pr.left,r:pr.right,h:pr.height}:null,
         ecran:innerHeight,
       };
@@ -879,9 +881,28 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
       throw new Error('panneau ouvert, « Abandonner » sort de l écran de '+Math.round(ouvert.quitter.b-ouvert.ecran)+' px');
     if(ouvert.plateau.b>ouvert.ecran+1)
       throw new Error('panneau ouvert, le plateau sort de l écran');
-    // Le plateau a bien CÉDÉ la place, il n'a pas été recouvert.
-    if(ouvert.plateau.h>=ferme.plateau.h)
-      throw new Error('le plateau ne rétrécit pas quand le panneau s ouvre');
+    // RIEN NE BOUGE. La zone poussait un `min-height` en s'ouvrant : le
+    // plateau rétrécissait d'autant et la barre de statut remontait de
+    // plusieurs dizaines de pixels. Ouvrir le journal secouait tout l'écran,
+    // au milieu d'une partie, pour lire un coup. Le panneau occupe maintenant
+    // l'espace qui EXISTE DÉJÀ entre la barre de statut et « Abandonner »
+    // (voir [GAME-PANEL] dans css/style.css).
+    if(Math.abs(ouvert.plateau.h-ferme.plateau.h)>1)
+      throw new Error('le plateau change de taille quand le panneau s ouvre : '+
+        Math.round(ferme.plateau.h)+' → '+Math.round(ouvert.plateau.h));
+    if(Math.abs(ouvert.plateau.t-ferme.plateau.t)>1)
+      throw new Error('le plateau se déplace quand le panneau s ouvre');
+    if(Math.abs(ouvert.statut.t-ferme.statut.t)>1)
+      throw new Error('la barre de statut se déplace quand le panneau s ouvre : '+
+        Math.round(ferme.statut.t)+' → '+Math.round(ouvert.statut.t));
+    if(Math.abs(ouvert.quitter.t-ferme.quitter.t)>1)
+      throw new Error('« Abandonner » se déplace quand le panneau s ouvre');
+    // ET IL REMPLIT TOUT L'ESPACE DISPONIBLE : du bas de la barre de statut
+    // au haut d'« Abandonner », à l'écart de la colonne près.
+    if(ouvert.panneau.t<ouvert.statut.b-1||ouvert.panneau.t>ouvert.statut.b+14)
+      throw new Error('le panneau ne commence pas sous la barre de statut');
+    if(ouvert.panneau.b>ouvert.quitter.t+1||ouvert.panneau.b<ouvert.quitter.t-16)
+      throw new Error('le panneau ne descend pas jusqu\'à « Abandonner »');
     await page.click('#panel-history [data-close-panel]');
     await page.waitForTimeout(450);
     const refeme=await mesure();
@@ -989,7 +1010,7 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
         nextVisible:!!nb&&nb.top>=hb.top-2&&nb.bottom<=hb.bottom+2,
       };
     });
-    if(r.n!==30)throw new Error(r.n+' lots au lieu de 30');
+    if(r.n!==16)throw new Error(r.n+' lots au lieu de 16');
     // dr_idx=2 : les deux premiers jours sont pris, le troisième est celui du jour.
     if(r.etats.join(',')!=='won,won,next,far,far')throw new Error('états : '+r.etats.join(','));
     if(r.noms.join(' | ')!=='Coffre Pion | 10 perles | Coffre Cavalier')
@@ -1000,13 +1021,13 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
     await page.waitForSelector('#daily-modal.show',{state:'hidden',timeout:8000});
   });
 
-  // Le cycle est SANS FIN : le trente-et-unième jour revient au premier lot,
+  // Le cycle est SANS FIN : le dix-septième jour revient au premier lot,
   // sans remettre quoi que ce soit à zéro. C'est la promesse de la journalière.
-  await step('le cycle journalier repart au premier lot après le trentième',async()=>{
+  await step('le cycle journalier repart au premier lot après le seizième',async()=>{
     const bad=await page.evaluate(()=>{
       const out=[];
       const t=dailyRewardTotal();
-      if(t!==30)out.push('le cycle fait '+t+' lots au lieu de 30');
+      if(t!==16)out.push('le cycle fait '+t+' lots au lieu de 16');
       accSet('dr_idx',t);accSet('dr_day',null);
       if(dailyRewardCursor()!==0)out.push('le cycle ne revient pas à son premier lot : '+dailyRewardCursor());
       if(dailyRewardCycle()!==2)out.push('le numéro de cycle ne s\'incrémente pas : '+dailyRewardCycle());
@@ -1247,7 +1268,7 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
         serie[id]=lire('#daily-scroll .streak-row[data-chest="'+id+'"]');
       });
       closeDailyModal();
-      accSet('col_wins',3);accSet('col_claimed',0);
+      accSet('col_laurels',15);accSet('col_claimed',0);
       openRewardsPage('colonne');
       serie.dame=lire('#rw-col-strip .rw-step[data-idx="21"]');         // Coffre Dame
       serie.roi=lire('#rw-col-strip .rw-step[data-idx="29"]');          // Coffre Roi
@@ -1292,7 +1313,7 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
   // le dit.
   await step('un palier se prend en le touchant, sans bandeau au-dessus',async()=>{
     const r=await page.evaluate(()=>{
-      accSet('col_wins',5);accSet('col_claimed',4);accSet('tickets',0);accSet('rich_claimed',1);
+      accSet('col_laurels',25);accSet('col_claimed',4);accSet('tickets',0);accSet('rich_claimed',1);
       openRewardsPage('colonne');
       const colonne=document.getElementById('rw-pane-colonne');
       const du=colonne.querySelector('.rw-step.rw-claimable');
@@ -1378,31 +1399,46 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
     if(!r.quetesEnBas)throw new Error('les quêtes du jour ne sont pas sous la rangée');
   });
 
-  // L'ORDRE DES TRENTE LOTS JOURNALIERS est une spécification à part entière :
+  // L'ORDRE DES SEIZE LOTS JOURNALIERS est une spécification à part entière :
   // il se vérifie en entier, sinon une inversion passerait inaperçue.
-  await step('les trente lots du cycle journalier sont dans l\'ordre annoncé',async()=>{
+  await step('les seize lots du cycle journalier sont dans l\'ordre annoncé',async()=>{
     const lus=await page.evaluate(()=>DAILY_REWARDS.map(s=>s.chest||(s.pearls?'p'+s.pearls:'j'+s.jokers)));
-    const attendu=['pion','p10','cavalier','pion','j5','fou','pion','p10','cavalier','pion',
-                   'j5','fou','pion','p10','tour','pion','j5','cavalier','pion','p10',
-                   'fou','pion','j5','cavalier','pion','p10','fou','pion','j5','tour'];
-    if(lus.length!==30)throw new Error(lus.length+' lots au lieu de 30');
+    const attendu=['pion','p10','cavalier','pion','j5','fou','tour','p10',
+                   'pion','j5','cavalier','pion','p10','fou','tour','j5'];
+    if(lus.length!==16)throw new Error(lus.length+' lots au lieu de 16');
     if(lus.join(',')!==attendu.join(','))
       throw new Error('ordre du cycle journalier :\n  '+lus.join(',')+'\nau lieu de\n  '+attendu.join(','));
   });
 
-  // LA COLONNE DES VICTOIRES est la voie des victoires : elle avance d'un cran
-  // à CHAQUE victoire, sans verrou quotidien, et ne se remet jamais à zéro.
-  await step('la colonne des victoires avance à chaque victoire',async()=>{
+  // LA COLONNE DES VICTOIRES SE PAIE EN LAURIERS : cinq par palier, et une
+  // victoire en rapporte de cinq à dix selon sa LONGUEUR. Une victoire très
+  // longue vaut donc exactement un palier, une victoire éclair en vaut deux.
+  // Rien n'y recule jamais : une défaite ne retire pas un laurier.
+  await step('la colonne des victoires se paie en lauriers',async()=>{
     const r=await page.evaluate(()=>{
-      accSet('col_wins',0);accSet('col_claimed',0);accSet('win_streak',0);
+      accSet('col_laurels',0);accSet('col_claimed',0);accSet('win_streak',0);
+      // Quatre victoires longues (aucun journal de coups → longueur maximale
+      // supposée) : cinq lauriers chacune, donc quatre paliers tout rond.
       for(let i=0;i<4;i++)economySettle('win',{board:[],promoGains:{}});
-      const avantDefaite=colWins();
+      const avantDefaite=colSteps();
       economySettle('loss',{board:[],promoGains:{}});
-      return{avantDefaite,apresDefaite:colWins(),dus:colPending()};
+      const apresDefaite=colSteps();
+      // Une victoire ÉCLAIR : dix coups au journal, donc dix lauriers, donc
+      // deux paliers d'un coup.
+      const court=Array.from({length:10},()=>['a','b']);
+      economySettle('win',{board:[],promoGains:{},movePairs:court});
+      return{avantDefaite,apresDefaite,apresEclair:colSteps(),
+             lauriers:colLaurels(),dus:colPending(),
+             bareme:[8,10,12,15,18,20,25,30,40,50,51,90].map(n=>laurelsForMoves(n))};
     });
-    if(r.avantDefaite!==4)throw new Error('la colonne a avancé de '+r.avantDefaite+' crans au lieu de 4');
+    if(r.avantDefaite!==4)throw new Error('la colonne a avancé de '+r.avantDefaite+' paliers au lieu de 4');
     if(r.apresDefaite!==4)throw new Error('une défaite a fait reculer la colonne : '+r.apresDefaite);
-    if(r.dus!==4)throw new Error(r.dus+' paliers dus au lieu de 4');
+    if(r.apresEclair!==6)throw new Error('une victoire en 10 coups n\'a pas ouvert deux paliers : '+r.apresEclair);
+    if(r.lauriers!==30)throw new Error(r.lauriers+' lauriers au lieu de 30');
+    if(r.dus!==6)throw new Error(r.dus+' paliers dus au lieu de 6');
+    const attendu=[10,10,9,9,8,8,7,7,6,6,5,5];
+    if(r.bareme.join(',')!==attendu.join(','))
+      throw new Error('barème des lauriers : '+r.bareme.join(',')+' au lieu de '+attendu.join(','));
   });
 
   // L'ORDRE DES TRENTE PALIERS est la spécification du système : il se vérifie
@@ -1421,7 +1457,7 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
   // VRAIE cérémonie — la même qu'un coffre journalier ou acheté au Magasin.
   await step('un palier de coffre s\'encaisse et ouvre sa cérémonie',async()=>{
     await page.evaluate(()=>{
-      accSet('col_wins',2);accSet('col_claimed',0);accSet('jokers',0);
+      accSet('col_laurels',10);accSet('col_claimed',0);accSet('jokers',0);
       // Chaque voie a SA pastille : celle de la colonne ne compte que ses
       // paliers dus. On neutralise quand même la rangée et les jokers, dont
       // la pastille voisine se lit dans le même coup d'œil.
@@ -1462,7 +1498,7 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
   await step('un palier de jokers se convertit en exemplaires de son choix',async()=>{
     const r=await page.evaluate(()=>{
       // Le troisième palier de la colonne, c'est 3 jokers.
-      accSet('col_wins',3);accSet('col_claimed',2);accSet('jokers',0);
+      accSet('col_laurels',15);accSet('col_claimed',2);accSet('jokers',0);
       openRewardsPage('colonne');
       rewardsClaimColumn();
       return{jokers:jokerBalance(),ouverte:document.getElementById('joker-modal').classList.contains('show')};
@@ -1606,11 +1642,11 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
     await page.goto('http://localhost:'+PORT+'/test',{waitUntil:'domcontentloaded'});
     await page.waitForTimeout(1200);
     const r=await page.evaluate(()=>{
-      const avantCol=colWins(),avantTik=ticketBalance();
+      const avantCol=colSteps(),avantTik=ticketBalance();
       colNoteWin();
       questNote('win',null,1);
       ticketAdd(50);
-      return{avantCol,apresCol:colWins(),avantTik,apresTik:ticketBalance()};
+      return{avantCol,apresCol:colSteps(),avantTik,apresTik:ticketBalance()};
     });
     if(r.apresCol!==r.avantCol)throw new Error('le mode test a fait avancer la colonne');
     if(r.apresTik!==r.avantTik)throw new Error('le mode test a crédité des tickets');
@@ -2813,6 +2849,271 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
       return out;
     });
     if(r.length)throw new Error(r.join(' · '));
+  });
+
+
+  // ================================================================
+  // LA COMPOSITION D'ARMÉE : L'ARMÉE CHOISIE EST LE SUJET DE L'ÉCRAN
+  // ================================================================
+  // Les cinq emplacements ont été cinq colonnes égales en tête de page : sur
+  // un téléphone, chacun faisait MOINS de large qu'une carte du catalogue
+  // juste en dessous. L'écran mettait donc en avant ce qu'on n'a pas encore
+  // engagé et rapetissait ce qu'on a choisi. Ce test tient la hiérarchie
+  // dans les deux sens : Monarque > Général > pièces libres > cartes.
+  await step('l\'armée choisie est plus grande que le catalogue, sur deux rangées',async()=>{
+    await page.setViewportSize({width:390,height:844});
+    await page.evaluate(()=>{
+      // Le catalogue doit être PEUPLÉ : la page ne montre que les créatures
+      // débloquées, et une grille de trois cartes ne dirait rien du nombre de
+      // colonnes.
+      VV_UNLOCKED=new Set(PIECES.map(p=>p.id));
+      if(typeof vvSaveUnlocked==='function')vvSaveUnlocked(VV_UNLOCKED);
+      PIECES.forEach(p=>{if(typeof invAdd==='function')invAdd(p.id,4);});
+      if(typeof renderArmiesPage==='function')renderArmiesPage();
+      if(typeof pRandomize==='function')pRandomize();
+      showPage('page-armies');
+    });
+    await page.waitForTimeout(600);
+    const r=await page.evaluate(()=>{
+      const g=document.getElementById('ar-comp-grid');
+      const box=g.getBoundingClientRect();
+      const r1=g.querySelector('.ar-army-row-1'),r2=g.querySelector('.ar-army-row-2');
+      if(!r1||!r2)return{err:'les deux rangées n\'existent pas'};
+      const w=el=>Math.round(el.getBoundingClientRect().width);
+      const s1=[...r1.children],s2=[...r2.children];
+      const cards=[...document.querySelectorAll('#ar-cards-container .pcard')];
+      const grid=document.querySelector('#ar-cards-container .cards-grid');
+      // Combien de cartes tiennent sur la PREMIÈRE rangée du catalogue.
+      let parRangee=0;
+      if(cards.length){
+        const y=Math.round(cards[0].getBoundingClientRect().top);
+        parRangee=cards.filter(c=>Math.abs(Math.round(c.getBoundingClientRect().top)-y)<3).length;
+      }
+      const debord=[...g.querySelectorAll('.comp-slot')]
+        .filter(el=>{const b=el.getBoundingClientRect();
+                     return b.right>box.right+1||b.left<box.left-1;}).length;
+      return{
+        rangee1:s1.length,rangee2:s2.length,
+        mon:w(s1[0]),gen:w(s1[1]),libre:w(s2[0]),
+        carte:cards.length?w(cards[0]):0,parRangee,
+        colonnes:grid?getComputedStyle(grid).gridTemplateColumns.split(' ').length:0,
+        debord,
+      };
+    });
+    if(r.err)throw new Error(r.err);
+    if(r.rangee1!==2)throw new Error(r.rangee1+' emplacements sur la première rangée au lieu de 2');
+    if(r.rangee2!==3)throw new Error(r.rangee2+' emplacements sur la deuxième rangée au lieu de 3');
+    if(r.debord)throw new Error(r.debord+' emplacement(s) débordent du cadre de l\'armée');
+    if(!(r.mon>r.gen))throw new Error('le Monarque ('+r.mon+') n\'est pas plus large que le Général ('+r.gen+')');
+    if(!(r.gen>r.libre))throw new Error('le Général ('+r.gen+') n\'est pas plus large qu\'une pièce libre ('+r.libre+')');
+    if(!(r.libre>r.carte))throw new Error('une pièce de l\'armée ('+r.libre+') n\'est pas plus grande qu\'une carte du catalogue ('+r.carte+')');
+    if(r.parRangee!==4)throw new Error(r.parRangee+' cartes par rangée dans le catalogue au lieu de 4');
+    if(r.colonnes!==4)throw new Error(r.colonnes+' colonnes déclarées dans la grille au lieu de 4');
+  });
+
+  // LES DEUX CHIFFRES D'UNE CARTE SONT DANS LES COINS DU HAUT, en pastilles
+  // pleines et en blanc. Ils formaient un PIED sous le nom — trois lignes de
+  // texte empilées qui volaient au logo la moitié de la carte.
+  await step('une carte de pièce porte son coût et son stock en pastilles',async()=>{
+    const r=await page.evaluate(()=>{
+      const card=document.querySelector('#ar-cards-container .pcard');
+      if(!card)return{err:'aucune carte dans le catalogue'};
+      const cb=card.getBoundingClientRect();
+      const cost=card.querySelector('.pcard-bub-cost');
+      const qty=card.querySelector('.pcard-bub-qty');
+      const logo=card.querySelector('.pcard-logo');
+      const nom=card.querySelector('.pcard-name');
+      if(!cost||!logo||!nom)return{err:'anatomie de carte inattendue'};
+      const cs=getComputedStyle(cost);
+      const rc=cost.getBoundingClientRect(),rq=qty?qty.getBoundingClientRect():null,
+            rl=logo.getBoundingClientRect(),rn=nom.getBoundingClientRect();
+      return{
+        piedMort:!card.querySelector('.pcard-foot'),
+        couleur:cs.color,
+        // La pastille doit être PLEINE : un fond transparent ne se lit pas.
+        fond:cs.backgroundColor,
+        gauche:rc.left-cb.left<cb.width/2,
+        droite:rq?rq.right>cb.left+cb.width/2:null,
+        // Le logo occupe plus de la moitié de la hauteur de la carte.
+        partLogo:rl.height/cb.height,
+        // Le nom est TOUT EN BAS : sous le logo, contre le bord.
+        nomEnBas:rn.top>rl.bottom-1&&(cb.bottom-rn.bottom)<cb.height*0.16,
+      };
+    });
+    if(r.err)throw new Error(r.err);
+    if(!r.piedMort)throw new Error('le pied de carte (.pcard-foot) existe encore');
+    if(r.couleur.replace(/\s/g,'')!=='rgb(255,255,255)')
+      throw new Error('la pastille de coût n\'écrit pas en blanc : '+r.couleur);
+    if(/rgba\(0,\s*0,\s*0,\s*0\)|transparent/.test(r.fond))
+      throw new Error('la pastille de coût n\'a pas de fond plein');
+    if(!r.gauche)throw new Error('le coût n\'est pas dans le coin haut GAUCHE');
+    if(r.droite===false)throw new Error('le stock n\'est pas dans le coin haut DROIT');
+    if(!(r.partLogo>0.5))throw new Error('le logo ne prend que '+Math.round(r.partLogo*100)+' % de la carte');
+    if(!r.nomEnBas)throw new Error('le nom n\'est pas tout en bas de la carte');
+  });
+
+  // LA FICHE SE FERME EN GLISSANT VERS LE BAS, DEPUIS N'IMPORTE OÙ. Le geste
+  // ne partait que de la poignée (4 px de haut) et de l'en-tête ; le pouce,
+  // lui, est sur le corps de la fiche.
+  await step('la fiche de pièce se ferme en glissant le corps vers le bas',async()=>{
+    await page.evaluate(()=>openPieceSheet('meduse'));
+    await page.waitForTimeout(400);
+    if(!await page.isVisible('#piece-sheet.show'))throw new Error('la fiche ne s\'est pas ouverte');
+    const ferme=await page.evaluate(()=>{
+      const body=document.getElementById('psheet-body');
+      const panel=document.querySelector('#piece-sheet .psheet-panel');
+      if(!body||!panel)return{err:'fiche introuvable'};
+      body.scrollTop=0;
+      const touche=(x,y)=>new Touch({identifier:1,target:body,clientX:x,clientY:y});
+      const env=(type,x,y)=>{
+        const t=[touche(x,y)];
+        panel.dispatchEvent(new TouchEvent(type,{bubbles:true,cancelable:true,
+          touches:type==='touchend'?[]:t,changedTouches:t,targetTouches:type==='touchend'?[]:t}));
+      };
+      env('touchstart',180,600);
+      env('touchmove',180,640);
+      env('touchmove',180,760);
+      env('touchend',180,760);
+      return{ok:true};
+    });
+    if(ferme.err)throw new Error(ferme.err);
+    await page.waitForTimeout(400);
+    if(await page.isVisible('#piece-sheet.show'))
+      throw new Error('le glissement depuis le corps de la fiche ne la ferme pas');
+  });
+
+  // ================================================================
+  // LE MODE ANALYSE : une partie relue se déroule comme elle s'est jouée
+  // ================================================================
+  // C'est LA promesse du module : la relecture repasse par le moteur, donc la
+  // position finale et la notation doivent être identiques au caractère près.
+  // Si ce test tombe, c'est qu'une action de fin de coup a été ajoutée sans
+  // consulter REPLAYING (voir js/rules-engine.js).
+  await step('une partie rejouée retombe sur la même position et la même notation',async()=>{
+    const r=await page.evaluate(()=>{
+      const out={};
+      const mon=PIECES.find(x=>x.id==='roi'),gen=PIECES.find(x=>x.id==='dame');
+      const ex=['garde-pierre','meduse','fourmi'].map(id=>PIECES.find(p=>p.id===id));
+      const placements={};ex.forEach((p,i)=>placements[p.id]=[0,1,2][i]);
+      currentArmyData={mon,gen,extras:ex.map(p=>p.id),placements};
+      const ex2=['preux-chevalier','banshee','pretre'].map(id=>PIECES.find(p=>p.id===id));
+      const pl2={};ex2.forEach((p,i)=>pl2[p.id]=[0,1,2][i]);
+      aiArmyData={mon:PIECES.find(x=>x.id==='empereur'),gen:PIECES.find(x=>x.id==='amazone'),
+                  extras:ex2.map(p=>p.id),placements:pl2};
+      showPage('page-game');startGame(true,false,null);
+      if(typeof cineDismiss==='function')cineDismiss();
+      GS.multiplayer=true;GS.clockMs=0;      // l'IA ne joue pas, on pilote
+      let seed=4242;const rnd=()=>{seed=(seed*1103515245+12345)&0x7fffffff;return seed/0x7fffffff;};
+      for(let n=0;n<40&&!GS.gameOver;n++){
+        const mvs=[];
+        for(let rr=0;rr<8;rr++)for(let cc=0;cc<8;cc++){
+          const cell=GS.board[rr][cc];
+          if(!cell||cell.color!==GS.turn)continue;
+          getLegalMoves(GS.board,rr,cc,GS).forEach(m=>mvs.push({from:{r:rr,c:cc},to:m}));
+        }
+        if(!mvs.length)break;
+        const mv=mvs[Math.floor(rnd()*mvs.length)];
+        GS._forcedPromo={type:'q',emoji:'♛',pieceId:'dame-promo'};
+        executeGameMove(mv.from,mv.to,GS);
+        GS._forcedPromo=null;
+        if(GS.pendingPromo)break;
+      }
+      const fen=b=>b.map(row=>row.map(c=>c?(c.color+c.pieceId):'.').join('|')).join('/');
+      const rec=buildReplayRecord(GS);
+      out.coups=GS.replay.length;
+      out.rec=!!rec;
+      if(!rec)return out;
+      const built=replayFrames(rec);
+      out.built=!!built;
+      if(!built)return out;
+      out.images=built.frames.length;
+      out.attendu=GS.replay.length+1;
+      out.memePosition=fen(built.frames[built.frames.length-1].board)===fen(GS.board);
+      out.memeNotation=JSON.stringify(built.frames[built.frames.length-1].pairs)
+                      ===JSON.stringify(GS.movePairs);
+      out.departVide=built.frames[0].pairs.length===0;
+      out.drapeau=REPLAYING;
+      return out;
+    });
+    if(!r.coups)throw new Error('aucun coup enregistré pour la relecture');
+    if(!r.rec)throw new Error('buildReplayRecord n\'a rien produit');
+    if(!r.built)throw new Error('la partie enregistrée n\'a pas pu être rejouée');
+    if(r.images!==r.attendu)throw new Error(r.images+' positions au lieu de '+r.attendu);
+    if(!r.memePosition)throw new Error('la position finale rejouée diffère de la position réelle');
+    if(!r.memeNotation)throw new Error('la notation rejouée diffère de celle de la partie');
+    if(!r.departVide)throw new Error('la première image n\'est pas la position de départ');
+    if(r.drapeau)throw new Error('REPLAYING est resté levé après la relecture');
+  });
+
+  // LE PROFIL DIT CE QU'UN JOUEUR PEUT ALIGNER, et ses parties se rejouent.
+  // On partait au duel sans la moindre idée de ce qu'on allait avoir en face.
+  await step('un profil montre l\'armée, les pièces, les pouvoirs et les parties',async()=>{
+    const seed=await page.evaluate(async()=>{
+      const ids=['roi','empereur','dame','amazone','garde-pierre','meduse','fourmi',
+                 'preux-chevalier','banshee','pretre','typhon'];
+      VV_UNLOCKED=new Set(ids);vvSaveUnlocked(VV_UNLOCKED);
+      pArmy={mon:PIECES.find(p=>p.id==='empereur'),gen:PIECES.find(p=>p.id==='amazone'),
+             extras:['meduse','preux-chevalier','fourmi'].map(id=>PIECES.find(p=>p.id===id))};
+      pEditId=null;pAutosave();
+      const rec=buildReplayRecord(GS);
+      await ecReportMatch({result:'win',ranked:true,opp_elo:900,opp_name:'Cinabre',
+                           mode:'ia',army:['meduse'],replay:rec});
+      return{rec:!!rec};
+    });
+    if(!seed.rec)throw new Error('aucune partie rejouable à déclarer');
+    await page.waitForTimeout(600);
+    await page.evaluate(()=>{accountForgetRemote&&accountForgetRemote();openAccountPage();});
+    await page.waitForTimeout(900);
+    const mien=await page.evaluate(()=>({
+      armee:document.querySelectorAll('#account-body .pf-army-slot').length,
+      pieces:document.querySelectorAll('#account-body .pf-piece').length,
+      pouvoirs:document.querySelectorAll('#account-body .pf-power').length,
+      parties:document.querySelectorAll('#account-body .rp-game:not(.rp-game-off)').length,
+    }));
+    if(mien.armee!==5)throw new Error(mien.armee+' emplacements d\'armée sur son profil au lieu de 5');
+    if(mien.pieces!==11)throw new Error(mien.pieces+' pièces débloquées affichées au lieu de 11');
+    if(!mien.pouvoirs)throw new Error('aucun pouvoir listé sur son profil');
+    if(!mien.parties)throw new Error('aucune partie rejouable sur son profil');
+    // On ouvre la partie : le plateau, ses soixante-quatre cases, et le journal.
+    await page.click('#account-body .rp-game:not(.rp-game-off)');
+    await page.waitForTimeout(700);
+    const an=await page.evaluate(()=>({
+      page:!!document.querySelector('#page-replay.active'),
+      cases:document.querySelectorAll('#rp-board .rp-cell').length,
+      coups:document.querySelectorAll('#rp-log .rp-log-item').length,
+      armees:document.querySelectorAll('#rp-body .rp-side').length,
+    }));
+    if(!an.page)throw new Error('la page d\'analyse ne s\'est pas ouverte');
+    if(an.cases!==64)throw new Error(an.cases+' cases sur le plateau d\'analyse au lieu de 64');
+    if(!an.coups)throw new Error('le journal de l\'analyse est vide');
+    if(an.armees!==2)throw new Error(an.armees+' bandeaux d\'armée au lieu de 2');
+    // Les commandes déroulent bien la partie.
+    const nav=await page.evaluate(()=>{
+      rpGo(0);const debut=document.querySelector('.rp-count').textContent.trim();
+      rpGo(2);const trois=document.querySelector('.rp-count').textContent.trim();
+      return{debut,trois,to:!!document.querySelector('#rp-board .rp-to')};
+    });
+    if(!/Départ/.test(nav.debut))throw new Error('⏮ ne ramène pas à la position de départ : '+nav.debut);
+    if(!nav.to)throw new Error('la case d\'arrivée du dernier coup n\'est pas marquée');
+    // Le profil PUBLIC montre la même chose, servi par le serveur.
+    await page.evaluate(()=>{rpClose();});
+    await page.waitForTimeout(500);
+    await page.evaluate(()=>{openLeaderboardPage();});
+    await page.waitForTimeout(900);
+    await page.evaluate(()=>openPlayerProfile(ECP.username));
+    await page.waitForTimeout(1000);
+    const pub=await page.evaluate(()=>({
+      armee:document.querySelectorAll('#lb-body .pf-army-slot').length,
+      pieces:document.querySelectorAll('#lb-body .pf-piece').length,
+      pouvoirs:document.querySelectorAll('#lb-body .pf-power').length,
+      parties:document.querySelectorAll('#lb-body .rp-game').length,
+    }));
+    if(pub.armee!==5)throw new Error('le profil public montre '+pub.armee+' emplacements d\'armée au lieu de 5');
+    if(pub.pieces!==11)throw new Error('le profil public montre '+pub.pieces+' pièces au lieu de 11');
+    if(!pub.pouvoirs)throw new Error('le profil public ne liste aucun pouvoir');
+    if(!pub.parties)throw new Error('le profil public ne liste aucune partie');
+    await page.evaluate(()=>{if(typeof goToMainMenu==='function')goToMainMenu();});
+    await page.waitForTimeout(400);
   });
 
   await browser.close();

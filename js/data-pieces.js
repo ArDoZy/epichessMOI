@@ -288,7 +288,7 @@ function chestPearlPrice(id){return (CHEST_PEARLS[id]||CHEST_PEARLS.pion).price;
 const DAILY_CHEST={id:'reappro',name:'Coffre de réapprovisionnement',perPiece:2,cap:10};
 
 // ----------------------------------------------------------------
-// LA RÉCOMPENSE JOURNALIÈRE : un lot par jour, un cycle de trente
+// LA RÉCOMPENSE JOURNALIÈRE : un lot par jour, un cycle de seize
 // ----------------------------------------------------------------
 // Elle remplace la SÉRIE DU JOUR, qui demandait d'enchaîner six victoires dans
 // la même journée et qu'une seule défaite refermait jusqu'au lendemain : elle
@@ -296,22 +296,28 @@ const DAILY_CHEST={id:'reappro',name:'Coffre de réapprovisionnement',perPiece:2
 // tout à celui qui passe dire bonjour.
 //
 // Ici, revenir suffit. Chaque jour ouvre le lot suivant du cycle ; le cycle
-// fait trente jours et RECOMMENCE indéfiniment (voir dailyRewardStep,
+// fait SEIZE jours et RECOMMENCE indéfiniment (voir dailyRewardStep,
 // js/rewards.js, qui indexe modulo la longueur du tableau). Un jour manqué ne
 // coûte rien : on reprend là où on s'était arrêté, le cycle avance d'un cran
 // par récupération et non par jour de calendrier.
+//
+// POURQUOI SEIZE ET NON TRENTE. Un cycle d'un mois faisait de la deuxième
+// moitié une promesse que presque personne n'atteignait : le Coffre Tour
+// tombait au quinzième jour, et il fallait un mois entier pour revoir le
+// premier lot. Sur seize jours, chaque nature de lot revient deux fois — deux
+// Coffres Tour, deux Coffres Fou, deux Coffres Cavalier, quatre Coffres Pion,
+// trois versements de perles et trois poignées de jokers — et le cycle se
+// boucle assez vite pour qu'on en connaisse la forme.
 //
 // Trois natures de lot, les mêmes que la colonne des victoires :
 //   {chest:'<id>'}  un coffre, ouvert avec la cérémonie habituelle
 //   {pearls:n}      n perles
 //   {jokers:n}      n jokers, convertis en la créature de son choix
 const DAILY_REWARDS=[
-  {chest:'pion'},{pearls:10},{chest:'cavalier'},{chest:'pion'},{jokers:5},
-  {chest:'fou'}, {chest:'pion'},{pearls:10},    {chest:'cavalier'},{chest:'pion'},
-  {jokers:5},    {chest:'fou'},{chest:'pion'},  {pearls:10},   {chest:'tour'},
-  {chest:'pion'},{jokers:5},   {chest:'cavalier'},{chest:'pion'},{pearls:10},
-  {chest:'fou'}, {chest:'pion'},{jokers:5},     {chest:'cavalier'},{chest:'pion'},
-  {pearls:10},   {chest:'fou'},{chest:'pion'},  {jokers:5},    {chest:'tour'},
+  {chest:'pion'},    {pearls:10},   {chest:'cavalier'},{chest:'pion'},
+  {jokers:5},        {chest:'fou'}, {chest:'tour'},    {pearls:10},
+  {chest:'pion'},    {jokers:5},    {chest:'cavalier'},{chest:'pion'},
+  {pearls:10},       {chest:'fou'}, {chest:'tour'},    {jokers:5},
 ];
 
 // ----------------------------------------------------------------

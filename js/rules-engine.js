@@ -32,6 +32,24 @@ const FILES=['A','B','C','D','E','F','G','H'];
 
 // État de partie global : reconstruit par startGame() dans game-flow.js.
 // Voir la structure complète dans ce fichier.
+// ================================================================
+// LE MODE RELECTURE
+// ================================================================
+// Une partie enregistrée se REJOUE en repassant ses coups par ce moteur-ci
+// (js/replay.js) : c'est le seul moyen d'être sûr qu'une partie relue se
+// déroule exactement comme elle s'est jouée — un second moteur de relecture
+// aurait divergé du vrai au premier pouvoir modifié.
+//
+// Rejouer trente coups à la file ne doit évidemment ni jouer trente bruits de
+// prise, ni allumer trente gerbes d'étincelles sur un plateau qui n'est pas à
+// l'écran, ni faire avancer les quêtes du jour, ni réveiller l'IA, ni
+// déclencher une fin de partie. Ce drapeau est ce qui distingue « le moteur
+// calcule » de « le joueur joue » : quand il est levé, le moteur ne fait plus
+// que muter le plateau et écrire la notation.
+//
+// IL EST TOUJOURS RABAISSÉ DANS UN `finally` (voir replayApply, js/replay.js) :
+// une exception au milieu d'une relecture laisserait sinon le vrai jeu muet.
+let REPLAYING=false;
 let GS={board:[],turn:'w',selected:null,legalMoves:[],history:[],enPassant:null,halfmoveClock:0,gameOver:false,playerArmy:null,aiArmy:null,movePairs:[],capturedW:[],capturedB:[],pendingPromo:null,medusaParalyzed:new Set(),lastMove:null,anchored:new Set(),pretreProtected:new Set(),amazonePostCapture:null,grandMaitreAlive:{w:false,b:false},gardePierreUsed:{w:false,b:false},turnCount:0,historyView:null,lastMoveHistory:[],clockMs:0,incrementMs:0,timeWhite:0,timeBlack:0};
 
 function inB(r,c){return r>=0&&r<8&&c>=0&&c<8;}
@@ -574,7 +592,7 @@ function fxCreatureSignature(p,to,board,gs){
 }
 
 function fxPromoteAt(board,to){
-  if(typeof fxPromote!=='function')return;
+  if(typeof fxPromote!=='function'||REPLAYING)return;
   const np=board&&board[to.r]&&board[to.r][to.c];
   fxPromote(to.r,to.c,np&&np.pieceId);
 }
@@ -584,7 +602,7 @@ function fxPromoteAt(board,to){
 // ================================================================
 function executeGameMove(from,to,gs){
   const b=gs.board;const p=b[from.r][from.c];if(!p)return;
-  const snapshot={board:cloneBoard(b),turn:gs.turn,enPassant:gs.enPassant,halfmoveClock:gs.halfmoveClock,movePairs:JSON.parse(JSON.stringify(gs.movePairs)),capturedW:[...gs.capturedW],capturedB:[...gs.capturedB],anchored:new Set(gs.anchored||[]),grandMaitreAlive:{...gs.grandMaitreAlive},turnCount:gs.turnCount,timeWhite:gs.timeWhite,timeBlack:gs.timeBlack};
+  const snapshot={board:cloneBoard(b),turn:gs.turn,enPassant:gs.enPassant,halfmoveClock:gs.halfmoveClock,movePairs:JSON.parse(JSON.stringify(gs.movePairs)),capturedW:[...gs.capturedW],capturedB:[...gs.capturedB],anchored:new Set(gs.anchored||[]),grandMaitreAlive:{...gs.grandMaitreAlive},turnCount:gs.turnCount,timeWhite:gs.timeWhite,timeBlack:gs.timeBlack,replay:(gs.replay||[]).slice()};
   gs.history.push(snapshot);gs.historyView=null;
 
   let captured=null;
@@ -613,7 +631,7 @@ function executeGameMove(from,to,gs){
   // C'est posé ICI et non à la fin de la fonction parce que la promotion
   // ouvre une fenêtre modale et RETOURNE (voir plus bas) : les effets du coup
   // qui promeut seraient perdus.
-  if(typeof fxPlayMove==='function'){
+  if(typeof fxPlayMove==='function'&&!REPLAYING){
     // La prise en passant se joue sur une case que le pion N'ATTEINT PAS :
     // l'éclat doit tomber sur la victime, une rangée derrière, sinon il
     // s'allume sur une case où il ne s'est rien passé.
@@ -633,7 +651,7 @@ function executeGameMove(from,to,gs){
     });
     // Les pouvoirs qui ne détruisent rien mais changent une règle : le dôme du
     // Prêtre, l'Espadon de l'Empereur, la Domination du Grand Maître.
-    fxCreatureSignature(p,to,b,gs);
+    if(!REPLAYING)fxCreatureSignature(p,to,b,gs);
   }
 
   gs.enPassant=null;
@@ -753,7 +771,7 @@ function playTone(freq,type,duration,volume,fadeOut){
 // Le repli sur playTone() n'est pas décoratif : si js/sfx.js ne s'est pas
 // chargé, le jeu doit rester jouable avec du son plutôt que muet.
 function playSound(type,opts){
-  if(!_soundEnabled)return;
+  if(!_soundEnabled||REPLAYING)return;
   if(typeof sfxFeel==='function'){sfxFeel(type,opts);return;}
   const ctx=getAudioCtx();if(!ctx)return;
   playTone(type==='capture'?180:440,'sine',0.08,0.3,true);
@@ -772,6 +790,19 @@ initAudioOnInteraction();
 // ================================================================
 function postMoveUpdate(gs){
   updateMedusaParalysis(gs.board,gs);updatePretreProtection(gs.board,gs);updateGrandMaitre(gs.board,gs);
+  // RELECTURE : on recalcule les états spéciaux (fait juste au-dessus) et on
+  // note l'échec ou le mat dans la notation — c'est tout. Pas de barre de
+  // statut, pas de rendu, pas de fin de partie, pas de coup d'IA : la partie
+  // est finie depuis longtemps, on ne fait que la relire.
+  if(REPLAYING){
+    if(typeof isInCheckSimple==='function'&&typeof hasLegalMovesForColor==='function'){
+      const t=gs.turn;
+      const check=isInCheckSimple(t,gs.board);
+      const libre=hasLegalMovesForColor(t,gs.board,gs);
+      if(typeof markLastMove==='function')markLastMove(gs,(!libre&&check)?'#':check?'+':'');
+    }
+    return;
+  }
   updateStatus(gs);renderGame(gs);
   const aiCol=gs.aiColor||'b';
   if(gs.turn===aiCol&&!gs.multiplayer&&!gs.gameOver&&!gs.pendingPromo)setTimeout(()=>doAIMove(gs),500);
@@ -892,7 +923,42 @@ function mlDisambiguation(p,to,isCapture,gs,from){
   if(rivals.every(q=>q.r!==from.r))return String(8-from.r);
   return mlSquare(from.r,from.c);
 }
+// ================================================================
+// LA TRACE REJOUABLE D'UNE PARTIE
+// ================================================================
+// Une partie terminée ne laissait derrière elle qu'un RÉSULTAT : « victoire,
+// +23 ELO ». Le journal des coups, lui, mourait avec la page — impossible de
+// revoir la partie du voisin qu'on vient d'affronter, ni la sienne du mois
+// dernier. C'est pourtant la première chose qu'on veut faire après une belle
+// partie, et la seule façon d'apprendre de celle qu'on a perdue.
+//
+// On note donc chaque coup sous sa forme la plus courte qui se rejoue : les
+// quatre coordonnées de la case de départ et de la case d'arrivée, plus
+// l'identifiant de la pièce choisie s'il y a eu promotion. « 6444 » est un
+// coup, « 1044:dame » une promotion en Dame. Trente coups tiennent en deux
+// cents octets, c'est-à-dire rien du tout à côté d'une ligne d'historique.
+//
+// LA LISTE EST UN INSTANTANÉ COMME LES AUTRES : elle est empilée dans
+// gs.history à chaque coup (voir executeGameMove) et restaurée à l'annulation,
+// sinon un coup annulé resterait dans la partie rejouée.
+//
+// LE ROQUE, LA PRISE EN PASSANT, LA CHARGE ET LES POUVOIRS N'ONT RIEN À
+// NOTER : ils se déduisent des deux cases, puisque la relecture repasse par
+// le MOTEUR (generateMovesRaw / executeGameMove) et non par une copie des
+// règles. Une règle qui change change donc aussi les parties rejouées — c'est
+// exactement ce qu'on veut : elles ne sont pas des vidéos, ce sont des coups.
+function replayNote(p,to,gs,from){
+  if(!gs||!from)return;
+  if(!Array.isArray(gs.replay))gs.replay=[];
+  const now=gs.board&&gs.board[to.r]&&gs.board[to.r][to.c];
+  // Promotion : la pièce posée sur la case d'arrivée n'est plus celle qui est
+  // partie. C'est le seul cas où les deux cases ne suffisent pas.
+  const promo=(now&&p&&now.pieceId!==p.pieceId)?now.pieceId:null;
+  gs.replay.push(''+from.r+from.c+to.r+to.c+(promo?':'+promo:''));
+}
+
 function recordMove(p,to,isCapture,gs,from){
+  replayNote(p,to,gs,from);
   // QUÊTES DE LA RANGÉE DE LA RICHESSE (js/rewards.js) : « déplacer 5 fois X »,
   // « capturer 3 pièces avec X », « engager X et la jouer 3 fois ». C'est ici
   // et nulle part ailleurs, pour la même raison que l'incrément Fischer
@@ -900,13 +966,13 @@ function recordMove(p,to,isCapture,gs,from){
   // effectivement joué. Seuls les coups DU JOUEUR comptent (l'adversaire, IA
   // ou humain en ligne, passe par la même fonction), et jamais ceux du
   // tutoriel, où les pièces sont prêtées.
-  if(gs&&!gs.tuto&&p&&p.color===(gs.playerColor||'w')&&typeof questNoteMove==='function')
+  if(!REPLAYING&&gs&&!gs.tuto&&p&&p.color===(gs.playerColor||'w')&&typeof questNoteMove==='function')
     questNoteMove(gs,p.pieceId,!!isCapture);
   // Incrément Fischer : le joueur qui vient de jouer récupère son bonus. Ici
   // et pas ailleurs, parce que recordMove est le seul point par lequel passe
   // TOUT coup effectivement joué (y compris l'ancrage du Garde de Pierre, qui
   // ne passe pas par executeGameMove).
-  if(gs&&gs.clockMs&&gs.incrementMs&&!gs.gameOver){
+  if(!REPLAYING&&gs&&gs.clockMs&&gs.incrementMs&&!gs.gameOver){
     const k=p.color==='w'?'timeWhite':'timeBlack';
     gs[k]=(gs[k]||0)+gs.incrementMs;
     if(typeof renderClocks==='function')renderClocks(gs);
@@ -949,6 +1015,7 @@ function markLastMove(gs,mark){
   renderMoveLog(gs);
 }
 function renderMoveLog(gs){
+  if(REPLAYING)return;   // le journal à l'écran est celui de la VRAIE partie
   const log=document.getElementById('move-log');if(!log)return;
   const cur=gs.historyView!==null?Math.floor(gs.historyView/2):gs.movePairs.length-1;
   log.innerHTML=gs.movePairs.map((pair,i)=>{const isH=gs.historyView!==null&&i===cur;return '<div class="move-log-item'+(isH?' ml-here':'')+'"><span class="move-log-num">'+(i+1)+'.</span><span class="move-log-w">'+pair[0]+'</span><span class="move-log-b">'+(pair[1]||'')+'</span></div>';}).join('');

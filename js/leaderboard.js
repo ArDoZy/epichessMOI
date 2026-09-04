@@ -22,10 +22,19 @@
 //
 //   3. LE PROFIL D'UN JOUEUR. Son rang, son ELO, son sommet, ses
 //      parties, son taux de victoire, sa meilleure série, sa créature
-//      fétiche et ses dix dernières parties — exactement ce que la
-//      page Comptes montre du sien. Et, s'il est en ligne, le bouton
-//      qui le DÉFIE : le classement mène au jeu, il ne s'y substitue
-//      pas.
+//      fétiche — et surtout CE QU'IL PEUT ALIGNER : son armée choisie,
+//      ses pièces débloquées, ses pouvoirs, puis ses dix dernières
+//      parties, REJOUABLES coup par coup (js/replay.js). Exactement ce
+//      que la page Comptes montre du sien. Et, s'il est en ligne, le
+//      bouton qui le DÉFIE : le classement mène au jeu, il ne s'y
+//      substitue pas.
+//
+//      POURQUOI L'ARMÉE Y FIGURE. On partait au duel sans la moindre
+//      idée de ce qu'on allait avoir en face, alors que c'est justement
+//      l'armée qui distingue deux joueurs de même niveau — et elle se
+//      voit de toute façon au premier coup de la partie. Ce qui reste
+//      privé (l'inventaire, les perles, la progression des voies) ne
+//      sort pas du serveur : voir ec_public, supabase/schema.sql.
 //
 // -- EN LIGNE OU PAS : DEUX SOURCES, ET C'EST VOULU ---------------
 // Le serveur donne un `online` calculé sur last_seen_at, qui a jusqu'à
@@ -205,6 +214,15 @@ function lbProfileHTML(p){
     '</div>'+
     lbFormHTML(p)+
     lbFavouriteHTML(p)+
+    // CE QU'IL PEUT ALIGNER — l'armée choisie, les pièces débloquées, les
+    // pouvoirs qui vont avec (js/replay.js). C'est la moitié de ce qu'on vient
+    // chercher sur le profil de quelqu'un qu'on s'apprête à défier, et le
+    // profil n'en disait pas un mot.
+    ((typeof profileArsenalHTML==='function')?profileArsenalHTML(p.pub_army,p.pub_unlocked):'')+
+    // SES DIX DERNIÈRES PARTIES, REJOUABLES. La bande de forme dit « il monte
+    // ou il coule » ; la liste dit ce qui s'est passé, et chaque ligne ouvre
+    // le mode analyse.
+    ((typeof replayListHTML==='function')?replayListHTML(p.history):'')+
     lbDuelHTML(p,me,online)+
   '</section>';
 }
@@ -219,7 +237,7 @@ function lbFormHTML(p){
   const lbl={win:'Victoire',loss:'Défaite',draw:'Nulle'};
   return ''+
   '<div class="acc-form">'+
-    '<div class="acc-form-k">10 dernières parties</div>'+
+    '<div class="acc-form-k">Forme récente</div>'+
     '<div class="acc-form-dots">'+
       recent.map(h=>{
         const cls=h.result==='win'?'w':h.result==='loss'?'l':'d';
@@ -330,6 +348,16 @@ function lbWire(){
     if(b.id==='lb-duel')return;
     b.addEventListener('click',()=>openPlayerProfile(b.getAttribute('data-player')));
   });
+  // Les dix dernières parties du profil ouvert : chaque ligne mène au mode
+  // analyse, et « Retour » y ramène ce profil-ci — pas le classement, qui
+  // obligerait à le rouvrir pour lire la partie suivante.
+  if(_lbProfile&&typeof wireReplayList==='function'){
+    const prof=_lbProfile;
+    wireReplayList(host,prof.history,{
+      me:prof.username,meSub:(prof.elo|0)+' ELO',
+      back:()=>{_lbProfile=prof;renderLeaderboardPage();showPage(LB_PAGE);},
+    });
+  }
   host.querySelector('#lb-duel')?.addEventListener('click',function(){
     if(typeof mpChallenge==='function')
       mpChallenge(this.getAttribute('data-player'),this.getAttribute('data-name'));

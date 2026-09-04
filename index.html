@@ -928,6 +928,28 @@
 </div>
 </div>
 
+<!-- ================================================================
+     PAGE ANALYSE : revoir une partie déjà jouée (js/replay.js)
+     ================================================================
+     Une ligne d'historique ne portait qu'un verdict et un écart d'ELO. Elle
+     porte maintenant la partie ELLE-MÊME, sous sa forme la plus courte qui se
+     rejoue, et cette page la déroule coup par coup : les deux armées, le
+     plateau, ⏮ ◀ ▶ ⏭ et le journal complet. On y arrive depuis le profil de
+     n'importe quel joueur — le sien comme celui qu'on s'apprête à défier.
+     ================================================================ -->
+<div id="page-replay" class="page">
+<div class="rp-inner">
+  <div class="rp-hdr">
+    <button class="btn btn-ghost rp-back" id="rp-back">← Retour</button>
+    <div class="rp-hdr-id">
+      <div class="rp-title" id="rp-title"></div>
+      <div class="rp-sub" id="rp-sub"></div>
+    </div>
+  </div>
+  <div class="rp-body" id="rp-body"></div>
+</div>
+</div>
+
 <!-- PAGE 3b: AI ARMIES -->
 <div id="page-ai-armies" class="page">
 <div class="armies-inner">
@@ -1331,7 +1353,10 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>
-    <div class="psheet-body">
+    <!-- id="psheet-body" : le geste de fermeture par glissement (js/piece-card.js)
+         a besoin de savoir si le CORPS est déjà en butée haute avant d'emmener
+         la feuille — sans quoi on ne pourrait plus faire défiler la fiche. -->
+    <div class="psheet-body" id="psheet-body">
       <section class="psheet-sec">
         <div class="psheet-sec-title">Déplacement</div>
         <div class="psheet-mvt" id="psheet-mvt"></div>
@@ -1503,6 +1528,7 @@
 <script src="js/lore-intro.js"></script>
 <script src="js/pwa.js"></script>
 <script src="js/account-ui.js"></script>
+<script src="js/replay.js"></script>
 <script src="js/leaderboard.js"></script>
 <script src="js/settings-admin.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>

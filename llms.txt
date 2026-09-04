@@ -171,18 +171,28 @@ C'est la mécanique qui distingue le plus Epic Chess des autres variantes :
   perdre contre plus fort coûte peu, perdre contre plus faible coûte cher.
 - Le **Classement général** réunit tous les joueurs, du meilleur ELO au moins
   bon. On y cherche un joueur par son pseudo, on ouvre son profil (rang, ELO,
-  parties, taux de victoire, meilleure série, créature fétiche, dix dernières
-  parties), on voit **s'il est en ligne**, et on peut le **défier** en duel
-  direct. Le classement est calculé par le serveur : c'est lui, et non le
-  navigateur du joueur, qui décide de ce que vaut une partie.
+  parties, taux de victoire, meilleure série, créature fétiche), on voit
+  **s'il est en ligne**, et on peut le **défier** en duel direct. Le classement
+  est calculé par le serveur : c'est lui, et non le navigateur du joueur, qui
+  décide de ce que vaut une partie.
+- Un profil montre aussi **ce que le joueur peut aligner** : son **armée
+  choisie**, ses **pièces débloquées** et les **pouvoirs** qui vont avec — de
+  quoi savoir à quoi s'attendre avant de le défier. Et ses **dix dernières
+  parties se rejouent coup par coup**, en mode analyse : le plateau, les deux
+  armées et le journal complet, qu'il s'agisse des siennes ou de celles de
+  n'importe qui d'autre.
 - La **Récompense Journalière** donne **un lot par jour**, sans rien exiger :
-  ni victoire, ni quête. Le cycle fait **30 jours** — coffres, perles et
+  ni victoire, ni quête. Le cycle fait **16 jours** — coffres, perles et
   jokers — puis **recommence indéfiniment**. Un jour manqué ne coûte rien : le
   cycle avance d'un cran par lot pris, pas par jour de calendrier.
 - La **Colonne des Victoires** est la voie de celui qui gagne : **30 paliers**,
-  un par victoire, sans verrou quotidien et sans jamais se remettre à zéro.
-  Elle donne des coffres et des **jokers** — un joker se transforme en la
-  créature de son choix (3 jokers = 3 exemplaires de la créature désignée).
+  payés en **lauriers**, sans verrou quotidien et sans jamais se remettre à
+  zéro. Un palier coûte **5 lauriers**, et une victoire en rapporte **de 5 à
+  10 selon sa longueur** : 10 lauriers en 10 coups ou moins, puis 9, 8, 7, 6,
+  et 5 au-delà de 50 coups. Gagner vite fait donc descendre la colonne deux
+  fois plus vite. Elle donne des coffres et des **jokers** — un joker se
+  transforme en la créature de son choix (3 jokers = 3 exemplaires de la
+  créature désignée).
 - La **Rangée de la Richesse** compte **25 paliers de perles** (2, 3, 4, 5
   puis 6 perles, par tranches de cinq). On y avance avec des **tickets**,
   gagnés en accomplissant les **trois quêtes du jour** (mater avec telle

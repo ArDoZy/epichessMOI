@@ -257,15 +257,21 @@ function economySettle(result,gs){
   // créatures effectivement engagées dans l'armée. C'est ici, et nulle part
   // ailleurs, parce que c'est le seul point par lequel passe le règlement
   // d'une partie (le tutoriel et le mode test n'y arrivent jamais).
+  // LES LAURIERS SONT COMPTÉS ICI, ET LEUR MONTANT DÉPEND DE LA PARTIE :
+  // une victoire courte en rapporte deux fois plus qu'une victoire longue
+  // (laurelsForMoves, js/rewards.js). Le rapport les remonte à la cérémonie de
+  // fin de partie, qui les annonce : une récompense qu'on ne voit pas arriver
+  // n'en est pas une.
+  let laurels=null;
   if(result==='win'){
-    if(typeof colNoteWin==='function')colNoteWin();
+    if(typeof colNoteWin==='function')laurels=colNoteWin(gs);
     if(typeof questNote==='function'){
       questNote('win',null,1);
       Object.keys(need).forEach(id=>questNote('winwith',id,1));
     }
   }
 
-  return{result,lost,returned,gained:(gs&&gs.promoGains)||{},streak};
+  return{result,lost,returned,gained:(gs&&gs.promoGains)||{},streak,laurels};
 }
 
 // ----------------------------------------------------------------

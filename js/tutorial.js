@@ -278,7 +278,8 @@ const TUTO_STEPS=[
   },
   {
     text:'Chaque créature a son déplacement ET son pouvoir. La carte ne montre que '+
-         'l\'essentiel&nbsp;: son logo, son nom, sa valeur et votre stock.<br>'+
+         'l\'essentiel&nbsp;: son logo, son nom, et deux pastilles — sa valeur à '+
+         'gauche, votre stock à droite.<br>'+
          '<strong>Appuyez sur une carte</strong>&nbsp;: deux boutons apparaissent. '+
          '« Utiliser » la pose dans son emplacement en haut, <strong>« Infos »</strong> '+
          'ouvre sa fiche — l\'échiquier de son déplacement et son pouvoir en détail. '+
@@ -286,10 +287,10 @@ const TUTO_STEPS=[
     at:'#ar-cards-container .cards-grid',
   },
   {
-    text:'Ce petit nombre en bas de chaque carte, c\'est le plus important de tout&nbsp;: '+
-         'le nombre d\'<strong>exemplaires que vous possédez</strong>. On ne joue que ce '+
-         'qu\'on possède. J\'y reviens, c\'est mon invention préférée.',
-    at:'.pcard .pcard-stock',
+    text:'Cette pastille en haut à droite, c\'est le nombre le plus important de '+
+         'tout&nbsp;: le nombre d\'<strong>exemplaires que vous possédez</strong>. On ne '+
+         'joue que ce qu\'on possède. J\'y reviens, c\'est mon invention préférée.',
+    at:'.pcard .pcard-bub-qty',
   },
   {
     text:'Je suis pressé et vous aussi. Voici une <strong>armée tirée au hasard</strong>&nbsp;: '+
