@@ -15,9 +15,9 @@
 // (savedArmies, savedAiArmies, saveArmies, saveAiArmies, VV_UNLOCKED),
 // economy.js (invOwnedIds — le vivier des bots, voir aiPiecePool),
 // main.js (showPage, showNotif, showPieceCtxMenu, showConfirmModal, escH),
-// piece-card.js (pieceCardHTML, wirePieceCards), builder.js
-// (derivePlacements, slotStockHTML — la fabrication de l'armée du joueur
-// réutilise ces deux fonctions pures, partagées avec la composition de
+// piece-card.js (pieceCardHTML, pieceCardFaceHTML, pieceRarityClass,
+// wirePieceCards), builder.js (derivePlacements — la fabrication de l'armée
+// du joueur réutilise cette fonction pure, partagée avec la composition de
 // l'armée IA), combat-intro.js (launchCombat, launchOnline).
 // ================================================================
 
@@ -84,48 +84,41 @@ function pAutosave(){
 }
 
 // ----------------------------------------------------------------
-// LES CINQ EMPLACEMENTS, TOUT EN HAUT — SUR DEUX RANGÉES
+// LES CINQ EMPLACEMENTS, TOUT EN HAUT — UN SEUL FORMAT
 // ----------------------------------------------------------------
-// L'ARMÉE CHOISIE EST LE SUJET DE CET ÉCRAN, ET ELLE DOIT ÊTRE CE QU'ON Y
-// VOIT DE PLUS GRAND. Les cinq emplacements ont longtemps formé UNE rangée de
-// cinq colonnes égales : sur un téléphone, chacun faisait un cinquième de la
-// largeur, c'est-à-dire moins qu'une carte du catalogue juste en dessous.
-// L'écran mettait donc en avant ce qu'on n'a pas encore engagé et rapetissait
-// ce qu'on a choisi — exactement l'inverse de ce qu'il doit faire.
+// UNE PIÈCE POSÉE EST LA MÊME CARTE QUE DANS LE CATALOGUE, ET LES CINQ ONT
+// LE MÊME GABARIT. Les emplacements étaient rangés sur deux rangées de
+// tailles différentes : Monarque et Général en grand et en carré sur la
+// première (le Monarque plus large que le Général), les trois pièces libres
+// en portrait sur la seconde. Cinq pièces, trois formats — et deux d'entre
+// eux n'existaient nulle part ailleurs dans le jeu. La hiérarchie qu'on
+// croyait dessiner par la taille se lisait surtout comme une irrégularité,
+// et elle coûtait la moitié de l'écran avant même d'arriver au catalogue.
 //
-// Deux rangées, et la hiérarchie du plateau :
-//   1. Monarque + Général, en grand — le Monarque le plus large des deux,
-//      c'est la pièce qu'on perd ou qu'on sauve.
-//   2. Les trois pièces libres, dans l'ordre de la composition : pièce 1 à
-//      gauche, pièce 3 à droite. Cet ordre N'EST PAS décoratif — c'est lui
-//      qui décide de leur place sur le plateau (derivePlacements,
-//      js/builder.js), d'où le glisser-déposer entre elles.
-// Les trois pièces libres restent plus grandes qu'une carte du catalogue (un
-// tiers de la largeur contre un quart) : même la plus petite pièce de l'armée
-// pèse plus lourd à l'écran que la plus grosse carte du catalogue.
+// Les cinq emplacements sont donc CINQ CARTES IDENTIQUES, en une rangée,
+// au même ratio 3/4 que celles du catalogue (voir .comp-grid dans
+// css/style.css [BUILDER], et pieceCardFaceHTML dans js/piece-card.js). Ce
+// qui distingue le Monarque du reste est ce qui distingue toutes les pièces
+// entre elles : sa couleur de rareté, sur sa bordure et sur son bandeau.
 //
-// Format carte (voir .comp-grid-cards dans css/style.css [BUILDER]) : une
-// pièce posée remplit tout l'emplacement, comme sur sa carte dans le
-// catalogue. PAS DE CROIX : on retire une pièce en appuyant sur son
-// emplacement.
+// L'ORDRE DES TROIS PIÈCES LIBRES N'EST PAS DÉCORATIF : c'est lui qui décide
+// de leur place sur le plateau (derivePlacements, js/builder.js), d'où le
+// glisser-déposer entre elles.
+//
+// PAS DE CROIX DE RETRAIT : on retire une pièce en appuyant sur sa carte.
 function pUpdSlots(){
   const g=document.getElementById('ar-comp-grid');if(!g)return;
   const all=pExtraPieces();
   const mk=(cls,lbl,p,type,eidx,req)=>p
-    ?'<div class="comp-slot filled '+cls+(eidx!=null?' draggable-slot':'')+'" data-pid="'+p.id+
-       '" data-type="'+type+'"'+(eidx!=null?' draggable="true" data-eidx="'+eidx+'"':'')+
+    ?'<div class="comp-slot filled piece-card '+pieceRarityClass(p)+(eidx!=null?' draggable-slot':'')+
+       '" data-pid="'+p.id+'" data-type="'+type+'"'+(eidx!=null?' draggable="true" data-eidx="'+eidx+'"':'')+
        ' role="button" tabindex="0" aria-label="Retirer '+escH(p.name)+'">'+
-       '<span class="cs-emoji">'+pieceIcon(p.id,'n')+'</span>'+
-       '<div class="cs-name">'+escH(p.name)+'</div>'+
-       '<div class="cs-val">'+p.value+' pts</div>'+
+       pieceCardFaceHTML(p)+
      '</div>'
     :'<div class="comp-slot'+(req?' cs-req '+cls:' cs-free')+'"><div class="cs-label">'+lbl+'</div><div class="cs-ph">'+(req?'':'+')+'</div></div>';
-  let h='<div class="ar-army-row ar-army-row-1">'+
-          mk('Monarque','Monarque',pArmy.mon,'mon',null,true)+
-          mk('Général','Général',pArmy.gen,'gen',null,true)+
-        '</div><div class="ar-army-row ar-army-row-2">';
-  for(let i=0;i<3;i++)h+=mk(all[i]?.class||'','Pièce '+(i+1),all[i],'pc',all[i]?i:null,false);
-  h+='</div>';
+  let h=mk('Monarque','Monarque',pArmy.mon,'mon',null,true)+
+        mk('Général','Général',pArmy.gen,'gen',null,true);
+  for(let i=0;i<3;i++)h+=mk(all[i]?.class||'','Libre',all[i],'pc',all[i]?i:null,false);
   g.innerHTML=h;
   g.querySelectorAll('.comp-slot.filled[data-pid]').forEach(el=>{
     el.addEventListener('click',()=>{
@@ -166,9 +159,10 @@ function pWireSlotDragSwap(g){
 
 // ----------------------------------------------------------------
 // LE CATALOGUE, EN DESSOUS — en vrac : pas de slots par catégorie, pas
-// d'étiquette "Monarque"/"Général"/etc. Seule reste la couleur en tête de
-// carte (voir .pcard::before, [PCARD]). Uniquement les pièces déjà
-// débloquées, triées du Monarque le moins cher au Sorcier le plus cher.
+// d'étiquette "Monarque"/"Général"/etc. Seule reste la couleur de rareté,
+// portée par la bordure et le bandeau du nom (voir [PIECE-CARD]). Uniquement
+// les pièces déjà débloquées, triées du Monarque le moins cher au Sorcier le
+// plus cher.
 // ----------------------------------------------------------------
 function pToggle(p){
   if(!VV_UNLOCKED.has(p.id))return;

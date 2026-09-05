@@ -85,10 +85,12 @@ async function launchChromium(){
 
 // TOUT `assets/` EST FACULTATIF, sauf `boards/` : portraits d'adversaires,
 // fonds d'écran, bannières de titre, mobilier, effets, médaillons de rang,
-// planches de destruction des coffres. Le jeu dessine un repli quand un
-// fichier manque — un coffre à couvercle pour les planches (voir
-// chestBreakReady, js/chest-break.js), un sceau procédural pour un portrait,
-// et pour tout le reste le décor en dégradés qui existait avant les images
+// planches de destruction des coffres, illustrations de créatures. Le jeu
+// dessine un repli quand un fichier manque — un coffre à couvercle pour les
+// planches (voir chestBreakReady, js/chest-break.js), un sceau procédural
+// pour un portrait, le SVG monochrome pour l'illustration d'une carte de
+// pièce (voir pieceCardArtHTML, js/piece-card.js), et pour tout le reste le
+// décor en dégradés qui existait avant les images
 // (voir la section [ART] de css/style.css et le catalogue
 // assets/PROMPTS.md). Leur 404 est donc un comportement voulu et non une
 // panne, au même titre que les polices Google ou le CDN Supabase quand le
@@ -100,7 +102,7 @@ async function launchChromium(){
 // par un mandataire à certificat propre : c'est la machine de test qui
 // refuse le certificat d'une ressource externe, pas le jeu qui échoue.
 const IGNORED_CONSOLE=/ERR_TUNNEL_CONNECTION_FAILED|ERR_CONNECTION_RESET|ERR_NAME_NOT_RESOLVED|ERR_CERT_AUTHORITY_INVALID|fonts\.googleapis|fonts\.gstatic|jsdelivr|supabase/;
-const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|chests)\//;
+const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|chests|pieces)\//;
 
 (async()=>{
   const server=serve();
@@ -2853,14 +2855,16 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
 
 
   // ================================================================
-  // LA COMPOSITION D'ARMÉE : L'ARMÉE CHOISIE EST LE SUJET DE L'ÉCRAN
+  // LA COMPOSITION D'ARMÉE : CINQ EMPLACEMENTS, UN SEUL GABARIT
   // ================================================================
-  // Les cinq emplacements ont été cinq colonnes égales en tête de page : sur
-  // un téléphone, chacun faisait MOINS de large qu'une carte du catalogue
-  // juste en dessous. L'écran mettait donc en avant ce qu'on n'a pas encore
-  // engagé et rapetissait ce qu'on a choisi. Ce test tient la hiérarchie
-  // dans les deux sens : Monarque > Général > pièces libres > cartes.
-  await step('l\'armée choisie est plus grande que le catalogue, sur deux rangées',async()=>{
+  // Les cinq emplacements ont porté trois formats à la fois — le Monarque en
+  // grand carré, le Général un peu moins large, les trois pièces libres en
+  // portrait — pour mettre en scène une hiérarchie que le plateau porte déjà.
+  // Trois gabarits pour cinq pièces se lisaient surtout comme une
+  // irrégularité, et la mise en scène mangeait la moitié de l'écran avant le
+  // catalogue. Ce test tient l'invariant inverse du précédent : AUCUNE pièce
+  // n'a droit à un traitement à part, Monarque compris.
+  await step('les cinq emplacements d\'armée ont tous le même gabarit',async()=>{
     await page.setViewportSize({width:390,height:844});
     await page.evaluate(()=>{
       // Le catalogue doit être PEUPLÉ : la page ne montre que les créatures
@@ -2877,11 +2881,10 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
     const r=await page.evaluate(()=>{
       const g=document.getElementById('ar-comp-grid');
       const box=g.getBoundingClientRect();
-      const r1=g.querySelector('.ar-army-row-1'),r2=g.querySelector('.ar-army-row-2');
-      if(!r1||!r2)return{err:'les deux rangées n\'existent pas'};
-      const w=el=>Math.round(el.getBoundingClientRect().width);
-      const s1=[...r1.children],s2=[...r2.children];
-      const cards=[...document.querySelectorAll('#ar-cards-container .pcard')];
+      const slots=[...g.querySelectorAll('.comp-slot')];
+      if(slots.length!==5)return{err:slots.length+' emplacements au lieu de 5'};
+      const rects=slots.map(el=>el.getBoundingClientRect());
+      const cards=[...document.querySelectorAll('#ar-cards-container .piece-card')];
       const grid=document.querySelector('#ar-cards-container .cards-grid');
       // Combien de cartes tiennent sur la PREMIÈRE rangée du catalogue.
       let parRangee=0;
@@ -2889,67 +2892,97 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
         const y=Math.round(cards[0].getBoundingClientRect().top);
         parRangee=cards.filter(c=>Math.abs(Math.round(c.getBoundingClientRect().top)-y)<3).length;
       }
-      const debord=[...g.querySelectorAll('.comp-slot')]
-        .filter(el=>{const b=el.getBoundingClientRect();
-                     return b.right>box.right+1||b.left<box.left-1;}).length;
+      // Le débordement se mesure sur la CARTE, pas sur ses pastilles : le
+      // coût déborde de 8 px hors du cadre, c'est le dessin voulu.
+      const debord=rects.filter(b=>b.right>box.right+1||b.left<box.left-1).length;
+      const w=rects.map(b=>Math.round(b.width)),h=rects.map(b=>Math.round(b.height));
       return{
-        rangee1:s1.length,rangee2:s2.length,
-        mon:w(s1[0]),gen:w(s1[1]),libre:w(s2[0]),
-        carte:cards.length?w(cards[0]):0,parRangee,
+        remplis:slots.filter(el=>el.classList.contains('filled')).length,
+        cartes:slots.filter(el=>el.classList.contains('piece-card')).length,
+        largeurs:w,hauteurs:h,
+        ecartL:Math.max(...w)-Math.min(...w),
+        ecartH:Math.max(...h)-Math.min(...h),
+        ratio:h[0]?w[0]/h[0]:0,
+        parRangee,
         colonnes:grid?getComputedStyle(grid).gridTemplateColumns.split(' ').length:0,
         debord,
       };
     });
     if(r.err)throw new Error(r.err);
-    if(r.rangee1!==2)throw new Error(r.rangee1+' emplacements sur la première rangée au lieu de 2');
-    if(r.rangee2!==3)throw new Error(r.rangee2+' emplacements sur la deuxième rangée au lieu de 3');
+    if(r.remplis!==5)throw new Error(r.remplis+' emplacements remplis au lieu de 5 (armée aléatoire)');
+    if(r.cartes!==5)throw new Error(r.cartes+' emplacements au format .piece-card au lieu de 5');
     if(r.debord)throw new Error(r.debord+' emplacement(s) débordent du cadre de l\'armée');
-    if(!(r.mon>r.gen))throw new Error('le Monarque ('+r.mon+') n\'est pas plus large que le Général ('+r.gen+')');
-    if(!(r.gen>r.libre))throw new Error('le Général ('+r.gen+') n\'est pas plus large qu\'une pièce libre ('+r.libre+')');
-    if(!(r.libre>r.carte))throw new Error('une pièce de l\'armée ('+r.libre+') n\'est pas plus grande qu\'une carte du catalogue ('+r.carte+')');
+    if(r.ecartL>1)throw new Error('les emplacements n\'ont pas la même largeur : '+r.largeurs.join(', '));
+    if(r.ecartH>1)throw new Error('les emplacements n\'ont pas la même hauteur : '+r.hauteurs.join(', '));
+    if(Math.abs(r.ratio-0.75)>0.03)throw new Error('un emplacement n\'est pas au rapport 3/4 : '+r.ratio.toFixed(2));
     if(r.parRangee!==4)throw new Error(r.parRangee+' cartes par rangée dans le catalogue au lieu de 4');
     if(r.colonnes!==4)throw new Error(r.colonnes+' colonnes déclarées dans la grille au lieu de 4');
   });
 
-  // LES DEUX CHIFFRES D'UNE CARTE SONT DANS LES COINS DU HAUT, en pastilles
-  // pleines et en blanc. Ils formaient un PIED sous le nom — trois lignes de
-  // texte empilées qui volaient au logo la moitié de la carte.
-  await step('une carte de pièce porte son coût et son stock en pastilles',async()=>{
+  // L'ANATOMIE DE LA CARTE, empruntée à Clash Royale : l'illustration en haut
+  // sur 72 % de la hauteur, le bandeau du nom en bas dans la couleur de
+  // rareté, et deux pastilles rondes qui DÉBORDENT des coins du haut. Le
+  // débordement n'est pas un accident de mise en page : une pastille inscrite
+  // dans la carte mange l'illustration.
+  await step('une carte de pièce a le format unique : illustration, bandeau, pastilles',async()=>{
     const r=await page.evaluate(()=>{
-      const card=document.querySelector('#ar-cards-container .pcard');
+      const card=document.querySelector('#ar-cards-container .piece-card');
       if(!card)return{err:'aucune carte dans le catalogue'};
       const cb=card.getBoundingClientRect();
-      const cost=card.querySelector('.pcard-bub-cost');
-      const qty=card.querySelector('.pcard-bub-qty');
-      const logo=card.querySelector('.pcard-logo');
-      const nom=card.querySelector('.pcard-name');
-      if(!cost||!logo||!nom)return{err:'anatomie de carte inattendue'};
-      const cs=getComputedStyle(cost);
+      const cost=card.querySelector('.piece-card-cost');
+      const qty=card.querySelector('.piece-card-qty');
+      const art=card.querySelector('.piece-card-art');
+      const nom=card.querySelector('.piece-card-name');
+      if(!cost||!art||!nom)return{err:'anatomie de carte inattendue'};
+      const cs=getComputedStyle(cost),ns=getComputedStyle(nom),ks=getComputedStyle(card);
       const rc=cost.getBoundingClientRect(),rq=qty?qty.getBoundingClientRect():null,
-            rl=logo.getBoundingClientRect(),rn=nom.getBoundingClientRect();
+            ra=art.getBoundingClientRect(),rn=nom.getBoundingClientRect();
       return{
-        piedMort:!card.querySelector('.pcard-foot'),
-        couleur:cs.color,
-        // La pastille doit être PLEINE : un fond transparent ne se lit pas.
-        fond:cs.backgroundColor,
-        gauche:rc.left-cb.left<cb.width/2,
-        droite:rq?rq.right>cb.left+cb.width/2:null,
-        // Le logo occupe plus de la moitié de la hauteur de la carte.
-        partLogo:rl.height/cb.height,
-        // Le nom est TOUT EN BAS : sous le logo, contre le bord.
-        nomEnBas:rn.top>rl.bottom-1&&(cb.bottom-rn.bottom)<cb.height*0.16,
+        rarete:(ks.getPropertyValue('--rarity')||'').trim(),
+        classeRarete:[...card.classList].some(c=>c.indexOf('rarity-')===0),
+        // La pastille : un rond de 30 px, cerné de blanc, à cheval sur le coin.
+        taille:[Math.round(rc.width),Math.round(rc.height)],
+        rond:cs.borderRadius,
+        cerne:cs.borderTopColor+' '+cs.borderTopWidth,
+        gras:cs.fontWeight,
+        ombreTexte:cs.textShadow!=='none',
+        ombrePortee:cs.boxShadow!=='none',
+        degrade:/gradient/.test(cs.backgroundImage),
+        debordeGauche:rc.left<cb.left-2,debordeHaut:rc.top<cb.top-2,
+        debordeDroite:rq?rq.right>cb.right+2:null,
+        // L'illustration occupe 72 % de la hauteur, le bandeau le reste.
+        // La mesure se fait sur la boîte de CONTENU (clientHeight) : la
+        // bordure de 2 px de la carte n'appartient ni à l'une ni à l'autre.
+        partArt:ra.height/card.clientHeight,
+        bandeauEnBas:Math.abs(rn.bottom-(cb.bottom-2))<2&&rn.top>=ra.bottom-1,
+        bandeauPlein:!/rgba\(0,\s*0,\s*0,\s*0\)/.test(ns.backgroundColor)||/gradient/.test(ns.backgroundImage),
+        // Le repli : sans PNG dans assets/pieces/, l'<img> se retire et le
+        // SVG monochrome prend sa place.
+        img:!!card.querySelector('.piece-card-img'),
+        svg:!!card.querySelector('.piece-card-svg .pc-svg'),
+        svgVisible:(()=>{const e=card.querySelector('.piece-card-svg');
+          return e?getComputedStyle(e).display!=='none':false;})(),
       };
     });
     if(r.err)throw new Error(r.err);
-    if(!r.piedMort)throw new Error('le pied de carte (.pcard-foot) existe encore');
-    if(r.couleur.replace(/\s/g,'')!=='rgb(255,255,255)')
-      throw new Error('la pastille de coût n\'écrit pas en blanc : '+r.couleur);
-    if(/rgba\(0,\s*0,\s*0,\s*0\)|transparent/.test(r.fond))
-      throw new Error('la pastille de coût n\'a pas de fond plein');
-    if(!r.gauche)throw new Error('le coût n\'est pas dans le coin haut GAUCHE');
-    if(r.droite===false)throw new Error('le stock n\'est pas dans le coin haut DROIT');
-    if(!(r.partLogo>0.5))throw new Error('le logo ne prend que '+Math.round(r.partLogo*100)+' % de la carte');
-    if(!r.nomEnBas)throw new Error('le nom n\'est pas tout en bas de la carte');
+    if(!r.classeRarete)throw new Error('la carte ne porte pas de modificateur .rarity-*');
+    if(!r.rarete)throw new Error('la variable --rarity n\'est pas définie sur la carte');
+    if(r.taille[0]!==30||r.taille[1]!==30)throw new Error('la pastille de coût fait '+r.taille.join('×')+' au lieu de 30×30');
+    if(!/50%|15px/.test(r.rond))throw new Error('la pastille de coût n\'est pas un cercle : '+r.rond);
+    if(!/rgb\(255,\s*255,\s*255\)/.test(r.cerne)||!/2px/.test(r.cerne))
+      throw new Error('la pastille de coût n\'a pas sa bordure blanche de 2 px : '+r.cerne);
+    if(!r.degrade)throw new Error('la pastille de coût n\'a pas de dégradé radial');
+    if(!r.ombrePortee)throw new Error('la pastille de coût n\'a pas d\'ombre portée');
+    if(!r.ombreTexte)throw new Error('le chiffre de la pastille n\'a pas d\'ombre de texte');
+    if(parseInt(r.gras,10)<700)throw new Error('le chiffre de la pastille n\'est pas en gras : '+r.gras);
+    if(!r.debordeGauche||!r.debordeHaut)throw new Error('la pastille de coût ne déborde pas du coin haut gauche');
+    if(r.debordeDroite===false)throw new Error('le badge de quantité ne déborde pas du coin haut droit');
+    if(Math.abs(r.partArt-0.72)>0.03)throw new Error('l\'illustration prend '+Math.round(r.partArt*100)+' % de la hauteur au lieu de 72');
+    if(!r.bandeauEnBas)throw new Error('le bandeau du nom n\'est pas tout en bas, sous l\'illustration');
+    if(!r.bandeauPlein)throw new Error('le bandeau du nom n\'est pas coloré');
+    if(!r.svg)throw new Error('le repli SVG n\'est pas dans la carte');
+    if(r.img)throw new Error('l\'<img> d\'illustration n\'a pas été retirée alors que le PNG manque');
+    if(!r.svgVisible)throw new Error('le SVG de repli reste caché alors que le PNG manque');
   });
 
   // LA FICHE SE FERME EN GLISSANT VERS LE BAS, DEPUIS N'IMPORTE OÙ. Le geste

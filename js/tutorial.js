@@ -290,7 +290,7 @@ const TUTO_STEPS=[
     text:'Cette pastille en haut à droite, c\'est le nombre le plus important de '+
          'tout&nbsp;: le nombre d\'<strong>exemplaires que vous possédez</strong>. On ne '+
          'joue que ce qu\'on possède. J\'y reviens, c\'est mon invention préférée.',
-    at:'.pcard .pcard-bub-qty',
+    at:'.piece-card .piece-card-qty',
   },
   {
     text:'Je suis pressé et vous aussi. Voici une <strong>armée tirée au hasard</strong>&nbsp;: '+
