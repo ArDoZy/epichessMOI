@@ -837,6 +837,30 @@ Puis décommenter la ligne correspondante en tête de `js/chest-break.js`.
 
 ---
 
+## 9 bis. LES ILLUSTRATIONS DE CRÉATURES — `assets/pieces/`
+
+Une image par créature, nommée comme son identifiant dans
+`js/data-pieces.js` (`meduse.png`, `preux-chevalier.png`…). La liste
+complète est dans **`assets/pieces/README.md`**.
+
+Elles habillent les **cartes du catalogue** de composition d'armée, pas le
+plateau : une pièce en partie garde son SVG monochrome, qui doit se lire sur
+une case de quarante pixels. Le dossier est vide aujourd'hui, et le jeu s'en
+passe — la carte retombe toute seule sur ce même SVG.
+
+Avec le bloc de style en tête de conversation :
+
+```
+Format carré. La créature ENTIÈRE, centrée, vue de trois quarts, tenant
+dans le cadre sans toucher les bords, sur fond transparent (PNG à canal
+alpha) ou à défaut sur fond sombre uni. Aucun décor, aucun sol, aucune
+ombre portée au sol. Lumière franche venant du haut à gauche. La
+silhouette doit rester reconnaissable réduite à soixante pixels de large.
+SUJET : … (voir le tableau de assets/pieces/README.md)
+```
+
+---
+
 ## 10. Récapitulatif : les soixante-sept chemins
 
 ```
@@ -857,6 +881,7 @@ assets/ranks/        bois.png  pierre.png  bronze.png  acier.png
 assets/adversaires/  cendre.png  suie.png  bruyere.png  orpiment.png
                      vitriol.png  cinabre.png  antimoine.png  mercure.png
                      plombagine.png  salamandre.png  instructeur.png  athanor.png
+assets/pieces/       <id>.png, un par créature — voir pieces/README.md
 assets/chests/dame/  01-intact.webp … 05-eclats.webp
 assets/chests/roi/   01-intact.webp … 05-eclats.webp
 ```

@@ -725,9 +725,26 @@ body.has-acc .builder-inner{padding-top:var(--page-top)}
   background:linear-gradient(180deg,transparent 0,var(--bg) 14px,var(--bg) 100%)}
 .bd-action .btn{height:52px;border-radius:12px;font-size:16px;font-weight:650}
 
-.comp-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}
-.comp-slot{background:var(--bg);border:2px dashed var(--border);border-radius:12px;padding:20px 14px;min-height:186px;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;transition:all .2s}
-.comp-slot.filled{border-style:solid}
+/* --- LES CINQ EMPLACEMENTS -------------------------------------------
+   UN SEUL FORMAT, POUR LES CINQ. Le Monarque et le Général avaient leur
+   propre gabarit (carré, plus large, texte d'un cran plus gros) et les trois
+   pièces libres un autre : cinq emplacements, trois formes, et une barre de
+   composition qui ne se lisait plus comme une rangée. Les cinq sont
+   maintenant au même ratio 3/4 que les cartes du catalogue, et une pièce
+   posée EST sa carte du catalogue (elle porte .piece-card, voir
+   [PIECE-CARD]) — c'est la couleur de rareté, et elle seule, qui distingue
+   le Monarque du reste.
+   Le rembourrage en haut et à gauche de la grille laisse la place aux
+   pastilles de coût, qui débordent de 8 px hors des cartes. */
+.comp-grid{display:grid;grid-template-columns:repeat(5,1fr);
+  gap:clamp(15px,4vw,18px);padding:10px 2px 2px 10px}
+.comp-slot{position:relative;aspect-ratio:3/4;min-width:0;min-height:0;
+  background:var(--bg);border:2px dashed var(--border);border-radius:11px;
+  padding:8% 6%;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  transition:border-color .2s ease,background .2s ease}
+/* Un emplacement REMPLI est une carte : elle occupe tout le cadre, sans
+   rembourrage à elle, et c'est [PIECE-CARD] qui décide de tout le reste. */
+.comp-slot.piece-card{padding:0;align-items:stretch;justify-content:flex-start}
 /* Vide et OBLIGATOIRE : trait plein dans la couleur de la classe attendue,
    fond teinté, libellé coloré. On voit la règle avant de la lire. */
 .comp-slot.cs-req{border-style:solid;border-width:1px}
@@ -740,91 +757,35 @@ body.has-acc .builder-inner{padding-top:var(--page-top)}
 /* Vide et LIBRE : pointillé, et un « + » plutôt qu'un « ? » — on ajoute une
    pièce, on ne devine pas laquelle est attendue. */
 .comp-slot.cs-free{border-style:dashed}
-.cs-ph{font-family:var(--f-ui);font-size:26px;font-weight:300;line-height:1;
-  color:var(--muted);opacity:.4;margin-top:8px;min-height:26px}
+.cs-ph{font-family:var(--f-ui);font-size:clamp(18px,5vw,26px);font-weight:300;line-height:1;
+  color:var(--muted);opacity:.4;margin-top:6%;min-height:1em}
 .comp-slot.draggable-slot{cursor:grab}
-.comp-slot.draggable-slot::before{content:'⠿';position:absolute;top:6px;left:8px;font-size:12px;color:var(--muted);opacity:.5;letter-spacing:-2px}
 .comp-slot.draggable-slot:active{cursor:grabbing}
 .comp-slot.slot-dragging{opacity:.4}
 .comp-slot.slot-over{outline:2px dashed var(--gold);outline-offset:2px}
-.comp-slot .cs-label{font-size:11px;color:var(--muted);text-transform:uppercase;font-family:var(--f-ui);letter-spacing:.8px;margin-bottom:10px}
-.comp-slot .cs-emoji{font-size:42px;margin-bottom:10px;display:block;line-height:1}
-.comp-slot .cs-name{font-size:15px;font-weight:700;margin-bottom:7px;text-align:center;line-height:1.3}
-.comp-slot .cs-val{font-size:13px;padding:4px 11px;background:rgba(255,255,255,.06);border-radius:6px;font-family:var(--f-ui);font-weight:700}
-.comp-slot .cs-rm{position:absolute;top:6px;right:6px;width:22px;height:22px;cursor:pointer;opacity:.35;transition:all .15s;display:flex;align-items:center;justify-content:center;border-radius:4px}
-.comp-slot .cs-rm:hover{opacity:1;background:rgba(239,68,68,.2)}
-.comp-slot .cs-rm svg{width:11px;height:11px;stroke:white;stroke-width:2.5;stroke-linecap:round}
-.comp-slot.Monarque.filled{background:var(--monarque-bg);border-color:var(--monarque)}.comp-slot.Monarque .cs-val{color:var(--monarque)}
-.comp-slot.Général.filled{background:var(--general-bg);border-color:var(--general)}.comp-slot.Général .cs-val{color:var(--general)}
-.comp-slot.Primordiale.filled{background:var(--primordiale-bg);border-color:var(--primordiale)}.comp-slot.Primordiale .cs-val{color:var(--primordiale)}
+.comp-slot .cs-label{font-family:var(--f-ui);font-size:clamp(8px,2.4vw,11px);color:var(--muted);
+  text-transform:uppercase;letter-spacing:.8px;line-height:1.2;text-align:center}
+/* La croix de retrait (page-builder seulement : sur « Mes armées », c'est la
+   carte entière qui retire la pièce). Elle est passée du coin HAUT DROIT au
+   coin BAS DROIT : le haut de la carte appartient maintenant aux deux
+   pastilles, et la croix s'y superposait au nombre d'exemplaires. */
+.comp-slot .cs-rm{position:absolute;bottom:4px;right:4px;z-index:4;
+  width:20px;height:20px;cursor:pointer;opacity:.55;transition:all .15s;
+  display:flex;align-items:center;justify-content:center;border-radius:5px;
+  background:rgba(0,0,0,.42)}
+.comp-slot .cs-rm:hover{opacity:1;background:rgba(239,68,68,.55)}
+.comp-slot .cs-rm svg{width:10px;height:10px;stroke:#fff;stroke-width:2.5;stroke-linecap:round}
 
-.comp-slot.Sorcier.filled{background:var(--sorcier-bg);border-color:var(--sorcier)}.comp-slot.Sorcier .cs-val{color:var(--sorcier)}
-.comp-slot.Brute.filled{background:var(--brute-bg);border-color:var(--brute)}.comp-slot.Brute .cs-val{color:var(--brute)}
-
-/* L'ARMÉE CHOISIE, SUR DEUX RANGÉES, ET C'EST LA CHOSE LA PLUS GRANDE DE
-   L'ÉCRAN.
-   Les cinq emplacements ont longtemps été cinq colonnes égales, en tête de la
-   page « Mes armées ». Résultat : sur un téléphone, chaque emplacement faisait
-   un cinquième de la largeur — c'est-à-dire MOINS qu'une carte du catalogue
-   juste en dessous. L'écran mettait donc en valeur ce qu'on n'a pas encore
-   engagé, et rapetissait ce qu'on a choisi.
-
-   La hiérarchie est maintenant explicite, et elle suit celle du plateau :
-     · RANGÉE 1 — le Monarque et le Général, en grand. Le Monarque prend la
-       plus grande part (c'est la pièce qu'on perd ou qu'on sauve), le Général
-       vient juste derrière.
-     · RANGÉE 2 — les trois pièces libres, dans l'ordre de la composition
-       (pièce 1, 2, 3 de gauche à droite = leur position sur le plateau, voir
-       derivePlacements dans js/builder.js). Plus petites que les deux
-       premières, mais JAMAIS plus petites qu'une carte du catalogue : à
-       quatre cartes par rangée en dessous et trois emplacements ici, elles
-       restent d'un bon tiers plus larges.
-   Une pièce posée remplit tout son emplacement, exactement comme sur sa carte.
+/* L'ARMÉE CHOISIE, EN UNE RANGÉE DE CINQ CARTES IDENTIQUES.
+   Elle a longtemps été rangée sur DEUX rangées de tailles différentes —
+   Monarque et Général en grand carré, les trois pièces libres en portrait
+   plus petit — pour dire une hiérarchie que le plateau porte déjà. Trois
+   gabarits pour cinq pièces se lisaient surtout comme une irrégularité, et
+   la mise en scène mangeait la moitié de l'écran avant le catalogue.
+   Cinq cartes égales, donc, au même format que celles du catalogue : la
+   pièce qu'on vient de choisir en bas se retrouve à l'identique en haut.
    Pas de croix de retrait : l'emplacement entier est le bouton (voir
    pUpdSlots, js/armies.js). */
-.comp-grid-cards{display:flex;flex-direction:column;gap:clamp(7px,2vw,12px)}
-/* `align-items:start` ET `min-width:0` sur les emplacements, et les deux sont
-   indispensables. Un élément de grille étiré (le défaut) prend la HAUTEUR de
-   sa rangée ; avec un `aspect-ratio`, sa largeur minimale automatique se
-   déduit alors de cette hauteur — et cette largeur-là ne rentrait pas dans la
-   colonne, si bien que les deux colonnes débordaient du cadre de plusieurs
-   dizaines de pixels. On coupe la boucle des deux côtés : plus d'étirement,
-   donc la hauteur suit la largeur (et non l'inverse), et plus de largeur
-   minimale automatique, donc les `fr` sont respectés. */
-.ar-army-row{display:grid;gap:clamp(7px,2vw,12px);align-items:start}
-.comp-grid-cards .comp-slot{min-width:0}
-/* 1,22fr / 1fr : le Monarque est visiblement le plus grand des cinq sans que
-   le Général ne devienne une vignette à côté de lui.
-   LA DIFFÉRENCE SE JOUE EN LARGEUR, PAS EN HAUTEUR. Les deux emplacements de
-   tête gardent le même bas de cadre : c'est le Monarque, carré, qui donne sa
-   hauteur à la rangée, et le Général la remplit à une largeur moindre. Deux
-   boîtes de hauteurs différentes côte à côte laissaient une marche de trente
-   pixels sous le Général — un défaut de finition, pas une hiérarchie. */
-.ar-army-row-1{grid-template-columns:1.22fr 1fr}
-.ar-army-row-1 .comp-slot:first-child{align-self:start}
-.ar-army-row-1 .comp-slot:last-child{align-self:stretch;aspect-ratio:auto}
-.ar-army-row-2{grid-template-columns:repeat(3,1fr)}
-.comp-grid-cards .comp-slot{aspect-ratio:3/4;min-height:0;padding:9% 6% 6%}
-/* Les deux emplacements de tête sont plus CARRÉS que les trois autres : c'est
-   ce qui leur donne de la hauteur en plus de la largeur, sans creuser un
-   trou sous la rangée. */
-.ar-army-row-1 .comp-slot{aspect-ratio:1/1;padding:7% 6% 6%}
-.comp-grid-cards .comp-slot.filled{cursor:pointer}
-.comp-grid-cards .comp-slot .cs-emoji{font-size:0;line-height:0;margin-bottom:5%;
-  width:100%;flex:1;min-height:0;display:flex;align-items:center;justify-content:center}
-.comp-grid-cards .comp-slot .cs-emoji .pc-icon,
-.comp-grid-cards .comp-slot .cs-emoji .pc-svg{width:100%;height:100%;max-height:100%}
-.comp-grid-cards .comp-slot .cs-name{font-size:clamp(10px,2.9vw,14px);margin-bottom:5px}
-.comp-grid-cards .comp-slot .cs-val{font-size:clamp(10px,3vw,13px)}
-/* Le Monarque et le Général écrivent leur nom et leur valeur un cran plus
-   grand : la taille de l'emplacement ne suffirait pas à les distinguer si le
-   texte, lui, restait identique. */
-.ar-army-row-1 .comp-slot .cs-name{font-size:clamp(12px,3.7vw,17px)}
-.ar-army-row-1 .comp-slot .cs-val{font-size:clamp(11px,3.3vw,15px);padding:5px 13px}
-.ar-army-row-1 .comp-slot .cs-label{font-size:clamp(9px,2.7vw,12px)}
-/* Un emplacement VIDE de la première rangée ne doit pas être un grand carré
-   vide : le « + » et l'étiquette y flottaient au milieu de rien. */
-.ar-army-row-1 .comp-slot .cs-ph{font-size:clamp(28px,8vw,40px)}
 
 /* Le "slot" de catégorie englobe TOUTE la section (titre + toutes ses
    cartes), pas seulement le bandeau de titre. Accent de couleur à gauche ET
@@ -856,29 +817,27 @@ body.has-acc .builder-inner{padding-top:var(--page-top)}
 .class-hdr.Primordiale{color:var(--primordiale)}.class-hdr.Brute{color:var(--brute)}
 .class-hdr.Sorcier{color:var(--sorcier)}
 
-/* LA GRILLE DES CARTES DE PIÈCES. Voir [PCARD] plus bas pour la carte
-   elle-même. Le nombre de colonnes n'est plus fixé : il découle d'une largeur
-   MINIMALE de carte exprimée en pourcentage de l'écran, donc trois colonnes
-   sur un téléphone, davantage sur grand écran, sans média-requête. */
-.cards-grid{display:grid;justify-content:start;
-  grid-template-columns:repeat(auto-fill,minmax(clamp(92px,26vw,132px),1fr));
-  gap:clamp(6px,1.8vw,12px)}
-/* Une section de deux cartes affichait deux cartes GONFLÉES : avec auto-fill,
-   les colonnes s'étirent pour occuper la ligne, et la même carte changeait
-   donc de taille selon la section qui l'accueille. Un plafond de largeur
-   suffit à rendre le gabarit constant partout. */
-.cards-grid .pcard{max-width:132px;width:100%}
-/* LE CATALOGUE DE « MES ARMÉES » TIENT QUATRE CARTES PAR RANGÉE, et le nombre
-   est FIXE. Il en tenait trois, par le jeu d'une largeur minimale en vw ; or
-   c'est ici, et seulement ici, que le catalogue est le SECOND sujet de
-   l'écran — l'armée choisie est le premier. Quatre colonnes rendent une
-   rangée entière de hauteur à l'armée du dessus, et une carte reste
-   parfaitement lisible : la nouvelle anatomie (deux pastilles, un logo, un
-   nom — voir [PCARD]) n'a plus de ligne de texte à sacrifier.
-   `repeat(4,1fr)` et non auto-fill : sur un grand écran, laisser la grille
-   décider redonnerait six ou sept colonnes de cartes minuscules. */
-#ar-cards-container .cards-grid{grid-template-columns:repeat(4,1fr)}
-#ar-cards-container .cards-grid .pcard{max-width:none}
+/* LA GRILLE DES CARTES DE PIÈCES. Voir [PIECE-CARD] plus bas pour la carte
+   elle-même.
+   QUATRE COLONNES SUR TÉLÉPHONE, ET UN NOMBRE FIXE. La grille était en
+   `auto-fill` sur une largeur minimale de carte : le nombre de colonnes
+   variait d'une section à l'autre selon la place restante, et surtout une
+   section qui ne remplissait pas sa dernière rangée laissait des colonnes
+   étirées — une ou deux cartes GONFLÉES, plus larges que toutes les autres,
+   à la fin de chaque classe. Des colonnes en `1fr` en nombre fixe suppriment
+   le cas : une carte seule sur la dernière rangée a exactement la largeur de
+   ses voisines des rangées du dessus, et se range sous la première colonne.
+   L'écart est le même horizontalement et verticalement.
+   Le rembourrage du haut et de gauche est ce qui laisse la place aux
+   pastilles de coût, qui débordent de 8 px hors du cadre de la carte
+   (voir .piece-card-cost) : sans lui, la première colonne serait rognée. */
+.cards-grid{display:grid;grid-template-columns:repeat(4,1fr);
+  gap:clamp(15px,4vw,18px);padding:10px 2px 2px 10px}
+@media (min-width:560px){.cards-grid{grid-template-columns:repeat(6,1fr)}}
+@media (min-width:860px){.cards-grid{grid-template-columns:repeat(8,1fr)}}
+/* Un plafond de largeur garde le même gabarit de carte partout, quel que
+   soit le nombre de colonnes que l'écran permet. */
+.cards-grid .piece-card{max-width:150px;width:100%;justify-self:center}
 .pc-emoji{font-size:36px;margin-bottom:10px;display:block;line-height:1}
 /* .pc-class : utilisé par voie.js (jalons) et game-flow.js (déblocage),
    pas seulement par les cartes de pièces du builder (qui n'affichent plus
@@ -890,7 +849,7 @@ body.has-acc .builder-inner{padding-top:var(--page-top)}
 .pc-class.Sorcier{background:var(--sorcier-bg);color:var(--sorcier);border:1px solid rgba(236,72,153,.25)}
 .pc-class.Brute{background:var(--brute-bg);color:var(--brute);border:1px solid rgba(239,68,68,.25)}
 /* Cadenas dessiné en CSS pur (pas d'émoji) : anse + corps. Il sert au voile
-   des cartes verrouillées (.pcard-lock, voir [PCARD]). */
+   des cartes verrouillées (.piece-card-lockbadge, voir [PIECE-CARD]). */
 .lock-icon{position:relative;width:clamp(14px,4.5vw,20px);height:clamp(17px,5.4vw,24px);
   filter:drop-shadow(0 0 6px rgba(0,0,0,.9));opacity:.9}
 .lock-icon::before{content:'';position:absolute;top:0;left:15%;width:70%;height:46%;box-sizing:border-box;
@@ -3529,11 +3488,8 @@ body.light .jt-fx{mix-blend-mode:normal;filter:saturate(1.45) brightness(.82)}
    au moment de cliquer « Combattre ».
    ============================================================== */
 /* Le stock sur une carte de pièce se lit dans la pastille de son coin haut
-   droit (.pcard-bub-qty, voir [PCARD]). Ici, il ne reste que le rappel posé
-   sous une pièce DÉJÀ ENGAGÉE, où c'est le rapport « possédé / requis » qui
-   compte et non le seul nombre. */
-.cs-stock{font-family:var(--f-ui);font-size:9.5px;color:var(--muted);margin-top:6px;letter-spacing:.4px}
-.cs-stock-out{color:var(--danger)}
+   droit (.piece-card-qty, voir [PIECE-CARD]) — sur la carte du catalogue
+   comme sur la pièce posée dans l'armée, qui est désormais la même carte. */
 .ac-nostock{font-family:var(--f-ui);font-size:10.5px;color:var(--danger);
   background:rgba(212,69,63,.09);border:1px solid rgba(212,69,63,.25);border-radius:8px;
   padding:6px 9px;margin-top:10px;line-height:1.4}
@@ -3652,8 +3608,6 @@ body.light .jt-fx{mix-blend-mode:normal;filter:saturate(1.45) brightness(.82)}
    ============================================================== */
 .unlock-piece-emoji{display:block;margin:0 auto 8px;line-height:0;font-size:0}
 .unlock-piece-emoji .pc-icon{width:72px;height:72px}
-.comp-slot .cs-emoji{font-size:0;line-height:0;margin-bottom:10px}
-.comp-slot .cs-emoji .pc-icon{width:78px;height:78px}
 .cside-pieces{font-size:0}
 .cside-pieces .pc-icon{width:52px;height:52px}
 .vm-piece-emoji{font-size:0;line-height:0}
@@ -3724,16 +3678,17 @@ body.light #settings-btn{box-shadow:0 0 0 1px rgba(20,26,25,.18),inset 0 1px 1px
   inset 0 -2px 5px rgba(0,0,0,.42),0 5px 14px -5px rgba(20,26,25,.35)}
 body.light .game-board{box-shadow:0 12px 32px -12px rgba(20,26,25,.30),0 0 0 1px var(--border2)}
 body.light .army-card:hover{box-shadow:0 6px 22px -8px rgba(20,26,25,.22)}
-body.light .pcard:hover{box-shadow:0 8px 20px -8px rgba(20,26,25,.22)}
-body.light .pcard-actions{box-shadow:0 12px 28px -10px rgba(20,26,25,.28)}
+body.light .piece-card{box-shadow:0 3px 0 -1px rgba(20,26,25,.14),0 6px 14px -8px rgba(20,26,25,.28)}
+body.light .piece-card:hover{box-shadow:0 8px 20px -8px rgba(20,26,25,.22)}
+body.light .piece-card-actions{box-shadow:0 12px 28px -10px rgba(20,26,25,.28)}
 body.light #settings-panel{box-shadow:0 12px 32px -10px rgba(20,26,25,.26)}
 
 /* Voiles posés SUR une image (cadenas de carte, cadenas d'échiquier) : ils
    restent sombres dans les deux thèmes — ils voilent une texture, pas une
    surface d'interface — mais leur liseré interne clair n'a plus de sens. */
-body.light .pcard-lockbadge{background:rgba(20,26,25,.42);
+body.light .piece-card-lockbadge{background:rgba(20,26,25,.42);
   box-shadow:inset 0 0 0 1px rgba(255,255,255,.18)}
-body.light .pcard-req{color:#6b5316;background:rgba(138,107,28,.12);border-color:rgba(138,107,28,.34)}
+body.light .piece-card-req{color:#6b5316;background:rgba(252,250,244,.86);border-color:rgba(138,107,28,.34)}
 body.light .ac-val{color:#6b5316;background:rgba(138,107,28,.10);border-color:rgba(138,107,28,.30)}
 body.light .bd-gauge{background:rgba(20,26,25,.10)}
 
@@ -5479,142 +5434,202 @@ body.light .adv-advised{color:#f6f5f1}
   color:var(--muted);margin:-4px 0 12px;font-variant-numeric:tabular-nums}
 
 
-/* [PCARD] : LA CARTE DE PIÈCE, VERSION TÉLÉPHONE ==================
+/* [PIECE-CARD] : LA CARTE DE PIÈCE, FORMAT UNIQUE =================
    Un seul composant pour toutes les cartes de pièces du jeu
-   (js/piece-card.js). Il remplace .piece-card, qui était un rectangle
-   PAYSAGE contenant tout : logo, nom, valeur, stock, l'échiquier 9×9 du
-   déplacement ET le pouvoir en toutes lettres. À la largeur d'un téléphone,
-   il n'en tenait que deux à l'écran, et le schéma comme le texte y étaient
-   trop petits pour être lus. On ne pouvait donc ni comparer les pièces
-   (trop peu visibles à la fois) ni les lire (trop petit) : la carte échouait
-   des deux côtés.
+   (js/piece-card.js), et UN SEUL GABARIT POUR TOUTES LES PIÈCES. Le Monarque
+   et le Général avaient un rendu à part dans les emplacements d'armée —
+   carré, plus large, texte d'un cran plus gros — pendant que les trois
+   pièces libres et tout le catalogue tenaient dans un portrait 3/4 : cinq
+   pièces, trois gabarits, une grille qui ne se lisait plus comme une grille.
+   Il n'y a plus d'exception : même ratio, même taille, mêmes pastilles pour
+   toutes. Ce qui distingue une pièce d'une autre est SA COULEUR DE RARETÉ.
 
-   Le nouveau parti est celui-ci : LA CARTE IDENTIFIE, LA FICHE EXPLIQUE.
-   La carte est au format PORTRAIT et ne porte que trois choses — deux bulles
-   de chiffres dans les coins du haut, le logo, le nom tout en bas. Le détail
-   s'ouvre en bottom sheet (voir [PSHEET]).
+   L'ANATOMIE, empruntée à la carte de Clash Royale :
+     · l'ILLUSTRATION en haut, sur 72 % de la hauteur ;
+     · le BANDEAU DU NOM en bas, PLEIN, dans la couleur de rareté ;
+     · deux PASTILLES rondes dans les coins du haut, qui DÉBORDENT du cadre
+       (-8 px) : le coût à gauche, le nombre d'exemplaires à droite.
+   Le débordement n'est pas un accident de mise en page, c'est le dessin :
+   une pastille posée à cheval sur l'angle se détache de l'illustration au
+   lieu de la recouvrir, et se lit à bout de bras.
 
-   L'ESPACE APPARTIENT AU LOGO. La valeur et le stock ont longtemps formé un
-   PIED sous le nom : trois lignes de texte empilées sous le dessin, qui lui
-   prenaient la moitié de la carte. À quatre cartes par rangée, il n'en
-   restait qu'une vignette. Les deux chiffres sont donc passés dans les coins
-   du haut, en pastilles pleines de la couleur de la classe et en blanc — on
-   les lit d'un coup d'œil, ils ne coûtent aucune ligne, et ils rendent le
-   liseré de classe inutile (la couleur est déjà là, deux fois).
+   UNE COULEUR, UNE VARIABLE. La rareté arrive par un modificateur de classe
+   (.rarity-common … .rarity-champion) qui pose `--rarity` ; la bordure de la
+   carte et le bandeau du nom la lisent tous les deux. Ajouter une classe de
+   pièce = une ligne ici, et rien d'autre à retoucher.
 
-   TOUTES LES MESURES SONT RELATIVES : la carte est dimensionnée par la
-   grille (voir .cards-grid), sa hauteur découle de son aspect-ratio, et
-   chaque élément intérieur est exprimé en pourcentage de la carte ou en
-   clamp() sur la largeur d'écran. Aucune valeur en pixels fixes, donc aucun
-   débordement à aucune taille d'écran.
+   TOUT LE RESTE EST RELATIF : la carte est dimensionnée par la grille (voir
+   .cards-grid), sa hauteur découle de son aspect-ratio, et ses éléments
+   intérieurs sont en pourcentage d'elle-même. Seules les deux pastilles
+   gardent une taille fixe — un chiffre qui doit rester lisible ne peut pas
+   rétrécir avec l'écran.
    ============================================================== */
-.pcard{position:relative;display:flex;flex-direction:column;align-items:center;
-  aspect-ratio:3/4;padding:11% 5% 6%;border-radius:12px;background:var(--surface);
-  border:1px solid var(--border);cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent;
-  --pc:var(--muted);--pcbg:rgba(255,255,255,.06);
+/* Les cinq raretés du jeu, du plus commun au plus rare. Elles reprennent les
+   couleurs de classe déjà posées dans :root : la rareté N'EST PAS une
+   deuxième taxonomie, c'est le nom que porte la couleur de la classe sur la
+   carte. */
+.rarity-common{--rarity:var(--brute)}
+.rarity-rare{--rarity:var(--sorcier)}
+.rarity-epic{--rarity:var(--primordiale)}
+.rarity-legendary{--rarity:var(--general)}
+.rarity-champion{--rarity:var(--monarque)}
+
+.piece-card{position:relative;display:flex;flex-direction:column;
+  aspect-ratio:3/4;border-radius:11px;overflow:visible;container-type:inline-size;
+  background:linear-gradient(180deg,var(--surface2) 0%,var(--surface) 62%);
+  border:2px solid color-mix(in srgb,var(--rarity,var(--muted)) 62%,transparent);
+  box-shadow:0 3px 0 -1px rgba(0,0,0,.42),0 6px 14px -6px rgba(0,0,0,.6);
+  cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent;
   transition:transform .16s ease,border-color .2s ease,box-shadow .2s ease}
-.pcard.Monarque{--pc:var(--monarque);--pcbg:var(--monarque-bg)}
-.pcard.Général{--pc:var(--general);--pcbg:var(--general-bg)}
-.pcard.Primordiale{--pc:var(--primordiale);--pcbg:var(--primordiale-bg)}
-.pcard.Brute{--pc:var(--brute);--pcbg:var(--brute-bg)}
-.pcard.Sorcier{--pc:var(--sorcier);--pcbg:var(--sorcier-bg)}
-.pcard:hover{transform:translateY(-3px);border-color:var(--pc);box-shadow:0 8px 20px rgba(0,0,0,.38)}
-.pcard:focus-visible{outline:2px solid var(--accent2);outline-offset:2px}
+/* Le repli, pour une carte à qui personne n'a donné de rareté. Il est posé
+   en `:where()`, donc à spécificité NULLE : sans cela il se retrouve à
+   égalité avec les modificateurs .rarity-*, l'emporte pour être écrit plus
+   bas dans le fichier, et TOUTES les cartes deviennent grises. */
+:where(.piece-card){--rarity:var(--muted)}
+.piece-card:hover{transform:translateY(-3px);
+  border-color:var(--rarity);box-shadow:0 8px 20px rgba(0,0,0,.38)}
+.piece-card:focus-visible{outline:2px solid var(--accent2);outline-offset:2px}
 
-/* 1. LES DEUX BULLES — coût à gauche, exemplaires à droite.
-      Elles sont PLEINES de la couleur de la classe et écrites en blanc : un
-      chiffre clair sur un fond saturé est ce qui se lit de plus loin, et
-      c'est aussi ce qui identifie la famille de la créature sans badge à
-      lire. Elles chevauchent volontiers le haut de la carte (top négatif nul,
-      mais posées dans le rembourrage) : elles ne prennent pas de ligne.
-      `min-width` et non une largeur fixe : « 3 » et « 12 » gardent la même
-      hauteur, la bulle s'allonge seule. */
-.pcard-bub{position:absolute;top:4.5%;z-index:2;
-  display:inline-flex;align-items:center;justify-content:center;
-  min-width:2.05em;height:2.05em;padding:0 .42em;border-radius:99px;
+/* 1. L'ILLUSTRATION — 72 % DE LA HAUTEUR, et pas un pourcentage de plus :
+      c'est ce qui reste au bandeau du nom qui décide de sa lisibilité, et un
+      bandeau trop mince rend le nom illisible avant que le dessin ne gagne
+      quoi que ce soit. `min-height:0` : sans lui, une image haute impose sa
+      taille naturelle au conteneur flex et fait déborder la carte. */
+.piece-card-art{position:relative;flex:0 0 72%;height:72%;min-height:0;width:100%;
+  display:flex;align-items:center;justify-content:center;
+  overflow:hidden;border-radius:9px 9px 0 0;line-height:0;font-size:0;
+  padding:14% 8% 4%;
+  background:radial-gradient(ellipse at 50% 38%,
+    color-mix(in srgb,var(--rarity) 22%,transparent) 0%,transparent 72%)}
+.piece-card-img{width:100%;height:100%;object-fit:contain;display:block}
+/* LE REPLI SUR LE SVG, SANS UNE LIGNE DE SCRIPT. Tant que l'<img> est là, le
+   SVG monochrome reste caché. Si le PNG manque, `onerror` retire l'<img>
+   (js/piece-card.js) : le SVG n'a plus de voisin précédent, cette règle ne
+   s'applique plus, et il réapparaît de lui-même. */
+.piece-card-img+.piece-card-svg{display:none}
+.piece-card-svg{display:flex;align-items:center;justify-content:center;
+  width:100%;height:100%}
+.piece-card-svg .pc-icon{width:100%;height:100%;display:flex;align-items:center;justify-content:center}
+.piece-card-svg .pc-svg{width:100%;height:100%;max-height:100%}
+
+/* 2. LE BANDEAU DU NOM — plein, dans la couleur de rareté, texte blanc.
+      C'est le second endroit (avec la bordure) où la rareté se lit, et le
+      seul qui la donne à voir en aplat : deux cartes de classes différentes
+      se distinguent d'un coup d'œil, sans badge à lire. */
+.piece-card-name{flex:1 1 auto;min-height:0;width:100%;overflow:hidden;
+  display:flex;align-items:center;justify-content:center;text-align:center;
+  padding:2px 5%;border-radius:0 0 9px 9px;
+  background:linear-gradient(180deg,
+    color-mix(in srgb,var(--rarity) 88%,#000) 0%,
+    color-mix(in srgb,var(--rarity) 62%,#000) 100%);
+  color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.55);
+  font-family:var(--f-ui);font-weight:700;line-height:1.05;letter-spacing:.2px;
+  /* LE NOM SE MESURE SUR LA CARTE, PAS SUR L'ÉCRAN. Une taille en `vw` vaut
+     la même chose pour une carte de catalogue (un quart de la largeur) et
+     pour un emplacement d'armée (un cinquième) : un nom de deux lignes
+     tenait dans le bandeau de la première et débordait de celui du second,
+     où il se faisait rogner d'un pixel en haut. `cqw` mesure la carte
+     elle-même — 2 lignes tiennent alors dans les 28 % du bandeau à toutes
+     les tailles. La ligne en `vw` reste le repli des navigateurs sans
+     requêtes de conteneur. */
+  font-size:clamp(8.5px,2.6vw,12px);
+  font-size:min(13px,16cqw)}
+/* Le nom est dans un <span> à lui, et non posé à même le bandeau : le
+   bandeau CENTRE (flex) et le span TRONQUE à deux lignes (-webkit-box). Les
+   deux `display` sont incompatibles sur un seul élément — le second annulait
+   le centrage du premier, et un nom court flottait en haut du bandeau. */
+.piece-card-name>span{display:-webkit-box;-webkit-line-clamp:2;
+  -webkit-box-orient:vertical;overflow:hidden}
+
+/* 3. LES DEUX PASTILLES DE COIN — le coût à gauche, les exemplaires à droite.
+      Trente pixels de diamètre, un cerne blanc de 2 px, un dégradé radial qui
+      leur donne du volume, une ombre portée qui les décolle de la carte, et
+      le chiffre en gras cerné d'une ombre de texte : c'est le dessin de la
+      bulle d'élixir, et c'est ce qui se lit de plus loin sur une grille
+      dense. Elles sont posées à -8 px du coin, donc À CHEVAL sur le bord —
+      volontairement : une pastille inscrite DANS la carte mange
+      l'illustration, une pastille à cheval ne mange rien. */
+.piece-card-cost,.piece-card-qty{position:absolute;top:-8px;z-index:3;
+  width:30px;height:30px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  border:2px solid #fff;
   font-family:var(--f-ui);font-weight:800;font-variant-numeric:tabular-nums;
-  font-size:clamp(9px,2.9vw,13px);line-height:1;color:#fff;
-  background:var(--pc);border:1px solid rgba(0,0,0,.28);
-  box-shadow:0 2px 6px -1px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.28)}
-.pcard-bub-cost{left:5%}
-/* Le nombre d'exemplaires porte le « × » : sans lui, deux chiffres nus dans
-   les deux coins du haut se lisent comme deux fois la même nature de nombre. */
-.pcard-bub-qty{right:5%}
-.pcard-bub-qty::before{content:'×';font-size:.82em;opacity:.75;margin-right:.08em}
-/* Stock insuffisant pour aligner la pièce : la bulle vire à la couleur de
-   tension. C'est le seul cas où elle quitte la couleur de sa classe — parce
-   que c'est le seul cas où le nombre est un problème et non un état. */
-.pcard-bub-out{background:var(--danger)}
-/* En thème clair, certaines couleurs de classe sont plus pâles : un cerne
-   sombre garde le contraste du blanc sur la pastille. */
-body.light .pcard-bub{border-color:rgba(0,0,0,.34);text-shadow:0 1px 1px rgba(0,0,0,.35)}
+  font-size:13px;line-height:1;color:#fff;
+  text-shadow:0 1px 2px rgba(0,0,0,.75);
+  box-shadow:0 2px 5px rgba(0,0,0,.55),inset 0 -2px 4px rgba(0,0,0,.28)}
+/* Le COÛT garde le violet de l'élixir : c'est une monnaie, la même pour
+   toutes les pièces, elle ne suit donc pas la rareté de la carte. */
+.piece-card-cost{left:-8px;
+  background:radial-gradient(circle at 34% 28%,#e08bf5 0%,#c045dd 46%,#7d1c9c 100%)}
+/* Le NOMBRE D'EXEMPLAIRES, même traitement à droite. Le « × » le distingue
+   du coût : sans lui, deux chiffres nus dans les deux coins du haut se
+   lisent comme deux fois la même nature de nombre. */
+.piece-card-qty{right:-8px;
+  background:radial-gradient(circle at 34% 28%,#6f7c8d 0%,#3d4855 48%,#1d242c 100%)}
+.piece-card-qty::before{content:'×';font-size:.8em;opacity:.8;margin-right:.05em}
+/* Stock insuffisant pour aligner la pièce : la pastille vire à la couleur de
+   tension. C'est le seul cas où le nombre est un problème et non un état. */
+.piece-card-qty-out{background:radial-gradient(circle at 34% 28%,#f08e86 0%,#d4453f 48%,#7d1a16 100%)}
 
-/* 2. LE LOGO — il prend TOUT ce qui reste entre les bulles et le nom.
-      `flex:1` et une hauteur libre : c'est lui qui absorbe les différences de
-      hauteur d'une carte à l'autre, pas le nom. */
-.pcard-logo{position:relative;flex:1;min-height:0;width:88%;
-  display:flex;align-items:center;justify-content:center;line-height:0;font-size:0;
-  margin-top:2%}
-.pcard-logo .pc-icon{width:100%;height:100%;display:flex;align-items:center;justify-content:center}
-.pcard-logo .pc-svg{width:100%;height:100%;max-height:100%}
-/* 3. LE NOM — tout en bas, sur deux lignes au besoin. */
-.pcard-name{flex:0 0 auto;width:100%;text-align:center;
-  font-family:var(--f-ui);font-weight:700;line-height:1.15;
-  font-size:clamp(9px,2.7vw,12.5px);margin-top:4%;
-  overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
-.pcard-out{opacity:.78}
 /* Déjà engagée dans l'armée : la carte reste lisible (on doit pouvoir la
    retrouver pour la retirer), mais se met en retrait. */
-.pcard-sel{opacity:.62;border-color:var(--pc);box-shadow:inset 0 0 0 1px var(--pc)}
+.piece-card-out{opacity:.8}
+.piece-card-sel{opacity:.62;border-color:var(--rarity);
+  box-shadow:inset 0 0 0 2px color-mix(in srgb,var(--rarity) 55%,transparent)}
 
-/* VERROUILLÉE : MÊME ANATOMIE, une bulle en moins.
+/* VERROUILLÉE : MÊME ANATOMIE, une pastille en moins.
    La carte reste CLIQUABLE — c'est le seul moyen de lire le déplacement et le
    pouvoir d'une créature qu'on ne possède pas encore, et donc de savoir si
-   elle vaut d'être visée. Encore faut-il la voir : le logo devient une
-   silhouette, PAS une tache floue, et le nom reste lisible. La carte garde sa
-   surface et sa bulle de coût, donc sa place dans la grille. */
-.pcard-locked{cursor:pointer}
-.pcard-locked .pcard-logo .pc-icon,.pcard-locked .pcard-logo .pc-svg{filter:grayscale(1);opacity:.17}
-.pcard-locked .pcard-name{color:var(--muted);font-weight:600}
-.pcard-locked .pcard-bub-cost{background:var(--bg2);color:var(--muted);
-  border-color:var(--border2);box-shadow:none}
-/* Le cadenas ne couvre plus la carte : une pastille centrée sur le logo. */
-.pcard-lockbadge{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+   elle vaut d'être visée. Encore faut-il la voir : l'illustration devient une
+   silhouette, PAS une tache floue, et le nom reste lisible dans son bandeau. */
+.piece-card-locked{cursor:pointer}
+.piece-card-locked .piece-card-img,
+.piece-card-locked .piece-card-svg{filter:grayscale(1);opacity:.2}
+/* Le bandeau d'une carte verrouillée se DÉLAVE, il ne s'assombrit pas :
+   `brightness()` en faisait, sur fond crème, la tache la plus sombre de la
+   grille — l'inverse d'une mise en retrait. */
+.piece-card-locked .piece-card-name{filter:grayscale(.85) opacity(.5)}
+.piece-card-locked .piece-card-cost{
+  background:radial-gradient(circle at 34% 28%,#7c8794 0%,#4a535d 48%,#232a31 100%)}
+/* Le cadenas ne couvre plus la carte : une pastille centrée sur l'illustration. */
+.piece-card-lockbadge{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
   width:clamp(26px,8vw,34px);height:clamp(26px,8vw,34px);border-radius:50%;
   display:flex;align-items:center;justify-content:center;filter:none;opacity:1;
   background:rgba(0,0,0,.5);backdrop-filter:blur(5px);
   box-shadow:inset 0 0 0 1px rgba(255,255,255,.10)}
-.pcard-lockbadge .lock-icon{filter:none;opacity:1;
+.piece-card-lockbadge .lock-icon{filter:none;opacity:1;
   width:clamp(11px,3.4vw,15px);height:clamp(13px,4.1vw,18px)}
-/* Le palier à atteindre, sous le nom : la seule information qui compte sur
-   une pièce qu'on ne possède pas. */
-.pcard-req{flex:0 0 auto;margin-top:3%;font-family:var(--f-ui);font-weight:700;
-  font-size:clamp(8px,2.4vw,10.5px);
-  color:var(--gold2);background:rgba(193,154,69,.13);
-  border:1px solid rgba(193,154,69,.32);border-radius:6px;padding:1px 7px;
-  line-height:1.5;white-space:nowrap;font-variant-numeric:tabular-nums}
+/* Le palier à atteindre, posé au bas de l'illustration : la seule information
+   qui compte sur une pièce qu'on ne possède pas. En surimpression et non en
+   quatrième ligne — la carte n'a plus de ligne à donner. */
+.piece-card-req{position:absolute;left:50%;bottom:3%;transform:translateX(-50%);
+  z-index:2;font-family:var(--f-ui);font-weight:700;line-height:1.5;
+  font-size:clamp(8px,2.4vw,10.5px);white-space:nowrap;font-variant-numeric:tabular-nums;
+  color:var(--gold2);background:rgba(10,12,14,.72);
+  border:1px solid rgba(193,154,69,.32);border-radius:6px;padding:0 6px}
 
 /* LES DEUX ACTIONS, révélées au premier appui.
    Elles sont posées SOUS la carte, en position absolue et par-dessus les
    cartes voisines : ouvrir une carte ne décale donc AUCUNE autre, ce qui
    compte énormément sur une grille dense où le doigt vise petit. */
-.pcard-actions{position:absolute;left:-4%;right:-4%;top:calc(100% + 5px);z-index:30;
+.piece-card-actions{position:absolute;left:-4%;right:-4%;top:calc(100% + 5px);z-index:30;
   display:none;flex-direction:column;gap:4px;padding:4px;border-radius:11px;
   background:var(--surface2);border:1px solid var(--border2);
-  box-shadow:0 12px 28px rgba(0,0,0,.55);animation:pcardActIn .16s ease both}
-@keyframes pcardActIn{from{opacity:0;transform:translateY(-5px)}to{opacity:1;transform:translateY(0)}}
-.pcard-open{z-index:31;border-color:var(--pc);box-shadow:0 6px 18px rgba(0,0,0,.45)}
-.pcard-open .pcard-actions{display:flex}
-.pcard-act{display:flex;align-items:center;gap:6px;width:100%;padding:7px 8px;border-radius:8px;
+  box-shadow:0 12px 28px rgba(0,0,0,.55);animation:pieceCardActIn .16s ease both}
+@keyframes pieceCardActIn{from{opacity:0;transform:translateY(-5px)}to{opacity:1;transform:translateY(0)}}
+.piece-card-open{z-index:31;border-color:var(--rarity);box-shadow:0 6px 18px rgba(0,0,0,.45)}
+.piece-card-open .piece-card-actions{display:flex}
+.piece-card-act{display:flex;align-items:center;gap:6px;width:100%;padding:7px 8px;border-radius:8px;
   border:1px solid var(--border);background:var(--bg);color:var(--text);cursor:pointer;
   font-family:var(--f-ui);font-weight:700;letter-spacing:.4px;
   font-size:clamp(8.5px,2.5vw,11px);transition:border-color .15s,background .15s}
-.pcard-act svg{width:clamp(10px,3vw,13px);height:clamp(10px,3vw,13px);flex:0 0 auto}
-.pcard-act:hover{background:var(--surface)}
-.pcard-use{color:var(--pc);border-color:color-mix(in srgb,var(--pc) 45%,transparent)}
-.pcard-infos{color:var(--accent2);border-color:rgba(47,177,151,.4)}
+.piece-card-act svg{width:clamp(10px,3vw,13px);height:clamp(10px,3vw,13px);flex:0 0 auto}
+.piece-card-act:hover{background:var(--surface)}
+.piece-card-use{color:var(--rarity);border-color:color-mix(in srgb,var(--rarity) 45%,transparent)}
+.piece-card-infos{color:var(--accent2);border-color:rgba(47,177,151,.4)}
+
 /* ON PEUT TOUJOURS DÉFILER PLUS BAS QUE LA DERNIÈRE RANGÉE. Le bloc de
-   boutons est en position absolue SOUS sa carte (voir .pcard-actions
+   boutons est en position absolue SOUS sa carte (voir .piece-card-actions
    ci-dessus) : il ne compte pas dans la hauteur de la grille, donc rien ne
    lui réserve de place et la page s'arrête au bas de la dernière rangée.
    Sur la page de composition d'armées, où la barre d'onglets du cube couvre
@@ -5727,7 +5742,7 @@ body.light .pcard-bub{border-color:rgba(0,0,0,.34);text-shadow:0 1px 1px rgba(0,
    ============================================================== */
 .status-bar{transition:color .2s ease,border-color .2s ease,background-color .2s ease}
 .btn{transition:transform .14s,background .18s,border-color .18s,color .18s,box-shadow .18s}
-.bd-budget-num,.pcard-bub{transition:color .2s ease,background .2s ease}
+.bd-budget-num,.piece-card-cost,.piece-card-qty{transition:color .2s ease,background .2s ease}
 .lore-faq summary::before{transition:transform .18s ease}
 
 /* Le focus clavier n'était visible que par la couleur héritée : il lui faut
@@ -5739,7 +5754,7 @@ body.light .pcard-bub{border-color:rgba(0,0,0,.34);text-shadow:0 1px 1px rgba(0,
 
 /* Le mouvement réduit reste prioritaire sur tout ce qui précède. */
 @media(prefers-reduced-motion:reduce){
-  .status-bar,.btn,.bd-budget-num,.pcard-bub{transition:none}
+  .status-bar,.btn,.bd-budget-num,.piece-card-cost,.piece-card-qty{transition:none}
     .bd-over }
 
 /* [ART] : LES PLANCHES DESSINÉES ==================================
@@ -6091,39 +6106,21 @@ body.light .art-banner::before{opacity:.55;filter:saturate(.7)}
   /* Les cinq emplacements restent sur UNE rangée : une armée se lit d'un
      bloc, pas en deux moitiés. Ils rétrécissent au lieu de passer à la
      ligne, et perdent leur libellé, que la position rend évident. */
-  .comp-grid{grid-template-columns:repeat(5,1fr);gap:1.5vw}
-  /* Pas d'aspect-ratio : la hauteur suit le contenu (un nom sur deux lignes,
-     le rappel de stock), sinon le pied du slot passe sous la bordure. La
-     grille égalise ensuite les cinq colonnes toute seule. */
-  .comp-slot{padding:2.5vw 1vw;min-height:0;border-radius:9px;justify-content:flex-start}
-  /* Le libellé s'écarte de la croix de retrait, posée dans le même coin. */
-  .comp-slot .cs-label{font-size:clamp(6px,1.75vw,9px);margin-bottom:4%;letter-spacing:0;
-    padding:0 20%;line-height:1.2}
-  .comp-slot .cs-emoji{margin-bottom:2%}
-  .comp-slot .cs-emoji .pc-icon{width:clamp(24px,9vw,44px);height:clamp(24px,9vw,44px)}
-  .comp-slot .cs-name{font-size:clamp(7.5px,2.2vw,11px);margin-bottom:2%;line-height:1.15}
-  .comp-slot .cs-val{font-size:clamp(7.5px,2.2vw,11px);padding:1px 6px}
-  .comp-slot .cs-stock{font-size:clamp(6.5px,1.9vw,9px);margin-top:2%}
-  .comp-slot .cs-rm{width:15px;height:15px;top:0;right:0}
-  .comp-slot .cs-rm svg{width:9px;height:9px}
-  .comp-slot.draggable-slot::before{display:none}
-  /* "Mes armées" (page fusionnée) garde le rapport des cartes même sur petit
-     écran : les emplacements n'ont plus de nom de classe à afficher une fois
-     remplis (pieceIcon + nom + valeur seulement), donc rien n'y déborde du
-     cadre. La RANGÉE DE TÊTE (Monarque, Général) reste plus carrée que les
-     trois pièces libres : c'est ce qui lui donne sa hauteur en plus de sa
-     largeur — l'armée choisie est le sujet de l'écran, elle doit y être ce
-     qu'on voit de plus grand (voir pUpdSlots, js/armies.js).
-     Les sélecteurs répètent .comp-grid-cards : à égalité de spécificité,
-     c'est la dernière règle du fichier qui gagne, et cette section-ci est
-     tout en bas. */
-  .comp-grid-cards .comp-slot{aspect-ratio:3/4;min-height:0;min-width:0;justify-content:center}
-  .comp-grid-cards .ar-army-row-1 .comp-slot{aspect-ratio:1/1}
-  .comp-grid-cards .ar-army-row-1 .comp-slot:last-child{aspect-ratio:auto}
-  /* Le logo prend toute la place que le nom et la valeur laissent : c'est ce
-     qui distingue à l'œil un emplacement d'armée d'une carte du catalogue. */
-  .comp-grid-cards .comp-slot .cs-emoji{width:100%;flex:1;min-height:0}
-  .comp-grid-cards .comp-slot .cs-emoji .pc-icon{width:100%;height:100%}
+  /* L'écart de la grille doit loger DEUX demi-pastilles voisines : celle de
+     quantité de la carte de gauche et celle de coût de la carte de droite
+     débordent chacune de 7 px vers lui. En dessous, elles se touchent. */
+  .comp-grid{grid-template-columns:repeat(5,1fr);gap:16px;padding:9px 1px 1px 9px}
+  .comp-slot{padding:5% 4%;border-radius:9px}
+  .comp-slot .cs-label{font-size:clamp(6px,1.75vw,9px);letter-spacing:0;
+    padding:0 6%;line-height:1.2}
+  .comp-slot .cs-rm{width:16px;height:16px;bottom:2px;right:2px}
+  .comp-slot .cs-rm svg{width:8px;height:8px}
+  /* Les pastilles de coin ne rétrécissent pas avec l'écran (30 px partout,
+     voir [PIECE-CARD]) : c'est ce qui garde le chiffre lisible sur des
+     cartes d'un cinquième de largeur d'écran. Elles se rapprochent
+     seulement du coin, l'écart de la grille étant plus serré ici. */
+  .comp-slot.piece-card .piece-card-cost{left:-7px}
+  .comp-slot.piece-card .piece-card-qty{right:-7px}
   .army-box{padding:6px 3vw 3vw;border-radius:12px}
   .bd-budget-num{font-size:17px}
   .bd-back{font-size:14px}
@@ -6375,21 +6372,13 @@ body.desk .shop-inner{max-width:var(--content-max)}
    tableau. */
 body.desk .voie-inner{max-width:1040px}
 
-/* Le catalogue de pièces gagne des colonnes ET des cartes plus grandes. Sa
-   grille est en `auto-fill` : il suffit de relever la largeur minimale d'une
-   colonne, le nombre de colonnes suit tout seul (≈8 sur 1280 px, contre 6
-   avant, avec des cartes plus lisibles plutôt que plus nombreuses). */
-body.desk .cards-grid{
-  grid-template-columns:repeat(auto-fill,minmax(150px,1fr));
-  gap:14px}
-/* LES QUATRE COLONNES DE « MES ARMÉES » SONT UNE RÈGLE DE TÉLÉPHONE. Elles
-   rendent une rangée entière de hauteur à l'armée du dessus sur un écran de
-   390 px ; sur 1280, elles donneraient quatre cartes de trois cents pixels de
-   large pour un catalogue qui en compte vingt. La grille reprend donc son
-   remplissage automatique dès qu'on a la place. */
-body.desk #ar-cards-container .cards-grid{
-  grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
-body.desk #ar-cards-container .cards-grid .pcard{max-width:190px}
+/* Le catalogue de pièces gagne des colonnes ET des cartes plus grandes : la
+   grille passe de quatre colonnes (la règle de téléphone) à dix, avec des
+   cartes plus lisibles plutôt que plus nombreuses. Le nombre reste FIXE et
+   les colonnes en `1fr` : c'est ce qui garantit qu'une dernière rangée
+   incomplète n'étire aucune carte (voir .cards-grid). */
+body.desk .cards-grid{grid-template-columns:repeat(10,1fr);gap:16px}
+body.desk .cards-grid .piece-card{max-width:170px}
 
 /* --- LE SURVOL FAIT LE TRAVAIL DU PREMIER APPUI ------------------
    Une carte de pièce s'ouvre en deux gestes : un appui la déplie et découvre
@@ -6400,32 +6389,25 @@ body.desk #ar-cards-container .cards-grid .pcard{max-width:190px}
    déjà la carte sans rien engager. Le survol fait donc ce que faisait
    l'appui, et composer une armée passe de deux clics par pièce à un seul.
    Le clic continue de fonctionner exactement comme avant (il pose
-   `.pcard-open`) : rien n'est retiré, on ajoute un raccourci. */
-body.desk .pcard:hover{z-index:31;border-color:var(--pc)}
-body.desk .pcard:hover .pcard-actions{display:flex}
+   `.piece-card-open`) : rien n'est retiré, on ajoute un raccourci. */
+body.desk .piece-card:hover{z-index:31;border-color:var(--rarity)}
+body.desk .piece-card:hover .piece-card-actions{display:flex}
 /* LE BLOC DE BOUTONS VIENT TOUCHER LA CARTE (top:100% au lieu de 100% + 5px).
    Ces 5 px de vide n'appartiennent à aucun élément : en descendant vers
    « Utiliser », le pointeur les traversait, `:hover` tombait, et le bloc
    disparaissait sous le curseur avant qu'on l'atteigne. Au doigt le problème
    n'existe pas — on ne traverse pas, on appuie. */
-body.desk .pcard-actions{top:100%}
+body.desk .piece-card-actions{top:100%}
 
-/* Les cinq emplacements d'armée de l'IA (#page-builder) gardent une taille de
-   CARTE. Leur grille est en cinq colonnes égales (repeat(5,1fr)) avec un
-   rapport 3/4 : elle suit donc la largeur de son conteneur, et sur 1280 px
-   chaque emplacement montait à 240×320 px — la moitié de l'écran occupée par
-   cinq rectangles dont trois sont vides. */
-body.desk .comp-grid{max-width:820px;margin-left:auto;margin-right:auto}
-/* L'ARMÉE DU JOUEUR, ELLE, EST LE SUJET DE SON ÉCRAN — mais pas une affiche.
-   Sur 1280 px de large, ses deux emplacements de tête montaient à six cents
-   pixels de haut : ce n'est plus de la mise en valeur, c'est un poster, et le
-   catalogue passait entièrement sous le pli. La rangée est bornée plus serré
-   que celle de l'IA, et centrée ; le Monarque y fait encore le double d'une
-   carte du catalogue.
-   Cette règle vient APRÈS `body.desk .comp-grid` et non avant : les deux
-   sélecteurs pèsent le même poids, et #ar-comp-grid porte les deux classes —
-   à égalité, c'est la dernière écrite qui gagne. */
-body.desk .comp-grid-cards{max-width:620px;margin-left:auto;margin-right:auto}
+/* Les cinq emplacements d'armée gardent une taille de CARTE. Leur grille est
+   en cinq colonnes égales (repeat(5,1fr)) au rapport 3/4 : elle suit donc la
+   largeur de son conteneur, et sur 1280 px chaque emplacement montait à
+   240×320 px — la moitié de l'écran occupée par cinq rectangles dont trois
+   sont vides. La rangée est bornée et centrée, à la même largeur pour
+   l'armée de l'IA (#page-builder) et celle du joueur (#page-armies) : c'est
+   le même objet, il n'y a plus de raison qu'il change de taille d'un écran à
+   l'autre. */
+body.desk .comp-grid{max-width:700px;margin-left:auto;margin-right:auto}
 
 /* [SERVER] ======================================================== */
 /* Le voile de démarrage et l'avertissement de liaison (js/server.js,

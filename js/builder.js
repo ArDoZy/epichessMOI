@@ -5,8 +5,8 @@
 // cette page ne sert plus qu'à composer les armées personnalisées de l'IA
 // (page-ai-armies → "Modifier"/"Nouvelle armée IA") : l'armée DU JOUEUR se
 // compose directement sur #page-armies, avec sa propre logique (pToggle,
-// pUpdSlots... dans js/armies.js), qui réutilise seulement deux fonctions
-// pures d'ici (derivePlacements, slotStockHTML).
+// pUpdSlots... dans js/armies.js), qui réutilise seulement une fonction
+// pure d'ici (derivePlacements).
 //
 // Contient : la logique de sélection des pièces (Monarque/Général/3 pièces
 // libres, budget 24 points), le rendu des cartes de pièces (triées par
@@ -17,12 +17,15 @@
 // Dépendances : data-pieces.js (PIECES, CLASS_ORDER),
 // main.js (army, editingArmyId, builderMode, showPieceCtxMenu,
 // showNotif, updateBuilderBanner), accounts.js (VV_UNLOCKED),
-// armies.js (renderAiArmiesPage, saveAiArmies).
+// armies.js (renderAiArmiesPage, saveAiArmies), piece-card.js
+// (pieceCardHTML, pieceCardFaceHTML, pieceRarityClass, wirePieceCards).
 //
 // Si vous changez les règles de composition d'armée (budget, nombre de
 // pièces), c'est ici ET dans js/armies.js (pToggle) — les deux doivent
 // rester en miroir. Le rendu visuel des cartes suit les classes CSS
-// .piece-card / .comp-slot définies dans css/style.css section [BUILDER].
+// .piece-card (section [PIECE-CARD] de css/style.css) et .comp-slot
+// (section [BUILDER]) — un emplacement rempli porte LES DEUX, une pièce
+// posée dans l'armée étant la même carte que dans le catalogue.
 // ================================================================
 
 // ----------------------------------------------------------------
@@ -50,18 +53,16 @@ window.removePiece=(type,idx)=>{
 // ----------------------------------------------------------------
 // RENDU SLOTS DE COMPOSITION
 // ----------------------------------------------------------------
-// Rappel du stock sous chaque pièce placée : composer une armée qu'on ne peut
-// pas aligner est la première frustration possible du système d'économie, elle
-// doit se voir dans le slot, pas à la seconde où on lance le combat.
-function slotStockHTML(p){
-  if(typeof invCount!=='function'||typeof isOwnablePiece!=='function'||!isOwnablePiece(p.id))return '';
-  const need=pieceDeployCount(p.id),have=invCount(p.id);
-  // « 999 / 2 » plutôt que « 999 / 2 requis » : dans un emplacement large d'un
-  // cinquième d'écran de téléphone, le mot passait à la ligne et débordait du
-  // cadre. Le rapport se lit sans lui, et l'infobulle le dit en toutes lettres.
-  return '<div class="cs-stock'+(have<need?' cs-stock-out':'')+'" title="'+have+
-    ' en stock, '+need+' requis pour cette armée">'+have+' / '+need+'</div>';
-}
+// UNE PIÈCE POSÉE DANS L'ARMÉE EST EXACTEMENT LA MÊME CARTE QUE DANS LE
+// CATALOGUE : même face (pieceCardFaceHTML, js/piece-card.js), même ratio
+// 3/4, même taille — Monarque et Général compris, qui avaient jusqu'ici leur
+// propre gabarit. On reconnaît donc au premier coup d'œil, dans la barre de
+// composition, la carte qu'on vient de choisir plus bas.
+//
+// Le rappel de stock n'a plus de ligne à lui (l'ancien .cs-stock, « 999 / 2 »
+// écrit sous la pièce posée) : c'est la pastille du coin haut droit de la
+// carte qui le porte, en rouge quand il manque des exemplaires, et son
+// infobulle qui donne le rapport en toutes lettres.
 
 const updSlots=()=>{
   const g=document.getElementById('comp-grid');const all=extraPieces();
@@ -76,7 +77,11 @@ const updSlots=()=>{
   // pointillé. « Pièce 1/2/3 » suggérait par ailleurs un ordre qui n'existe
   // pas : trois libellés à lire pour une seule notion, devenue « Libre ».
   const mk=(cls,lbl,p,rm,eidx,req)=>p
-    ?'<div class="comp-slot filled '+cls+(eidx!=null?' draggable-slot':'')+'" data-pid="'+p.id+'"'+(eidx!=null?' draggable="true" data-eidx="'+eidx+'"':'')+'><div class="cs-label">'+lbl+'</div><span class="cs-emoji">'+pieceIcon(p.id,'n')+'</span><div class="cs-name">'+p.name+'</div><div class="cs-val">'+p.value+' pts</div>'+slotStockHTML(p)+'<div class="cs-rm" onclick="'+rm+'">'+svgX+'</div></div>'
+    ?'<div class="comp-slot filled piece-card '+pieceRarityClass(p)+(eidx!=null?' draggable-slot':'')+
+       '" data-pid="'+p.id+'"'+(eidx!=null?' draggable="true" data-eidx="'+eidx+'"':'')+'>'+
+       pieceCardFaceHTML(p)+
+       '<div class="cs-rm" onclick="'+rm+'" title="Retirer">'+svgX+'</div>'+
+     '</div>'
     :'<div class="comp-slot'+(req?' cs-req '+cls:' cs-free')+'"><div class="cs-label">'+lbl+'</div><div class="cs-ph">'+(req?'':'+')+'</div></div>';
   let h=mk('Monarque','Monarque',army.mon,"removePiece('mon')",null,true)
        +mk('Général','Général',army.gen,"removePiece('gen')",null,true);
@@ -112,9 +117,10 @@ function wireSlotDragSwap(g){
   });
 }
 // La pastille « Guerre des clans : — / Prête / Manque » a été retirée de la topbar :
-// chaque carte de pièce porte déjà son stock, et chaque slot de composition
-// répète le compte exact sous la pièce posée (.cs-stock). Trois fois la même
-// information sur un écran de téléphone, c'était deux de trop.
+// chaque carte de pièce porte déjà son stock dans la pastille de son coin
+// haut droit, emplacement de composition compris — c'est la même carte.
+// Trois fois la même information sur un écran de téléphone, c'était deux de
+// trop.
 const updStats=()=>{
   const v=getVal(),over=v>24;
   document.getElementById('s-val').textContent=v+' / 24';

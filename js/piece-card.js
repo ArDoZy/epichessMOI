@@ -9,14 +9,16 @@
 //
 // LE PRINCIPE : la carte IDENTIFIE, la fiche EXPLIQUE.
 //
-//   Sur la carte, et rien de plus :
-//     · deux BULLES dans les coins du haut — le coût à gauche, le nombre
-//       d'exemplaires possédés à droite —, pleines, dans la couleur de la
-//       classe, en blanc : deux chiffres qui se lisent à bout de bras.
-//     · le LOGO, en grand, qui prend tout le reste de la carte.
-//     · le NOM, tout en bas.
-//   Format PORTRAIT et compact : on en voit douze à l'écran d'un téléphone,
-//   ce qui permet de parcourir le catalogue au pouce sans jamais défiler à
+//   La carte est bâtie comme une carte de Clash Royale, et TOUTES les pièces
+//   ont exactement la même — le Monarque et le Général compris, qui avaient
+//   droit à un gabarit à part dans les emplacements d'armée :
+//     · l'ILLUSTRATION en haut, sur 72 % de la hauteur (assets/pieces/{id}.png,
+//       et à défaut le SVG monochrome, voir pieceCardArtHTML) ;
+//     · le BANDEAU DU NOM en bas, plein, dans la couleur de RARETÉ ;
+//     · deux PASTILLES en surimpression dans les coins du haut, qui débordent
+//       du cadre : le coût à gauche, le nombre d'exemplaires à droite.
+//   Format PORTRAIT 3/4 et compact : quatre par rangée sur un téléphone, ce
+//   qui permet de parcourir le catalogue au pouce sans jamais défiler à
 //   l'aveugle.
 //
 //   Au premier appui, la carte s'ouvre et découvre DEUX boutons :
@@ -30,13 +32,18 @@
 //   l'image avant même d'être lu.
 //
 // Toutes les dimensions sont relatives (%, vw, clamp) : la carte suit la
-// largeur de l'écran au lieu d'imposer la sienne.
+// largeur de l'écran au lieu d'imposer la sienne. Seules les deux pastilles
+// de coin gardent une taille fixe (30 px), comme les bulles d'élixir dont
+// elles reprennent le dessin : un chiffre qui se lit à bout de bras ne peut
+// pas rétrécir avec l'écran.
 //
 // Dépendances : data-pieces.js (PIECES, CLASS_COLOR_VARS), piece-art.js
 // (pieceIcon), main.js (escH), piece-moves.js (pieceMoveDiagramHTML — appelé
 // à l'ouverture de la fiche seulement, donc après chargement), economy.js
 // (invCount, isOwnablePiece, pieceDeployCount).
-// Utilisé par : builder.js (catalogue de composition d'armée).
+// Utilisé par : builder.js et armies.js — le CATALOGUE (pieceCardHTML) comme
+// les EMPLACEMENTS de composition (pieceCardFaceHTML), qui partagent la même
+// face de carte.
 // ================================================================
 
 // ----------------------------------------------------------------
@@ -125,77 +132,120 @@ function piecePowerHTML(p){
 }
 
 // ----------------------------------------------------------------
-// LA CARTE
+// LA RARETÉ : UNE COULEUR, UNE VARIABLE
+// ----------------------------------------------------------------
+// La couleur d'une carte ne se choisit plus classe par classe, ligne par
+// ligne, dans la feuille de style (une règle pour la bordure, une autre pour
+// le bandeau, une troisième pour la pastille) : chaque carte porte UN
+// modificateur `.rarity-*` qui pose la variable `--rarity`, et tout ce qui
+// est coloré sur la carte — bordure ET bandeau du nom — lit cette variable.
+// Ajouter une classe de pièce revient donc à écrire UNE ligne de CSS.
+// Les cinq classes du jeu se rangent du plus commun au plus rare.
+const CLASS_RARITY={Brute:'common',Sorcier:'rare',Primordiale:'epic','Général':'legendary',Monarque:'champion'};
+function pieceRarityClass(p){return 'rarity-'+(CLASS_RARITY[p.class]||'common');}
+
+// ----------------------------------------------------------------
+// L'ILLUSTRATION, ET SON REPLI
+// ----------------------------------------------------------------
+// On vise d'abord `assets/pieces/{id}.png`, l'illustration peinte — c'est
+// elle qui donne à la grille son air de collection. Le fichier peut ne pas
+// exister (toutes les pièces ne sont pas illustrées, et le dossier peut être
+// vide) : `onerror` retire alors l'<img>, et le SVG monochrome qui la suit
+// redevient visible TOUT SEUL, par la règle de voisinage
+// `.piece-card-img+.piece-card-svg{display:none}` ([PIECE-CARD]). Pas de
+// script de vérification, pas de liste à tenir à jour, et rien à changer le
+// jour où une illustration est ajoutée : elle apparaît.
+//
+// LE PLATEAU NE CHANGE PAS. Les pièces en partie restent dessinées par les
+// SVG de js/piece-art.js : l'image peinte est un habillage de CATALOGUE, où
+// la carte doit donner envie, pas une pièce de jeu, où elle doit se lire au
+// premier coup d'œil sur une case de 40 px.
+function pieceCardArtHTML(p){
+  return '<img class="piece-card-img" src="assets/pieces/'+encodeURIComponent(p.id)+'.png" '+
+      'alt="" loading="lazy" onerror="this.remove()">'+
+    '<span class="piece-card-svg">'+pieceIcon(p.id,'n')+'</span>';
+}
+
+// Ce qu'on possède, et ce qu'il en faut. `ownable` est faux pour les pièces
+// qui ne se stockent pas en exemplaires : écrire « ×0 » sur l'une d'elles
+// serait un mensonge, elle n'a donc pas de badge de quantité.
+function pieceStockInfo(p){
+  const ownable=(typeof isOwnablePiece==='function')&&isOwnablePiece(p.id);
+  const have=(ownable&&typeof invCount==='function')?invCount(p.id):0;
+  const need=(ownable&&typeof pieceDeployCount==='function')?pieceDeployCount(p.id):0;
+  return {ownable:ownable,have:have,need:need,out:ownable&&have<need};
+}
+
+// ----------------------------------------------------------------
+// LA FACE DE LA CARTE — LE FORMAT UNIQUE
+// ----------------------------------------------------------------
+// UN SEUL FORMAT POUR TOUTES LES PIÈCES, SANS EXCEPTION. Le Monarque et le
+// Général avaient droit à un rendu à part dans les emplacements d'armée
+// (carré, plus large, texte plus gros) : cinq pièces, trois gabarits, et une
+// grille qui ne se lisait plus comme une grille. Ils passent au même moule
+// que les autres — même ratio 3/4, même taille, mêmes pastilles. Ce qui les
+// distingue est ce qui distingue toutes les pièces entre elles : LA COULEUR
+// DE RARETÉ, et rien d'autre.
+//
+// Trois éléments, toujours dans cet ordre :
+//   1. l'ILLUSTRATION, en haut, qui prend 72 % de la hauteur ;
+//   2. le BANDEAU DU NOM, en bas, plein, dans la couleur de rareté ;
+//   3. les deux PASTILLES en surimpression dans les coins du haut — le coût
+//      à gauche, le nombre d'exemplaires à droite. Elles DÉBORDENT du cadre
+//      (-8 px) : c'est ce débordement qui les détache de l'illustration au
+//      lieu de la recouvrir.
+// Cette face est partagée par le catalogue ET par les emplacements de
+// composition (js/builder.js, js/armies.js) : une pièce posée dans l'armée
+// est exactement la même carte que dans le catalogue.
+function pieceCardFaceHTML(p,opts){
+  const o=opts||{};
+  const st=pieceStockInfo(p);
+  const showQty=st.ownable&&!o.locked;
+  return '<span class="piece-card-cost" title="Valeur : '+p.value+' points">'+p.value+'</span>'+
+    (showQty
+      ? '<span class="piece-card-qty'+(st.out?' piece-card-qty-out':'')+'" title="'+st.have+' en stock'+
+        (st.need?', '+st.need+' requis pour cette armée':'')+'">'+st.have+'</span>'
+      : '')+
+    '<div class="piece-card-art">'+
+      pieceCardArtHTML(p)+
+      (o.locked?'<span class="piece-card-lockbadge"><span class="lock-icon"></span></span>':'')+
+      (o.locked&&o.lockLabel?'<span class="piece-card-req">'+escH(o.lockLabel)+'</span>':'')+
+    '</div>'+
+    '<div class="piece-card-name"><span>'+escH(p.name)+'</span></div>';
+}
+
+// ----------------------------------------------------------------
+// LA CARTE DU CATALOGUE
 // ----------------------------------------------------------------
 // opts :
 //   locked     true  → la pièce n'est pas débloquée (silhouette, cadenas)
 //   lockLabel  ce qu'il faut pour l'obtenir (« Coffre », « 480 ELO »)
 //   selected   true  → déjà engagée dans l'armée en cours
 //
-// La bulle de stock n'est affichée que pour les pièces qui se possèdent en
-// exemplaires (isOwnablePiece) : écrire « 0 » sur une pièce qui ne se stocke
-// pas serait un mensonge. Une pièce verrouillée n'en a pas non plus — on ne
-// possède rien de ce qu'on n'a pas débloqué —, mais elle garde sa bulle de
-// COÛT : c'est elle qui dit si la créature tiendra un jour dans une armée.
+// Une pièce verrouillée n'a pas de badge de quantité — on ne possède rien de
+// ce qu'on n'a pas débloqué — mais elle garde sa bulle de COÛT : c'est elle
+// qui dit si la créature tiendra un jour dans une armée.
 function pieceCardHTML(p,opts){
   const o=opts||{};
-  const ownable=(typeof isOwnablePiece==='function')&&isOwnablePiece(p.id);
-  const have=(ownable&&typeof invCount==='function')?invCount(p.id):0;
-  const need=(ownable&&typeof pieceDeployCount==='function')?pieceDeployCount(p.id):0;
-  const out=ownable&&have<need;
-  const cls=['pcard',p.class];
-  if(o.locked)cls.push('pcard-locked');
-  if(o.selected)cls.push('pcard-sel');
-  if(out&&!o.locked)cls.push('pcard-out');
-  // UNE SEULE ANATOMIE, VERROUILLÉE OU NON — deux bulles, un logo, un nom.
-  // Avant, une carte verrouillée n'avait plus rien de commun avec une carte
-  // débloquée : logo et nom passaient sous un `blur(5px)`, et un voile noir
-  // couvrait la carte entière pour y poser un cadenas et un pavé de texte.
-  // Sur une grille où sept cartes sur neuf sont verrouillées, la grille ne se
-  // lisait plus comme une grille — et surtout, ON NE PEUT PAS DÉSIRER CE
-  // QU'ON NE VOIT PAS : le voile supprimait précisément l'image qui donne
-  // envie de débloquer la créature.
-  //
-  // LES DEUX CHIFFRES ONT QUITTÉ LE PIED POUR LES COINS DU HAUT. Ils y
-  // formaient une troisième ligne, sous le nom, qui volait au logo la moitié
-  // de la carte : à quatre cartes par rangée sur un téléphone, il ne restait
-  // au dessin qu'une vignette. Le coût est maintenant en haut à GAUCHE, le
-  // nombre d'exemplaires en haut à DROITE — deux pastilles pleines, dans la
-  // couleur de la classe, texte blanc, lisibles à bout de bras — et tout le
-  // reste de la carte appartient au logo, avec le nom posé tout en bas.
-  //
-  // Deux pastilles pleines dispensent d'ailleurs du liseré de classe qui
-  // courait en haut de la carte : la couleur est déjà là, deux fois.
-  const bulles=
-    '<span class="pcard-bub pcard-bub-cost" title="Valeur : '+p.value+' points">'+p.value+'</span>'+
-    (ownable&&!o.locked
-      ? '<span class="pcard-bub pcard-bub-qty'+(out?' pcard-bub-out':'')+
-        '" title="'+have+' en stock'+(need?', '+need+' requis pour une armée':'')+'">'+have+'</span>'
-      : '');
+  const st=pieceStockInfo(p);
+  const cls=['piece-card',pieceRarityClass(p),p.class];
+  if(o.locked)cls.push('piece-card-locked');
+  if(o.selected)cls.push('piece-card-sel');
+  if(st.out&&!o.locked)cls.push('piece-card-out');
   return '<article class="'+cls.join(' ')+'" data-id="'+p.id+'" tabindex="0" '+
       'role="button" aria-label="'+escH(p.name)+' — '+p.value+' points'+
-      (ownable&&!o.locked?', '+have+' en stock':'')+
+      (st.ownable&&!o.locked?', '+st.have+' en stock':'')+
       (o.locked?' — verrouillée'+(o.lockLabel?' : '+escH(o.lockLabel):''):'')+'">'+
-    // 1. LES DEUX BULLES, dans les coins du haut
-    bulles+
-    // 2. LE LOGO — il occupe tout ce que la carte n'a pas donné aux bulles et
-    //    au nom : c'est par lui qu'on reconnaît une pièce avant de la lire.
-    '<span class="pcard-logo">'+pieceIcon(p.id,'n')+
-      (o.locked?'<span class="pcard-lockbadge"><span class="lock-icon"></span></span>':'')+
-    '</span>'+
-    // 3. LE NOM, TOUT EN BAS — le VRAI nom, y compris verrouillé
-    '<div class="pcard-name">'+escH(p.name)+'</div>'+
-    // 4. Le palier à atteindre, et rien d'autre, sur une carte verrouillée.
-    (o.locked&&o.lockLabel?'<div class="pcard-req">'+escH(o.lockLabel)+'</div>':'')+
+    pieceCardFaceHTML(p,o)+
     // Les deux actions, révélées au premier appui sur la carte. Elles sont
     // posées SOUS la carte et par-dessus ses voisines (position absolue) :
     // la grille ne bouge pas d'un pixel quand on ouvre une carte.
-    '<div class="pcard-actions">'+
-      '<button type="button" class="pcard-act pcard-infos" data-act="info">'+
+    '<div class="piece-card-actions">'+
+      '<button type="button" class="piece-card-act piece-card-infos" data-act="info">'+
         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6, 15 12, 9 18"/></svg>'+
         '<span>Infos</span></button>'+
       (o.locked?''
-        :'<button type="button" class="pcard-act pcard-use" data-act="use">'+
+        :'<button type="button" class="piece-card-act piece-card-use" data-act="use">'+
           '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6, 15 12, 9 18"/></svg>'+
           '<span>'+(o.selected?'Retirer':'Utiliser')+'</span></button>')+
     '</div>'+
@@ -212,31 +262,31 @@ function pieceCardHTML(p,opts){
 // onUse(piece) : ce que fait « Utiliser ». Le module ne connaît PAS les
 // règles de composition d'armée, il ne fait que transmettre.
 function pcardCloseAll(root){
-  (root||document).querySelectorAll('.pcard.pcard-open')
-    .forEach(el=>el.classList.remove('pcard-open'));
+  (root||document).querySelectorAll('.piece-card.piece-card-open')
+    .forEach(el=>el.classList.remove('piece-card-open'));
 }
 function wirePieceCards(root,handlers){
   if(!root)return;
   const h=handlers||{};
-  root.querySelectorAll('.pcard').forEach(el=>{
+  root.querySelectorAll('.piece-card').forEach(el=>{
     const p=PIECES.find(x=>x.id===el.dataset.id);
     if(!p)return;
     el.addEventListener('click',e=>{
-      const btn=e.target.closest('.pcard-act');
+      const btn=e.target.closest('.piece-card-act');
       if(btn){
         e.stopPropagation();
         if(btn.dataset.act==='use'){
-          el.classList.remove('pcard-open');
+          el.classList.remove('piece-card-open');
           if(h.onUse)h.onUse(p);
         }else{
-          el.classList.remove('pcard-open');
+          el.classList.remove('piece-card-open');
           openPieceSheet(p.id);
         }
         return;
       }
-      const wasOpen=el.classList.contains('pcard-open');
+      const wasOpen=el.classList.contains('piece-card-open');
       pcardCloseAll(root);
-      if(!wasOpen)el.classList.add('pcard-open');
+      if(!wasOpen)el.classList.add('piece-card-open');
     });
     // Clavier : Entrée/Espace ouvrent la carte comme un appui.
     el.addEventListener('keydown',e=>{
@@ -252,7 +302,7 @@ function wirePieceCards(root,handlers){
 }
 // Un appui à côté referme la carte ouverte.
 document.addEventListener('click',e=>{
-  if(e.target.closest('.pcard'))return;
+  if(e.target.closest('.piece-card'))return;
   pcardCloseAll();
 });
 
