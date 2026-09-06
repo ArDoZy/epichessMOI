@@ -198,11 +198,16 @@ function accountsBootVeil(msg,retry){
   el.querySelector('#ec-boot-msg').textContent=msg||'';
   const btn=el.querySelector('#ec-boot-retry');
   btn.style.display=retry?'':'none';
-  el.querySelector('#ec-boot-spin').style.display=retry?'none':'';
   el.classList.add('show');
+  // La barre, le pourcentage et les conseils qui défilent vivent dans
+  // js/boot-screen.js : le voile dit CE QU'IL SE PASSE, l'autre dit qu'on
+  // avance. Le voile fonctionne sans lui (fichier non chargé, script en
+  // erreur) — il ne reste alors que la phrase d'état.
+  if(typeof bootScreenStart==='function')bootScreenStart(retry);
 }
 function accountsBootDone(){
-  document.getElementById('ec-boot')?.classList.remove('show');
+  const hide=()=>document.getElementById('ec-boot')?.classList.remove('show');
+  if(typeof bootScreenFinish==='function')bootScreenFinish(hide);else hide();
 }
 
 // ----------------------------------------------------------------

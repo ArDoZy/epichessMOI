@@ -3230,96 +3230,295 @@ body.light .jt-fx{mix-blend-mode:normal;filter:saturate(1.45) brightness(.82)}
    doigts de là — était déjà sous les yeux. ON TOUCHE CE QU'ON PREND
    (rewardsClaimColumn / rewardsClaimRich, js/rewards-ui.js), et le palier à
    prendre le dit lui-même. */
-.rw-step.rw-claimable,.rw-row-card.rw-due{cursor:pointer}
 
-/* --- LA JAUGE DE LAURIERS, EN TÊTE DE LA COLONNE ------------------ */
+/* --- LE FRONTON DE LA COLONNE : les lauriers ---------------------- */
 /* Cinq pastilles, une par laurier du palier en cours : c'est ce qui remplace
-   « une victoire = un cran ». Elle est FIXE au-dessus de la bande défilante
-   (flex:0 0 auto) — la seule chose qu'on veut toujours voir en descendant la
-   colonne, c'est combien il reste à gagner. */
-.rw-laurels{flex:0 0 auto;margin-bottom:2.5%;padding:.85em 1em;border-radius:.9em;
-  border:1px solid rgba(193,154,69,.34);
-  background:linear-gradient(180deg,rgba(193,154,69,.12),rgba(193,154,69,.03))}
-.rw-laurels-head{display:flex;align-items:baseline;gap:.7em;flex-wrap:wrap}
-.rw-laurels-n{font-size:min(4.4vw,17px)}
+   « une victoire = un cran ». Le fronton est FIXE au-dessus de la bande
+   défilante (flex:0 0 auto) — la seule chose qu'on veut toujours voir en
+   descendant la colonne, c'est combien il reste à gagner.
+   IL EST TAILLÉ COMME UNE PLAQUE, pas comme un cadre : arête claire en haut,
+   ombre portée dessous, et une lueur qui respire derrière les lauriers quand
+   un palier est mûr. La colonne entière est éclairée par le haut — c'est de
+   là que vient la lumière sur toutes les vignettes qui suivent. */
+.rw-laurels{flex:0 0 auto;margin-bottom:2.5%;padding:.85em 1em .95em;border-radius:1em;
+  position:relative;overflow:hidden;
+  border:1px solid rgba(193,154,69,.38);
+  background:
+    radial-gradient(120% 140% at 50% -30%,rgba(240,209,137,.16),transparent 62%),
+    linear-gradient(180deg,rgba(193,154,69,.13),rgba(8,12,15,.5));
+  box-shadow:inset 0 1px 0 rgba(255,240,205,.22),inset 0 -2px 6px rgba(0,0,0,.45),
+             0 .5em 1.4em -.7em rgba(0,0,0,.8)}
+.rw-laurels-head{display:flex;align-items:baseline;gap:.7em;flex-wrap:wrap;position:relative;z-index:1}
+.rw-laurels-n{font-size:min(4.8vw,19px);filter:drop-shadow(0 0 .5em rgba(201,168,76,.45))}
 .rw-laurels-lbl{flex:1;min-width:0;text-align:right;font-family:var(--f-ui);
   font-size:min(3.1vw,12px);font-weight:650;color:var(--gold2)}
 .rw-laurels-done .rw-laurels-lbl{color:var(--success)}
 /* Les cinq pastilles : éteintes, ce sont des silhouettes ; allumées, elles
    prennent le laiton et un halo. On lit « trois sur cinq » sans compter. */
-.rw-pips{display:flex;gap:.45em;margin-top:.6em}
+.rw-pips{display:flex;gap:.45em;margin-top:.6em;position:relative;z-index:1}
 .rw-pip{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;
   width:2.05em;height:2.05em;border-radius:50%;
   border:1px solid var(--border2);background:var(--bg2);
   opacity:.34;filter:grayscale(1);transition:opacity .2s,filter .2s,box-shadow .2s}
 .rw-pip-on{opacity:1;filter:none;border-color:rgba(193,154,69,.55);
-  background:rgba(193,154,69,.14);box-shadow:0 0 10px -2px rgba(193,154,69,.5)}
+  background:rgba(193,154,69,.16);box-shadow:0 0 10px -2px rgba(193,154,69,.55)}
 .rw-laurels-scale{margin-top:.7em;font-family:var(--f-ui);font-size:min(2.9vw,11px);
-  line-height:1.5;color:var(--muted)}
+  line-height:1.5;color:var(--muted);position:relative;z-index:1}
 
 /* --- LA COLONNE : trente paliers, de haut en bas ------------------ */
-/* Le rembourrage du bas dégage la pastille « OK » : il est DANS la bande
+/* ELLE EST BÂTIE COMME LA VOIE DES RÉCOMPENSES D'UN JEU DE CARTES, moins la
+   moitié : un SEUL couloir de lots, celui qu'on gagne en jouant. Un jeu qui
+   se vend en aurait deux côte à côte, gratuit et payant ; Epic Chess ne vend
+   rien, la deuxième colonne n'aurait rien à porter.
+   Ce qui reste est donc : un RAIL à gauche, qui porte le numéro du palier
+   dans un losange et le fil qui relie les paliers entre eux ; et à droite la
+   VIGNETTE du lot, pleine largeur, assez grande pour qu'on voie ce qu'on
+   gagne. Le rail se colore derrière soi (les paliers pris) et s'éteint
+   devant (ceux qui restent) : on lit sa position d'un coup d'œil, sans
+   compter les cases.
+   Le rembourrage du bas dégage la pastille « OK » : il est DANS la bande
    défilante et non sous elle, si bien que les paliers passent derrière le
    bouton au lieu de s'arrêter au-dessus d'une bande morte. */
-.rw-col-strip{display:flex;flex-direction:column;gap:1.8%;
+.rw-col-strip{display:flex;flex-direction:column;
   overflow-y:auto;-webkit-overflow-scrolling:touch;
-  padding:.25em .25em calc(7vh + var(--safe-b));position:relative}
-/* PLUS DE FIL VERTICAL DERRIÈRE LES NUMÉROS. Il voulait relier les paliers,
-   mais il était posé en `position:absolute` DANS la bande défilante : son
-   `bottom` se mesurait sur la hauteur visible, pas sur la hauteur des trente
-   paliers. Le trait s'arrêtait donc net après les huit premiers numéros et
-   suivait le défilement — une barre orpheline au milieu de la colonne, qui
-   ressemblait à un défaut d'affichage plutôt qu'à un fil conducteur. Les
-   pastilles numérotées, alignées les unes sous les autres, font déjà la
-   colonne à elles seules. */
-.rw-step{flex:0 0 auto;display:flex;align-items:center;gap:.9em;position:relative;
-  padding:.7em .9em;border-radius:.95em;
-  border:1px solid var(--border);background:var(--surface);
-  transition:border-color .2s ease,opacity .2s ease}
-.rw-step-num{flex:0 0 auto;width:2.2em;height:2.2em;border-radius:50%;
+  padding:.4em .25em calc(7vh + var(--safe-b));position:relative}
+
+/* La rangée d'un palier : le rail, puis la vignette. Rien d'autre. */
+.cv-row{flex:0 0 auto;display:flex;align-items:stretch;gap:.75em;position:relative}
+/* La rangée n'est PAS en overflow:hidden : c'est elle qui porte l'étiquette
+   « Récupérer », laquelle déborde volontairement sous la vignette. */
+
+/* LE RAIL. Le fil court d'une rangée à l'autre SANS INTERRUPTION : il est
+   dessiné par deux pseudo-éléments du rail (au-dessus et au-dessous du
+   losange) et non par un trait absolu posé sur la bande — celui-là se
+   mesurait sur la hauteur VISIBLE et s'arrêtait net au huitième palier
+   (c'était l'ancien défaut, corrigé ici en le portant par la rangée). */
+.cv-rail{flex:0 0 auto;width:3.7em;display:flex;flex-direction:column;align-items:center;
+  position:relative}
+.cv-rail::before,.cv-rail::after{content:'';position:absolute;left:50%;width:3px;
+  margin-left:-1.5px;background:var(--cv-wire,rgba(255,255,255,.09));border-radius:2px}
+.cv-rail::before{top:0;height:calc(50% - 1.6em)}
+.cv-rail::after{bottom:0;height:calc(50% - 1.6em)}
+.rw-col-strip .cv-row:first-child .cv-rail::before,
+.rw-col-strip .cv-row:last-child  .cv-rail::after{display:none}
+
+/* LE LOSANGE NUMÉROTÉ. Un carré tourné de 45°, et le chiffre remis d'aplomb
+   dedans : c'est la forme qui dit « jalon » dans tous les jeux qui alignent
+   des paliers, et elle se distingue d'une pastille ronde — laquelle sert
+   déjà, partout ailleurs dans le jeu, à compter des choses (les lauriers,
+   les pastilles de rappel). */
+.cv-node{position:absolute;top:50%;left:50%;width:2.5em;height:2.5em;
+  margin:-1.25em 0 0 -1.25em;transform:rotate(45deg);border-radius:.42em;
+  border:1px solid var(--border2);background:linear-gradient(160deg,var(--surface2),var(--bg2));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.09),0 .3em .7em -.35em rgba(0,0,0,.9);
+  display:flex;align-items:center;justify-content:center;z-index:2;
+  transition:border-color .25s,box-shadow .25s,background .25s}
+.cv-node span{transform:rotate(-45deg);font-family:var(--f-ui);font-weight:900;
+  font-size:min(3.1vw,12px);color:var(--muted);letter-spacing:.02em}
+
+/* LA VIGNETTE DU LOT. Plaque bombée : lumière du haut, ombre du bas, et un
+   fond qui prend la couleur du coffre — c'est ce qui distingue un Coffre Tour
+   d'un Coffre Pion AVANT même d'avoir lu son nom. */
+.cv-tile{flex:1;min-width:0;display:flex;align-items:center;gap:.85em;
+  position:relative;overflow:hidden;
+  margin:.32em 0;padding:.7em .9em;border-radius:1em;
+  border:1px solid var(--border);
+  background:
+    radial-gradient(130% 190% at 12% 0%,color-mix(in srgb,var(--cv-c,var(--gold)) 14%,transparent),transparent 60%),
+    linear-gradient(180deg,rgba(255,255,255,.045),rgba(0,0,0,.28)),
+    var(--surface);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.07),0 .5em 1.1em -.6em rgba(0,0,0,.85);
+  transition:border-color .25s ease,transform .18s ease,box-shadow .25s ease,opacity .25s}
+
+/* Le socle de lumière sous la vignette : un halo posé DERRIÈRE le lot, qui
+   ne s'allume vraiment que sur le palier à prendre. */
+.cv-glow{position:absolute;left:0;right:0;top:0;bottom:0;pointer-events:none;
+  background:radial-gradient(60% 120% at 18% 50%,color-mix(in srgb,var(--cv-c,var(--gold)) 30%,transparent),transparent 70%);
+  opacity:0;transition:opacity .35s}
+
+.cv-vis{flex:0 0 22%;max-width:4.6em;display:flex;align-items:center;justify-content:center;
+  position:relative;z-index:1}
+/* LA VIGNETTE DU COFFRE EST UN MÉDAILLON. Les planches de coffres
+   (assets/chests/) sont peintes sur un FOND OPAQUE et non détourées : posées
+   à nu sur la plaque, elles y dessinaient un rectangle noir qui se lisait
+   comme un défaut d'affichage. Le cadre arrondi et le filet de laiton en font
+   au contraire un portrait encadré — le fond sombre devient la nuit derrière
+   le coffre, ce qu'il a toujours été. */
+.cv-vis .chest{width:100%;height:auto;aspect-ratio:29/25}
+.cv-vis .chest-pawn{border-radius:.7em;overflow:hidden;
+  border:1px solid rgba(193,154,69,.28);
+  box-shadow:inset 0 0 1.4em rgba(0,0,0,.75),0 .3em .7em -.4em rgba(0,0,0,.9)}
+.cv-vis .chest-pawn img{display:block;width:100%;height:100%;object-fit:cover}
+.cv-vis .chest-lid{width:100%;height:42%;border-radius:18px 18px 3px 3px}
+.cv-vis .chest-body{width:100%;height:62%;top:38%}
+.cv-vis .chest-lock{width:22%;height:30%;margin-left:-11%;top:27%}
+.cv-vis .chest-lock::after{width:4px;height:6px;margin-left:-2px;top:4px}
+.cv-vis-joker svg{filter:drop-shadow(0 0 .6em rgba(201,168,76,.4))}
+.cv-txt{flex:1;min-width:0;position:relative;z-index:1}
+.cv-name{font-family:var(--f-title);font-weight:800;font-size:min(3.9vw,16px);color:var(--text);
+  line-height:1.2}
+.cv-sub{font-family:var(--f-ui);font-size:min(3vw,11px);color:var(--muted);margin-top:.22em;
+  letter-spacing:.03em}
+
+/* LA MARQUE D'ÉTAT, à droite de la vignette. Une seule par palier, jamais
+   deux : elle dit soit que c'est pris, soit que c'est à prendre, soit ce
+   qu'il manque. */
+.cv-mark{flex:0 0 auto;position:relative;z-index:1;
+  font-family:var(--f-ui);font-size:min(2.4vw,9.5px);font-weight:800;
+  letter-spacing:.08em;text-transform:uppercase;text-align:center;
+  border-radius:999px;padding:.5em .85em;
+  border:1px solid var(--border2);color:var(--muted)}
+.cv-seal{flex:0 0 auto;position:relative;z-index:1;width:1.9em;height:1.9em;border-radius:50%;
   display:flex;align-items:center;justify-content:center;
-  border:1px solid var(--border2);background:var(--surface2);
-  font-family:var(--f-ui);font-size:min(2.9vw,11px);font-weight:800;color:var(--muted)}
-.rw-step-vis{flex:0 0 16%;max-width:4em;display:flex;align-items:center;justify-content:center}
-.rw-step-vis .chest{width:100%;height:auto;aspect-ratio:29/25}
-.rw-step-vis .chest-lid{width:100%;height:42%;border-radius:18px 18px 3px 3px}
-.rw-step-vis .chest-body{width:100%;height:62%;top:38%}
-.rw-step-vis .chest-lock{width:22%;height:30%;margin-left:-11%;top:27%}
-.rw-step-vis .chest-lock::after{width:4px;height:6px;margin-left:-2px;top:4px}
-.rw-step-joker svg{filter:drop-shadow(0 0 .6em rgba(201,168,76,.35))}
-.rw-step-txt{flex:1;min-width:0}
-.rw-step-name{font-family:var(--f-title);font-weight:800;font-size:min(3.7vw,15px);color:var(--text)}
-.rw-step-sub{font-family:var(--f-ui);font-size:min(3vw,11px);color:var(--muted);margin-top:.2em;letter-spacing:.03em}
-.rw-mark-next{font-size:min(2.2vw,9px);letter-spacing:.07em;text-transform:uppercase;color:var(--gold2);
-  border:1px solid rgba(193,154,69,.45);border-radius:999px;padding:.45em .8em;text-align:center}
+  border:1px solid color-mix(in srgb,var(--success) 55%,transparent);
+  background:color-mix(in srgb,var(--success) 16%,transparent);color:var(--success);
+  font-size:min(3.4vw,13px);font-weight:900}
+.cv-lock{flex:0 0 auto;position:relative;z-index:1;width:1.5em;height:1.5em;opacity:.5}
+.cv-lock svg{width:100%;height:100%;display:block;fill:currentColor;color:var(--muted)}
+
+/* ------------------------------------------------------------------
+   LES QUATRE ÉTATS D'UN PALIER
+   ------------------------------------------------------------------ */
+/* PRIS. Le rail est allumé derrière soi, la vignette se retire : elle a
+   déjà donné ce qu'elle avait, elle ne doit plus attirer l'œil. */
+.cv-got{--cv-wire:linear-gradient(180deg,rgba(201,168,76,.55),rgba(201,168,76,.55))}
+.cv-got .cv-node{border-color:color-mix(in srgb,var(--success) 50%,var(--border2));
+  background:linear-gradient(160deg,color-mix(in srgb,var(--success) 18%,var(--surface2)),var(--bg2))}
+.cv-got .cv-node span{color:color-mix(in srgb,var(--success) 70%,var(--text))}
+.cv-got .cv-tile{opacity:.62;border-color:rgba(255,255,255,.14)}
+.cv-got .chest:not(.chest-pawn){filter:saturate(.5) brightness(.85)}
+.cv-got .chest-pawn{--pawn-fx:saturate(.5) brightness(.85)}
+
+/* À PRENDRE. C'est le seul palier qui bouge de la colonne : bordure d'or,
+   halo allumé, un reflet qui balaie la plaque toutes les trois secondes et
+   quelques poussières de lumière qui montent. Tout le reste est immobile —
+   un écran où tout scintille ne désigne plus rien. */
+.cv-due{--cv-wire:linear-gradient(180deg,rgba(201,168,76,.55),rgba(255,255,255,.09))}
+.cv-due .cv-node{border-color:var(--gold);
+  background:linear-gradient(160deg,var(--gold),#8a6a26);
+  box-shadow:inset 0 1px 0 rgba(255,244,214,.6),0 0 1.1em -.15em rgba(201,168,76,.75);
+  animation:cvNodeBeat 2.2s ease-in-out infinite}
+.cv-due .cv-node span{color:#1a1206}
+.cv-due .cv-tile{border-color:var(--gold);cursor:pointer;
+  box-shadow:inset 0 1px 0 rgba(255,240,205,.28),0 0 1.4em -.4em rgba(201,168,76,.8),
+             0 .5em 1.1em -.6em rgba(0,0,0,.85)}
+.cv-due .cv-glow{opacity:.75;animation:cvBreathe 2.8s ease-in-out infinite}
+.cv-due .cv-name{color:var(--gold2)}
+.cv-due .cv-tile::after{content:'';position:absolute;top:0;bottom:0;width:38%;
+  left:-45%;pointer-events:none;
+  background:linear-gradient(100deg,transparent,rgba(255,246,214,.16) 45%,transparent);
+  animation:cvSheen 3.4s ease-in-out infinite}
+.cv-due .chest:not(.chest-pawn),.cv-due .cv-vis-joker svg{
+  filter:drop-shadow(0 0 .85em var(--cv-c,var(--gold))) drop-shadow(0 0 1.7em rgba(201,168,76,.5));
+  animation:jcBreathe 2.6s ease-in-out infinite}
+.cv-due .chest-pawn{--pawn-fx:drop-shadow(0 0 .85em var(--cv-c,var(--gold))) drop-shadow(0 0 1.7em rgba(201,168,76,.5))}
+.cv-due .chest-pawn img{animation:jcBreathe 2.6s ease-in-out infinite}
+.cv-due .cv-tile:active{transform:scale(.985)}
+
+/* GAGNÉ, MAIS PAS SON TOUR. La colonne s'encaisse dans l'ordre : toucher le
+   troisième palier dû donnerait le premier, le geste ne rendrait pas ce
+   qu'il désigne. Ces paliers-là sont donc allumés mais muets. */
+.cv-queued{--cv-wire:linear-gradient(180deg,rgba(201,168,76,.55),rgba(201,168,76,.35))}
+.cv-queued .cv-node{border-color:rgba(201,168,76,.6)}
+.cv-queued .cv-node span{color:var(--gold2)}
+.cv-queued .cv-tile{border-color:rgba(201,168,76,.42)}
+.cv-queued .cv-mark{color:var(--gold2);border-color:rgba(193,154,69,.45)}
+
+/* LE PROCHAIN, et CEUX D'APRÈS. Le prochain garde ses couleurs et dit ce
+   qu'il manque ; les suivants s'éteignent — ils ne sont pas une information,
+   ils sont un horizon. */
+.cv-next .cv-tile{border-color:var(--border2)}
+.cv-next .cv-mark{color:var(--gold2);border-color:rgba(193,154,69,.4)}
+.cv-far .cv-tile{opacity:.4}
+.cv-far .chest:not(.chest-pawn){filter:saturate(.2) brightness(.75)}
+.cv-far .chest-pawn{--pawn-fx:saturate(.2) brightness(.75)}
+.cv-far .cv-vis-joker svg{filter:saturate(.2) brightness(.8)}
+
+/* ------------------------------------------------------------------
+   « RÉCUPÉRER » : LA FLÈCHE QUI DÉSIGNE LE LOT
+   ------------------------------------------------------------------ */
+/* On ne prend pas un palier par un bouton posé ailleurs sur l'écran : ON
+   TOUCHE CE QU'ON PREND. Reste à le dire — d'où cette étiquette, collée sous
+   la vignette et pointée sur elle par une flèche, qui monte et redescend
+   lentement. Elle n'existe que sur le palier réellement encaissable, et il
+   n'y en a qu'un à la fois. */
+.cv-grab{position:absolute;z-index:3;right:.9em;bottom:-.35em;
+  display:inline-flex;align-items:center;gap:.4em;
+  padding:.4em .85em;border-radius:999px;
+  background:linear-gradient(180deg,var(--gold2),var(--gold));color:#1a1206;
+  font-family:var(--f-ui);font-size:min(2.7vw,10.5px);font-weight:900;
+  letter-spacing:.09em;text-transform:uppercase;white-space:nowrap;
+  border:1px solid rgba(255,244,214,.55);
+  box-shadow:0 .35em .9em -.3em rgba(0,0,0,.85),0 0 1.2em -.2em rgba(201,168,76,.85);
+  animation:cvGrab 1.7s ease-in-out infinite;pointer-events:none}
+.cv-grab svg{width:1em;height:1em;display:block;fill:currentColor}
+
+@keyframes cvGrab{0%,100%{transform:translateY(0)}50%{transform:translateY(-.32em)}}
+@keyframes cvNodeBeat{0%,100%{box-shadow:inset 0 1px 0 rgba(255,244,214,.6),0 0 .8em -.2em rgba(201,168,76,.6)}
+  50%{box-shadow:inset 0 1px 0 rgba(255,244,214,.6),0 0 1.5em 0 rgba(201,168,76,.95)}}
+@keyframes cvBreathe{0%,100%{opacity:.5}50%{opacity:.9}}
+@keyframes cvSheen{0%{left:-45%}55%,100%{left:115%}}
+
+/* LES POUSSIÈRES DE LUMIÈRE. Trois points qui montent le long de la vignette
+   du palier à prendre, décalés dans le temps pour qu'on ne voie jamais le
+   motif se répéter. C'est le même vocabulaire que les braises du menu
+   (.jtf-ember) : la lumière monte, elle ne tombe pas. */
+.cv-motes{position:absolute;inset:0;pointer-events:none;overflow:hidden;opacity:0;
+  transition:opacity .4s}
+.cv-due .cv-motes{opacity:1}
+.cv-motes i{position:absolute;bottom:-.4em;width:.3em;height:.3em;border-radius:50%;
+  background:var(--gold2);box-shadow:0 0 .5em rgba(240,209,137,.9);
+  animation:cvMote 3.6s linear infinite}
+.cv-motes i:nth-child(1){left:14%;animation-duration:3.4s}
+.cv-motes i:nth-child(2){left:29%;animation-duration:4.2s;animation-delay:-1.5s}
+.cv-motes i:nth-child(3){left:63%;animation-duration:3.9s;animation-delay:-2.6s}
+@keyframes cvMote{0%{transform:translateY(0);opacity:0}
+  18%{opacity:.9}80%{opacity:.5}100%{transform:translateY(-3.4em);opacity:0}}
+
+/* ------------------------------------------------------------------
+   LES GRANDS PALIERS : un sur cinq
+   ------------------------------------------------------------------ */
+/* Trente vignettes identiques font une liste, pas un chemin. Un palier sur
+   cinq est donc TAILLÉ PLUS GRAND et porte un bandeau qui le numérote : la
+   colonne se lit alors en six tronçons de cinq, et « où j'en suis » se
+   répond sans compter les rangées une à une. */
+.cv-band{flex:0 0 auto;display:flex;align-items:center;gap:.7em;
+  margin:1.1em 0 .35em;padding-left:3.7em}
+.cv-band::before{content:'';flex:0 0 auto;width:1.6em;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(193,154,69,.6))}
+.cv-band span{font-family:var(--f-ui);font-size:min(2.5vw,10px);font-weight:800;
+  letter-spacing:.16em;text-transform:uppercase;color:var(--gold2);opacity:.85}
+.cv-band::after{content:'';flex:1;height:1px;
+  background:linear-gradient(90deg,rgba(193,154,69,.6),transparent)}
+.cv-row-big .cv-tile{padding:1em .9em;border-radius:1.15em}
+.cv-row-big .cv-vis{flex:0 0 27%;max-width:5.8em}
+.cv-row-big .cv-name{font-size:min(4.4vw,18px)}
+.cv-row-big .cv-node{width:2.9em;height:2.9em;margin:-1.45em 0 0 -1.45em}
+.cv-row-big .cv-rail::before{height:calc(50% - 1.85em)}
+.cv-row-big .cv-rail::after{bottom:0;height:calc(50% - 1.85em)}
+
 /* LE LIBELLÉ PASSE SOUS LA RANGÉE QUAND ELLE EST ÉTROITE. Sur un écran de
-   350 px, la rangée dispose d'environ 190 px pour son texte une fois le
-   numéro et la vignette placés ; « Prochaine victoire » en prenait 120, si
-   bien que « Coffre Pion » se coupait en deux lignes et « Victoire n° 1 »
-   aussi — la seule rangée mise en avant était la seule illisible.
-   Les marques sont en `flex:0 0 auto` (voir .streak-mark) : elles ne
-   rétrécissent pas, il faut donc leur donner leur propre ligne. */
-@media(max-width:430px){
-  .rw-step{flex-wrap:wrap}
-  .rw-step .rw-mark-next,.rw-step .streak-mark-next{flex:1 0 100%;order:9;margin-top:.55em}
+   350 px, la vignette dispose d'environ 190 px pour son texte une fois le
+   rail et le coffre placés : la marque d'état et le nom du coffre s'y
+   coupaient tous les deux en deux lignes. La marque prend donc sa propre
+   ligne en dessous. */
+@media(max-width:400px){
+  .cv-tile{flex-wrap:wrap}
+  .cv-tile .cv-mark{flex:1 0 100%;order:9;margin-top:.5em}
+}
+@media (prefers-reduced-motion:reduce){
+  .cv-grab,.cv-due .cv-node,.cv-due .cv-glow,.cv-motes i,
+  .cv-due .cv-tile::after{animation:none}
+  .cv-motes{display:none}
 }
 
-/* Les quatre états, communs à la colonne et à la rangée. */
-.rw-got{border-color:rgba(255,255,255,.16)}
-.rw-got .rw-step-num{color:var(--success);border-color:color-mix(in srgb,var(--success) 45%,var(--border2))}
-.rw-due{border-color:var(--gold);
-  background:linear-gradient(100deg,rgba(193,154,69,.16),var(--surface))}
-.rw-due .rw-step-name,.rw-due .rw-row-gain{color:var(--gold2)}
-.rw-due .chest:not(.chest-pawn),.rw-due .rw-step-joker svg{
-  filter:drop-shadow(0 0 .85em var(--chest-c,var(--gold))) drop-shadow(0 0 1.7em rgba(201,168,76,.5));
-  animation:jcBreathe 2.6s ease-in-out infinite}
-.rw-due .chest-pawn{--pawn-fx:drop-shadow(0 0 .85em var(--chest-c,var(--gold))) drop-shadow(0 0 1.7em rgba(201,168,76,.5))}
-.rw-due .chest-pawn img{animation:jcBreathe 2.6s ease-in-out infinite}
-.rw-next{border-color:var(--border2)}
-.rw-far{opacity:.42}
-.rw-far .chest:not(.chest-pawn){filter:saturate(.28) brightness(.8)}
-.rw-far .chest-pawn{--pawn-fx:saturate(.28) brightness(.8)}
-.rw-far .rw-step-joker svg,.rw-far .pearl-icon{filter:saturate(.3) brightness(.85)}
+/* Les états partagés avec la RANGÉE de la richesse, qui pose les mêmes
+   classes sur sa carte (renderRewardsRangee, js/rewards-ui.js). La colonne,
+   elle, a son propre vocabulaire (.cv-*) depuis qu'elle est un chemin et non
+   une liste. */
+.rw-row-card.rw-due{cursor:pointer}
+.rw-due .rw-row-gain{color:var(--gold2)}
+.rw-far .pearl-icon{filter:saturate(.3) brightness(.85)}
 
 /* --- LA RANGÉE : UNE récompense à la fois, en grand ---------------- */
 /* Elle a été une bande de vingt-cinq cases larges d'un quart d'écran, qui
@@ -5218,12 +5417,28 @@ body.cube-active:not(.nav-overlay) .notif-host{bottom:92px}
 }
 
 /* [MP-SEARCH] ===================================================
-   Écran de recherche d'adversaire (js/multiplayer.js). Il ne montrait qu'un
-   glyphe « ⚔ » immobile : impossible de savoir si la recherche tournait
-   encore. Un radar qui balaie, trois chiffres, et une sortie de secours vers
-   l'Instructeur au bout de 40 secondes.
+   L'ATTENTE D'UN ADVERSAIRE. C'est le seul moment du jeu où le joueur n'a
+   rien à faire et ne peut rien faire — donc un écran de chargement, et il
+   porte la carrosserie de tous les écrans de chargement du jeu (voir
+   [LOADING]) : toile plein écran, braises, barre, conseil.
+
+   IL N'Y A PLUS DE FENÊTRE. Le salon était une boîte opaque de 370 px posée
+   au milieu d'une toile plein écran : une image peinte pour l'occasion, et un
+   panneau gris par-dessus pour cacher son sujet. Ce qu'il portait — le radar,
+   la note, le tips, le bouton — est maintenant posé À MÊME la toile, réparti
+   entre le haut (ce qu'on cherche) et le bas (où l'on en est).
+
+   Changer la toile : remplacer assets/backgrounds/duel-wait.webp, il n'y a
+   rien à coder. Fichier absent = le dégradé du dessous, et rien de cassé.
    ============================================================== */
-.mp-radar{position:relative;width:78px;height:78px;margin:0 auto 14px}
+#mp-modal{background:none;visibility:hidden}
+#mp-modal.show{visibility:visible}
+.ec-load-art-duel{background-image:url('../assets/backgrounds/duel-wait.webp')}
+
+/* LE RADAR, au-dessus du titre : trois ondes qui partent d'un point. Il ne
+   mesure rien — il dit que la recherche tourne encore, ce qu'aucune phrase
+   ne dit aussi vite. */
+.mp-radar{position:relative;width:min(17vw,78px);aspect-ratio:1;margin:0 auto .2em}
 .mp-radar span{position:absolute;inset:0;border-radius:50%;
   border:1px solid var(--accent2);opacity:0;animation:mpPing 2.4s ease-out infinite}
 .mp-radar span:nth-child(2){animation-delay:.8s}
@@ -5233,49 +5448,36 @@ body.cube-active:not(.nav-overlay) .notif-host{bottom:92px}
   box-shadow:0 0 16px var(--potion-glow)}
 @keyframes mpPing{0%{opacity:.85;transform:scale(.22)}100%{opacity:0;transform:scale(1)}}
 
-.mp-search-note{font-size:12px;color:var(--muted);line-height:1.5;min-height:36px}
+/* Le titre de la recherche emprunte le lettrage du nom du jeu, en plus petit :
+   c'est la même carrosserie, ce n'est pas la même annonce. */
+#mp-modal .ec-load-name{font-size:clamp(20px,5.6vw,34px)}
 
-/* TIPS D'ATTENTE (mpRenderTip, js/multiplayer.js) : masqué tant qu'on choisit
-   comment jouer, visible dès qu'on attend — recherche rapide comme partie
-   privée. C'est la seule chose à lire à ce moment-là, d'où le cartouche. */
-.mp-tip{display:none}
-#mp-modal.mp-wait .mp-tip{
-  display:block;margin-top:14px;padding:11px 14px;border-radius:10px;
-  background:rgba(7,10,13,.45);border:1px solid rgba(193,154,69,.28);text-align:left}
-.mp-tip-lbl{display:block;font-family:var(--f-ui);font-size:8.5px;font-weight:700;
-  text-transform:uppercase;letter-spacing:1.2px;color:var(--gold2);margin-bottom:5px}
-.mp-tip-txt{display:block;font-size:12px;line-height:1.55;color:var(--text);font-style:italic}
+/* LA BARRE QUI CHASSE. Au démarrage, la barre monte vers une fin connue ; ici
+   on attend QUELQU'UN, dont l'arrivée ne s'annonce pas. Une barre qui
+   monterait vers 100 % promettrait une fin qu'elle ne peut pas tenir : celle-ci
+   va et vient d'un bord à l'autre, ce qui dit « ça cherche » sans rien
+   promettre. Le chronomètre sous elle (#mp-elapsed) est la seule mesure
+   honnête de l'attente. */
+.ec-load-bar.is-hunt span{width:38%;animation:mpHunt 1.9s ease-in-out infinite}
+.ec-load-bar.is-hunt span::after{animation:none;background:none}
+@keyframes mpHunt{0%{transform:translateX(-105%)}100%{transform:translateX(268%)}}
 
-/* [MP-WAIT] =====================================================
-   L'ATTENTE D'UN ADVERSAIRE. C'est le seul moment du jeu où le joueur n'a
-   rien à faire : la fenêtre de salon s'efface derrière la toile plein écran
-   `assets/backgrounds/duel-wait.webp`, et il ne reste qu'une inscription.
+/* TIPS D'ATTENTE (mpRenderTip, js/multiplayer.js) : la seule chose à LIRE de
+   l'écran, d'où le cartouche qui la pose. */
+.mp-tip{width:100%;padding:.85em 1.05em;border-radius:.8em;text-align:left;
+  background:rgba(7,10,13,.55);backdrop-filter:blur(4px);
+  border:1px solid rgba(193,154,69,.28)}
+.mp-tip:empty{display:none}
+.mp-tip-lbl{display:block;font-family:var(--f-ui);font-size:min(2.4vw,9px);font-weight:700;
+  text-transform:uppercase;letter-spacing:1.2px;color:var(--gold2);margin-bottom:.4em}
+.mp-tip-txt{display:block;font-size:min(3.3vw,12.5px);line-height:1.55;color:var(--text);font-style:italic}
+/* Une ligne de statut vide réservait sa hauteur et creusait un trou entre le
+   chronomètre et le bouton. */
+#mp-modal .mp-status:empty{display:none}
 
-   Changer la toile : remplacer le fichier, il n'y a rien à coder
-   (`.png` accepté aussi — tools/opt-images.js le convertit).
-   ============================================================== */
-#mp-modal.mp-wait{
-  flex-direction:column;gap:clamp(12px,2.4vh,26px);
-  background:
-    radial-gradient(ellipse at 50% 42%,rgba(7,10,13,.28),rgba(7,10,13,.74) 78%),
-    url('../assets/backgrounds/duel-wait.webp') center/cover no-repeat,
-    #070a0d}
-/* La boîte devient une simple inscription posée sur la toile : plus de
-   panneau opaque au milieu d'une image plein écran, et rien de plus large
-   que ce que les deux ou trois lignes affichées demandent. */
-#mp-modal.mp-wait .ai-lvl-box{
-  max-width:min(94vw,370px);padding:20px 22px 18px;
-  background:rgba(7,10,13,.52);backdrop-filter:blur(4px);
-  border-color:rgba(193,154,69,.35);box-shadow:0 18px 60px rgba(0,0,0,.6)}
-/* L'en-tête du salon (« Affronter un joueur / Invitez un ami… ») décrit des
-   choix déjà faits : il n'a plus rien à dire une fois la recherche lancée. */
-#mp-modal.mp-wait .mp-hdr-title,
-#mp-modal.mp-wait .mp-hdr-sub{display:none}
-#mp-modal.mp-wait .mp-radar{width:64px;height:64px;margin-bottom:12px}
-/* Une ligne de statut vide réservait sa hauteur au milieu de la boîte, ce qui
-   creusait un trou entre le texte et le bouton. */
-#mp-modal.mp-wait .mp-status:empty{display:none;margin:0;min-height:0}
-#mp-modal.mp-wait #mp-cancel{margin-top:10px}
+@media (prefers-reduced-motion:reduce){
+  .mp-radar span,.ec-load-bar.is-hunt span{animation:none}
+}
 
 /* [ICON-BUTTONS] ================================================
    Les boutons d'action des cartes portent maintenant des icônes SVG
@@ -6413,25 +6615,13 @@ body.desk .comp-grid{max-width:700px;margin-left:auto;margin-right:auto}
 /* Le voile de démarrage et l'avertissement de liaison (js/server.js,
    js/accounts.js). Toute la progression vit sur le serveur : ces deux
    éléments sont donc les seuls endroits où le joueur voit qu'il existe un
-   serveur, et ils ne se montrent que quand il faut. */
-.ec-boot{
-  position:fixed;inset:0;z-index:12000;display:none;
-  align-items:center;justify-content:center;
-  background:radial-gradient(circle at 50% 40%,var(--bg2),var(--bg) 70%);
-}
+   serveur, et ils ne se montrent que quand il faut.
+   Le voile lui-même est bâti sur la carrosserie [LOADING] plus bas — celle
+   que partagent le démarrage et l'attente d'un adversaire. */
+.ec-boot{position:fixed;inset:0;z-index:12000;display:none}
 .ec-boot.show{display:flex}
-.ec-boot-box{text-align:center;padding:28px;max-width:340px}
-.ec-boot-spin{
-  width:38px;height:38px;margin:0 auto 18px;border-radius:50%;
-  border:2.5px solid var(--border);border-top-color:var(--accent2);
-  animation:ec-boot-turn .9s linear infinite;
-}
-@keyframes ec-boot-turn{to{transform:rotate(360deg)}}
-.ec-boot-msg{
-  font-family:var(--f-ui);font-size:14px;color:var(--muted);
-  line-height:1.55;margin-bottom:18px;
-}
-@media (prefers-reduced-motion:reduce){.ec-boot-spin{animation:none}}
+.ec-boot-msg{font-family:var(--f-ui);font-size:min(3.4vw,13.5px);color:var(--muted);
+  line-height:1.55;min-height:1.6em}
 
 /* L'avertissement s'installe en bas, hors du chemin du pouce : il informe,
    il n'interrompt pas — tout est réessayé en arrière-plan. */
@@ -6759,3 +6949,133 @@ button.rp-log-w:hover,button.rp-log-b:hover{border-color:var(--border2);backgrou
   line-height:1.2}
 .pf-power-p{font-family:var(--f-ui);font-size:10.5px;color:var(--muted);margin-top:1px}
 .pf-empty{font-family:var(--f-ui);font-size:12px;color:var(--muted);font-style:italic}
+
+/* [LOADING] : L'ÉCRAN D'ATTENTE, DEUX FOIS LE MÊME ==================
+   Le jeu fait attendre à deux moments, et à deux moments seulement : au
+   DÉMARRAGE, le temps que le serveur donne la fiche du compte (#ec-boot,
+   js/accounts.js), et pendant la RECHERCHE D'UN ADVERSAIRE (#mp-modal.mp-wait,
+   js/multiplayer.js). Les deux attentes se ressemblaient si peu qu'on ne
+   pouvait pas savoir, en voyant une capture, laquelle des deux on regardait :
+   un carré gris avec un tourniquet d'un côté, une toile plein écran avec un
+   radar de l'autre.
+
+   C'EST MAINTENANT LA MÊME CARROSSERIE, remplie deux fois. Une toile qui
+   occupe tout l'écran, un voile pour que le texte se lise dessus, des braises
+   qui montent, le nom du jeu en haut, et en bas la seule chose qui bouge
+   vraiment : une barre de progression, un pourcentage, une phrase d'état et
+   un conseil à lire. C'est la mise en page de tous les écrans de chargement
+   de jeu, et elle vaut pour la raison qui la fait exister partout : on
+   supporte d'attendre ce qu'on voit avancer.
+
+   LES DEUX TOILES SONT FACULTATIVES (assets/backgrounds/chargement.webp et
+   duel-wait.webp). Absentes, le dégradé posé dessous reste seul et l'écran
+   fonctionne à l'identique — la règle de toutes les planches du jeu, voir
+   [ART].
+   ============================================================== */
+.ec-load{
+  display:flex;flex-direction:column;align-items:center;justify-content:space-between;
+  overflow:hidden;
+  padding:calc(6vh + var(--safe-t)) clamp(16px,5vw,34px) calc(4vh + var(--safe-b));
+  background:radial-gradient(ellipse at 50% 30%,#16222a,#080b0e 72%)}
+/* LA TOILE. Elle est posée en `background-image` et non en <img> : un fichier
+   absent ne laisse alors ni cadre vide ni icône cassée, seulement le dégradé
+   du dessous (même raison que partout ailleurs, voir [ART]).
+   Un lent zoom avant de vingt secondes lui donne du souffle sans que le
+   mouvement se remarque. */
+.ec-load-art{position:absolute;inset:-4%;background:center/cover no-repeat;
+  animation:ecLoadDrift 26s ease-in-out infinite alternate}
+.ec-load-art-boot{background-image:url('../assets/backgrounds/chargement.webp')}
+@keyframes ecLoadDrift{0%{transform:scale(1.04) translateY(0)}100%{transform:scale(1.12) translateY(-1.5%)}}
+/* LE VOILE. Sombre en haut et en bas, clair au milieu : le nom du jeu et la
+   barre se détachent, et la toile garde le centre — c'est-à-dire l'endroit où
+   le peintre a mis son sujet. */
+.ec-load-veil{position:absolute;inset:0;pointer-events:none;
+  background:
+    linear-gradient(180deg,rgba(6,9,12,.82),rgba(6,9,12,.12) 32%,rgba(6,9,12,.2) 58%,rgba(6,9,12,.9)),
+    radial-gradient(ellipse at 50% 45%,transparent 35%,rgba(6,9,12,.55))}
+
+/* LES BRAISES. Dix points qui montent en travers de la toile, chacun avec sa
+   propre durée et son propre retard : le motif ne se répète jamais à l'œil.
+   Elles sont dessinées par le CSS seul — pas de canvas, pas de bibliothèque,
+   rien à charger sur un écran dont le rôle est justement d'attendre le
+   chargement. */
+.ec-load-embers{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.ec-load-embers i{position:absolute;bottom:-2em;width:3px;height:3px;border-radius:50%;
+  background:var(--gold2);box-shadow:0 0 8px rgba(240,209,137,.9),0 0 18px rgba(201,168,76,.5);
+  animation:ecLoadEmber 12s linear infinite}
+.ec-load-embers i:nth-child(1){left:8%;animation-duration:11s;animation-delay:-1s}
+.ec-load-embers i:nth-child(2){left:19%;animation-duration:14s;animation-delay:-5s;opacity:.6}
+.ec-load-embers i:nth-child(3){left:31%;animation-duration:9.5s;animation-delay:-8s}
+.ec-load-embers i:nth-child(4){left:42%;animation-duration:13s;animation-delay:-3s;opacity:.7}
+.ec-load-embers i:nth-child(5){left:51%;animation-duration:10.5s;animation-delay:-11s}
+.ec-load-embers i:nth-child(6){left:63%;animation-duration:15s;animation-delay:-6s;opacity:.55}
+.ec-load-embers i:nth-child(7){left:72%;animation-duration:11.5s;animation-delay:-9s}
+.ec-load-embers i:nth-child(8){left:81%;animation-duration:12.5s;animation-delay:-2s;opacity:.65}
+.ec-load-embers i:nth-child(9){left:89%;animation-duration:10s;animation-delay:-13s}
+.ec-load-embers i:nth-child(10){left:96%;animation-duration:16s;animation-delay:-7s;opacity:.5}
+@keyframes ecLoadEmber{
+  0%{transform:translateY(0) translateX(0);opacity:0}
+  10%{opacity:.9}
+  50%{transform:translateY(-52vh) translateX(1.2em)}
+  90%{opacity:.35}
+  100%{transform:translateY(-104vh) translateX(-.8em);opacity:0}}
+
+/* LE NOM DU JEU, en haut. Il est écrit et non dessiné : la police de titre
+   (Cinzel Decorative) est déjà celle du menu, et un logo bitmap de plus
+   serait un fichier de plus à charger avant de pouvoir dire qu'on charge. */
+.ec-load-brand{position:relative;z-index:1;text-align:center;
+  display:flex;flex-direction:column;align-items:center;gap:.35em}
+.ec-load-seal{width:min(19vw,84px);height:auto;display:block;border-radius:22%;
+  border:1px solid rgba(193,154,69,.45);
+  filter:drop-shadow(0 .35em 1.1em rgba(0,0,0,.75)) drop-shadow(0 0 1.4em rgba(201,168,76,.35));
+  animation:ecLoadSeal 4.5s ease-in-out infinite}
+@keyframes ecLoadSeal{0%,100%{transform:translateY(0)}50%{transform:translateY(-.35em)}}
+.ec-load-name{font-family:var(--f-display);font-weight:900;
+  font-size:clamp(30px,9vw,58px);line-height:1.05;letter-spacing:.02em;
+  background:linear-gradient(180deg,#fff3d2,var(--gold2) 45%,#a97f2e);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 .06em .1em rgba(0,0,0,.85))}
+.ec-load-sub{font-family:var(--f-ui);font-size:min(2.9vw,11.5px);letter-spacing:.2em;
+  text-transform:uppercase;color:rgba(240,232,214,.62);line-height:1.6}
+
+/* LE PIED : ce qui bouge et ce qui informe. Tout y est, dans l'ordre où on
+   le lit — le conseil, la barre, le pourcentage, l'état, et le bouton de
+   secours quand le serveur ne répond pas. */
+.ec-load-foot{position:relative;z-index:1;width:min(100%,440px);text-align:center;
+  display:flex;flex-direction:column;align-items:center;gap:.7em}
+.ec-load-tip{font-family:var(--f-ui);font-style:italic;
+  font-size:min(3.4vw,13px);line-height:1.55;color:rgba(240,232,214,.8);
+  min-height:3.2em;display:flex;align-items:center;justify-content:center;
+  padding:0 .4em;transition:opacity .45s ease}
+.ec-load-tip.is-out{opacity:0}
+/* LA BARRE. Une gouttière creusée, une coulée d'or dedans, et un reflet qui
+   la balaie : c'est le seul objet de l'écran qui dit que quelque chose se
+   passe encore. La largeur est posée par js/boot-screen.js. */
+.ec-load-bar{width:100%;height:.95em;border-radius:999px;overflow:hidden;position:relative;
+  background:rgba(4,7,10,.72);
+  border:1px solid rgba(193,154,69,.35);
+  box-shadow:inset 0 .18em .5em rgba(0,0,0,.8)}
+.ec-load-bar span{display:block;height:100%;width:0;border-radius:999px;position:relative;
+  background:linear-gradient(90deg,#a97f2e,var(--gold) 45%,#fff3d2);
+  box-shadow:0 0 1em rgba(201,168,76,.75);
+  transition:width .5s cubic-bezier(.32,.72,.36,1)}
+.ec-load-bar span::after{content:'';position:absolute;inset:0;border-radius:999px;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.5),transparent);
+  background-size:38% 100%;background-repeat:no-repeat;
+  animation:ecLoadSheen 1.5s linear infinite}
+@keyframes ecLoadSheen{0%{background-position:-40% 0}100%{background-position:140% 0}}
+.ec-load-pct{font-family:var(--f-ui);font-weight:900;font-size:min(4vw,16px);
+  letter-spacing:.1em;color:var(--gold2);
+  text-shadow:0 .08em .25em rgba(0,0,0,.9)}
+.ec-load-msg{color:rgba(240,232,214,.6)}
+.ec-load-foot .btn{margin-top:.4em}
+
+/* SERVEUR INJOIGNABLE : la barre et le pourcentage n'ont plus rien à dire —
+   ils annonceraient une progression qui n'avance pas. Ils s'effacent, le
+   bouton prend leur place. */
+.ec-load.is-stuck .ec-load-bar,.ec-load.is-stuck .ec-load-pct{display:none}
+
+@media (prefers-reduced-motion:reduce){
+  .ec-load-art,.ec-load-seal,.ec-load-embers i,.ec-load-bar span::after{animation:none}
+  .ec-load-embers{display:none}
+}

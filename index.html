@@ -200,37 +200,49 @@
      Le bouton « Combattre » de la page Combat lance donc directement. -->
 
 <!-- MODAL MULTIJOUEUR : create/join d'une partie en ligne -->
-<div class="ai-lvl-modal" id="mp-modal">
-  <div class="ai-lvl-box" style="max-width:420px;text-align:center">
-    <!-- LE SALON N'A PLUS QU'UN SEUL ÉCRAN : la recherche.
-         Il en comptait quatre — un écran de CHOIX (« Partie rapide » /
-         « Créer une partie privée » / « Rejoindre avec un code »), puis un
-         écran par branche. Les parties privées par code demandaient de
-         transmettre six caractères à quelqu'un par un autre canal ; elles ont
-         été retirées, et avec elles l'écran de choix, qui n'avait plus qu'une
-         option à proposer. Appuyer sur COMBAT ouvre donc directement ceci. -->
-    <div class="mp-hdr-title">Recherche d'un adversaire</div>
+<div class="ai-lvl-modal ec-load" id="mp-modal">
+  <!-- L'ATTENTE D'UN ADVERSAIRE EST UN ÉCRAN DE CHARGEMENT, et elle porte
+       donc exactement la carrosserie du démarrage (voir [LOADING] dans
+       css/style.css) : la même toile plein écran, les mêmes braises, la même
+       barre, le même conseil à lire. Deux attentes qui se ressemblent, ce
+       sont deux fois moins de choses à comprendre.
+       La seule différence tient à ce qu'il y a à annoncer : le démarrage
+       attend UNE chose et la barre monte vers elle ; ici on attend QUELQU'UN,
+       dont l'arrivée ne s'annonce pas — la barre va donc et vient (voir
+       .ec-load-bar.is-hunt), et c'est le chronomètre, sous elle, qui dit
+       depuis combien de temps.
 
-    <div id="mp-screen-quick">
-      <div class="mp-radar"><span></span><span></span><span></span></div>
-      <!-- LA NOTE DIT CE QUI SE PASSE, ET RIEN D'AUTRE. Elle a annoncé
-           « Personne d'autre en attente pour l'instant » (apprendre qu'on est
-           seul en ligne pendant qu'on attend n'aide en rien), puis « On
-           cherche d'abord un adversaire de votre niveau, puis on élargit » —
-           une règle d'appariement que le joueur n'a pas à connaître pour
-           attendre, et qui restait affichée le temps que mpRenderSearch()
-           passe. Le texte d'origine est donc DÉJÀ celui de la recherche : la
-           première image est la bonne. -->
-      <div class="mp-search-note" id="mp-search-note">Recherche d'adversaire en cours</div>
-    </div>
+       LE SALON N'A PLUS QU'UN SEUL ÉCRAN : la recherche. Il en comptait
+       quatre — un écran de CHOIX (« Partie rapide » / « Créer une partie
+       privée » / « Rejoindre avec un code »), puis un écran par branche. Les
+       parties privées par code demandaient de transmettre six caractères à
+       quelqu'un par un autre canal ; elles ont été retirées, et avec elles
+       l'écran de choix, qui n'avait plus qu'une option à proposer. Appuyer
+       sur COMBAT ouvre donc directement ceci. -->
+  <div class="ec-load-art ec-load-art-duel" aria-hidden="true"></div>
+  <div class="ec-load-veil" aria-hidden="true"></div>
+  <div class="ec-load-embers" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
 
-    <!-- TIPS D'ATTENTE : rempli par mpRenderTip() (js/multiplayer.js) et
-         visible uniquement pendant une attente (voir [MP-WAIT] dans la CSS).
-         Le texte vient de MP_TIPS. -->
+  <div class="ec-load-brand">
+    <div class="mp-radar"><span></span><span></span><span></span></div>
+    <div class="ec-load-name mp-hdr-title">Recherche d'un adversaire</div>
+    <!-- LA NOTE DIT CE QUI SE PASSE, ET RIEN D'AUTRE. Elle a annoncé
+         « Personne d'autre en attente pour l'instant » (apprendre qu'on est
+         seul en ligne pendant qu'on attend n'aide en rien), puis « On cherche
+         d'abord un adversaire de votre niveau, puis on élargit » — une règle
+         d'appariement que le joueur n'a pas à connaître pour attendre. -->
+    <div class="ec-load-sub" id="mp-search-note">Recherche d'adversaire en cours</div>
+  </div>
+
+  <div class="ec-load-foot">
+    <!-- TIPS D'ATTENTE : rempli par mpRenderTip() (js/multiplayer.js), qui en
+         tire un au sort à chaque entrée en attente. Le texte vient de
+         MP_TIPS. -->
     <div class="mp-tip" id="mp-tip"></div>
-
-    <div class="mp-status" id="mp-status"></div>
-    <button class="btn btn-ghost" id="mp-cancel" style="margin-top:14px">Annuler</button>
+    <div class="ec-load-bar is-hunt"><span></span></div>
+    <div class="ec-load-pct" id="mp-elapsed">0 s</div>
+    <div class="mp-status ec-load-msg" id="mp-status"></div>
+    <button class="btn btn-ghost" id="mp-cancel">Annuler</button>
   </div>
 </div>
 
@@ -256,10 +268,30 @@
      compte vide et écrirait par-dessus la vraie progression au premier coup
      joué. Le bouton « Réessayer » remplace le cul-de-sac quand le serveur ne
      répond pas. -->
-<div class="ec-boot" id="ec-boot">
-  <div class="ec-boot-box">
-    <div class="ec-boot-spin" id="ec-boot-spin" aria-hidden="true"></div>
-    <div class="ec-boot-msg" id="ec-boot-msg">Connexion au serveur…</div>
+<div class="ec-boot ec-load" id="ec-boot">
+  <!-- LA TOILE. Le fichier assets/backgrounds/chargement.webp est FACULTATIF
+       (voir assets/PROMPTS.md) : absent, il ne reste que le dégradé posé
+       dessous, et l'écran garde exactement la mise en page ci-dessous. C'est
+       la règle de toutes les planches du jeu, voir [ART] dans css/style.css. -->
+  <div class="ec-load-art ec-load-art-boot" aria-hidden="true"></div>
+  <div class="ec-load-veil" aria-hidden="true"></div>
+  <!-- Les braises : dix points de lumière qui montent lentement en travers de
+       la toile. Elles ne disent rien, elles empêchent l'écran d'être une
+       image fixe pendant les deux secondes où l'on attend. -->
+  <div class="ec-load-embers" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+  <div class="ec-load-brand">
+    <img class="ec-load-seal" src="favicon.svg" alt="" aria-hidden="true" onerror="this.remove()">
+    <div class="ec-load-name">Epic Chess</div>
+    <div class="ec-load-sub">Les échecs, avec des créatures</div>
+  </div>
+  <div class="ec-load-foot">
+    <!-- LE CONSEIL D'ATTENTE. Le même procédé que les tips de la recherche
+         d'adversaire (MP_TIPS, js/multiplayer.js) : il y a quelque chose à
+         lire pendant qu'on attend, donc l'attente est plus courte. -->
+    <div class="ec-load-tip" id="ec-boot-tip"></div>
+    <div class="ec-load-bar" id="ec-boot-bar"><span id="ec-boot-fill"></span></div>
+    <div class="ec-load-pct" id="ec-boot-pct">0 %</div>
+    <div class="ec-boot-msg ec-load-msg" id="ec-boot-msg">Connexion au serveur…</div>
     <button class="btn btn-gold" id="ec-boot-retry" style="display:none">Réessayer</button>
   </div>
 </div>
@@ -1483,6 +1515,9 @@
 <!-- server.js AVANT tout le reste : il porte l'adresse du serveur, la
      fiche du compte (ECP) et la purge des anciens comptes locaux, dont
      accounts.js a besoin dès son démarrage. -->
+<!-- L'écran de chargement (barre, pourcentage, conseils) : chargé AVANT
+     accounts.js, qui l'appelle dès son premier voile. -->
+<script src="js/boot-screen.js"></script>
 <script src="js/server.js"></script>
 <script src="js/data-pieces.js"></script>
 <script src="js/piece-art.js"></script>
