@@ -1468,12 +1468,10 @@ function mpEnterPair(hostId){
 // ÉCRAN D'ATTENTE : la toile
 // ----------------------------------------------------------------
 // Attendre un adversaire est le seul moment du jeu où le joueur ne fait rien
-// et ne peut rien faire. La fenêtre de salon s'efface donc derrière une toile
-// plein écran (assets/backgrounds/duel-wait.svg, voir [MP-WAIT] dans
-// css/style.css). Vaut pour les deux attentes — la recherche automatique et
-// l'attente d'un ami sur une partie privée.
-const MP_WAIT_SCREENS=new Set(['quick']);
-
+// et ne peut rien faire : c'est donc un ÉCRAN DE CHARGEMENT, et il porte
+// exactement la carrosserie de celui du démarrage (voir [LOADING] dans
+// css/style.css) — la toile assets/backgrounds/duel-wait.webp, les braises,
+// la barre et le conseil à lire.
 function mpWaitStart(){
   mpWaitStop();
   MP.waitStartedAt=Date.now();
@@ -1620,15 +1618,16 @@ function mpQuickPlay(){
 }
 
 // ----------------------------------------------------------------
-// MODAL : écran de choix → écran hôte (code) ou écran invité (saisie)
+// LE SALON : UN SEUL ÉCRAN, ET C'EST L'ATTENTE
 // ----------------------------------------------------------------
-function mpShowScreen(name){
-  ['quick'].forEach(s=>{
-    const el=document.getElementById('mp-screen-'+s);
-    if(el)el.style.display=(s===name)?'':'none';
-  });
-  if(MP_WAIT_SCREENS.has(name))mpWaitStart();else mpWaitStop();
-}
+// Il en a compté quatre — un écran de CHOIX puis un par branche —, d'où une
+// fonction qui les montrait un à un et un ensemble (MP_WAIT_SCREENS) qui
+// disait lesquels étaient des attentes. Les parties privées par code sont
+// parties, et avec elles l'écran de choix : il ne reste que la recherche
+// automatique, qui EST une attente. `mpShowScreen` ne faisait donc plus que
+// démarrer l'attente sous un nom d'aiguillage, pour une seule direction.
+// Le nom subsiste (combat-intro.js le rappelle) et ne fait plus que ça.
+function mpShowScreen(){mpWaitStart();}
 
 function mpCloseModal(){
   mpWaitStop();

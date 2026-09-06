@@ -102,7 +102,7 @@ async function launchChromium(){
 // par un mandataire à certificat propre : c'est la machine de test qui
 // refuse le certificat d'une ressource externe, pas le jeu qui échoue.
 const IGNORED_CONSOLE=/ERR_TUNNEL_CONNECTION_FAILED|ERR_CONNECTION_RESET|ERR_NAME_NOT_RESOLVED|ERR_CERT_AUTHORITY_INVALID|fonts\.googleapis|fonts\.gstatic|jsdelivr|supabase/;
-const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|chests|pieces)\//;
+const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|chests|pieces|voie)\//;
 
 (async()=>{
   const server=serve();
@@ -1220,7 +1220,7 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
     // Aucune ligne de la colonne ne redit le numéro du palier sous le nom du
     // coffre : la pastille de gauche le porte déjà.
     const sousTitres=await page.evaluate(()=>
-      [...document.querySelectorAll('#rw-col-strip .rw-step-sub')].map(e=>e.textContent));
+      [...document.querySelectorAll('#rw-col-strip .cv-sub')].map(e=>e.textContent));
     if(sousTitres.some(t=>/Victoire\s*n/i.test(t)))
       throw new Error('« Victoire n° … » est encore sous le nom des coffres');
     await page.click('#rw-ok');
@@ -1272,9 +1272,9 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
       closeDailyModal();
       accSet('col_laurels',15);accSet('col_claimed',0);
       openRewardsPage('colonne');
-      serie.dame=lire('#rw-col-strip .rw-step[data-idx="21"]');         // Coffre Dame
-      serie.roi=lire('#rw-col-strip .rw-step[data-idx="29"]');          // Coffre Roi
-      const colonne=lire('#rw-col-strip .rw-step[data-idx="0"]');       // Coffre Pion
+      serie.dame=lire('#rw-col-strip .cv-row[data-idx="21"]');          // Coffre Dame
+      serie.roi=lire('#rw-col-strip .cv-row[data-idx="29"]');           // Coffre Roi
+      const colonne=lire('#rw-col-strip .cv-row[data-idx="0"]');        // Coffre Pion
       const source=(document.querySelector('#rw-col-strip .chest-pawn img')||{}).getAttribute
         ?document.querySelector('#rw-col-strip .chest-pawn img').getAttribute('src'):'';
       return{serie,colonne,source,
@@ -1318,7 +1318,7 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
       accSet('col_laurels',25);accSet('col_claimed',4);accSet('tickets',0);accSet('rich_claimed',1);
       openRewardsPage('colonne');
       const colonne=document.getElementById('rw-pane-colonne');
-      const du=colonne.querySelector('.rw-step.rw-claimable');
+      const du=colonne.querySelector('.cv-row.cv-due');
       const out={
         bandeau:!!document.querySelector('#page-rewards .rw-banner'),
         bouton:!!document.querySelector('#page-rewards .rw-claim'),
@@ -1327,8 +1327,8 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
         curseurDu:du?getComputedStyle(du).cursor:'',
         // La colonne s'encaisse DANS L'ORDRE : un seul palier est touchable à
         // la fois, sinon toucher le troisième dû donnerait le premier.
-        touchables:colonne.querySelectorAll('.rw-step.rw-claimable').length,
-        dus:colonne.querySelectorAll('.rw-step.rw-due').length,
+        touchables:colonne.querySelectorAll('.cv-row.cv-due').length,
+        dus:colonne.querySelectorAll('.cv-row.cv-due,.cv-row.cv-queued').length,
         avant:colClaimed(),
       };
       // Le clic sur le palier dû l'encaisse : ici c'est un coffre, donc la
@@ -1470,14 +1470,14 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
     const avant=await page.evaluate(()=>({
       dus:colPending(),
       badge:document.getElementById('jouer-colonne-badge').textContent,
-      lignes:document.querySelectorAll('#rw-col-strip .rw-step').length,
-      aPrendre:document.querySelectorAll('#rw-col-strip .rw-due').length,
+      lignes:document.querySelectorAll('#rw-col-strip .cv-row').length,
+      aPrendre:document.querySelectorAll('#rw-col-strip .cv-due,#rw-col-strip .cv-queued').length,
     }));
     if(avant.lignes!==30)throw new Error(avant.lignes+' lignes dans la colonne au lieu de 30');
     if(avant.aPrendre!==2)throw new Error(avant.aPrendre+' paliers « à prendre » au lieu de 2');
     if(avant.badge!=='2')throw new Error('pastille de la colonne : '+avant.badge+' au lieu de 2 (les deux paliers dus)');
     // On touche le premier palier dû : c'est le geste, il n'y a plus de bouton.
-    await page.click('#rw-col-strip .rw-step.rw-claimable');
+    await page.click('#rw-col-strip .cv-row.cv-due');
     await page.waitForSelector('#chest-modal.show',{timeout:8000});
     for(let i=0;i<40&&await page.isVisible('#chest-modal.show');i++){
       await page.click('#chest-modal',{position:{x:8,y:8}});

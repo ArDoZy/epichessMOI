@@ -419,17 +419,50 @@ function renderVoiePage(){
   const route=document.getElementById('voie-route');let html='';
   let lastRankId=null;
   // Alternance gauche/droite : un compteur À PART, incrémenté uniquement
-  // pour les jalons réellement rendus (pas les bandeaux de rang, qui sont un
+  // pour les jalons réellement rendus (pas les portes de rang, qui sont un
   // sibling de plus dans .voie-route et décalaient la parité de tout ce qui
   // suit si on la confiait à nth-child en CSS — deux jalons consécutifs
-  // pouvaient alors atterrir du même côté juste après un bandeau).
+  // pouvaient alors atterrir du même côté juste après une porte).
   let side=0;
   const sideCls=()=>(side++%2===0)?'vm-l':'vm-r';
+  // LE REPÈRE « VOUS ÊTES ICI » n'est posé qu'UNE FOIS, devant le premier
+  // jalon que le classement du moment n'a pas encore atteint. Il se lit sur
+  // `elo` et non sur `peak` : c'est bien de là qu'il faut repartir.
+  let hereDone=false;
+  const hereBar=req=>{
+    if(hereDone||elo>=req)return '';
+    hereDone=true;
+    return '<div class="vm-here"><span>'+elo+' ELO · vous êtes ici</span></div>';
+  };
+  // LA BANDE DE TERRAIN D'UN JALON. Tout ce qui change d'un rang à l'autre —
+  // le teint et la planche peinte du biome — passe par deux variables CSS :
+  // une seule règle habille les sept rangs (voir « LE SENTIER » dans
+  // css/style.css), et un huitième rang ne demanderait pas une ligne de CSS.
+  //
+  // LA PLANCHE EST FACULTATIVE. `assets/voie/biome-<rang>.webp` absent, il ne
+  // reste que le teint calculé sur la couleur du rang, et la Voie garde
+  // exactement la même mise en page — c'est la règle de toutes les planches
+  // du jeu (voir [ART] dans css/style.css).
+  const band=(milestone,cardHTML,reached,current)=>{
+    const r=vvGetRank(milestone.eloRequired);
+    const s=sideCls();
+    return hereBar(milestone.eloRequired)+
+      '<div class="voie-milestone '+s+(reached?' reached':'')+'"'+
+        ' style="--vm-c:'+r.color+';--vm-art:url(\'assets/voie/biome-'+r.id+'.webp\')">'+
+        '<div class="vm-scale"><span class="vm-elo-badge">'+
+          (milestone.eloRequired===0?'Départ':milestone.eloRequired)+'</span></div>'+
+        '<div class="vm-land"><div class="vm-trail"></div></div>'+
+        '<div class="vm-over">'+
+          '<div class="vm-dot'+(reached?' reached':current?' current-milestone':'')+'"></div>'+
+          cardHTML+
+        '</div>'+
+      '</div>';
+  };
   UNLOCK_MILESTONES.forEach((milestone,idx)=>{
     // Les cinq jalons de départ (Roi, Dame et les trois Gardes — `starter`)
     // sont à 0 ELO, donc numériquement dans la tranche Bois, mais ils ne
-    // portent PAS son bandeau : ils forment le socle tout en bas de la Voie,
-    // sous l'arène. Le bandeau Bois s'ouvre normalement au jalon suivant
+    // portent PAS sa porte : ils forment le socle tout en bas de la Voie,
+    // sous l'arène. La porte Bois s'ouvre normalement au jalon suivant
     // (les 20 perles à 25 ELO), premier jalon non-`starter`.
     if(!milestone.starter){
       const mRank=vvGetRank(milestone.eloRequired);
@@ -446,23 +479,29 @@ function renderVoiePage(){
       const body=milestone.reward==='pearls'
         ?(pearlAmountHTML?pearlAmountHTML(milestone.amount,1.6):milestone.amount+' perles')
         :'<span class="vm-piece-emoji">'+pieceIcon(milestone.copyId,'n')+'</span><div class="vm-piece-name">×'+milestone.qty+'</div>';
-      html+='<div class="voie-milestone '+sideCls()+'"><div class="vm-card vm-reward '+(reached3?'reached':'locked-milestone')+'" style="text-align:center">'+body+'</div><div class="vm-center"><div class="vm-dot'+(reached3?' reached':'')+'"></div><div class="vm-elo-badge">'+milestone.eloRequired+' ELO</div></div><div style="flex:1;max-width:calc(50% - 40px)"></div></div>';
+      html+=band(milestone,'<div class="vm-card '+(reached3?'reached':'locked-milestone')+'">'+body+'</div>',reached3,false);
       return;
     }
-    if(!milestone.pieceId){const reached2=peak>=milestone.eloRequired;html+='<div class="voie-milestone '+sideCls()+'"><div class="vm-card '+(reached2?'reached':'locked-milestone')+'" style="text-align:center"><div class="vm-piece-name">'+milestone.label+'</div></div><div class="vm-center"><div class="vm-dot'+(reached2?' reached':'')+'"></div><div class="vm-elo-badge">'+milestone.eloRequired+' ELO</div></div><div style="flex:1;max-width:calc(50% - 40px)"></div></div>';return;}
+    if(!milestone.pieceId){
+      const reached2=peak>=milestone.eloRequired;
+      html+=band(milestone,'<div class="vm-card '+(reached2?'reached':'locked-milestone')+'"><div class="vm-piece-name">'+milestone.label+'</div></div>',reached2,false);
+      return;
+    }
     const pd=PIECES.find(p=>p.id===milestone.pieceId);if(!pd)return;
     const reached=peak>=milestone.eloRequired&&VV_UNLOCKED.has(milestone.pieceId);
     const isCurrent=!reached&&peak<milestone.eloRequired&&(idx===0||(UNLOCK_MILESTONES[idx-1]&&peak>=UNLOCK_MILESTONES[idx-1].eloRequired));
-    const dotCls=reached?'vm-dot reached':isCurrent?'vm-dot current-milestone':'vm-dot';
     const cardCls=reached?'vm-card reached':isCurrent?'vm-card current-milestone':'vm-card locked-milestone';
-    // LE JALON NE DIT PLUS QUE DEUX CHOSES : quelle créature, et à quel ELO.
-    // Il portait aussi sa catégorie, sa valeur en points et les 80 premiers
-    // caractères de son pouvoir — trois lignes de plus par jalon, sur une
-    // page qui en aligne une quinzaine, pour des détails qui ne servent pas
-    // ici : on ne compose pas son armée sur la Voie, on regarde ce qui reste
-    // à décrocher. Le détail complet est dans la fiche de la pièce (bottom
-    // sheet du builder, js/piece-card.js).
-    html+='<div class="voie-milestone '+sideCls()+'"><div class="'+cardCls+'"><span class="vm-piece-emoji">'+pieceIcon(pd.id,'n')+'</span><div class="vm-piece-name">'+pd.name+'</div></div><div class="vm-center"><div class="'+dotCls+'"></div><div class="vm-elo-badge">'+(milestone.eloRequired===0?'Départ':milestone.eloRequired+' ELO')+'</div></div><div style="flex:1;max-width:calc(50% - 40px)"></div></div>';
+    // LE JALON NE DIT QUE DEUX CHOSES : quelle créature, et à quel ELO — et
+    // l'ELO est passé dans la marge de gauche, où il fait échelle avec tous
+    // les autres. Le jalon portait aussi sa catégorie, sa valeur en points et
+    // les 80 premiers caractères de son pouvoir : trois lignes de plus par
+    // jalon, sur une page qui en aligne une quinzaine, pour des détails qui
+    // ne servent pas ici — on ne compose pas son armée sur la Voie, on
+    // regarde ce qui reste à décrocher. Le détail complet est dans la fiche
+    // de la pièce (bottom sheet du builder, js/piece-card.js).
+    html+=band(milestone,
+      '<div class="'+cardCls+'"><span class="vm-piece-emoji">'+pieceIcon(pd.id,'n')+'</span>'+
+      '<div class="vm-piece-name">'+pd.name+'</div></div>',reached,isCurrent);
   });
   route.innerHTML=html;
   voieAutoScroll(route);

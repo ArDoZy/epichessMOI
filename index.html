@@ -484,13 +484,21 @@
           <div class="jouer-player">
             <h1 class="menu-title">Epic Chess</h1>
             <div class="jouer-name" id="jouer-name"></div>
-            <button class="jouer-idpill" id="jouer-voie" aria-label="Voir la Diagonale de la Puissance">
-              <span class="jp-dot" id="jouer-rank-dot"></span>
-              <span class="jouer-rank" id="jouer-rank"></span>
-              <span class="jp-sep" aria-hidden="true">·</span>
-              <span class="jouer-elo" id="jouer-elo"></span>
-              <svg class="jp-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 5, 16 12, 9 19"/></svg>
-            </button>
+            <!-- LA BOURSE, SOUS LE PSEUDO. La pastille qui occupait cette
+                 ligne portait le rang et l'ELO, et ouvrait la Diagonale : ces
+                 trois choses sont maintenant dans le socle de l'arène, en
+                 grand, au milieu de l'écran. Elle répétait donc, en petit et
+                 en haut, ce qu'on lit déjà en grand et au centre.
+
+                 CE QU'ELLE PORTE MAINTENANT N'ÉTAIT AFFICHÉ NULLE PART sur ce
+                 menu : les trois soldes. Combien de perles pour acheter un
+                 coffre, combien de lauriers avant le prochain palier, combien
+                 de tickets avant le prochain lot — trois nombres qu'il fallait
+                 aller ouvrir trois écrans différents pour connaître, alors
+                 qu'ils décident de ce qu'on va faire dans la minute qui suit.
+                 Chaque solde ouvre l'écran dont il vient. Rempli par
+                 renderMenuPurse() (js/accounts.js). -->
+            <div class="jouer-purse" id="jouer-purse"></div>
           </div>
           <!-- COMBAT = affronter un autre joueur. C'est ce que les gens
                viennent chercher, donc c'est le gros bouton. S'entraîner
@@ -508,6 +516,27 @@
                Le coffre de réapprovisionnement, lui, n'a jamais eu de carte
                ici : il s'ouvre tout seul dès que son délai est écoulé (voir
                dailyChestMaybeOpen, js/economy-ui.js). -->
+          <!-- L'ARÈNE, AU MILIEU DE L'ÉCRAN. Le menu avait un trou : entre
+               le pseudo posé en haut et les boutons posés en bas, la moitié
+               de la hauteur de l'écran ne portait RIEN — juste le fond peint.
+               C'est pourtant là que l'œil tombe en premier, et c'est là que
+               tout jeu de ce genre montre où vous en êtes.
+
+               Le socle porte donc l'arène du moment : le médaillon du rang,
+               son nom, le classement, et la jauge qui dit ce qui reste avant
+               la suivante. Il ouvre la Diagonale de la Puissance — c'est le
+               même geste que la pastille d'identité en haut, sur une cible
+               qu'on ne peut pas manquer. Rempli par renderMenuArena()
+               (js/accounts.js). -->
+          <button class="jouer-arena" id="jouer-arena" aria-label="Voir la Diagonale de la Puissance">
+            <div class="ja-halo" aria-hidden="true"></div>
+            <div class="ja-motes" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+            <div class="ja-medal" id="jouer-arena-medal"></div>
+            <div class="ja-name" id="jouer-arena-name"></div>
+            <div class="ja-elo" id="jouer-arena-elo"></div>
+            <div class="ja-gauge"><span id="jouer-arena-fill"></span></div>
+            <div class="ja-next" id="jouer-arena-next"></div>
+          </button>
           <div class="jouer-actions">
             <!-- TROIS BOUTONS, TROIS ENDROITS OÙ QUELQUE CHOSE ATTEND, ET
                  AUCUN SOMMAIRE ENTRE LES DEUX. « Récompenses » ouvrait une
@@ -542,7 +571,7 @@
                  serait plus un rappel, c'est la règle déjà posée par la
                  pastille elle-même. -->
             <div class="jouer-tracks">
-              <button class="jouer-track" id="jouer-daily">
+              <button class="jouer-track" id="jouer-daily" aria-label="Récompense journalière" title="Récompense journalière">
         <span class="jt-ico">
           <!-- Le repli dessiné : deux pages bombées de part et d'autre du dos. -->
           <svg class="jt-draw" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -581,10 +610,9 @@
             </g>
           </svg>
         </span>
-                <span>Récompense journalière</span>
                 <span class="jouer-badge" id="jouer-daily-badge" style="display:none">1</span>
               </button>
-              <button class="jouer-track" id="jouer-colonne">
+              <button class="jouer-track" id="jouer-colonne" aria-label="Colonne des victoires" title="Colonne des victoires">
         <span class="jt-ico">
           <!-- Le repli dessiné : une tige et ses cinq feuilles, mises en miroir
                par <use> — les deux branches sont donc identiques. -->
@@ -636,10 +664,9 @@
             </g>
           </svg>
         </span>
-                <span>Colonne des victoires</span>
                 <span class="jouer-badge" id="jouer-colonne-badge" style="display:none">0</span>
               </button>
-              <button class="jouer-track" id="jouer-rangee">
+              <button class="jouer-track" id="jouer-rangee" aria-label="Rangée de la richesse" title="Rangée de la richesse">
         <span class="jt-ico">
           <!-- Le repli dessiné : une seule silhouette, angles francs. -->
           <svg class="jt-draw" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -683,7 +710,6 @@
             </g>
           </svg>
         </span>
-                <span>Rangée de la richesse</span>
                 <span class="jouer-badge" id="jouer-rangee-badge" style="display:none">0</span>
               </button>
             </div>

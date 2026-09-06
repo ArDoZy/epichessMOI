@@ -1531,47 +1531,192 @@ body:not(.main-menu) #settings-panel{display:none}
    (renderVoiePage, js/voie.js) — c'est `column-reverse` qui pose le premier
    jalon généré (le plus bas en ELO) tout en bas de l'écran et le dernier
    (le plus haut) tout en haut, sans toucher à l'ordre de génération. */
-.voie-route{position:relative;padding:10px 0 30px;display:flex;flex-direction:column-reverse}
-.voie-route::before{content:'';position:absolute;left:50%;top:0;bottom:0;width:3px;background:linear-gradient(to top,var(--accent),var(--gold),var(--accent2));transform:translateX(-50%);border-radius:2px;opacity:.35;z-index:0}
-.voie-milestone{display:flex;align-items:center;gap:18px;margin-bottom:20px;position:relative;z-index:1}
-/* Alternance gauche/droite : classes posées explicitement par renderVoiePage
-   (js/voie.js), sur un compteur qui ne porte que sur les jalons réellement
-   rendus. Un nth-child CSS se laissait décaler par les bandeaux de rang
-   (.vm-rank-section), un sibling de plus qui n'est pas un jalon : deux
-   jalons pouvaient alors atterrir du même côté juste après un bandeau. */
-.voie-milestone.vm-l{flex-direction:row}.voie-milestone.vm-r{flex-direction:row-reverse}
-.vm-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 18px;flex:1;max-width:calc(50% - 40px);transition:all .25s;position:relative;overflow:hidden}
-.vm-card.reached{border-color:var(--gold)}
-.vm-card.reached::after{content:'✓';position:absolute;top:8px;right:10px;color:var(--success);font-size:15px;font-weight:900}
-.vm-card.current-milestone{border-color:var(--accent2);box-shadow:0 0 18px rgba(168,58,74,.3);animation:vmPulse 2s ease-in-out infinite}
-@keyframes vmPulse{0%,100%{box-shadow:0 0 14px rgba(168,58,74,.25)}50%{box-shadow:0 0 28px rgba(168,58,74,.55)}}
-.vm-card.locked-milestone{opacity:.45;filter:grayscale(.5)}
-.vm-center{width:44px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:4px}
-.vm-dot{width:16px;height:16px;border-radius:50%;border:2px solid var(--border2);background:var(--surface2);transition:all .2s}
-.vm-dot.reached{background:var(--gold);border-color:var(--gold)}
-.vm-dot.current-milestone{background:var(--accent2);border-color:var(--accent2);animation:dotPulse 1.4s ease-in-out infinite}
-@keyframes dotPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.35)}}
-.vm-elo-badge{font-family:var(--f-ui);font-size:9px;font-weight:700;color:var(--gold);background:rgba(201,168,76,.1);border:1px solid rgba(201,168,76,.25);border-radius:5px;padding:2px 7px;white-space:nowrap}
-.vm-piece-emoji{font-size:28px;margin-bottom:5px;display:block;line-height:1}
-.vm-piece-name{font-family:var(--f-ui);font-size:13px;font-weight:700;margin-bottom:3px;line-height:1.3}
-/* Le jalon ne porte plus QUE le logo de la créature et son nom (voir
-   renderVoiePage, js/voie.js) : sa catégorie, sa valeur en points et le
-   début de son pouvoir tenaient trois lignes de plus par jalon, sur une
-   page qui en aligne une quinzaine. On ne compose pas son armée ici, on
-   regarde ce qui reste à décrocher. */
-.vm-card{text-align:center}
-.vm-rank-section{margin:12px 0 6px;text-align:center;position:relative;z-index:1}
-.vm-rank-bar{display:inline-flex;align-items:center;gap:10px;justify-content:center;background:var(--surface);border:1px solid var(--border2);border-radius:10px;padding:8px 18px}
-.vm-rank-label{font-family:var(--f-ui);font-size:13px;font-weight:700}
-.vm-rank-range{font-size:10px;color:var(--muted);margin-left:4px;font-family:var(--f-ui)}
+/* --- LE SENTIER : LA VOIE EST UN PAYSAGE, PAS UNE LISTE -----------
+   Elle a été une file de cartes alternées de part et d'autre d'un trait
+   vertical, sur le fond sombre de la page. C'était lisible et c'était mort :
+   grimper de Bois à Or Légendaire ne se VOYAIT nulle part, les sept rangs se
+   ressemblaient trait pour trait, et le seul repère de progression était un
+   petit texte d'ELO répété à chaque jalon.
 
-/* Jalons de récompense (perles / exemplaires) semés entre les jalons de
-   déblocage — même carte, plus petite et plus discrète : ce ne sont que des
-   à-côtés, la pièce à débloquer reste le jalon qui compte. */
-.vm-card.vm-reward{padding:10px 14px}
-.vm-card.vm-reward .pearl-amt{display:inline-flex;align-items:center;gap:6px;font-family:var(--f-ui);font-weight:800;font-size:15px}
-.vm-card.vm-reward .vm-piece-emoji{font-size:22px;margin-bottom:2px}
-.vm-card.vm-reward .vm-piece-name{margin-bottom:0}
+   LA VOIE TRAVERSE MAINTENANT SEPT PAYSAGES, un par rang. Chaque jalon est
+   une bande de terrain que le SENTIER coupe en son milieu ; les bandes se
+   touchent, si bien que le sentier ne s'interrompt jamais et que le décor
+   change quand le rang change. On sait où l'on est au décor avant de lire le
+   nom du rang — et voir le paysage changer, c'est ça, monter.
+
+   TROIS COUCHES, ET DEUX SONT FACULTATIVES :
+     1. le TEINT du rang, un dégradé calculé sur sa couleur (RANKS,
+        js/data-pieces.js). Toujours là, c'est le repli.
+     2. la PLANCHE peinte du biome, assets/voie/biome-<rang>.webp, posée en
+        background-image par-dessus. Absente, il ne reste que le teint et
+        l'écran fonctionne à l'identique (règle de [ART]).
+     3. le SENTIER et ses bas-côtés, dessinés en CSS : ils ne dépendent
+        d'aucun fichier.
+
+   LES ELO SONT DANS LA MARGE DE GAUCHE, hors des bandes, alignés les uns sous
+   les autres : c'est une ÉCHELLE qu'on lit d'un trait, et non une étiquette
+   par jalon qu'il faut aller chercher dans chaque carte. */
+.voie-route{position:relative;padding:0 0 18px;display:flex;flex-direction:column-reverse;
+  border-radius:1em;overflow:hidden;
+  box-shadow:inset 0 0 3em rgba(0,0,0,.75),0 1em 2.4em -1em rgba(0,0,0,.9)}
+
+/* Une bande = un jalon. Les bandes se touchent (aucun écart, aucune marge) :
+   le paysage et le sentier sont continus d'un bout à l'autre de la Voie. */
+.voie-milestone{display:flex;align-items:stretch;position:relative;
+  min-height:clamp(84px,15vw,116px)}
+
+/* La largeur de la marge de gauche, dite une seule fois : l'échelle la prend
+   comme largeur, et la couche des récompenses la prend comme retrait — elles
+   ne peuvent donc pas se désaccorder. */
+.voie-route{--vm-gut:clamp(46px,13vw,62px)}
+
+/* LA COUCHE DES RÉCOMPENSES. Le terrain est en `overflow:hidden` (la planche
+   peinte doit s'arrêter aux bords de la bande) ; le sceau « acquis » d'une
+   carte, lui, déborde volontairement de son coin. Les deux ne peuvent pas
+   vivre dans le même calque : celui-ci est posé PAR-DESSUS le terrain, calé
+   sur les mêmes bords, et ne coupe rien. */
+.vm-over{position:absolute;top:0;bottom:0;left:var(--vm-gut);right:0;z-index:2;
+  pointer-events:none}
+
+/* LA MARGE DE GAUCHE : l'échelle d'ELO. Elle est posée SUR la bande (le
+   paysage court dessous) et non à côté : la Voie garde toute la largeur de
+   l'écran pour son décor, ce qui est tout l'intérêt d'avoir un décor. */
+.vm-scale{flex:0 0 auto;width:var(--vm-gut);position:relative;z-index:3;
+  display:flex;align-items:center;justify-content:flex-end;
+  padding-right:.5em;
+  background:linear-gradient(90deg,rgba(6,9,12,.86),rgba(6,9,12,.42))}
+.vm-scale::after{content:'';position:absolute;right:0;top:50%;width:.55em;height:1px;
+  background:rgba(255,255,255,.28)}
+.vm-elo-badge{font-family:var(--f-ui);font-size:min(2.9vw,11px);font-weight:800;
+  color:var(--gold2);white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,.9)}
+.voie-milestone.reached .vm-elo-badge{color:var(--gold)}
+
+/* LE TERRAIN. Le teint du rang est passé en variable par renderVoiePage
+   (--vm-c) : une seule règle habille les sept rangs, et en ajouter un
+   huitième ne demanderait pas une ligne de CSS de plus. */
+.vm-land{flex:1;min-width:0;position:relative;overflow:hidden;
+  background:
+    linear-gradient(180deg,rgba(0,0,0,.34),transparent 26%,transparent 72%,rgba(0,0,0,.38)),
+    /* L'HORIZON : une lueur du rang, haute et large, comme un ciel derrière
+       le terrain. C'est elle qui fait qu'un rang se distingue du suivant même
+       quand aucune planche peinte n'est en place. */
+    radial-gradient(90% 70% at 50% 12%,color-mix(in srgb,var(--vm-c,#7a7590) 62%,transparent),transparent 70%),
+    radial-gradient(130% 120% at 50% 100%,color-mix(in srgb,var(--vm-c,#7a7590) 26%,#0d1418),#070a0d)}
+/* La planche peinte du biome, quand elle existe. Elle est en `::before` et
+   non en <img> : un fichier absent ne laisse rien du tout, pas une icône
+   cassée (voir [ART]). */
+.vm-land::before{content:'';position:absolute;inset:0;
+  background:var(--vm-art,none) center/cover no-repeat;opacity:.85}
+/* La ligne d'horizon : un liseré clair au raccord de deux bandes. Sans lui,
+   deux bandes du même rang se fondent en une seule et le sentier n'a plus de
+   pas — on ne compte plus les jalons franchis. */
+.vm-land::after{content:'';position:absolute;left:0;right:0;top:0;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.14),transparent)}
+
+/* LE SENTIER. Une bande de terre battue qui traverse la hauteur du terrain,
+   avec ses deux bas-côtés en ombre : c'est le fil conducteur de toute la
+   Voie, et le seul élément qui ne change JAMAIS d'un rang à l'autre. */
+.vm-trail{position:absolute;top:-1px;bottom:-1px;left:50%;width:clamp(26px,7vw,40px);
+  transform:translateX(-50%);z-index:1;
+  background:linear-gradient(90deg,rgba(0,0,0,.5),#b9a077 22%,#d8c39a 50%,#b9a077 78%,rgba(0,0,0,.5));
+  box-shadow:0 0 1.4em rgba(0,0,0,.55)}
+/* Il n'est PAS droit : chaque bande décale le sentier d'un côté ou de l'autre
+   (classes .vm-l / .vm-r posées par renderVoiePage), ce qui le fait serpenter
+   comme un vrai chemin. Le décalage est faible — un sentier qui zigzaguerait
+   franchement couperait les récompenses en deux. */
+.voie-milestone.vm-l .vm-trail{transform:translateX(-50%) translateX(-8%)}
+.voie-milestone.vm-r .vm-trail{transform:translateX(-50%) translateX(8%)}
+/* Les bandes qu'on a déjà franchies sont ÉCLAIRÉES ; celles qui restent sont
+   dans la nuit. C'est la seule chose que la Voie a besoin de dire, et elle la
+   dit sans un mot. */
+.voie-milestone:not(.reached) .vm-land{filter:brightness(.5) saturate(.4)}
+.voie-milestone.reached .vm-trail{
+  background:linear-gradient(90deg,rgba(0,0,0,.5),#c9ad7f 22%,#f0dcb2 50%,#c9ad7f 78%,rgba(0,0,0,.5));
+  box-shadow:0 0 1.6em rgba(201,168,76,.35)}
+
+/* LA RÉCOMPENSE, posée sur le bas-côté. Elle alterne de gauche à droite d'un
+   jalon à l'autre : deux récompenses du même côté à la suite feraient une
+   colonne, et une colonne n'est pas un chemin. */
+.vm-card{position:absolute;top:50%;transform:translateY(-50%);z-index:2;
+  box-sizing:border-box;width:min(40%,158px);
+  display:flex;flex-direction:column;align-items:center;gap:.25em;
+  padding:.6em .5em .7em;border-radius:.8em;
+  background:linear-gradient(180deg,rgba(10,15,19,.72),rgba(10,15,19,.9));
+  border:1px solid rgba(255,255,255,.13);
+  box-shadow:0 .5em 1.2em -.5em rgba(0,0,0,.95);
+  transition:border-color .25s,box-shadow .25s}
+.voie-milestone.vm-l .vm-card{left:4%}
+.voie-milestone.vm-r .vm-card{right:4%}
+.vm-piece-emoji{display:block;line-height:1;width:clamp(30px,8vw,42px);height:clamp(30px,8vw,42px)}
+.vm-piece-emoji .pc-icon{width:100%;height:100%}
+.vm-piece-name{font-family:var(--f-ui);font-size:min(2.9vw,11.5px);font-weight:700;
+  line-height:1.25;text-align:center;color:var(--text);
+  max-width:100%;overflow-wrap:anywhere}
+.vm-card .pearl-amt{display:inline-flex;align-items:center;gap:.35em;
+  font-family:var(--f-ui);font-weight:800;font-size:min(3.6vw,14px)}
+
+/* ACQUIS : filet d'or et sceau vert, comme partout ailleurs dans le jeu. */
+.vm-card.reached{border-color:rgba(201,168,76,.55);
+  box-shadow:0 .5em 1.2em -.5em rgba(0,0,0,.95),0 0 1em -.2em rgba(201,168,76,.45)}
+.vm-card.reached::after{content:'✓';position:absolute;top:-.45em;right:-.45em;
+  width:1.5em;height:1.5em;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  background:var(--success);color:#08120c;font-size:min(2.8vw,11px);font-weight:900;
+  box-shadow:0 .2em .5em rgba(0,0,0,.8)}
+/* LE PROCHAIN JALON : le seul qui bouge de toute la Voie. */
+.vm-card.current-milestone{border-color:var(--gold);
+  animation:vmPulse 2.4s ease-in-out infinite}
+@keyframes vmPulse{
+  0%,100%{box-shadow:0 .5em 1.2em -.5em rgba(0,0,0,.95),0 0 .9em -.3em rgba(201,168,76,.5)}
+  50%{box-shadow:0 .5em 1.2em -.5em rgba(0,0,0,.95),0 0 1.9em 0 rgba(201,168,76,.9)}}
+.vm-card.locked-milestone{opacity:.62;filter:grayscale(.35)}
+
+/* LE JETON DU SENTIER : une pastille posée SUR le chemin, à hauteur de la
+   récompense, reliée à elle par un trait. Sans lui, la carte flotte à côté du
+   sentier sans qu'on sache à quelle hauteur du chemin elle se gagne. */
+.vm-dot{position:absolute;top:50%;left:50%;width:1.15em;height:1.15em;
+  margin:-.575em 0 0 -.575em;border-radius:50%;z-index:3;
+  border:2px solid rgba(255,255,255,.35);background:#1a2229;
+  box-shadow:0 .2em .5em rgba(0,0,0,.9)}
+.vm-dot.reached{background:var(--gold);border-color:#fff3d2;
+  box-shadow:0 0 .9em rgba(201,168,76,.9)}
+.vm-dot.current-milestone{background:var(--accent2);border-color:#eafff9;
+  animation:dotPulse 1.6s ease-in-out infinite}
+@keyframes dotPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.35)}}
+
+/* LA PORTE D'UN RANG. Elle coupe la Voie en travers, sur toute sa largeur :
+   c'est un SEUIL, pas un intertitre. Le médaillon du rang, son nom, sa
+   tranche d'ELO — et la certitude, en la voyant passer, d'avoir changé de
+   pays. */
+.vm-rank-section{position:relative;z-index:4;margin:0;padding:0}
+.vm-rank-bar{display:flex;align-items:center;gap:.6em;justify-content:center;
+  padding:.55em .9em;
+  background:linear-gradient(180deg,rgba(6,9,12,.92),rgba(6,9,12,.78));
+  border-top:1px solid rgba(255,255,255,.16);
+  border-bottom:1px solid rgba(255,255,255,.16);
+  box-shadow:0 0 1.6em rgba(0,0,0,.9)}
+.vm-rank-label{font-family:var(--f-title);font-size:min(4.2vw,17px);font-weight:900;
+  letter-spacing:.04em;text-shadow:0 1px 3px rgba(0,0,0,.9)}
+.vm-rank-range{font-family:var(--f-ui);font-size:min(2.7vw,10.5px);color:var(--muted);
+  margin-left:.2em}
+
+/* OÙ L'ON EN EST, SUR LE CHEMIN LUI-MÊME. Le bandeau du haut donne déjà
+   l'ELO en chiffres ; il ne dit pas à quelle hauteur de la Voie ce chiffre
+   tombe. Ce repère, glissé entre les deux jalons qui encadrent le classement
+   du moment, le dit — et c'est là que la page s'ouvre. */
+.vm-here{position:relative;z-index:5;display:flex;align-items:center;gap:.5em;
+  padding:.35em .9em;justify-content:center;background:rgba(6,9,12,.5)}
+.vm-here::before,.vm-here::after{content:'';flex:1;height:2px;
+  background:linear-gradient(90deg,transparent,var(--accent2))}
+.vm-here::after{background:linear-gradient(90deg,var(--accent2),transparent)}
+.vm-here span{flex:0 0 auto;font-family:var(--f-ui);font-size:min(2.8vw,11px);font-weight:900;
+  letter-spacing:.12em;text-transform:uppercase;color:#08120c;
+  background:var(--accent2);border-radius:999px;padding:.3em .8em;
+  box-shadow:0 0 1.1em rgba(63,208,178,.6)}
+
+@media (prefers-reduced-motion:reduce){
+  .vm-card.current-milestone,.vm-dot.current-milestone{animation:none}
+}
 
 /* Bouton de sortie de la Voie : UNE PASTILLE POSÉE SUR LA VOIE, pas une
    barre. Il était le dernier élément de la colonne flex, large de 420 px et
@@ -1743,15 +1888,21 @@ body.light .cube-face[data-face="jouer"]{background:
    et l'identité. */
 .jouer-menu{--menu-title-h:56px;
   position:absolute;inset:0;display:flex;flex-direction:column;
-  align-items:center;justify-content:center;gap:clamp(14px,3vh,30px);
+  align-items:center;justify-content:center;gap:clamp(20px,4.4vh,42px);
   text-align:center;
-  padding:calc(var(--menu-top) + var(--menu-title-h) + clamp(50px,9vh,100px)) 5% calc(clamp(18px,3vh,28px) + var(--safe-b));
+  padding:calc(var(--menu-top) + var(--menu-title-h) + clamp(24px,5vh,54px)) 5% calc(clamp(18px,3vh,28px) + var(--safe-b));
   overflow:hidden}
+/* IL A MAIGRI. 76 px de haut sur 440 de large, c'était une PLAQUE en travers
+   du bas de l'écran : le bouton ne se remarquait plus, il occupait. Un bouton
+   se remarque par son CONTRASTE — le seul objet doré et le seul qui respire
+   d'un écran par ailleurs sombre — et non par sa surface. À 62 px sur 320, il
+   reste la plus grosse cible du menu (deux fois la hauteur d'un bouton
+   ordinaire) sans manger la place de l'arène. */
 .jouer-btn{position:relative;cursor:pointer;border:none;
   font-family:var(--f-title);font-weight:900;letter-spacing:4px;
-  font-size:clamp(21px,5.4vw,30px);color:#1a1206;
-  height:76px;padding:0 clamp(32px,8vw,56px);border-radius:16px;
-  width:min(100% - 24px,440px);
+  font-size:clamp(19px,4.8vw,26px);color:#1a1206;
+  height:clamp(56px,13vw,64px);padding:0 clamp(28px,7vw,48px);border-radius:15px;
+  width:min(100% - 24px,320px);
   display:flex;align-items:center;justify-content:center;
   background:var(--gold);
   /* Une ombre sans flou n'est pas une ombre, c'est un biseau — le vocabulaire
@@ -1831,6 +1982,83 @@ body.light .cube-face[data-face="jouer"]{background:
    voies sont au-dessus (voir .jouer-track, section [STREAK]),
    « Adversaires » en dessous. */
 .jouer-actions{display:flex;flex-direction:column;align-items:center;gap:14px}
+
+/* --- L'ARÈNE, AU MILIEU DU MENU ---------------------------------
+   Le socle qui remplit le trou entre le pseudo (en haut) et les boutons (en
+   bas). Il porte le médaillon du rang, son nom, le classement et la jauge
+   vers le rang suivant — et il ouvre la Diagonale de la Puissance.
+
+   IL EST TAILLÉ COMME UN SOCLE, pas comme une carte : plus large en bas qu'en
+   haut ne se fait pas en CSS, mais un halo posé dessous, une plaque bombée et
+   une ombre portée franche donnent la même chose — un objet POSÉ au milieu de
+   l'écran, sur lequel le médaillon repose. C'est l'inverse d'une carte, qui
+   flotte. */
+.jouer-arena{position:relative;cursor:pointer;
+  width:min(100% - 24px,300px);
+  display:flex;flex-direction:column;align-items:center;gap:.3em;
+  padding:clamp(14px,3.4vw,20px) clamp(16px,4vw,24px) clamp(12px,3vw,18px);
+  border-radius:1.2em;
+  border:1px solid rgba(193,154,69,.3);
+  background:
+    radial-gradient(120% 90% at 50% 0%,rgba(240,209,137,.13),transparent 62%),
+    linear-gradient(180deg,rgba(28,38,46,.78),rgba(10,15,19,.86));
+  backdrop-filter:blur(12px);
+  box-shadow:inset 0 1px 0 rgba(255,240,205,.2),inset 0 -2px 8px rgba(0,0,0,.5),
+             0 1.1em 2.4em -1em rgba(0,0,0,.95);
+  transition:border-color .2s ease,transform .12s ease}
+.jouer-arena:hover{border-color:rgba(193,154,69,.6)}
+.jouer-arena:active{transform:scale(.985)}
+/* LE HALO SOUS LE SOCLE : c'est lui qui fait que l'arène est POSÉE quelque
+   part et non collée sur le fond. Il déborde du socle et ne se voit que là. */
+.ja-halo{position:absolute;left:50%;bottom:-14%;width:80%;height:36%;
+  transform:translateX(-50%);pointer-events:none;z-index:-1;
+  background:radial-gradient(50% 50% at 50% 50%,rgba(201,168,76,.4),transparent 72%);
+  filter:blur(10px)}
+/* LES POUSSIÈRES : cinq points qui montent le long du socle. Elles ne
+   s'allument QUE lorsque le rang suivant est à moins d'un cinquième — c'est
+   la seule chose que le menu ait à signaler de lui-même, et un scintillement
+   permanent n'aurait rien signalé du tout. */
+.ja-motes{position:absolute;inset:0;overflow:hidden;pointer-events:none;
+  border-radius:1.2em;opacity:0;transition:opacity .5s}
+.jouer-arena.is-close .ja-motes{opacity:1}
+.ja-motes i{position:absolute;bottom:-.4em;width:.28em;height:.28em;border-radius:50%;
+  background:var(--gold2);box-shadow:0 0 .55em rgba(240,209,137,.9);
+  animation:jaMote 4.2s linear infinite}
+.ja-motes i:nth-child(1){left:12%;animation-duration:3.8s}
+.ja-motes i:nth-child(2){left:31%;animation-duration:4.6s;animation-delay:-1.7s}
+.ja-motes i:nth-child(3){left:52%;animation-duration:4.1s;animation-delay:-3s}
+.ja-motes i:nth-child(4){left:71%;animation-duration:5s;animation-delay:-2.2s}
+.ja-motes i:nth-child(5){left:88%;animation-duration:4.4s;animation-delay:-.8s}
+@keyframes jaMote{0%{transform:translateY(0);opacity:0}
+  16%{opacity:.9}78%{opacity:.45}100%{transform:translateY(-9em);opacity:0}}
+
+/* LE MÉDAILLON. Il flotte doucement : c'est le seul mouvement du milieu de
+   l'écran, et il désigne l'objet qu'on est venu regarder. La planche
+   assets/ranks/<rang>.webp est facultative — rankMedalHTML (js/main.js) pose
+   son repli dessiné toute seule quand le fichier manque. */
+.ja-medal{width:clamp(64px,18vw,88px);height:clamp(64px,18vw,88px);
+  display:flex;align-items:center;justify-content:center;
+  filter:drop-shadow(0 .45em 1.2em rgba(0,0,0,.85));
+  animation:jaFloat 5.2s ease-in-out infinite}
+.ja-medal img,.ja-medal .rank-medal{width:100%;height:100%;object-fit:contain}
+@keyframes jaFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-.32em)}}
+.ja-name{font-family:var(--f-title);font-weight:900;
+  font-size:clamp(16px,4.4vw,21px);letter-spacing:.05em;line-height:1.1;
+  text-shadow:0 2px 6px rgba(0,0,0,.9)}
+.ja-elo{font-family:var(--f-ui);font-weight:900;font-size:clamp(20px,5.6vw,27px);
+  color:var(--gold2);font-variant-numeric:tabular-nums;line-height:1.05;
+  text-shadow:0 2px 6px rgba(0,0,0,.9)}
+.ja-gauge{width:100%;height:.5em;margin-top:.35em;border-radius:999px;overflow:hidden;
+  background:rgba(4,7,10,.7);box-shadow:inset 0 .14em .4em rgba(0,0,0,.85)}
+.ja-gauge span{display:block;height:100%;width:0;border-radius:999px;
+  transition:width .8s cubic-bezier(.34,1.4,.64,1)}
+.ja-next{font-family:var(--f-ui);font-size:min(2.9vw,11px);font-weight:650;
+  letter-spacing:.04em;color:var(--muted)}
+
+@media(prefers-reduced-motion:reduce){
+  .ja-medal,.ja-motes i{animation:none}
+  .ja-motes{display:none}
+}
 
 /* --- Faces placeholder (Magasin / Missions / Variantes) --- */
 /* Guerre des clans et Magasin : mêmes matières que le menu, un ton plus neutre pour
@@ -1913,10 +2141,16 @@ body.light .cube-face[data-face="magasin"]{background:
    de même largeur. Une répartition selon la longueur des libellés ferait
    croire à une hiérarchie qui n'existe pas. */
 .cube-facebar-btn{flex:1 1 0;min-width:0;cursor:pointer;border:none;background:transparent;
-  color:var(--muted);width:auto;height:auto;min-height:52px;border-radius:14px;
+  color:rgba(226,232,235,.72);width:auto;height:auto;min-height:56px;border-radius:14px;
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
   padding:6px 2px;transition:color .18s ease,background .18s ease,transform .18s ease}
-.cube-facebar-btn svg{display:block;width:clamp(20px,6vw,26px);height:clamp(20px,6vw,26px);
+/* LES BLASONS SONT PASSÉS DE 26 À 32 PX, ET L'ONGLET AU REPOS S'EST ÉCLAIRCI.
+   Une barre d'onglets se lit d'abord aux FORMES : quatre silhouettes grises de
+   26 px dans une bande sombre demandaient de lire les libellés pour savoir où
+   l'on allait — c'est-à-dire exactement ce que le blason est censé éviter. À
+   32 px et sur un fond de pastille, chaque destination a une empreinte qu'on
+   reconnaît sans lire, et l'onglet en cours reste le seul en or. */
+.cube-facebar-btn svg{display:block;width:clamp(26px,7.5vw,32px);height:clamp(26px,7.5vw,32px);
   flex:0 0 auto;pointer-events:none}
 .cube-facebar-btn:hover{color:var(--text)}
 /* LE LIBELLÉ EST DE RETOUR SUR TÉLÉPHONE. Il n'existait que sur le rail
@@ -1937,7 +2171,7 @@ body.light .cube-face[data-face="magasin"]{background:
    dessiné, qu'il remplace (assets/ui/logo-*.png, voir assets/PROMPTS.md
    § 5 bis). L'`<img>` se retire d'elle-même à l'erreur de chargement
    (onerror, index.html) — fichier absent, le SVG reste seul. */
-.cfb-art{display:block;width:clamp(20px,6vw,26px);height:clamp(20px,6vw,26px);
+.cfb-art{display:block;width:clamp(26px,7.5vw,32px);height:clamp(26px,7.5vw,32px);
   flex:0 0 auto;object-fit:contain;pointer-events:none}
 .cube-facebar-btn:has(.cfb-art) svg{display:none}
 /* La face en cours : le blason passe en NÉGATIF sur le laiton, et l'onglet se
@@ -2890,15 +3124,27 @@ body.light .pmv-dark{background:#c3bdae}
    150 px au-dessus de COMBAT. En colonne, chacun tient dans un tiers de la
    largeur et les trois tiennent sur UNE ligne, à toutes les tailles d'écran.
    La cible tactile reste bien au-dessus de 44 px. */
-.jouer-track{display:flex;flex-direction:column;align-items:center;justify-content:center;
-  gap:6px;cursor:pointer;position:relative;
-  padding:10px 6px;min-height:60px;border-radius:14px;
+/* L'EMBLÈME SEUL, SANS SON NOM ÉCRIT DESSOUS. Les trois boutons portaient
+   « RÉCOMPENSE JOURNALIÈRE », « COLONNE DES VICTOIRES » et « RANGÉE DE LA
+   RICHESSE » sur deux lignes de capitales de 11 px : trente-sept caractères
+   pour trois destinations, sous trois emblèmes de 26 px qui n'avaient plus la
+   place d'être regardés. Un pictogramme qu'il faut légender n'est pas un bon
+   pictogramme ; ceux-là — une couronne de lauriers, un éclair, un livre
+   ouvert — n'en ont pas besoin, et le nom reste accessible au survol et aux
+   lecteurs d'écran (`title` et `aria-label`, index.html).
+
+   CE QUE LE TEXTE PRENAIT, L'EMBLÈME LE REND : la pastille est ronde, elle
+   tient dans la largeur d'un pouce, et le dessin y passe de 26 à 40 px —
+   c'est-à-dire à la taille où les planches peintes (assets/ui/logo-*.webp)
+   montrent enfin leurs feuilles ciselées et leurs arêtes de métal. */
+.jouer-track{display:flex;align-items:center;justify-content:center;
+  cursor:pointer;position:relative;
+  width:clamp(56px,16vw,66px);aspect-ratio:1;padding:0;border-radius:50%;
   border:1px solid var(--border2);background:rgba(255,255,255,.05);
-  backdrop-filter:blur(10px);color:var(--muted);text-align:center;
-  font-family:var(--f-ui);font-size:min(2.7vw,11px);font-weight:650;
-  line-height:1.25;letter-spacing:.05em;text-transform:uppercase;
-  transition:color .18s ease,border-color .18s ease,background .18s ease}
-.jouer-track>span:not(.jouer-badge){display:block;max-width:100%}
+  backdrop-filter:blur(10px);color:var(--muted);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.09),0 .4em .9em -.5em rgba(0,0,0,.9);
+  transition:color .18s ease,border-color .18s ease,background .18s ease,transform .12s ease}
+.jouer-track:active{transform:scale(.94)}
 .jt-ico .jt-draw{width:100%;height:100%}
 
 /* --- L'EMBLÈME DE CHAQUE VOIE, ET LE FEU QUI EN SORT ----------------
@@ -2924,7 +3170,8 @@ body.light .pmv-dark{background:#c3bdae}
    l'éclair, l'orbite passe au large du livre. Rien n'écrête — ni `.jouer-track`
    ni `.jt-ico` n'ont d'`overflow` — et la couche est `pointer-events:none`,
    donc le bouton reste cliquable de bord à bord. */
-.jt-ico{position:relative;display:block;width:26px;height:26px;flex:0 0 auto}
+.jt-ico{position:relative;display:block;width:clamp(28px,8vw,38px);
+  height:clamp(28px,8vw,38px);flex:0 0 auto}
 .jt-ico .jt-draw,.jt-art{position:absolute;inset:0;width:100%;height:100%}
 .jt-art{object-fit:contain;z-index:1}
 /* La planche peinte gagne contre le dessin quand elle est là — et quand elle
@@ -2942,7 +3189,7 @@ body.light .pmv-dark{background:#c3bdae}
    disparaît. Il repasse donc en peinture normale, un cran plus saturé et plus
    sombre pour tenir sur le fond pâle. */
 .jt-fx{display:none;position:absolute;left:50%;top:50%;
-  width:52px;height:52px;margin:-26px 0 0 -26px;
+  width:160%;height:160%;margin:-30% 0 0 -30%;
   overflow:visible;pointer-events:none;mix-blend-mode:screen}
 .jt-fx-back{z-index:0}
 .jt-fx-front{z-index:2}
@@ -3175,8 +3422,11 @@ body.light .jt-fx{mix-blend-mode:normal;filter:saturate(1.45) brightness(.82)}
    trois colonnes ÉGALES, et non un flex qui se répartit selon la longueur des
    libellés : trois boutons de largeurs différentes se lisent comme trois
    choses d'importances différentes, ce qu'ils ne sont pas. */
-.jouer-tracks{display:grid;grid-template-columns:repeat(3,1fr);gap:2.5%;
-  width:min(100% - 24px,440px)}
+/* Trois pastilles rondes, côte à côte et centrées. Ce n'est plus une grille
+   de trois colonnes égales : des pastilles rondes ont déjà toutes la même
+   largeur, il ne reste qu'à les espacer. */
+.jouer-tracks{display:flex;justify-content:center;align-items:center;
+  gap:clamp(14px,5vw,26px)}
 /* La pastille : allumée uniquement quand quelque chose attend d'être
    récupéré (renderRewardsBadge, js/rewards-ui.js). Une pastille toujours
    allumée n'est plus un rappel, c'est un décor.
@@ -3331,30 +3581,31 @@ body.light .jt-fx{mix-blend-mode:normal;filter:saturate(1.45) brightness(.82)}
   transition:border-color .25s ease,transform .18s ease,box-shadow .25s ease,opacity .25s}
 
 /* Le socle de lumière sous la vignette : un halo posé DERRIÈRE le lot, qui
-   ne s'allume vraiment que sur le palier à prendre. */
-.cv-glow{position:absolute;left:0;right:0;top:0;bottom:0;pointer-events:none;
+   ne s'allume vraiment que sur le palier à prendre.
+   `z-index:-1` — donc au-dessus du fond de la plaque, mais SOUS son contenu.
+   À z-index positif, il passait devant le coffre ; et le contenu, pour
+   repasser devant, avait besoin d'un `z-index` à lui — lequel crée un
+   contexte d'empilement autour de la statuette et ISOLE son mélange
+   `screen`, ce qui fait réapparaître le fond noir de la planche en plein
+   milieu de la vignette (voir la note de `.chest-pawn`). Un seul décalage
+   négatif règle les deux. */
+.cv-glow{position:absolute;left:0;right:0;top:0;bottom:0;pointer-events:none;z-index:-1;
   background:radial-gradient(60% 120% at 18% 50%,color-mix(in srgb,var(--cv-c,var(--gold)) 30%,transparent),transparent 70%);
   opacity:0;transition:opacity .35s}
 
-.cv-vis{flex:0 0 22%;max-width:4.6em;display:flex;align-items:center;justify-content:center;
-  position:relative;z-index:1}
-/* LA VIGNETTE DU COFFRE EST UN MÉDAILLON. Les planches de coffres
-   (assets/chests/) sont peintes sur un FOND OPAQUE et non détourées : posées
-   à nu sur la plaque, elles y dessinaient un rectangle noir qui se lisait
-   comme un défaut d'affichage. Le cadre arrondi et le filet de laiton en font
-   au contraire un portrait encadré — le fond sombre devient la nuit derrière
-   le coffre, ce qu'il a toujours été. */
+.cv-vis{flex:0 0 22%;max-width:4.6em;display:flex;align-items:center;justify-content:center}
+/* NI CADRE NI OMBRE INTERNE SUR LA STATUETTE. Le fond noir de la planche est
+   effacé par `mix-blend-mode:screen` (voir la note de `.chest-pawn`), et une
+   ombre interne posée sous elle se rajouterait AU mélange : on redessinerait
+   à la main le rectangle sombre que le mélange vient d'effacer. La statuette
+   reste donc posée à nu sur la plaque, comme partout ailleurs dans le jeu. */
 .cv-vis .chest{width:100%;height:auto;aspect-ratio:29/25}
-.cv-vis .chest-pawn{border-radius:.7em;overflow:hidden;
-  border:1px solid rgba(193,154,69,.28);
-  box-shadow:inset 0 0 1.4em rgba(0,0,0,.75),0 .3em .7em -.4em rgba(0,0,0,.9)}
-.cv-vis .chest-pawn img{display:block;width:100%;height:100%;object-fit:cover}
 .cv-vis .chest-lid{width:100%;height:42%;border-radius:18px 18px 3px 3px}
 .cv-vis .chest-body{width:100%;height:62%;top:38%}
 .cv-vis .chest-lock{width:22%;height:30%;margin-left:-11%;top:27%}
 .cv-vis .chest-lock::after{width:4px;height:6px;margin-left:-2px;top:4px}
 .cv-vis-joker svg{filter:drop-shadow(0 0 .6em rgba(201,168,76,.4))}
-.cv-txt{flex:1;min-width:0;position:relative;z-index:1}
+.cv-txt{flex:1;min-width:0}
 .cv-name{font-family:var(--f-title);font-weight:800;font-size:min(3.9vw,16px);color:var(--text);
   line-height:1.2}
 .cv-sub{font-family:var(--f-ui);font-size:min(3vw,11px);color:var(--muted);margin-top:.22em;
@@ -3363,17 +3614,17 @@ body.light .jt-fx{mix-blend-mode:normal;filter:saturate(1.45) brightness(.82)}
 /* LA MARQUE D'ÉTAT, à droite de la vignette. Une seule par palier, jamais
    deux : elle dit soit que c'est pris, soit que c'est à prendre, soit ce
    qu'il manque. */
-.cv-mark{flex:0 0 auto;position:relative;z-index:1;
+.cv-mark{flex:0 0 auto;
   font-family:var(--f-ui);font-size:min(2.4vw,9.5px);font-weight:800;
   letter-spacing:.08em;text-transform:uppercase;text-align:center;
   border-radius:999px;padding:.5em .85em;
   border:1px solid var(--border2);color:var(--muted)}
-.cv-seal{flex:0 0 auto;position:relative;z-index:1;width:1.9em;height:1.9em;border-radius:50%;
+.cv-seal{flex:0 0 auto;width:1.9em;height:1.9em;border-radius:50%;
   display:flex;align-items:center;justify-content:center;
   border:1px solid color-mix(in srgb,var(--success) 55%,transparent);
   background:color-mix(in srgb,var(--success) 16%,transparent);color:var(--success);
   font-size:min(3.4vw,13px);font-weight:900}
-.cv-lock{flex:0 0 auto;position:relative;z-index:1;width:1.5em;height:1.5em;opacity:.5}
+.cv-lock{flex:0 0 auto;width:1.5em;height:1.5em;opacity:.5}
 .cv-lock svg{width:100%;height:100%;display:block;fill:currentColor;color:var(--muted)}
 
 /* ------------------------------------------------------------------
@@ -3399,13 +3650,14 @@ body.light .jt-fx{mix-blend-mode:normal;filter:saturate(1.45) brightness(.82)}
   box-shadow:inset 0 1px 0 rgba(255,244,214,.6),0 0 1.1em -.15em rgba(201,168,76,.75);
   animation:cvNodeBeat 2.2s ease-in-out infinite}
 .cv-due .cv-node span{color:#1a1206}
-.cv-due .cv-tile{border-color:var(--gold);cursor:pointer;
+.cv-due{cursor:pointer}
+.cv-due .cv-tile{border-color:var(--gold);
   box-shadow:inset 0 1px 0 rgba(255,240,205,.28),0 0 1.4em -.4em rgba(201,168,76,.8),
              0 .5em 1.1em -.6em rgba(0,0,0,.85)}
 .cv-due .cv-glow{opacity:.75;animation:cvBreathe 2.8s ease-in-out infinite}
 .cv-due .cv-name{color:var(--gold2)}
 .cv-due .cv-tile::after{content:'';position:absolute;top:0;bottom:0;width:38%;
-  left:-45%;pointer-events:none;
+  left:-45%;pointer-events:none;z-index:-1;
   background:linear-gradient(100deg,transparent,rgba(255,246,214,.16) 45%,transparent);
   animation:cvSheen 3.4s ease-in-out infinite}
 .cv-due .chest:not(.chest-pawn),.cv-due .cv-vis-joker svg{
@@ -3464,7 +3716,7 @@ body.light .jt-fx{mix-blend-mode:normal;filter:saturate(1.45) brightness(.82)}
    motif se répéter. C'est le même vocabulaire que les braises du menu
    (.jtf-ember) : la lumière monte, elle ne tombe pas. */
 .cv-motes{position:absolute;inset:0;pointer-events:none;overflow:hidden;opacity:0;
-  transition:opacity .4s}
+  z-index:1;transition:opacity .4s}
 .cv-due .cv-motes{opacity:1}
 .cv-motes i{position:absolute;bottom:-.4em;width:.3em;height:.3em;border-radius:50%;
   background:var(--gold2);box-shadow:0 0 .5em rgba(240,209,137,.9);
@@ -3712,7 +3964,7 @@ body.light .jt-fx{mix-blend-mode:normal;filter:saturate(1.45) brightness(.82)}
    coffres, ce qui tient enfin sur un écran de téléphone sans défilement. */
 @media(max-width:760px){
   .jouer-menu{--menu-title-h:46px;
-    padding-top:calc(var(--menu-top) + var(--menu-title-h) + clamp(38px,6vh,72px))}
+    padding-top:calc(var(--menu-top) + var(--menu-title-h) + clamp(22px,4vh,52px))}
 }
 
 .jouer-second{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
@@ -3757,19 +4009,26 @@ body.light .jt-fx{mix-blend-mode:normal;filter:saturate(1.45) brightness(.82)}
   font-size:clamp(14px,3.4vw,20px);letter-spacing:.16em;line-height:1.1;
   text-transform:uppercase;color:var(--muted);
   max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-/* UNE pastille tactile, et non trois objets de trois poids différents. */
-.jouer-idpill{display:inline-flex;align-items:center;gap:7px;height:34px;padding:0 10px 0 12px;
-  border-radius:999px;cursor:pointer;pointer-events:auto;
-  background:rgba(193,154,69,.11);border:1px solid rgba(193,154,69,.30);
-  color:var(--gold2);font-family:var(--f-ui);
-  transition:background .16s ease,border-color .16s ease}
-.jouer-idpill:hover{background:rgba(193,154,69,.18);border-color:var(--gold)}
-.jp-dot{width:6px;height:6px;border-radius:50%;background:currentColor;flex:0 0 auto}
-.jouer-rank{font-size:12.5px;font-weight:600;letter-spacing:.01em}
-.jp-sep{opacity:.45}
-.jouer-elo{font-size:13px;font-weight:700;color:var(--gold2);font-variant-numeric:tabular-nums}
-.jouer-elo.admin-elo{color:#fff}
-.jp-chev{width:15px;height:15px;opacity:.6;flex:0 0 auto;margin-left:1px}
+/* LA BOURSE : trois soldes, trois portes. Elle a remplacé la pastille
+   d'identité, qui répétait en petit et en haut (rang, ELO) ce que le socle de
+   l'arène dit maintenant en grand et au centre. */
+.jouer-purse{display:flex;align-items:center;justify-content:center;
+  gap:clamp(6px,2vw,12px);pointer-events:auto;flex-wrap:wrap}
+.jp-coin{display:inline-flex;align-items:center;gap:.4em;cursor:pointer;
+  height:30px;padding:0 .7em 0 .55em;border-radius:999px;
+  background:rgba(10,15,19,.55);border:1px solid rgba(255,255,255,.12);
+  backdrop-filter:blur(8px);
+  font-family:var(--f-ui);font-size:min(3.2vw,12.5px);font-weight:800;
+  color:var(--text);font-variant-numeric:tabular-nums;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.09),0 .3em .8em -.4em rgba(0,0,0,.9);
+  transition:border-color .16s ease,background .16s ease,transform .12s ease}
+.jp-coin:hover{border-color:rgba(193,154,69,.55);background:rgba(193,154,69,.14)}
+.jp-coin:active{transform:scale(.95)}
+.jp-coin svg{display:block;flex:0 0 auto}
+.jp-laurel,.jp-ticket{color:var(--gold2)}
+/* Le pseudo passe en blanc sur un compte admin : c'est la seule chose que le
+   menu ait à dire d'un bac à sable, et elle doit se voir. */
+.jouer-name.admin-elo{color:#fff}
 /* La destination du combat, sous le bouton. */
 @media(max-width:760px){
   .jouer-player{gap:5px}
@@ -3789,7 +4048,6 @@ body.light .jt-fx{mix-blend-mode:normal;filter:saturate(1.45) brightness(.82)}
 .ac-pieces,.cside-pieces{display:flex;flex-wrap:wrap;gap:5px;align-items:center}
 .ac-pieces .pc-icon{width:30px;height:30px}
 .cside-pieces{justify-content:center}
-.vm-piece-emoji{display:block;margin-bottom:5px}
 .unlock-piece-emoji{display:block;margin:0 auto 6px;width:64px;height:64px}
 
 /* [PROTO-NOTE] : mention de bas de page, désormais sur /info ======== */
@@ -5458,9 +5716,15 @@ body.cube-active:not(.nav-overlay) .notif-host{bottom:92px}
    va et vient d'un bord à l'autre, ce qui dit « ça cherche » sans rien
    promettre. Le chronomètre sous elle (#mp-elapsed) est la seule mesure
    honnête de l'attente. */
-.ec-load-bar.is-hunt span{width:38%;animation:mpHunt 1.9s ease-in-out infinite}
+.ec-load-bar.is-hunt span{width:38%;
+  animation:mpHunt 1.7s ease-in-out infinite alternate}
 .ec-load-bar.is-hunt span::after{animation:none;background:none}
-@keyframes mpHunt{0%{transform:translateX(-105%)}100%{transform:translateX(268%)}}
+/* La navette VA ET VIENT d'un bord à l'autre (`alternate`) au lieu de faire
+   des allers simples : elle ne sort jamais de la gouttière, donc la barre
+   n'est jamais vide — une barre vide, sur un écran d'attente, se lit comme
+   une attente en panne. 163 % de sa propre largeur, c'est exactement la
+   distance qui amène son bord droit au bord droit de la gouttière. */
+@keyframes mpHunt{from{transform:translateX(0)}to{transform:translateX(163%)}}
 
 /* TIPS D'ATTENTE (mpRenderTip, js/multiplayer.js) : la seule chose à LIRE de
    l'écran, d'où le cartouche qui la pose. */
@@ -6539,11 +6803,18 @@ body.desk .jouer-player{position:static;transform:none;width:auto;max-width:100%
 body.desk .jouer-menu{--menu-title-h:88px}
 /* COMBAT est l'action principale : à la souris, sur 900 px de large, elle a
    le droit d'être franchement plus grande qu'une cible de pouce. */
-body.desk .jouer-btn{font-size:clamp(22px,2vw,30px);padding:22px 64px;letter-spacing:6px}
+body.desk .jouer-btn{font-size:clamp(22px,2vw,30px);height:auto;padding:20px 64px;
+  letter-spacing:6px;width:min(100%,360px)}
+/* Le socle de l'arène a de la place, il la prend : à la souris, le médaillon
+   est ce qu'on regarde en premier en arrivant sur le jeu. */
+body.desk .jouer-arena{width:min(100%,340px)}
 /* LES TROIS BOUTONS RESTENT en mode bureau : ce qu'ils ouvrent (une fenêtre,
    une page entière avec ses quêtes) ne tient pas dans une carte de 340 px,
    et il n'y a plus de colonne à côté pour en donner un résumé permanent. */
-body.desk .jouer-tracks{max-width:440px}
+/* LES TROIS PASTILLES RESTENT en mode bureau : ce qu'elles ouvrent (une
+   fenêtre, une page entière avec ses quêtes) ne tient pas dans une carte de
+   340 px, et il n'y a plus de colonne à côté pour en donner un résumé. */
+body.desk .jouer-tracks{gap:26px}
 
 /* Jauge de progression générique (palier suivant, quête de la page
    Récompenses — voir .rw-quest .ms-gauge) : pas propre à une seule page. */
@@ -6618,8 +6889,15 @@ body.desk .comp-grid{max-width:700px;margin-left:auto;margin-right:auto}
    serveur, et ils ne se montrent que quand il faut.
    Le voile lui-même est bâti sur la carrosserie [LOADING] plus bas — celle
    que partagent le démarrage et l'attente d'un adversaire. */
-.ec-boot{position:fixed;inset:0;z-index:12000;display:none}
-.ec-boot.show{display:flex}
+/* SÉLECTEURS D'IDENTIFIANT, ET C'EST VOULU. `.ec-boot` et `.ec-load` sont
+   deux classes de même poids posées sur le MÊME élément : la dernière écrite
+   dans la feuille gagne, et `[LOADING]` (plus bas) impose `display:flex` à
+   `.ec-load`. Le voile ne se cachait donc jamais — il restait plein écran,
+   invisible mais avalant tous les clics du menu, ce qu'aucune capture ne
+   montre et que seul le test de fumée a vu. L'identifiant l'emporte sur la
+   classe quelle que soit sa place dans le fichier : la règle tient. */
+#ec-boot{position:fixed;inset:0;z-index:12000;display:none}
+#ec-boot.show{display:flex}
 .ec-boot-msg{font-family:var(--f-ui);font-size:min(3.4vw,13.5px);color:var(--muted);
   line-height:1.55;min-height:1.6em}
 

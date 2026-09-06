@@ -6,7 +6,9 @@ et le prompt à donner à un générateur d'images pour chacune.
 > **Statut au dernier inventaire** : les 16 fonds d'écran (`backgrounds/`),
 > les 6 effets (`fx/`) et 6 des 7 médaillons de rang (`ranks/`, il manque
 > `acier.png`) **et les 7 logos de navigation** (`ui/logo-*.webp`) sont
-> posés. Restent à générer : les 4 bannières de titre (`banners/`), les 5
+> posés. Restent à générer : **la planche de l'écran de chargement**
+> (`backgrounds/chargement.png`, § 3 bis), **les 7 paysages de la Diagonale**
+> (`voie/biome-*.png`, § 3 ter), les 4 bannières de titre (`banners/`), les 5
 > pièces de mobilier (`ui/`), les 12 portraits d'adversaires,
 > `ranks/acier.png`, et les planches des coffres Dame et Roi. Chaque section
 > ci-dessous porte son propre état.
@@ -329,6 +331,150 @@ bataille.
 
 ---
 
+## 3 bis. L'ÉCRAN DE CHARGEMENT — `assets/backgrounds/chargement.png`
+
+> **Statut : à générer.** Le jeu affiche aujourd'hui le dégradé de repli, et
+> tout le reste de l'écran (nom du jeu, braises, barre, conseils) fonctionne
+> déjà sans la planche.
+
+C'est la **première image que voit qui que ce soit**, et la seule qu'on
+regarde en n'ayant rien d'autre à faire. Elle a donc des règles à elle,
+inverses de celles des fonds d'écran : ici on veut un SUJET, en grand, au
+milieu — pas une salle vide.
+
+Elle est affichée **plein écran de téléphone**, donc en **format portrait**,
+avec un voile sombre en haut (où passe le nom du jeu) et en bas (où passent
+la barre et les conseils). Le tiers central, lui, reste clair : c'est là que
+le sujet doit vivre.
+
+### `chargement.png` — la charge des créatures
+
+```
+Format portrait. Une charge héroïque de créatures d'échecs vivantes qui
+avancent vers le spectateur, vues en contre-plongée légère, au tiers
+central de l'image. Au premier plan et au centre : un ROI colossal de
+pierre et de laiton, couronne fendue, épée à deux mains levée, en pleine
+foulée. Derrière lui à gauche, une DAME de marbre blanc dont la robe se
+prolonge en volutes de vent ; à droite, un CAVALIER de bronze cabré dont
+la crinière est faite de flammes. Plus loin dans la brume, la silhouette
+de dizaines d'autres créatures en marche.
+Le TIERS SUPÉRIEUR de l'image est un ciel de braises et de fumée, sombre et
+dégagé, sans aucun élément important. Le TIERS INFÉRIEUR est un sol de
+dalles éclatées noyé d'ombre et de poussière, également dégagé. Toute
+l'action est au milieu.
+Lumière de forge venant du bas à gauche, ombres bleues, étincelles qui
+montent. Énergie, mouvement, échelle monumentale.
+```
+
+---
+
+## 3 ter. LES SEPT BIOMES DE LA DIAGONALE — `assets/voie/`
+
+> **Statut : à générer, les sept.** Sans eux, la Diagonale affiche le teint
+> calculé sur la couleur de chaque rang (voir `RANKS` dans
+> `js/data-pieces.js`) — les paysages se distinguent déjà, mais en couleur
+> seulement.
+
+La Diagonale de la Puissance traverse **sept pays**, un par rang, et
+chaque jalon est une bande de terrain que le sentier coupe en son milieu.
+Les bandes du même rang se répètent bout à bout : **chaque planche doit
+donc se raccorder à elle-même en haut et en bas** — un motif de terrain,
+pas une composition.
+
+**Règles communes aux sept, à rappeler dans chaque prompt :**
+
+- **format paysage** ;
+- vue **du dessus, à la verticale** (à plat, comme une carte), et non à
+  hauteur d'homme : c'est un terrain qu'on survole en montant la Voie ;
+- **une bande de terre battue claire, large d'un dixième de l'image, court
+  du BORD HAUT au BORD BAS en passant exactement par le milieu.** Elle
+  arrive au bord et en repart : aucun début, aucune fin, aucun virage ;
+- le décor est de part et d'autre du sentier, et **les deux tiers droit et
+  gauche restent calmes** : c'est là que le jeu pose les récompenses ;
+- aucun personnage, aucune créature, aucun bâtiment reconnaissable ;
+- bords haut et bas **neutres et sans détail marquant**, pour que deux
+  bandes empilées ne montrent pas leur raccord.
+
+### `biome-bois.png` — Bois (0–199 ELO)
+
+```
+Format paysage, vue du dessus à la verticale. Un sous-bois d'automne : sol
+de mousse sombre, feuilles mortes brunes, racines noueuses, souches
+coupées. Une bande de terre battue claire traverse l'image du bord haut au
+bord bas en passant par le milieu, rectiligne. De part et d'autre, des
+troncs abattus et des fougères, peu denses. Dominante gris-violacé froid et
+brun. Lumière basse et diffuse, brume au ras du sol.
+```
+
+### `biome-pierre.png` — Pierre (200–499 ELO)
+
+```
+Format paysage, vue du dessus à la verticale. Un plateau rocheux : dalles
+de granit fendues, éboulis, herbe rase entre les pierres. Une bande de
+terre battue claire traverse l'image du bord haut au bord bas en passant
+par le milieu, rectiligne. De part et d'autre, des blocs erratiques et des
+cairns bas. Dominante gris-beige minéral. Lumière rasante, ombres bleues
+franches.
+```
+
+### `biome-bronze.png` — Bronze (500–799 ELO)
+
+```
+Format paysage, vue du dessus à la verticale. Un terrain de forge à ciel
+ouvert : sable de fonderie, coulées de bronze refroidi en veines dorées
+dans le sol, scories noires. Une bande de terre battue claire traverse
+l'image du bord haut au bord bas en passant par le milieu, rectiligne. De
+part et d'autre, des creusets renversés et des tas de charbon. Dominante
+cuivre chaud et orangé. Braises éparses, fines fumées.
+```
+
+### `biome-acier.png` — Acier (800–1199 ELO)
+
+```
+Format paysage, vue du dessus à la verticale. Une plaine de plaques d'acier
+rivetées, givrées par endroits, entre lesquelles pousse une herbe grise. Une
+bande de terre battue claire traverse l'image du bord haut au bord bas en
+passant par le milieu, rectiligne. De part et d'autre, des rails tordus et
+des chaînes lourdes posées à plat. Dominante gris-bleu métallique et froid.
+Lumière blanche et dure.
+```
+
+### `biome-obsidienne.png` — Obsidienne (1200–1499 ELO)
+
+```
+Format paysage, vue du dessus à la verticale. Un champ de verre volcanique :
+éclats d'obsidienne noire et miroitante, fissures d'où monte une lueur
+violette. Une bande de terre battue claire traverse l'image du bord haut au
+bord bas en passant par le milieu, rectiligne. De part et d'autre, des
+aiguilles de verre noir plantées dans le sol. Dominante noir profond et
+violet sourd. Reflets nets, contraste élevé.
+```
+
+### `biome-argent.png` — Argent (1500–1999 ELO)
+
+```
+Format paysage, vue du dessus à la verticale. Un plateau gelé d'argent
+poli : glace craquelée sur du métal blanc, cristaux de givre en étoiles. Une
+bande de terre battue claire traverse l'image du bord haut au bord bas en
+passant par le milieu, rectiligne. De part et d'autre, des flaques gelées et
+des touffes de givre. Dominante blanc argenté et bleu très pâle. Lumière
+froide, éclat diffus, aucune ombre dure.
+```
+
+### `biome-or.png` — Or Légendaire (2000+ ELO)
+
+```
+Format paysage, vue du dessus à la verticale. Un parvis de temple en or
+massif : dalles dorées gravées, poussière de lumière en suspension, veines
+de métal en fusion entre les dalles. Une bande de terre battue claire
+traverse l'image du bord haut au bord bas en passant par le milieu,
+rectiligne. De part et d'autre, des braseros éteints et des feuilles d'or
+posées au sol. Dominante or chaud et ambre. Lumière montante, halo,
+solennité.
+```
+
+---
+
 ## 4. LES BANNIÈRES DE TITRE — `assets/banners/`
 
 Un bandeau ouvragé posé **derrière** le titre de la page, à la place du
@@ -485,8 +631,13 @@ ci-dessous ne sont pas du confort :
    laiton clair. Un fond, même sombre, ferait une vignette carrée visible.
 4. **L'OBJET REMPLIT LE CARRÉ**, avec seulement 6 à 8 % de marge. Un objet
    petit au milieu d'un grand vide perd la moitié de ses pixels utiles.
-5. **CONTRASTE INTERNE FORT.** À 20 px, deux valeurs proches fusionnent : il
+5. **CONTRASTE INTERNE FORT.** À 26 px, deux valeurs proches fusionnent : il
    faut du clair franc contre du sombre franc à l'intérieur même de l'objet.
+   Les sept sont maintenant affichés en 26–38 px selon l'écran (32 px pour les
+   blasons d'onglets, jusqu'à 38 px pour les trois pastilles rondes du menu,
+   qui n'ont plus de libellé écrit dessous et où le dessin est donc la SEULE
+   chose qui nomme la destination) : les détails ciselés y survivent, mais un
+   objet sans contraste interne restera une tache dorée à toutes les tailles.
 
 Format **carré** pour les sept.
 
@@ -861,10 +1012,11 @@ SUJET : … (voir le tableau de assets/pieces/README.md)
 
 ---
 
-## 10. Récapitulatif : les soixante-sept chemins
+## 10. Récapitulatif : les soixante-quinze chemins
 
 ```
-assets/backgrounds/  main-page.png  armees.png  armurerie.png  magasin.png
+assets/backgrounds/  chargement.png  ← l'écran de chargement, format PORTRAIT
+                     main-page.png  armees.png  armurerie.png  magasin.png
                      adversaires.png  voie.png  recompenses.png  comptes.png
                      atelier.png  combat-intro.png  duel-wait.png
                      table.png  lore-1.png  lore-2.png  lore-3.png  lore-4.png
@@ -876,6 +1028,9 @@ assets/ui/           cadre-plateau.png  ornement-coin.png  socle.png
                      logo-journaliere.webp        ← les sept sont POSÉS
 assets/fx/           halo-victoire.png  onde-choc.png  braises.png
                      eclat-capture.png  flamme-echec.png  cercle-runique.png
+assets/voie/         biome-bois.png  biome-pierre.png  biome-bronze.png
+                     biome-acier.png  biome-obsidienne.png  biome-argent.png
+                     biome-or.png     ← les sept paysages de la Diagonale
 assets/ranks/        bois.png  pierre.png  bronze.png  acier.png
                      obsidienne.png  argent.png  or.png
 assets/adversaires/  cendre.png  suie.png  bruyere.png  orpiment.png
@@ -886,8 +1041,9 @@ assets/chests/dame/  01-intact.webp … 05-eclats.webp
 assets/chests/roi/   01-intact.webp … 05-eclats.webp
 ```
 
-**Par quoi commencer, si tu n'en fais que cinq :** `main-page.png` (c'est
-le premier écran), les sept `ranks/` (c'est ce qu'on regarde le plus
-souvent), `cadre-plateau.png` (c'est l'écran où on passe le plus de temps),
-`halo-victoire.png` (c'est le moment qu'on veut revivre) et
-`table.png`. Le reste est du confort.
+**Par quoi commencer, si tu n'en fais que cinq :** `chargement.png` (c'est
+littéralement la première image du jeu, avant même le menu), `main-page.png`
+(c'est le premier écran jouable), les sept `voie/biome-*.png` (ils changent
+un écran entier, et sept planches d'un coup), les sept `ranks/` (c'est ce
+qu'on regarde le plus souvent) et `cadre-plateau.png` (c'est l'écran où on
+passe le plus de temps). Le reste est du confort.

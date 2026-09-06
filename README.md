@@ -1867,7 +1867,11 @@ mais dans une version que Playwright refuse, le script le retrouve tout seul
 | Changer ce que lance le bouton COMBAT | `js/cube-nav.js` (`onCombat`/`onVsIa`) + `js/combat-intro.js` |
 | Modifier la galerie des adversaires (cartes, sceaux, palmarès) | `js/adversaires.js` + section `[ADVERSAIRES]` de `css/style.css` |
 | Changer le fond du menu principal | `assets/backgrounds/main-page.webp` (ou `.png`, voir `tools/opt-images.js`) + section `[LAB-BG]` de `css/style.css` |
-| Modifier le bloc pseudo/rang/ELO du menu principal | `renderMenuIdentity()` dans `js/accounts.js` + `[MENU]` de `css/style.css` |
+| Modifier le bloc pseudo / bourse du menu principal | `renderMenuIdentity()` et `renderMenuPurse()` dans `js/accounts.js` + `[MENU]` de `css/style.css` |
+| Modifier le socle de l'arène (au milieu du menu) | `renderMenuArena()` dans `js/accounts.js` + « L'ARÈNE, AU MILIEU DU MENU » dans `[MENU]` de `css/style.css` |
+| Modifier l'écran de chargement (barre, conseils, toile) | `js/boot-screen.js` (`BOOT_TIPS`, la courbe de montée) + `#ec-boot` dans `index.html` + `[LOADING]` de `css/style.css` |
+| Changer la toile de l'écran de démarrage | remplacer `assets/backgrounds/chargement.webp` (rien à coder ; prompt dans `assets/PROMPTS.md` § 3 bis) |
+| Modifier les paysages de la Diagonale | `assets/voie/biome-<rang>.webp` (prompts dans `assets/PROMPTS.md` § 3 ter) + « LE SENTIER » dans `[VOIE]` de `css/style.css` |
 | Régler la vitesse de rotation du cube | `js/cube-nav.js` (`ROTATE_MS`) **et** la transition de `#cube` dans `css/style.css` |
 | Modifier le système de comptes/sauvegarde | `js/accounts.js` (copie de travail) + `js/server.js` (échanges) |
 | Ajouter un champ stocké par compte | `accGet`/`accSet` comme avant — rien à toucher ailleurs, le serveur stocke `state` sans l'interpréter |
@@ -1899,6 +1903,7 @@ mais dans une version que Playwright refuse, le script le retrouve tout seul
 | Ajouter / modifier une quête | `QUEST_POOL` dans `js/rewards.js` ; si elle demande un fait de jeu inédit, poser l'appel `questNote()` là où ce fait se produit |
 | Changer ce que valent les jokers ou ce qu'ils peuvent devenir | `jokerChoices`/`jokerConvert` dans `js/rewards.js` + `renderJokerModal` dans `js/rewards-ui.js` |
 | Modifier la page des deux voies | `js/rewards-ui.js` + `#page-rewards` dans `index.html` + `[REWARDS]` de `css/style.css` |
+| Modifier le chemin de paliers de la colonne | `rwColRowsHTML()` / `rwColState()` dans `js/rewards-ui.js` + « LA COLONNE : trente paliers » dans `[REWARDS]` de `css/style.css` |
 | Modifier la récompense journalière | `DAILY_REWARDS` dans `js/data-pieces.js` + `dailyReward*` dans `js/rewards.js` + `renderDailyModal` dans `js/rewards-ui.js` |
 | Changer les écrans qui portent le bouton de réglages | `updateMainMenuFlag` dans `js/cube-nav.js` + `body.main-menu` dans `[SETTINGS]` de `css/style.css` |
 | Changer le retrait haut des pages (sous l'encoche) | `--page-top` / `--menu-top` en tête de `css/style.css` |
