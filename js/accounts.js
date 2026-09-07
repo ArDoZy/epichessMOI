@@ -198,11 +198,16 @@ function accountsBootVeil(msg,retry){
   el.querySelector('#ec-boot-msg').textContent=msg||'';
   const btn=el.querySelector('#ec-boot-retry');
   btn.style.display=retry?'':'none';
-  el.querySelector('#ec-boot-spin').style.display=retry?'none':'';
   el.classList.add('show');
+  // La barre, le pourcentage et les conseils qui défilent vivent dans
+  // js/boot-screen.js : le voile dit CE QU'IL SE PASSE, l'autre dit qu'on
+  // avance. Le voile fonctionne sans lui (fichier non chargé, script en
+  // erreur) — il ne reste alors que la phrase d'état.
+  if(typeof bootScreenStart==='function')bootScreenStart(retry);
 }
 function accountsBootDone(){
-  document.getElementById('ec-boot')?.classList.remove('show');
+  const hide=()=>document.getElementById('ec-boot')?.classList.remove('show');
+  if(typeof bootScreenFinish==='function')bootScreenFinish(hide);else hide();
 }
 
 // ----------------------------------------------------------------
@@ -419,18 +424,108 @@ function updateCab(){
 // ouvre la Diagonale de la Puissance à côté du chiffre.
 function renderMenuIdentity(){
   const nameEl=document.getElementById('jouer-name');
-  const rankEl=document.getElementById('jouer-rank');
-  const eloEl=document.getElementById('jouer-elo');
-  if(!nameEl||!rankEl||!eloEl)return;
-  if(!CUR_ACC){nameEl.textContent='';rankEl.textContent='';eloEl.textContent='';return;}
-  // Le RANG vient du sommet atteint (il est acquis), le NOMBRE est le
-  // classement du moment (il bouge). Les deux se lisent côte à côte.
-  const elo=vvLoadElo(),rank=vvRank();
-  nameEl.textContent=CUR_ACC;
-  rankEl.textContent=rank.name;
-  rankEl.style.color=rank.color;
-  eloEl.textContent=elo+' ELO'+(ADMIN_MODE?' · ADMIN':'');
-  eloEl.classList.toggle('admin-elo',!!ADMIN_MODE);
+  if(!nameEl)return;
+  nameEl.textContent=CUR_ACC?(CUR_ACC+(ADMIN_MODE?' · ADMIN':'')):'';
+  nameEl.classList.toggle('admin-elo',!!ADMIN_MODE);
+  renderMenuPurse();
+  renderMenuArena();
+}
+
+// ----------------------------------------------------------------
+// LA BOURSE DU MENU
+// ----------------------------------------------------------------
+// Trois soldes, sous le pseudo : les PERLES (avec quoi on achète un coffre au
+// Magasin), les LAURIERS (avec quoi descend la Colonne des Victoires) et les
+// TICKETS (avec quoi avance la Rangée de la Richesse). Aucun des trois
+// n'était affiché sur ce menu : il fallait ouvrir trois écrans différents
+// pour connaître trois nombres qui décident de ce qu'on fait dans la minute
+// qui suit.
+//
+// CHAQUE SOLDE OUVRE L'ÉCRAN DONT IL VIENT — la perle le Magasin, le laurier
+// la Colonne, le ticket la Rangée. Un compteur qui n'est pas une porte est un
+// compteur qu'on relit sans jamais rien pouvoir en faire.
+//
+// La bourse se tait tant qu'il n'y a pas de compte : afficher « 0 · 0 · 0 »
+// pendant le démarrage annoncerait une misère qui n'existe pas encore.
+function renderMenuPurse(){
+  const el=document.getElementById('jouer-purse');
+  if(!el)return;
+  if(!CUR_ACC){el.innerHTML='';return;}
+  const coin=(cls,go,icon,n,lbl)=>
+    '<button class="jp-coin '+cls+'" data-go="'+go+'" aria-label="'+lbl+'">'+
+      icon+'<span>'+n+'</span></button>';
+  let html='';
+  if(typeof pearlBalance==='function'&&typeof pearlIcon==='function')
+    html+=coin('jp-pearl','magasin',pearlIcon(1.15),pearlBalance(),'Perles · ouvrir le Magasin');
+  if(typeof colLaurels==='function'&&typeof laurelIcon==='function')
+    html+=coin('jp-laurel','colonne',laurelIcon(1.15),colLaurels(),'Lauriers · ouvrir la Colonne des Victoires');
+  if(typeof ticketBalance==='function'&&typeof ticketIcon==='function')
+    html+=coin('jp-ticket','rangee',ticketIcon(1.15),ticketBalance(),'Tickets · ouvrir la Rangée de la Richesse');
+  el.innerHTML=html;
+}
+// UN SEUL ÉCOUTEUR, POSÉ SUR LA BOURSE : elle est redessinée à chaque
+// rafraîchissement du menu, et trois écouteurs à reposer à chaque fois
+// finissent toujours par en laisser un derrière.
+document.addEventListener('DOMContentLoaded',()=>{
+  document.getElementById('jouer-purse')?.addEventListener('click',e=>{
+    const go=e.target.closest('.jp-coin')?.dataset.go;
+    if(go==='magasin'&&typeof goToFace==='function')goToFace('magasin');
+    else if(go&&typeof openRewardsPage==='function')openRewardsPage(go);
+  });
+});
+
+// ----------------------------------------------------------------
+// L'ARÈNE, AU MILIEU DU MENU
+// ----------------------------------------------------------------
+// Le menu principal avait un trou : entre le pseudo posé en haut et les
+// boutons posés en bas, la moitié de la hauteur de l'écran ne portait rien.
+// C'est pourtant là que l'œil tombe en premier — et c'est là que tout jeu qui
+// classe ses joueurs montre où ils en sont.
+//
+// LE SOCLE NE DIT QU'UNE CHOSE, mais il la dit en grand : l'arène du moment.
+// Le médaillon du rang, son nom, le classement, et la jauge de ce qui reste
+// avant la suivante. Rien de plus — pas de statistiques, pas d'historique :
+// c'est un REPÈRE, et un repère qu'on doit lire d'un coup d'œil depuis l'autre
+// bout de la pièce.
+//
+// LE RANG SE LIT SUR LE SOMMET ATTEINT, LA JAUGE SUR LE CLASSEMENT DU MOMENT :
+// exactement la règle du bandeau de la Diagonale (renderVoiePage, js/voie.js).
+// Un rang est acquis ; la distance qui reste à parcourir, elle, se mesure d'où
+// l'on est réellement.
+function renderMenuArena(){
+  const medal=document.getElementById('jouer-arena-medal');
+  if(!medal)return;
+  const name=document.getElementById('jouer-arena-name');
+  const eloEl=document.getElementById('jouer-arena-elo');
+  const fill=document.getElementById('jouer-arena-fill');
+  const next=document.getElementById('jouer-arena-next');
+  const box=document.getElementById('jouer-arena');
+  if(!CUR_ACC){if(box)box.style.visibility='hidden';return;}
+  if(box)box.style.visibility='';
+  const elo=vvLoadElo();
+  const peak=(typeof vvLoadPeakElo==='function')?vvLoadPeakElo():elo;
+  const rank=vvGetRank(peak);
+  const nextRank=RANKS[vvGetRankIdx(peak)+1]||null;
+  const pct=nextRank
+    ?Math.max(0,Math.min(100,Math.round((elo-rank.min)/(nextRank.min-rank.min)*100)))
+    :100;
+  medal.innerHTML=(typeof rankMedalHTML==='function')?rankMedalHTML(rank.id,'rm-lg'):'';
+  name.textContent=rank.name;
+  name.style.color=rank.color;
+  eloEl.textContent=elo+' ELO';
+  fill.style.width=pct+'%';
+  fill.style.background='linear-gradient(90deg,'+rank.color+',var(--gold))';
+  // La phrase du bas dit la DISTANCE, pas le pourcentage : « encore 74 » est
+  // une information sur laquelle on peut décider de relancer une partie,
+  // « 63 % » n'en est pas une.
+  next.textContent=nextRank
+    ?(elo<rank.min
+      ?'Remontez à '+rank.min+' ELO'
+      :'Encore '+Math.max(0,nextRank.min-elo)+' ELO vers '+nextRank.name)
+    :'Rang maximum atteint';
+  // L'arène RESPIRE quand le rang suivant est à portée : c'est le seul moment
+  // où le menu a quelque chose à signaler de lui-même.
+  box.classList.toggle('is-close',!!nextRank&&pct>=80);
 }
 
 // ----------------------------------------------------------------

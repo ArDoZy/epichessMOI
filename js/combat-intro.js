@@ -97,7 +97,7 @@ function startOnlineSearch(playerArmy){
   if(!combatStockOk())return false;
   if(typeof mpOpenModal!=='function')return false;
   mpOpenModal();
-  if(typeof mpShowScreen==='function')mpShowScreen('quick');
+  if(typeof mpShowScreen==='function')mpShowScreen();
   if(typeof mpQuickPlay==='function')mpQuickPlay();
   return true;
 }

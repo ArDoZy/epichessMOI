@@ -285,22 +285,6 @@ function rewardsScrollCurrent(){
   });
 }
 
-// ----------------------------------------------------------------
-// LA COLONNE DES VICTOIRES
-// ----------------------------------------------------------------
-// Quatre états, les mêmes que la série du jour (voir [STREAK] dans
-// css/style.css), pour qu'on n'ait pas deux vocabulaires visuels à apprendre :
-//   rw-got    palier déjà encaissé
-//   rw-due    palier gagné, pas encore encaissé — c'est lui qui pulse
-//   rw-next   ce que les prochains lauriers ouvriraient
-//   rw-far    encore loin
-function rwColState(i){
-  const claimed=colClaimed(),steps=colSteps();
-  if(i<claimed)return 'rw-got';
-  if(i<steps)return 'rw-due';
-  if(i===steps)return 'rw-next';
-  return 'rw-far';
-}
 
 // ----------------------------------------------------------------
 // LA JAUGE DE LAURIERS, EN TÊTE DE LA COLONNE
@@ -329,48 +313,109 @@ function rwLaurelBarHTML(){
       '10 en 10 coups ou moins, puis 9, 8, 7, 6, et 5 au-delà de 50 coups.</div>'+
   '</div>';
 }
+// ----------------------------------------------------------------
+// LA COLONNE : UN CHEMIN DE PALIERS, ET NON UNE LISTE DE LIGNES
+// ----------------------------------------------------------------
+// Elle a été trente lignes identiques, empilées, chacune avec son numéro à
+// gauche et son nom à droite : un tableau. On y lisait ce qu'on gagnerait,
+// jamais OÙ L'ON EN ÉTAIT — et c'est pourtant la seule question qu'on vient
+// poser à une voie de récompenses.
+//
+// Elle est maintenant bâtie comme la voie de récompenses d'un jeu de cartes,
+// moins la moitié : un jeu qui se vend en aligne deux, gratuite et payante ;
+// Epic Chess ne vend rien, la deuxième colonne n'aurait rien à porter. Reste
+// UN SEUL couloir, celui qu'on gagne en jouant, avec :
+//
+//   LE RAIL, à gauche  un fil continu et un losange numéroté par palier. Le
+//                      fil s'allume derrière soi et s'éteint devant : la
+//                      position se lit d'un coup d'œil, sans compter.
+//   LA VIGNETTE        le lot en grand, sur une plaque qui prend la couleur
+//                      de son coffre.
+//   LA FLÈCHE          « RÉCUPÉRER », collée sous le seul palier réellement
+//                      encaissable, pointée sur lui. On touche ce qu'on prend.
+//
+// Un palier sur cinq est taillé plus grand et porte un bandeau : la colonne
+// se lit en six tronçons de cinq plutôt qu'en trente rangées.
+
 // Le visuel d'un palier : le coffre dessiné (le même que partout ailleurs) ou
 // la carte de joker.
 function rwStepVisual(step,state){
   if(step.chest){
     const ch=chestById(step.chest);
-    return '<div class="rw-step-vis" style="--chest-c:'+ch.color+'">'+
-      chestVisual(ch,state==='rw-due'?'chest-ready':'')+'</div>';
+    return '<div class="cv-vis" style="--chest-c:'+ch.color+'">'+
+      chestVisual(ch,state==='cv-due'?'chest-ready':'')+'</div>';
   }
-  return '<div class="rw-step-vis rw-step-joker">'+jokerIcon(2.6)+'</div>';
+  return '<div class="cv-vis cv-vis-joker">'+jokerIcon(2.6)+'</div>';
+}
+// La couleur de la plaque : celle du coffre qu'elle porte. Les jokers, qui
+// n'ont pas de coffre, prennent le laiton du jeu — ils sont un choix laissé
+// au joueur, pas une créature d'une famille en particulier.
+function rwStepColor(step){
+  return step.chest?chestById(step.chest).color:'var(--gold)';
 }
 function rwStepName(step){
   if(step.chest)return chestById(step.chest).name;
   return step.jokers+' joker'+(step.jokers>1?'s':'');
 }
-// UN SEUL PALIER EST TOUCHABLE À LA FOIS, ET C'EST LE PREMIER DÛ. La colonne
-// s'encaisse dans l'ordre (colClaimNext), donc toucher le troisième palier dû
-// donnerait le premier : le geste ne rendrait pas ce qu'il désigne. Seul le
-// palier en tête porte donc « À prendre » et le clic ; ceux qui suivent sont
-// gagnés et attendent leur tour, ce qu'ils disent.
+// Le cadenas des paliers encore hors de portée : dessiné, comme toutes les
+// icônes du jeu (voir ticketIcon plus haut) — un emoji « cadenas » n'a pas la
+// même forme d'un système à l'autre.
+const CV_LOCK='<span class="cv-lock"><svg viewBox="0 0 24 24" aria-hidden="true">'+
+  '<path d="M12 2a5 5 0 0 0-5 5v3H6a1.6 1.6 0 0 0-1.6 1.6v8.8A1.6 1.6 0 0 0 6 22h12a1.6 1.6 0 0 0 1.6-1.6v-8.8A1.6 1.6 0 0 0 18 10h-1V7a5 5 0 0 0-5-5Zm0 2.4A2.6 2.6 0 0 1 14.6 7v3H9.4V7A2.6 2.6 0 0 1 12 4.4Z"/>'+
+  '</svg></span>';
+// La flèche de « RÉCUPÉRER » : elle pointe VERS LE BAS, sur la vignette sous
+// laquelle l'étiquette est posée.
+const CV_GRAB='<span class="cv-grab"><svg viewBox="0 0 24 24" aria-hidden="true">'+
+  '<path d="M12 21 4.5 11.4h4.6V3h5.8v8.4h4.6z"/></svg>Récupérer</span>';
+
+// L'ÉTAT D'UN PALIER, en cinq mots plutôt que quatre. La colonne s'encaisse
+// dans l'ordre (colClaimNext) : un palier gagné dont ce n'est pas encore le
+// tour n'est PAS touchable, et devait pouvoir le dire — d'où `cv-queued`,
+// entre « à prendre » et « prochain ».
+function rwColState(i){
+  const claimed=colClaimed(),steps=colSteps();
+  if(i<claimed)return 'cv-got';
+  if(i<steps)return (i===claimed)?'cv-due':'cv-queued';
+  if(i===steps)return 'cv-next';
+  return 'cv-far';
+}
 function rwColRowsHTML(){
-  const first=colClaimed();
-  return VICTORY_COLUMN.map((step,i)=>{
+  let html='';
+  VICTORY_COLUMN.forEach((step,i)=>{
     const state=rwColState(i);
-    const claimable=(state==='rw-due'&&i===first);
-    const mark=state==='rw-got'?'<span class="streak-mark streak-mark-ok">✓</span>'
-      :claimable?'<span class="streak-mark streak-mark-next">Touchez pour récupérer</span>'
-      :state==='rw-due'?'<span class="streak-mark rw-mark-next">Gagné · à la suite</span>'
-      :state==='rw-next'?'<span class="streak-mark rw-mark-next">Encore '+colLaurelToNext()+' laurier'+(colLaurelToNext()>1?'s':'')+'</span>':'';
-    return '<div class="rw-step '+state+(claimable?' rw-claimable':'')+'" data-idx="'+i+'">'+
-      '<div class="rw-step-num">'+(i+1)+'</div>'+
-      rwStepVisual(step,state)+
-      // PAS DE SOUS-TITRE SOUS UN COFFRE. Il portait « Victoire n° 7 », juste
-      // sous « Coffre Pion » — c'est-à-dire le numéro déjà écrit en gros dans
-      // la pastille à gauche de la ligne, dit une deuxième fois en petit. Les
-      // jokers, eux, gardent leur ligne : elle dit ce qu'ils VALENT, ce que
-      // rien d'autre sur la ligne ne montre.
-      '<div class="rw-step-txt">'+
-        '<div class="rw-step-name">'+escH(rwStepName(step))+'</div>'+
-        (step.chest?'':'<div class="rw-step-sub">Au choix : '+step.jokers+' exemplaires d\'une créature</div>')+
-      '</div>'+mark+
+    const big=((i+1)%5===0);
+    // Le bandeau ouvre le tronçon (paliers 1–5, 6–10, …), il ne le referme
+    // pas : il est donc posé AVANT le premier palier de chaque groupe.
+    if(i%5===0)
+      html+='<div class="cv-band"><span>Paliers '+(i+1)+'–'+Math.min(colTotal(),i+5)+'</span></div>';
+    const mark=state==='cv-got'?'<span class="cv-seal">✓</span>'
+      :state==='cv-queued'?'<span class="cv-mark">À la suite</span>'
+      :state==='cv-next'?'<span class="cv-mark">Encore '+colLaurelToNext()+' laurier'+(colLaurelToNext()>1?'s':'')+'</span>'
+      :state==='cv-far'?CV_LOCK:'';
+    html+='<div class="cv-row'+(big?' cv-row-big':'')+' '+state+'" data-idx="'+i+'">'+
+      '<div class="cv-rail"><div class="cv-node"><span>'+(i+1)+'</span></div></div>'+
+      '<div class="cv-tile" style="--cv-c:'+rwStepColor(step)+'">'+
+        '<div class="cv-glow"></div>'+
+        '<div class="cv-motes"><i></i><i></i><i></i></div>'+
+        rwStepVisual(step,state)+
+        // PAS DE SOUS-TITRE SOUS UN COFFRE. Il portait « Victoire n° 7 »,
+        // juste sous « Coffre Pion » — c'est-à-dire le numéro déjà écrit
+        // dans le losange à gauche, dit une deuxième fois en petit. Les
+        // jokers, eux, gardent leur ligne : elle dit ce qu'ils VALENT, ce
+        // que rien d'autre sur la vignette ne montre.
+        '<div class="cv-txt">'+
+          '<div class="cv-name">'+escH(rwStepName(step))+'</div>'+
+          (step.chest?'':'<div class="cv-sub">Au choix : '+step.jokers+' exemplaires d\'une créature</div>')+
+        '</div>'+mark+
+      '</div>'+
+      // L'ÉTIQUETTE EST POSÉE SUR LA RANGÉE, PAS SUR LA VIGNETTE. La
+      // vignette est en `overflow:hidden` (le reflet qui la balaie et le halo
+      // doivent s'arrêter à ses bords arrondis) : une étiquette qui déborde
+      // par le bas y serait coupée en deux.
+      (state==='cv-due'?CV_GRAB:'')+
     '</div>';
-  }).join('');
+  });
+  return html;
 }
 // LE PALIER SE PREND EN LE TOUCHANT. Il y avait au-dessus de la colonne un
 // bandeau qui ne portait plus qu'un bouton « Récupérer » : une rangée entière
@@ -386,8 +431,26 @@ function renderRewardsColonne(){
   // UN SEUL ÉCOUTEUR, POSÉ SUR LA BANDE. Trente paliers redessinés à chaque
   // encaissement, c'est trente écouteurs à reposer à chaque fois ; la
   // délégation survit au rendu suivant sans rien à recâbler.
-  document.getElementById('rw-col-strip')?.addEventListener('click',e=>{
-    if(e.target.closest('.rw-step.rw-claimable'))rewardsClaimColumn();
+  const strip=document.getElementById('rw-col-strip');
+  strip?.addEventListener('click',e=>{
+    if(e.target.closest('.cv-row.cv-due'))rewardsClaimColumn();
+  });
+  // ON ARRIVE SUR LE PALIER EN JEU, pas en haut de la colonne. Passé le
+  // dixième palier, ouvrir la colonne montrait des paliers pris depuis
+  // longtemps et demandait de faire défiler pour retrouver le sien.
+  rwColScrollToLive(strip);
+}
+// Le palier « en jeu » : celui à prendre s'il y en a un, sinon le prochain à
+// ouvrir, sinon le dernier de la colonne (elle est finie). On le centre dans
+// la bande — `scrollIntoView` sur un conteneur encore masqué ne fait rien,
+// d'où l'attente d'une image (même raison que voieAutoScroll, js/voie.js).
+function rwColScrollToLive(strip){
+  if(!strip)return;
+  const i=Math.min(colTotal()-1,colPending()?colClaimed():colSteps());
+  requestAnimationFrame(()=>{
+    const row=strip.querySelector('.cv-row[data-idx="'+i+'"]');
+    if(!row)return;
+    strip.scrollTop=Math.max(0,row.offsetTop-strip.clientHeight*.38);
   });
 }
 

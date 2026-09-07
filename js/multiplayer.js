@@ -1468,12 +1468,10 @@ function mpEnterPair(hostId){
 // ÉCRAN D'ATTENTE : la toile
 // ----------------------------------------------------------------
 // Attendre un adversaire est le seul moment du jeu où le joueur ne fait rien
-// et ne peut rien faire. La fenêtre de salon s'efface donc derrière une toile
-// plein écran (assets/backgrounds/duel-wait.svg, voir [MP-WAIT] dans
-// css/style.css). Vaut pour les deux attentes — la recherche automatique et
-// l'attente d'un ami sur une partie privée.
-const MP_WAIT_SCREENS=new Set(['quick']);
-
+// et ne peut rien faire : c'est donc un ÉCRAN DE CHARGEMENT, et il porte
+// exactement la carrosserie de celui du démarrage (voir [LOADING] dans
+// css/style.css) — la toile assets/backgrounds/duel-wait.webp, les braises,
+// la barre et le conseil à lire.
 function mpWaitStart(){
   mpWaitStop();
   MP.waitStartedAt=Date.now();
@@ -1492,6 +1490,13 @@ function mpWaitStop(){
 // tiré au sort à chaque entrée en attente (mpRenderTip).
 const MP_TIPS=[
   'Les pièces primordiales furent les premières expériences des Alchimistes, c\'est pour cela qu\'elles n\'ont pas de pouvoir.',
+  'Une victoire courte rapporte plus de lauriers qu\'une victoire arrachée : dix en dix coups, cinq au-delà de cinquante.',
+  'Votre armée est misée. Une créature perdue sur l\'échiquier quitte vraiment votre réserve — d\'où l\'intérêt de ne pas tout engager.',
+  'Le Monarque et le Général ne se remplacent pas : toute armée en compte un de chaque, quel que soit le reste.',
+  'Chaque créature garde le déplacement de sa pièce d\'échecs. C\'est son POUVOIR qui change tout, jamais sa marche.',
+  'La Diagonale de la Puissance se lit sur votre sommet atteint, pas sur votre classement du jour : un jalon franchi l\'est pour toujours.',
+  'Un coffre ne donne jamais une créature que votre rang ne vous permet pas encore de jouer.',
+  'Trois jokers valent trois exemplaires de la créature de votre choix, prise parmi celles que vous possédez déjà.',
 ];
 function mpRenderTip(){
   const el=document.getElementById('mp-tip');
@@ -1510,6 +1515,14 @@ function mpRenderSearch(waitS,peerCount,win){
   // seul en ligne pendant qu'on attend n'aide en rien et décourage d'attendre.
   const note=document.getElementById('mp-search-note');
   if(note)note.textContent='Recherche d\'adversaire en cours';
+  // LE CHRONOMÈTRE PREND LA PLACE DU POURCENTAGE. L'écran de démarrage
+  // affiche une barre qui monte vers une fin connue ; ici on attend
+  // quelqu'un, et il n'y a rien à annoncer d'autre que la durée écoulée —
+  // c'est la seule mesure honnête d'une attente dont personne ne connaît la
+  // fin. Passé la minute, on l'écrit en minutes : « 94 s » ne se lit plus.
+  const el=document.getElementById('mp-elapsed');
+  if(el)el.textContent=waitS<60?waitS+' s'
+    :Math.floor(waitS/60)+' min '+String(waitS%60).padStart(2,'0')+' s';
 }
 
 // ----------------------------------------------------------------
@@ -1605,15 +1618,16 @@ function mpQuickPlay(){
 }
 
 // ----------------------------------------------------------------
-// MODAL : écran de choix → écran hôte (code) ou écran invité (saisie)
+// LE SALON : UN SEUL ÉCRAN, ET C'EST L'ATTENTE
 // ----------------------------------------------------------------
-function mpShowScreen(name){
-  ['quick'].forEach(s=>{
-    const el=document.getElementById('mp-screen-'+s);
-    if(el)el.style.display=(s===name)?'':'none';
-  });
-  if(MP_WAIT_SCREENS.has(name))mpWaitStart();else mpWaitStop();
-}
+// Il en a compté quatre — un écran de CHOIX puis un par branche —, d'où une
+// fonction qui les montrait un à un et un ensemble (MP_WAIT_SCREENS) qui
+// disait lesquels étaient des attentes. Les parties privées par code sont
+// parties, et avec elles l'écran de choix : il ne reste que la recherche
+// automatique, qui EST une attente. `mpShowScreen` ne faisait donc plus que
+// démarrer l'attente sous un nom d'aiguillage, pour une seule direction.
+// Le nom subsiste (combat-intro.js le rappelle) et ne fait plus que ça.
+function mpShowScreen(){mpWaitStart();}
 
 function mpCloseModal(){
   mpWaitStop();
