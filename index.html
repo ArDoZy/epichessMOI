@@ -484,21 +484,14 @@
           <div class="jouer-player">
             <h1 class="menu-title">Epic Chess</h1>
             <div class="jouer-name" id="jouer-name"></div>
-            <!-- LA BOURSE, SOUS LE PSEUDO. La pastille qui occupait cette
-                 ligne portait le rang et l'ELO, et ouvrait la Diagonale : ces
-                 trois choses sont maintenant dans le socle de l'arène, en
-                 grand, au milieu de l'écran. Elle répétait donc, en petit et
-                 en haut, ce qu'on lit déjà en grand et au centre.
-
-                 CE QU'ELLE PORTE MAINTENANT N'ÉTAIT AFFICHÉ NULLE PART sur ce
-                 menu : les trois soldes. Combien de perles pour acheter un
-                 coffre, combien de lauriers avant le prochain palier, combien
-                 de tickets avant le prochain lot — trois nombres qu'il fallait
-                 aller ouvrir trois écrans différents pour connaître, alors
-                 qu'ils décident de ce qu'on va faire dans la minute qui suit.
-                 Chaque solde ouvre l'écran dont il vient. Rempli par
-                 renderMenuPurse() (js/accounts.js). -->
-            <div class="jouer-purse" id="jouer-purse"></div>
+            <!-- PLUS DE BOURSE ICI. Trois pastilles de solde (perles,
+                 lauriers, tickets) tenaient cette ligne : trois compteurs
+                 posés en permanence sous le pseudo, pour des nombres qu'on ne
+                 consulte qu'au moment d'ouvrir l'écran qui les dépense. Ils
+                 restent lisibles là où on les dépense — le Magasin, la
+                 Colonne des Victoires, la Rangée de la Richesse — et le menu
+                 ne porte plus que ce qu'il a à dire : qui vous êtes, et où
+                 vous en êtes. -->
           </div>
           <!-- COMBAT = affronter un autre joueur. C'est ce que les gens
                viennent chercher, donc c'est le gros bouton. S'entraîner
@@ -534,8 +527,10 @@
             <div class="ja-medal" id="jouer-arena-medal"></div>
             <div class="ja-name" id="jouer-arena-name"></div>
             <div class="ja-elo" id="jouer-arena-elo"></div>
+            <!-- LA JAUGE SEULE. La phrase « Encore 74 ELO vers Adepte »
+                 doublait en toutes lettres ce que la barre montre déjà d'un
+                 coup d'œil, sous le chiffre qui la remplit. -->
             <div class="ja-gauge"><span id="jouer-arena-fill"></span></div>
-            <div class="ja-next" id="jouer-arena-next"></div>
           </button>
           <div class="jouer-actions">
             <!-- TROIS BOUTONS, TROIS ENDROITS OÙ QUELQUE CHOSE ATTEND, ET
@@ -943,9 +938,12 @@
 
 <!-- PAGE : MES ARMÉES = composition + armée du joueur, fusionnées. UNE
      SEULE armée peut être enregistrée : composer, c'est l'enregistrer (voir
-     js/armies.js::pUpdateAll/pAutosave). Les cinq emplacements (Monarque,
-     Général, 3 pièces libres) sont tout en haut, au format carte ; le
-     catalogue des pièces déjà débloquées suit juste en dessous, en vrac
+     js/armies.js::pUpdateAll/pAutosave). Les cinq emplacements sont tout en
+     haut, au format carte, sur DEUX rangées : le Monarque et le Général en
+     grand sur la première, les 3 pièces libres sur la seconde, qu'elles
+     remplissent en entier. Le bloc défile avec la page — il ne suit plus le
+     doigt vers le bas. Le catalogue des pièces déjà débloquées suit juste
+     en dessous, en vrac
      (pas de slots par catégorie, pas d'étiquette de classe — seule la
      couleur en tête de carte le dit), trié du Monarque le moins cher au
      Sorcier le plus cher. Il n'y a plus de bouton "Valider" ni de liste

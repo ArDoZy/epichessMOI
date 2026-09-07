@@ -427,52 +427,18 @@ function renderMenuIdentity(){
   if(!nameEl)return;
   nameEl.textContent=CUR_ACC?(CUR_ACC+(ADMIN_MODE?' · ADMIN':'')):'';
   nameEl.classList.toggle('admin-elo',!!ADMIN_MODE);
-  renderMenuPurse();
   renderMenuArena();
 }
 
 // ----------------------------------------------------------------
-// LA BOURSE DU MENU
+// PLUS DE BOURSE SUR LE MENU
 // ----------------------------------------------------------------
-// Trois soldes, sous le pseudo : les PERLES (avec quoi on achète un coffre au
-// Magasin), les LAURIERS (avec quoi descend la Colonne des Victoires) et les
-// TICKETS (avec quoi avance la Rangée de la Richesse). Aucun des trois
-// n'était affiché sur ce menu : il fallait ouvrir trois écrans différents
-// pour connaître trois nombres qui décident de ce qu'on fait dans la minute
-// qui suit.
-//
-// CHAQUE SOLDE OUVRE L'ÉCRAN DONT IL VIENT — la perle le Magasin, le laurier
-// la Colonne, le ticket la Rangée. Un compteur qui n'est pas une porte est un
-// compteur qu'on relit sans jamais rien pouvoir en faire.
-//
-// La bourse se tait tant qu'il n'y a pas de compte : afficher « 0 · 0 · 0 »
-// pendant le démarrage annoncerait une misère qui n'existe pas encore.
-function renderMenuPurse(){
-  const el=document.getElementById('jouer-purse');
-  if(!el)return;
-  if(!CUR_ACC){el.innerHTML='';return;}
-  const coin=(cls,go,icon,n,lbl)=>
-    '<button class="jp-coin '+cls+'" data-go="'+go+'" aria-label="'+lbl+'">'+
-      icon+'<span>'+n+'</span></button>';
-  let html='';
-  if(typeof pearlBalance==='function'&&typeof pearlIcon==='function')
-    html+=coin('jp-pearl','magasin',pearlIcon(1.15),pearlBalance(),'Perles · ouvrir le Magasin');
-  if(typeof colLaurels==='function'&&typeof laurelIcon==='function')
-    html+=coin('jp-laurel','colonne',laurelIcon(1.15),colLaurels(),'Lauriers · ouvrir la Colonne des Victoires');
-  if(typeof ticketBalance==='function'&&typeof ticketIcon==='function')
-    html+=coin('jp-ticket','rangee',ticketIcon(1.15),ticketBalance(),'Tickets · ouvrir la Rangée de la Richesse');
-  el.innerHTML=html;
-}
-// UN SEUL ÉCOUTEUR, POSÉ SUR LA BOURSE : elle est redessinée à chaque
-// rafraîchissement du menu, et trois écouteurs à reposer à chaque fois
-// finissent toujours par en laisser un derrière.
-document.addEventListener('DOMContentLoaded',()=>{
-  document.getElementById('jouer-purse')?.addEventListener('click',e=>{
-    const go=e.target.closest('.jp-coin')?.dataset.go;
-    if(go==='magasin'&&typeof goToFace==='function')goToFace('magasin');
-    else if(go&&typeof openRewardsPage==='function')openRewardsPage(go);
-  });
-});
+// Trois pastilles de solde (perles, lauriers, tickets) tenaient la ligne
+// sous le pseudo. C'étaient trois compteurs permanents pour des nombres
+// qu'on ne lit qu'au moment d'ouvrir l'écran qui les dépense : le Magasin
+// pour les perles, la Colonne des Victoires pour les lauriers, la Rangée de
+// la Richesse pour les tickets. Chacun de ces écrans affiche son solde en
+// tête ; le menu, lui, ne porte plus que le pseudo et l'arène.
 
 // ----------------------------------------------------------------
 // L'ARÈNE, AU MILIEU DU MENU
@@ -498,7 +464,6 @@ function renderMenuArena(){
   const name=document.getElementById('jouer-arena-name');
   const eloEl=document.getElementById('jouer-arena-elo');
   const fill=document.getElementById('jouer-arena-fill');
-  const next=document.getElementById('jouer-arena-next');
   const box=document.getElementById('jouer-arena');
   if(!CUR_ACC){if(box)box.style.visibility='hidden';return;}
   if(box)box.style.visibility='';
@@ -515,14 +480,6 @@ function renderMenuArena(){
   eloEl.textContent=elo+' ELO';
   fill.style.width=pct+'%';
   fill.style.background='linear-gradient(90deg,'+rank.color+',var(--gold))';
-  // La phrase du bas dit la DISTANCE, pas le pourcentage : « encore 74 » est
-  // une information sur laquelle on peut décider de relancer une partie,
-  // « 63 % » n'en est pas une.
-  next.textContent=nextRank
-    ?(elo<rank.min
-      ?'Remontez à '+rank.min+' ELO'
-      :'Encore '+Math.max(0,nextRank.min-elo)+' ELO vers '+nextRank.name)
-    :'Rang maximum atteint';
   // L'arène RESPIRE quand le rang suivant est à portée : c'est le seul moment
   // où le menu a quelque chose à signaler de lui-même.
   box.classList.toggle('is-close',!!nextRank&&pct>=80);

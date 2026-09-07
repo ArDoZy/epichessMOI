@@ -658,11 +658,16 @@ body.has-acc .builder-inner{padding-top:var(--page-top)}
 .builder-topbar:empty{display:none}
 .theme-btn{padding:7px 14px;border:1px solid var(--border2);border-radius:8px;background:var(--surface);color:var(--text);cursor:pointer;font-size:12px;font-family:var(--f-ui);transition:all .2s;display:flex;align-items:center;gap:6px}
 .theme-btn:hover{border-color:var(--gold);color:var(--gold)}
-/* --- LA BARRE DE COMPOSITION, COLLANTE ---------------------------
-   Elle porte le budget et les cinq emplacements, et reste sous les yeux
-   pendant tout le parcours du catalogue. Elle est opaque et occupe la même
-   largeur que les cartes : celles-ci disparaissent proprement dessous. */
-.army-box{position:sticky;top:calc(var(--chrome-h) + var(--safe-t));z-index:20;
+/* --- LA BARRE DE COMPOSITION, EN TÊTE DE PAGE ET NON COLLÉE -------
+   Elle porte le budget et les cinq emplacements. Elle RESTAIT sous les yeux
+   pendant tout le parcours du catalogue (position:sticky) : depuis que les
+   cinq emplacements tiennent deux rangées de vraies cartes, elle occuperait
+   la moitié de l'écran en permanence, et le catalogue défilerait dans la
+   moitié qui reste. Elle défile donc avec la page : on compose en haut, on
+   choisit en bas, et descendre vers le catalogue rend l'écran entier aux
+   cartes qu'on est en train de regarder.
+   Elle reste opaque et à la même largeur que les cartes. */
+.army-box{position:relative;z-index:20;
   background:var(--surface);border:1px solid var(--border);border-radius:14px;
   padding:8px 14px 14px;margin-bottom:16px;
   box-shadow:0 6px 20px -10px rgba(0,0,0,.7),0 1px 2px rgba(0,0,0,.22)}
@@ -725,19 +730,32 @@ body.has-acc .builder-inner{padding-top:var(--page-top)}
   background:linear-gradient(180deg,transparent 0,var(--bg) 14px,var(--bg) 100%)}
 .bd-action .btn{height:52px;border-radius:12px;font-size:16px;font-weight:650}
 
-/* --- LES CINQ EMPLACEMENTS -------------------------------------------
-   UN SEUL FORMAT, POUR LES CINQ. Le Monarque et le Général avaient leur
-   propre gabarit (carré, plus large, texte d'un cran plus gros) et les trois
-   pièces libres un autre : cinq emplacements, trois formes, et une barre de
-   composition qui ne se lisait plus comme une rangée. Les cinq sont
-   maintenant au même ratio 3/4 que les cartes du catalogue, et une pièce
-   posée EST sa carte du catalogue (elle porte .piece-card, voir
-   [PIECE-CARD]) — c'est la couleur de rareté, et elle seule, qui distingue
-   le Monarque du reste.
+/* --- LES CINQ EMPLACEMENTS, EN DEUX RANGÉES ---------------------------
+   UN SEUL FORMAT, POUR LES CINQ — le même ratio 3/4 que les cartes du
+   catalogue. Une pièce posée EST sa carte du catalogue (elle porte
+   .piece-card, voir [PIECE-CARD]) : c'est la couleur de rareté, et elle
+   seule, qui distingue le Monarque du reste. Ce qui change d'une rangée à
+   l'autre, c'est la TAILLE de la carte, jamais sa forme.
+
+   L'ARMÉE SE LIT COMME ELLE SE COMPOSE : d'abord les deux pièces obligatoires
+   (Monarque, Général), puis les trois libres. Les cinq alignées en une seule
+   rangée les donnaient toutes pour équivalentes, à un cinquième de largeur
+   d'écran chacune — trop petites pour qu'on distingue une créature de la
+   suivante, et muettes sur ce qui n'est pas au choix.
+   La grille est donc en SIX colonnes : la première rangée en donne trois à
+   chacune des deux pièces majeures (une demi-largeur chacune, en grand), la
+   seconde en donne deux à chacune des trois pièces libres (un tiers de
+   largeur chacune). Les deux rangées remplissent la largeur en entier ; les
+   cartes du bas sont plus petites que celles du haut parce qu'elles sont
+   trois, pas parce qu'elles ont un autre gabarit.
+   L'ordre du DOM (mon, gen, puis les trois libres) porte à lui seul le
+   placement — voir pUpdSlots (js/armies.js) et updSlots (js/builder.js).
    Le rembourrage en haut et à gauche de la grille laisse la place aux
    pastilles de coût, qui débordent de 8 px hors des cartes. */
-.comp-grid{display:grid;grid-template-columns:repeat(5,1fr);
+.comp-grid{display:grid;grid-template-columns:repeat(6,1fr);
   gap:clamp(15px,4vw,18px);padding:10px 2px 2px 10px}
+.comp-grid>*:nth-child(-n+2){grid-column:span 3}
+.comp-grid>*:nth-child(n+3){grid-column:span 2}
 .comp-slot{position:relative;aspect-ratio:3/4;min-width:0;min-height:0;
   background:var(--bg);border:2px dashed var(--border);border-radius:11px;
   padding:8% 6%;display:flex;flex-direction:column;align-items:center;justify-content:center;
@@ -2052,8 +2070,8 @@ body.light .cube-face[data-face="jouer"]{background:
   background:rgba(4,7,10,.7);box-shadow:inset 0 .14em .4em rgba(0,0,0,.85)}
 .ja-gauge span{display:block;height:100%;width:0;border-radius:999px;
   transition:width .8s cubic-bezier(.34,1.4,.64,1)}
-.ja-next{font-family:var(--f-ui);font-size:min(2.9vw,11px);font-weight:650;
-  letter-spacing:.04em;color:var(--muted)}
+/* Plus de ligne « Encore N ELO vers X » sous la jauge : elle écrivait en
+   toutes lettres ce que la barre montre déjà. */
 
 @media(prefers-reduced-motion:reduce){
   .ja-medal,.ja-motes i{animation:none}
@@ -4009,23 +4027,10 @@ body.light .jt-fx{mix-blend-mode:normal;filter:saturate(1.45) brightness(.82)}
   font-size:clamp(14px,3.4vw,20px);letter-spacing:.16em;line-height:1.1;
   text-transform:uppercase;color:var(--muted);
   max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-/* LA BOURSE : trois soldes, trois portes. Elle a remplacé la pastille
-   d'identité, qui répétait en petit et en haut (rang, ELO) ce que le socle de
-   l'arène dit maintenant en grand et au centre. */
-.jouer-purse{display:flex;align-items:center;justify-content:center;
-  gap:clamp(6px,2vw,12px);pointer-events:auto;flex-wrap:wrap}
-.jp-coin{display:inline-flex;align-items:center;gap:.4em;cursor:pointer;
-  height:30px;padding:0 .7em 0 .55em;border-radius:999px;
-  background:rgba(10,15,19,.55);border:1px solid rgba(255,255,255,.12);
-  backdrop-filter:blur(8px);
-  font-family:var(--f-ui);font-size:min(3.2vw,12.5px);font-weight:800;
-  color:var(--text);font-variant-numeric:tabular-nums;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.09),0 .3em .8em -.4em rgba(0,0,0,.9);
-  transition:border-color .16s ease,background .16s ease,transform .12s ease}
-.jp-coin:hover{border-color:rgba(193,154,69,.55);background:rgba(193,154,69,.14)}
-.jp-coin:active{transform:scale(.95)}
-.jp-coin svg{display:block;flex:0 0 auto}
-.jp-laurel,.jp-ticket{color:var(--gold2)}
+/* LA BOURSE A QUITTÉ LE MENU. Ses trois pastilles (perles, lauriers,
+   tickets) tenaient la ligne sous le pseudo pour des soldes qu'on ne lit
+   qu'en ouvrant l'écran qui les dépense — et chacun de ces écrans affiche
+   déjà le sien. */
 /* Le pseudo passe en blanc sur un compte admin : c'est la seule chose que le
    menu ait à dire d'un bac à sable, et elle doit se voir. */
 .jouer-name.admin-elo{color:#fff}
@@ -6569,15 +6574,18 @@ body.light .art-banner::before{opacity:.55;filter:saturate(.7)}
   .sp-slider{width:min(46vw,140px)}
 
   /* --- Composition d'armée --- */
-  /* Les cinq emplacements restent sur UNE rangée : une armée se lit d'un
-     bloc, pas en deux moitiés. Ils rétrécissent au lieu de passer à la
-     ligne, et perdent leur libellé, que la position rend évident. */
+  /* Deux rangées : Monarque et Général en grand (une demi-largeur chacun),
+     puis les trois pièces libres qui remplissent la seconde rangée en
+     entier. Six colonnes, et les emplacements les enjambent — voir
+     [BUILDER]. */
   /* L'écart de la grille doit loger DEUX demi-pastilles voisines : celle de
      quantité de la carte de gauche et celle de coût de la carte de droite
      débordent chacune de 7 px vers lui. En dessous, elles se touchent. */
-  .comp-grid{grid-template-columns:repeat(5,1fr);gap:16px;padding:9px 1px 1px 9px}
+  .comp-grid{grid-template-columns:repeat(6,1fr);gap:16px;padding:9px 1px 1px 9px}
   .comp-slot{padding:5% 4%;border-radius:9px}
-  .comp-slot .cs-label{font-size:clamp(6px,1.75vw,9px);letter-spacing:0;
+  /* Les emplacements vides ne sont plus au cinquième de la largeur d'écran :
+     leur libellé a la place de se lire. */
+  .comp-slot .cs-label{font-size:clamp(9px,2.6vw,13px);letter-spacing:.02em;
     padding:0 6%;line-height:1.2}
   .comp-slot .cs-rm{width:16px;height:16px;bottom:2px;right:2px}
   .comp-slot .cs-rm svg{width:8px;height:8px}
@@ -6872,15 +6880,15 @@ body.desk .piece-card:hover .piece-card-actions{display:flex}
    n'existe pas — on ne traverse pas, on appuie. */
 body.desk .piece-card-actions{top:100%}
 
-/* Les cinq emplacements d'armée gardent une taille de CARTE. Leur grille est
-   en cinq colonnes égales (repeat(5,1fr)) au rapport 3/4 : elle suit donc la
-   largeur de son conteneur, et sur 1280 px chaque emplacement montait à
-   240×320 px — la moitié de l'écran occupée par cinq rectangles dont trois
-   sont vides. La rangée est bornée et centrée, à la même largeur pour
-   l'armée de l'IA (#page-builder) et celle du joueur (#page-armies) : c'est
-   le même objet, il n'y a plus de raison qu'il change de taille d'un écran à
-   l'autre. */
-body.desk .comp-grid{max-width:700px;margin-left:auto;margin-right:auto}
+/* Les cinq emplacements d'armée gardent une taille de CARTE. Leur grille suit
+   la largeur de son conteneur : sur 1280 px, une carte de première rangée
+   (une demi-largeur) monterait à 630×840 px — une affiche, pas une carte. La
+   grille est donc bornée et centrée, à la même largeur pour l'armée de l'IA
+   (#page-builder) et celle du joueur (#page-armies) : c'est le même objet, il
+   n'y a plus de raison qu'il change de taille d'un écran à l'autre. La borne
+   est celle qui donne à la rangée du haut la taille d'une grande carte
+   (~220×293 px) sans dépasser. */
+body.desk .comp-grid{max-width:480px;margin-left:auto;margin-right:auto}
 
 /* [SERVER] ======================================================== */
 /* Le voile de démarrage et l'avertissement de liaison (js/server.js,
