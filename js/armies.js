@@ -87,19 +87,23 @@ function pAutosave(){
 // LES CINQ EMPLACEMENTS, TOUT EN HAUT — UN SEUL FORMAT
 // ----------------------------------------------------------------
 // UNE PIÈCE POSÉE EST LA MÊME CARTE QUE DANS LE CATALOGUE, ET LES CINQ ONT
-// LE MÊME GABARIT. Les emplacements étaient rangés sur deux rangées de
-// tailles différentes : Monarque et Général en grand et en carré sur la
-// première (le Monarque plus large que le Général), les trois pièces libres
-// en portrait sur la seconde. Cinq pièces, trois formats — et deux d'entre
-// eux n'existaient nulle part ailleurs dans le jeu. La hiérarchie qu'on
-// croyait dessiner par la taille se lisait surtout comme une irrégularité,
-// et elle coûtait la moitié de l'écran avant même d'arriver au catalogue.
-//
-// Les cinq emplacements sont donc CINQ CARTES IDENTIQUES, en une rangée,
-// au même ratio 3/4 que celles du catalogue (voir .comp-grid dans
-// css/style.css [BUILDER], et pieceCardFaceHTML dans js/piece-card.js). Ce
-// qui distingue le Monarque du reste est ce qui distingue toutes les pièces
-// entre elles : sa couleur de rareté, sur sa bordure et sur son bandeau.
+// UN SEUL GABARIT, DEUX RANGÉES. Les cinq emplacements sont cinq CARTES au
+// même ratio 3/4 que celles du catalogue (voir .comp-grid dans
+// css/style.css [BUILDER], et pieceCardFaceHTML dans js/piece-card.js) : le
+// format ne change jamais d'un emplacement à l'autre, seule la taille change
+// d'une rangée à l'autre.
+//   1ʳᵉ rangée : le Monarque puis le Général, en grand (une demi-largeur
+//                chacun) — les deux pièces qu'on ne choisit pas de ne pas
+//                avoir.
+//   2ᵉ rangée  : les trois pièces libres, dans l'ordre, un tiers de largeur
+//                chacune — un peu plus petites, mais elles remplissent la
+//                rangée en entier.
+// C'est l'ORDRE DU DOM qui porte cette disposition (les deux premiers
+// enfants enjambent trois colonnes sur six, les trois suivants deux) : rien
+// à faire ici que de les émettre dans cet ordre.
+// Ce qui distingue le Monarque du reste est ce qui distingue toutes les
+// pièces entre elles : sa couleur de rareté, sur sa bordure et sur son
+// bandeau.
 //
 // L'ORDRE DES TROIS PIÈCES LIBRES N'EST PAS DÉCORATIF : c'est lui qui décide
 // de leur place sur le plateau (derivePlacements, js/builder.js), d'où le
