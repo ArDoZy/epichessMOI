@@ -55,7 +55,7 @@ window.removePiece=(type,idx)=>{
 // ----------------------------------------------------------------
 // UNE PIÈCE POSÉE DANS L'ARMÉE EST EXACTEMENT LA MÊME CARTE QUE DANS LE
 // CATALOGUE : même face (pieceCardFaceHTML, js/piece-card.js), même ratio
-// 3/4, même taille — Monarque et Général compris, qui avaient jusqu'ici leur
+// portrait 2/3, même taille — Monarque et Général compris, qui avaient jusqu'ici leur
 // propre gabarit. On reconnaît donc au premier coup d'œil, dans la barre de
 // composition, la carte qu'on vient de choisir plus bas.
 //

@@ -88,7 +88,7 @@ function pAutosave(){
 // ----------------------------------------------------------------
 // UNE PIÈCE POSÉE EST LA MÊME CARTE QUE DANS LE CATALOGUE, ET LES CINQ ONT
 // UN SEUL GABARIT, DEUX RANGÉES. Les cinq emplacements sont cinq CARTES au
-// même ratio 3/4 que celles du catalogue (voir .comp-grid dans
+// même ratio portrait 2/3 que celles du catalogue (voir .comp-grid dans
 // css/style.css [BUILDER], et pieceCardFaceHTML dans js/piece-card.js) : le
 // format ne change jamais d'un emplacement à l'autre, seule la taille change
 // d'une rangée à l'autre.
