@@ -37,7 +37,7 @@ seules disponibles sont :
 | Demandé dans le prompt | Pixels | Pour quoi |
 |---|---|---|
 | « format paysage » | 1536 × 1024 | fonds d'écran, bannières, flammes |
-| « format portrait » | 1024 × 1536 | pages du Lore, planches de coffre |
+| « format portrait » | 1024 × 1536 | pages du Lore, planches de coffre, **cartes de créatures** |
 | « format carré »   | 1024 × 1024 | médaillons, ornements, textures, effets |
 
 Chaque prompt ci-dessous dit lequel demander. **Ne redimensionne rien à la
@@ -109,31 +109,58 @@ Tu vas me générer une série d'illustrations pour un jeu d'échecs
 fantastique. Voici la CHARTE GRAPHIQUE, applique-la à TOUTES les images que
 je vais te demander, sans que j'aie à la répéter.
 
-UNIVERS : un atelier d'alchimiste-forgeron, éclairé à la lampe à huile et à
-la forge. Ni médiéval sale, ni steampunk à engrenages : un lieu de travail
-savant, du métal ouvré, du verre, de la pierre taillée, des braises.
+UNIVERS : un monde de haute fantasy héroïque dont le cœur est un atelier
+d'alchimiste-forgeron, éclairé à la lampe à huile et à la forge. Ni médiéval
+sale, ni steampunk à engrenages : un lieu de travail savant, du métal ouvré,
+du verre, de la pierre taillée, des braises — et, dehors, des créatures de
+légende en armure d'or.
 
-TECHNIQUE : illustration peinte numérique, matières lisibles (marbre,
-laiton, cuivre oxydé, chêne huilé, ardoise). Coups de pinceau visibles.
-PAS de rendu 3D plastique, PAS de style cartoon, PAS de photographie, PAS
-de pixel art, PAS d'anime.
+DEUX REGISTRES, ET UN SEUL MONDE. Je vais te demander deux familles
+d'images, qui n'ont PAS le même réglage :
+- les DÉCORS (fonds d'écran, biomes, textures) : calmes, sombres, contraste
+  moyen, centre vide. Ils passent DERRIÈRE l'interface, à 30 % d'opacité ;
+- les CARTES ET LES CRÉATURES (illustrations de pièces, portraits, coffres,
+  bannières) : saturées, éclairées comme une carte à collectionner, un sujet
+  vivant en pleine posture qui remplit le cadre.
+Même monde, même palette, même touche : c'est le RÉGLAGE qui change, jamais
+l'univers. Je te dirai à chaque fois duquel il s'agit.
+
+TECHNIQUE : illustration peinte numérique, matières lisibles (or, marbre,
+laiton, cuivre oxydé, chêne huilé, ardoise, cuir). Coups de pinceau
+visibles. PAS de rendu 3D plastique, PAS de style cartoon, PAS de
+photographie, PAS de pixel art, PAS d'anime.
 
 PALETTE, stricte, et c'est le point le plus important :
-- fonds et ombres : ardoise bleu-vert, de #1c242b à #31404a ;
-- métaux et lumière : laiton doré chaud, #d0a950 et #f0d189 ;
+- fonds et ombres : bleu nuit à ardoise bleu-vert, de #101a33 à #31404a ;
+- métaux et lumière : OR chaud, #d0a950 et #f0d189 — c'est le métal du jeu,
+  il est partout : bordures, ferrures, ornements, lettres d'enseigne ;
 - lueurs d'alchimie : vert-de-gris de cuivre oxydé, #3fd0b2 ;
-- feu et danger : braise orangée, #f26a3d.
-Aucune autre couleur dominante. Pas de magenta, pas de bleu roi, pas de
-vert sapin.
+- feu et danger : braise orangée, #f26a3d ;
+- accents de rareté, UNIQUEMENT sur les cartes de créatures, et un seul par
+  image : bleu roi #7aa8e6, or orangé #f0a052, vert clair #a6c65f, rouge
+  braise #e0705f, violet #b78ee6.
+Aucune autre couleur dominante. Pas de magenta, pas de vert sapin.
 
 LUMIÈRE : chaude et dirigée (une source, latérale ou basse), ombres
-franchement BLEUES. Contraste MOYEN : l'image doit rester lisible. Ni un
-aplat noir, ni une image délavée. Pas de vignette noire dans les angles.
+franchement BLEUES. Contraste MOYEN sur les décors, FRANC sur les
+créatures. Ni un aplat noir, ni une image délavée. Pas de vignette noire
+dans les angles.
 
 INTERDITS ABSOLUS, sur toutes les images : aucun texte, aucune lettre,
 aucun chiffre, aucun symbole écrit, aucune signature, aucun watermark,
 aucun logo, aucun cadre décoratif ajouté, aucune bordure, aucun personnage
 qui regarde l'objectif sauf si je le demande.
+
+TROIS INTERDITS DE PLUS, qui ont déjà gâché des planches :
+- JAMAIS de noir et blanc, jamais de camaïeu de gris, jamais de sépia.
+  Chaque image porte de la couleur, et au minimum l'or de la palette. Une
+  grotte grise et une statue de marbre blanche ne peuvent pas tenir dans le
+  même écran ;
+- JAMAIS une STATUE, une sculpture, un buste, une figurine ou une pièce
+  d'échecs sculptée quand je demande une créature : ce sont des êtres
+  VIVANTS, qui respirent, dont l'étoffe bouge et dont le regard porte ;
+- JAMAIS de rendu « photo de musée » : pas de socle, pas de cartel, pas de
+  fond de studio neutre.
 
 Réponds juste « compris », et attends mes demandes une par une.
 ```
@@ -991,24 +1018,54 @@ Puis décommenter la ligne correspondante en tête de `js/chest-break.js`.
 ## 9 bis. LES ILLUSTRATIONS DE CRÉATURES — `assets/pieces/`
 
 Une image par créature, nommée comme son identifiant dans
-`js/data-pieces.js` (`meduse.png`, `preux-chevalier.png`…). La liste
-complète est dans **`assets/pieces/README.md`**.
+`js/data-pieces.js` (`meduse.png`, `preux-chevalier.png`…). **Le sujet de
+chacune des dix-neuf est écrit dans `assets/pieces/README.md`**, avec la
+couleur de lueur de sa classe : c'est ce tableau qu'on recopie, ligne par
+ligne, dans le prompt.
 
 Elles habillent les **cartes du catalogue** de composition d'armée, pas le
 plateau : une pièce en partie garde son SVG monochrome, qui doit se lire sur
 une case de quarante pixels. Le dossier est vide aujourd'hui, et le jeu s'en
 passe — la carte retombe toute seule sur ce même SVG.
 
+**Format PORTRAIT (1024 × 1536), fond PLEIN.** L'illustration n'est plus
+posée *dans* la carte, elle *est* la carte : elle va d'un bord à l'autre,
+sous le bandeau du nom, et le jeu la rogne d'une lisière en haut et en bas
+(`object-fit:cover`). C'est ce qui a changé depuis la première fournée, où
+les créatures sortaient carrées, sur fond transparent, et flottaient au
+milieu d'un vide gris.
+
 Avec le bloc de style en tête de conversation :
 
 ```
-Format carré. La créature ENTIÈRE, centrée, vue de trois quarts, tenant
-dans le cadre sans toucher les bords, sur fond transparent (PNG à canal
-alpha) ou à défaut sur fond sombre uni. Aucun décor, aucun sol, aucune
-ombre portée au sol. Lumière franche venant du haut à gauche. La
-silhouette doit rester reconnaissable réduite à soixante pixels de large.
-SUJET : … (voir le tableau de assets/pieces/README.md)
+Registre CARTE. Format portrait. Illustration de carte à collectionner de
+haute fantasy héroïque : la créature VIVANTE, entière, centrée, en pleine
+posture, vue de face ou de trois quarts en légère contre-plongée, occupant
+les deux tiers de la hauteur. Ce n'est ni une statue, ni une figurine, ni
+une pièce d'échecs sculptée.
+Armure et étoffes richement ouvragées, or et gemmes, magie visible (halo,
+runes, particules qui montent). Couleurs saturées, lumière franche venant
+du haut à gauche, ombres bleues.
+FOND : peint jusqu'aux quatre bords, aucune transparence. Une lueur
+COULEUR_DE_CLASSE derrière le sujet, sombre sur les bords, claire au
+centre, avec de la fumée et deux ou trois éclats lumineux. Aucun décor
+reconnaissable, aucun sol, aucun horizon.
+CADRAGE : 12 % de marge vide en haut et en bas (l'image sera rognée là), et
+rien d'important dans les deux coins du haut. La silhouette doit rester
+lisible réduite à soixante pixels de large.
+SUJET : … (colonne « Sujet » de assets/pieces/README.md)
 ```
+
+Remplace `COULEUR_DE_CLASSE` par la couleur de la classe de la créature —
+bleu roi `#7aa8e6` (Monarque), or orangé `#f0a052` (Général), vert clair
+`#a6c65f` (Primordiale), rouge braise `#e0705f` (Brute), violet `#b78ee6`
+(Sorcier). C'est la couleur que la carte pose déjà en bordure et en bandeau
+de nom : une lueur d'une autre couleur jure immédiatement avec son cadre.
+
+**Par quoi commencer :** les cinq créatures qu'on voit dès la première
+partie — `roi.png`, `dame.png`, `garde-eau.png`, `garde-feu.png`,
+`fourmi.png`. Une grille de composition où cinq cartes sur dix-neuf sont
+illustrées se lit déjà comme une grille de cartes.
 
 ---
 
@@ -1036,7 +1093,8 @@ assets/ranks/        bois.png  pierre.png  bronze.png  acier.png
 assets/adversaires/  cendre.png  suie.png  bruyere.png  orpiment.png
                      vitriol.png  cinabre.png  antimoine.png  mercure.png
                      plombagine.png  salamandre.png  instructeur.png  athanor.png
-assets/pieces/       <id>.png, un par créature — voir pieces/README.md
+assets/pieces/       <id>.png, un par créature, format PORTRAIT
+                     — les 19 sujets sont dans pieces/README.md
 assets/chests/dame/  01-intact.webp … 05-eclats.webp
 assets/chests/roi/   01-intact.webp … 05-eclats.webp
 ```

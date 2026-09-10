@@ -731,7 +731,7 @@ body.has-acc .builder-inner{padding-top:var(--page-top)}
 .bd-action .btn{height:52px;border-radius:12px;font-size:16px;font-weight:650}
 
 /* --- LES CINQ EMPLACEMENTS, EN DEUX RANGÉES ---------------------------
-   UN SEUL FORMAT, POUR LES CINQ — le même ratio 3/4 que les cartes du
+   UN SEUL FORMAT, POUR LES CINQ — le même ratio portrait 2/3 que les cartes du
    catalogue. Une pièce posée EST sa carte du catalogue (elle porte
    .piece-card, voir [PIECE-CARD]) : c'est la couleur de rareté, et elle
    seule, qui distingue le Monarque du reste. Ce qui change d'une rangée à
@@ -756,7 +756,7 @@ body.has-acc .builder-inner{padding-top:var(--page-top)}
   gap:clamp(15px,4vw,18px);padding:10px 2px 2px 10px}
 .comp-grid>*:nth-child(-n+2){grid-column:span 3}
 .comp-grid>*:nth-child(n+3){grid-column:span 2}
-.comp-slot{position:relative;aspect-ratio:3/4;min-width:0;min-height:0;
+.comp-slot{position:relative;aspect-ratio:2/3;min-width:0;min-height:0;
   background:var(--bg);border:2px dashed var(--border);border-radius:11px;
   padding:8% 6%;display:flex;flex-direction:column;align-items:center;justify-content:center;
   transition:border-color .2s ease,background .2s ease}
@@ -5910,13 +5910,13 @@ body.light .adv-advised{color:#f6f5f1}
    (js/piece-card.js), et UN SEUL GABARIT POUR TOUTES LES PIÈCES. Le Monarque
    et le Général avaient un rendu à part dans les emplacements d'armée —
    carré, plus large, texte d'un cran plus gros — pendant que les trois
-   pièces libres et tout le catalogue tenaient dans un portrait 3/4 : cinq
+   pièces libres et tout le catalogue tenaient dans un portrait : cinq
    pièces, trois gabarits, une grille qui ne se lisait plus comme une grille.
    Il n'y a plus d'exception : même ratio, même taille, mêmes pastilles pour
    toutes. Ce qui distingue une pièce d'une autre est SA COULEUR DE RARETÉ.
 
    L'ANATOMIE, empruntée à la carte de Clash Royale :
-     · l'ILLUSTRATION en haut, sur 72 % de la hauteur ;
+     · l'ILLUSTRATION en haut, sur 76 % de la hauteur, D'UN BORD À L'AUTRE ;
      · le BANDEAU DU NOM en bas, PLEIN, dans la couleur de rareté ;
      · deux PASTILLES rondes dans les coins du haut, qui DÉBORDENT du cadre
        (-8 px) : le coût à gauche, le nombre d'exemplaires à droite.
@@ -5946,10 +5946,11 @@ body.light .adv-advised{color:#f6f5f1}
 .rarity-champion{--rarity:var(--monarque)}
 
 .piece-card{position:relative;display:flex;flex-direction:column;
-  aspect-ratio:3/4;border-radius:11px;overflow:visible;container-type:inline-size;
+  aspect-ratio:2/3;border-radius:11px;overflow:visible;container-type:inline-size;
   background:linear-gradient(180deg,var(--surface2) 0%,var(--surface) 62%);
   border:2px solid color-mix(in srgb,var(--rarity,var(--muted)) 62%,transparent);
-  box-shadow:0 3px 0 -1px rgba(0,0,0,.42),0 6px 14px -6px rgba(0,0,0,.6);
+  box-shadow:0 3px 0 -1px rgba(0,0,0,.42),0 6px 14px -6px rgba(0,0,0,.6),
+    inset 0 0 0 1px rgba(240,209,137,.16);
   cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent;
   transition:transform .16s ease,border-color .2s ease,box-shadow .2s ease}
 /* Le repli, pour une carte à qui personne n'a donné de rareté. Il est posé
@@ -5966,20 +5967,24 @@ body.light .adv-advised{color:#f6f5f1}
       bandeau trop mince rend le nom illisible avant que le dessin ne gagne
       quoi que ce soit. `min-height:0` : sans lui, une image haute impose sa
       taille naturelle au conteneur flex et fait déborder la carte. */
-.piece-card-art{position:relative;flex:0 0 72%;height:72%;min-height:0;width:100%;
+.piece-card-art{position:relative;flex:0 0 76%;height:76%;min-height:0;width:100%;
   display:flex;align-items:center;justify-content:center;
   overflow:hidden;border-radius:9px 9px 0 0;line-height:0;font-size:0;
-  padding:14% 8% 4%;
   background:radial-gradient(ellipse at 50% 38%,
     color-mix(in srgb,var(--rarity) 22%,transparent) 0%,transparent 72%)}
-.piece-card-img{width:100%;height:100%;object-fit:contain;display:block}
+/* L'ILLUSTRATION VA D'UN BORD À L'AUTRE (`cover`), elle ne flotte plus au
+   milieu d'un rembourrage (`contain`). Le cadre est un peu moins haut que la
+   planche 1024×1536 qu'on y verse : elle perd une lisière en haut et en bas,
+   ce dont les prompts tiennent compte (12 % de marge, voir
+   assets/pieces/README.md). */
+.piece-card-img{width:100%;height:100%;object-fit:cover;display:block}
 /* LE REPLI SUR LE SVG, SANS UNE LIGNE DE SCRIPT. Tant que l'<img> est là, le
    SVG monochrome reste caché. Si le PNG manque, `onerror` retire l'<img>
    (js/piece-card.js) : le SVG n'a plus de voisin précédent, cette règle ne
    s'applique plus, et il réapparaît de lui-même. */
 .piece-card-img+.piece-card-svg{display:none}
 .piece-card-svg{display:flex;align-items:center;justify-content:center;
-  width:100%;height:100%}
+  width:100%;height:100%;box-sizing:border-box;padding:16% 12% 8%}
 .piece-card-svg .pc-icon{width:100%;height:100%;display:flex;align-items:center;justify-content:center}
 .piece-card-svg .pc-svg{width:100%;height:100%;max-height:100%}
 
@@ -6000,11 +6005,11 @@ body.light .adv-advised{color:#f6f5f1}
      pour un emplacement d'armée (un cinquième) : un nom de deux lignes
      tenait dans le bandeau de la première et débordait de celui du second,
      où il se faisait rogner d'un pixel en haut. `cqw` mesure la carte
-     elle-même — 2 lignes tiennent alors dans les 28 % du bandeau à toutes
+     elle-même — 2 lignes tiennent alors dans les 24 % du bandeau à toutes
      les tailles. La ligne en `vw` reste le repli des navigateurs sans
      requêtes de conteneur. */
   font-size:clamp(8.5px,2.6vw,12px);
-  font-size:min(13px,16cqw)}
+  font-size:min(12.5px,15cqw)}
 /* Le nom est dans un <span> à lui, et non posé à même le bandeau : le
    bandeau CENTRE (flex) et le span TRONQUE à deux lignes (-webkit-box). Les
    deux `display` sont incompatibles sur un seul élément — le second annulait

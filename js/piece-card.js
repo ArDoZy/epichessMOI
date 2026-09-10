@@ -12,12 +12,14 @@
 //   La carte est bâtie comme une carte de Clash Royale, et TOUTES les pièces
 //   ont exactement la même — le Monarque et le Général compris, qui avaient
 //   droit à un gabarit à part dans les emplacements d'armée :
-//     · l'ILLUSTRATION en haut, sur 72 % de la hauteur (assets/pieces/{id}.png,
-//       et à défaut le SVG monochrome, voir pieceCardArtHTML) ;
+//     · l'ILLUSTRATION en haut, sur 76 % de la hauteur et D'UN BORD À L'AUTRE
+//       (assets/pieces/{id}.png, une planche PORTRAIT 1024×1536 posée en
+//       `object-fit:cover` ; à défaut le SVG monochrome, voir
+//       pieceCardArtHTML) ;
 //     · le BANDEAU DU NOM en bas, plein, dans la couleur de RARETÉ ;
 //     · deux PASTILLES en surimpression dans les coins du haut, qui débordent
 //       du cadre : le coût à gauche, le nombre d'exemplaires à droite.
-//   Format PORTRAIT 3/4 et compact : quatre par rangée sur un téléphone, ce
+//   Format PORTRAIT 2/3 et compact : quatre par rangée sur un téléphone, ce
 //   qui permet de parcourir le catalogue au pouce sans jamais défiler à
 //   l'aveugle.
 //
@@ -183,12 +185,14 @@ function pieceStockInfo(p){
 // Général avaient droit à un rendu à part dans les emplacements d'armée
 // (carré, plus large, texte plus gros) : cinq pièces, trois gabarits, et une
 // grille qui ne se lisait plus comme une grille. Ils passent au même moule
-// que les autres — même ratio 3/4, même taille, mêmes pastilles. Ce qui les
+// que les autres — même ratio portrait 2/3, même taille, mêmes pastilles. Ce qui les
 // distingue est ce qui distingue toutes les pièces entre elles : LA COULEUR
 // DE RARETÉ, et rien d'autre.
 //
 // Trois éléments, toujours dans cet ordre :
-//   1. l'ILLUSTRATION, en haut, qui prend 72 % de la hauteur ;
+//   1. l'ILLUSTRATION, en haut, qui prend 76 % de la hauteur, et qui va d'un
+//      bord à l'autre du cadre — c'est une planche portrait pleine, pas une
+//      vignette posée au milieu (voir assets/pieces/README.md) ;
 //   2. le BANDEAU DU NOM, en bas, plein, dans la couleur de rareté ;
 //   3. les deux PASTILLES en surimpression dans les coins du haut — le coût
 //      à gauche, le nombre d'exemplaires à droite. Elles DÉBORDENT du cadre
