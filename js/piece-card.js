@@ -13,9 +13,10 @@
 //   ont exactement la même — le Monarque et le Général compris, qui avaient
 //   droit à un gabarit à part dans les emplacements d'armée :
 //     · l'ILLUSTRATION en haut, sur 76 % de la hauteur et D'UN BORD À L'AUTRE
-//       (assets/pieces/{id}.png, une planche PORTRAIT 1024×1536 posée en
-//       `object-fit:cover` ; à défaut le SVG monochrome, voir
-//       pieceCardArtHTML) ;
+//       (assets/pieces/{id}.webp, une planche PORTRAIT peinte en 1024×1536
+//       puis ramenée à 640×960 par tools/opt-images.js, posée en
+//       `object-fit:cover` ; à défaut le .png d'origine, puis le SVG
+//       monochrome — voir pieceCardArtHTML) ;
 //     · le BANDEAU DU NOM en bas, plein, dans la couleur de RARETÉ ;
 //     · deux PASTILLES en surimpression dans les coins du haut, qui débordent
 //       du cadre : le coût à gauche, le nombre d'exemplaires à droite.
@@ -149,22 +150,39 @@ function pieceRarityClass(p){return 'rarity-'+(CLASS_RARITY[p.class]||'common');
 // ----------------------------------------------------------------
 // L'ILLUSTRATION, ET SON REPLI
 // ----------------------------------------------------------------
-// On vise d'abord `assets/pieces/{id}.png`, l'illustration peinte — c'est
-// elle qui donne à la grille son air de collection. Le fichier peut ne pas
-// exister (toutes les pièces ne sont pas illustrées, et le dossier peut être
-// vide) : `onerror` retire alors l'<img>, et le SVG monochrome qui la suit
-// redevient visible TOUT SEUL, par la règle de voisinage
-// `.piece-card-img+.piece-card-svg{display:none}` ([PIECE-CARD]). Pas de
-// script de vérification, pas de liste à tenir à jour, et rien à changer le
-// jour où une illustration est ajoutée : elle apparaît.
+// On vise d'abord `assets/pieces/{id}.webp`, l'illustration peinte puis
+// optimisée — c'est elle qui donne à la grille son air de collection. Le
+// fichier peut ne pas exister (toutes les pièces ne sont pas illustrées, et
+// le dossier peut être vide) : `onerror` retire alors l'<img>, et le SVG
+// monochrome qui la suit redevient visible TOUT SEUL, par la règle de
+// voisinage `.piece-card-img+.piece-card-svg{display:none}` ([PIECE-CARD]).
+// Pas de script de vérification, pas de liste à tenir à jour, et rien à
+// changer le jour où une illustration est ajoutée : elle apparaît.
+//
+// TROIS PALIERS, ET NON PLUS DEUX : `.webp`, puis `.png`, puis le SVG.
+// Le générateur d'images sort du PNG de 1024×1536, qui pèse deux à trois
+// mégaoctets — dix-neuf fois, c'est cinquante mégaoctets pour des cartes qui
+// ne dépassent jamais 150 px de large. `tools/opt-images.js` en tire un
+// .webp de 640×960 (une centaine de kilo-octets), et c'est LUI qu'on demande
+// en premier. Le palier .png reste pour la seule minute qui compte : celle
+// où l'on vient de déposer une planche fraîche dans `assets/pieces/` et où
+// l'on veut la voir sans rien lancer. La carte s'allume, on convertit après,
+// et le .webp prend la main sans qu'une ligne de code change.
+//
+// Le repli s'écrit dans l'attribut plutôt que dans une fonction nommée parce
+// que ces cartes sont construites en chaîne de caractères, sans qu'aucun
+// script ne repasse derrière : `dataset.retry` marque le passage au .png,
+// et sa présence au second échec dit qu'il n'y a plus rien à essayer.
 //
 // LE PLATEAU NE CHANGE PAS. Les pièces en partie restent dessinées par les
 // SVG de js/piece-art.js : l'image peinte est un habillage de CATALOGUE, où
 // la carte doit donner envie, pas une pièce de jeu, où elle doit se lire au
 // premier coup d'œil sur une case de 40 px.
 function pieceCardArtHTML(p){
-  return '<img class="piece-card-img" src="assets/pieces/'+encodeURIComponent(p.id)+'.png" '+
-      'alt="" loading="lazy" onerror="this.remove()">'+
+  const base='assets/pieces/'+encodeURIComponent(p.id);
+  return '<img class="piece-card-img" src="'+base+'.webp" alt="" '+
+      'loading="lazy" decoding="async" width="640" height="960" '+
+      'onerror="if(this.dataset.retry){this.remove();}else{this.dataset.retry=1;this.src=\''+base+'.png\';}">'+
     '<span class="piece-card-svg">'+pieceIcon(p.id,'n')+'</span>';
 }
 

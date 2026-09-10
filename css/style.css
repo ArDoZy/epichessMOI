@@ -5974,12 +5974,14 @@ body.light .adv-advised{color:#f6f5f1}
     color-mix(in srgb,var(--rarity) 22%,transparent) 0%,transparent 72%)}
 /* L'ILLUSTRATION VA D'UN BORD À L'AUTRE (`cover`), elle ne flotte plus au
    milieu d'un rembourrage (`contain`). Le cadre est un peu moins haut que la
-   planche 1024×1536 qu'on y verse : elle perd une lisière en haut et en bas,
+   planche 2/3 qu'on y verse (peinte en 1024×1536, servie en 640×960 après
+   tools/opt-images.js) : elle perd une lisière en haut et en bas,
    ce dont les prompts tiennent compte (12 % de marge, voir
    assets/pieces/README.md). */
 .piece-card-img{width:100%;height:100%;object-fit:cover;display:block}
 /* LE REPLI SUR LE SVG, SANS UNE LIGNE DE SCRIPT. Tant que l'<img> est là, le
-   SVG monochrome reste caché. Si le PNG manque, `onerror` retire l'<img>
+   SVG monochrome reste caché. Si l'illustration manque — le .webp optimisé
+   D'ABORD, le .png d'origine ENSUITE —, `onerror` finit par retirer l'<img>
    (js/piece-card.js) : le SVG n'a plus de voisin précédent, cette règle ne
    s'applique plus, et il réapparaît de lui-même. */
 .piece-card-img+.piece-card-svg{display:none}

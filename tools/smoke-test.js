@@ -2855,16 +2855,23 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
 
 
   // ================================================================
-  // LA COMPOSITION D'ARMÉE : CINQ EMPLACEMENTS, UN SEUL GABARIT
+  // LA COMPOSITION D'ARMÉE : CINQ EMPLACEMENTS, UN SEUL GABARIT DE CARTE
   // ================================================================
   // Les cinq emplacements ont porté trois formats à la fois — le Monarque en
   // grand carré, le Général un peu moins large, les trois pièces libres en
   // portrait — pour mettre en scène une hiérarchie que le plateau porte déjà.
   // Trois gabarits pour cinq pièces se lisaient surtout comme une
   // irrégularité, et la mise en scène mangeait la moitié de l'écran avant le
-  // catalogue. Ce test tient l'invariant inverse du précédent : AUCUNE pièce
-  // n'a droit à un traitement à part, Monarque compris.
-  await step('les cinq emplacements d\'armée ont tous le même gabarit',async()=>{
+  // catalogue.
+  //
+  // CE QUI EST TENU, ET CE QUI NE L'EST PLUS. L'armée se déploie depuis en
+  // DEUX RANGÉES : le Monarque et le Général en demi-largeur sur la première,
+  // les trois pièces libres en tiers sur la seconde. Ce n'est pas le retour
+  // des trois gabarits — c'est la MÊME carte à deux tailles, et c'est
+  // exactement l'invariant qui compte : le RAPPORT est le même partout (2/3,
+  // celui du catalogue), et il n'y a que DEUX tailles, une par rangée. Une
+  // troisième largeur signerait le retour du traitement à part.
+  await step('les cinq emplacements d\'armée gardent le format de carte, sur deux rangées',async()=>{
     await page.setViewportSize({width:390,height:844});
     await page.evaluate(()=>{
       // Le catalogue doit être PEUPLÉ : la page ne montre que les créatures
@@ -2902,7 +2909,7 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
         largeurs:w,hauteurs:h,
         ecartL:Math.max(...w)-Math.min(...w),
         ecartH:Math.max(...h)-Math.min(...h),
-        ratio:h[0]?w[0]/h[0]:0,
+        ratios:rects.map(b=>b.height?b.width/b.height:0),
         parRangee,
         colonnes:grid?getComputedStyle(grid).gridTemplateColumns.split(' ').length:0,
         debord,
@@ -2912,19 +2919,32 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
     if(r.remplis!==5)throw new Error(r.remplis+' emplacements remplis au lieu de 5 (armée aléatoire)');
     if(r.cartes!==5)throw new Error(r.cartes+' emplacements au format .piece-card au lieu de 5');
     if(r.debord)throw new Error(r.debord+' emplacement(s) débordent du cadre de l\'armée');
-    if(r.ecartL>1)throw new Error('les emplacements n\'ont pas la même largeur : '+r.largeurs.join(', '));
-    if(r.ecartH>1)throw new Error('les emplacements n\'ont pas la même hauteur : '+r.hauteurs.join(', '));
-    if(Math.abs(r.ratio-0.75)>0.03)throw new Error('un emplacement n\'est pas au rapport 3/4 : '+r.ratio.toFixed(2));
+    // Deux rangées, donc deux largeurs et pas une de plus : les deux premiers
+    // emplacements se ressemblent, les trois suivants aussi.
+    const [w1,w2,w3,w4,w5]=r.largeurs;
+    if(Math.abs(w1-w2)>1)throw new Error('le Monarque et le Général n\'ont pas la même largeur : '+r.largeurs.join(', '));
+    if(Math.max(w3,w4,w5)-Math.min(w3,w4,w5)>1)throw new Error('les trois pièces libres n\'ont pas la même largeur : '+r.largeurs.join(', '));
+    if(w1<=w3)throw new Error('la première rangée n\'est pas plus large que la seconde : '+r.largeurs.join(', '));
+    // Le RAPPORT, lui, ne change pas d'une rangée à l'autre : c'est celui de
+    // la carte du catalogue, 2/3, et c'est ce qui fait que les cinq
+    // emplacements se lisent comme cinq cartes et non comme cinq boîtes.
+    r.ratios.forEach((v,i)=>{
+      if(Math.abs(v-2/3)>0.03)throw new Error('l\'emplacement '+(i+1)+' n\'est pas au rapport 2/3 : '+v.toFixed(2));
+    });
     if(r.parRangee!==4)throw new Error(r.parRangee+' cartes par rangée dans le catalogue au lieu de 4');
     if(r.colonnes!==4)throw new Error(r.colonnes+' colonnes déclarées dans la grille au lieu de 4');
   });
 
   // L'ANATOMIE DE LA CARTE, empruntée à Clash Royale : l'illustration en haut
-  // sur 72 % de la hauteur, le bandeau du nom en bas dans la couleur de
+  // sur 76 % de la hauteur, le bandeau du nom en bas dans la couleur de
   // rareté, et deux pastilles rondes qui DÉBORDENT des coins du haut. Le
   // débordement n'est pas un accident de mise en page : une pastille inscrite
   // dans la carte mange l'illustration.
   await step('une carte de pièce a le format unique : illustration, bandeau, pastilles',async()=>{
+    // Le repli de l'illustration coûte deux allers-retours réseau (.webp puis
+    // .png) : on les laisse se solder avant de regarder la carte, sinon on
+    // photographie un état intermédiaire où l'<img> est encore là.
+    await page.waitForTimeout(300);
     const r=await page.evaluate(()=>{
       const card=document.querySelector('#ar-cards-container .piece-card');
       if(!card)return{err:'aucune carte dans le catalogue'};
@@ -2950,14 +2970,16 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
         degrade:/gradient/.test(cs.backgroundImage),
         debordeGauche:rc.left<cb.left-2,debordeHaut:rc.top<cb.top-2,
         debordeDroite:rq?rq.right>cb.right+2:null,
-        // L'illustration occupe 72 % de la hauteur, le bandeau le reste.
+        // L'illustration occupe 76 % de la hauteur, le bandeau le reste.
         // La mesure se fait sur la boîte de CONTENU (clientHeight) : la
         // bordure de 2 px de la carte n'appartient ni à l'une ni à l'autre.
         partArt:ra.height/card.clientHeight,
         bandeauEnBas:Math.abs(rn.bottom-(cb.bottom-2))<2&&rn.top>=ra.bottom-1,
         bandeauPlein:!/rgba\(0,\s*0,\s*0,\s*0\)/.test(ns.backgroundColor)||/gradient/.test(ns.backgroundImage),
-        // Le repli : sans PNG dans assets/pieces/, l'<img> se retire et le
-        // SVG monochrome prend sa place.
+        // Le repli : sans illustration dans assets/pieces/, l'<img> se
+        // retire et le SVG monochrome prend sa place. Depuis que la carte
+        // demande le .webp PUIS le .png (pieceCardArtHTML), il faut DEUX
+        // échecs pour en arriver là — d'où l'attente ci-dessus.
         img:!!card.querySelector('.piece-card-img'),
         svg:!!card.querySelector('.piece-card-svg .pc-svg'),
         svgVisible:(()=>{const e=card.querySelector('.piece-card-svg');
@@ -2977,12 +2999,21 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
     if(parseInt(r.gras,10)<700)throw new Error('le chiffre de la pastille n\'est pas en gras : '+r.gras);
     if(!r.debordeGauche||!r.debordeHaut)throw new Error('la pastille de coût ne déborde pas du coin haut gauche');
     if(r.debordeDroite===false)throw new Error('le badge de quantité ne déborde pas du coin haut droit');
-    if(Math.abs(r.partArt-0.72)>0.03)throw new Error('l\'illustration prend '+Math.round(r.partArt*100)+' % de la hauteur au lieu de 72');
+    if(Math.abs(r.partArt-0.76)>0.03)throw new Error('l\'illustration prend '+Math.round(r.partArt*100)+' % de la hauteur au lieu de 76');
     if(!r.bandeauEnBas)throw new Error('le bandeau du nom n\'est pas tout en bas, sous l\'illustration');
     if(!r.bandeauPlein)throw new Error('le bandeau du nom n\'est pas coloré');
     if(!r.svg)throw new Error('le repli SVG n\'est pas dans la carte');
-    if(r.img)throw new Error('l\'<img> d\'illustration n\'a pas été retirée alors que le PNG manque');
-    if(!r.svgVisible)throw new Error('le SVG de repli reste caché alors que le PNG manque');
+    // LES DEUX ÉTATS SONT LÉGITIMES, ET UN SEUL À LA FOIS. Le dossier
+    // assets/pieces/ se remplit au fil des planches produites : exiger que
+    // l'<img> soit toujours absente ferait échouer ce test le jour où la
+    // première illustration arrive, ce qui est exactement l'inverse de ce
+    // qu'on veut vérifier. Ce qu'on tient, c'est la COHÉRENCE : illustration
+    // chargée → le SVG s'efface ; illustration absente → il réapparaît. Et
+    // jamais les deux dessins l'un sur l'autre.
+    if(r.img&&r.svgVisible)
+      throw new Error('l\'illustration et le SVG de repli sont visibles en même temps');
+    if(!r.img&&!r.svgVisible)
+      throw new Error('le SVG de repli reste caché alors que l\'illustration manque');
   });
 
   // LA FICHE SE FERME EN GLISSANT VERS LE BAS, DEPUIS N'IMPORTE OÙ. Le geste

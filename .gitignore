@@ -1,3 +1,13 @@
 # Playwright n'est necessaire QUE pour npm test (tools/smoke-test.js et
 # tools/ai-bench.js) : le jeu lui-meme n'a aucune dependance de production.
 node_modules/
+
+# Les PNG D'ORIGINE des illustrations de creatures. Le generateur les sort en
+# 1024x1536, soit deux a trois megaoctets piece : dix-neuf creatures feraient
+# cinquante megaoctets d'historique pour des cartes qui ne depassent jamais
+# 150 px de large. Ce qu'on verse au depot est le .webp de 640x960 produit par
+# `npm run opt:images` (tools/opt-images.js) -- comme pour les cinquante-huit
+# autres planches du jeu, dont aucun PNG n'est versionne.
+# Le PNG reste sur le disque : c'est le fichier qu'on retouche et qu'on
+# reconvertit. Pour en verser un malgre tout : git add -f assets/pieces/xxx.png
+assets/pieces/*.png
