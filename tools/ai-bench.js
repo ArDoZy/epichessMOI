@@ -72,7 +72,7 @@ function findChromium(){
 // On rejoue la boucle de partie à la main plutôt que d'utiliser
 // executeGameMove : celui-ci touche le DOM, l'audio et la pendule à chaque
 // coup. applyMoveQuick applique déjà les pouvoirs destructeurs (Typhon,
-// charge du Dresseur, hurlement de la Banshee), c'est-à-dire tout ce qui
+// charge de l'Éléphant de guerre, hurlement de la Banshee), c'est-à-dire tout ce qui
 // change le plateau.
 async function playPair(page,idA,idB,games,speedup,maxPlies){
   return page.evaluate(({idA,idB,games,speedup,maxPlies})=>{

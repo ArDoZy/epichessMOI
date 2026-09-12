@@ -423,11 +423,28 @@ function rwColRowsHTML(){
 // de là — était déjà sous les yeux. On touche donc ce qu'on prend. Sans rien à
 // prendre, il n'y a plus rien du tout au-dessus de la colonne : un cadre vide
 // n'est pas une information.
+// LA COLONNE NE SE RÉÉCRIT QUE SI ELLE A CHANGÉ. Trente paliers, chacun avec
+// sa vignette de coffre, redessinés à chaque appel — et cette fonction est
+// rappelée dès qu'une quête avance, c'est-à-dire à chaque coup joué.
+//
+// La signature est le BALISAGE LUI-MÊME : le construire coûte quelques
+// concaténations, l'analyser et le mettre en page coûte cent fois plus. C'est
+// aussi la seule signature qui ne peut pas se tromper — elle EST ce qu'on
+// allait afficher. Même procédé que pour le classement (js/leaderboard.js).
+let _rwColHtml=null;
 function renderRewardsColonne(){
   const pane=document.getElementById('rw-pane-colonne');
   if(!pane)return;
-  pane.innerHTML=rwLaurelBarHTML()+
+  const html=rwLaurelBarHTML()+
     '<div class="rw-col-strip" id="rw-col-strip">'+rwColRowsHTML()+'</div>';
+  if(html===_rwColHtml&&pane.firstElementChild){
+    // Rien n'a bougé : on ne touche pas au DOM, mais on garde le recentrage —
+    // c'est lui qui remet le palier en jeu sous les yeux à chaque ouverture.
+    rwColScrollToLive(document.getElementById('rw-col-strip'));
+    return;
+  }
+  _rwColHtml=html;
+  pane.innerHTML=html;
   // UN SEUL ÉCOUTEUR, POSÉ SUR LA BANDE. Trente paliers redessinés à chaque
   // encaissement, c'est trente écouteurs à reposer à chaque fois ; la
   // délégation survit au rendu suivant sans rien à recâbler.

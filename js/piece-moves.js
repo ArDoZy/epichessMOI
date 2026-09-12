@@ -243,7 +243,7 @@ function pieceMoveDiagramHTML(pieceId,opts){
     }
     // Le schéma ne porte plus la mention « ↑ camp adverse » sous la grille.
     // Elle n'apparaissait que sous les pièces au déplacement orienté (Fourmi,
-    // Méduse, Garde d'Eau…), ajoutait une ligne sous un dessin déjà serré, et
+    // Méduse, Garde de Pierre…), ajoutait une ligne sous un dessin déjà serré, et
     // n'apprenait rien : le haut d'un échiquier est le camp d'en face, c'est
     // vrai de toutes les cases du jeu.
     html='<div class="pmv"><div class="pmv-grid">'+cells+'</div></div>';

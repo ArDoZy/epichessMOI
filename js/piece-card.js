@@ -61,8 +61,6 @@
 // La clé est l'identifiant de la pièce : c'est le pouvoir de CETTE créature
 // qu'on illustre, pas une catégorie abstraite.
 const POWER_ICONS={
-  // Espadon (Empereur) : une lame.
-  empereur:'<path d="M4 20l4-1 11-11 1-4-4 1L5 16z"/><path d="M6 18l-2 2"/><path d="M14 6l4 4"/>',
   // Domination (Grand Maître) : une couronne qui pèse sur une barre.
   'grand-maitre':'<path d="M4 8l3 3 5-6 5 6 3-3v8H4z"/><path d="M4 19h16"/>',
   // Promotion (Fourmi) : une flèche qui monte JUSQU'À la dernière rangée, la
@@ -287,40 +285,150 @@ function pcardCloseAll(root){
   (root||document).querySelectorAll('.piece-card.piece-card-open')
     .forEach(el=>el.classList.remove('piece-card-open'));
 }
+// LES ÉCOUTEURS SONT SUR LE CONTENEUR, PAS SUR LES CARTES, et c'est ce qui
+// permet au catalogue d'être redessiné par petits morceaux.
+//
+// Chaque carte portait ses propres écouteurs — clic, clavier, menu contextuel,
+// et les QUATRE de l'appui long (touchstart/move/end/cancel) : sept par carte.
+// Le catalogue en compte une par pièce débloquée, et pRenderCards (js/armies.js)
+// était rappelé à CHAQUE arrivée sur la face « armées », à chaque ouverture de
+// coffre, à chaque pièce posée ou retirée. Sept écouteurs × seize cartes, à
+// chaque passage, sur des éléments que le rendu suivant jetait : c'est une
+// fuite, et c'est aussi ce qui interdisait de garder les cartes en place — les
+// rebrancher coûtait plus cher que de tout réécrire.
+//
+// Ici, SEPT écouteurs EN TOUT, posés une seule fois sur le conteneur. Une carte
+// créée plus tard est prise en charge sans rien rebrancher, et une carte retirée
+// n'emporte aucun écouteur avec elle. Un second appel sur le même conteneur ne
+// fait que remplacer les fonctions de rappel : il est donc sans effet et sans
+// coût, ce qui rend le rendu ré-entrant.
+//
+// La carte est retrouvée par `closest('.piece-card')` et la pièce par son
+// `data-id` : rien n'est capturé dans une fermeture, donc rien ne retient un
+// nœud mort en mémoire.
 function wirePieceCards(root,handlers){
   if(!root)return;
-  const h=handlers||{};
-  root.querySelectorAll('.piece-card').forEach(el=>{
-    const p=PIECES.find(x=>x.id===el.dataset.id);
-    if(!p)return;
-    el.addEventListener('click',e=>{
-      const btn=e.target.closest('.piece-card-act');
-      if(btn){
-        e.stopPropagation();
-        if(btn.dataset.act==='use'){
-          el.classList.remove('piece-card-open');
-          if(h.onUse)h.onUse(p);
-        }else{
-          el.classList.remove('piece-card-open');
-          openPieceSheet(p.id);
-        }
-        return;
-      }
-      const wasOpen=el.classList.contains('piece-card-open');
-      pcardCloseAll(root);
-      if(!wasOpen)el.classList.add('piece-card-open');
-    });
-    // Clavier : Entrée/Espace ouvrent la carte comme un appui.
-    el.addEventListener('keydown',e=>{
-      if(e.key!=='Enter'&&e.key!==' ')return;
-      e.preventDefault();el.click();
-    });
-    // L'appui long saute les deux boutons et va droit à la fiche : c'est le
-    // geste qu'avait déjà le jeu pour consulter une pièce, on ne le retire pas
-    // à ceux qui l'ont appris.
-    if(typeof bindLongPress==='function')bindLongPress(el,()=>openPieceSheet(p.id));
-    el.addEventListener('contextmenu',e=>{e.preventDefault();openPieceSheet(p.id);});
+  root._pcardHandlers=handlers||{};
+  if(root._pcardWired)return;      // déjà branché : seules les fonctions changent
+  root._pcardWired=true;
+
+  const pieceOf=el=>el&&PIECES.find(x=>x.id===el.dataset.id);
+  const cardOf=e=>{
+    const el=e.target&&e.target.closest?e.target.closest('.piece-card'):null;
+    return (el&&root.contains(el))?el:null;
+  };
+
+  root.addEventListener('click',e=>{
+    const el=cardOf(e);if(!el)return;
+    const p=pieceOf(el);if(!p)return;
+    const h=root._pcardHandlers||{};
+    const btn=e.target.closest('.piece-card-act');
+    if(btn){
+      e.stopPropagation();
+      el.classList.remove('piece-card-open');
+      if(btn.dataset.act==='use'){if(h.onUse)h.onUse(p);}
+      else openPieceSheet(p.id);
+      return;
+    }
+    const wasOpen=el.classList.contains('piece-card-open');
+    pcardCloseAll(root);
+    if(!wasOpen)el.classList.add('piece-card-open');
   });
+
+  // Clavier : Entrée/Espace ouvrent la carte comme un appui.
+  root.addEventListener('keydown',e=>{
+    if(e.key!=='Enter'&&e.key!==' ')return;
+    const el=cardOf(e);if(!el)return;
+    e.preventDefault();el.click();
+  });
+
+  root.addEventListener('contextmenu',e=>{
+    const el=cardOf(e);if(!el)return;
+    const p=pieceOf(el);if(!p)return;
+    e.preventDefault();openPieceSheet(p.id);
+  });
+
+  // L'APPUI LONG saute les deux boutons et va droit à la fiche : c'est le geste
+  // qu'avait déjà le jeu pour consulter une pièce, on ne le retire pas à ceux
+  // qui l'ont appris. bindLongPress ne sait s'accrocher qu'à UN élément ; on
+  // refait donc ici sa mécanique, mais déléguée — même durée, même tolérance de
+  // glissement (un doigt qui glisse veut faire défiler, pas lire une fiche), et
+  // même dépôt de `_longPressAt`, que main.js lit pour que le clic qui suit
+  // l'appui long ne rouvre pas la carte derrière la fiche.
+  let lpTimer=null,lpX=0,lpY=0;
+  const lpClear=()=>{if(lpTimer){clearTimeout(lpTimer);lpTimer=null;}};
+  root.addEventListener('touchstart',e=>{
+    lpClear();
+    if(e.touches.length!==1)return;
+    const el=cardOf(e);if(!el)return;
+    const p=pieceOf(el);if(!p)return;
+    const t=e.touches[0];lpX=t.clientX;lpY=t.clientY;
+    const ms=(typeof LONG_PRESS_MS!=='undefined')?LONG_PRESS_MS:500;
+    lpTimer=setTimeout(()=>{
+      lpTimer=null;
+      if(typeof _longPressAt!=='undefined')_longPressAt=Date.now();
+      openPieceSheet(p.id);
+    },ms);
+  },{passive:true});
+  root.addEventListener('touchmove',e=>{
+    const t=e.touches[0];if(!t)return;
+    if(Math.abs(t.clientX-lpX)>10||Math.abs(t.clientY-lpY)>10)lpClear();
+  },{passive:true});
+  root.addEventListener('touchend',lpClear);
+  root.addEventListener('touchcancel',lpClear);
+}
+
+// ----------------------------------------------------------------
+// METTRE À JOUR UNE CARTE DÉJÀ POSÉE
+// ----------------------------------------------------------------
+// Ce qu'une carte dit change pour DEUX raisons seulement : elle vient d'entrer
+// dans l'armée (ou d'en sortir), et son stock a bougé. Tout le reste — le
+// dessin, le nom, le coût, la rareté — est fixé par la pièce et ne bougera
+// jamais tant que la carte existe.
+//
+// D'où cette fonction, qui touche exactement ces deux choses et RIEN d'autre.
+// C'est elle qui permet à pRenderCards de ne plus réécrire le catalogue entier :
+// une carte qui n'a pas changé ne reçoit pas une seule écriture DOM, et
+// l'<img> n'est jamais recréée — c'est cette recréation, et le décodage qu'elle
+// relance, qui faisait clignoter la page d'armées à chaque arrivée.
+//
+// Chaque écriture est précédée d'une comparaison : poser la même valeur sur un
+// attribut est une invalidation de style pour rien, seize fois par rendu.
+function pieceCardSync(el,p,opts){
+  if(!el||!p)return;
+  const o=opts||{};
+  const st=pieceStockInfo(p);
+  const sel=!!o.selected;
+  el.classList.toggle('piece-card-sel',sel);
+  el.classList.toggle('piece-card-out',st.out&&!o.locked);
+
+  const qty=el.querySelector('.piece-card-qty');
+  if(qty&&st.ownable&&!o.locked){
+    const n=String(st.have);
+    if(qty.textContent!==n)qty.textContent=n;
+    qty.classList.toggle('piece-card-qty-out',st.out);
+    const t=st.have+' en stock'+(st.need?', '+st.need+' requis pour cette armée':'');
+    if(qty.title!==t)qty.title=t;
+  }
+
+  const use=el.querySelector('.piece-card-use span');
+  if(use){
+    const lbl=sel?'Retirer':'Utiliser';
+    if(use.textContent!==lbl)use.textContent=lbl;
+  }
+
+  const aria=p.name+' — '+p.value+' points'+
+    (st.ownable&&!o.locked?', '+st.have+' en stock':'')+
+    (o.locked?' — verrouillée'+(o.lockLabel?' : '+o.lockLabel:''):'');
+  if(el.getAttribute('aria-label')!==aria)el.setAttribute('aria-label',aria);
+}
+
+// Fabrique le NŒUD d'une carte (et non sa chaîne) : c'est ce qu'il faut pour
+// l'insérer à sa place dans une grille déjà en vie, sans toucher aux voisines.
+function pieceCardNode(p,opts){
+  const t=document.createElement('template');
+  t.innerHTML=pieceCardHTML(p,opts);
+  return t.content.firstElementChild;
 }
 // Un appui à côté referme la carte ouverte.
 document.addEventListener('click',e=>{
@@ -337,7 +445,7 @@ document.addEventListener('click',e=>{
 // Elle s'ouvre AUSSI pour une pièce verrouillée : savoir ce que fait une
 // créature qu'on n'a pas encore est précisément ce qui donne envie de la
 // débloquer. C'est même le seul endroit où l'on peut lire le pouvoir des
-// Primordiales, de l'Empereur ou du Grand Maître avant de les posséder — la
+// Primordiales ou du Grand Maître avant de les posséder — la
 // carte, elle, reste voilée.
 function openPieceSheet(pieceId){
   const p=PIECES.find(x=>x.id===pieceId);

@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- ================================================================
+     PANNEAU-ELO.SVG : le panneau de rang, et le compteur de valeur d'armée
+     ================================================================
+     UNE PLANCHE, DEUX EMPLOIS, et ce n'est pas une économie de paresse : le
+     bandeau de rang (« Acier · 940 ELO · vers Obsidienne ») et le compteur
+     « Valeur 20 / 24 » de la page d'armées disent la même chose — où j'en
+     suis d'une échelle. Leur donner deux encadrements différents ferait
+     croire à deux natures différentes.
+
+     La barre de progression, elle, reste un simple <div> : une barre dessinée
+     dans la planche ne pourrait pas bouger.
+
+     Bords en filets droits, ornements dans les coins : voir cadre-carte.svg
+     pour la raison.
+     ================================================================ -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 140 90" width="140" height="90" color="#c9a84c">
+  <title>Epic Chess, panneau de rang</title>
+  <rect x="3" y="3" width="134" height="84" rx="9" fill="none" stroke="#c9a84c" stroke-width="2"/>
+  <rect x="6.2" y="6.2" width="127.6" height="77.6" rx="7" fill="none" stroke="#e6cd86" stroke-width=".8" opacity=".42"/>
+  <!-- LA GOUTTIÈRE : un double filet le long des deux bords verticaux, qui
+       fait lire le panneau comme une plaque encastrée et non comme un simple
+       rectangle. Verticale, donc étirée verticalement, donc intacte. -->
+  <path d="M11 22 V68 M129 22 V68" stroke="currentColor" stroke-width=".9" opacity=".4"/>
+  <defs>
+    <g id="ecoincon">
+      <path d="M3 26 V10 Q3 3 10 3 H26" fill="none" stroke="#c9a84c" stroke-width="2.8" stroke-linecap="round"/>
+      <path d="M8.5 14.5 12 11 15.5 14.5 12 18Z" fill="#e6cd86"/>
+      <path d="M3 30 H5 M30 3 V5" stroke="#c9a84c" stroke-width="2.8" stroke-linecap="round"/>
+    </g>
+  </defs>
+  <use href="#ecoincon"/>
+  <use href="#ecoincon" transform="translate(140,0) scale(-1,1)"/>
+  <use href="#ecoincon" transform="translate(0,90) scale(1,-1)"/>
+  <use href="#ecoincon" transform="translate(140,90) scale(-1,-1)"/>
+</svg>

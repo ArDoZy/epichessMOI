@@ -1769,6 +1769,11 @@ body:not(.main-menu) #settings-panel{display:none}
 .voie-ok-bar{position:absolute;left:50%;bottom:var(--safe-b);
   transform:translateX(-50%);z-index:5;
   width:34%;min-width:6em;max-width:14em;
+  /* QUARANTE-QUATRE PIXELS, PAS QUARANTE-DEUX. C'est le seul bouton de sortie
+     de la page : le rater au pouce, c'est rester coincé sur un écran dont on
+     voulait partir. Le rembourrage seul donnait 42 px sur un téléphone étroit,
+     parce qu'il est exprimé en `em` et que la police y descend à 15 px. */
+  min-height:44px;display:flex;align-items:center;justify-content:center;
   margin:0;padding:.75em 1em;border-radius:999px;
   font-family:var(--f-ui);font-weight:800;font-size:min(4.2vw,16px);letter-spacing:.09em;
   box-shadow:inset 0 .1em 0 rgba(255,240,205,.55),inset 0 -.18em 0 rgba(0,0,0,.28),
@@ -1840,7 +1845,13 @@ body.nav-overlay #cube-stage{display:none}
 /* Durée de rotation fluide, pensée pour pouvoir enchaîner deux rotations
    sans temps mort, voir js/cube-nav.js (ROTATE_MS) qui pilote la même
    durée en JS, et queuedKind pour l'enchaînement instantané. */
-#cube{position:absolute;inset:0;transform-style:preserve-3d;will-change:transform;
+/* `will-change` PENDANT LA ROTATION SEULEMENT, comme pour les pièces qui
+   glissent (voir [BOARD]). Posé en permanence, il réserve une couche de
+   composition de la taille de l'écran pour un cube immobile les quatre
+   cinquièmes du temps — de la mémoire vidéo prise à un appareil qui n'en a
+   pas. La classe est posée et retirée par animate() (js/cube-nav.js). */
+#cube.cube-spin{will-change:transform}
+#cube{position:absolute;inset:0;transform-style:preserve-3d;
   transition:transform .46s cubic-bezier(.32,.72,.3,1);
   transform:translateZ(-50vmax) rotateX(0deg) rotateY(0deg)}
 
@@ -2154,7 +2165,14 @@ body.light .cube-face[data-face="magasin"]{background:
   padding:6px 2vw calc(6px + var(--safe-b));
   border:none;border-top:1px solid var(--border2);
   background:linear-gradient(180deg,rgba(23,31,37,.94),rgba(14,18,22,.98));
-  backdrop-filter:blur(18px);box-shadow:0 -8px 26px -10px rgba(0,0,0,.75)}
+  box-shadow:0 -8px 26px -10px rgba(0,0,0,.75)}
+/* LE `backdrop-filter:blur(18px)` A ÉTÉ RETIRÉ D'ICI. Un flou d'arrière-plan
+   oblige le navigateur à garder une copie de tout ce qui est peint DERRIÈRE
+   l'élément et à la reflouter à chaque image où quelque chose bouge dessous —
+   et sous cette barre, il y a le cube, qui tourne. C'était le seul flou du jeu
+   posé sur un élément TOUJOURS à l'écran, donc le seul qu'on payait en
+   permanence. Le fond dégradé au-dessus est déjà opaque à 94-98 % : le flou ne
+   se voyait pas, il se sentait seulement à la chaleur du téléphone. */
 /* Quatre parts ÉGALES : quatre destinations de même rang, donc quatre cibles
    de même largeur. Une répartition selon la longueur des libellés ferait
    croire à une hiérarchie qui n'existe pas. */
@@ -3674,8 +3692,13 @@ body.light .jt-fx{mix-blend-mode:normal;filter:saturate(1.45) brightness(.82)}
              0 .5em 1.1em -.6em rgba(0,0,0,.85)}
 .cv-due .cv-glow{opacity:.75;animation:cvBreathe 2.8s ease-in-out infinite}
 .cv-due .cv-name{color:var(--gold2)}
+/* LE REFLET GLISSE EN `transform`, PLUS EN `left`. Animer `left` relance la
+   MISE EN PAGE à chaque image ; `transform` ne touche qu'au compositeur. Les
+   deux bornes sont exprimées en pourcentage de l'élément (38 % du parent) pour
+   retomber sur le trajet d'origine : −45 % de parent = −118 % de l'élément,
+   +115 % = +303 %. */
 .cv-due .cv-tile::after{content:'';position:absolute;top:0;bottom:0;width:38%;
-  left:-45%;pointer-events:none;z-index:-1;
+  left:0;pointer-events:none;z-index:-1;
   background:linear-gradient(100deg,transparent,rgba(255,246,214,.16) 45%,transparent);
   animation:cvSheen 3.4s ease-in-out infinite}
 .cv-due .chest:not(.chest-pawn),.cv-due .cv-vis-joker svg{
@@ -3727,7 +3750,7 @@ body.light .jt-fx{mix-blend-mode:normal;filter:saturate(1.45) brightness(.82)}
 @keyframes cvNodeBeat{0%,100%{box-shadow:inset 0 1px 0 rgba(255,244,214,.6),0 0 .8em -.2em rgba(201,168,76,.6)}
   50%{box-shadow:inset 0 1px 0 rgba(255,244,214,.6),0 0 1.5em 0 rgba(201,168,76,.95)}}
 @keyframes cvBreathe{0%,100%{opacity:.5}50%{opacity:.9}}
-@keyframes cvSheen{0%{left:-45%}55%,100%{left:115%}}
+@keyframes cvSheen{0%{transform:translateX(-118%)}55%,100%{transform:translateX(303%)}}
 
 /* LES POUSSIÈRES DE LUMIÈRE. Trois points qui montent le long de la vignette
    du palier à prendre, décalés dans le temps pour qu'on ne voie jamais le
@@ -4508,11 +4531,26 @@ body.light .gp-bar.gp-turn{background:linear-gradient(90deg,var(--accent-bg),var
   box-shadow:0 0 0 9999px rgba(4,8,10,.72),0 0 0 2px var(--accent2),0 0 26px var(--potion-glow) inset;
   transition:left .38s cubic-bezier(.32,.72,.3,1),top .38s cubic-bezier(.32,.72,.3,1),
              width .38s cubic-bezier(.32,.72,.3,1),height .38s cubic-bezier(.32,.72,.3,1),opacity .3s}
-#tuto-spot.on{opacity:1;animation:tutoSpotPulse 2s ease-in-out infinite}
-@keyframes tutoSpotPulse{
-  0%,100%{box-shadow:0 0 0 9999px rgba(4,8,10,.72),0 0 0 2px var(--accent2),0 0 26px var(--potion-glow) inset}
-  50%{box-shadow:0 0 0 9999px rgba(4,8,10,.72),0 0 0 3px var(--accent2),0 0 40px rgba(47,177,151,.45) inset}
+#tuto-spot.on{opacity:1}
+/* LA PULSATION EST PASSÉE SUR UN PSEUDO-ÉLÉMENT, EN OPACITÉ, et c'était le
+   plus gros gaspillage de toute la feuille de style.
+   Elle animait le `box-shadow` du projecteur lui-même — celui qui porte le
+   voile de 9999 px. Un `box-shadow` n'est pas composité : il se REPEINT. Le
+   navigateur redessinait donc un rectangle de neuf mille pixels de côté
+   SOIXANTE FOIS PAR SECONDE, pendant tout le tutoriel, c'est-à-dire pendant
+   les premières minutes de jeu d'un joueur neuf — exactement le moment où un
+   téléphone d'entrée de gamme doit faire bonne impression.
+   Le voile est maintenant STATIQUE (il n'a jamais eu besoin de bouger : il ne
+   change pas d'un bout à l'autre de l'animation), et seul un anneau de la
+   taille de la cible change d'`opacity`, ce qui se règle sur le compositeur
+   sans repeindre un pixel. */
+#tuto-spot::after{
+  content:'';position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+  box-shadow:0 0 0 3px var(--accent2),0 0 40px rgba(47,177,151,.45) inset;
+  opacity:0;
 }
+#tuto-spot.on::after{animation:tutoSpotPulse 2s ease-in-out infinite}
+@keyframes tutoSpotPulse{0%,100%{opacity:0}50%{opacity:1}}
 
 /* La bulle capte les clics (c'est elle qui porte « Suivant »), le reste de
    la couche non : d'où le pointer-events:auto local. */
@@ -4840,34 +4878,12 @@ body.cube-active:not(.nav-overlay) .notif-host{bottom:92px}
 }
 .gc-piece .gc-art.gc-stomp{animation:gcStomp .36s cubic-bezier(.35,0,.35,1) both}
 
-/* COULER — le Garde d'Eau. 380 ms × 53 % = 200 ms.
-   Il ne marche pas d'une case à l'autre : il s'y verse. L'étirement précède
-   toujours le déplacement (le liquide part avant le récipient), et l'arrivée
-   n'a pas d'impact sec mais un ballotement qui s'amortit. */
-@keyframes gcFlow{
-  0%  {transform:scaleX(1) scaleY(1) rotate(0)}
-  22% {transform:scaleX(.86) scaleY(1.18) rotate(calc(var(--glean) * -4deg))}
-  53% {transform:scaleX(1.18) scaleY(.86) rotate(calc(var(--glean) * 3deg))}
-  70% {transform:scaleX(.93) scaleY(1.08) rotate(0)}
-  86% {transform:scaleX(1.04) scaleY(.97) rotate(0)}
-  100%{transform:scaleX(1) scaleY(1) rotate(0)}
-}
-.gc-piece .gc-art.gc-flow{animation:gcFlow .38s cubic-bezier(.4,.1,.3,1) both}
-
-/* VACILLER — le Garde de Feu. 340 ms × 59 % = 200 ms.
-   Une flamme ne glisse pas : elle bat. Trois pulsations serrées pendant la
-   course, et l'`opacity` en fait partie — c'est le seul geste où elle sert,
-   parce que c'est la seule créature dont la matière même est instable. */
-@keyframes gcFlicker{
-  0%  {transform:scaleY(1) scaleX(1);opacity:1}
-  18% {transform:scaleY(1.14) scaleX(.9);opacity:.72}
-  34% {transform:scaleY(.94) scaleX(1.06);opacity:1}
-  50% {transform:scaleY(1.1) scaleX(.93);opacity:.8}
-  59% {transform:scaleY(.9) scaleX(1.12);opacity:1}
-  78% {transform:scaleY(1.05) scaleX(.97);opacity:.94}
-  100%{transform:scaleY(1) scaleX(1);opacity:1}
-}
-.gc-piece .gc-art.gc-flicker{animation:gcFlicker .34s ease-in-out both}
+/* IL N'Y A PLUS DE GESTE « COULER » NI « VACILLER ». Ils appartenaient au
+   Garde d'Eau (qui se versait d'une case à l'autre) et au Garde de Feu (qui
+   battait comme une flamme), tous deux retirés du jeu. Leurs @keyframes sont
+   partis avec eux : une animation que plus aucune classe ne demande est du
+   poids mort dans une feuille de style que le téléphone doit parser à chaque
+   ouverture. */
 
 /* TROTTINER — la Fourmi. 300 ms × 67 % = 200 ms.
    La plus petite pièce du jeu, et la plus pressée : quatre appuis minuscules
@@ -4940,7 +4956,7 @@ body.cube-active:not(.nav-overlay) .notif-host{bottom:92px}
 .gc-piece .gc-art.gc-solemn{animation:gcSolemn .4s cubic-bezier(.4,0,.4,1) both}
 
 /* SE PORTER — les Monarques et les Généraux. 360 ms × 56 % = 200 ms.
-   Le Roi, l'Empereur, la Dame, l'Amazone, le Grand Maître. Ils s'élèvent d'un
+   Le Roi, la Dame, l'Amazone, le Grand Maître. Ils s'élèvent d'un
    rien et se posent d'aplomb : une pièce qui vaut treize points n'a pas
    besoin de s'agiter pour qu'on la regarde. L'élévation suit --gspan — une
    travée d'un bout à l'autre du plateau a le droit à plus d'ampleur qu'un pas
@@ -5023,8 +5039,8 @@ body.cube-active:not(.nav-overlay) .notif-host{bottom:92px}
   /* Les treize gestes de créature tombent sous la même règle : quelqu'un qui
      coupe le mouvement n'a pas demandé un galop plus discret, il a demandé
      qu'il n'y en ait pas. */
-  .gc-piece .gc-art.gc-charge,.gc-piece .gc-art.gc-stomp,.gc-piece .gc-art.gc-flow,
-  .gc-piece .gc-art.gc-flicker,.gc-piece .gc-art.gc-scuttle,.gc-piece .gc-art.gc-spin,
+  .gc-piece .gc-art.gc-charge,.gc-piece .gc-art.gc-stomp,
+  .gc-piece .gc-art.gc-scuttle,.gc-piece .gc-art.gc-spin,
   .gc-piece .gc-art.gc-phase,.gc-piece .gc-art.gc-drift,.gc-piece .gc-art.gc-solemn,
   .gc-piece .gc-art.gc-regal,.gc-piece .gc-art.gc-gallop,.gc-piece .gc-art.gc-slam,
   .gc-piece .gc-art.gc-glide{animation:none;opacity:1}
@@ -5180,7 +5196,7 @@ body.cube-active:not(.nav-overlay) .notif-host{bottom:92px}
   background:linear-gradient(90deg,transparent 0%,var(--fx-c) 88%,#fff 100%);
   filter:blur(1px);
   animation:fxTrail .44s cubic-bezier(.2,.75,.35,1) both}
-/* Une prise, ou la charge du Dresseur : le sillage s'épaissit. */
+/* Une prise, ou la charge de l'Éléphant de guerre : le sillage s'épaissit. */
 .fx-trail-heavy{height:3.4%;filter:blur(2px)}
 @keyframes fxTrail{
   0%{opacity:0;transform:translateY(-50%) rotate(var(--rot)) scaleX(.15)}
@@ -5308,7 +5324,7 @@ body.cube-active:not(.nav-overlay) .notif-host{bottom:92px}
   100%{opacity:0;transform:scale(1.15)}
 }
 
-/* LA CHARGE : la case écrasée sur le passage du Dresseur d'Éléphant. Un
+/* LA CHARGE : la case écrasée sur le passage de l'Éléphant de guerre. Un
    anneau de poussière au ras du sol, donc SOUS les pièces. */
 .fx-crush{mix-blend-mode:screen}
 .fx-dustring{width:96%;height:52%;border-radius:50%;
@@ -5375,8 +5391,8 @@ body.cube-active:not(.nav-overlay) .notif-host{bottom:92px}
    LES POUVOIRS QUI NE SE VOYAIENT PAS
    ================================================================
    Quatre pouvoirs s'appliquaient dans le silence complet : l'ancrage du Garde
-   de Pierre, l'Espadon de l'Empereur, la Foi Inébranlable du Prêtre, la
-   Domination du Grand Maître, et la Cuirasse du Preux Chevalier. Un joueur
+   de Pierre, la Foi Inébranlable du Prêtre, la Domination du Grand Maître et
+   la Cuirasse du Preux Chevalier. Un joueur
    dont le pion refuse d'avancer de deux cases ne conclut pas « le Grand
    Maître me domine » : il conclut que le jeu est cassé. UNE RÈGLE INVISIBLE
    N'EST PAS UNE SUBTILITÉ, C'EST UN BUG AUX YEUX DE CELUI QUI LA SUBIT.
@@ -5412,28 +5428,11 @@ body.cube-active:not(.nav-overlay) .notif-host{bottom:92px}
   100%{opacity:0;transform:translate(0,0) rotate(var(--rot)) scale(0)}
 }
 
-/* ESPADON. Une lame se dessine avec des TRAITS, jamais avec un halo : rien de
-   ce qui coupe n'est flou. Deux arcs se croisent, le second retardé — un
-   croisement simultané ferait une croix, et une croix ne coupe pas, elle
-   marque. */
-.fx-sword{mix-blend-mode:screen;overflow:visible}
-.fx-slash{width:150%;height:5%;border-radius:99px;
-  background:linear-gradient(90deg,transparent,#fff 30%,var(--monarque) 55%,transparent);
-  filter:blur(.6px);
-  animation:fxSlash .34s cubic-bezier(.2,.8,.3,1) both}
-.fx-slash2{animation-delay:.11s;animation-duration:.38s}
-@keyframes fxSlash{
-  0%  {opacity:0;transform:rotate(-42deg) scaleX(.1)}
-  30% {opacity:1;transform:rotate(-42deg) scaleX(1)}
-  100%{opacity:0;transform:rotate(-42deg) scaleX(1.15)}
-}
-.fx-slash2{transform-origin:50% 50%}
-@keyframes fxSlash2{
-  0%  {opacity:0;transform:rotate(38deg) scaleX(.1)}
-  30% {opacity:1;transform:rotate(38deg) scaleX(1)}
-  100%{opacity:0;transform:rotate(38deg) scaleX(1.15)}
-}
-.fx-slash.fx-slash2{animation-name:fxSlash2}
+/* IL N'Y A PLUS D'ESPADON. C'était le pouvoir de l'Empereur — deux arcs qui
+   se croisaient sur sa case quand il menaçait le Roi adverse en cavalier — et
+   l'Empereur est sorti du jeu. Le dessin part avec lui plutôt que de rester
+   en dormance : une règle de style que rien n'appelle finit toujours par être
+   recopiée ailleurs « parce qu'elle existe ». */
 
 /* FOI INÉBRANLABLE. Un dôme, et il monte LENTEMENT — c'est le seul effet du
    jeu qui dure une seconde entière. Tout le reste du plateau est sec et
@@ -6225,15 +6224,36 @@ body.light .adv-advised{color:#f6f5f1}
 
 /* Le focus clavier n'était visible que par la couleur héritée : il lui faut
    un anneau à lui, sur tout ce qui se pilote au clavier. */
-.btn:focus-visible,.jouer-btn:focus-visible,.cube-arrow:focus-visible,
-.army-card:focus-visible,.chest-card:focus-visible,
-.adv-card:focus-visible,.jouer-track:focus-visible,#settings-btn:focus-visible{
+/* L'ANNEAU DE FOCUS EST DÉSORMAIS UNE RÈGLE, PLUS UNE LISTE.
+   Il était énuméré sélecteur par sélecteur — huit noms de classes — et cette
+   liste était forcément incomplète : « Passer » du Lore et le panneau de rang
+   du menu n'y étaient pas, donc on les traversait au clavier sans voir où l'on
+   était. Une liste à tenir à jour finit toujours par rater le bouton ajouté le
+   mois suivant, et un anneau qui manque sur UN SEUL élément suffit à perdre
+   quelqu'un qui navigue sans souris.
+
+   La condition est donc devenue ce qu'elle aurait toujours dû être : « tout ce
+   qui se prend le focus ». Le reset du haut de fichier retire l'anneau du
+   navigateur pour ne pas le voir au TOUCHER (voir la note près de
+   `outline:none`) ; celui-ci le rend au CLAVIER, et à tout le monde.
+
+   Deux exceptions, et elles sont volontaires : les cases du plateau (`.gc`) et
+   les cartes de pièce portent déjà leur propre marque de focus, EN DEDANS —
+   un anneau posé autour d'une case de quarante pixels déborderait sur ses
+   voisines. */
+:is(button,a[href],input,select,textarea,[role="button"],[tabindex]:not([tabindex="-1"])):focus-visible:not(.gc):not(.piece-card){
   outline:2px solid var(--accent2);outline-offset:2px}
 
 /* Le mouvement réduit reste prioritaire sur tout ce qui précède. */
+/* `.bd-over` TRAÎNAIT ICI SANS BLOC DE DÉCLARATIONS — un sélecteur nu suivi de
+   l'accolade fermante de la requête média. Le navigateur le jetait en silence,
+   comme il jette toute règle qu'il ne sait pas lire : aucun message, aucune
+   conséquence visible, et personne pour s'en apercevoir. Il n'avait de toute
+   façon rien à dire de plus, la seule chose que `.bd-over` change étant la
+   COULEUR de `.bd-budget-num`, déjà présent dans la liste ci-dessous. */
 @media(prefers-reduced-motion:reduce){
   .status-bar,.btn,.bd-budget-num,.piece-card-cost,.piece-card-qty{transition:none}
-    .bd-over }
+}
 
 /* [ART] : LES PLANCHES DESSINÉES ==================================
    Tout ce qui suit est FACULTATIF, et le jeu est complet sans un seul de
@@ -6353,17 +6373,32 @@ body.light .lore-page[data-lore]::before{opacity:.20}
 
 /* --- 2. LE MOBILIER ---------------------------------------------- */
 
-/* LE CADRE DU PLATEAU.
-   On aurait pu le poser en `border-image`. Il aurait fallu déclarer
-   une `border:14px solid transparent` pour lui faire de la place — et
-   cette bordure existe, elle, même quand l'image manque : le plateau
-   rétrécirait de 28 px chez qui n'a pas déposé le fichier. La planche est
-   donc posée EN SURIMPRESSION, à l'intérieur du plateau, en `::after`.
-   Elle doit être en PNG à canal alpha, avec un centre ENTIÈREMENT
-   transparent : le jeu se joue à travers. */
+/* LE CADRE DU PLATEAU — ET POURQUOI IL EST PASSÉ EN border-image.
+   Il visait un PNG à canal alpha posé en `background-size:100% 100%`. Deux
+   ennuis, et le second est le vrai : le fichier n'a jamais existé (le cadre
+   n'était donc nulle part), et surtout un fond étiré en 100% 100% ÉCRASE ses
+   propres ornements — le plateau est un carré dont le côté va de 320 px sur
+   un téléphone à 640 px sur un bureau, et les fleurons d'angle n'auraient pas
+   eu la même forme d'un écran à l'autre.
+
+   La planche est maintenant assets/ui/cadre-plateau.svg, posée en
+   `border-image` sur un ::after en surimpression. border-image découpe l'image
+   en neuf : les quatre COINS gardent leur taille et leur dessin, seuls les
+   quatre BORDS s'étirent — et comme ces bords ne portent que des filets
+   parallèles à leur étirement, il n'y a rien à déformer.
+
+   La bordure est portée par le PSEUDO-ÉLÉMENT, pas par le plateau : elle ne
+   prend donc aucune place dans la mise en page, ce qui était l'objection
+   d'origine à border-image. Et `border-image-slice` est écrit SANS le
+   mot-clé `fill` : la région centrale reste transparente, on joue au travers. */
 .game-board::after{
-  content:'';position:absolute;inset:0;z-index:6;pointer-events:none;border-radius:6px;
-  background:url('../assets/ui/cadre-plateau.png') center/100% 100% no-repeat;
+  content:'';position:absolute;inset:-9px;z-index:6;pointer-events:none;
+  border:9px solid transparent;
+  border-image:url('../assets/ui/cadre-plateau.svg') 46 / 9px / 0 stretch;
+}
+@media (min-width:560px){
+  .game-board::after{inset:-11px;border-width:11px;
+    border-image:url('../assets/ui/cadre-plateau.svg') 46 / 11px / 0 stretch}
 }
 
 /* LES BANNIÈRES DE TITRE. Un bandeau derrière le titre de la page, qui
@@ -6403,7 +6438,10 @@ body.light .art-banner::before{opacity:.55;filter:saturate(.7)}
    La planche doit être SYMÉTRIQUE en diagonale : c'est ce qui permet de
    n'en dessiner qu'une et de la poser aux quatre coins sans la retourner
    (une couche de fond ne se transforme pas). */
-.login-card,.ai-lvl-box,.army-intro-box,.voie-elo-banner,.result-box{
+/* `.voie-elo-banner` a QUITTÉ cette liste : son encadrement vient
+   maintenant de assets/ui/panneau-elo.svg (voir [ORFEVRERIE] en fin de
+   fichier), et deux cadres superposés se liraient comme un cadre doublé. */
+.login-card,.ai-lvl-box,.army-intro-box,.result-box{
   --coin:url('../assets/ui/ornement-coin.png');
   background-image:var(--coin),var(--coin),var(--coin),var(--coin);
   background-repeat:no-repeat;
@@ -6498,13 +6536,20 @@ body.light .art-banner::before{opacity:.55;filter:saturate(.7)}
   100%{opacity:0;transform:translate(-50%,-50%) scale(1.15)}
 }
 .cine:has(.cine-motes)::after{
-  content:'';position:absolute;inset:0;z-index:1;pointer-events:none;mix-blend-mode:screen;
-  background:url('../assets/fx/braises.webp') center/cover repeat-y;opacity:.55;
+  content:'';position:absolute;top:0;left:0;right:0;height:200%;
+  z-index:1;pointer-events:none;mix-blend-mode:screen;
+  background:url('../assets/fx/braises.webp') center top/100% 50% repeat-y;opacity:.55;
   animation:artMotes 7s linear infinite;
 }
 /* La planche est demandée TUILABLE VERTICALEMENT (assets/PROMPTS.md) :
-   c'est ce qui permet de la faire défiler en boucle sans raccord. */
-@keyframes artMotes{from{background-position:center 0}to{background-position:center -100vh}}
+   c'est ce qui permet de la faire défiler en boucle sans raccord.
+   LE DÉFILEMENT EST UN `transform`, PLUS UN `background-position`. Déplacer un
+   fond force le navigateur à REPEINDRE toute la surface à chaque image — et
+   cette surface-ci est l'écran entier. La couche fait maintenant deux fois la
+   hauteur du cadre et porte exactement deux tuiles : la glisser d'une demi-
+   hauteur la ramène sur elle-même, le raccord est invisible, et un `transform`
+   se règle sur le compositeur sans repeindre un seul pixel. */
+@keyframes artMotes{from{transform:translateY(0)}to{transform:translateY(-50%)}}
 
 /* L'ÉCHEC : la barre de statut s'embrase. Son fond est OPAQUE
    (`var(--surface2)`) : la planche peut donc être une simple couche de
@@ -7371,4 +7416,305 @@ button.rp-log-w:hover,button.rp-log-b:hover{border-color:var(--border2);backgrou
 @media (prefers-reduced-motion:reduce){
   .ec-load-art,.ec-load-seal,.ec-load-embers i,.ec-load-bar span::after{animation:none}
   .ec-load-embers{display:none}
+}
+
+/* ================================================================
+   [ORFEVRERIE] : LES ONZE PLANCHES VECTORIELLES DE assets/ui/
+   ================================================================
+   Onze planches SVG écrites à la main, plus un sprite d'icônes recopié en tête
+   de index.html. Elles remplacent le mobilier qui n'existait qu'en dégradés
+   CSS : cadres, filets, alvéoles, écusson. Deux kilo-octets chacune contre
+   cent-cinquante pour la même chose en WebP, nettes sur un écran Retina, et la
+   couleur reste réglable d'ici.
+
+   ────────────────────────────────────────────────────────────────
+   LA RÈGLE QUI COMMANDE TOUT CE BLOC : UN ORNEMENT NE S'ÉTIRE JAMAIS.
+   ────────────────────────────────────────────────────────────────
+   Une planche posée en `background-size:100% 100%` sur un élément dont la
+   taille varie — et ici tout varie, de 360 px de large à un grand bureau —
+   écrase ses propres ornements : le même fleuron n'a pas la même forme d'un
+   écran à l'autre. C'est le défaut des plaques découpées en trois qu'on
+   cherche justement à quitter.
+
+   TROIS TECHNIQUES, ET RIEN D'AUTRE :
+
+   1. `border-image` pour tout ce qui est un CADRE. Elle découpe la planche en
+      neuf régions : les quatre coins gardent leur taille et leur dessin, seuls
+      les quatre bords sont étirés. Comme les bords des planches ne portent que
+      des filets PARALLÈLES à leur propre étirement (une ligne horizontale
+      étirée horizontalement reste la même ligne), il n'y a rien à déformer.
+      La bordure est portée par un PSEUDO-ÉLÉMENT en surimpression : elle ne
+      prend donc aucune place dans la mise en page. `border-image-slice`
+      s'écrit SANS le mot-clé `fill` — avec lui, la région centrale serait
+      peinte par-dessus le contenu.
+
+   2. `background-repeat` à taille fixe pour tout ce qui est une CHAÎNE
+      (alvéoles de prises, séparateur à losanges). Le motif fait un maillon de
+      large et se répète autant que la place le permet : il garde toujours
+      exactement la même taille, quelle que soit la largeur du porteur.
+
+   3. `mask` + `background-color` quand la TEINTE doit venir d'ici. C'est le
+      point qui a demandé le plus de soin, et il mérite son paragraphe.
+
+   ────────────────────────────────────────────────────────────────
+   POURQUOI `currentColor` NE SUFFIT PAS, ET CE QUI LE REMPLACE
+   ────────────────────────────────────────────────────────────────
+   Les planches sont écrites avec `currentColor` sur ce qui doit changer de
+   teinte : c'est correct, et c'est ce qui les rend justes le jour où l'une
+   d'elles serait posée EN LIGNE dans le document. Mais une image SVG chargée
+   par `url()` depuis une feuille de style est un document À PART : son
+   `currentColor` se résout sur SA propre racine, jamais sur l'élément qui
+   l'affiche. Une planche en `border-image` sort donc toujours de la même
+   couleur, quoi qu'on déclare sur le bouton.
+
+   Là où la teinte doit vraiment venir du CSS — l'écusson (deux camps) et la
+   plaque des boutons (trois teintes) —, la planche est donc posée en MASQUE et
+   peinte par `background-color`. Le navigateur ne garde alors que sa forme et
+   la remplit de la couleur qu'on lui donne : une seule planche, autant de
+   teintes qu'on veut, et la couleur reste une variable CSS.
+
+   ────────────────────────────────────────────────────────────────
+   POURQUOI EN FOND CSS ET NON EN `<use href="…#id">`
+   ────────────────────────────────────────────────────────────────
+   Un `<use>` qui pointe vers un AUTRE document est refusé par tous les
+   navigateurs. Restait à aller chercher les planches en JavaScript, ce qui les
+   ferait apparaître APRÈS le premier rendu — un clignotement, exactement ce
+   qu'on vient de retirer de la page d'armées. Un fond CSS, lui, fait partie du
+   calcul de style : il est là à la première peinture. Les seules planches
+   appelées par `<use>` sont les icônes du sprite, et c'est parce qu'il est
+   recopié DANS le document (voir #ec-icones, index.html).
+
+   ────────────────────────────────────────────────────────────────
+   TOUTES SONT FACULTATIVES
+   ────────────────────────────────────────────────────────────────
+   C'est la règle de tout le décor du jeu (voir [ART]) : un fichier absent ne
+   laisse aucun trou. Une `border-image` qui ne charge pas retombe sur la
+   `border-style` déclarée — ici `transparent` —, et un fond absent ne peint
+   rien. L'écran redevient celui d'avant ces planches.
+   ================================================================ */
+
+/* --- LA CARTE DE CRÉATURE -----------------------------------------
+   L'orfèvrerie par-dessus le cadre existant : filets d'or, coins fleuronnés,
+   biseau intérieur. La TEINTE DE CLASSE ne passe pas par cette planche — elle
+   est déjà portée par `--rarity` sur la bordure de la carte et sur le bandeau
+   du nom, et les superposer ferait un double liseré. La planche apporte l'or,
+   la carte apporte la classe.
+   Le ::after de .piece-card était libre ; son `inset` négatif pose le cadre À
+   CHEVAL sur le bord, là où il se lit. */
+.piece-card::after{
+  content:'';position:absolute;inset:-1px;z-index:3;pointer-events:none;
+  border:6px solid transparent;
+  border-image:url('../assets/ui/cadre-carte.svg') 34 / 6px / 0 stretch;
+  opacity:.85;
+}
+/* Une carte VERROUILLÉE garde son cadre, mais éteint : elle n'est pas encore à
+   vous, et l'or est ce qui dit la possession. */
+.piece-card-locked::after{opacity:.3;filter:saturate(.2)}
+
+/* --- LES CARTOUCHES DE TITRE --------------------------------------
+   Le même dessin au menu et sur la page d'armées : c'est le même objet, un
+   titre encadré. Le texte reste du HTML — la planche ne porte aucun mot. */
+.armies-title,.menu-title,.ec-cartouche{position:relative;padding:6px 18px}
+.armies-title::before,.menu-title::before,.ec-cartouche::before{
+  content:'';position:absolute;inset:-4px -6px;z-index:-1;pointer-events:none;
+  border:13px solid transparent;
+  border-image:url('../assets/ui/cartouche.svg') 36 / 13px / 0 stretch;
+  opacity:.8;
+}
+
+/* --- LE PANNEAU DE RANG, ET LE COMPTEUR DE VALEUR -----------------
+   Une planche, deux emplois : ils disent la même chose — où j'en suis d'une
+   échelle. Le ::after du bandeau de rang était pris par la « perle
+   d'alchimiste » ; c'est le ::before, qui ne portait qu'un filet d'or de 2 px,
+   que la planche remplace — elle dit la même chose en mieux. */
+.voie-elo-banner{position:relative}
+.voie-elo-banner::before{
+  content:'';position:absolute;inset:-2px;z-index:0;pointer-events:none;
+  height:auto;background:none;opacity:.8;
+  border:11px solid transparent;
+  border-image:url('../assets/ui/panneau-elo.svg') 30 / 11px / 0 stretch;
+}
+.voie-elo-banner>*{position:relative;z-index:1}
+.bd-budget{position:relative;padding:6px 12px}
+.bd-budget::after{
+  content:'';position:absolute;inset:-2px;z-index:0;pointer-events:none;
+  border:11px solid transparent;
+  border-image:url('../assets/ui/panneau-elo.svg') 30 / 11px / 0 stretch;
+  opacity:.7;
+}
+.bd-budget>*{position:relative;z-index:1}
+
+/* --- L'ANNEAU DES TROIS VOIES -------------------------------------
+   Posé DERRIÈRE les trois emblèmes déjà dessinés. Carré, centré, jamais
+   étiré : c'est la seule planche qui peut se permettre un cercle. */
+.jouer-track::after{
+  content:'';position:absolute;inset:-5px;z-index:0;pointer-events:none;
+  background:url('../assets/ui/anneau.svg') center/contain no-repeat;
+  opacity:.5;transition:opacity .2s ease;
+}
+.jouer-track.is-ready::after{opacity:1}
+.jouer-track>*{position:relative;z-index:1}
+
+/* --- LA PLAQUE UNIQUE DE TOUS LES BOUTONS -------------------------
+   Le grand COMBAT doré, les boutons bleu nuit (« Annuler coup »,
+   « Historique ») et le rouge (« Abandonner ») étaient trois habillages
+   différents — trois endroits où corriger un biseau, et trois grammaires
+   visuelles là où il n'y a qu'une seule nature : on appuie dessus.
+
+   C'est maintenant le MÊME tracé, posé en MASQUE et peint par `--plq` : une
+   planche, trois teintes (voir le paragraphe sur currentColor en tête de ce
+   bloc pour pourquoi le masque, et pas le fond).
+
+   L'ÉTAT PRESSÉ N'EST PAS UNE QUATRIÈME PLANCHE : `filter:brightness(.85)`.
+   Une plaque enfoncée demanderait de tout redessiner à l'envers pour une
+   différence que l'œil lit déjà dans la seule luminosité.
+
+   LE GRAND COMBAT EN EST EXCLU, et c'est délibéré : ses deux pseudo-éléments
+   portent déjà sa pulsation dorée (voir plus haut), qui est le seul objet de
+   l'écran qui bouge quand on ne touche à rien. Lui poser la plaque par-dessus
+   éteindrait ce halo pour un gain nul — il EST déjà la plaque dorée. */
+.btn-gold,.btn-primary,.btn-danger,.gt-btn,.btn-ghost{position:relative}
+.btn-gold:active,.btn-primary:active,.btn-danger:active,
+.gt-btn:active,.btn-ghost:active,.jouer-btn:active{filter:brightness(.85)}
+.btn-gold>*,.btn-primary>*,.btn-danger>*,.gt-btn>*,.btn-ghost>*{position:relative;z-index:1}
+
+/* `mask-border` EST À `mask` CE QUE `border-image` EST À `background-image` :
+   elle découpe le masque en neuf régions, garde les coins à taille fixe et
+   n'étire que les bords. C'est la SEULE façon d'obtenir les deux choses à la
+   fois — des losanges qui ne s'ovalisent pas quand un bouton s'allonge, ET une
+   teinte qui vient du CSS.
+   Un simple `mask-size:100% 100%` donnerait bien la teinte, mais étirerait les
+   losanges avec le bouton : le « Annuler coup » pleine largeur et le petit
+   « OK » n'auraient pas le même dessin.
+
+   ELLE EST SOUS `@supports`, ET C'EST INDISPENSABLE. Sans masque appliqué, le
+   pseudo-élément resterait un rectangle de couleur pleine PAR-DESSUS le
+   bouton : le texte disparaîtrait. La règle ne s'écrit donc que là où le
+   navigateur sait la lire (WebKit et Blink, avec le préfixe ; Firefox suivra
+   avec la propriété standard, déclarée juste à côté). Ailleurs, le bouton
+   garde exactement l'aspect qu'il avait avant ces planches — c'est la règle de
+   tout le décor du jeu (voir [ART]). */
+@supports ((-webkit-mask-box-image:url('../assets/ui/plaque.svg') 24 / 8px / 0 stretch) or
+           (mask-border:url('../assets/ui/plaque.svg') 24 / 8px / 0 stretch)){
+  .btn-gold::after,.btn-primary::after,.btn-danger::after,
+  .gt-btn::after,.btn-ghost::after{
+    content:'';position:absolute;inset:0;z-index:0;pointer-events:none;
+    background-color:var(--plq,#e6cd86);opacity:.6;
+    -webkit-mask-box-image:url('../assets/ui/plaque.svg') 24 / 8px / 0 stretch;
+    mask-border:url('../assets/ui/plaque.svg') 24 / 8px / 0 stretch;
+  }
+  /* LE GRAND COMBAT PORTE LA PLAQUE SUR LUI-MÊME, et non sur un pseudo-élément :
+     ses deux pseudo-éléments sont déjà pris par sa pulsation dorée, le seul
+     objet de l'écran qui bouge quand on ne touche à rien. Le masque posé sur
+     l'élément ne découperait pas que la plaque, il découperait le bouton
+     entier — on lui pose donc la plaque en `border-image`, qui vit sur la
+     bordure et laisse le fond intact. `box-sizing:border-box` est global
+     (voir le tout début du fichier) : la bordure mange sur la taille du bouton
+     au lieu de l'agrandir, la mise en page ne bouge pas d'un pixel. */
+  .jouer-btn{border:8px solid transparent;
+    border-image:url('../assets/ui/plaque.svg') 24 / 8px / 0 stretch}
+}
+.btn-gold{--plq:#fff1cd}
+.btn-primary{--plq:#fff1cd}
+.gt-btn,.btn-ghost{--plq:#9fb4dd}
+.btn-danger{--plq:#f0b9ac}
+.btn-ico{width:1.05em;height:1.05em;flex:none}
+/* Les épées du grand COMBAT : un peu plus petites que la capitale qu'elles
+   accompagnent, sinon elles la concurrencent au lieu de l'annoncer. */
+.jouer-btn{gap:.55em}
+.jouer-btn-ico{width:.8em;height:.8em;flex:none;opacity:.9}
+
+/* --- LA BARRE DU BAS ----------------------------------------------
+   Le socle et son filet supérieur. La LUEUR de l'onglet actif n'est pas dans
+   la planche : elle se déplace d'un onglet à l'autre, la dessiner l'aurait
+   figée à une position. Elle est faite ici, où elle peut suivre. */
+/* PAS de `position:relative` ici : la barre est en `position:fixed` (voir
+   plus haut), qui est DÉJÀ un positionnement — le pseudo-élément s'y ancre
+   sans aide. Lui poser `relative` la décollerait du bas de l'écran, et la
+   passerait à côté de son rail latéral en mode bureau. */
+.cube-facebar::before{
+  content:'';position:absolute;inset:0;z-index:-1;pointer-events:none;
+  border:10px solid transparent;
+  border-image:url('../assets/ui/barre-nav.svg') 18 / 10px / 0 stretch;
+}
+.cube-facebar-btn{position:relative}
+.cube-facebar-btn.is-active::after{
+  content:'';position:absolute;left:22%;right:22%;top:1px;height:2px;border-radius:2px;
+  background:linear-gradient(90deg,transparent,#e6cd86,transparent);
+  pointer-events:none;
+}
+
+/* --- LE BANDEAU DE NOM, POUR LES DEUX JOUEURS ---------------------
+   UN SEUL TRACÉ, retourné pour le joueur du haut. Le bandeau du haut est celui
+   de l'adversaire : c'est lui qui doit pointer vers le haut de l'écran, sinon
+   les deux se ressemblent trop pour qu'on sache lequel est le sien d'un coup
+   d'œil. Le retournement porte sur le PSEUDO-ÉLÉMENT seul — retourner la barre
+   retournerait aussi le pseudo. */
+.gp-bar::before{
+  content:'';position:absolute;inset:0;z-index:0;pointer-events:none;
+  border:13px solid transparent;
+  border-image:url('../assets/ui/bandeau-joueur.svg') 26 / 13px / 0 stretch;
+  opacity:.8;
+}
+#ai-player-bar::before{transform:scaleY(-1)}
+.gp-bar>*{position:relative;z-index:1}
+.gp-bar.gp-turn::before{opacity:1}
+
+/* --- L'ÉCUSSON ----------------------------------------------------
+   Le bouclier d'or où se pose le sceau de l'adversaire (ou l'initiale du
+   joueur). LA TEINTE DE CAMP VIENT VRAIMENT D'ICI : deux calques masqués par
+   la MÊME planche, celui du dessous un cheveu plus grand et peint en or,
+   celui du dessus dans la couleur du camp. C'est ce décalage qui fait le bord
+   doré, et c'est ce qui permet à une seule planche de servir les deux camps —
+   pourpre pour l'adversaire, azur pour le joueur, les deux couleurs de
+   bannière de la charte. */
+.gp-av{position:relative;background:none;border-radius:0;
+  color:#1e3a6e;width:38px;height:38px}
+.gp-av-lettre,.gp-av{font-size:14px;font-weight:800}
+.gp-av::before,.gp-av::after{
+  content:'';position:absolute;z-index:-1;pointer-events:none;
+  -webkit-mask:url('../assets/ui/ecusson.svg') center/contain no-repeat;
+  mask:url('../assets/ui/ecusson.svg') center/contain no-repeat;
+}
+.gp-av::before{inset:-3px;background-color:#c9a84c}
+.gp-av::after{inset:0;background-color:currentColor}
+#ai-player-bar .gp-av{color:#7e2b2b}
+/* L'initiale se lit SUR le champ sombre : le brun d'origine y disparaissait. */
+#human-player-avatar,#ai-player-avatar{color:#1e3a6e;-webkit-text-fill-color:#f0e4c2}
+#ai-player-avatar{color:#7e2b2b}
+
+/* --- LA RANGÉE DES PIÈCES PRISES ----------------------------------
+   Six alvéoles cerclées d'or. Elles se RÉPÈTENT au lieu de s'étirer : le
+   nombre de pièces prises va de zéro à seize, la rangée n'a donc pas de
+   largeur fixe, et six alvéoles étirées deviendraient six rectangles de plus
+   en plus larges. Le motif fait une alvéole de large ; la répétition fait la
+   rangée. */
+.gp-taken{min-height:24px;
+  background:url('../assets/ui/rangee-prises.svg') left top/24px 24px repeat-x;
+}
+
+/* --- LE SÉPARATEUR À LOSANGES -------------------------------------
+   Il s'ouvre au milieu pour laisser passer le texte : la planche ne dessine
+   qu'une MOITIÉ de filet, posée deux fois en miroir de part et d'autre. Un
+   filet entier troué aurait figé la largeur du trou, qui dépend du mot. */
+.status-bar{position:relative;display:flex;align-items:center;gap:10px;justify-content:center}
+.status-bar::before,.status-bar::after{
+  content:'';flex:1 1 0;min-width:10px;height:10px;opacity:.6;
+  background:url('../assets/ui/separateur.svg') left center/24px 10px repeat-x;
+}
+.status-bar::after{transform:scaleX(-1)}
+
+/* --- LE SABLIER DANS LA PENDULE -----------------------------------
+   La pendule affiche son temps en texte ; l'icône le QUALIFIE. Sans elle, un
+   « 4:32 » posé à côté d'un pseudo peut se lire comme un score. */
+.gp-clock{display:inline-flex;align-items:center;gap:7px;justify-content:center}
+.gp-clock-ico{width:.6em;height:.6em;flex:none;opacity:.7}
+.gp-clock.clock-low .gp-clock-ico{opacity:1}
+
+/* --- MOUVEMENT RÉDUIT ---------------------------------------------
+   Rien de tout ce bloc n'anime quoi que ce soit, sauf l'anneau des voies, qui
+   change d'opacité quand une récompense attend. Sous `prefers-reduced-motion`
+   il prend son état final sans transition. */
+@media (prefers-reduced-motion:reduce){
+  .jouer-track::after{transition:none}
 }

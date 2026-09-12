@@ -61,7 +61,7 @@ function vvEstimateAiElo(){
 // victoire rapportait +127, et une victoire de routine à bas classement +48.
 // Simulé à 50 % de victoires, cela donnait Pierre en 4 parties, Bronze en 17,
 // Acier en 37, et 1000 ELO en 77. Tout le catalogue de créatures jusqu'à
-// l'Empereur tombait en une soirée.
+// le Typhon tombait en une soirée.
 //
 // Et juste derrière, un MUR : passé 1000 les bonus s'éteignaient d'un coup et
 // l'Elo redevenait pur, c'est-à-dire immobile à 50 % de victoires. La même
@@ -173,8 +173,8 @@ const VV_ELITE_ELO=2000;
 //      35 %   │     34    154    342      528      916       —      —
 //
 // Et les jalons de la Voie eux-mêmes, à 50 % de victoires : 6 perles dès la
-// première partie, le Preux Chevalier en 4, la Méduse en 21, l'Empereur en
-// 66, le Prêtre en 153, le Typhon en 211, la Banshee en 268, le Grand Maître
+// première partie, le Preux Chevalier en 4, la Méduse en 21, l'Amazone en
+// 30, le Prêtre en 153, le Typhon en 211, la Banshee en 268, le Grand Maître
 // en 591.
 //
 // Ce qu'il faut y lire, et qui EST la promesse :
@@ -384,6 +384,22 @@ function vvCheckRewardMilestones(oldElo,newElo){
 // elle se lit donc terminée — c'est exact : là-dedans, l'ELO vaut 10 000 et
 // tout le catalogue est débloqué (voir js/accounts.js et js/economy.js).
 // Rien n'en est écrit sur le compte, on retrouve sa vraie Voie en revenant.
+// LA VOIE NE SE REDESSINE QUE QUAND ELLE A CHANGÉ.
+//
+// Même défaut que la page d'armées, et il se voyait pour la même raison : le
+// chemin est une trentaine de jalons, chacun portant une bande de terrain en
+// image de fond (`--vm-art`, assets/voie/biome-*.webp). Réécrire `route.innerHTML`
+// jette ces trente éléments et fait repartir le chargement de leurs fonds : on
+// ouvrait la Voie sur un chemin nu, qui se peignait ensuite.
+//
+// Or la Voie ne dépend que de TROIS choses : le classement du moment (la jauge
+// et le repère « vous êtes ici »), le sommet atteint (ce qui est acquis), et la
+// liste des pièces débloquées. Tant que ces trois-là sont les mêmes, le DOM
+// affiché est déjà le bon, au pixel près.
+//
+// La bannière suit la même règle à part : elle contient le médaillon du rang,
+// qui est une image lui aussi.
+let _voieSig=null,_voieBanSig=null;
 function renderVoiePage(){
   // DEUX NOMBRES, DEUX RÔLES (voir le pavé « LA COURBE D'ASCENSION » plus
   // haut) : `elo` est le classement du moment, `peak` le sommet atteint. Le
@@ -408,6 +424,10 @@ function renderVoiePage(){
   // vient y voir CE QUI RESTE À DÉBLOQUER : le rang, la distance jusqu'au
   // suivant, et la file des créatures. Rien d'autre.
   const banner=document.getElementById('voie-elo-banner');
+  // La signature de la bannière : tout ce que son balisage contient.
+  const banSig=[rank.id,elo,progress,sousRang,nextRank?nextRank.id:''].join('|');
+  const banStale=banSig!==_voieBanSig||!banner||!banner.firstElementChild;
+  _voieBanSig=banSig;
   const label=sousRang
     ?'Rang '+rank.name+' acquis · remontez à '+rank.min+' ELO'
     :(nextRank?'Vers '+nextRank.name+' ('+nextRank.min+' ELO) · '+progress+'%':'Rang maximum atteint !');
@@ -415,8 +435,14 @@ function renderVoiePage(){
   // assets/ranks/<id>.png est facultative, et l'<img> se retire d'elle-même
   // si le fichier manque — le bandeau retrouve alors exactement la mise en
   // page qu'il avait avant que les médaillons existent.
-  banner.innerHTML=rankMedalHTML(rank.id,'rm-lg')+'<div class="veb-info"><div class="veb-rank-name" style="color:'+rank.color+'">'+rank.name+'</div><div class="veb-elo">'+elo+' <span>ELO</span></div><div class="veb-progress-wrap"><div class="veb-progress-bar" style="width:'+progress+'%;background:linear-gradient(90deg,'+rank.color+',var(--gold))"></div></div><div class="veb-progress-label'+(sousRang?' veb-below':'')+'">'+label+'</div></div>';
-  const route=document.getElementById('voie-route');let html='';
+  if(banStale)banner.innerHTML=rankMedalHTML(rank.id,'rm-lg')+'<div class="veb-info"><div class="veb-rank-name" style="color:'+rank.color+'">'+rank.name+'</div><div class="veb-elo">'+elo+' <span>ELO</span></div><div class="veb-progress-wrap"><div class="veb-progress-bar" style="width:'+progress+'%;background:linear-gradient(90deg,'+rank.color+',var(--gold))"></div></div><div class="veb-progress-label'+(sousRang?' veb-below':'')+'">'+label+'</div></div>';
+  const route=document.getElementById('voie-route');
+  // Le chemin lui-même : sa signature est le sommet atteint, le classement du
+  // moment, et l'ensemble des pièces débloquées (qui décide de `reached`).
+  const routeSig=peak+'/'+elo+'/'+[...(VV_UNLOCKED||[])].sort().join(',');
+  if(route&&routeSig===_voieSig&&route.firstElementChild){voieAutoScroll(route);return;}
+  _voieSig=routeSig;
+  let html='';
   let lastRankId=null;
   // Alternance gauche/droite : un compteur À PART, incrémenté uniquement
   // pour les jalons réellement rendus (pas les portes de rang, qui sont un
@@ -459,7 +485,7 @@ function renderVoiePage(){
       '</div>';
   };
   UNLOCK_MILESTONES.forEach((milestone,idx)=>{
-    // Les cinq jalons de départ (Roi, Dame et les trois Gardes — `starter`)
+    // Les trois jalons de départ (Roi, Dame et le Garde de Pierre — `starter`)
     // sont à 0 ELO, donc numériquement dans la tranche Bois, mais ils ne
     // portent PAS sa porte : ils forment le socle tout en bas de la Voie,
     // sous l'arène. La porte Bois s'ouvre normalement au jalon suivant

@@ -37,7 +37,24 @@ function showCtxMenu(e,r,c,gs){
 // Ancrage du Garde de Pierre, extrait d'activatePower() : ce pouvoir change
 // le tour sans passer par executeGameMove(), il doit donc pouvoir être rejoué
 // à l'identique par un adversaire en ligne (mpApplyRemotePower).
+// UNE PARTIE TERMINÉE NE REÇOIT PLUS DE POUVOIR, et ce garde-fou est ici
+// plutôt qu'aux trois appelants parce que c'est le seul point par lequel ils
+// passent tous.
+//
+// Le menu contextuel vérifiait déjà `!gs.gameOver` avant d'OFFRIR le pouvoir
+// (voir onCellCtx plus haut), et c'est ce qui cachait le trou : il restait
+// deux chemins qui n'offrent rien et appliquent quand même.
+//   · mpApplyRemotePower (js/multiplayer.js) : en ligne, le paquet de pouvoir
+//     de l'adversaire et le mat peuvent se croiser sur le réseau. Le pouvoir
+//     arrivait alors APRÈS la fin, s'ancrait, faisait tourner le trait,
+//     incrémentait le compteur de coups et relançait postMoveUpdate sur une
+//     partie finie — la position finale et l'enregistrement de replay ne
+//     disaient plus la même chose que ce que les deux joueurs avaient vu.
+//   · window.activatePower : le menu peut avoir été ouvert AVANT le mat et
+//     cliqué après ; l'état du menu, lui, n'a pas été rafraîchi.
+// Rend `false` quand elle n'a rien fait, pour que l'appelant puisse le dire.
 function applyGardePierre(r,c,color,gs){
+  if(!gs||gs.gameOver)return false;
   gs.anchored=gs.anchored||new Set();gs.anchored.add(`${r},${c}`);gs.gardePierreUsed[color]=true;
   // LE SEUL POUVOIR QU'ON DÉCLENCHE À LA MAIN N'AVAIT AUCUN GESTE. Le joueur
   // choisissait « Retour à l'État Fondamental » dans un menu, la pièce prenait
@@ -54,15 +71,18 @@ function applyGardePierre(r,c,color,gs){
   if(typeof playSound==='function')playSound('choc',{force:0.5});
   recordMove(gs.board[r][c],{r,c},false,gs,{r,c});gs.turn=opp(gs.turn);gs.turnCount++;
   postMoveUpdate(gs);
+  return true;
 }
 window.activatePower=()=>{
   if(!ctxActivePower)return;
   const{r,c,pieceId,color}=ctxActivePower;
   if(pieceId==='garde-pierre'){
+    // La partie a pu se terminer entre l'ouverture du menu et le clic.
+    if(GS.gameOver){showNotif('La partie est terminée.');closeCtx();return;}
     if(GS.gardePierreUsed[color]){showNotif('Déjà utilisé !');closeCtx();return;}
     // En ligne, on ne peut activer que ses propres pièces, et à son tour.
     if(GS.multiplayer&&(color!==GS.playerColor||GS.turn!==GS.playerColor)){showNotif('Ce n\'est pas à vous de jouer.','err');closeCtx();return;}
-    applyGardePierre(r,c,color,GS);
+    if(!applyGardePierre(r,c,color,GS)){closeCtx();return;}
     showNotif('Garde de Pierre ancré !','ok');
     if(GS.multiplayer&&typeof mpSendPower==='function')mpSendPower(r,c,pieceId);
   }
@@ -509,7 +529,7 @@ function syncPieces(gs,boardEl,flipped,board){
     // LA POUSSIÈRE EST POSÉE ICI, ET C'EST CE QUI LA REND UNIVERSELLE. Ce
     // point de passage voit TOUTE pièce qui quitte le plateau, sans savoir
     // pourquoi : la prise ordinaire, les victimes collatérales du Typhon, la
-    // case effacée par le Dresseur, et tout pouvoir qui viendra. Le module
+    // case effacée par l'Éléphant de guerre, et tout pouvoir qui viendra. Le module
     // d'effets n'a donc pas un seul pouvoir à connaître (js/combat-fx.js).
     if(typeof fxPuff==='function')fxPuff(+node.dataset.r,+node.dataset.c,node._pid);
     setTimeout(()=>{if(node.parentNode)node.parentNode.removeChild(node);},BOARD_DEATH_MS);
@@ -554,8 +574,6 @@ const MOVE_GESTURE={
   'dresseur-elephant': {cls:'gc-charge',  air:true},   // il s'arc-boute, puis il part
   'preux-chevalier':   {cls:'gc-stomp',   air:false},  // le pas d'un homme en armure
   'garde-pierre':      {cls:'gc-stomp',   air:false},
-  'garde-eau':         {cls:'gc-flow',    air:true},   // il se verse d'une case à l'autre
-  'garde-feu':         {cls:'gc-flicker', air:true},   // il vacille au lieu de glisser
   'fourmi':            {cls:'gc-scuttle', air:true},   // pressee, minuscule, saccadee
 
   // SORCIERS. Aucun ne touche vraiment le sol : ils se déplacent par un autre
@@ -569,7 +587,6 @@ const MOVE_GESTURE={
   // rien et se posent d'aplomb. Une pièce qui vaut treize points n'a pas
   // besoin de s'agiter pour qu'on la regarde.
   'roi':               {cls:'gc-regal',   air:false},
-  'empereur':          {cls:'gc-regal',   air:false},
   'dame':              {cls:'gc-regal',   air:false},
   'amazone':           {cls:'gc-regal',   air:false},
   'grand-maitre':      {cls:'gc-regal',   air:false},
@@ -584,7 +601,7 @@ const MOVE_GESTURE={
 };
 // Toutes les classes de geste, pour le nettoyage : un nom oublié ici et deux
 // gestes se superposent sur la même pièce au coup suivant.
-const GESTURE_CLASSES=['gc-leap','gc-land','gc-charge','gc-stomp','gc-flow','gc-flicker',
+const GESTURE_CLASSES=['gc-leap','gc-land','gc-charge','gc-stomp',
   'gc-scuttle','gc-spin','gc-phase','gc-drift','gc-solemn','gc-regal','gc-gallop',
   'gc-slam','gc-glide'];
 
@@ -667,7 +684,15 @@ function updateTurnBars(gs){
 }
 
 // Affiche les deux badges d'horloge (masqués si gs.clockMs===0 = illimité).
+// LA PENDULE CONTINUE DE COMPTER SUR UNE PAGE CACHÉE — c'est la règle des
+// échecs, et la triche serait trop facile — MAIS ELLE N'ÉCRIT PLUS RIEN.
+// tickClock (js/rules-engine.js) appelle cette fonction cinq fois par seconde
+// tant que la partie dure ; sur un onglet en arrière-plan, chacun de ces appels
+// posait deux textContent et deux classList.toggle que personne ne verra. Le
+// décompte, lui, est fait dans tickClock à partir de l'horloge du système : il
+// ne dépend pas du rendu, et retrouve la bonne valeur au retour.
 function renderClocks(gs){
+  if(typeof document!=='undefined'&&document.hidden)return;
   const hEl=document.getElementById('human-player-clock');const aEl=document.getElementById('ai-player-clock');
   if(!hEl||!aEl)return;
   if(!gs.clockMs){hEl.style.display='none';aEl.style.display='none';return;}
@@ -676,7 +701,12 @@ function renderClocks(gs){
   const hTime=playerCol==='w'?gs.timeWhite:gs.timeBlack;
   const aTime=aiCol==='w'?gs.timeWhite:gs.timeBlack;
   hEl.style.display='';aEl.style.display='';
-  hEl.textContent=fmt(hTime);aEl.textContent=fmt(aTime);
+  // ON ÉCRIT DANS .gp-clock-t, PAS DANS LE BADGE. Le badge porte maintenant le
+  // SABLIER du sprite d'icônes (voir #ec-sablier, index.html) : un textContent
+  // posé sur le badge lui-même effacerait ce <svg> au premier tic d'horloge.
+  // Le repli sur le badge reste, au cas où le balisage n'aurait pas la travée.
+  const put=(el,txt)=>{const t=el.querySelector('.gp-clock-t');if(t)t.textContent=txt;else el.textContent=txt;};
+  put(hEl,fmt(hTime));put(aEl,fmt(aTime));
   // Sous 30 s la pendule passe en rouge et pulse : c'est le seul moment ou
   // elle doit reclamer l'attention.
   hEl.classList.toggle('clock-low',hTime<30000&&!gs.gameOver);
@@ -1326,7 +1356,16 @@ document.addEventListener('keydown',e=>{
 // corriger. renderGame, lui, passe après.
 function syncGameButtons(gs){
   const qBtn=document.getElementById('game-quit');
-  if(qBtn)qBtn.textContent=gs.gameOver?'Quitter':'Abandonner';
+  // ON ÉCRIT DANS LE <span>, PAS DANS LE BOUTON. Le bouton porte maintenant le
+  // DRAPEAU du sprite d'icônes (voir #ec-drapeau, index.html) : un textContent
+  // posé sur le bouton lui-même effacerait ce <svg> au premier rendu de la
+  // partie. Le repli sur le bouton reste, au cas où le balisage n'aurait pas
+  // la travée — c'est la même précaution que pour la pendule (renderClocks).
+  if(qBtn){
+    const lbl=gs.gameOver?'Quitter':'Abandonner';
+    const t=qBtn.querySelector('span');
+    if(t)t.textContent=lbl;else qBtn.textContent=lbl;
+  }
   const uBtn=document.getElementById('game-undo');
   if(uBtn)uBtn.style.display=(gs.gameOver||gs.multiplayer)?'none':'';
 }

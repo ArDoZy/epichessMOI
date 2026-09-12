@@ -14,6 +14,11 @@
 // pour l'acier...). Le grain des cases claires est perpendiculaire à celui
 // des cases sombres, comme sur un vrai plateau marqueté.
 //
+// `marbre` (facultatif, 0,14 par défaut) : l'opacité de la NAPPE DE VEINES qui
+// traverse tout le plateau, par-dessus les deux teintes de case. À ne pas
+// confondre avec `grain`, qui est le fil de la matière DANS chaque case. Voir
+// le pavé sur le grain de marbre dans buildSVG.
+//
 // Pour ajouter un matériau : ajoutez une entrée dans MATERIALS et relancez le
 // script. Pensez à référencer le nouveau plateau dans BOARD_SKINS
 // (js/data-pieces.js) pour qu'il soit sélectionnable en jeu.
@@ -38,6 +43,9 @@ const MATERIALS={
     light:{base:'#cfc9bd',tint1:'#e2ddd3',tint2:'#b3aca0'},
     dark:{base:'#4c4a49',tint1:'#5d5b5a',tint2:'#343232'},
     grain:[0.022,0.028],octaves:4,opacity:0.62,blend:'multiply',
+    // La pierre EST du marbre : c'est la seule matière où la veine a le droit
+    // de se voir franchement.
+    marbre:0.24,
     edge:'rgba(20,20,22,.45)',sheen:0.06,
   },
   acier:{
@@ -91,6 +99,39 @@ function buildSVG(name,m){
       '<feComponentTransfer><feFuncA type="linear" slope="1"/></feComponentTransfer>'+
     '</filter>';
 
+  // ----------------------------------------------------------------
+  // LE GRAIN DE MARBRE, PAR-DESSUS TOUT LE PLATEAU
+  // ----------------------------------------------------------------
+  // Chaque case avait déjà SON grain de matière : fibres étirées pour le bois,
+  // stries fines pour l'acier, et perpendiculaire d'une case à l'autre comme
+  // sur un vrai plateau marqueté. C'est juste, et ça s'arrête au bord de la
+  // case : le plateau se lisait comme soixante-quatre carreaux posés côte à
+  // côte, jamais comme UNE dalle taillée dans un bloc.
+  //
+  // Ce second bruit-ci est l'inverse du premier à tous points de vue, et c'est
+  // ce qui les rend complémentaires : il est BASSE FRÉQUENCE (0,004 : des
+  // nappes larges de deux cases, pas un grain), il est ISOTROPE (la même
+  // fréquence en X et en Y, donc aucune direction — une veine de marbre ne
+  // suit pas le fil), et surtout il n'est PAS MASQUÉ par le damier : il court
+  // d'un bord à l'autre, par-dessus les deux teintes de case. C'est
+  // exactement ce qui manquait : une veine qui traverse la frontière entre
+  // deux cases dit que les deux sont taillées dans la même pierre.
+  //
+  // `numOctaves=2` et non 5 : on veut des nappes, pas du détail. Chaque octave
+  // supplémentaire est une passe de bruit de plus à calculer, et ce filtre
+  // couvre les 640 000 pixels du plateau — sur un téléphone lent, c'est le
+  // genre de générosité qui se paie au premier rendu.
+  //
+  // Il est posé en `overlay` à faible opacité : ce mode éclaircit ce qui est
+  // clair et assombrit ce qui est sombre, donc il module la matière déjà là au
+  // lieu de la recouvrir d'un voile gris. À 0,14, on ne le VOIT pas ; on voit
+  // que le plateau n'est plus plat.
+  const marbre=
+    '<filter id="mb" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">'+
+      '<feTurbulence type="fractalNoise" baseFrequency="0.004" numOctaves="2" seed="'+(name.length*13+11)+'" stitchTiles="stitch"/>'+
+      '<feColorMatrix type="saturate" values="0"/>'+
+    '</filter>';
+
   const grad=(id,c)=>
     '<linearGradient id="'+id+'" x1="0" y1="0" x2="1" y2="1">'+
       '<stop offset="0" stop-color="'+c.tint1+'" stop-opacity=".85"/>'+
@@ -110,7 +151,7 @@ function buildSVG(name,m){
     checkerPattern('pD',[[100,0],[0,100]])+
     '<mask id="mL"><rect width="800" height="800" fill="url(#pL)"/></mask>'+
     '<mask id="mD"><rect width="800" height="800" fill="url(#pD)"/></mask>'+
-    turb('gH',fx,fy)+turb('gV',fy,fx)+
+    turb('gH',fx,fy)+turb('gV',fy,fx)+marbre+
     grad('lgL',m.light)+grad('lgD',m.dark)+
     grid+
     // Lueur douce au centre + assombrissement des bords : sans ce modelé le
@@ -123,6 +164,9 @@ function buildSVG(name,m){
   '</defs>\n'+
   materialLayer(m,'light','mL','gH','lgL')+'\n'+
   materialLayer(m,'dark','mD','gV','lgD')+'\n'+
+  // Le marbre passe AVANT le filet des cases et avant le modelé : il fait
+  // partie de la matière, il ne se pose pas sur le mobilier.
+  '<rect width="800" height="800" filter="url(#mb)" opacity="'+(m.marbre===undefined?0.14:m.marbre)+'" style="mix-blend-mode:overlay"/>\n'+
   '<rect width="800" height="800" fill="url(#grid)"/>\n'+
   '<rect width="800" height="800" fill="url(#vig)"/>\n'+
   '</svg>\n';

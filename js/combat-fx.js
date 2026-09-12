@@ -24,7 +24,7 @@
 //     victime, plus un voile d'écran au-delà d'un certain seuil ;
 //   · la MORT d'une pièce, quelle qu'en soit la cause : poussière et motes ;
 //   · les POUVOIRS : vortex du Typhon, hurlement de la Banshee, pétrification
-//     de la Méduse, charge du Dresseur ;
+//     de la Méduse, charge de l'Éléphant de guerre ;
 //   · la PROMOTION : colonne de lumière, cercles runiques, poussière d'or ;
 //   · l'ÉCHEC : alarme sur le roi et cerne rouge sur le plateau ;
 //   · le MAT : détonation et rais depuis le roi tombé — et sur une victoire,
@@ -91,8 +91,26 @@ function fxSetLevel(v){
 function fxGetLevel(){return _fxLevel;}
 
 // L'interrupteur unique. Tout point d'entrée public commence par lui.
+//
+// IL SE FERME AUSSI QUAND PERSONNE NE REGARDE, et c'est ce qui manquait. En
+// partie en ligne, l'adversaire continue de jouer pendant qu'on a changé
+// d'onglet ou verrouillé son téléphone : chaque coup posait ses étincelles,
+// ses ondes et sa poussière — jusqu'à quatre-vingt-dix nœuds animés — sur une
+// page que personne ne voit. Le navigateur ralentit les animations d'un onglet
+// caché, mais il ne les annule pas : il garde les couches, les nœuds et les
+// minuteries. Vingt coups joués en arrière-plan, c'est vingt salves d'effets
+// montées et démontées pour rien, et une batterie qui descend.
+//
+// LE TEST PORTE SUR `document.hidden`, ET SUR RIEN D'AUTRE. Il a été tentant
+// d'y ajouter « et la page de partie est à l'écran » : ça n'aurait presque rien
+// gagné — les cinématiques et les coffres s'ouvrent PAR-DESSUS #page-game, qui
+// reste active pendant ce temps — et ça aurait fait taire tous les effets le
+// jour où un appelant légitime les demande depuis un autre écran, sans le
+// moindre message pour le dire. Un interrupteur qui coupe en silence doit avoir
+// une condition qu'on peut lire du premier coup d'œil.
 function fxOn(){
   if(_fxLevel<=0)return false;
+  if(typeof document!=='undefined'&&document.hidden)return false;
   try{
     if(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches)return false;
   }catch(e){}
@@ -444,15 +462,6 @@ function fxPower(kind,r,c){
       node.innerHTML=html;
       fxMount('over',node,900);
       fxShockwave(r,c,'fx-shock-gold');
-      break;
-    }
-    // ESPADON : l'Empereur menace en cavalier. Deux arcs se croisent sur sa
-    // case — c'est une lame qu'on dessine, donc deux traits fins et rapides,
-    // et surtout pas un halo : rien de ce qui coupe n'est flou.
-    case 'espadon':{
-      const node=fxCellNode(r,c,'fx-sword');
-      node.innerHTML='<span class="fx-slash"></span><span class="fx-slash fx-slash2"></span>';
-      fxMount('over',node,620);
       break;
     }
     // FOI INÉBRANLABLE : le dôme du Prêtre. Il s'ouvre sur SA case, et les

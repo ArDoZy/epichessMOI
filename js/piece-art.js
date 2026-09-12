@@ -40,14 +40,6 @@ const PIECE_ART={
     '<path class="b" d="M27 51h46l-4 15c8 6 12 10 12 16H19c0-6 4-10 12-16z"/>'+
     '<path class="l" d="M31 63h38"/>',
 
-  // L'Empereur ne doit pas se confondre avec le Roi à la taille d'une case :
-  // couronne fermée en arc (et non à pointes) surmontée d'un globe crucigère.
-  'empereur':
-    '<path class="b" d="M46 2h8v6h6v7h-6v7h-8v-7h-6V8h6z"/>'+
-    '<circle class="b" cx="50" cy="32" r="12"/>'+
-    '<path class="l" d="M38 32h24M50 20v24"/>'+
-    '<path class="b" d="M22 57 17 27c8 11 19 17 33 17s25-6 33-17l-5 30z"/>'+
-    '<path class="b" d="M23 59h54l-4 12c9 6 13 9 13 13H14c0-4 4-7 13-13z"/>',
 
   // ---- Généraux --------------------------------------------------
   'dame':
@@ -67,8 +59,9 @@ const PIECE_ART={
     '<circle class="b" cx="44" cy="37" r="12"/>'+
     '<path class="b" d="M33 46h21c2 10 6 15 10 20 4 6 5 11 5 16H18c0-5 1-10 5-16 4-5 8-10 10-20z"/>',
 
-  // LE CENTAURE (anciennement Chevaucheur de Rhinocéros : l'id n'a pas bougé,
-  // voir data-pieces.js). Ce qui le fait lire, c'est la JONCTION : un buste
+  // LE CENTAURE. Son identifiant ne dit pas son nom, et c'est voulu — la
+  // raison est écrite une fois pour toutes dans data-pieces.js, à côté de la
+  // pièce. Ce qui le fait lire, c'est la JONCTION : un buste
   // dressé planté à l'avant d'un corps équin. Les deux masses se chevauchent
   // franchement, sinon on ne voit qu'un cavalier posé sur une bête.
   'chevaucheur-rhinoceros':
@@ -127,24 +120,13 @@ const PIECE_ART={
     '<path class="b" d="M36 63c-3 7-3 13 0 18l5-2c-2-5-2-11 0-15z"/>'+
     '<circle class="k" cx="39" cy="40" r="3.5"/><circle class="k" cx="61" cy="40" r="3.5"/>',
 
-  // LES TROIS GARDES SE LISENT COMME UNE FAMILLE : même silhouette de sentinelle
-  // casquée, même paire d'yeux, et une SEULE chose qui change — l'emblème gravé
-  // sur le plastron, qui est exactement le déplacement de la pièce. La croix
-  // pour l'Eau (les quatre orthogonales), le sautoir pour le Feu (les quatre
-  // diagonales), l'étoile à huit branches pour la Pierre (les deux à la fois).
-  // On peut donc deviner le coup d'une créature en regardant sa case.
-  'garde-eau':
-    '<path class="b" d="M50 6c-9 6-16 15-16 23a16 16 0 0 0 32 0c0-8-7-17-16-23z"/>'+
-    '<path class="b" d="M26 46h48l4 36H22z"/>'+
-    '<path class="l" d="M50 55v18M41 64h18"/>'+
-    '<circle class="k" cx="43" cy="30" r="3.2"/><circle class="k" cx="57" cy="30" r="3.2"/>',
-
-  'garde-feu':
-    '<path class="b" d="M50 5c-4 9-11 13-13 21a16 16 0 0 0 26 12c4-4 5-9 3-15-2-7-11-11-16-18z"/>'+
-    '<path class="b" d="M26 46h48l4 36H22z"/>'+
-    '<path class="l" d="M43 57l14 14M57 57L43 71"/>'+
-    '<circle class="k" cx="43" cy="30" r="3.2"/><circle class="k" cx="57" cy="30" r="3.2"/>',
-
+  // LE GARDE DE PIERRE PORTE SON DÉPLACEMENT SUR LE PLASTRON : l'étoile à huit
+  // branches, qui est exactement ce qu'il sait faire — les quatre orthogonales
+  // et les quatre diagonales, d'une case. On devine donc son coup en regardant
+  // sa case. Il avait deux cadets bâtis sur la même silhouette de sentinelle
+  // casquée — le Garde d'Eau à la croix, le Garde de Feu au sautoir — retirés
+  // du jeu depuis : l'emblème n'a plus de famille à distinguer, seulement une
+  // règle à dire.
   'garde-pierre':
     '<path class="b" d="M23 82l3-35 11-16 13-8 13 8 11 16 3 35z"/>'+
     '<path class="l" d="M37 31l7 21-15 7M63 31l-7 21 15 7M44 52l6 13 6-13"/>'+

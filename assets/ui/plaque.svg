@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- ================================================================
+     PLAQUE.SVG : UNE SEULE plaque pour TOUS les boutons du jeu
+     ================================================================
+     Le grand COMBAT doré, les boutons bleu nuit (« Annuler coup »,
+     « Historique ») et le rouge (« Abandonner ») étaient trois dessins
+     différents. Trois dessins, c'est trois endroits où corriger un biseau,
+     et surtout trois grammaires visuelles là où il n'y a qu'une seule
+     nature : on appuie dessus.
+
+     C'est donc le MÊME tracé — losanges aux extrémités, biseau lumineux le
+     long du haut — et seule la TEINTE change. Elle arrive par
+     `currentColor` : le bouton porte sa couleur, la plaque la reprend. Trois
+     teintes, une planche.
+
+     L'ÉTAT PRESSÉ N'EST PAS UNE QUATRIÈME PLANCHE : c'est un
+     `filter:brightness(.85)` posé en CSS. Un enfoncement dessiné demanderait
+     de tout redessiner à l'envers pour une différence que l'œil lit déjà
+     dans la seule luminosité.
+
+     Les losanges sont dans les COINS (donc jamais étirés) et les bords ne
+     portent que des filets parallèles à leur étirement — voir
+     cadre-carte.svg pour pourquoi c'est la seule composition qui tienne.
+     ================================================================ -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 48" width="120" height="48" color="#c9a84c">
+  <title>Epic Chess, plaque de bouton</title>
+  <!-- LE FILET DE CONTOUR, dans la teinte du bouton, éclairci : un contour de
+       la même couleur que le fond ne se verrait pas. -->
+  <rect x="2" y="2" width="116" height="44" rx="8" fill="none" stroke="currentColor" stroke-width="2" opacity=".9"/>
+  <!-- LE BISEAU LUMINEUX : une arête claire le long du HAUT seulement. La
+       lumière vient d'en haut dans tout le jeu ; un biseau sur les quatre
+       côtés ferait une gaufre, pas un relief. Horizontal, donc étirable sans
+       dommage. -->
+  <path d="M10 4.6 H110" stroke="#e6cd86" stroke-width="1.6" opacity=".55" stroke-linecap="round"/>
+  <!-- L'OMBRE PORTÉE INTÉRIEURE, en bas : l'autre moitié du relief. -->
+  <path d="M10 43.4 H110" stroke="#0b1220" stroke-width="1.6" opacity=".45" stroke-linecap="round"/>
+  <defs>
+    <!-- Le losange d'extrémité, dans le carré de 24 unités du découpage. -->
+    <g id="losange">
+      <path d="M2 14 V10 Q2 2 10 2 H14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>
+      <path d="M11 6.5 14.5 10 11 13.5 7.5 10Z" fill="#e6cd86" opacity=".85"/>
+    </g>
+  </defs>
+  <use href="#losange"/>
+  <use href="#losange" transform="translate(120,0) scale(-1,1)"/>
+  <use href="#losange" transform="translate(0,48) scale(1,-1)"/>
+  <use href="#losange" transform="translate(120,48) scale(-1,-1)"/>
+</svg>

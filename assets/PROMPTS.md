@@ -1076,9 +1076,9 @@ bleu roi `#7aa8e6` (Monarque), or orangé `#f0a052` (Général), vert clair
 de nom : une lueur d'une autre couleur jure immédiatement avec son cadre.
 
 **Par quoi commencer :** les cinq créatures qu'on voit dès la première
-partie — `roi.png`, `dame.png`, `garde-eau.png`, `garde-feu.png`,
-`fourmi.png`. Une grille de composition où cinq cartes sur dix-neuf sont
-illustrées se lit déjà comme une grille de cartes.
+partie — `roi.png`, `dame.png`, `garde-pierre.png`, `fourmi.png`,
+`dresseur-elephant.png`. Une grille de composition où cinq cartes sur seize
+sont illustrées se lit déjà comme une grille de cartes.
 
 ---
 

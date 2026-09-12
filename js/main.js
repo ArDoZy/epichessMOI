@@ -314,9 +314,18 @@ function rankMedalErr(img){
   img.dataset.fallback='1';
   img.src=img.src.replace(/\.webp(\?.*)?$/,'.png$1');
 }
+// `loading="lazy"` ET `decoding="async"` : ces médaillons sont posés une
+// trentaine de fois sur la Voie (un par porte de rang), et une seule est à
+// l'écran à un instant donné. Sans le premier, on télécharge les trente au
+// moment où la page se construit ; sans le second, chaque décodage bloque le
+// fil principal juste avant la peinture — soit trente petits à-coups.
+// Les dimensions sont déclarées pour que la place soit RÉSERVÉE avant l'arrivée
+// de l'image : sans elles, chaque médaillon qui se pose décale la ligne qui le
+// porte, et la Voie sautille pendant tout son chargement.
 function rankMedalHTML(rankId,cls){
   if(!rankId)return '';
   return '<img class="rank-medal '+(cls||'rm-sm')+'" alt="" aria-hidden="true"'+
+    ' loading="lazy" decoding="async" width="96" height="96"'+
     ' src="assets/ranks/'+rankId+'.webp" onerror="rankMedalErr(this)">';
 }
 

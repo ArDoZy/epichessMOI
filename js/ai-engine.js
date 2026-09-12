@@ -24,14 +24,15 @@
 // ================================================================
 
 const CVAL={
-  'roi':10000,'empereur':10000,
+  'roi':10000,
   'dame':950,'amazone':800,'chevaucheur-rhinoceros':870,'grand-maitre':1200,
   'cavalier-primordial':360,'fou-primordial':360,'tour-primordiale':530,
   'dresseur-elephant':310,'meduse':240,'typhon':520,
   'fourmi':190,'banshee':430,'preux-chevalier':210,
-  // Les trois Gardes : une seule case. L'Eau et le Feu couvrent chacun quatre
-  // directions, la Pierre les huit — et elle sait en plus s'ancrer.
-  'garde-eau':200,'garde-feu':200,'garde-pierre':290,'pretre':420,'std-pawn':100,
+  // Le Garde de Pierre : une seule case, mais dans les huit directions — et
+  // il sait en plus s'ancrer. Ses deux cadets, l'Eau et le Feu, sont sortis du
+  // jeu ; sa valeur, elle, ne bouge pas.
+  'garde-pierre':290,'pretre':420,'std-pawn':100,
 };
 const PVAL={k:10000,q:950,r:530,b:360,n:360,p:100};
 // Classe de chaque pièce, indexée pour l'évaluation : PIECES.find() dans la
@@ -166,7 +167,7 @@ function evalPowers(board,fgs){
       s+=sg*best*0.40;
     }
 
-    // DRESSEUR D'ÉLÉPHANT : la charge de 2 cases écrase ce qu'elle traverse.
+    // ÉLÉPHANT DE GUERRE : la charge de 2 cases écrase ce qu'elle traverse.
     else if(id==='dresseur-elephant'){
       let best=0;
       for(const[dr,dc] of [[2,0],[-2,0],[0,2],[0,-2]]){
@@ -326,7 +327,7 @@ function evalBoard(board,gs){
     }
 
     let devBonus=0;
-    const isKingPiece=p.isKing||p.type==='k'||['roi','empereur'].includes(p.pieceId);
+    const isKingPiece=p.isKing||p.type==='k'||p.pieceId==='roi';
     const isPawn=p.type==='p'||p.pieceId==='std-pawn'||p.pieceId==='fourmi'||p.pieceId==='preux-chevalier';
     if(!isKingPiece&&!isPawn){
       const homeRow=p.color==='b'?0:7;
@@ -401,7 +402,7 @@ function applyMoveQuick(board,from,to,p,anchored){
   if(to.ep){const pr=to.r+(p.color==='w'?1:-1);b[pr][to.c]=null;}
   if(to.castle){if(to.castle==='K'){b[from.r][5]=b[from.r][7];b[from.r][7]=null;}if(to.castle==='Q'){b[from.r][3]=b[from.r][0];b[from.r][0]=null;}}
   b[to.r][to.c]={...p,hasMoved:true};b[from.r][from.c]=null;
-  // Typhon, charge du Dresseur, hurlement de la Banshee : ces effets sont le
+  // Typhon, charge de l'Éléphant de guerre, hurlement de la Banshee : ces effets sont le
   // coup, pas un supplément. Sans eux la recherche évaluait un Typhon comme un
   // fou d'une case et ne jouait jamais le coup qui efface trois pièces.
   applyCollateralOnBoard(b,from,to,b[to.r][to.c],anchored);
@@ -420,10 +421,9 @@ function applyMoveQuick(board,from,to,p,anchored){
 const ZK=(()=>{
   let seed=0xDEADBEEF;
   const rnd=()=>{seed=Math.imul(1664525,seed)+1013904223|0;return(seed>>>0);};
-  const pieceIds=['roi','empereur','amazone','chevaucheur-rhinoceros',
+  const pieceIds=['roi','amazone','chevaucheur-rhinoceros',
     'dame','grand-maitre','cavalier-primordial','fou-primordial','tour-primordiale',
-    'fourmi','preux-chevalier','dresseur-elephant',
-    'garde-eau','garde-feu','garde-pierre',
+    'fourmi','preux-chevalier','dresseur-elephant','garde-pierre',
     'meduse','typhon','banshee','pretre',
     'std-pawn','std-r','std-n','std-b'];
   const pidx={};pieceIds.forEach((id,i)=>{pidx[id]=i;});
@@ -533,7 +533,7 @@ function quiesce(board,alpha,beta,maxing,fgs,qdepth){
   // milieu d'un échange. Elle ne retenait que les prises « classiques », celles
   // qui atterrissent sur une pièce ennemie — or dans ce jeu les coups les plus
   // violents n'en sont pas : un Typhon qui se pose sur une case VIDE efface
-  // jusqu'à huit voisines, et la charge du Dresseur écrase ce qu'elle traverse.
+  // jusqu'à huit voisines, et la charge de l'Éléphant de guerre écrase ce qu'elle traverse.
   // La recherche évaluait donc tranquillement une position à un demi-coup
   // d'être balayée, ce qui est exactement l'effet d'horizon que la quiescence
   // existe pour supprimer.
@@ -909,10 +909,10 @@ function mirrorBoardForWorker(gsData){
 
 // Ramène un coup trouvé sur le plateau miroité dans le repère réel.
 // Les DRAPEAUX du coup font partie du coup : `castle`, `ep`, `typhon`,
-// `destroysPath` et le couple fromR/fromC de la charge du Dresseur étaient
+// `destroysPath` et le couple fromR/fromC de la charge de l'Éléphant de guerre étaient
 // perdus en route, parce que seules les coordonnées étaient recopiées. Une IA
 // jouant les Blancs roquait donc sans déplacer sa tour, prenait en passant
-// sans retirer le pion, et chargeait au Dresseur sans rien écraser.
+// sans retirer le pion, et chargeait à l'Éléphant de guerre sans rien écraser.
 function unmirrorMove(m){
   const to={...m.to,r:7-m.to.r,c:m.to.c};
   if(to.fromR!==undefined)to.fromR=7-to.fromR;
@@ -923,10 +923,34 @@ function unmirrorMove(m){
 // FALLBACK : recherche IA sur le thread principal (si Web Worker
 // indisponible, ex: certains contextes file:// restrictifs)
 // ----------------------------------------------------------------
+// LE BUDGET DU REPLI EST BORNÉ, ET C'EST TOUT L'OBJET DE MAIN_THREAD_MAX_MS.
+// La recherche est écrite pour tourner dans un Worker : le budget d'un
+// adversaire fort y monte à cinq secondes (l'Athanor), et pendant ce temps
+// l'interface reste vivante parce que le calcul est ailleurs. Sur le fil
+// principal — où l'on ne tombe que si le navigateur refuse les Workers —, les
+// mêmes cinq secondes sont cinq secondes d'écran FIGÉ : plus un défilement,
+// plus un appui pris en compte, plus une animation. Un joueur ne conclut pas
+// « l'Instructeur réfléchit », il conclut que le jeu a planté.
+//
+// Six cents millisecondes sont le seuil où une attente reste une attente. La
+// recherche est à profondeur itérative (voir aiSearchRoot) : elle rend
+// toujours le meilleur coup TROUVÉ à l'instant où le budget s'épuise, donc la
+// borne ne casse rien — elle rend l'adversaire un peu moins fort sur un
+// navigateur qui n'a pas de Worker, ce qui est le bon arbitrage.
+//
+// La profondeur est bornée avec le temps : sans cela, un `depthCap` de 30
+// relancerait une itération de plus juste avant l'échéance, et cette
+// itération-là n'est pas interruptible entre deux nœuds.
+const MAIN_THREAD_MAX_MS=600;
+const MAIN_THREAD_MAX_DEPTH=6;
 function doAIMoveMainThread(gs){
   const aiCol=gs.aiColor||'b';
   if(gs.gameOver||gs.turn!==aiCol)return;
-  const opp=AI_INSTRUCTORS[selectedAILevel]||AI_INSTRUCTORS[0];
+  const base=AI_INSTRUCTORS[selectedAILevel]||AI_INSTRUCTORS[0];
+  const opp=(base.timeMs>MAIN_THREAD_MAX_MS||(base.depthCap||30)>MAIN_THREAD_MAX_DEPTH)
+    ?{...base,timeMs:Math.min(base.timeMs,MAIN_THREAD_MAX_MS),
+             depthCap:Math.min(base.depthCap||30,MAIN_THREAD_MAX_DEPTH)}
+    :base;
   // aiSearchRoot raisonne toujours du point de vue des Noirs (c'est la
   // convention de signe d'evalBoard). Une IA qui joue les Blancs reçoit donc
   // le plateau miroité, exactement comme le Worker, et le coup rendu est

@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- ================================================================
+     SEPARATEUR.SVG : le filet à losanges qui s'ouvre au milieu
+     ================================================================
+     Il souligne « Pièces possédées », « À votre tour » et les autres têtes de
+     section. Le titre les coupait auparavant d'un simple trait gris, qui dit
+     « fin de bloc » ; celui-ci dit « voici ce qui vient ».
+
+     IL S'OUVRE AU MILIEU, et c'est tout son propos : le texte passe DANS la
+     brèche, pas au-dessus du trait. La planche ne dessine donc qu'une MOITIÉ
+     de filet — le losange à l'extrémité extérieure, la chaîne qui court vers
+     le centre — et la feuille de style la pose deux fois, en miroir, de part
+     et d'autre du texte (::before à gauche, ::after à droite, retourné).
+     Dessiner le filet entier avec un trou au milieu aurait figé la largeur de
+     ce trou, alors qu'elle dépend du mot qu'on y met.
+
+     Elle se RÉPÈTE horizontalement à hauteur fixe plutôt que de s'étirer, pour
+     la raison déjà dite dans rangee-prises.svg : un losange étiré n'est plus
+     un losange. Le motif fait donc un maillon de large.
+     ================================================================ -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 10" width="24" height="10" color="#c9a84c">
+  <title>Epic Chess, séparateur à losanges</title>
+  <path d="M0 5 H24" stroke="currentColor" stroke-width="1" opacity=".42"/>
+  <path d="M12 1.6 15.4 5 12 8.4 8.6 5Z" fill="currentColor" opacity=".7"/>
+  <path d="M12 3.2 13.8 5 12 6.8 10.2 5Z" fill="#e6cd86" opacity=".7"/>
+</svg>

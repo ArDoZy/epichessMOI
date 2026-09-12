@@ -277,11 +277,11 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
       // empile). La date suit, sinon la frise et les infobulles se
       // contrediraient.
       for(let i=0;i<12;i++)h.push({result:i%3===0?'loss':'win',oldElo:400+i*5,newElo:405+i*5,
-        delta:5,date:Date.now()-(11-i)*86400000,ranked:true,army:['garde-eau','fourmi'],mode:'ia'});
+        delta:5,date:Date.now()-(11-i)*86400000,ranked:true,army:['garde-pierre','fourmi'],mode:'ia'});
       // Ces cinq clés appartiennent au SERVEUR : accSet les refuse, et
       // c'est exactement ce qu'on veut. On sème donc par la porte du bac
       // à sable (ecMockSeed, js/server.js), qui n'existe qu'en `?mock`.
-      ecMockSeed({history:h,piece_stats:{'garde-eau':{g:12,w:8},fourmi:{g:3,w:3}},
+      ecMockSeed({history:h,piece_stats:{'garde-pierre':{g:12,w:8},fourmi:{g:3,w:3}},
                   best_streak:7,ranked_games:12,ranked_wins:8});
       renderAccountPage();
     });
@@ -302,10 +302,10 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
       }
       const fav=document.querySelector('.acc-fav-name');
       if(!fav)out.push('aucune créature fétiche');
-      // La Fourmi a 3 parties, sous le minimum : c'est la Garde d'Eau, 12
+      // La Fourmi a 3 parties, sous le minimum : c'est le Garde de Pierre, 12
       // parties, qui doit sortir — sinon on afficherait un « 100 % » sur trois
       // parties.
-      else if(!/Garde d'Eau/i.test(fav.textContent))out.push('fétiche inattendue : '+fav.textContent);
+      else if(!/Garde de Pierre/i.test(fav.textContent))out.push('fétiche inattendue : '+fav.textContent);
       const stats=[...document.querySelectorAll('.acc-stat-k')].map(e=>e.textContent);
       if(!stats.some(t=>/Meilleure série/.test(t)))out.push('la meilleure série n\'est pas affichée');
       const vals=[...document.querySelectorAll('.acc-stat-v')].map(e=>e.textContent);
@@ -330,7 +330,7 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
       if(vvLoadElo()!==eloAvant)out.push('le client a pu écrire son propre ELO');
       // 2. Une partie déclarée, et c'est le serveur qui tranche.
       const r=await ecReportMatch({result:'win',ranked:true,opp_elo:eloAvant,
-        mode:'ia',army:['garde-eau','garde-eau','fourmi']});
+        mode:'ia',army:['garde-pierre','garde-pierre','fourmi']});
       if(!r||typeof r.delta!=='number')out.push('le serveur n\'a pas répondu au rapport de partie');
       else{
         if(r.delta<=0)out.push('une victoire ne rapporte rien : '+r.delta);
@@ -339,11 +339,11 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
       const apres=vvLoadPieceStats();
       // Une créature alignée en double ne compte qu'UNE partie : on mesure
       // les parties jouées avec elle, pas les exemplaires posés.
-      const g0=(avant['garde-eau']&&avant['garde-eau'].g)||0;
-      const w0=(avant['garde-eau']&&avant['garde-eau'].w)||0;
-      if(apres['garde-eau'].g!==g0+1)
-        out.push('une créature en double compte deux fois : '+g0+' -> '+apres['garde-eau'].g);
-      if(apres['garde-eau'].w!==w0+1)out.push('la victoire n\'est pas comptée');
+      const g0=(avant['garde-pierre']&&avant['garde-pierre'].g)||0;
+      const w0=(avant['garde-pierre']&&avant['garde-pierre'].w)||0;
+      if(apres['garde-pierre'].g!==g0+1)
+        out.push('une créature en double compte deux fois : '+g0+' -> '+apres['garde-pierre'].g);
+      if(apres['garde-pierre'].w!==w0+1)out.push('la victoire n\'est pas comptée');
       // 3. Le record de série ne redescend pas.
       if(vvLoadBestStreak()<7)out.push('le record de série a été écrasé : '+vvLoadBestStreak());
       return out;
@@ -956,6 +956,236 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
 
   await step('l\'Armurerie, la Voie et les armées se rendent',async()=>{
     await page.evaluate(()=>{GS.gameOver=true;stopClockTick(GS);renderReservePage();renderVoiePage();renderArmiesPage();});
+  });
+
+  // DEUX TROUS TROUVÉS EN CHERCHANT, ET REFERMÉS. Ils ne se voyaient ni l'un
+  // ni l'autre dans un parcours normal : le premier demande une partie
+  // terminée, le second une armée qui vient d'ailleurs.
+  await step('une partie finie ne reçoit plus de pouvoir, et une armée trouée ne fait plus tomber le combat',async()=>{
+    const bad=await page.evaluate(()=>{
+      const out=[];
+
+      // 1. L'ANCRAGE DU GARDE DE PIERRE APRÈS LA FIN.
+      // Le menu contextuel vérifiait `!gs.gameOver` avant d'OFFRIR le pouvoir,
+      // ce qui cachait le trou : restaient deux chemins qui n'offrent rien et
+      // appliquaient quand même — le pouvoir d'un adversaire en ligne arrivé
+      // après le mat (mpApplyRemotePower), et un menu ouvert avant le mat puis
+      // cliqué après. Le pouvoir s'ancrait, faisait tourner le trait,
+      // incrémentait le compteur et relançait postMoveUpdate sur une partie
+      // finie : la position finale ne disait plus la même chose que ce que les
+      // deux joueurs avaient vu.
+      const gs={gameOver:true,turn:'w',playerColor:'w',
+        board:Array.from({length:8},()=>Array(8).fill(null)),
+        anchored:new Set(),medusaParalyzed:new Set(),pretreProtected:new Set(),
+        grandMaitreAlive:{w:false,b:false},gardePierreUsed:{w:false,b:false},
+        capturedW:[],capturedB:[],movePairs:[],history:[],lastMoveHistory:[],turnCount:7};
+      gs.board[4][4]={type:'p',color:'w',pieceId:'garde-pierre',emoji:'',id:'gp',hasMoved:true};
+      const applique=applyGardePierre(4,4,'w',gs);
+      if(applique)out.push('applyGardePierre se dit appliqué sur une partie terminée');
+      if(gs.anchored.size)out.push('le Garde de Pierre s\'ancre encore après la fin de la partie');
+      if(gs.turn!=='w')out.push('le trait a tourné après la fin de la partie');
+      if(gs.turnCount!==7)out.push('le compteur de coups a avancé après la fin de la partie');
+      // Et il marche toujours quand la partie est EN COURS — sans quoi on
+      // aurait « corrigé » le bug en retirant le pouvoir.
+      gs.gameOver=false;
+      if(!applyGardePierre(4,4,'w',gs))out.push('le pouvoir ne marche plus pendant la partie');
+      if(!gs.anchored.size)out.push('le pouvoir ne s\'applique plus pendant la partie');
+
+      // 2. UNE ARMÉE DONT UNE PIÈCE N'EXISTE PLUS.
+      // `wm.id` sur un `undefined` levait une exception, et une exception
+      // là-dedans veut dire un écran de combat NOIR. Le cas n'est pas
+      // théorique : trois créatures ont quitté le catalogue, et l'armée d'un
+      // adversaire en ligne resté sur une version plus ancienne du jeu les
+      // cite encore — accMigrateRetiredPieces ne peut rien pour celle-là.
+      const bonne={mon:{id:'roi'},gen:{id:'dame'},extras:['fourmi'],placements:{fourmi:2}};
+      const trouee={mon:{id:'empereur'},gen:{id:'garde-feu'},
+                    extras:['garde-eau','fourmi'],placements:{'garde-eau':1,fourmi:2}};
+      let b;
+      try{b=buildGameBoard(trouee,bonne);}
+      catch(e){out.push('une armée citant une pièce retirée fait tomber le combat : '+e.message);}
+      if(b){
+        // Le repli est le plus conservateur possible : le Roi et la Dame.
+        const roi=b[7][4],dame=b[7][3];
+        if(!roi||roi.pieceId!=='roi')out.push('le monarque introuvable n\'a pas été remplacé par le Roi');
+        if(!roi||!roi.isKing)out.push('le monarque de repli n\'est pas un monarque');
+        if(!dame||dame.pieceId!=='dame')out.push('le général introuvable n\'a pas été remplacé par la Dame');
+        // La créature retirée n'est pas posée, la légitime l'est.
+        const rang=b[7].filter(Boolean).map(p=>p.pieceId);
+        if(rang.some(id=>RETIRED_PIECE_IDS.has(id)))out.push('une créature retirée est posée sur le plateau');
+        if(rang.indexOf('fourmi')<0)out.push('la créature légitime n\'a pas été posée');
+      }
+      return out;
+    });
+    if(bad.length)throw new Error(bad.join(' · '));
+  });
+
+  // LES ONZE PLANCHES VECTORIELLES, ET LE SPRITE RECOPIÉ.
+  //
+  // Une planche absente ne casse rien — c'est la règle de tout le décor du jeu
+  // — mais elle ne se voit pas non plus, et un `url()` mal orthographié dans la
+  // feuille de style ne fait pas le moindre bruit. On demande donc au
+  // navigateur de les charger vraiment, et on compte celles qui reviennent en
+  // 404.
+  //
+  // Et surtout : le sprite d'icônes existe en DEUX exemplaires (le fichier
+  // source assets/ui/icones.svg, et sa copie en tête de index.html, parce qu'un
+  // <use> vers un autre document est refusé par les navigateurs). Deux copies
+  // qui divergent, c'est une icône corrigée d'un côté seulement. Ce test les
+  // compare et échoue si elles ne sont plus identiques : c'est ce qui rend la
+  // duplication tenable.
+  await step('les planches vectorielles se chargent, et le sprite est bien la même copie',async()=>{
+    const bad=await page.evaluate(async()=>{
+      const out=[];
+      const planches=['cadre-carte','cartouche','panneau-elo','anneau','plaque','barre-nav',
+                      'cadre-plateau','bandeau-joueur','ecusson','rangee-prises','separateur','icones'];
+      for(const n of planches){
+        const r=await fetch('assets/ui/'+n+'.svg');
+        if(!r.ok){out.push(n+'.svg : '+r.status);continue;}
+        const t=await r.text();
+        if(!/^\s*<\?xml|^\s*<svg/.test(t))out.push(n+'.svg ne commence pas par du SVG');
+        // AUCUN TEXTE DANS LES PLANCHES : tous les mots du jeu sont du HTML,
+        // sinon ils ne se traduisent plus et le lecteur d'écran ne les voit
+        // pas. <title> est l'exception : il n'est pas peint, il NOMME.
+        if(/<text[\s>]|<tspan[\s>]/.test(t))out.push(n+'.svg contient du texte peint');
+      }
+      // Les cinq plateaux ont leur nappe de veines.
+      for(const b of ['bois','pierre','acier','argent','or']){
+        const t=await (await fetch('assets/boards/'+b+'.svg')).text();
+        if(!/id="mb"/.test(t))out.push('le plateau '+b+' n\'a pas son grain de marbre');
+      }
+      // LES DEUX COPIES DU SPRITE. On compare les <symbol>, pas le fichier :
+      // l'enveloppe <svg> diffère forcément (l'une est un document, l'autre un
+      // bloc caché dans la page), et les commentaires de dessin ne vivent que
+      // dans le fichier source.
+      //
+      // ON COMPARE DES ARBRES, PAS DU TEXTE. Comparer les chaînes échouerait
+      // toujours, et pour des raisons qui n'ont rien à voir avec le dessin :
+      // l'analyseur XML garde `xmlns` sur chaque nœud, celui du HTML déplie
+      // `<path/>` en `<path></path>`, et ni l'un ni l'autre ne conserve
+      // l'ordre d'écriture des attributs. On prend donc de chaque symbole une
+      // EMPREINTE de sa seule structure — balises, profondeur, et attributs
+      // triés —, la même des deux côtés.
+      const normalise=el=>{
+        const out=[];
+        const marche=(n,prof)=>{
+          if(n.nodeType!==1)return;
+          const attrs=[...n.attributes]
+            .filter(a=>a.name!=='xmlns')
+            .map(a=>a.name+'='+a.value.replace(/\s+/g,' ').trim())
+            .sort();
+          out.push(prof+n.tagName.toLowerCase()+'['+attrs.join(',')+']');
+          [...n.childNodes].forEach(c=>marche(c,prof+'>'));
+        };
+        marche(el,'');
+        return out.join('|');
+      };
+      const symbolesDe=racine=>[...racine.querySelectorAll('symbol')].map(normalise);
+      const doc=new DOMParser().parseFromString(
+        await (await fetch('assets/ui/icones.svg')).text(),'image/svg+xml');
+      const fichier=symbolesDe(doc);
+      const hote=document.getElementById('ec-icones');
+      if(!hote){out.push('le sprite n\'est pas recopié dans le document');}
+      else{
+        const page_=symbolesDe(hote);
+        if(fichier.length!==5)out.push('le fichier ne porte pas cinq symboles mais '+fichier.length);
+        if(page_.length!==fichier.length)
+          out.push('le document porte '+page_.length+' symboles, le fichier '+fichier.length);
+        else fichier.forEach((sym,i)=>{
+          if(sym!==page_[i])out.push('le symbole n°'+(i+1)+' a divergé entre le fichier et le document');
+        });
+        // Et chaque icône est réellement appelée quelque part.
+        ['ec-sablier','ec-parchemin','ec-drapeau'].forEach(id=>{
+          if(!document.querySelector('use[href="#'+id+'"]'))out.push(id+' n\'est utilisé nulle part');
+        });
+      }
+      return out;
+    });
+    if(bad.length)throw new Error(bad.join(' · '));
+  });
+
+  // LE « RECHARGEMENT » DE LA PAGE D'ARMÉES, mesuré au lieu d'être regardé.
+  //
+  // En arrivant sur la composition depuis une autre face, des éléments
+  // disparaissaient une demi-seconde puis revenaient. La cause était un
+  // innerHTML : le catalogue entier était jeté et refait à chaque appel, donc
+  // seize <img> détruites et recréées, donc rechargées et redécodées, donc des
+  // cadres vides le temps que ça revienne.
+  //
+  // Ce test ne regarde pas l'écran, il compte les nœuds JETÉS. Un rendu qui ne
+  // change rien ne doit RIEN retirer du document : c'est la seule formulation
+  // de « ça ne clignote pas » qu'une machine puisse vérifier. Et il vérifie la
+  // même chose du Magasin, qui avait le même défaut en plus petit.
+  await step('revenir sur la page d\'armées ne jette pas une seule carte',async()=>{
+    const bad=await page.evaluate(async()=>{
+      const out=[];
+      const cont=document.getElementById('ar-cards-container');
+      if(!cont)return['pas de conteneur de cartes'];
+      renderArmiesPage();
+      await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+      const cartes=[...cont.querySelectorAll('.piece-card')];
+      if(cartes.length<3)out.push('trop peu de cartes pour mesurer quoi que ce soit : '+cartes.length);
+      const imgs=[...cont.querySelectorAll('.piece-card-img')];
+
+      let retires=0,ajoutes=0;
+      const obs=new MutationObserver(ms=>ms.forEach(m=>{
+        retires+=m.removedNodes.length;ajoutes+=m.addedNodes.length;
+      }));
+      obs.observe(cont,{childList:true,subtree:true,attributes:true});
+
+      // Dix arrivées d'affilée, exactement ce que fait une navigation au cube.
+      for(let i=0;i<10;i++)renderArmiesPage();
+      await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+      obs.disconnect();
+
+      if(retires||ajoutes)
+        out.push('un rendu sans changement touche le DOM : '+retires+' nœud(s) retiré(s), '+ajoutes+' ajouté(s)');
+      // Et les <img> sont les MÊMES objets : une image recréée se recharge.
+      const apres=[...cont.querySelectorAll('.piece-card-img')];
+      if(apres.length!==imgs.length||apres.some((el,i)=>el!==imgs[i]))
+        out.push('les illustrations ont été recréées : elles se rechargent et clignotent');
+      const cartesApres=[...cont.querySelectorAll('.piece-card')];
+      if(cartesApres.some((el,i)=>el!==cartes[i]))
+        out.push('les cartes ont été recréées alors que rien n\'a changé');
+
+      // UN VRAI CHANGEMENT, LUI, DOIT PASSER — sinon on aurait « corrigé » le
+      // clignotement en ne dessinant plus rien.
+      const libre=PIECES.filter(p=>VV_UNLOCKED.has(p.id)&&p.class!=='Monarque'&&p.class!=='Général')[0];
+      if(!libre)out.push('aucune créature libre pour éprouver la mise à jour');
+      else{
+        const avantSel=pArmy.extras.some(x=>x&&x.id===libre.id);
+        pToggle(libre);
+        await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+        const carte=cont.querySelector('.piece-card[data-id="'+libre.id+'"]');
+        if(!carte)out.push('la carte a disparu au lieu de changer d\'état');
+        else if(carte.classList.contains('piece-card-sel')===avantSel)
+          out.push('la sélection ne se voit pas sur la carte');
+        // et la carte est toujours le MÊME nœud : mise à jour, pas remplacée
+        else if(cartes.indexOf(carte)<0)
+          out.push('la carte a été remplacée au lieu d\'être mise à jour');
+        pToggle(libre);   // on remet l'armée comme on l'a trouvée
+        await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+      }
+
+      // LE MAGASIN, même mesure.
+      showPage('face-jouer');
+      if(typeof renderMagasinPage==='function'){
+        const g=document.getElementById('shop-chest-grid');
+        if(g){
+          renderMagasinPage();
+          const boutons=[...g.querySelectorAll('.shop-chest')];
+          let bouge=0;
+          const o2=new MutationObserver(ms=>ms.forEach(m=>{bouge+=m.removedNodes.length;}));
+          o2.observe(g,{childList:true,subtree:true});
+          for(let i=0;i<5;i++)renderMagasinPage();
+          o2.disconnect();
+          if(bouge)out.push('le Magasin jette '+bouge+' nœud(s) à chaque arrivée');
+          const b2=[...g.querySelectorAll('.shop-chest')];
+          if(b2.some((el,i)=>el!==boutons[i]))out.push('le Magasin recrée ses six coffres à chaque arrivée');
+        }
+      }
+      return out;
+    });
+    if(bad.length)throw new Error(bad.join(' · '));
   });
 
   // LA FENÊTRE DE LA RÉCOMPENSE JOURNALIÈRE remplace celle de la « série du
@@ -2114,9 +2344,118 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
     if(!r.journal)throw new Error('le journal n\'est plus consultable après la partie');
   });
 
-  await step('l\'Empereur vaut 8 points',async()=>{
-    const v=await page.evaluate(()=>PIECES.find(p=>p.id==='empereur').value);
-    if(v!==8)throw new Error('Empereur à '+v+' points au lieu de 8');
+  // TROIS CRÉATURES ONT QUITTÉ LE JEU, et un identifiant oublié dans une table
+  // ne se voit pas : la pièce n'apparaît nulle part, mais la table continue de
+  // la citer, et le jour où quelqu'un lit cette table pour en déduire quoi que
+  // ce soit (la Voie, l'évaluation de l'IA, le hachage Zobrist), il retombe sur
+  // un fantôme. On balaie donc TOUTES les tables qui indexent par identifiant.
+  await step('le Garde d\'Eau, le Garde de Feu et l\'Empereur ont quitté toutes les tables',async()=>{
+    const bad=await page.evaluate(()=>{
+      const morts=['garde-eau','garde-feu','empereur'];
+      const out=[];
+      morts.forEach(id=>{
+        if(PIECES.find(p=>p.id===id))out.push(id+' est encore au catalogue');
+        if(UNLOCK_TABLE.some(u=>u.pieceId===id))out.push(id+' est encore un déblocage de la Voie');
+        if(UNLOCK_TABLE.some(u=>u.copyId===id))out.push(id+' est encore le lot d\'un jalon de la Voie');
+        if(UNLOCK_MILESTONES.some(u=>u.pieceId===id))out.push(id+' est encore un jalon de la Voie');
+        if(typeof CVAL!=='undefined'&&CVAL[id]!==undefined)out.push(id+' a encore une valeur d\'évaluation');
+        if(typeof MOVE_GESTURE!=='undefined'&&MOVE_GESTURE[id])out.push(id+' a encore un geste de déplacement');
+        if(typeof PIECE_ART!=='undefined'&&PIECE_ART[id])out.push(id+' a encore un dessin de plateau');
+        if(!RETIRED_PIECE_IDS.has(id))out.push(id+' n\'est pas déclaré retiré');
+      });
+      // LE ROI EST LE SEUL MONARQUE. C'est ce qui permet à tout le code d'échec
+      // et mat de ne plus jamais demander DUQUEL des deux il s'agit.
+      const mons=PIECES.filter(p=>p.class==='Monarque');
+      if(mons.length!==1||mons[0].id!=='roi')
+        out.push('le Roi n\'est pas le seul monarque : '+mons.map(m=>m.id).join(', '));
+      // Et aucun jalon de la Voie ne verse d'exemplaires d'une pièce inconnue.
+      UNLOCK_TABLE.forEach(u=>{
+        if(u.copyId&&!PIECES.find(p=>p.id===u.copyId))out.push('le jalon '+u.id+' verse des '+u.copyId+', introuvables');
+        if(u.pieceId&&!PIECES.find(p=>p.id===u.pieceId))out.push('le jalon '+u.id+' débloque '+u.pieceId+', introuvable');
+      });
+      return out;
+    });
+    if(bad.length)throw new Error(bad.join(' · '));
+  });
+
+  // LA MIGRATION D'UN COMPTE DÉJÀ COMMENCÉ. Elle est le seul filet entre un
+  // joueur d'avant le retrait et une page de composition qui ne sait plus quoi
+  // dessiner. On fabrique donc exactement l'état qu'il avait — armée à Empereur,
+  // Gardes en stock, déblocages et statistiques — et on vérifie qu'il retombe
+  // sur ses pieds SANS erreur de console (le test échouerait de lui-même).
+  await step('un compte d\'avant le retrait se recharge sans rien perdre d\'autre',async()=>{
+    const bad=await page.evaluate(()=>{
+      const out=[];
+      const memoire={armies:JSON.parse(JSON.stringify(savedArmies)),
+                     inv:JSON.parse(JSON.stringify(invAll())),
+                     unlocked:[...VV_UNLOCKED]};
+      try{
+        accSet('armies',[{id:'legacy',createdAt:1,updatedAt:1,
+          mon:{id:'empereur'},gen:{id:'dame'},
+          extras:['garde-eau','garde-feu','fourmi'],
+          placements:{'garde-eau':2,'garde-feu':1,'fourmi':0},totalValue:22}]);
+        accSet('ai_armies',[{id:'legacy-ia',mon:{id:'empereur'},gen:{id:'amazone'},
+          extras:['garde-feu','meduse','fourmi'],
+          placements:{'garde-feu':1,'meduse':2,'fourmi':0},totalValue:21}]);
+        accSet('inventory',{'garde-eau':6,'garde-feu':6,'fourmi':4,'garde-pierre':6});
+        accSet('unlocked_pieces',['roi','dame','empereur','garde-eau','garde-feu','garde-pierre','fourmi']);
+        accSet('piece_stats',{'garde-eau':{g:9,w:5},fourmi:{g:2,w:1}});
+
+        loadAccountGlobals();
+
+        const a=savedArmies[0];
+        if(!a)out.push('l\'armée enregistrée a disparu');
+        else{
+          if(!a.mon||a.mon.id!=='roi')out.push('le monarque retiré n\'a pas été remplacé par le Roi : '+JSON.stringify(a.mon));
+          if((a.extras||[]).some(id=>RETIRED_PIECE_IDS.has(id)))out.push('une créature retirée est restée dans l\'armée');
+          if(a.extras.indexOf('fourmi')<0)out.push('la Fourmi, elle, devait rester');
+          if(Object.keys(a.placements||{}).some(id=>RETIRED_PIECE_IDS.has(id)))
+            out.push('une colonne reste réservée à une créature retirée');
+          // La valeur est recalculée : Roi 3 + Dame 10 + Fourmi 2 = 15.
+          if(a.totalValue!==15)out.push('la valeur d\'armée n\'a pas été recalculée : '+a.totalValue);
+        }
+        const ia=savedAiArmies[0];
+        if(ia&&(ia.mon.id!=='roi'||ia.extras.some(id=>RETIRED_PIECE_IDS.has(id))))
+          out.push('l\'armée IA n\'a pas été migrée');
+        const inv=accGet('inventory',{});
+        if(Object.keys(inv).some(id=>RETIRED_PIECE_IDS.has(id)))out.push('l\'inventaire garde des exemplaires fantômes');
+        if(inv['fourmi']!==4)out.push('la migration a touché à un stock qu\'elle ne devait pas toucher');
+        if([...VV_UNLOCKED].some(id=>RETIRED_PIECE_IDS.has(id)))out.push('un déblocage fantôme survit');
+        if(!VV_UNLOCKED.has('garde-pierre'))out.push('la migration a emporté le Garde de Pierre avec les deux autres');
+        const stats=accGet('piece_stats',{});
+        if(Object.keys(stats).some(id=>RETIRED_PIECE_IDS.has(id)))out.push('les statistiques gardent une créature fantôme');
+
+        // ET ELLE EST IDEMPOTENTE : repasser dessus ne doit plus rien changer.
+        const avant=JSON.stringify(savedArmies);
+        accMigrateRetiredPieces();
+        if(JSON.stringify(savedArmies)!==avant)out.push('la migration n\'est pas idempotente');
+
+        // La page de composition se dessine, avec un emplacement libre et sans
+        // exception : c'est tout ce qu'on lui demande.
+        pLoaded=false;renderArmiesPage();
+        const slots=document.querySelectorAll('#ar-comp-grid .comp-slot');
+        if(slots.length!==5)out.push('la page de composition ne montre pas ses cinq emplacements');
+        if(!document.querySelector('#ar-comp-grid .comp-slot.cs-free'))
+          out.push('aucun emplacement libre signalé alors que l\'armée est amputée');
+
+        // UN REPLAY D'AVANT LE RETRAIT SE REFUSE, IL NE PLANTE PAS.
+        const vieux={w:{mon:'empereur',gen:'dame',extras:['garde-eau'],pl:{'garde-eau':2}},
+                     b:{mon:'roi',gen:'dame',extras:['fourmi'],pl:{fourmi:2}},pc:'w',m:['6454']};
+        if(replayFrames(vieux)!==null)out.push('un replay citant une pièce retirée n\'est pas refusé');
+        const troué={w:{mon:'roi',gen:'dame',extras:['garde-eau'],pl:{'garde-eau':2}},
+                     b:{mon:'roi',gen:'dame',extras:['fourmi'],pl:{fourmi:2}},pc:'w',m:['6454']};
+        if(replayFrames(troué)!==null)out.push('un replay à l\'armée trouée n\'est pas refusé');
+      }finally{
+        accSet('armies',memoire.armies);savedArmies=memoire.armies;
+        accSet('ai_armies',[]);savedAiArmies=[];
+        invSaveAll(memoire.inv);
+        VV_UNLOCKED=new Set(memoire.unlocked);vvSaveUnlocked(VV_UNLOCKED);
+        accSet('piece_stats',{});
+        pLoaded=false;renderArmiesPage();
+      }
+      return out;
+    });
+    if(bad.length)throw new Error(bad.join(' · '));
   });
 
   // LES POUVOIRS, un par un. Ils sont ce que le jeu a de particulier et ce
@@ -2141,33 +2480,24 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
       };
       const va=(b,r,c,tr,tc)=>generateMovesRaw(b,r,c,etat(b)).some(m=>m.r===tr&&m.c===tc);
 
-      // LES TROIS GARDES — une case, mais chacune sa grammaire : l'Eau tout
-      // droit, le Feu en biais, la Pierre les deux. Ce sont les trois
-      // premières créatures du joueur : si l'une d'elles se met à aller
-      // ailleurs, c'est tout l'apprentissage du plateau qui ment.
-      let b=vide();pose(b,4,4,'garde-eau','w');
-      if(!va(b,4,4,3,4)||!va(b,4,4,5,4)||!va(b,4,4,4,3)||!va(b,4,4,4,5))
-        out.push('garde d\'eau : elle ne va pas dans les quatre orthogonales');
-      if(va(b,4,4,3,3)||va(b,4,4,5,5))out.push('garde d\'eau : elle va en diagonale');
-      if(va(b,4,4,2,4))out.push('garde d\'eau : elle avance de deux cases');
-      b=vide();pose(b,4,4,'garde-feu','w');
-      if(!va(b,4,4,3,3)||!va(b,4,4,3,5)||!va(b,4,4,5,3)||!va(b,4,4,5,5))
-        out.push('garde de feu : elle ne va pas dans les quatre diagonales');
-      if(va(b,4,4,3,4)||va(b,4,4,4,5))out.push('garde de feu : elle va tout droit');
-      if(va(b,4,4,2,2))out.push('garde de feu : elle avance de deux cases');
-      b=vide();pose(b,4,4,'garde-pierre','w');
-      if(!va(b,4,4,3,4)||!va(b,4,4,3,3))out.push('garde de pierre : elle ne couvre pas les huit directions');
-      // Et elles donnent échec là où elles se déplacent, pas ailleurs : une
-      // pièce au déplacement particulier qui attaquerait comme son pieceType
-      // de base donnerait des échecs imaginaires.
-      b=vide();pose(b,4,4,'garde-eau','w');pose(b,3,4,'roi','b');
-      if(!isInCheckSimple('b',b))out.push('garde d\'eau : elle ne donne pas echec tout droit');
-      b=vide();pose(b,4,4,'garde-eau','w');pose(b,3,3,'roi','b');
-      if(isInCheckSimple('b',b))out.push('garde d\'eau : elle donne echec en diagonale');
-      b=vide();pose(b,4,4,'garde-feu','w');pose(b,3,3,'roi','b');
-      if(!isInCheckSimple('b',b))out.push('garde de feu : elle ne donne pas echec en diagonale');
-      b=vide();pose(b,4,4,'garde-feu','w');pose(b,3,4,'roi','b');
-      if(isInCheckSimple('b',b))out.push('garde de feu : elle donne echec tout droit');
+      // LE GARDE DE PIERRE — une case, mais dans les HUIT directions. Il est la
+      // première créature du joueur (premier coffre du tutoriel) : s'il se met
+      // à aller ailleurs, c'est la toute première leçon du jeu qui ment. Ses
+      // deux cadets, l'Eau (tout droit) et le Feu (en biais), ont été retirés
+      // du jeu ; c'est lui, désormais, qui porte les deux grammaires à la fois.
+      let b=vide();pose(b,4,4,'garde-pierre','w');
+      for(const[dr,dc] of[[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]])
+        if(!va(b,4,4,4+dr,4+dc))out.push('garde de pierre : il ne va pas en '+dr+','+dc);
+      if(va(b,4,4,2,4)||va(b,4,4,2,2)||va(b,4,4,4,6))out.push('garde de pierre : il avance de deux cases');
+      // Et il donne échec là où il se déplace, pas ailleurs : une pièce au
+      // déplacement particulier qui attaquerait comme son pieceType de base
+      // (ici 'p') donnerait des échecs imaginaires.
+      b=vide();pose(b,4,4,'garde-pierre','w');pose(b,3,4,'roi','b');
+      if(!isInCheckSimple('b',b))out.push('garde de pierre : il ne donne pas echec tout droit');
+      b=vide();pose(b,4,4,'garde-pierre','w');pose(b,3,3,'roi','b');
+      if(!isInCheckSimple('b',b))out.push('garde de pierre : il ne donne pas echec en diagonale');
+      b=vide();pose(b,4,4,'garde-pierre','w');pose(b,2,4,'roi','b');
+      if(isInCheckSimple('b',b))out.push('garde de pierre : il donne echec à deux cases');
 
       // CUIRASSE — les pions ne prennent pas le Preux Chevalier, la Fourmi si.
       b=vide();pose(b,4,4,'std-pawn','w');pose(b,3,3,'preux-chevalier','b');
@@ -2218,7 +2548,7 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
   await step('un adversaire ne compose son armée qu\'avec des pièces que le joueur possède',async()=>{
     const bad=await page.evaluate(()=>{
       const avant={unlocked:new Set(VV_UNLOCKED),inv:JSON.parse(JSON.stringify(invAll()))};
-      const permis=['roi','dame','cavalier-primordial','garde-eau','meduse'];
+      const permis=['roi','dame','cavalier-primordial','garde-pierre','meduse'];
       const out=[];
       try{
         VV_UNLOCKED=new Set(permis);
@@ -2810,7 +3140,7 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
       fxSetLevel(1);fxSetFlipped(false);
 
       // -- Les ÉVÉNEMENTS : chaque pouvoir pose quelque chose, et le retire.
-      for(const kind of ['ancre','espadon','foi','cuirasse','domination','typhon','banshee','meduse']){
+      for(const kind of ['ancre','foi','cuirasse','domination','typhon','banshee','meduse']){
         const avant=board.querySelectorAll('.fx-layer > *').length;
         fxPower(kind,4,4);
         if(board.querySelectorAll('.fx-layer > *').length<=avant)
@@ -3062,7 +3392,7 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
       currentArmyData={mon,gen,extras:ex.map(p=>p.id),placements};
       const ex2=['preux-chevalier','banshee','pretre'].map(id=>PIECES.find(p=>p.id===id));
       const pl2={};ex2.forEach((p,i)=>pl2[p.id]=[0,1,2][i]);
-      aiArmyData={mon:PIECES.find(x=>x.id==='empereur'),gen:PIECES.find(x=>x.id==='amazone'),
+      aiArmyData={mon:PIECES.find(x=>x.id==='roi'),gen:PIECES.find(x=>x.id==='amazone'),
                   extras:ex2.map(p=>p.id),placements:pl2};
       showPage('page-game');startGame(true,false,null);
       if(typeof cineDismiss==='function')cineDismiss();
@@ -3113,10 +3443,10 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
   // On partait au duel sans la moindre idée de ce qu'on allait avoir en face.
   await step('un profil montre l\'armée, les pièces, les pouvoirs et les parties',async()=>{
     const seed=await page.evaluate(async()=>{
-      const ids=['roi','empereur','dame','amazone','garde-pierre','meduse','fourmi',
+      const ids=['roi','dame','amazone','garde-pierre','meduse','fourmi',
                  'preux-chevalier','banshee','pretre','typhon'];
       VV_UNLOCKED=new Set(ids);vvSaveUnlocked(VV_UNLOCKED);
-      pArmy={mon:PIECES.find(p=>p.id==='empereur'),gen:PIECES.find(p=>p.id==='amazone'),
+      pArmy={mon:PIECES.find(p=>p.id==='roi'),gen:PIECES.find(p=>p.id==='amazone'),
              extras:['meduse','preux-chevalier','fourmi'].map(id=>PIECES.find(p=>p.id===id))};
       pEditId=null;pAutosave();
       const rec=buildReplayRecord(GS);
@@ -3135,7 +3465,7 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
       parties:document.querySelectorAll('#account-body .rp-game:not(.rp-game-off)').length,
     }));
     if(mien.armee!==5)throw new Error(mien.armee+' emplacements d\'armée sur son profil au lieu de 5');
-    if(mien.pieces!==11)throw new Error(mien.pieces+' pièces débloquées affichées au lieu de 11');
+    if(mien.pieces!==10)throw new Error(mien.pieces+' pièces débloquées affichées au lieu de 10');
     if(!mien.pouvoirs)throw new Error('aucun pouvoir listé sur son profil');
     if(!mien.parties)throw new Error('aucune partie rejouable sur son profil');
     // On ouvre la partie : le plateau, ses soixante-quatre cases, et le journal.
@@ -3173,7 +3503,7 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
       parties:document.querySelectorAll('#lb-body .rp-game').length,
     }));
     if(pub.armee!==5)throw new Error('le profil public montre '+pub.armee+' emplacements d\'armée au lieu de 5');
-    if(pub.pieces!==11)throw new Error('le profil public montre '+pub.pieces+' pièces au lieu de 11');
+    if(pub.pieces!==10)throw new Error('le profil public montre '+pub.pieces+' pièces au lieu de 10');
     if(!pub.pouvoirs)throw new Error('le profil public ne liste aucun pouvoir');
     if(!pub.parties)throw new Error('le profil public ne liste aucune partie');
     await page.evaluate(()=>{if(typeof goToMainMenu==='function')goToMainMenu();});

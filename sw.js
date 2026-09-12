@@ -26,13 +26,20 @@
 //     qu'on veut éviter. Un changement d'illustration demande de monter
 //     CACHE_VERSION ci-dessous — c'est le prix, et il est assumé.
 //
+//     ATTENTION : `isMedia` attrape aussi les .svg de assets/. Les cinq
+//     échiquiers et les onze planches d'orfèvrerie (assets/ui/) en font donc
+//     partie, et ce sont des fichiers qu'on RETOUCHE, contrairement aux
+//     illustrations. v3 marque leur arrivée et la nappe de marbre ajoutée aux
+//     plateaux : sans ce numéro, un joueur déjà venu aurait gardé les anciens
+//     plateaux et n'aurait jamais vu une seule des nouvelles planches.
+//
 // -- METTRE À JOUR -------------------------------------------------------
 // Monter CACHE_VERSION suffit : l'ancien cache est effacé à l'activation, et
 // skipWaiting + clients.claim font que la nouvelle version prend la main
 // immédiatement plutôt qu'au prochain lancement.
 // ================================================================
 
-const CACHE_VERSION = 'epicchess-v2';
+const CACHE_VERSION = 'epicchess-v3';
 const CACHE_MEDIA   = CACHE_VERSION + '-media';
 const CACHE_SHELL   = CACHE_VERSION + '-shell';
 

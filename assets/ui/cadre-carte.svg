@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- ================================================================
+     CADRE-CARTE.SVG : l'orfèvrerie du cadre d'une carte de créature
+     ================================================================
+     POURQUOI CE N'EST PAS UNE IMAGE. Une carte fait 76 px de large sur un
+     téléphone et 170 px sur un grand écran ; entre les deux, tout ce qui est
+     en pixels est soit flou, soit trop lourd. Ici, deux kilo-octets, net à
+     toutes les tailles, et la couleur reste réglable depuis la feuille de
+     style.
+
+     POURQUOI LES ORNEMENTS SONT DANS LES COINS, ET RIEN QUE DANS LES COINS.
+     La planche est posée en `border-image` (voir [ART] dans css/style.css),
+     qui découpe neuf régions : les quatre coins gardent leur taille et leur
+     dessin, les quatre bords sont ÉTIRÉS pour suivre la carte. Un fleuron
+     posé au milieu d'un bord serait donc écrasé ou allongé selon la taille de
+     la carte — c'est exactement le défaut des plaques découpées en trois
+     qu'on cherche à quitter. Les bords ne portent donc QUE des filets
+     PARALLÈLES à leur propre étirement : une ligne horizontale étirée
+     horizontalement reste la même ligne. C'est la règle de toutes les
+     planches étirables de ce dossier.
+
+     LA TEINTE. Les filets sont en or bruni (#c9a84c) et leur reflet en or
+     clair (#e6cd86) — ce sont les deux constantes de la charte, et elles ne
+     bougent pas d'une classe à l'autre. Le liseré intérieur, lui, est en
+     `currentColor` : posé en `border-image` il prend l'or déclaré sur la
+     racine ci-dessous, et une utilisation EN LIGNE (dans le document) lui
+     ferait prendre la couleur de rareté de la carte. Une seule planche pour
+     les cinq classes, dans les deux cas.
+
+     AUCUN TEXTE : tous les mots des cartes sont du vrai HTML, sinon ils ne se
+     traduisent plus, ne se redimensionnent plus et deviennent illisibles au
+     lecteur d'écran.
+     ================================================================ -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120" color="#c9a84c">
+  <title>Epic Chess, cadre de carte</title>
+  <!-- 1. LE FILET EXTÉRIEUR. Posé à 3 unités du bord : la carte a déjà son
+          propre trait de rareté au ras du cadre, les deux ne doivent pas se
+          toucher. -->
+  <rect x="3" y="3" width="114" height="114" rx="6" fill="none" stroke="#c9a84c" stroke-width="2.4"/>
+  <!-- 2. LE BISEAU INTÉRIEUR : un trait clair juste sous le filet, décalé
+          d'un demi-point. C'est lui qui donne le relief — un cadre d'or sans
+          arête haute est un rectangle jaune. -->
+  <rect x="5.2" y="5.2" width="109.6" height="109.6" rx="5" fill="none" stroke="#e6cd86" stroke-width=".9" opacity=".5"/>
+  <!-- 3. LE LISERÉ DE CLASSE, en currentColor (voir l'en-tête). -->
+  <rect x="9" y="9" width="102" height="102" rx="4" fill="none" stroke="currentColor" stroke-width=".8" opacity=".45"/>
+
+  <!-- 4. LES QUATRE FLEURONS DE COIN. Ils vivent ENTIÈREMENT dans le carré de
+          34 unités que `border-image-slice` découpe (voir css/style.css) :
+          un trait qui en dépasserait serait coupé net au découpage, puis
+          étiré avec le bord. Le motif est un losange d'or épaulé de deux
+          larmes, assez gras pour se lire à douze pixels — en dessous, un
+          dessin fin ne rend qu'une bouillie dorée. Le groupe est dessiné UNE
+          FOIS en haut à gauche, et les trois autres coins sont le même groupe
+          retourné : c'est ce qui garantit que les quatre se ressemblent. -->
+  <defs>
+    <g id="fleuron">
+      <path d="M3 22 V9 Q3 3 9 3 H22" fill="none" stroke="#c9a84c" stroke-width="3.4" stroke-linecap="round"/>
+      <path d="M6.4 20 V10.4 Q6.4 6.4 10.4 6.4 H20" fill="none" stroke="#e6cd86" stroke-width="1" opacity=".55"/>
+      <path d="M12.5 5.2 16 8.7 12.5 12.2 9 8.7Z" fill="#c9a84c"/>
+      <path d="M5.2 12.5 8.7 16 12.2 12.5 8.7 9Z" fill="#c9a84c"/>
+      <circle cx="8.7" cy="8.7" r="2.1" fill="#e6cd86"/>
+    </g>
+  </defs>
+  <use href="#fleuron"/>
+  <use href="#fleuron" transform="translate(120,0) scale(-1,1)"/>
+  <use href="#fleuron" transform="translate(0,120) scale(1,-1)"/>
+  <use href="#fleuron" transform="translate(120,120) scale(-1,-1)"/>
+</svg>

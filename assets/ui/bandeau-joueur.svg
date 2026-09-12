@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- ================================================================
+     BANDEAU-JOUEUR.SVG : le bandeau de nom, pour les DEUX joueurs
+     ================================================================
+     UN SEUL TRACÉ, retourné en CSS (`transform:scaleY(-1)` sur le porteur,
+     puis `scaleY(-1)` sur son contenu) pour le joueur du haut. Dessiner deux
+     bandeaux symétriques reviendrait à maintenir deux fois la même chose, et
+     à découvrir un jour qu'ils ont divergé d'un pixel.
+
+     LES DEUX ENTAILLES. Le bandeau porte, à gauche, l'ÉCUSSON (le sceau de
+     l'adversaire, voir ecusson.svg) et, à droite, la PENDULE. Elles sont
+     dessinées comme des retraits du filet et non comme des boîtes : ce qui
+     s'y pose est du HTML, et un cadre fermé l'emprisonnerait à une taille
+     fixe alors qu'un pseudo long ou une pendule à l'heure ronde n'occupent
+     pas la même place.
+
+     Étirable en largeur seulement (le bandeau a une hauteur fixe) : les deux
+     bords verticaux sont donc ancrés dans les coins, et les filets
+     horizontaux s'étirent sans rien perdre.
+     ================================================================ -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 56" width="200" height="56" color="#c9a84c">
+  <title>Epic Chess, bandeau de joueur</title>
+  <rect x="2" y="2" width="196" height="52" rx="10" fill="#16203a" fill-opacity=".5"/>
+  <rect x="2" y="2" width="196" height="52" rx="10" fill="none" stroke="currentColor" stroke-width="1.6" opacity=".75"/>
+  <path d="M14 4.6 H186" stroke="#e6cd86" stroke-width=".9" opacity=".4" stroke-linecap="round"/>
+  <defs>
+    <!-- L'ENTAILLE : le filet s'interrompt et rentre, ménageant la loge de
+         l'écusson (à gauche) et celle du sablier (à droite). -->
+    <g id="entaille">
+      <path d="M2 18 V12 Q2 2 12 2 H24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/>
+      <path d="M2 38 V44 Q2 54 12 54 H24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/>
+      <path d="M8 24 Q14 28 8 32" fill="none" stroke="#e6cd86" stroke-width="1.2" opacity=".55" stroke-linecap="round"/>
+    </g>
+  </defs>
+  <use href="#entaille"/>
+  <use href="#entaille" transform="translate(200,0) scale(-1,1)"/>
+</svg>

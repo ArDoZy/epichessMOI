@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- ================================================================
+     CARTOUCHE.SVG : le cadre de titre, du menu et de la page d'armées
+     ================================================================
+     Le même dessin porte « EPIC CHESS » sur le menu et « Composition
+     d'armées » sur la page des armées : c'est un cartouche, pas un titre —
+     il est VIDE au milieu, et le texte qu'on y pose reste du HTML.
+
+     POURQUOI LA COURONNE EST AUX DEUX BOUTS ET NON AU MILIEU. La maquette la
+     montre au centre du filet supérieur. Un cartouche doit s'étirer d'un
+     titre court à un titre long : en `border-image`, la région du HAUT est
+     étirée horizontalement, et une couronne posée là serait allongée de
+     moitié sur le titre le plus long — la même couronne n'aurait pas la même
+     forme d'un écran à l'autre. Elle est donc dédoublée et ANCRÉE dans les
+     deux coins hauts, où rien ne l'étire jamais ; les bords ne portent que
+     des filets parallèles à leur étirement. C'est la règle posée dans
+     cadre-carte.svg, et c'est elle qui décide de la composition de toutes
+     les planches étirables de ce dossier.
+     ================================================================ -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 80" width="160" height="80" color="#c9a84c">
+  <title>Epic Chess, cartouche de titre</title>
+  <!-- LE CORPS : un aplat bleu nuit très légèrement plus clair que la page,
+       pour que le cartouche se DÉTACHE sans faire une boîte. Il n'occupe que
+       les bords (le centre est laissé transparent par border-image) mais il
+       est peint en plein : c'est la région centrale, jetée au découpage. -->
+  <rect x="4" y="4" width="152" height="72" rx="7" fill="#16203a" fill-opacity=".55"/>
+  <rect x="4" y="4" width="152" height="72" rx="7" fill="none" stroke="#c9a84c" stroke-width="2.2"/>
+  <rect x="7.4" y="7.4" width="145.2" height="65.2" rx="5" fill="none" stroke="#e6cd86" stroke-width=".85" opacity=".45"/>
+  <rect x="12" y="12" width="136" height="56" rx="3" fill="none" stroke="currentColor" stroke-width=".7" opacity=".38"/>
+
+  <defs>
+    <!-- LE FINIAL COURONNÉ, dans le carré de 36 unités que le découpage
+         réserve au coin. Trois pointes et une perle : à vingt pixels, une
+         couronne à cinq pointes n'est plus qu'un peigne. -->
+    <g id="finial">
+      <path d="M4 30 V11 Q4 4 11 4 H30" fill="none" stroke="#c9a84c" stroke-width="3.2" stroke-linecap="round"/>
+      <path d="M8 27 V12.5 Q8 8 12.5 8 H27" fill="none" stroke="#e6cd86" stroke-width=".9" opacity=".5"/>
+      <path d="M9 21 L12 13 L16 18 L20 11 L24 17 L26 12 L27 21Z" fill="#c9a84c"/>
+      <path d="M9 21 H27" stroke="#e6cd86" stroke-width="1.4" opacity=".7"/>
+      <circle cx="20" cy="11" r="2" fill="#e6cd86"/>
+    </g>
+  </defs>
+  <use href="#finial"/>
+  <use href="#finial" transform="translate(160,0) scale(-1,1)"/>
+  <!-- En bas, PAS de couronne : un cartouche se lit du haut. Les deux coins
+       bas ne portent qu'un retour de filet, pour fermer le tracé. -->
+  <path d="M4 50 V69 Q4 76 11 76 H30" fill="none" stroke="#c9a84c" stroke-width="3.2" stroke-linecap="round"/>
+  <path d="M156 50 V69 Q156 76 149 76 H130" fill="none" stroke="#c9a84c" stroke-width="3.2" stroke-linecap="round"/>
+</svg>

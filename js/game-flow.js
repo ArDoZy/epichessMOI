@@ -29,8 +29,31 @@ function buildGameBoard(playerArmyData,aiArmyData){
   let uid=0;
   const make=(pieceId,type,color,emoji,isKing=false)=>({type,color,pieceId,emoji,hasMoved:false,isKing,id:'p'+(uid++)});
   const resolveP=p=>{if(!p)return null;if(p.id&&!p.emoji)return PIECES.find(x=>x.id===p.id)||null;return p;};
-  const wm=resolveP(playerArmyData.mon)||PIECES.find(p=>p.id===playerArmyData.mon?.id);
-  const wg=resolveP(playerArmyData.gen)||PIECES.find(p=>p.id===playerArmyData.gen?.id);
+  // UNE PIÈCE INTROUVABLE NE FAIT PLUS TOMBER LA PARTIE. `wm.id` sur un
+  // `undefined` levait une exception, et une exception ici veut dire un écran
+  // de combat NOIR : le plateau n'est jamais construit, rien ne s'affiche, et
+  // la console est le seul endroit où il est écrit pourquoi.
+  //
+  // Le cas n'est pas théorique. Trois créatures ont quitté le catalogue
+  // (RETIRED_PIECE_IDS, js/data-pieces.js) : une armée enregistrée avant leur
+  // retrait cite encore leurs identifiants. accMigrateRetiredPieces répare
+  // celles du compte courant, mais elle ne peut rien pour une armée qui arrive
+  // d'AILLEURS — celle d'un adversaire en ligne resté sur une version plus
+  // ancienne du jeu, par exemple.
+  //
+  // Le repli est le plus conservateur qui soit : le ROI, seul monarque du jeu,
+  // et la DAME pour un général manquant. L'armée n'est pas celle qui était
+  // prévue, mais elle est LÉGALE et jouable, ce qui vaut infiniment mieux
+  // qu'un écran vide. mpArmyProblem (js/multiplayer.js) refuse déjà ces armées
+  // à l'entrée en ligne : ceci est la deuxième ligne, pas la première.
+  const repli=(p,secours)=>{
+    const r=resolveP(p)||PIECES.find(x=>x.id===(p&&p.id));
+    if(r)return r;
+    console.warn('[ARMEE] pièce introuvable ('+((p&&p.id)||'aucune')+'), remplacée par '+secours);
+    return PIECES.find(x=>x.id===secours)||PIECES[0];
+  };
+  const wm=repli(playerArmyData.mon,'roi');
+  const wg=repli(playerArmyData.gen,'dame');
   b[7][4]=make(wm.id,'k','w',wm.emoji,true);b[7][3]=make(wg.id,wg.pieceType||'q','w',wg.emoji,false);
   (playerArmyData.extras||[]).forEach(id=>{
     const piece=PIECES.find(p=>p.id===id);if(!piece)return;
@@ -39,8 +62,8 @@ function buildGameBoard(playerArmyData,aiArmyData){
     if(piece.qty>=2){const mirCol=7-col;if(mirCol!==4&&mirCol!==3&&!b[7][mirCol])b[7][mirCol]=make(piece.id,piece.pieceType||'r','w',piece.emoji,false);}
   });
   for(let c=0;c<8;c++)if(!b[6][c])b[6][c]=make('std-pawn','p','w','♙',false);
-  const am=resolveP(aiArmyData.mon)||PIECES.find(p=>p.id===aiArmyData.mon?.id);
-  const ag=resolveP(aiArmyData.gen)||PIECES.find(p=>p.id===aiArmyData.gen?.id);
+  const am=repli(aiArmyData.mon,'roi');
+  const ag=repli(aiArmyData.gen,'dame');
   b[0][4]=make(am.id,'k','b',am.emoji,true);b[0][3]=make(ag.id,ag.pieceType||'q','b',ag.emoji,false);
   (aiArmyData.extras||[]).forEach(id=>{
     const piece=PIECES.find(p=>p.id===id);if(!piece)return;
