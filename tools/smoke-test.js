@@ -958,6 +958,91 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
     await page.evaluate(()=>{GS.gameOver=true;stopClockTick(GS);renderReservePage();renderVoiePage();renderArmiesPage();});
   });
 
+  // LE « RECHARGEMENT » DE LA PAGE D'ARMÉES, mesuré au lieu d'être regardé.
+  //
+  // En arrivant sur la composition depuis une autre face, des éléments
+  // disparaissaient une demi-seconde puis revenaient. La cause était un
+  // innerHTML : le catalogue entier était jeté et refait à chaque appel, donc
+  // seize <img> détruites et recréées, donc rechargées et redécodées, donc des
+  // cadres vides le temps que ça revienne.
+  //
+  // Ce test ne regarde pas l'écran, il compte les nœuds JETÉS. Un rendu qui ne
+  // change rien ne doit RIEN retirer du document : c'est la seule formulation
+  // de « ça ne clignote pas » qu'une machine puisse vérifier. Et il vérifie la
+  // même chose du Magasin, qui avait le même défaut en plus petit.
+  await step('revenir sur la page d\'armées ne jette pas une seule carte',async()=>{
+    const bad=await page.evaluate(async()=>{
+      const out=[];
+      const cont=document.getElementById('ar-cards-container');
+      if(!cont)return['pas de conteneur de cartes'];
+      renderArmiesPage();
+      await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+      const cartes=[...cont.querySelectorAll('.piece-card')];
+      if(cartes.length<3)out.push('trop peu de cartes pour mesurer quoi que ce soit : '+cartes.length);
+      const imgs=[...cont.querySelectorAll('.piece-card-img')];
+
+      let retires=0,ajoutes=0;
+      const obs=new MutationObserver(ms=>ms.forEach(m=>{
+        retires+=m.removedNodes.length;ajoutes+=m.addedNodes.length;
+      }));
+      obs.observe(cont,{childList:true,subtree:true,attributes:true});
+
+      // Dix arrivées d'affilée, exactement ce que fait une navigation au cube.
+      for(let i=0;i<10;i++)renderArmiesPage();
+      await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+      obs.disconnect();
+
+      if(retires||ajoutes)
+        out.push('un rendu sans changement touche le DOM : '+retires+' nœud(s) retiré(s), '+ajoutes+' ajouté(s)');
+      // Et les <img> sont les MÊMES objets : une image recréée se recharge.
+      const apres=[...cont.querySelectorAll('.piece-card-img')];
+      if(apres.length!==imgs.length||apres.some((el,i)=>el!==imgs[i]))
+        out.push('les illustrations ont été recréées : elles se rechargent et clignotent');
+      const cartesApres=[...cont.querySelectorAll('.piece-card')];
+      if(cartesApres.some((el,i)=>el!==cartes[i]))
+        out.push('les cartes ont été recréées alors que rien n\'a changé');
+
+      // UN VRAI CHANGEMENT, LUI, DOIT PASSER — sinon on aurait « corrigé » le
+      // clignotement en ne dessinant plus rien.
+      const libre=PIECES.filter(p=>VV_UNLOCKED.has(p.id)&&p.class!=='Monarque'&&p.class!=='Général')[0];
+      if(!libre)out.push('aucune créature libre pour éprouver la mise à jour');
+      else{
+        const avantSel=pArmy.extras.some(x=>x&&x.id===libre.id);
+        pToggle(libre);
+        await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+        const carte=cont.querySelector('.piece-card[data-id="'+libre.id+'"]');
+        if(!carte)out.push('la carte a disparu au lieu de changer d\'état');
+        else if(carte.classList.contains('piece-card-sel')===avantSel)
+          out.push('la sélection ne se voit pas sur la carte');
+        // et la carte est toujours le MÊME nœud : mise à jour, pas remplacée
+        else if(cartes.indexOf(carte)<0)
+          out.push('la carte a été remplacée au lieu d\'être mise à jour');
+        pToggle(libre);   // on remet l'armée comme on l'a trouvée
+        await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+      }
+
+      // LE MAGASIN, même mesure.
+      showPage('face-jouer');
+      if(typeof renderMagasinPage==='function'){
+        const g=document.getElementById('shop-chest-grid');
+        if(g){
+          renderMagasinPage();
+          const boutons=[...g.querySelectorAll('.shop-chest')];
+          let bouge=0;
+          const o2=new MutationObserver(ms=>ms.forEach(m=>{bouge+=m.removedNodes.length;}));
+          o2.observe(g,{childList:true,subtree:true});
+          for(let i=0;i<5;i++)renderMagasinPage();
+          o2.disconnect();
+          if(bouge)out.push('le Magasin jette '+bouge+' nœud(s) à chaque arrivée');
+          const b2=[...g.querySelectorAll('.shop-chest')];
+          if(b2.some((el,i)=>el!==boutons[i]))out.push('le Magasin recrée ses six coffres à chaque arrivée');
+        }
+      }
+      return out;
+    });
+    if(bad.length)throw new Error(bad.join(' · '));
+  });
+
   // LA FENÊTRE DE LA RÉCOMPENSE JOURNALIÈRE remplace celle de la « série du
   // jour », qui elle-même remplaçait le rail de six coffres du bas du menu.
   // C'est elle qu'on ouvre en arrivant, un cycle mal indexé s'y verrait tout

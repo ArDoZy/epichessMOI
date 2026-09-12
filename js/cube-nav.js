@@ -104,6 +104,19 @@
   // Chaque face se recalcule à l'arrivée : l'inventaire, les coffres et l'ELO
   // bougent à chaque partie, une face rendue une seule fois au chargement
   // afficherait des données périmées.
+  //
+  // ELLE EST APPELÉE DEUX FOIS PAR ROTATION, ET C'EST VOULU : une fois au
+  // PREMIER degré de la rotation, sur la face qui arrive (voir animate), et une
+  // fois à l'arrivée, par refresh(). La première est celle qui compte : la face
+  // qui tourne vers le joueur est déjà à jour QUAND ELLE DEVIENT VISIBLE, au
+  // lieu d'être remplie une demi-seconde plus tard, sous ses yeux. La seconde
+  // rattrape ce qui aurait changé pendant les 460 ms de rotation.
+  //
+  // Cela n'a de sens que parce que ces rendus sont IDEMPOTENTS : renderArmiesPage
+  // ne touche au DOM que si quelque chose a réellement changé (voir
+  // pRenderCards, js/armies.js), et renderReservePage de même. Le second appel
+  // ne coûte donc rien quand il n'a rien à faire. Rendre une face non idempotente
+  // ferait revenir exactement le clignotement qu'on vient d'enlever.
   function refreshFaceContent(name){
     if(name==='reserve'&&typeof renderReservePage==='function')renderReservePage();
     else if(name==='armees'&&typeof renderArmiesPage==='function')renderArmiesPage();
@@ -185,6 +198,11 @@
     if(!cube)return;
     if(animating){ queuedKind=kind; return; }
     animating=true; pendingFront=PERM[kind](slots).front; updateArrows();
+    // LA FACE QUI ARRIVE EST REMPLIE AVANT DE SE MONTRER. Elle est visible dès
+    // le premier degré de la rotation : la remplir seulement à l'arrivée
+    // revenait à la laisser tourner avec le contenu de la visite précédente,
+    // puis à la réécrire une fois posée — le « rechargement » qu'on voyait.
+    refreshFaceContent(pendingFront);
     cube.style.transition='transform '+ROTATE_MS+'ms cubic-bezier(.22,.61,.36,1)';
     void cube.offsetWidth;
     cube.style.transform=REST+' '+CUBE_ANIM[kind];
@@ -215,6 +233,10 @@
       const kind = s==='right'?'right' : s==='left'?'left' : s==='top'?'up' : s==='bottom'?'down' : 'right';
       slots=PERM[kind](slots);
     }
+    // Le contenu AVANT la pose : settle() écrit les transformations, refresh()
+    // remplit. Les deux tiennent dans la même tâche, donc dans la même peinture
+    // — mais dans cet ordre, même un rendu lent ne peut pas se voir arriver.
+    refreshFaceContent(name);
     settle(); refresh();
   }
 

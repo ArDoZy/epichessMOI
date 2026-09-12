@@ -290,6 +290,14 @@ function enterAccount(username,isNewAccount){
   // Deux comptes différents dans le même onglet : le second a droit à son
   // propre avertissement sur les créatures retirées (armiesWarnRetired).
   if(typeof _arRetiredNotified!=='undefined')_arRetiredNotified=false;
+  // Et les signatures de rendu de la page d'armées repartent de zéro : elles
+  // disent « le DOM montre déjà ceci », ce qui est faux pour le compte suivant
+  // (voir pRenderCards / pUpdSlots, js/armies.js).
+  if(typeof _pCardsSig!=='undefined')_pCardsSig=null;
+  if(typeof _pSlotsSig!=='undefined')_pSlotsSig=null;
+  // Idem pour le Magasin : le solde mémorisé est celui du compte qui part.
+  if(typeof _shopBal!=='undefined')_shopBal=null;
+  if(typeof _voieSig!=='undefined'){_voieSig=null;_voieBanSig=null;}
   updateBuilderBanner();updAll();
   if(typeof renderMenuChests==='function')renderMenuChests();
   if(typeof goToMainMenu==='function')goToMainMenu();else showPage('page-builder');

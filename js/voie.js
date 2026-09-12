@@ -384,6 +384,22 @@ function vvCheckRewardMilestones(oldElo,newElo){
 // elle se lit donc terminée — c'est exact : là-dedans, l'ELO vaut 10 000 et
 // tout le catalogue est débloqué (voir js/accounts.js et js/economy.js).
 // Rien n'en est écrit sur le compte, on retrouve sa vraie Voie en revenant.
+// LA VOIE NE SE REDESSINE QUE QUAND ELLE A CHANGÉ.
+//
+// Même défaut que la page d'armées, et il se voyait pour la même raison : le
+// chemin est une trentaine de jalons, chacun portant une bande de terrain en
+// image de fond (`--vm-art`, assets/voie/biome-*.webp). Réécrire `route.innerHTML`
+// jette ces trente éléments et fait repartir le chargement de leurs fonds : on
+// ouvrait la Voie sur un chemin nu, qui se peignait ensuite.
+//
+// Or la Voie ne dépend que de TROIS choses : le classement du moment (la jauge
+// et le repère « vous êtes ici »), le sommet atteint (ce qui est acquis), et la
+// liste des pièces débloquées. Tant que ces trois-là sont les mêmes, le DOM
+// affiché est déjà le bon, au pixel près.
+//
+// La bannière suit la même règle à part : elle contient le médaillon du rang,
+// qui est une image lui aussi.
+let _voieSig=null,_voieBanSig=null;
 function renderVoiePage(){
   // DEUX NOMBRES, DEUX RÔLES (voir le pavé « LA COURBE D'ASCENSION » plus
   // haut) : `elo` est le classement du moment, `peak` le sommet atteint. Le
@@ -408,6 +424,10 @@ function renderVoiePage(){
   // vient y voir CE QUI RESTE À DÉBLOQUER : le rang, la distance jusqu'au
   // suivant, et la file des créatures. Rien d'autre.
   const banner=document.getElementById('voie-elo-banner');
+  // La signature de la bannière : tout ce que son balisage contient.
+  const banSig=[rank.id,elo,progress,sousRang,nextRank?nextRank.id:''].join('|');
+  const banStale=banSig!==_voieBanSig||!banner||!banner.firstElementChild;
+  _voieBanSig=banSig;
   const label=sousRang
     ?'Rang '+rank.name+' acquis · remontez à '+rank.min+' ELO'
     :(nextRank?'Vers '+nextRank.name+' ('+nextRank.min+' ELO) · '+progress+'%':'Rang maximum atteint !');
@@ -415,8 +435,14 @@ function renderVoiePage(){
   // assets/ranks/<id>.png est facultative, et l'<img> se retire d'elle-même
   // si le fichier manque — le bandeau retrouve alors exactement la mise en
   // page qu'il avait avant que les médaillons existent.
-  banner.innerHTML=rankMedalHTML(rank.id,'rm-lg')+'<div class="veb-info"><div class="veb-rank-name" style="color:'+rank.color+'">'+rank.name+'</div><div class="veb-elo">'+elo+' <span>ELO</span></div><div class="veb-progress-wrap"><div class="veb-progress-bar" style="width:'+progress+'%;background:linear-gradient(90deg,'+rank.color+',var(--gold))"></div></div><div class="veb-progress-label'+(sousRang?' veb-below':'')+'">'+label+'</div></div>';
-  const route=document.getElementById('voie-route');let html='';
+  if(banStale)banner.innerHTML=rankMedalHTML(rank.id,'rm-lg')+'<div class="veb-info"><div class="veb-rank-name" style="color:'+rank.color+'">'+rank.name+'</div><div class="veb-elo">'+elo+' <span>ELO</span></div><div class="veb-progress-wrap"><div class="veb-progress-bar" style="width:'+progress+'%;background:linear-gradient(90deg,'+rank.color+',var(--gold))"></div></div><div class="veb-progress-label'+(sousRang?' veb-below':'')+'">'+label+'</div></div>';
+  const route=document.getElementById('voie-route');
+  // Le chemin lui-même : sa signature est le sommet atteint, le classement du
+  // moment, et l'ensemble des pièces débloquées (qui décide de `reached`).
+  const routeSig=peak+'/'+elo+'/'+[...(VV_UNLOCKED||[])].sort().join(',');
+  if(route&&routeSig===_voieSig&&route.firstElementChild){voieAutoScroll(route);return;}
+  _voieSig=routeSig;
+  let html='';
   let lastRankId=null;
   // Alternance gauche/droite : un compteur À PART, incrémenté uniquement
   // pour les jalons réellement rendus (pas les portes de rang, qui sont un

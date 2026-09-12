@@ -361,17 +361,40 @@ function magasinChestCardHTML(chest){
 // Face « magasin » du cube (voir refreshFaceContent, js/cube-nav.js) : les
 // six coffres, en grand, achetables contre des perles — le seul endroit du
 // jeu où ils s'achètent (voir la note sur buyChestFromShop plus haut).
+// LE MÊME DÉFAUT QUE LA PAGE D'ARMÉES, EN PLUS PETIT, ET LA MÊME CORRECTION.
+// Cette fonction est appelée à chaque arrivée sur la face « magasin » du cube.
+// Elle réécrivait la grille entière : six <button>, six <img> de coffre jetées
+// et recréées — donc rechargées et redécodées —, et six écouteurs rebranchés
+// sur des nœuds que le passage suivant jetterait à son tour.
+//
+// Ce qui change réellement d'une visite à l'autre tient en un nombre : le solde
+// de perles, qui décide de la classe `shop-poor` de chaque coffre. Le reste
+// (nom, prix, image) est figé par la table CHESTS. On construit donc la grille
+// UNE FOIS, puis on ne touche plus qu'à cette classe ; et l'écouteur unique vit
+// sur la grille, pas sur les boutons.
+let _shopBuilt=false,_shopBal=null;
 function renderMagasinPage(){
+  const bal=pearlInfinite()?Infinity:pearlBalance();
   const bank=document.getElementById('shop-bank');
-  if(bank){
-    const balTxt=pearlInfinite()?'∞':pearlBalance();
-    bank.innerHTML=pearlAmountHTML(balTxt,1.3)+'<span>perles</span>';
+  if(bank&&bal!==_shopBal){
+    bank.innerHTML=pearlAmountHTML(bal===Infinity?'∞':bal,1.3)+'<span>perles</span>';
   }
   const grid=document.getElementById('shop-chest-grid');
   if(!grid)return;
-  grid.innerHTML=CHESTS.map(magasinChestCardHTML).join('');
+  if(!_shopBuilt||!grid.firstElementChild){
+    grid.innerHTML=CHESTS.map(magasinChestCardHTML).join('');
+    grid.addEventListener('click',e=>{
+      const b=e.target.closest&&e.target.closest('.shop-chest');
+      if(b&&grid.contains(b))buyChestFromShop(b.dataset.chest);
+    });
+    _shopBuilt=true;_shopBal=bal;
+    return;
+  }
+  if(bal===_shopBal)return;        // le solde n'a pas bougé : rien à redire
+  _shopBal=bal;
   grid.querySelectorAll('.shop-chest').forEach(b=>{
-    b.addEventListener('click',()=>buyChestFromShop(b.dataset.chest));
+    const price=chestPearlPrice(b.dataset.chest);
+    b.classList.toggle('shop-poor',bal!==Infinity&&bal<price);
   });
 }
 
@@ -384,13 +407,19 @@ function renderMagasinPage(){
 // n'est pas crédité — en mode test l'inventaire est déjà illimité et rien ne
 // s'écrit sur le compte (voir js/economy.js).
 // La section est masquée (et vide) hors mode test.
+let _adminChestsBuilt=false;
 function renderAdminChests(){
   const sec=document.getElementById('rs-admin-sec');
   const el=document.getElementById('rs-admin-chests');
   if(!sec||!el)return;
   const on=(typeof ADMIN_MODE!=='undefined')&&ADMIN_MODE;
   sec.style.display=on?'':'none';
-  if(!on){el.innerHTML='';return;}
+  if(!on){if(el.firstChild)el.textContent='';_adminChestsBuilt=false;return;}
+  // Ces six coffres ne dépendent de RIEN qui change : ils sont illimités et
+  // gratuits. Les redessiner à chaque arrivée sur la face « réserve » ne
+  // pouvait que recharger six images pour un résultat identique.
+  if(_adminChestsBuilt&&el.firstElementChild)return;
+  _adminChestsBuilt=true;
   el.innerHTML='<div class="rs-admin-note">Coffres de test, ouvrables sans limite. Le contenu est tiré au sort comme pour un coffre gagné en jouant, mais rien n\'est crédité : en mode test, tout est déjà illimité.</div>'+
     '<div class="chest-grid">'+CHESTS.map(ch=>
       '<div class="chest-card chest-admin" data-chest="'+ch.id+'" style="--chest-c:'+ch.color+'">'+
@@ -399,10 +428,10 @@ function renderAdminChests(){
         '<div class="chest-name">'+ch.name+'</div>'+
         chestPromiseHTML(ch)+
       '</div>').join('')+'</div>';
-  el.querySelectorAll('.chest-card').forEach(card=>{
-    card.addEventListener('click',()=>{
-      if(typeof ADMIN_MODE!=='undefined'&&ADMIN_MODE)chestOpenNow(card.dataset.chest,chestBackToReserve);
-    });
+  el.addEventListener('click',e=>{
+    const card=e.target.closest&&e.target.closest('.chest-card');
+    if(!card||!el.contains(card))return;
+    if(typeof ADMIN_MODE!=='undefined'&&ADMIN_MODE)chestOpenNow(card.dataset.chest,chestBackToReserve);
   });
 }
 

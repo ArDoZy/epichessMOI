@@ -110,9 +110,27 @@ function pAutosave(){
 // glisser-déposer entre elles.
 //
 // PAS DE CROIX DE RETRAIT : on retire une pièce en appuyant sur sa carte.
+// LA SIGNATURE DES CINQ EMPLACEMENTS. `pUpdSlots` réécrivait la grille et
+// rebranchait ses écouteurs à CHAQUE appel — donc à chaque arrivée sur la face
+// « armées », même quand rien n'avait bougé depuis la dernière visite. Sur un
+// téléphone, c'est cinq cartes jetées et refaites (cinq <img> recréées, donc
+// redécodées) pendant la rotation du cube : le vidage se voit.
+//
+// La signature dit tout ce que le balisage contient : les cinq pièces, dans
+// l'ordre, et le stock de chacune (qui décide de la pastille rouge). Si elle
+// n'a pas changé, le DOM est déjà juste et on ne le touche pas.
+let _pSlotsSig=null;
+function pSlotsSignature(all){
+  const cnt=id=>(typeof invCount==='function'?invCount(id):0);
+  const one=p=>p?(p.id+':'+cnt(p.id)):'-';
+  return [one(pArmy.mon),one(pArmy.gen),one(all[0]),one(all[1]),one(all[2])].join('|');
+}
 function pUpdSlots(){
   const g=document.getElementById('ar-comp-grid');if(!g)return;
   const all=pExtraPieces();
+  const sig=pSlotsSignature(all);
+  if(sig===_pSlotsSig&&g.firstElementChild)return;
+  _pSlotsSig=sig;
   const mk=(cls,lbl,p,type,eidx,req)=>p
     ?'<div class="comp-slot filled piece-card '+pieceRarityClass(p)+(eidx!=null?' draggable-slot':'')+
        '" data-pid="'+p.id+'" data-type="'+type+'"'+(eidx!=null?' draggable="true" data-eidx="'+eidx+'"':'')+
@@ -186,16 +204,89 @@ function pToggle(p){
   }
   pUpdateAll();
 }
+// ----------------------------------------------------------------
+// LE CATALOGUE SE RÉCONCILIE, IL NE SE RÉÉCRIT PLUS
+// ----------------------------------------------------------------
+// LE BUG QUE CECI CORRIGE. En arrivant sur la page de composition depuis une
+// autre face du cube, des éléments disparaissaient une demi-seconde puis
+// revenaient. La cause n'était ni l'animation ni le réseau : c'était cette
+// fonction. Elle écrasait `#ar-cards-container.innerHTML` en entier, à chaque
+// appel — et elle est appelée à chaque arrivée sur la face (cube-nav.js), à
+// chaque ouverture de coffre et à chaque achat (economy-ui.js), à chaque pièce
+// posée ou retirée. Réécrire le conteneur, c'est jeter seize <article> et seize
+// <img> vivantes pour en recréer seize identiques : le navigateur redémarre le
+// chargement et le DÉCODAGE de chaque illustration, et affiche des cadres vides
+// le temps que ça revienne. D'où le vidage, puis le remplissage, parfaitement
+// visibles pendant la rotation du cube.
+//
+// Le rendu est maintenant IDEMPOTENT et INCRÉMENTAL :
+//   · si la liste des pièces débloquées ET la sélection n'ont pas changé,
+//     AUCUNE écriture DOM n'a lieu — pas même un attribut reposé à l'identique ;
+//   · sinon, les cartes déjà là sont RÉUTILISÉES (pieceCardSync met à jour ce
+//     qui bouge : la sélection, le stock, le libellé du bouton) et seules les
+//     cartes réellement nouvelles sont créées, réellement parties retirées ;
+//   · les écouteurs ne sont plus rebranchés : ils vivent sur le conteneur
+//     (wirePieceCards, js/piece-card.js), une fois pour toutes.
+//
+// L'ordre du catalogue est stable (classe, puis valeur) : la réconciliation
+// n'a donc en pratique jamais à déplacer une carte, mais elle sait le faire —
+// une pièce débloquée en cours de route s'insère à sa place.
+function pCatalogList(){
+  return PIECES.filter(p=>VV_UNLOCKED.has(p.id))
+    .sort((a,b)=>{const d=CLASS_ORDER[a.class]-CLASS_ORDER[b.class];return d||a.value-b.value;});
+}
+// Ce qui, dans le catalogue, décide du DOM : la liste, l'ordre, la sélection et
+// le stock de chaque pièce. Rien d'autre n'est écrit sur une carte.
+let _pCardsSig=null;
+function pCardsSignature(list){
+  const cnt=id=>(typeof invCount==='function'?invCount(id):0);
+  return list.map(p=>p.id+(pIsSel(p)?'*':'')+':'+cnt(p.id)).join('|');
+}
 function pRenderCards(){
   const cont=document.getElementById('ar-cards-container');if(!cont)return;
-  const list=PIECES.filter(p=>VV_UNLOCKED.has(p.id))
-    .sort((a,b)=>{const d=CLASS_ORDER[a.class]-CLASS_ORDER[b.class];return d||a.value-b.value;});
+  const list=pCatalogList();
+
   if(!list.length){
-    cont.innerHTML='<div class="empty-armies"><span class="vial"><span class="vial-bubble"></span></span><p>Débloquez vos premières pièces pour composer une armée.</p></div>';
+    if(!cont.querySelector('.empty-armies')){
+      cont.innerHTML='<div class="empty-armies"><span class="vial"><span class="vial-bubble"></span></span><p>Débloquez vos premières pièces pour composer une armée.</p></div>';
+      _pCardsSig=null;
+    }
     return;
   }
-  cont.innerHTML='<div class="cards-grid">'+list.map(p=>pieceCardHTML(p,{locked:false,selected:pIsSel(p)})).join('')+'</div>';
+
+  const sig=pCardsSignature(list);
+  let grid=cont.querySelector('.cards-grid');
+  if(grid&&sig===_pCardsSig)return;       // rien n'a bougé : on ne touche à rien
+  _pCardsSig=sig;
+
+  if(!grid){
+    // Premier rendu : la grille est créée vide puis remplie nœud par nœud.
+    // Le conteneur peut porter l'état « aucune pièce » d'un compte précédent.
+    cont.textContent='';
+    grid=document.createElement('div');
+    grid.className='cards-grid';
+    cont.appendChild(grid);
+  }
+  // Les écouteurs sont posés sur le CONTENEUR : l'appel est sans effet s'ils
+  // y sont déjà (voir wirePieceCards), il ne fait que rafraîchir onUse.
   wirePieceCards(cont,{onUse:pToggle});
+
+  const restantes=new Map();
+  grid.querySelectorAll('.piece-card').forEach(el=>restantes.set(el.dataset.id,el));
+  let prev=null;
+  list.forEach(p=>{
+    const opts={locked:false,selected:pIsSel(p)};
+    let el=restantes.get(p.id);
+    if(el)restantes.delete(p.id);
+    else el=pieceCardNode(p,opts);
+    // insertBefore sur un nœud DÉJÀ placé au bon endroit le déplacerait pour
+    // rien (et refermerait la carte ouverte sous le doigt) : on vérifie.
+    const cible=prev?prev.nextElementSibling:grid.firstElementChild;
+    if(cible!==el)grid.insertBefore(el,cible);
+    pieceCardSync(el,p,opts);
+    prev=el;
+  });
+  restantes.forEach(el=>el.remove());
 }
 
 // ----------------------------------------------------------------
@@ -277,9 +368,40 @@ function armiesWarnRetired(){
 // du cube (cube-nav.js) et à chaque rafraîchissement externe (achat/ouverture
 // de coffre, fin de tutoriel...) : dans tous les cas, savedArmies[0] est la
 // seule source de vérité, donc la recharger est toujours sûr.
-const renderArmiesPage=()=>{
+// UN SEUL RENDU PAR FRAME, ET LE PREMIER EST SYNCHRONE.
+//
+// renderArmiesPage() est appelée depuis plusieurs endroits qui s'ignorent :
+// l'arrivée sur la face du cube, la fin d'une cérémonie de coffre, un achat au
+// Magasin, la fin du tutoriel. Deux de ces appels peuvent tomber dans la même
+// frame — la cérémonie se ferme ET le cube arrive —, et on payait alors deux
+// rendus complets pour un seul affichage.
+//
+// Les appels suivants sont donc groupés dans une requestAnimationFrame : la
+// page n'est peinte qu'une fois, avec l'état final. Appeler la fonction dix
+// fois de suite coûte exactement un rendu.
+//
+// LE PREMIER RENDU, LUI, RESTE SYNCHRONE, et c'est la moitié de la correction
+// du clignotement : quand la face « armées » n'a encore jamais été dessinée,
+// attendre une frame voudrait dire la montrer VIDE pendant cette frame — puis
+// la remplir sous les yeux du joueur. On la remplit donc AVANT qu'elle ne
+// devienne visible (cube-nav.js appelle cette fonction au début de la rotation,
+// plus seulement à la fin).
+let _arFrame=0;
+function armiesRenderNow(){
+  _arFrame=0;
   if(!pLoaded){pLoad();pLoaded=true;armiesWarnRetired();}
   pUpdateAll();
+}
+const renderArmiesPage=()=>{
+  const cont=document.getElementById('ar-cards-container');
+  const vierge=!pLoaded||!cont||!cont.firstElementChild;
+  if(vierge){
+    if(_arFrame){cancelAnimationFrame(_arFrame);_arFrame=0;}
+    armiesRenderNow();
+    return;
+  }
+  if(_arFrame)return;
+  _arFrame=requestAnimationFrame(armiesRenderNow);
 };
 
 // ----------------------------------------------------------------
