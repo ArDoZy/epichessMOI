@@ -1191,7 +1191,9 @@
     <div class="voie-hdr"><div class="voie-title art-banner">Diagonale de la Puissance</div></div>
     <div class="voie-elo-banner" id="voie-elo-banner"></div>
     <div class="voie-route" id="voie-route"></div>
-    <div style="text-align:left;margin-top:16px;padding-bottom:20px"><button class="btn btn-ghost" id="voie-scroll-top" style="font-size:11px">↓ Retour au début</button></div>
+    <!-- 44 px de haut, comme toute cible tactile du jeu : à 11 px de police et
+     sans hauteur minimale, ce bouton faisait 34 px et se ratait au pouce. -->
+    <div style="text-align:left;margin-top:16px;padding-bottom:20px"><button class="btn btn-ghost" id="voie-scroll-top" style="font-size:12px;min-height:44px">↓ Retour au début</button></div>
   </div>
 </div>
 <button class="btn btn-gold voie-ok-bar" id="voie-ok">OK</button>

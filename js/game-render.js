@@ -37,7 +37,24 @@ function showCtxMenu(e,r,c,gs){
 // Ancrage du Garde de Pierre, extrait d'activatePower() : ce pouvoir change
 // le tour sans passer par executeGameMove(), il doit donc pouvoir être rejoué
 // à l'identique par un adversaire en ligne (mpApplyRemotePower).
+// UNE PARTIE TERMINÉE NE REÇOIT PLUS DE POUVOIR, et ce garde-fou est ici
+// plutôt qu'aux trois appelants parce que c'est le seul point par lequel ils
+// passent tous.
+//
+// Le menu contextuel vérifiait déjà `!gs.gameOver` avant d'OFFRIR le pouvoir
+// (voir onCellCtx plus haut), et c'est ce qui cachait le trou : il restait
+// deux chemins qui n'offrent rien et appliquent quand même.
+//   · mpApplyRemotePower (js/multiplayer.js) : en ligne, le paquet de pouvoir
+//     de l'adversaire et le mat peuvent se croiser sur le réseau. Le pouvoir
+//     arrivait alors APRÈS la fin, s'ancrait, faisait tourner le trait,
+//     incrémentait le compteur de coups et relançait postMoveUpdate sur une
+//     partie finie — la position finale et l'enregistrement de replay ne
+//     disaient plus la même chose que ce que les deux joueurs avaient vu.
+//   · window.activatePower : le menu peut avoir été ouvert AVANT le mat et
+//     cliqué après ; l'état du menu, lui, n'a pas été rafraîchi.
+// Rend `false` quand elle n'a rien fait, pour que l'appelant puisse le dire.
 function applyGardePierre(r,c,color,gs){
+  if(!gs||gs.gameOver)return false;
   gs.anchored=gs.anchored||new Set();gs.anchored.add(`${r},${c}`);gs.gardePierreUsed[color]=true;
   // LE SEUL POUVOIR QU'ON DÉCLENCHE À LA MAIN N'AVAIT AUCUN GESTE. Le joueur
   // choisissait « Retour à l'État Fondamental » dans un menu, la pièce prenait
@@ -54,15 +71,18 @@ function applyGardePierre(r,c,color,gs){
   if(typeof playSound==='function')playSound('choc',{force:0.5});
   recordMove(gs.board[r][c],{r,c},false,gs,{r,c});gs.turn=opp(gs.turn);gs.turnCount++;
   postMoveUpdate(gs);
+  return true;
 }
 window.activatePower=()=>{
   if(!ctxActivePower)return;
   const{r,c,pieceId,color}=ctxActivePower;
   if(pieceId==='garde-pierre'){
+    // La partie a pu se terminer entre l'ouverture du menu et le clic.
+    if(GS.gameOver){showNotif('La partie est terminée.');closeCtx();return;}
     if(GS.gardePierreUsed[color]){showNotif('Déjà utilisé !');closeCtx();return;}
     // En ligne, on ne peut activer que ses propres pièces, et à son tour.
     if(GS.multiplayer&&(color!==GS.playerColor||GS.turn!==GS.playerColor)){showNotif('Ce n\'est pas à vous de jouer.','err');closeCtx();return;}
-    applyGardePierre(r,c,color,GS);
+    if(!applyGardePierre(r,c,color,GS)){closeCtx();return;}
     showNotif('Garde de Pierre ancré !','ok');
     if(GS.multiplayer&&typeof mpSendPower==='function')mpSendPower(r,c,pieceId);
   }

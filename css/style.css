@@ -1769,6 +1769,11 @@ body:not(.main-menu) #settings-panel{display:none}
 .voie-ok-bar{position:absolute;left:50%;bottom:var(--safe-b);
   transform:translateX(-50%);z-index:5;
   width:34%;min-width:6em;max-width:14em;
+  /* QUARANTE-QUATRE PIXELS, PAS QUARANTE-DEUX. C'est le seul bouton de sortie
+     de la page : le rater au pouce, c'est rester coincé sur un écran dont on
+     voulait partir. Le rembourrage seul donnait 42 px sur un téléphone étroit,
+     parce qu'il est exprimé en `em` et que la police y descend à 15 px. */
+  min-height:44px;display:flex;align-items:center;justify-content:center;
   margin:0;padding:.75em 1em;border-radius:999px;
   font-family:var(--f-ui);font-weight:800;font-size:min(4.2vw,16px);letter-spacing:.09em;
   box-shadow:inset 0 .1em 0 rgba(255,240,205,.55),inset 0 -.18em 0 rgba(0,0,0,.28),
@@ -6219,15 +6224,36 @@ body.light .adv-advised{color:#f6f5f1}
 
 /* Le focus clavier n'était visible que par la couleur héritée : il lui faut
    un anneau à lui, sur tout ce qui se pilote au clavier. */
-.btn:focus-visible,.jouer-btn:focus-visible,.cube-arrow:focus-visible,
-.army-card:focus-visible,.chest-card:focus-visible,
-.adv-card:focus-visible,.jouer-track:focus-visible,#settings-btn:focus-visible{
+/* L'ANNEAU DE FOCUS EST DÉSORMAIS UNE RÈGLE, PLUS UNE LISTE.
+   Il était énuméré sélecteur par sélecteur — huit noms de classes — et cette
+   liste était forcément incomplète : « Passer » du Lore et le panneau de rang
+   du menu n'y étaient pas, donc on les traversait au clavier sans voir où l'on
+   était. Une liste à tenir à jour finit toujours par rater le bouton ajouté le
+   mois suivant, et un anneau qui manque sur UN SEUL élément suffit à perdre
+   quelqu'un qui navigue sans souris.
+
+   La condition est donc devenue ce qu'elle aurait toujours dû être : « tout ce
+   qui se prend le focus ». Le reset du haut de fichier retire l'anneau du
+   navigateur pour ne pas le voir au TOUCHER (voir la note près de
+   `outline:none`) ; celui-ci le rend au CLAVIER, et à tout le monde.
+
+   Deux exceptions, et elles sont volontaires : les cases du plateau (`.gc`) et
+   les cartes de pièce portent déjà leur propre marque de focus, EN DEDANS —
+   un anneau posé autour d'une case de quarante pixels déborderait sur ses
+   voisines. */
+:is(button,a[href],input,select,textarea,[role="button"],[tabindex]:not([tabindex="-1"])):focus-visible:not(.gc):not(.piece-card){
   outline:2px solid var(--accent2);outline-offset:2px}
 
 /* Le mouvement réduit reste prioritaire sur tout ce qui précède. */
+/* `.bd-over` TRAÎNAIT ICI SANS BLOC DE DÉCLARATIONS — un sélecteur nu suivi de
+   l'accolade fermante de la requête média. Le navigateur le jetait en silence,
+   comme il jette toute règle qu'il ne sait pas lire : aucun message, aucune
+   conséquence visible, et personne pour s'en apercevoir. Il n'avait de toute
+   façon rien à dire de plus, la seule chose que `.bd-over` change étant la
+   COULEUR de `.bd-budget-num`, déjà présent dans la liste ci-dessous. */
 @media(prefers-reduced-motion:reduce){
   .status-bar,.btn,.bd-budget-num,.piece-card-cost,.piece-card-qty{transition:none}
-    .bd-over }
+}
 
 /* [ART] : LES PLANCHES DESSINÉES ==================================
    Tout ce qui suit est FACULTATIF, et le jeu est complet sans un seul de

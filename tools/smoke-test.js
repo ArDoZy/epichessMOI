@@ -958,6 +958,67 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
     await page.evaluate(()=>{GS.gameOver=true;stopClockTick(GS);renderReservePage();renderVoiePage();renderArmiesPage();});
   });
 
+  // DEUX TROUS TROUVÉS EN CHERCHANT, ET REFERMÉS. Ils ne se voyaient ni l'un
+  // ni l'autre dans un parcours normal : le premier demande une partie
+  // terminée, le second une armée qui vient d'ailleurs.
+  await step('une partie finie ne reçoit plus de pouvoir, et une armée trouée ne fait plus tomber le combat',async()=>{
+    const bad=await page.evaluate(()=>{
+      const out=[];
+
+      // 1. L'ANCRAGE DU GARDE DE PIERRE APRÈS LA FIN.
+      // Le menu contextuel vérifiait `!gs.gameOver` avant d'OFFRIR le pouvoir,
+      // ce qui cachait le trou : restaient deux chemins qui n'offrent rien et
+      // appliquaient quand même — le pouvoir d'un adversaire en ligne arrivé
+      // après le mat (mpApplyRemotePower), et un menu ouvert avant le mat puis
+      // cliqué après. Le pouvoir s'ancrait, faisait tourner le trait,
+      // incrémentait le compteur et relançait postMoveUpdate sur une partie
+      // finie : la position finale ne disait plus la même chose que ce que les
+      // deux joueurs avaient vu.
+      const gs={gameOver:true,turn:'w',playerColor:'w',
+        board:Array.from({length:8},()=>Array(8).fill(null)),
+        anchored:new Set(),medusaParalyzed:new Set(),pretreProtected:new Set(),
+        grandMaitreAlive:{w:false,b:false},gardePierreUsed:{w:false,b:false},
+        capturedW:[],capturedB:[],movePairs:[],history:[],lastMoveHistory:[],turnCount:7};
+      gs.board[4][4]={type:'p',color:'w',pieceId:'garde-pierre',emoji:'',id:'gp',hasMoved:true};
+      const applique=applyGardePierre(4,4,'w',gs);
+      if(applique)out.push('applyGardePierre se dit appliqué sur une partie terminée');
+      if(gs.anchored.size)out.push('le Garde de Pierre s\'ancre encore après la fin de la partie');
+      if(gs.turn!=='w')out.push('le trait a tourné après la fin de la partie');
+      if(gs.turnCount!==7)out.push('le compteur de coups a avancé après la fin de la partie');
+      // Et il marche toujours quand la partie est EN COURS — sans quoi on
+      // aurait « corrigé » le bug en retirant le pouvoir.
+      gs.gameOver=false;
+      if(!applyGardePierre(4,4,'w',gs))out.push('le pouvoir ne marche plus pendant la partie');
+      if(!gs.anchored.size)out.push('le pouvoir ne s\'applique plus pendant la partie');
+
+      // 2. UNE ARMÉE DONT UNE PIÈCE N'EXISTE PLUS.
+      // `wm.id` sur un `undefined` levait une exception, et une exception
+      // là-dedans veut dire un écran de combat NOIR. Le cas n'est pas
+      // théorique : trois créatures ont quitté le catalogue, et l'armée d'un
+      // adversaire en ligne resté sur une version plus ancienne du jeu les
+      // cite encore — accMigrateRetiredPieces ne peut rien pour celle-là.
+      const bonne={mon:{id:'roi'},gen:{id:'dame'},extras:['fourmi'],placements:{fourmi:2}};
+      const trouee={mon:{id:'empereur'},gen:{id:'garde-feu'},
+                    extras:['garde-eau','fourmi'],placements:{'garde-eau':1,fourmi:2}};
+      let b;
+      try{b=buildGameBoard(trouee,bonne);}
+      catch(e){out.push('une armée citant une pièce retirée fait tomber le combat : '+e.message);}
+      if(b){
+        // Le repli est le plus conservateur possible : le Roi et la Dame.
+        const roi=b[7][4],dame=b[7][3];
+        if(!roi||roi.pieceId!=='roi')out.push('le monarque introuvable n\'a pas été remplacé par le Roi');
+        if(!roi||!roi.isKing)out.push('le monarque de repli n\'est pas un monarque');
+        if(!dame||dame.pieceId!=='dame')out.push('le général introuvable n\'a pas été remplacé par la Dame');
+        // La créature retirée n'est pas posée, la légitime l'est.
+        const rang=b[7].filter(Boolean).map(p=>p.pieceId);
+        if(rang.some(id=>RETIRED_PIECE_IDS.has(id)))out.push('une créature retirée est posée sur le plateau');
+        if(rang.indexOf('fourmi')<0)out.push('la créature légitime n\'a pas été posée');
+      }
+      return out;
+    });
+    if(bad.length)throw new Error(bad.join(' · '));
+  });
+
   // LES ONZE PLANCHES VECTORIELLES, ET LE SPRITE RECOPIÉ.
   //
   // Une planche absente ne casse rien — c'est la règle de tout le décor du jeu
