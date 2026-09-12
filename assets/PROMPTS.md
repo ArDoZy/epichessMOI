@@ -1028,6 +1028,19 @@ plateau : une pièce en partie garde son SVG monochrome, qui doit se lire sur
 une case de quarante pixels. Le dossier est vide aujourd'hui, et le jeu s'en
 passe — la carte retombe toute seule sur ce même SVG.
 
+**Une planche déposée ici se convertit avant d'être versée au dépôt :**
+
+```bash
+npm i --no-save sharp && npm run opt:images
+```
+
+Le PNG de 1024×1536 pèse deux à trois mégaoctets, pour une carte qui ne
+dépasse jamais 150 px de large. `tools/opt-images.js` en tire un `.webp` de
+640×960 d'une centaine de kilo-octets, et c'est lui que le jeu charge
+(`pieceCardArtHTML`, `js/piece-card.js`, qui retombe sur le `.png` puis sur
+le SVG). Le PNG reste sur le disque et n'entre pas dans git — voir
+`assets/pieces/README.md`, § « Le passage obligé ».
+
 **Format PORTRAIT (1024 × 1536), fond PLEIN.** L'illustration n'est plus
 posée *dans* la carte, elle *est* la carte : elle va d'un bord à l'autre,
 sous le bandeau du nom, et le jeu la rogne d'une lisière en haut et en bas
@@ -1095,6 +1108,7 @@ assets/adversaires/  cendre.png  suie.png  bruyere.png  orpiment.png
                      plombagine.png  salamandre.png  instructeur.png  athanor.png
 assets/pieces/       <id>.png, un par créature, format PORTRAIT
                      — les 19 sujets sont dans pieces/README.md
+                     — à convertir en <id>.webp : npm run opt:images
 assets/chests/dame/  01-intact.webp … 05-eclats.webp
 assets/chests/roi/   01-intact.webp … 05-eclats.webp
 ```

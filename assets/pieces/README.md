@@ -1,10 +1,11 @@
 # Les illustrations de créatures — `assets/pieces/`
 
 Une image par créature, nommée **exactement comme l'identifiant de la pièce**
-dans `js/data-pieces.js`, en `.png` :
+dans `js/data-pieces.js` :
 
 ```
-assets/pieces/<id>.png
+assets/pieces/<id>.png     ← la planche du générateur, 1024×1536 (locale)
+assets/pieces/<id>.webp    ← ce que le jeu charge, 640×960 (versionné)
 ```
 
 C'est la carte du CATALOGUE qui les affiche — la grille de composition
@@ -22,6 +23,45 @@ aujourd'hui, tant que ce dossier est vide. Il n'y a aucune liste à tenir à
 jour, rien à déclarer : déposer `assets/pieces/meduse.png` suffit à ce que
 la Méduse s'illustre au prochain rechargement.
 
+## LE PASSAGE OBLIGÉ : `npm run opt:images`
+
+C'est la seule commande de ce dossier, et elle n'est pas facultative.
+
+```bash
+npm i --no-save sharp     # une fois
+npm run opt:images        # après chaque planche déposée
+```
+
+**Pourquoi.** Le générateur sort du PNG de 1024×1536, soit **deux à trois
+mégaoctets par créature** — cinquante mégaoctets pour les dix-neuf. Or la
+plus grande carte du jeu fait **150 px de large** (`.cards-grid .piece-card`)
+et le catalogue d'un téléphone en aligne quatre par rangée, à 76 px. On
+téléchargerait donc, sur un forfait mobile, cinquante mégaoctets dont le
+navigateur jette 95 % des pixels avant de peindre.
+
+`tools/opt-images.js` en tire un **`.webp` de 640×960** — une centaine de
+kilo-octets, soit un rapport de 1 à 25 — recadré au centre au rapport 2/3
+si la planche ne l'était pas. Le PNG d'origine **reste sur le disque** :
+c'est le fichier qu'on retouche et qu'on reconvertit. Il est ignoré par git
+(`.gitignore`) : ce qui part au dépôt est le `.webp`, comme pour les
+cinquante-huit autres planches du jeu.
+
+**Ce que la carte demande, dans l'ordre** (`pieceCardArtHTML`,
+`js/piece-card.js`) :
+
+1. `<id>.webp` — l'illustration optimisée, ce que voit le joueur ;
+2. `<id>.png` — la planche brute, pour la minute où l'on vient de la déposer
+   et où l'on veut la voir sans rien lancer ;
+3. le SVG monochrome, si les deux manquent.
+
+Rien à changer dans le code d'un palier à l'autre : chaque échec passe au
+suivant tout seul.
+
+**Une dernière chose, la seule qui se paie en silence** : les images sont
+servies par le **cache d'abord** (`sw.js`). Après avoir ajouté ou remplacé des
+illustrations, monter `CACHE_VERSION` dans `sw.js`, sinon les joueurs déjà
+venus garderont les anciennes.
+
 ## Le format : PORTRAIT, ET L'IMAGE REMPLIT LA CARTE
 
 L'illustration ne se pose plus **dans** la carte, elle **est** le haut de la
@@ -29,7 +69,10 @@ carte : elle va d'un bord à l'autre, sous le bandeau du nom, comme sur une
 carte à collectionner. D'où deux conséquences qui changent le prompt :
 
 * **PORTRAIT, 1024 × 1536** (et non plus carré). C'est le format qui remplit
-  un cadre plus haut que large sans laisser de vide sur les côtés.
+  un cadre plus haut que large sans laisser de vide sur les côtés. C'est la
+  taille qu'on DEMANDE au générateur ; celle qui part au dépôt est le
+  640 × 960 produit par `npm run opt:images` — même image, même cadrage,
+  vingt-cinq fois moins lourde.
 * **Fond PLEIN, pas transparent.** Un fond transparent laisse voir le
   dégradé de la carte et l'illustration flotte ; un fond peint jusqu'aux
   bords fait une carte. Le fond est une **lueur colorée dans la couleur de
