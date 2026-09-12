@@ -114,7 +114,7 @@ function pAutosave(){
 // rebranchait ses écouteurs à CHAQUE appel — donc à chaque arrivée sur la face
 // « armées », même quand rien n'avait bougé depuis la dernière visite. Sur un
 // téléphone, c'est cinq cartes jetées et refaites (cinq <img> recréées, donc
-// redécodées) pendant la rotation du cube : le vidage se voit.
+// redécodées) pendant le glissement de la rangée : le vidage se voit.
 //
 // La signature dit tout ce que le balisage contient : les cinq pièces, dans
 // l'ordre, et le stock de chacune (qui décide de la pastille rouge). Si elle
@@ -208,16 +208,16 @@ function pToggle(p){
 // LE CATALOGUE SE RÉCONCILIE, IL NE SE RÉÉCRIT PLUS
 // ----------------------------------------------------------------
 // LE BUG QUE CECI CORRIGE. En arrivant sur la page de composition depuis une
-// autre face du cube, des éléments disparaissaient une demi-seconde puis
+// autre page de la rangée, des éléments disparaissaient une demi-seconde puis
 // revenaient. La cause n'était ni l'animation ni le réseau : c'était cette
 // fonction. Elle écrasait `#ar-cards-container.innerHTML` en entier, à chaque
-// appel — et elle est appelée à chaque arrivée sur la face (cube-nav.js), à
+// appel — et elle est appelée à chaque arrivée sur la face (pages-nav.js), à
 // chaque ouverture de coffre et à chaque achat (economy-ui.js), à chaque pièce
 // posée ou retirée. Réécrire le conteneur, c'est jeter seize <article> et seize
 // <img> vivantes pour en recréer seize identiques : le navigateur redémarre le
 // chargement et le DÉCODAGE de chaque illustration, et affiche des cadres vides
 // le temps que ça revienne. D'où le vidage, puis le remplissage, parfaitement
-// visibles pendant la rotation du cube.
+// visibles pendant le glissement de la rangée.
 //
 // Le rendu est maintenant IDEMPOTENT et INCRÉMENTAL :
 //   · si la liste des pièces débloquées ET la sélection n'ont pas changé,
@@ -365,15 +365,15 @@ function armiesWarnRetired(){
 
 // Point d'entrée de la page "Mes armées" : recharge depuis la seule armée
 // enregistrée et (re)dessine. Appelée à chaque arrivée sur la face "armées"
-// du cube (cube-nav.js) et à chaque rafraîchissement externe (achat/ouverture
+// du cube (pages-nav.js) et à chaque rafraîchissement externe (achat/ouverture
 // de coffre, fin de tutoriel...) : dans tous les cas, savedArmies[0] est la
 // seule source de vérité, donc la recharger est toujours sûr.
 // UN SEUL RENDU PAR FRAME, ET LE PREMIER EST SYNCHRONE.
 //
 // renderArmiesPage() est appelée depuis plusieurs endroits qui s'ignorent :
-// l'arrivée sur la face du cube, la fin d'une cérémonie de coffre, un achat au
+// l'arrivée sur la page, la fin d'une cérémonie de coffre, un achat au
 // Magasin, la fin du tutoriel. Deux de ces appels peuvent tomber dans la même
-// frame — la cérémonie se ferme ET le cube arrive —, et on payait alors deux
+// frame — la cérémonie se ferme ET la page arrive —, et on payait alors deux
 // rendus complets pour un seul affichage.
 //
 // Les appels suivants sont donc groupés dans une requestAnimationFrame : la
@@ -384,7 +384,7 @@ function armiesWarnRetired(){
 // du clignotement : quand la face « armées » n'a encore jamais été dessinée,
 // attendre une frame voudrait dire la montrer VIDE pendant cette frame — puis
 // la remplir sous les yeux du joueur. On la remplit donc AVANT qu'elle ne
-// devienne visible (cube-nav.js appelle cette fonction au début de la rotation,
+// devienne visible (pages-nav.js appelle cette fonction au début de la rotation,
 // plus seulement à la fin).
 let _arFrame=0;
 function armiesRenderNow(){
@@ -439,7 +439,7 @@ window.startArmySelection=mode=>{
   else launchCombat(a.id);
 };
 
-// Conservée pour compatibilité (cube-nav.js l'appelle au retour au menu) :
+// Conservée pour compatibilité (pages-nav.js l'appelle au retour au menu) :
 // il n'y a plus d'état de sélection à effacer.
 window.clearArmySelection=()=>{};
 

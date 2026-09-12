@@ -533,10 +533,10 @@ function renderVoiePage(){
   voieAutoScroll(route);
 }
 
-// La Voie a été une face du cube ; c'est de nouveau une page à part entière,
+// La Voie a été une page de la rangée ; c'est de nouveau une page en surimpression,
 // ouverte par le bouton « Voie » posé à côté de l'ELO sur le menu principal
-// (js/cube-nav.js). D'où le bouton de sortie explicite ci-dessous : une page
-// en surimpression n'a pas de flèche de cube pour en sortir.
+// (js/pages-nav.js). D'où le bouton de sortie explicite ci-dessous : une page
+// en surimpression n'a pas d'onglet pour en sortir.
 //
 // UN SEUL BOUTON « OK », épinglé en bas de l'écran (voir .voie-ok-bar dans
 // css/style.css), plutôt qu'un « ← Retour » dans l'en-tête : la Voie peut
@@ -576,7 +576,7 @@ function voieAutoScroll(){
   if(!host)return;
   const firstVisit=!accGet('voie_seen',false);
   // renderVoiePage() est appelée AVANT showPage('page-voie') (voir
-  // js/cube-nav.js) : la page est encore masquée ici, sans la moindre
+  // js/pages-nav.js) : la page est encore masquée ici, sans la moindre
   // géométrie (scrollHeight à 0, scrollIntoView sans effet). On attend la
   // frame suivante — après quoi showPage() a déjà posé la classe .active,
   // synchrone, dans le même tick — pour que le positionnement porte sur une

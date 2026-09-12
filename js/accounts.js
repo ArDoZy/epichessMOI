@@ -40,7 +40,7 @@
 //
 // CHANGER DE COMPTE RECHARGE LA PAGE, comme avant et pour la même
 // raison : une trentaine de variables globales (savedArmies,
-// VV_UNLOCKED, l'inventaire, le tutoriel, les récompenses, le cube…)
+// VV_UNLOCKED, l'inventaire, le tutoriel, les récompenses, la navigation…)
 // portent l'état du compte courant, et les remettre à zéro une par une,
 // c'est se condamner à en oublier une.
 //

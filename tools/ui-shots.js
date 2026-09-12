@@ -76,9 +76,10 @@ const AUDIT=`(()=>{
 
   // -- CE QUI COMPTE COMME « À L'ÉCRAN » ---------------------------------
   // Un simple getBoundingClientRect() ne suffit PAS ici : le menu principal
-  // est un cube en 3D, et les trois faces qu'on ne voit pas restent dans le
-  // document, projetées de travers. Leurs boutons y mesurent 25×178 ou 43×8,
-  // et on passerait sa vie à corriger des tailles qui n'existent pas.
+  // est une rangée de cinq pages, et les quatre qu'on ne voit pas restent dans
+  // le document, poussées hors du cadre. Leurs boutons y gardent une boîte
+  // mesurable, et on passerait sa vie à corriger des tailles qui n'existent
+  // pas à l'écran.
   //
   // On pose donc la seule question qui vaille : SI L'ON POSAIT LE DOIGT AU
   // MILIEU DE CET ÉLÉMENT, EST-CE LUI QU'ON TOUCHERAIT ? C'est aussi ce qui
@@ -95,10 +96,10 @@ const AUDIT=`(()=>{
       if(s.display==='none'||s.visibility==='hidden')return false;
       if(parseFloat(s.opacity)===0)return false;
       if(s.pointerEvents==='none')return false;
-      // Une page inactive et une face de cube qui n'est pas devant sont
+      // Une page inactive et une page de la rangée qui n'est pas affichée sont
       // là sans être là.
       if(n.classList.contains('page')&&!n.classList.contains('active'))return false;
-      if(n.classList.contains('cube-face')&&!n.classList.contains('is-front'))return false;
+      if(n.classList.contains('nav-page')&&!n.classList.contains('is-front'))return false;
     }
     return true;
   };
@@ -177,8 +178,11 @@ const SCREENS=[
                                        openAccountPage();});await p.waitForTimeout(500);}},
   {name:'05-armees',    go:async p=>{await p.evaluate(()=>showPage('page-armies'));await p.waitForTimeout(700);}},
   {name:'06-armurerie', go:async p=>{await p.evaluate(()=>showPage('page-reserve'));await p.waitForTimeout(700);}},
-  {name:'07-magasin',   go:async p=>{await p.evaluate(()=>{goToMainMenu();if(typeof goToFace==='function')goToFace('magasin');
+  {name:'07-magasin',   go:async p=>{await p.evaluate(()=>{goToMainMenu();if(typeof goToPage==='function')goToPage('magasin');
                                        else if(typeof renderMagasinPage==='function')renderMagasinPage();});
+                                     await p.waitForTimeout(900);}},
+  {name:'07b-variantes',go:async p=>{await p.evaluate(()=>{goToMainMenu();if(typeof goToPage==='function')goToPage('variantes');
+                                       else if(typeof renderVariantesPage==='function')renderVariantesPage();});
                                      await p.waitForTimeout(900);}},
   {name:'08-voie',      go:async p=>{await p.evaluate(()=>{renderVoiePage();showPage('page-voie');});await p.waitForTimeout(600);}},
   {name:'09-recompenses',go:async p=>{await p.evaluate(()=>{if(typeof renderRewardsPage==='function')renderRewardsPage();
@@ -219,7 +223,7 @@ const SCREENS=[
     // Le mode test débloque tout : on veut voir les écrans PLEINS (tous les
     // coffres, toutes les créatures), c'est là que les débordements arrivent.
     await page.goto('http://localhost:'+PORT+'/?test',{waitUntil:'domcontentloaded'});
-    await page.waitForSelector('#cube-jouer-btn',{state:'visible',timeout:15000});
+    await page.waitForSelector('#combat-btn',{state:'visible',timeout:15000});
 
     // Sauter le Lore, le tutoriel et le coffre du jour : ils couvrent tout.
     for(let i=0;i<6&&await page.isVisible('#lore-intro');i++){

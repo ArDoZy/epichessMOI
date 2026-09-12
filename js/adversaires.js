@@ -20,7 +20,7 @@
 // (accGet/accSet), main.js (showPage, escH), ai-level-modal.js
 // (aiSetOpponent, aiChosenOpponent), armies.js (startArmySelection),
 // voie.js (vvLoadElo).
-// Utilisé par : cube-nav.js (bouton « Adversaires » du menu principal),
+// Utilisé par : pages-nav.js (bouton « Adversaires » du menu principal),
 // combat-intro.js et game-flow.js (nom et portrait de l'adversaire engagé).
 // ================================================================
 

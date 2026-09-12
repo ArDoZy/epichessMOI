@@ -174,7 +174,7 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
       // Tout en haut : au-dessus du pseudo, qui est lui-même au-dessus de
       // COMBAT.
       const pseudo=document.getElementById('jouer-name');
-      const combat=document.getElementById('cube-jouer-btn');
+      const combat=document.getElementById('combat-btn');
       const tb=t.getBoundingClientRect();
       if(pseudo&&tb.bottom>pseudo.getBoundingClientRect().top+1)out.push('le titre n\'est pas au-dessus du pseudo');
       if(combat&&tb.bottom>=combat.getBoundingClientRect().top)out.push('le titre n\'est pas au-dessus de COMBAT');
@@ -245,7 +245,7 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
       throw new Error('une page est encore marquée active dans le HTML servi');
     const avant=await page.evaluate(()=>CUR_ACC);
     await page.goto('http://localhost:'+PORT+'/',{waitUntil:'domcontentloaded'});
-    await page.waitForSelector('#cube-jouer-btn',{state:'visible',timeout:8000});
+    await page.waitForSelector('#combat-btn',{state:'visible',timeout:8000});
     if(await page.evaluate(()=>CUR_ACC)!==avant)throw new Error('le compte enregistré n\'est pas repris');
     if(await page.evaluate(()=>document.querySelectorAll('.page.active').length))
       throw new Error('une page secondaire couvre le menu à la réouverture');
@@ -487,12 +487,12 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
       throw new Error('le bouton de réglages est encore là sur la Voie');
     await page.click('#voie-ok');
     await page.waitForTimeout(400);
-    // Une autre face du cube (l'Armurerie) : plus de bouton non plus.
+    // Une autre page de la rangée (la Guerre des clans) : plus de bouton non plus.
     await page.evaluate(()=>showPage('page-reserve'));
     await page.waitForTimeout(300);
     if(await page.isVisible('#settings-btn'))
       throw new Error('le bouton de réglages est encore là sur l\'Armurerie');
-    await page.evaluate(()=>showPage('face-jouer'));
+    await page.evaluate(()=>showPage('page-jouer'));
     await page.waitForTimeout(700);
     if(!await page.isVisible('#settings-btn'))
       throw new Error('le bouton de réglages ne revient pas au menu principal');
@@ -1105,7 +1105,7 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
 
   // LE « RECHARGEMENT » DE LA PAGE D'ARMÉES, mesuré au lieu d'être regardé.
   //
-  // En arrivant sur la composition depuis une autre face, des éléments
+  // En arrivant sur la composition depuis une autre page, des éléments
   // disparaissaient une demi-seconde puis revenaient. La cause était un
   // innerHTML : le catalogue entier était jeté et refait à chaque appel, donc
   // seize <img> détruites et recréées, donc rechargées et redécodées, donc des
@@ -1132,7 +1132,7 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
       }));
       obs.observe(cont,{childList:true,subtree:true,attributes:true});
 
-      // Dix arrivées d'affilée, exactement ce que fait une navigation au cube.
+      // Dix arrivées d'affilée, exactement ce que fait une navigation d'onglet.
       for(let i=0;i<10;i++)renderArmiesPage();
       await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
       obs.disconnect();
@@ -1167,7 +1167,7 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
       }
 
       // LE MAGASIN, même mesure.
-      showPage('face-jouer');
+      showPage('page-jouer');
       if(typeof renderMagasinPage==='function'){
         const g=document.getElementById('shop-chest-grid');
         if(g){
@@ -1195,7 +1195,7 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
   await step('la fenêtre journalière montre le cycle des trente lots',async()=>{
     await page.evaluate(()=>{
       accSet('dr_idx',2);accSet('dr_day',null);accSet('pearls',300);
-      showPage('face-jouer');renderMenuChests();
+      showPage('page-jouer');renderMenuChests();
     });
     // La COLONNE du menu (`.jouer-col` : titre, identité, COMBAT, Adversaires)
     // ne porte ni rail de coffres ni solde de perles — tout est passé dans les
@@ -1277,17 +1277,17 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
   // flottante de quatre blasons, centrée à 22 px du bord : quatre cibles de
   // 40 px au milieu d'un ruban, et sous elles une bande que rien n'occupait —
   // sur une application installée, c'est la zone du geste d'accueil. Elle
-  // prend maintenant toute la largeur, elle porte le NOM de chaque face, et
-  // son fond descend jusqu'au bord de l'écran.
-  await step('la barre des faces prend toute la largeur, jusqu\'au bord bas',async()=>{
+  // prend maintenant toute la largeur, elle porte le NOM de chacune des CINQ
+  // pages, et son fond descend jusqu'au bord de l'écran.
+  await step('la barre d\'onglets prend toute la largeur, jusqu\'au bord bas',async()=>{
     await page.setViewportSize({width:390,height:844});
     await page.evaluate(()=>{if(typeof goToMainMenu==='function')goToMainMenu();});
     await page.waitForTimeout(700);
     const r=await page.evaluate(()=>{
-      const bar=document.getElementById('cube-facebar');
+      const bar=document.getElementById('nav-tabbar');
       if(!bar||getComputedStyle(bar).display==='none')return null;
       const b=bar.getBoundingClientRect();
-      const btns=[...bar.querySelectorAll('.cube-facebar-btn')];
+      const btns=[...bar.querySelectorAll('.nav-tab')];
       const larg=btns.map(x=>Math.round(x.getBoundingClientRect().width));
       return{
         // La largeur de référence est celle de la FENÊTRE (innerWidth) et non
@@ -1296,35 +1296,35 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
         gauche:b.left,droite:innerWidth-b.right,bas:innerHeight-b.bottom,
         hauteur:b.height,
         n:btns.length,
-        // Quatre parts égales : quatre destinations de même rang.
-        egales:larg.length===4&&Math.max(...larg)-Math.min(...larg)<=1,
+        // Cinq parts égales : cinq destinations de même rang.
+        egales:larg.length===5&&Math.max(...larg)-Math.min(...larg)<=1,
         // Chaque onglet porte son nom, pas seulement son blason.
         libelles:btns.map(x=>{
-          const l=x.querySelector('.cfb-label');
+          const l=x.querySelector('.nav-tab-label');
           return l&&getComputedStyle(l).display!=='none'?l.textContent.trim():'';
         }),
-        actif:bar.querySelectorAll('.cube-facebar-btn.is-active').length,
+        actif:bar.querySelectorAll('.nav-tab.is-active').length,
         // Et le pouce trouve chaque onglet sans viser.
         haut:Math.min(...btns.map(x=>Math.round(x.getBoundingClientRect().height))),
       };
     });
-    if(!r)throw new Error('la barre des faces est absente du menu principal');
+    if(!r)throw new Error('la barre d\'onglets est absente du menu principal');
     if(r.gauche>0.5||r.droite>0.5)
       throw new Error('la barre ne prend pas toute la largeur (marges '+r.gauche+' / '+r.droite+')');
     if(r.bas>0.5)throw new Error('la barre ne touche pas le bas de l\'écran ('+r.bas+' px en dessous)');
-    if(r.n!==4)throw new Error(r.n+' onglets au lieu de 4');
-    if(!r.egales)throw new Error('les quatre onglets n\'ont pas la même largeur');
+    if(r.n!==5)throw new Error(r.n+' onglets au lieu de 5');
+    if(!r.egales)throw new Error('les cinq onglets n\'ont pas la même largeur');
     if(r.libelles.some(t=>!t))throw new Error('un onglet n\'affiche pas son nom : '+JSON.stringify(r.libelles));
     if(r.actif!==1)throw new Error(r.actif+' onglets marqués actifs au lieu d\'un seul');
     if(r.haut<44)throw new Error('un onglet ne fait que '+r.haut+' px de haut');
   });
 
-  // ET LES DEUX FLÈCHES DE ROTATION S'EN VONT SUR TÉLÉPHONE. Elles étaient le
-  // secours du glissement de doigt — qui reste — au-dessus d'une barre qui
-  // nomme les quatre faces et y mène directement.
-  await step('les flèches de rotation ont quitté le téléphone',async()=>{
+  // ET LES DEUX FLÈCHES S'EN VONT SUR TÉLÉPHONE. Elles étaient le secours du
+  // glissement de doigt — qui reste — au-dessus d'une barre qui nomme les cinq
+  // pages et y mène directement.
+  await step('les flèches de navigation ont quitté le téléphone',async()=>{
     const vues=await page.evaluate(()=>
-      ['cube-arrow-left','cube-arrow-right'].filter(id=>{
+      ['nav-arrow-left','nav-arrow-right'].filter(id=>{
         const el=document.getElementById(id);
         return el&&getComputedStyle(el).display!=='none';
       }));
@@ -1336,7 +1336,7 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
   // LE MODE BUREAU. Le jeu est pensé téléphone d'abord, et toutes ses règles
   // adaptatives étaient des `max-width` : sur un écran d'ordinateur, il ne
   // s'adaptait donc pas du tout — colonne de téléphone au milieu du vide, et
-  // une barre des faces flottante qui RECOUVRAIT le contenu (sur « Mes
+  // une barre d'onglets flottante qui RECOUVRAIT le contenu (sur « Mes
   // armées », elle masquait deux noms de cartes en plein milieu de l'écran).
   // Ce test tient les deux promesses du mode bureau : le drapeau s'allume, et
   // le rail ne recouvre plus rien.
@@ -1356,41 +1356,45 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
   // La fenêtre du test fait 1400 px avec un pointeur fin : elle est donc en
   // mode bureau, comme un vrai ordinateur.
   await step('le mode bureau pose son rail sans recouvrir le contenu',async()=>{
-    await page.evaluate(()=>{showPage('face-jouer');renderMenuChests();});
+    await page.evaluate(()=>{showPage('page-jouer');renderMenuChests();});
     await page.waitForTimeout(400);
     const r=await page.evaluate(()=>{
       const desk=document.body.classList.contains('desk');
-      const bar=document.getElementById('cube-facebar');
+      const bar=document.getElementById('nav-tabbar');
       const bb=bar.getBoundingClientRect();
-      const vp=document.querySelector('.cube-face[data-face="jouer"] .face-viewport');
+      const vp=document.querySelector('.nav-page[data-page="jouer"] .page-viewport');
       const vb=vp.getBoundingClientRect();
       return{
         desk,railOn:document.body.classList.contains('rail-on'),
         // Rail VERTICAL collé à gauche, et non plus une pastille flottante en
         // bas au milieu.
         railGauche:bb.left<=1,railHaut:bb.height>vb.height*0.8,
-        // La preuve que rien n'est recouvert : la zone utile de la face
+        // La preuve que rien n'est recouvert : la zone utile de la page
         // commence exactement où le rail s'arrête.
         gouttiere:Math.abs(vb.left-bb.right)<=1,
+        // Si la gouttière tombe à côté, c'est presque toujours que le cadre a
+        // défilé sous une page hors champ : la mesure le dit tout de suite.
+        mesures:'page à '+Math.round(vb.left)+', rail jusqu\'à '+Math.round(bb.right)+
+                ', cadre défilé de '+document.getElementById('nav-stage').scrollLeft,
         // Les libellés sortent de l'ombre : à la souris, il y a la place.
-        libelles:[...bar.querySelectorAll('.cfb-label')]
+        libelles:[...bar.querySelectorAll('.nav-tab-label')]
           .filter(el=>getComputedStyle(el).display!=='none').length,
       };
     });
     if(!r.desk)throw new Error('body.desk ne s\'allume pas sur un écran d\'ordinateur');
-    if(!r.railOn)throw new Error('body.rail-on manque alors que la barre des faces est affichée');
-    if(!r.railGauche||!r.railHaut)throw new Error('la barre des faces n\'est pas devenue un rail latéral');
-    if(!r.gouttiere)throw new Error('la zone utile ne recule pas derrière le rail : il recouvre le contenu');
-    if(r.libelles!==4)throw new Error(r.libelles+' libellés visibles sur le rail au lieu de 4');
+    if(!r.railOn)throw new Error('body.rail-on manque alors que la barre d\'onglets est affichée');
+    if(!r.railGauche||!r.railHaut)throw new Error('la barre d\'onglets n\'est pas devenue un rail latéral');
+    if(!r.gouttiere)throw new Error('la zone utile ne recule pas derrière le rail : il recouvre le contenu ('+r.mesures+')');
+    if(r.libelles!==5)throw new Error(r.libelles+' libellés visibles sur le rail au lieu de 5');
   });
 
-  // Et le retrait doit DISPARAÎTRE avec le rail : pendant une partie, le cube
-  // est verrouillé et la barre des faces s'efface. Sans ce lien, le plateau
-  // aurait joué avec une bande vide de 200 px sur sa gauche.
+  // Et le retrait doit DISPARAÎTRE avec le rail : pendant une partie, la
+  // navigation est verrouillée et la barre d'onglets s'efface. Sans ce lien,
+  // le plateau aurait joué avec une bande vide de 200 px sur sa gauche.
   await step('la gouttière du rail disparaît avec lui',async()=>{
     const r=await page.evaluate(()=>{
-      const vp=document.querySelector('.cube-face[data-face="jouer"] .face-viewport');
-      document.body.classList.remove('rail-on');       // ce que fait updateArrows() quand la barre s'en va
+      const vp=document.querySelector('.nav-page[data-page="jouer"] .page-viewport');
+      document.body.classList.remove('rail-on');       // ce que fait updateChrome() quand la barre s'en va
       const sans=vp.getBoundingClientRect().left;
       document.body.classList.add('rail-on');
       const avec=vp.getBoundingClientRect().left;
@@ -1425,7 +1429,7 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
   // vérifie le chemin que le joueur emprunte réellement — un bouton par voie,
   // qui ouvre directement dessus, et une sortie.
   await step('les deux boutons du menu ouvrent chacun sa voie, et « OK » en sort',async()=>{
-    await page.evaluate(()=>{showPage('face-jouer');});
+    await page.evaluate(()=>{showPage('page-jouer');});
     await page.waitForTimeout(400);
     await page.click('#jouer-colonne');
     await page.waitForSelector('#page-rewards.active',{timeout:8000});
@@ -1891,11 +1895,11 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
   });
 
   await step('le Magasin vend les six coffres, le Pion sous sa statuette et sans fiche technique',async()=>{
-    await page.evaluate(()=>{accSet('pearls',5000);showPage('face-jouer');});
-    // Navigue réellement sur la face « magasin » (et non un simple appel de
-    // renderMagasinPage() en coulisses) : sans la rotation du cube, la face
+    await page.evaluate(()=>{accSet('pearls',5000);showPage('page-jouer');});
+    // Navigue réellement sur la page « Magasin » (et non un simple appel de
+    // renderMagasinPage() en coulisses) : sans le glissement, la page
     // jouer resterait devant et intercepterait les clics.
-    await page.click('.cube-facebar-btn[data-face="magasin"]');
+    await page.click('.nav-tab[data-page="magasin"]');
     await page.waitForTimeout(600);
     const r=await page.evaluate(()=>{
       const cards=[...document.querySelectorAll('#shop-chest-grid .shop-chest')];
@@ -2016,21 +2020,21 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
     if(await page.isVisible('#page-voie.active'))throw new Error('le bouton OK ne referme pas la Voie');
   });
 
-  // LE BOUTON DE RÉGLAGES ARRIVE AVEC LE MENU, PAS UNE DEMI-SECONDE APRÈS.
-  // `body.main-menu` — la classe qui l'allume — exigeait qu'aucune rotation
-  // ne soit en cours : pendant les 460 ms de bascule vers la face JOUER,
-  // aucune face n'était « devant », et le bouton n'apparaissait donc qu'une
-  // fois le cube arrêté, sur un menu déjà en place. Il se règle maintenant
-  // sur la face d'ARRIVÉE de la rotation.
+  // LE BOUTON DE RÉGLAGES ARRIVE AVEC LE MENU, PAS APRÈS LE GLISSEMENT.
+  // `body.main-menu` — la classe qui l'allume — se réglait sur la page
+  // affichée : pendant tout le glissement vers COMBAT, aucune page n'était
+  // encore « celle-là », et le bouton n'apparaissait donc qu'une fois la
+  // rangée posée, sur un menu déjà en place. Il se règle maintenant sur la
+  // page d'ARRIVÉE.
   await step('le bouton de réglages apparaît en même temps que le menu principal',async()=>{
     await page.evaluate(()=>goToMainMenu());
     await page.waitForTimeout(200);
-    await page.click('.cube-facebar-btn[data-face="magasin"]');   // on quitte le menu
+    await page.click('.nav-tab[data-page="magasin"]');   // on quitte le menu
     await page.waitForTimeout(900);
     const ailleurs=await page.evaluate(()=>
       getComputedStyle(document.getElementById('settings-btn')).display!=='none');
-    await page.click('.cube-facebar-btn[data-face="jouer"]');     // retour : la rotation démarre
-    await page.waitForTimeout(80);                                 // bien avant la fin des 460 ms
+    await page.click('.nav-tab[data-page="jouer"]');     // retour : le glissement démarre
+    await page.waitForTimeout(80);                                 // bien avant la fin des 320 ms
     const r={ailleurs,
       pendant:await page.evaluate(()=>
         getComputedStyle(document.getElementById('settings-btn')).display!=='none')};
@@ -2038,7 +2042,7 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
     r.apres=await page.evaluate(()=>
       getComputedStyle(document.getElementById('settings-btn')).display!=='none');
     if(r.ailleurs)throw new Error('le bouton de réglages reste allumé hors du menu principal');
-    if(!r.pendant)throw new Error('le bouton de réglages attend la fin de la rotation pour s\'afficher');
+    if(!r.pendant)throw new Error('le bouton de réglages attend la fin du glissement pour s\'afficher');
     if(!r.apres)throw new Error('le bouton de réglages n\'est pas là sur le menu principal');
   });
 
@@ -2587,7 +2591,7 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
     // compte, toujours connecté — voir js/accounts.js) : cette navigation s'y
     // reconnecte automatiquement, sans repasser par #page-login.
     await page.goto('http://localhost:'+PORT+'/?test',{waitUntil:'domcontentloaded'});
-    await page.waitForSelector('#cube-jouer-btn',{state:'visible',timeout:8000});
+    await page.waitForSelector('#combat-btn',{state:'visible',timeout:8000});
     if(!await page.evaluate(()=>ADMIN_MODE))throw new Error('/?test n active pas le mode test');
     if(!/Mode test/.test(await page.evaluate(()=>vvNoEloReason({}))||''))throw new Error('les parties y sont encore classees');
     const bad=await page.evaluate(()=>{
@@ -2741,7 +2745,7 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
     // n'écrit rien et tout est déjà débloqué — on ne peut donc rien y
     // vérifier de la progression réelle (voir js/accounts.js).
     await page.goto('http://localhost:'+PORT+'/',{waitUntil:'domcontentloaded'});
-    await page.waitForSelector('#cube-jouer-btn',{state:'visible',timeout:8000});
+    await page.waitForSelector('#combat-btn',{state:'visible',timeout:8000});
     if(await page.evaluate(()=>ADMIN_MODE))throw new Error('toujours en mode test');
     const bad=await page.evaluate(()=>{
       const out=[];
@@ -2953,7 +2957,7 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
   // survit au rechargement.
   await step('la vibration n\'a plus d\'interrupteur et reste active',async()=>{
     await page.goto('http://localhost:'+PORT+'/',{waitUntil:'domcontentloaded'});
-    await page.waitForSelector('#cube-jouer-btn',{state:'visible',timeout:8000});
+    await page.waitForSelector('#combat-btn',{state:'visible',timeout:8000});
     await page.click('#settings-btn');
     if(await page.locator('#sp-haptic').count())
       throw new Error('l\'interrupteur de vibration est encore dans les réglages');
@@ -2981,7 +2985,7 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
     if(!r.sfx)throw new Error('le curseur « Bruitages » a disparu');
     if(!r.musCoupee)throw new Error('couper la musique coupe aussi les bruitages');
     await page.goto('http://localhost:'+PORT+'/',{waitUntil:'domcontentloaded'});
-    await page.waitForSelector('#cube-jouer-btn',{state:'visible',timeout:8000});
+    await page.waitForSelector('#combat-btn',{state:'visible',timeout:8000});
     const apres=await page.evaluate(()=>({
       vol:_musicVol,curseur:parseFloat(document.getElementById('sp-music-vol').value)}));
     if(Math.abs(apres.vol-0.35)>0.001)throw new Error('le volume de musique n\'a pas survécu au rechargement : '+apres.vol);
@@ -3002,7 +3006,7 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
   //     juste un z-index ici ».
   await step('les effets de combat se posent, se retirent, et se coupent',async()=>{
     await page.goto('http://localhost:'+PORT+'/',{waitUntil:'domcontentloaded'});
-    await page.waitForSelector('#cube-jouer-btn',{state:'visible',timeout:8000});
+    await page.waitForSelector('#combat-btn',{state:'visible',timeout:8000});
     const r=await page.evaluate(async()=>{
       const out=[];
       const board=document.getElementById('game-board');
@@ -3059,7 +3063,7 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
   // cette classe porte une animation CSS existante et non nulle.
   await step('chaque créature a son geste, et le geste a son animation',async()=>{
     await page.goto('http://localhost:'+PORT+'/',{waitUntil:'domcontentloaded'});
-    await page.waitForSelector('#cube-jouer-btn',{state:'visible',timeout:8000});
+    await page.waitForSelector('#combat-btn',{state:'visible',timeout:8000});
     const r=await page.evaluate(()=>{
       const out=[];
       if(typeof MOVE_GESTURE!=='object')return['MOVE_GESTURE n\'est pas exposé'];

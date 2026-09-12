@@ -50,7 +50,7 @@ epic-chess/
 │   ├── PROMPTS.md           # Les ~60 planches du décor et leurs prompts
 │   ├── adversaires/         # <id>.png, un portrait par adversaire.
 │   │                        #  Absent = sceau SVG procédural.
-│   ├── backgrounds/         # Un fond par écran (menu, faces du cube, pages,
+│   ├── backgrounds/         # Un fond par écran (menu, pages de la rangée,
 │   │                        #  Lore, table sous le plateau). Affichés à
 │   │                        #  26–44 %, centre éteint au masque radial.
 │   ├── banners/             # Bandeaux de titre de page (le texte reste du
@@ -93,9 +93,13 @@ epic-chess/
     │                          # BOARD_SKINS, CHESTS, déblocages)
     ├── piece-art.js         # Logos de pièces dessinés en SVG (remplace les emojis)
     ├── main.js               # État global partagé + helpers (showPage, showNotif...)
-    ├── cube-nav.js           # Navigation principale par cube 3D (CSS). Déplace
-    │                          # armées/partie/Guerre des clans dans les faces (la face
-    │                          # de gauche est libre, en attente de contenu).
+    ├── pages-nav.js          # Navigation principale : cinq pages alignées sur
+    │                          # une rangée qu'on fait glisser (magasin, armées,
+    │                          # combat, variantes, guerre des clans). Déplace
+    │                          # armées/guerre des clans dans leur emplacement,
+    │                          # et pose la partie en calque par-dessus.
+    ├── variantes.js          # La page « Variantes » : le duel classique, ouvert,
+    │                          # et cinq formules annoncées et verrouillées.
     ├── server.js             # LA SEULE PORTE vers le serveur : sessions,
     │                          # appels ec_*, envoi groupé des écritures,
     │                          # rapport de fin de partie, présence. Contient
@@ -483,7 +487,7 @@ deux progressions concurrentes sur le même écran.
 
 **Changer de compte recharge la page**, délibérément, comme avant. Une
 trentaine de variables globales (`savedArmies`, `VV_UNLOCKED`, l'inventaire,
-l'état du tutoriel, les récompenses, le cube…) portent l'état du compte
+l'état du tutoriel, les récompenses, la navigation…) portent l'état du compte
 courant : les remettre à zéro une par une, c'est se condamner à en oublier une.
 **Renommer, en revanche, ne recharge pas** — et ne déplace plus rien du tout :
 le pseudo n'est plus la clé de stockage, seulement une colonne.
@@ -1256,8 +1260,8 @@ batailles n'a de pendule** (`clockMin:0` partout) : le chronomètre arrive avec
 les vraies parties.
 
 **La visite du laboratoire.** Les étapes qui portent un `click` attendent un
-vrai clic sur le vrai bouton : à la fin, le joueur a réellement tourné le
-cube, composé une armée et ouvert la Guerre des clans.
+vrai clic sur le vrai bouton : à la fin, le joueur a réellement parcouru les
+cinq pages, composé une armée et ouvert la Guerre des clans.
 
 Il se déclenche une seule fois, à la fermeture du parchemin d'accueil d'un
 compte neuf (`tutoMaybeStart`), et se rejoue depuis les réglages
@@ -1277,7 +1281,7 @@ de lancer un combat.
 sélecteurs `at` et `click` de `TUTO_STEPS`. Une cible absente ne casse rien
 (l'étape devient un simple « Suivant »), mais elle perd son intérêt. Le
 bouton COMBAT est un cas à part : il n'est pas guetté par un listener, c'est
-`cube-nav.js` qui appelle `tutoInterceptCombat()` avant sa propre navigation.
+`pages-nav.js` qui appelle `tutoInterceptCombat()` avant sa propre navigation.
 
 ### 6. L'exercice de déplacement (`js/tuto-drill.js`)
 
@@ -1339,8 +1343,8 @@ montre.** Rien n'est inventé pour l'ordinateur, on y déplie ce que le petit
 
 | Ce qui change | Pourquoi |
 |---|---|
-| La barre des faces devient un **rail vertical** à gauche, libellés à droite du blason | Sur téléphone c'est une barre d'onglets pleine largeur collée en bas ; sur 1400 px elle masquerait le contenu. Le rail ne recouvre rien : la zone utile de chaque face recule d'autant |
-| Les deux flèches de rotation disparaissent | Sur 1500 px elles se retrouvaient à 1400 px l'une de l'autre, sans lien visible avec le cube. Le rail nomme les quatre faces ; ← et → tournent toujours |
+| La barre d'onglets devient un **rail vertical** à gauche, libellés à droite du blason | Sur téléphone c'est une barre d'onglets pleine largeur collée en bas ; sur 1400 px elle masquerait le contenu. Le rail ne recouvre rien : la zone utile de chaque page recule d'autant |
+| Les deux flèches de navigation disparaissent | Sur 1500 px elles se retrouvaient à 1400 px l'une de l'autre, sans lien visible avec la rangée. Le rail nomme les cinq pages ; ← et → font toujours glisser d'un cran |
 | Le menu principal passe en **deux colonnes** | La colonne de droite (`#menu-side`) déplie le cycle de la récompense journalière, le résumé des deux voies de récompenses et le prochain palier de la Diagonale |
 | Les largeurs de contenu montent à `--content-max` (1280 px) | Les plafonds (980, 1000, 860…) étaient des plafonds de lisibilité inutiles sur téléphone et un plafond de gâchis sur grand écran |
 | Le catalogue passe de 6 à ~8 colonnes, avec des cartes plus grandes | Les 19 pièces tiennent alors sur un écran, sans défilement |
@@ -1348,16 +1352,18 @@ montre.** Rien n'est inventé pour l'ordinateur, on y déplie ce que le petit
 
 Deux pièges à connaître avant d'y toucher :
 
-- **`body.rail-on`** (posé par `updateArrows`, js/cube-nav.js) reflète la
-  visibilité de la barre des faces. Le retrait de la zone utile y est
+- **`body.rail-on`** (posé par `updateChrome`, js/pages-nav.js) reflète la
+  visibilité de la barre d'onglets. Le retrait de la zone utile y est
   conditionné, parce qu'il doit disparaître **exactement** quand le rail
-  disparaît — pendant une partie, par exemple, où le cube est verrouillé. Sans
-  ce drapeau, le plateau jouerait avec une bande vide de 200 px à sa gauche.
-- **Le rail est posé dans le repère des faces**, pas dans celui de la fenêtre :
-  `left:calc((100% - 100vw) / 2)`. `html` réserve en permanence la place d'une
-  barre de défilement (`scrollbar-gutter:stable`), donc le bloc conteneur d'un
-  élément `fixed` fait 11 px de moins que `100vw`, alors que les faces sont
-  dimensionnées en `vmax`/`vw`. Sans ce calcul, le rail mordait de 5,5 px sur
+  disparaît — pendant une partie, par exemple, où la navigation est
+  verrouillée. Sans ce drapeau, le plateau jouerait avec une bande vide de
+  200 px à sa gauche.
+- **Le rail et les pages partagent le même repère** : `#nav-stage` est le bloc
+  conteneur des deux, les pages sont dimensionnées en `%` de ce cadre et le
+  rail se pose à `left:0`. Du temps du cube, les faces étaient des carrés en
+  `vmax` centrés sur l'écran et il fallait rattraper une demi-gouttière de
+  barre de défilement (`scrollbar-gutter:stable`) : sans ce calcul, le rail
+  mordait de 5,5 px sur
   le contenu. Là où aucune place n'est réservée (téléphone), le calcul vaut 0.
 
 `Échap` (`wireEscape`, js/main.js) ferme le panneau de réglages, la fenêtre de
@@ -1722,14 +1728,14 @@ L'ordre des `<script>` est important car il n'y a pas de système de modules :
 chaque fichier suppose que les globals des fichiers précédents existent déjà.
 
 ```
-server.js → data-pieces.js → piece-art.js → main.js → cube-nav.js → accounts.js
+server.js → data-pieces.js → piece-art.js → main.js → pages-nav.js → accounts.js
 → economy.js → ai-level-modal.js → piece-card.js → builder.js → armies.js
 → adversaires.js
 → combat-intro.js
 → sfx.js → combat-fx.js → rules-engine.js → piece-moves.js → combat-music.js
 → cinematics.js
 → game-render.js
-→ ai-engine.js → game-flow.js → voie.js → economy-ui.js
+→ ai-engine.js → game-flow.js → voie.js → economy-ui.js → variantes.js
 → rewards.js → rewards-ui.js → tuto-drill.js
 → tutorial.js
 → pwa.js → account-ui.js → replay.js → leaderboard.js → settings-admin.js
@@ -1767,16 +1773,19 @@ chargement : tous les autres modules les invoquent par `typeof … === 'function
 si bien qu'un jeu privé de ces deux fichiers continuerait de tourner sans ses
 deux voies de récompenses.
 
-`cube-nav.js` est chargé juste après `main.js` : il étend `showPage()` (la
-navigation devient un cube 3D en CSS) et déplace à l'exécution les pages
-`#page-armies` / `#page-game` dans les faces du cube (face de droite = "Mes
-armées", face du haut = la partie, face de gauche **libre**). Il ne connaît
-QUE la face courante, les
-rotations et le verrouillage, aucune logique de jeu. Le builder (composition
-d'armée, `#page-builder`) n'est PAS une face du cube : c'est une page
-secondaire (overlay) ouverte depuis "Mes armées" via "Nouvelle armée" ou
-"Modifier". Les autres pages secondaires (voie, combat, login)
-restent aussi des overlays plein écran classiques affichés au-dessus du cube.
+`pages-nav.js` est chargé juste après `main.js` : il étend `showPage()` (la
+navigation devient une rangée de cinq pages qui glisse, de gauche à droite
+**magasin · mes armées · combat · variantes · guerre des clans**) et déplace à
+l'exécution les pages `#page-armies` / `#page-reserve` / `#page-game` dans leur
+emplacement. La rangée n'est **pas un anneau** : les flèches s'effacent à ses
+deux bouts. La partie n'est pas une page de la rangée : c'est un **calque**
+posé par-dessus (`body.in-game`), qui verrouille tout le reste tant qu'elle
+dure. Le module ne connaît QUE la page courante, le glissement et ce
+verrouillage, aucune logique de jeu. Le builder (composition d'armée,
+`#page-builder`) n'est PAS une page de la rangée : c'est une page secondaire
+(overlay) ouverte depuis "Mes armées" via "Nouvelle armée" ou "Modifier". Les
+autres pages secondaires (voie, adversaires, classement, login) restent aussi
+des overlays plein écran classiques affichés au-dessus de la rangée.
 
 Si tu ajoutes un nouveau fichier JS, insère-le dans cette chaîne à l'endroit
 qui correspond à ses dépendances (voir l'en-tête de chaque fichier, qui liste
@@ -1860,7 +1869,7 @@ mais dans une version que Playwright refuse, le script le retrouve tout seul
 | Ajuster la mise en page ordinateur d'un écran | section `[DESKTOP]` de `css/style.css` (tout à la fin, après `[MOBILE-APP]`), sous `body.desk` |
 | Changer le seuil du mode bureau | `DESK_QUERY` dans `js/main.js` — **et nulle part ailleurs** : le CSS ne raisonne que sur `body.desk` |
 | Changer ce que montre la colonne de droite du menu | `renderMenuSidePanel()` / `menuNextMilestoneHTML()` dans `js/economy-ui.js` + `#menu-side` dans `index.html` |
-| Ajouter un raccourci clavier global | `wireEscape()` dans `js/main.js` (Échap) ou l'écouteur `keydown` d'`init()` dans `js/cube-nav.js` (← →) |
+| Ajouter un raccourci clavier global | `wireEscape()` dans `js/main.js` (Échap) ou l'écouteur `keydown` d'`init()` dans `js/pages-nav.js` (← →) |
 | Modifier les pictogrammes du schéma de déplacement (patte, ailes, couteau…) | `PMV_ICONS` / `PMV_LABELS` dans `js/piece-moves.js` + section `[PMV]` de `css/style.css` |
 | Modifier les cinématiques de combat | `js/cinematics.js` + section `[CINEMATIC]` de `css/style.css` |
 | Régler un effet de combat (durée, couleur, densité) | `js/combat-fx.js` + section `[COMBAT-FX]` de `css/style.css` ; banc d'essai : `tools/combat-fx-preview.html` |
@@ -1868,7 +1877,7 @@ mais dans une version que Playwright refuse, le script le retrouve tout seul
 | Modifier les batailles du tutoriel (armées, couleurs, pendule) | `js/tutorial.js` (`TUTO_BATTLES`, `TUTO_EXTRA_COLS`) + `js/data-pieces.js` (`TUTO_INSTRUCTORS`) |
 | Modifier l'exercice de déplacement (nombre de repères, règles) | `js/tuto-drill.js` (`DRILL_DOTS`, `drillLayDots`) |
 | Changer les pièces d'un compte neuf | `js/data-pieces.js` (`UNLOCK_TABLE`, drapeau `coffre:true`) |
-| Changer ce que lance le bouton COMBAT | `js/cube-nav.js` (`onCombat`/`onVsIa`) + `js/combat-intro.js` |
+| Changer ce que lance le bouton COMBAT | `js/pages-nav.js` (`onCombat`/`onVsIa`) + `js/combat-intro.js` |
 | Modifier la galerie des adversaires (cartes, sceaux, palmarès) | `js/adversaires.js` + section `[ADVERSAIRES]` de `css/style.css` |
 | Changer le fond du menu principal | `assets/backgrounds/main-page.webp` (ou `.png`, voir `tools/opt-images.js`) + section `[LAB-BG]` de `css/style.css` |
 | Modifier le bloc pseudo / bourse du menu principal | `renderMenuIdentity()` et `renderMenuPurse()` dans `js/accounts.js` + `[MENU]` de `css/style.css` |
@@ -1876,7 +1885,9 @@ mais dans une version que Playwright refuse, le script le retrouve tout seul
 | Modifier l'écran de chargement (barre, conseils, toile) | `js/boot-screen.js` (`BOOT_TIPS`, la courbe de montée) + `#ec-boot` dans `index.html` + `[LOADING]` de `css/style.css` |
 | Changer la toile de l'écran de démarrage | remplacer `assets/backgrounds/chargement.webp` (rien à coder ; prompt dans `assets/PROMPTS.md` § 3 bis) |
 | Modifier les paysages de la Diagonale | `assets/voie/biome-<rang>.webp` (prompts dans `assets/PROMPTS.md` § 3 ter) + « LE SENTIER » dans `[VOIE]` de `css/style.css` |
-| Régler la vitesse de rotation du cube | `js/cube-nav.js` (`ROTATE_MS`) **et** la transition de `#cube` dans `css/style.css` |
+| Changer l'ordre ou le nombre des pages de la rangée | la liste `PAGES` dans `js/pages-nav.js` **et** l'ordre des onglets `#nav-tabbar` dans `index.html` (le reste suit tout seul) |
+| Régler la vitesse de glissement de la rangée | `js/pages-nav.js` (`SLIDE_MS`) **et** la transition de `#nav-track` dans `css/style.css` |
+| Modifier la page Variantes | `VARIANTES` dans `js/variantes.js` + `#page-viewport-variantes` dans `index.html` + `[VARIANTES]` de `css/style.css` |
 | Modifier le système de comptes/sauvegarde | `js/accounts.js` (copie de travail) + `js/server.js` (échanges) |
 | Ajouter un champ stocké par compte | `accGet`/`accSet` comme avant — rien à toucher ailleurs, le serveur stocke `state` sans l'interpréter |
 | Changer une règle du serveur (ELO, unicité, classement) | `supabase/schema.sql`, puis le recoller dans l'éditeur SQL Supabase (en **commentant le `DROP TABLE`**) |
@@ -1909,7 +1920,7 @@ mais dans une version que Playwright refuse, le script le retrouve tout seul
 | Modifier la page des deux voies | `js/rewards-ui.js` + `#page-rewards` dans `index.html` + `[REWARDS]` de `css/style.css` |
 | Modifier le chemin de paliers de la colonne | `rwColRowsHTML()` / `rwColState()` dans `js/rewards-ui.js` + « LA COLONNE : trente paliers » dans `[REWARDS]` de `css/style.css` |
 | Modifier la récompense journalière | `DAILY_REWARDS` dans `js/data-pieces.js` + `dailyReward*` dans `js/rewards.js` + `renderDailyModal` dans `js/rewards-ui.js` |
-| Changer les écrans qui portent le bouton de réglages | `updateMainMenuFlag` dans `js/cube-nav.js` + `body.main-menu` dans `[SETTINGS]` de `css/style.css` |
+| Changer les écrans qui portent le bouton de réglages | `updateMainMenuFlag` dans `js/pages-nav.js` + `body.main-menu` dans `[SETTINGS]` de `css/style.css` |
 | Changer le retrait haut des pages (sous l'encoche) | `--page-top` / `--menu-top` en tête de `css/style.css` |
 | Changer ce que donne le mode test | `economyAdmin`/`invAll`/`pearlBalance` dans `js/economy.js` + `vvLoadElo`/`loadAccountGlobals` dans `js/accounts.js` |
 | Ajouter un tips d'attente en ligne | `MP_TIPS` dans `js/multiplayer.js` (une ligne de plus dans le tableau) |
@@ -1920,7 +1931,7 @@ mais dans une version que Playwright refuse, le script le retrouve tout seul
 | Changer un message de refus / d'information | l'appel `showNotif()` concerné ; l'apparence est dans `[NOTIF]` de `css/style.css` |
 | Modifier l'emblème (logo) du jeu | `EMBLEM_SVG` dans `js/main.js` + `favicon.svg` (même tracé) + `[EMBLEM]` de `css/style.css` — **et incrémenter le `?v=` de l'icône** dans `index.html`, `info.html` et `site.webmanifest`, sinon l'onglet garde l'ancienne en cache |
 | Ajouter un endroit qui affiche l'emblème | poser une `<div class="game-emblem …">` dans `index.html` : `mountEmblems()` (js/main.js) la remplit toute seule |
-| Modifier les blasons ou les onglets de la barre du bas | les quatre `<svg>` et `.cfb-label` de `#cube-facebar` dans `index.html` + `.cube-facebar` / `.cube-facebar-btn` dans `[CUBE]` de `css/style.css` (et `--facebar-h` dans `[THEME]`, que `--page-bottom` réserve) |
+| Modifier les blasons ou les onglets de la barre du bas | les cinq `<svg>` et `.nav-tab-label` de `#nav-tabbar` dans `index.html` + `.nav-tabbar` / `.nav-tab` dans `[NAV]` de `css/style.css` (et `--tabbar-h` dans `[THEME]`, que `--page-bottom` réserve) |
 | Changer ce qu'un bot peut aligner | `aiPiecePool()` / `generateAIArmy()` dans `js/armies.js` |
 | Changer le verrou d'orientation (téléphone) | `lockPortrait()` dans `js/main.js` + `orientation` dans `site.webmanifest` + `[PORTRAIT-LOCK]` de `css/style.css` (voile `#rotate-gate`) |
 | Changer le bandeau « à qui de jouer » | `updateStatus()` dans `js/game-render.js` (constantes `TURN_YOU` / `TURN_OPP`) |
@@ -1966,7 +1977,7 @@ mais dans une version que Playwright refuse, le script le retrouve tout seul
   à l'autre et ne suit pas la couleur du thème. Les champs `emoji` de
   `PIECES` ne servent plus qu'aux données historiques des sauvegardes.
 - **Accessibilité** : `@media (prefers-reduced-motion: reduce)` neutralise
-  toutes les animations (le jeu en compte beaucoup : cube, cinématiques,
+  toutes les animations (le jeu en compte beaucoup : glissements, cinématiques,
   particules, pulsations) et `:focus-visible` marque le focus clavier. Une
   nouvelle animation n'a rien à ajouter, la règle est globale ; un nouveau
   contrôle interactif, en revanche, doit rejoindre la liste des sélecteurs

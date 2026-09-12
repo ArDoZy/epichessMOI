@@ -48,7 +48,7 @@
 // Dépendances : server.js (ecLeaderboard, ecSearchPlayers, ecProfileOf,
 // ECP), multiplayer.js (mpIsOnline, mpChallenge, MP.duelOut),
 // data-pieces.js (vvGetRank, PIECES), piece-art.js (pieceIcon),
-// main.js (escH, showPage, showNotif), cube-nav.js (goToMainMenu).
+// main.js (escH, showPage, showNotif), pages-nav.js (goToMainMenu).
 // Utilisé par : le menu principal (bouton « Classement »), la page
 // Comptes (la pastille « #N mondial »).
 // ================================================================

@@ -124,7 +124,7 @@
      étaient amputés de leur moitié haute.
      Une seule source de vérité maintenant. --page-top réserve la zone sûre
      du haut plus la place du bouton de réglages ; --page-bottom dégage les
-     flèches du cube (44 px) et la zone sûre du bas. */
+     flèches de navigation (44 px) et la zone sûre du bas. */
   /* Le bandeau de compte a été supprimé : il n'y a plus de barre système, et
      --chrome-h vaut zéro. Le jeton reste — une vingtaine de règles l'ancrent,
      et la barre collante de composition comme les bandeaux de partie s'y
@@ -146,19 +146,19 @@
      fond du jeu passe déjà dessous grâce à `viewport-fit=cover`, mais le
      CONTENU s'arrêtait bien avant — 16 px de respiration s'ajoutaient à la
      zone sûre en haut, et 96 px étaient réservés en bas pour des flèches de
-     rotation qui n'existent plus sur téléphone.
+     navigation qui n'existent plus sur téléphone.
      · en haut : la respiration tombe à 6 px. La zone sûre reste réservée —
        on n'écrit pas sous l'heure du téléphone — mais rien de plus.
      · en bas : la réserve vaut exactement la hauteur de la barre d'onglets,
        qui absorbe elle-même la zone sûre dans son rembourrage (voir
-       .cube-facebar dans [CUBE]). La bande du bas est donc OCCUPÉE par le
+       .nav-tabbar dans [CUBE]). La bande du bas est donc OCCUPÉE par le
        fond de la barre au lieu de rester noire.
      Sur un téléphone sans encoche ni geste d'accueil, les deux `env()` valent
      zéro et rien ne change. */
   --page-top:calc(var(--safe-t) + 6px);
   --menu-top:calc(var(--safe-t) + 48px);
-  --facebar-h:64px;
-  --page-bottom:calc(var(--facebar-h) + var(--safe-b) + 8px);
+  --tabbar-h:64px;
+  --page-bottom:calc(var(--tabbar-h) + var(--safe-b) + 8px);
 }
 body.light{
   --bg:#e8e7e1;--bg2:#efeee9;
@@ -222,7 +222,7 @@ body{
    TOUCHER sur mobile, où un bouton appuyé reste « sélectionné » jusqu'au
    prochain appui ailleurs. On le retire partout et on ne le redonne qu'au
    clavier via :focus-visible (voir plus bas). */
-button,.btn,.cube-arrow,.jouer-btn,.chest-card,.army-card,.adv-card,
+button,.btn,.nav-arrow,.jouer-btn,.chest-card,.army-card,.adv-card,
 .jouer-track,a,[role="button"]{outline:none}
 .btn{padding:10px 20px;border-radius:9px;font-weight:600;cursor:pointer;border:none;font-size:14px;transition:transform .14s,background .18s,border-color .18s,color .18s;font-family:var(--f-ui);letter-spacing:0;position:relative}
 .btn:active:not(:disabled){transform:translateY(1px)}
@@ -247,8 +247,8 @@ button,.btn,.cube-arrow,.jouer-btn,.chest-card,.army-card,.adv-card,
 
 /* --- FIOLE D'ALCHIMISTE : icône décorative dessinée en CSS pur (pas
    d'émoji) : col + ballon avec un fond de liquide et un léger bouillonnement.
-   Réutilisée pour les états vides et les emplacements de face du cube.
-   Tailles via .vial-lg (grande, faces du cube) / défaut = petite. --- */
+   Réutilisée pour les états vides et les emplacements des pages.
+   Tailles via .vial-lg (grande, pages pleines) / défaut = petite. --- */
 .vial{position:relative;width:40px;height:56px;margin:0 auto;display:block}
 .vial::before{content:'';position:absolute;left:50%;top:0;width:12px;height:20px;margin-left:-6px;border:3px solid var(--gold2);border-bottom:none;border-radius:3px 3px 0 0}
 .vial::after{content:'';position:absolute;left:50%;bottom:0;width:36px;height:34px;margin-left:-18px;border:3px solid var(--gold2);border-top:none;border-radius:2px 2px 18px 18px;background:linear-gradient(180deg,transparent 0 45%,var(--potion) 45%);overflow:hidden}
@@ -256,7 +256,7 @@ button,.btn,.cube-arrow,.jouer-btn,.chest-card,.army-card,.adv-card,
 .vial-lg{width:64px;height:90px}
 .vial-lg::before{width:18px;height:30px;margin-left:-9px;border-width:4px}
 .vial-lg::after{width:58px;height:56px;margin-left:-29px;border-width:4px}
-/* Teinte différente par face du cube : chaque fiole de laboratoire a son propre mélange. */
+/* Teinte différente par page : chaque fiole de laboratoire a son propre mélange. */
 .vial-missions::before,.vial-missions::after{border-color:var(--accent2)}
 .vial-missions::after{background:linear-gradient(180deg,transparent 0 45%,var(--accent2) 45%)}
 .vial-variantes::before,.vial-variantes::after{border-color:var(--danger)}
@@ -264,7 +264,7 @@ button,.btn,.cube-arrow,.jouer-btn,.chest-card,.army-card,.adv-card,
 @keyframes vialBubble{0%{transform:translateY(0);opacity:.9}90%{opacity:.5}100%{transform:translateY(-30px);opacity:0}}
 
 /* --- BULLES AMBIANTES : quelques bulles de potion qui montent lentement en
-   arrière-plan, pour ne pas laisser les faces/pages peu remplies totalement
+   arrière-plan, pour ne pas laisser les pages peu remplies totalement
    figées. Une seule couche de particules réutilisable. --- */
 .ambient-bubbles{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:0}
 .ambient-bubbles span{position:absolute;bottom:-10%;border-radius:50%;background:var(--potion-glow);opacity:0;animation:ambientRise linear infinite}
@@ -366,7 +366,7 @@ button,.btn,.cube-arrow,.jouer-btn,.chest-card,.army-card,.adv-card,
   .lore-next{padding:11px 24px}
 }
 
-/* Le fond du jeu continue de vivre derrière le voile (particules, cube) :
+/* Le fond du jeu continue de vivre derrière le voile (particules, rangée) :
    inutile de le laisser tourner pendant une cinématique opaque. */
 body.lore-open{overflow:hidden}
 
@@ -887,7 +887,7 @@ body.has-acc .builder-inner{padding-top:var(--page-top)}
    bande vide en haut, alors qu'on n'y touche que pour régler le son, une fois.
    Il ne reste plus que sur le menu principal — l'écran du gros bouton COMBAT,
    celui d'où l'on part et où l'on revient. `body.main-menu` est posée par
-   js/cube-nav.js : elle n'est là que quand la face JOUER est devant et
+   js/pages-nav.js : elle n'est là que quand la face JOUER est devant et
    qu'aucune page ne la recouvre.
    Il ne repose plus sur une barre : il lui faut donc son propre fond opaque
    et une ombre, pour rester lisible sur le fond du menu. */
@@ -1827,76 +1827,115 @@ body:not(.main-menu) #settings-panel{display:none}
 /* Cinématique, page combat : titre pulsant façon flamme de torche */
 .vs-div{filter:drop-shadow(0 0 10px rgba(122,31,43,.5))}
 
-/* [CUBE] ==========================================================
-   Navigation principale par cube (illusion 3D CSS). Voir js/cube-nav.js.
-   Le cube est une simple coquille visuelle : les vraies pages Mes armées /
-   partie y sont déplacées à l'exécution. Chrome global (barre compte,
-   modals, réglages) reste HORS du cube.
+/* [NAV] ===========================================================
+   Navigation principale : CINQ PAGES ALIGNÉES SUR UNE RANGÉE, que l'on fait
+   glisser de gauche à droite. Voir js/pages-nav.js.
+
+       MAGASIN · MES ARMÉES · COMBAT · VARIANTES · GUERRE DES CLANS
+
+   C'était un cube qui tournait en 3D (quatre faces en anneau, la partie sur
+   le dessus). Le cube demandait une perspective, un `preserve-3d`, six
+   transformations de placement et une réaffectation des faces à chaque
+   rotation pour que les clics retombent juste — beaucoup de machinerie pour
+   une chose que le joueur n'arrivait de toute façon pas à se représenter : on
+   ne sait jamais combien de faces il reste, ni de quel côté est la sortie.
+   Une rangée, elle, se lit d'un coup : chaque page a une place fixe, COMBAT
+   est au milieu, et la barre d'onglets du bas en est la carte.
+
+   La rangée N'EST PAS UN ANNEAU : on ne repasse pas du magasin à la guerre
+   des clans en continuant vers la gauche. C'est la contrepartie du modèle, et
+   c'est ce qui permet de savoir « le magasin est tout à gauche » sans y
+   penser. Les flèches disparaissent aux deux bouts (voir updateChrome,
+   js/pages-nav.js).
+
+   Les vraies pages Mes armées / partie / Guerre des clans sont déplacées à
+   l'exécution dans leur emplacement. Chrome global (barre compte, modals,
+   réglages) reste HORS de la rangée.
    ================================================================ */
-#cube-stage{position:fixed;inset:0;overflow:hidden;z-index:10;display:none;
-  perspective:2400px;perspective-origin:50% 50%}
-body.cube-active #cube-stage{display:block}
-/* Sous un overlay (page secondaire active), le cube est masqué ENTIÈREMENT
-   (pas juste son chrome), sinon la face de repos (JOUER) apparaît en
+/* `overflow:clip` ET NON `overflow:hidden`. Les deux coupent ce qui dépasse,
+   mais `hidden` crée une BOÎTE DE DÉFILEMENT — invisible, sans barre, et
+   parfaitement scrollable par programme. Or les quatre pages qu'on ne voit pas
+   sont réellement là, à une, deux ou trois largeurs d'écran sur le côté : il
+   suffit qu'un `scrollIntoView`, une ancre ou un focus tombe dans l'une d'elles
+   pour que le cadre se décale d'autant et n'y revienne jamais — la rangée
+   entière est alors à côté de sa place, en silence. `clip` ne crée aucune boîte
+   de défilement : le décalage est impossible. `hidden` reste écrit juste avant
+   comme repli pour les navigateurs qui ne connaissent pas `clip`. */
+#nav-stage{position:fixed;inset:0;overflow:hidden;overflow:clip;z-index:10;display:none}
+body.nav-active #nav-stage{display:block}
+/* Sous un overlay (page secondaire active), la rangée est masquée ENTIÈREMENT
+   (pas juste son chrome), sinon la page de repos (COMBAT) apparaît en
    transparence pendant le fondu d'entrée de la page (.32s) qui se joue
    par-dessus, le temps d'un flash. */
-body.nav-overlay #cube-stage{display:none}
+body.nav-overlay #nav-stage{display:none}
 
-/* Durée de rotation fluide, pensée pour pouvoir enchaîner deux rotations
-   sans temps mort, voir js/cube-nav.js (ROTATE_MS) qui pilote la même
-   durée en JS, et queuedKind pour l'enchaînement instantané. */
-/* `will-change` PENDANT LA ROTATION SEULEMENT, comme pour les pièces qui
+/* LA RANGÉE. Elle se décale de --page largeurs d'écran vers la gauche : la
+   page n° --page se retrouve pile dans le cadre. Une seule propriété animée,
+   `transform`, donc un travail entièrement pris en charge par le compositeur
+   — c'est la raison pour laquelle on décale la rangée ENTIÈRE plutôt que de
+   déplacer chaque page.
+   La durée DOIT rester alignée sur SLIDE_MS (js/pages-nav.js) : c'est elle
+   qui décide quand la page d'arrivée redevient cliquable. */
+#nav-track{position:absolute;inset:0;--page:2;
+  transition:transform .32s cubic-bezier(.22,.61,.36,1);
+  transform:translate3d(calc(var(--page) * -100%),0,0)}
+/* Pose sans animation (démarrage, retour au menu, navigation programmatique
+   sous un overlay) : jumpTo() pose la classe le temps d'un reflow. */
+#nav-track.no-anim{transition:none}
+/* `will-change` PENDANT LE GLISSEMENT SEULEMENT, comme pour les pièces qui
    glissent (voir [BOARD]). Posé en permanence, il réserve une couche de
-   composition de la taille de l'écran pour un cube immobile les quatre
+   composition de CINQ écrans de large pour une rangée immobile les quatre
    cinquièmes du temps — de la mémoire vidéo prise à un appareil qui n'en a
-   pas. La classe est posée et retirée par animate() (js/cube-nav.js). */
-#cube.cube-spin{will-change:transform}
-#cube{position:absolute;inset:0;transform-style:preserve-3d;
-  transition:transform .46s cubic-bezier(.32,.72,.3,1);
-  transform:translateZ(-50vmax) rotateX(0deg) rotateY(0deg)}
+   pas. La classe est posée et retirée par slideTo() (js/pages-nav.js). */
+#nav-track.is-sliding{will-change:transform}
 
-/* Chaque face : un grand carré (100vmax) centré sur l'écran, poussé d'un
-   demi-cube le long de sa normale. Au repos, la face avant se retrouve
-   exactement sur le plan de projection → nette, clics/drag au pixel près. */
-.cube-face{position:absolute;width:100vmax;height:100vmax;left:50%;top:50%;
-  margin-left:-50vmax;margin-top:-50vmax;backface-visibility:hidden;
+/* Chaque page occupe exactement le cadre, et se range à sa place dans la
+   rangée : --i est son rang (0 = tout à gauche), posé au démarrage d'après
+   PAGES (js/pages-nav.js). Le pourcentage d'un translateX se compte sur la
+   largeur de l'élément, qui vaut ici un écran : --i écrans vers la droite. */
+.nav-page{position:absolute;top:0;left:0;width:100%;height:100%;
+  transform:translate3d(calc(var(--i,0) * 100%),0,0);
   background:var(--bg);overflow:hidden;pointer-events:none;
   box-shadow:inset 0 0 120px rgba(0,0,0,.30)}
-.cube-face.is-front{pointer-events:auto}
-.cube-face[data-face="jouer"]    {transform:rotateY(0deg)    translateZ(50vmax)}
-.cube-face[data-face="armees"]   {transform:rotateY(90deg)   translateZ(50vmax)}
-.cube-face[data-face="magasin"]  {transform:rotateY(180deg)  translateZ(50vmax)}
-.cube-face[data-face="missions"] {transform:rotateY(270deg)  translateZ(50vmax)}
-.cube-face[data-face="game"]     {transform:rotateX(90deg)   translateZ(50vmax)}
-.cube-face[data-face="variantes"]{transform:rotateX(-90deg)  translateZ(50vmax)}
+/* Seule la page affichée reçoit les clics. Les quatre autres sont hors cadre
+   mais restent dans le document : `pointer-events` empêche qu'un bouton posé
+   juste au-delà du bord soit atteint pendant le glissement, et `inert`
+   (js/pages-nav.js) le retire en plus du parcours clavier. */
+.nav-page.is-front{pointer-events:auto}
 
-/* Zone utile réelle d'une face = un rectangle plein écran (100vw×100dvh)
-   centré dans le grand carré (le reste du carré est masqué par #cube-stage).
-   100dvh (et non 100vh) : sur mobile, 100vh vaut la hauteur "grande" comme si
-   la barre d'adresse du navigateur était repliée. Comme la face est centrée
-   (top:50% + translate), un excédent de hauteur déborde à parts égales en
-   haut et en bas — et le débordement du haut, masqué par l'overflow:hidden
-   de #cube-stage, coupait justement le bandeau adverse (pseudo, ELO,
-   pendule) sous la barre d'adresse. */
-.face-viewport{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
-  width:100vw;height:100dvh;overflow:hidden}
-#face-viewport-armees{overflow-y:auto}
+/* LA PARTIE N'EST PAS UNE PAGE DE LA RANGÉE. Une bataille n'est pas une
+   destination que l'on visite entre deux autres : c'est un état. Elle se pose
+   donc en calque par-dessus toute la rangée, hors de #nav-track (elle ne
+   glisse avec rien), et rien ne l'affiche tant que body.in-game n'est pas là.
+   Tant qu'elle est à l'écran, les onglets, les flèches, le glissement et les
+   touches fléchées sont éteints (js/pages-nav.js). */
+.nav-page[data-page="game"]{position:absolute;inset:0;width:auto;height:auto;
+  transform:none;z-index:30;display:none}
+body.in-game .nav-page[data-page="game"]{display:block}
 
-/* Les pages réelles déplacées dans une face : toujours affichées (la
-   visibilité est gérée par la rotation du cube, plus par .page/.active). */
-.cube-embedded{display:block;min-height:100%}
+/* Zone utile réelle d'une page : le cadre entier, en 100dvh (et non 100vh) —
+   sur mobile, 100vh vaut la hauteur « grande », comme si la barre d'adresse
+   du navigateur était repliée, et le bandeau adverse (pseudo, ELO, pendule)
+   se retrouvait coupé sous elle. */
+.page-viewport{position:absolute;left:0;top:0;width:100%;height:100dvh;
+  overflow:hidden}
+#page-viewport-armees{overflow-y:auto}
+
+/* Les pages réelles déplacées dans la rangée : toujours affichées (la
+   visibilité est gérée par le décalage de la rangée, plus par .page/.active). */
+.nav-embedded{display:block;min-height:100%}
 
 /* --- Face JOUER (menu principal) : premium, minimaliste. Dégradé propre à
    chaque thème (pas de var() ici : le rendu voulu diffère trop entre les
    deux pour un simple changement de teinte). --- */
 /* Ardoise froide traversée d'une lueur de vert-de-gris : c'est le décor de
    fond du jeu, il ne doit pas concurrencer le bouton COMBAT. */
-.cube-face[data-face="jouer"]{background:
+.nav-page[data-page="jouer"]{background:
   radial-gradient(ellipse at 50% 30%,rgba(63,208,178,.16),transparent 60%),
   radial-gradient(ellipse at 50% -8%,rgba(208,169,80,.14),transparent 55%),
   radial-gradient(ellipse at 50% 122%,rgba(0,0,0,.34),transparent 58%),
   linear-gradient(165deg,#27333c,#161e24)}
-body.light .cube-face[data-face="jouer"]{background:
+body.light .nav-page[data-page="jouer"]{background:
   radial-gradient(ellipse at 50% 34%,rgba(18,120,106,.13),transparent 62%),
   radial-gradient(ellipse at 50% 118%,rgba(40,60,58,.10),transparent 58%),
   linear-gradient(165deg,#f4f3ee,#dcdbd3)}
@@ -2089,54 +2128,57 @@ body.light .cube-face[data-face="jouer"]{background:
   .ja-motes{display:none}
 }
 
-/* --- Faces placeholder (Magasin / Missions / Variantes) --- */
-/* Guerre des clans et Magasin : mêmes matières que le menu, un ton plus neutre pour
-   que le contenu (cartes, coffres) ressorte. */
-.cube-face[data-face="reserve"],
-.cube-face[data-face="magasin"]{background:
+/* --- Les pages latérales -----------------------------------------
+   Guerre des clans, Magasin et Variantes : mêmes matières que le menu, un ton
+   plus neutre pour que le contenu (cartes, coffres) ressorte. */
+.nav-page[data-page="reserve"],
+.nav-page[data-page="variantes"],
+.nav-page[data-page="magasin"]{background:
   radial-gradient(ellipse at 50% 8%,rgba(47,177,151,.09),transparent 58%),
   linear-gradient(165deg,#141b20,#0c1114)}
-body.light .cube-face[data-face="reserve"],
-body.light .cube-face[data-face="magasin"]{background:
+body.light .nav-page[data-page="reserve"],
+body.light .nav-page[data-page="variantes"],
+body.light .nav-page[data-page="magasin"]{background:
   radial-gradient(ellipse at 50% 8%,rgba(18,120,106,.10),transparent 58%),
   linear-gradient(165deg,#f2f1ec,#e2e1da)}
 /* La Guerre des clans embarque une page longue : elle doit défiler. */
-#face-viewport-reserve{overflow-y:auto}
-#page-reserve.cube-embedded{background:transparent}
-.face-placeholder{position:absolute;inset:0;display:flex;flex-direction:column;
+#page-viewport-reserve{overflow-y:auto}
+#page-reserve.nav-embedded{background:transparent}
+.page-placeholder{position:absolute;inset:0;display:flex;flex-direction:column;
   align-items:center;justify-content:center;gap:14px;text-align:center;padding:24px}
 .fp-title{font-family:var(--f-title);font-weight:900;letter-spacing:3px;
   font-size:clamp(26px,5vw,46px);color:var(--gold2);text-transform:uppercase}
 .fp-sub{font-family:var(--f-ui);font-size:13px;letter-spacing:2px;
   color:var(--muted);text-transform:uppercase;opacity:.7}
 
-/* --- Flèches de navigation (dans #cube-stage mais hors de #cube : pas
-   soumises au transform 3D). Icônes en SVG (et non en glyphes unicode) pour
-   un centrage pixel-parfait garanti, indépendant des métriques de police. --- */
+/* --- Flèches de navigation (dans #nav-stage mais hors de #nav-track : elles
+   ne glissent pas avec la rangée). Icônes en SVG (et non en glyphes unicode)
+   pour un centrage pixel-parfait garanti, indépendant des métriques de
+   police. Elles s'effacent au bout de la rangée : il n'y a rien au-delà du
+   magasin ni au-delà de la guerre des clans (updateChrome, js/pages-nav.js). --- */
 /* Les flèches venaient de la palette AMBRÉE abandonnée (un brun chaud) et se
    posaient sur des pages ardoise froides. */
-.cube-arrow{position:fixed;z-index:400;cursor:pointer;border:1px solid var(--border2);
+.nav-arrow{position:fixed;z-index:400;cursor:pointer;border:1px solid var(--border2);
   background:rgba(255,255,255,.05);backdrop-filter:blur(14px);color:var(--muted);
   display:flex;align-items:center;justify-content:center;padding:0;
   transition:all .2s ease;box-shadow:0 6px 20px rgba(0,0,0,.4)}
-.cube-arrow:hover{background:var(--surface2);border-color:var(--accent2);color:var(--text);
+.nav-arrow:hover{background:var(--surface2);border-color:var(--accent2);color:var(--text);
   box-shadow:0 8px 24px -6px rgba(0,0,0,.5)}
-.cube-arrow svg{display:block;width:55%;height:55%;pointer-events:none}
+.nav-arrow svg{display:block;width:55%;height:55%;pointer-events:none}
 /* Flèches horizontales dans les coins bas : jamais en collision avec la
    barre de compte (haut). Le badge Admin (bottom-right) est remonté
    au-dessus d'elles (voir plus bas) pour ne jamais se chevaucher. */
-.cube-arrow-side{bottom:calc(22px + var(--safe-b));width:56px;height:56px;border-radius:15px}
-#cube-arrow-left{left:22px}
-#cube-arrow-right{right:22px}
-.cube-arrow-vert{left:50%;transform:translateX(-50%);width:64px;height:40px;border-radius:12px}
-#cube-arrow-down{bottom:calc(22px + var(--safe-b))}
-#cube-arrow-up{top:calc(var(--chrome-h) + var(--safe-t) + 10px)}
+.nav-arrow-side{bottom:calc(22px + var(--safe-b));width:56px;height:56px;border-radius:15px}
+#nav-arrow-left{left:22px}
+#nav-arrow-right{right:22px}
 
-/* --- Repère des faces (blasons en bas) : un blason par face du cube, celui
-   de la face affichée s'allume. Centré, entre les deux flèches.
-   Les quatre dessins sont des silhouettes PLEINES (balance, épées croisées,
-   Monarque escorté, coffre ferré) et non des pictogrammes au trait : voir le
-   commentaire de #cube-facebar dans index.html. Une silhouette pleine tient
+/* --- La barre d'onglets (blasons en bas) : un blason par page de la rangée,
+   dans l'ordre de la rangée, celui de la page affichée s'allume. C'est la
+   CARTE de la navigation : elle dit d'un coup d'œil combien il y a de pages
+   et où l'on se trouve dessus — ce qu'un cube ne pouvait pas montrer.
+   Les cinq dessins sont des silhouettes PLEINES (balance, épées croisées,
+   bouclier, damier éclaté, coffre ferré) et non des pictogrammes au trait : voir le
+   commentaire de #nav-tabbar dans index.html. Une silhouette pleine tient
    la mise à 24 px de côté là où un trait de 2,2 px se réduit à une bouillie
    grise — c'est la seule raison de ce choix. --- */
 /* UNE BARRE D'ONGLETS PLEINE LARGEUR, COLLÉE AU BAS DE L'ÉCRAN. Elle a été
@@ -2150,7 +2192,7 @@ body.light .cube-face[data-face="magasin"]{background:
    qu'on ouvre au pouce (Clash Royale et les siens) : quatre onglets à parts
    égales, un pictogramme et son nom, et l'onglet courant surélevé sur un
    socle de laiton. On sait où l'on est sans lire, et où aller sans chercher.
-   --facebar-h porte la hauteur : c'est elle que --page-bottom réserve à
+   --tabbar-h porte la hauteur : c'est elle que --page-bottom réserve à
    chaque page (voir [THEME]). */
 /* `width:100vw` et non `right:0` : `html` réserve en permanence la place
    d'une barre de défilement (`scrollbar-gutter:stable`, voir [THEME]), si
@@ -2159,7 +2201,7 @@ body.light .cube-face[data-face="magasin"]{background:
    DROITE, `left:0` tombe déjà sur le bord de l'écran ; il ne manquait que la
    largeur. Là où rien n'est réservé (téléphone, barres flottantes), 100vw
    vaut exactement la largeur du bloc conteneur et rien ne change. */
-.cube-facebar{position:fixed;z-index:400;left:0;right:auto;
+.nav-tabbar{position:fixed;z-index:400;left:0;right:auto;
   width:100vw;bottom:0;
   transform:none;display:flex;gap:0;border-radius:0;
   padding:6px 2vw calc(6px + var(--safe-b));
@@ -2169,14 +2211,14 @@ body.light .cube-face[data-face="magasin"]{background:
 /* LE `backdrop-filter:blur(18px)` A ÉTÉ RETIRÉ D'ICI. Un flou d'arrière-plan
    oblige le navigateur à garder une copie de tout ce qui est peint DERRIÈRE
    l'élément et à la reflouter à chaque image où quelque chose bouge dessous —
-   et sous cette barre, il y a le cube, qui tourne. C'était le seul flou du jeu
+   et sous cette barre, il y a la rangée, qui glisse. C'était le seul flou du jeu
    posé sur un élément TOUJOURS à l'écran, donc le seul qu'on payait en
    permanence. Le fond dégradé au-dessus est déjà opaque à 94-98 % : le flou ne
    se voyait pas, il se sentait seulement à la chaleur du téléphone. */
-/* Quatre parts ÉGALES : quatre destinations de même rang, donc quatre cibles
-   de même largeur. Une répartition selon la longueur des libellés ferait
-   croire à une hiérarchie qui n'existe pas. */
-.cube-facebar-btn{flex:1 1 0;min-width:0;cursor:pointer;border:none;background:transparent;
+/* Cinq parts ÉGALES : cinq destinations de même rang, donc cinq cibles de
+   même largeur. Une répartition selon la longueur des libellés ferait croire
+   à une hiérarchie qui n'existe pas. */
+.nav-tab{flex:1 1 0;min-width:0;cursor:pointer;border:none;background:transparent;
   color:rgba(226,232,235,.72);width:auto;height:auto;min-height:56px;border-radius:14px;
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
   padding:6px 2px;transition:color .18s ease,background .18s ease,transform .18s ease}
@@ -2186,9 +2228,9 @@ body.light .cube-face[data-face="magasin"]{background:
    l'on allait — c'est-à-dire exactement ce que le blason est censé éviter. À
    32 px et sur un fond de pastille, chaque destination a une empreinte qu'on
    reconnaît sans lire, et l'onglet en cours reste le seul en or. */
-.cube-facebar-btn svg{display:block;width:clamp(26px,7.5vw,32px);height:clamp(26px,7.5vw,32px);
+.nav-tab svg{display:block;width:clamp(22px,6.2vw,30px);height:clamp(22px,6.2vw,30px);
   flex:0 0 auto;pointer-events:none}
-.cube-facebar-btn:hover{color:var(--text)}
+.nav-tab:hover{color:var(--text)}
 /* LE LIBELLÉ EST DE RETOUR SUR TÉLÉPHONE. Il n'existait que sur le rail
    d'ordinateur, au motif que la barre n'avait de place que pour le blason —
    c'était vrai d'une pastille de 40 px, ça ne l'est plus d'une barre pleine
@@ -2198,46 +2240,45 @@ body.light .cube-face[data-face="magasin"]{background:
    « Guerre des cl… », ce qui est pire que muet — ça se lit comme un bug. Il
    passe donc à la ligne, et deux lignes au maximum (`line-clamp`), ce que la
    hauteur de la barre absorbe sans bouger. Le rail d'ordinateur, lui, garde
-   une seule ligne : il a la largeur pour ([DESKTOP], .cfb-label). */
-.cfb-label{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;
-  font-family:var(--f-ui);font-size:min(2.7vw,10px);
+   une seule ligne : il a la largeur pour ([DESKTOP], .nav-tab-label). */
+.nav-tab-label{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;
+  font-family:var(--f-ui);font-size:min(2.4vw,10px);
   font-weight:800;letter-spacing:.04em;line-height:1.1;text-align:center;
   max-width:100%;overflow:hidden}
 /* Le blason peint, quand il existe : même taille et même place que le blason
    dessiné, qu'il remplace (assets/ui/logo-*.png, voir assets/PROMPTS.md
    § 5 bis). L'`<img>` se retire d'elle-même à l'erreur de chargement
    (onerror, index.html) — fichier absent, le SVG reste seul. */
-.cfb-art{display:block;width:clamp(26px,7.5vw,32px);height:clamp(26px,7.5vw,32px);
+.nav-tab-art{display:block;width:clamp(22px,6.2vw,30px);height:clamp(22px,6.2vw,30px);
   flex:0 0 auto;object-fit:contain;pointer-events:none}
-.cube-facebar-btn:has(.cfb-art) svg{display:none}
+.nav-tab:has(.nav-tab-art) svg{display:none}
 /* La face en cours : le blason passe en NÉGATIF sur le laiton, et l'onglet se
    soulève d'un pixel. Les creux du dessin (fente du coffre, plateaux de la
    balance) sont de vrais trous (fill-rule:evenodd), donc l'or les traverse au
    lieu de les boucher. */
-.cube-facebar-btn.is-active{color:#1a1206;
+.nav-tab.is-active{color:#1a1206;
   background:linear-gradient(180deg,var(--gold2),var(--gold));
   background-color:var(--gold);
   transform:translateY(-2px);
   box-shadow:inset 0 1px 0 rgba(255,240,205,.6),0 4px 12px -4px rgba(0,0,0,.7)}
-body.light .cube-facebar{background:linear-gradient(180deg,rgba(255,255,255,.94),rgba(240,239,233,.98));
+body.light .nav-tabbar{background:linear-gradient(180deg,rgba(255,255,255,.94),rgba(240,239,233,.98));
   border-top-color:var(--border2)}
-body.light .cube-facebar-btn:hover{color:var(--text)}
+body.light .nav-tab:hover{color:var(--text)}
 
-/* --- Pages secondaires : overlays plein écran AU-DESSUS du cube ---
+/* --- Pages secondaires : overlays plein écran AU-DESSUS de la rangée ---
    (armées, voie, combat, login). Restent pilotées par
    .page/.active comme avant, mais deviennent des couches opaques qui
-   masquent le cube quand elles sont actives. */
+   masquent la rangée quand elles sont actives. */
 .page.active{position:fixed;inset:0;z-index:200;overflow-y:auto;background:var(--bg)}
 
 /* Le badge Admin (chrome préexistant, coin bas-droit) est remonté tant que
-   le cube est actif, pour ne jamais chevaucher la flèche de rotation droite
-   qui occupe le même coin. */
+   la rangée est affichée, pour ne jamais chevaucher la flèche de droite qui
+   occupe le même coin. */
 
 /* [RESPONSIVE / MODE TÉLÉPHONE] ====================================
-   Le cube (vmax) et la plupart des titres (clamp()) s'adaptent déjà en
-   continu à la taille de l'écran. Ce bloc gère surtout les changements
-   STRUCTURELS nécessaires sur petit écran : grilles à moins de colonnes,
-   flèches de cube resserrées. */
+   La rangée (100 % du cadre) et la plupart des titres (clamp()) s'adaptent
+   déjà en continu à la taille de l'écran. Ce bloc gère surtout les changements
+   STRUCTURELS nécessaires sur petit écran : grilles à moins de colonnes. */
 @media(max-width:640px){
   body.main-menu #settings-btn{width:39px;height:39px;right:8px}
   #settings-btn svg{width:18px;height:18px}
@@ -2245,20 +2286,18 @@ body.light .cube-facebar-btn:hover{color:var(--text)}
   .armies-hdr{flex-direction:column;align-items:stretch}
   .armies-hdr .btn{width:100%}
 
-  .cube-arrow-vert{width:52px;height:34px}
-  #cube-arrow-down{bottom:calc(12px + var(--safe-b))}
 }
 /* LES DEUX FLÈCHES DE ROTATION S'EN VONT SUR TÉLÉPHONE. Elles étaient le
-   secours du glissement de doigt, qui reste (voir js/cube-nav.js) — et la
-   barre du bas, elle, nomme les quatre faces et y mène directement, ce
-   qu'une flèche « tourner à droite » ne dit pas. Deux pastilles de 44 px
+   secours du glissement de doigt, qui reste (voir js/pages-nav.js) — et la
+   barre du bas, elle, nomme les cinq pages et y mène directement, ce
+   qu'une flèche « page suivante » ne dit pas. Deux pastilles de 44 px
    plantées dans les coins bas, par-dessus une barre d'onglets qui fait déjà
    le travail, c'étaient deux cibles de plus à éviter en visant le pouce.
    Elles restent sur les écrans intermédiaires (tablette), où la barre existe
    mais où le glissement est moins naturel qu'au pouce ; sur ordinateur, le
    rail les remplace (voir [DESKTOP]). */
 @media(max-width:820px){
-  .cube-arrow-side{display:none!important}
+  .nav-arrow-side{display:none!important}
 }
 /* [DRILL] ======================================================
    Exercice de déplacement (js/tuto-drill.js) : une pièce seule, cinq
@@ -2449,7 +2488,7 @@ body.light .pmv-dark{background:#c3bdae}
 .pmv-l-txt{color:var(--muted)}
 
 /* [RESERVE] =====================================================
-   Face « Guerre des clans » du cube : inventaire des pièces possédées et coffre de
+   Page « Guerre des clans » : inventaire des pièces possédées et coffre de
    réapprovisionnement quotidien. Les six coffres, eux, sont en bas du menu
    principal (voir [MENU-CHESTS]).
    ============================================================== */
@@ -2510,7 +2549,7 @@ body.light .pmv-dark{background:#c3bdae}
   background:linear-gradient(180deg,rgba(223,234,242,.10),var(--surface))}
 
 /* [MAGASIN] ======================================================
-   Face « Magasin » du cube : les six coffres, en grand, en deux rangées de
+   Page « Magasin » : les six coffres, en grand, en deux rangées de
    trois — le seul endroit du jeu où ils s'achètent (js/economy-ui.js,
    renderMagasinPage/buyChestFromShop). Même matière que la Guerre des clans/menu
    principal, présentation proche de [CHEST-OPENING] (.chest-lg) mais posée en
@@ -2587,6 +2626,64 @@ body.light .pmv-dark{background:#c3bdae}
   .shop-chest .chest-lg .chest-lock{width:19px;height:22px;margin-left:-9.5px;top:21px;border-width:2px}
   .shop-chest .chest-lg .chest-lock::after{width:5px;height:8px;margin-left:-2.5px;top:6px}
   .shop-chest-price .pearl-amt{font-size:11px}
+}
+
+
+/* [VARIANTES] ====================================================
+   Page « Variantes » (js/variantes.js), quatrième de la rangée : les autres
+   façons de jouer. Une seule est ouverte — le duel classique, celui du bouton
+   COMBAT —, les cinq autres sont annoncées et verrouillées.
+
+   LES CARTES VERROUILLÉES SONT DES <div>, PAS DES BOUTONS DÉSACTIVÉS. Un
+   bouton grisé invite quand même à appuyer, puis ne répond pas ; un panneau
+   avec un cadenas ne ment à personne. C'est aussi ce qui permet de n'avoir
+   qu'un seul état de survol dans cette page, sur la seule carte qui mène
+   quelque part.
+   ============================================================== */
+.var-wrap{position:absolute;inset:0;overflow-y:auto;padding:var(--page-top) 22px var(--page-bottom)}
+.var-inner{max-width:640px;margin:0 auto}
+.var-hdr{margin-bottom:18px}
+.var-title{font-family:var(--f-display);font-size:clamp(22px,4vw,32px);font-weight:900;color:var(--gold2)}
+.var-sub{margin-top:4px;font-family:var(--f-ui);font-size:13px;line-height:1.45;color:var(--muted)}
+.var-grid{display:grid;grid-template-columns:1fr;gap:12px}
+/* UNE COLONNE, ET NON UNE GRILLE DE VIGNETTES. Ce qui distingue une variante
+   d'une autre, c'est sa RÈGLE — deux phrases à lire, pas une image à
+   reconnaître. Une rangée pleine largeur laisse la place de les écrire ; trois
+   vignettes par ligne les auraient tronquées. */
+.var-card{position:relative;display:block;width:100%;text-align:left;
+  padding:16px 18px;border-radius:16px;
+  border:1px solid var(--border2);
+  background:linear-gradient(180deg,rgba(28,38,46,.72),rgba(10,15,19,.82));
+  box-shadow:inset 0 1px 0 rgba(255,240,205,.08),0 8px 22px -12px rgba(0,0,0,.9);
+  transition:border-color .18s ease,transform .12s ease}
+.var-card-hdr{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+.var-card-name{font-family:var(--f-title);font-weight:900;letter-spacing:.04em;
+  font-size:clamp(15px,4vw,19px);color:var(--text)}
+.var-card-tag{flex:0 0 auto;font-family:var(--f-ui);font-size:10px;font-weight:800;
+  letter-spacing:.12em;text-transform:uppercase;color:var(--muted);
+  padding:3px 9px;border-radius:999px;border:1px solid var(--border2)}
+.var-card-txt{margin-top:7px;font-family:var(--f-ui);font-size:13px;line-height:1.5;
+  color:var(--muted);max-width:52ch}
+/* La carte ouverte : bordure de laiton, l'étiquette en négatif sur l'or, et le
+   seul appel à l'action de la page. */
+.var-card.is-on{cursor:pointer;border-color:rgba(193,154,69,.5)}
+.var-card.is-on:hover{border-color:var(--gold2)}
+.var-card.is-on:active{transform:scale(.99)}
+.var-card.is-on .var-card-tag{color:#1a1206;border-color:transparent;
+  background:linear-gradient(180deg,var(--gold2),var(--gold))}
+.var-card-go{margin-top:12px;display:inline-flex;align-items:center;gap:6px;
+  font-family:var(--f-title);font-weight:900;letter-spacing:.14em;font-size:12px;
+  color:#1a1206;padding:8px 18px;border-radius:11px;
+  background:linear-gradient(180deg,var(--gold2),var(--gold));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.2)}
+/* La carte fermée : tout recule d'un cran, et le cadenas dit pourquoi. */
+.var-card.is-locked{opacity:.62}
+.var-card-lock{position:absolute;right:16px;bottom:14px;width:18px;height:18px;color:var(--muted)}
+.var-card-lock svg{display:block;width:100%;height:100%}
+body.light .var-card{background:linear-gradient(180deg,rgba(255,255,255,.7),rgba(244,243,238,.85))}
+@media(max-width:480px){
+  .var-card{padding:14px 15px;border-radius:14px}
+  .var-card-txt{font-size:12.5px}
 }
 
 /* --- Inventaire --- */
@@ -3191,8 +3288,8 @@ body.light .pmv-dark{background:#c3bdae}
    ELLE EST PASSÉE DE 17 À 26 PX. 17 px était la taille d'un pictogramme au
    trait ; les planches peintes sont des illustrations de 256 px avec des
    feuilles ciselées, des reliures cloutées et des arêtes de métal — à 17 px
-   il n'en restait qu'une tache dorée. 26 px est la taille des blasons du cube
-   (voir .cube-facebar-btn svg), donc rien de nouveau à apprendre, et les trois
+   il n'en restait qu'une tache dorée. 26 px est la taille des blasons d'onglet
+   (voir .nav-tab svg), donc rien de nouveau à apprendre, et les trois
    boutons du menu et les quatre onglets du bas parlent enfin la même langue.
 
    DEUX COUCHES D'EFFETS, ET C'EST TOUT L'INTÉRÊT. `.jt-fx-back` passe DERRIÈRE
@@ -4062,7 +4159,6 @@ body.light .jt-fx{mix-blend-mode:normal;filter:saturate(1.45) brightness(.82)}
   .jouer-player{gap:5px}
   .menu-title{font-size:clamp(26px,8.4vw,40px)}
 }
-/* Boussole du cube : nomme la face affichée. */
 /* Promotion : le libellé sous le logo, sinon deux créatures inconnues se
    ressemblent au moment où il faut choisir vite. */
 .promo-piece{width:92px;padding:10px 6px 8px;display:flex;flex-direction:column;align-items:center;gap:6px;
@@ -4119,10 +4215,8 @@ body.light .jt-fx{mix-blend-mode:normal;filter:saturate(1.45) brightness(.82)}
      · le LAITON foncé du thème clair ne ressort pas sur du crème : là où il
        servait d'accent lumineux, c'est le vert-de-gris qui prend le relais.
    ============================================================== */
-body.light .cube-arrow{background:rgba(255,255,255,.82);color:var(--accent);border-color:var(--border2)}
-body.light .cube-arrow:hover{background:#fff;border-color:var(--accent2);color:var(--accent2)}
-body.light .cube-dot{background:var(--border2)}
-body.light .cube-dot.is-on{background:var(--accent2)}
+body.light .nav-arrow{background:rgba(255,255,255,.82);color:var(--accent);border-color:var(--border2)}
+body.light .nav-arrow:hover{background:#fff;border-color:var(--accent2);color:var(--accent2)}
 
 /* Le bouton COMBAT reste l'élément le plus lumineux de l'écran dans les deux
    thèmes : en clair, c'est le vert-de-gris qui joue ce rôle. */
@@ -4193,12 +4287,12 @@ body.light .gp-bar.gp-turn{background:linear-gradient(90deg,var(--accent-bg),var
    et dépasse donc la hauteur de l'écran. Deux règles écrites pour le grand
    écran l'en empêchaient : la hauteur fixe de .game-wrap (posée avec une
    spécificité supérieure à la règle du media query, donc gagnante malgré
-   lui) et l'overflow:hidden de la face du cube qui l'héberge. Résultat : les
+   lui) et l'overflow:hidden de la page qui l'héberge. Résultat : les
    bandeaux joueurs étaient rognés à quelques pixels et la colonne latérale
    inatteignable.
    ============================================================== */
 @media(max-width:820px){
-  #face-viewport-game{overflow-y:auto;-webkit-overflow-scrolling:touch}
+  #page-viewport-game{overflow-y:auto;-webkit-overflow-scrolling:touch}
   body.has-acc .game-wrap{margin-top:calc(var(--chrome-h) + var(--safe-t))}
 
   /* LES DEUX PENDULES ENCADRENT LE PLATEAU.
@@ -4611,9 +4705,9 @@ body.light .gp-bar.gp-turn{background:linear-gradient(90deg,var(--accent-bg),var
   border:1px solid var(--border2);border-left-width:4px;
   box-shadow:0 10px 30px rgba(0,0,0,.45);
   animation:notifIn .26s cubic-bezier(.2,1.3,.4,1) both}
-/* Les flèches de rotation du cube occupent les deux coins bas : quand elles
+/* Les flèches de navigation occupent les deux coins bas : quand elles
    sont là, les messages se posent au-dessus plutôt que par-dessus. */
-body.cube-active:not(.nav-overlay) .notif-host{bottom:92px}
+body.nav-active:not(.nav-overlay) .notif-host{bottom:92px}
 .notif-err{border-left-color:var(--danger)}
 .notif-ok{border-left-color:var(--success)}
 .notif-info{border-left-color:var(--accent2)}
@@ -4626,7 +4720,7 @@ body.cube-active:not(.nav-overlay) .notif-host{bottom:92px}
 @keyframes notifPop{0%,100%{transform:none}45%{transform:scale(1.04)}}
 @media(max-width:640px){
   .notif-host{left:12px;right:12px;bottom:12px;align-items:stretch;max-width:none}
-  body.cube-active:not(.nav-overlay) .notif-host{bottom:68px}
+  body.nav-active:not(.nav-overlay) .notif-host{bottom:68px}
   .notif{font-size:13.5px}
 }
 
@@ -4684,7 +4778,7 @@ body.cube-active:not(.nav-overlay) .notif-host{bottom:92px}
    installée ou en plein écran ; dans un onglet ordinaire, il n'existe aucun
    moyen d'empêcher la rotation. Ce voile est donc le verrou de dernier
    recours : il recouvre TOUT (z-index au-dessus des modals, des notifications
-   et du cube) dès que l'écran bascule, et disparaît dès qu'on le redresse.
+   et de la rangée) dès que l'écran bascule, et disparaît dès qu'on le redresse.
 
    Les trois conditions du media query font ensemble « un téléphone couché »,
    et rien d'autre :
@@ -4709,10 +4803,10 @@ body.cube-active:not(.nav-overlay) .notif-host{bottom:92px}
   .rotate-gate-text{font-size:13.5px;line-height:1.5;color:var(--muted)}
   /* Le reste du document est neutralisé : sans cela, une partie continuait de
      tourner (pendules, coup de l'IA) derrière un voile qu'on ne peut pas
-     traverser. Le cube, lui, est simplement caché — ses transforms 3D
-     repeindraient par-dessus le voile sur certains WebKit. */
+     traverser. La rangée, elle, est simplement cachée — ses couches de
+     composition repeindraient par-dessus le voile sur certains WebKit. */
   body>*:not(.rotate-gate){pointer-events:none}
-  #cube-stage{visibility:hidden}
+  #nav-stage{visibility:hidden}
 }
 @keyframes rotateGateTip{
   0%,100%{transform:rotate(0)}
@@ -5661,9 +5755,9 @@ body.cube-active:not(.nav-overlay) .notif-host{bottom:92px}
    Deux manques : rien ne signalait le focus clavier (le contour natif est
    supprimé par le reset sur les boutons), et aucune règle ne respectait
    « réduire les animations » du système, alors que le jeu en compte
-   beaucoup (cube, cinématiques, particules, pulsations).
+   beaucoup (glissements, cinématiques, particules, pulsations).
    ============================================================== */
-.btn:focus-visible,.cube-arrow:focus-visible,.jouer-btn:focus-visible,
+.btn:focus-visible,.nav-arrow:focus-visible,.jouer-btn:focus-visible,
 .linput:focus-visible,.history-nav button:focus-visible,
 .chest-card:focus-visible{
   outline:2px solid var(--accent2);outline-offset:3px}
@@ -5674,7 +5768,7 @@ body.cube-active:not(.nav-overlay) .notif-host{bottom:92px}
 @media(prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;
     transition-duration:.001ms!important;scroll-behavior:auto!important}
-  #cube{transition:none!important}
+  #nav-track{transition:none!important}
   .ambient-bubbles,.cparts,.cine-motes{display:none}
 }
 
@@ -5845,7 +5939,7 @@ body.cube-active:not(.nav-overlay) .notif-host{bottom:92px}
    L'image est volontairement assombrie et désaturée par-dessus : elle doit
    rester un fond, l'emblème et le bouton COMBAT passent devant.
    ============================================================== */
-.cube-face[data-face="jouer"] .face-viewport::before{
+.nav-page[data-page="jouer"] .page-viewport::before{
   content:'';position:absolute;inset:0;z-index:0;pointer-events:none;
   background-image:url('../assets/backgrounds/main-page.webp');
   background-size:cover;background-position:center 60%;
@@ -5855,14 +5949,14 @@ body.cube-active:not(.nav-overlay) .notif-host{bottom:92px}
   -webkit-mask-image:radial-gradient(ellipse 46% 52% at 50% 48%,transparent 20%,#000 78%);
   mask-image:radial-gradient(ellipse 46% 52% at 50% 48%,transparent 20%,#000 78%);
 }
-body.light .cube-face[data-face="jouer"] .face-viewport::before{opacity:.14}
+body.light .nav-page[data-page="jouer"] .page-viewport::before{opacity:.14}
 /* Le menu passe DEVANT le fond. On ne touche qu'au z-index : .jouer-menu est
    `position:absolute;inset:0` plus haut dans ce fichier, et c'est ce
    positionnement qui le centre sur toute la face — le repasser en `relative`
    ici le faisait retomber en haut de l'écran, sous la barre de compte. */
 .jouer-menu{z-index:1}
 @media(prefers-reduced-motion:reduce){
-  .cube-face[data-face="jouer"] .face-viewport::before{opacity:.22}
+  .nav-page[data-page="jouer"] .page-viewport::before{opacity:.22}
 }
 
 /* [MOVE-LOG] ====================================================
@@ -6109,7 +6203,7 @@ body.light .adv-advised{color:#f6f5f1}
    boutons est en position absolue SOUS sa carte (voir .piece-card-actions
    ci-dessus) : il ne compte pas dans la hauteur de la grille, donc rien ne
    lui réserve de place et la page s'arrête au bas de la dernière rangée.
-   Sur la page de composition d'armées, où la barre d'onglets du cube couvre
+   Sur la page de composition d'armées, où la barre d'onglets couvre
    les 64 derniers pixels de l'écran, « Infos » se retrouvait coupé et
    « Utiliser » entièrement derrière la barre, sans un pixel de défilement
    restant pour aller les chercher — dès que le catalogue dépasse les neuf
@@ -6299,25 +6393,25 @@ body.light .adv-advised{color:#f6f5f1}
    ramenée à un filigrane plutôt que remplacée — un jeu de planches, deux
    thèmes.
 
-   Les quatre faces du cube. La face JOUER garde sa règle historique
+   Les pages de la rangée. La page COMBAT garde sa règle historique
    ([LAB-BG] plus haut) : elle est la seule à masquer en ellipse serrée
    autour du bouton COMBAT. */
-.cube-face[data-face="armees"]  .face-viewport::before{background-image:url('../assets/backgrounds/armees.webp')}
-.cube-face[data-face="reserve"] .face-viewport::before{background-image:url('../assets/backgrounds/armurerie.webp')}
-.cube-face[data-face="magasin"] .face-viewport::before{background-image:url('../assets/backgrounds/magasin.webp')}
-.cube-face[data-face="armees"]  .face-viewport::before,
-.cube-face[data-face="reserve"] .face-viewport::before,
-.cube-face[data-face="magasin"] .face-viewport::before{
+.nav-page[data-page="armees"]  .page-viewport::before{background-image:url('../assets/backgrounds/armees.webp')}
+.nav-page[data-page="reserve"] .page-viewport::before{background-image:url('../assets/backgrounds/armurerie.webp')}
+.nav-page[data-page="magasin"] .page-viewport::before{background-image:url('../assets/backgrounds/magasin.webp')}
+.nav-page[data-page="armees"]  .page-viewport::before,
+.nav-page[data-page="reserve"] .page-viewport::before,
+.nav-page[data-page="magasin"] .page-viewport::before{
   content:'';position:absolute;inset:0;z-index:-1;pointer-events:none;
   background-size:cover;background-position:center 55%;background-repeat:no-repeat;
   opacity:.26;filter:saturate(.75) contrast(1.03);
   -webkit-mask-image:radial-gradient(ellipse 54% 58% at 50% 50%,transparent 8%,#000 86%);
   mask-image:radial-gradient(ellipse 54% 58% at 50% 50%,transparent 8%,#000 86%);
 }
-body.light .cube-face[data-face="armees"]  .face-viewport::before,
-body.light .cube-face[data-face="reserve"] .face-viewport::before,
-body.light .cube-face[data-face="magasin"] .face-viewport::before{opacity:.11}
-/* Les pages hors cube. */
+body.light .nav-page[data-page="armees"]  .page-viewport::before,
+body.light .nav-page[data-page="reserve"] .page-viewport::before,
+body.light .nav-page[data-page="magasin"] .page-viewport::before{opacity:.11}
+/* Les pages en overlay, hors de la rangée. */
 #page-adversaires.active::before{content:'';background-image:url('../assets/backgrounds/adversaires.webp')}
 #page-voie.active::before       {content:'';background-image:url('../assets/backgrounds/voie.webp')}
 #page-rewards.active::before    {content:'';background-image:url('../assets/backgrounds/recompenses.webp')}
@@ -6463,7 +6557,7 @@ body.light .art-banner::before{opacity:.55;filter:saturate(.7)}
   background-image:url('../assets/ui/vert-de-gris.png');
   background-size:180px 180px;background-blend-mode:overlay;
 }
-.cube-facebar-btn.is-active{
+.nav-tab.is-active{
   background-image:url('../assets/ui/laiton.png');
   background-size:120px 120px;background-blend-mode:overlay;
 }
@@ -6766,71 +6860,63 @@ body.desk{--rail-w:200px;--page-bottom:calc(28px + var(--safe-b))}
    un défaut net : sur « Mes armées », elle masquait deux noms de cartes en
    plein milieu de l'écran.
    Elle devient donc un rail vertical à gauche, qui ne recouvre plus rien :
-   la zone utile de chaque face recule d'autant (voir .face-viewport plus
+   la zone utile de chaque face recule d'autant (voir .page-viewport plus
    bas). C'est la même barre, le même balisage, les mêmes clics. */
-body.desk .cube-facebar{
-  /* LE RAIL EST POSÉ DANS LE REPÈRE DES FACES DU CUBE, et non dans celui de
-     la fenêtre — sans quoi il mordrait de 5,5 px sur le contenu.
-     Pourquoi : `html` réserve en permanence la place d'une barre de
-     défilement (`scrollbar-gutter:stable`, voir [THEME] — c'est ce qui évite
-     que la page saute quand la barre apparaît). Le bloc conteneur d'un
-     élément `fixed` fait donc 11 px de moins que `100vw`, alors que les faces
-     du cube, elles, sont dimensionnées en `vmax`/`vw`. Une face de 1400 px
-     centrée dans 1389 commence à −5,5.
-     `calc((100% - 100vw) / 2)` vaut exactement ce décalage (100% = le bloc
-     conteneur du fixed, 100vw = l'unité qui dimensionne les faces) : le rail
-     se cale au même endroit qu'elles. Là où aucune place n'est réservée
-     (téléphone, barres flottantes), le calcul vaut 0 et rien ne bouge. */
-  left:calc((100% - 100vw) / 2);top:0;bottom:0;width:var(--rail-w);
+body.desk .nav-tabbar{
+  /* LE RAIL SE CALE SUR LE BORD GAUCHE DU CADRE DE NAVIGATION, qui est aussi
+     le bloc conteneur d'un élément `fixed` : les pages sont désormais
+     dimensionnées en `%` de ce même cadre (voir .nav-page dans [NAV]), donc
+     `left:0` tombe exactement sur leur bord. Il n'y a plus le décalage d'une
+     demi-gouttière de barre de défilement à rattraper, comme du temps où les
+     faces étaient des carrés en `vmax` centrés sur l'écran. */
+  left:0;top:0;bottom:0;width:var(--rail-w);
   transform:none;flex-direction:column;justify-content:center;
   gap:6px;padding:20px 14px;border-radius:0;
   border:none;border-top:none;border-right:1px solid var(--border2);
   background:linear-gradient(180deg,rgba(255,255,255,.055),rgba(255,255,255,.025));
   backdrop-filter:blur(18px);
   box-shadow:2px 0 24px -8px rgba(0,0,0,.6)}
-body.desk .cube-facebar-btn{
+body.desk .nav-tab{
   flex:0 0 auto;width:100%;height:52px;min-height:0;border-radius:12px;
   flex-direction:row;justify-content:flex-start;gap:14px;padding:0 14px;transform:none}
-body.desk .cube-facebar-btn.is-active{transform:none}
+body.desk .nav-tab.is-active{transform:none}
 /* L'icône garde une taille FIXE : en pourcentage, elle enflait avec la
    hauteur du bouton et écrasait le libellé. */
-body.desk .cube-facebar-btn svg,body.desk .cfb-art{width:24px;height:24px;flex:0 0 24px}
+body.desk .nav-tab svg,body.desk .nav-tab-art{width:24px;height:24px;flex:0 0 24px}
 /* Le libellé existe des deux côtés — la barre du bas le porte aussi depuis
-   qu'elle est pleine largeur (voir .cfb-label dans [CUBE]) — mais le rail a la
+   qu'elle est pleine largeur (voir .nav-tab-label dans [CUBE]) — mais le rail a la
    place de l'écrire en grand, à côté du blason plutôt qu'en dessous. */
 /* Deux lignes ici aussi. Le rail fait 150 px de large : une fois le blason et
    sa gouttière retirés, « Guerre des clans » n'entre pas sur une ligne à
    13,5 px, et l'onglet affichait « Guerre des cl… ». Il garde donc le
    `line-clamp:2` de la barre du bas — la rangée fait 52 px de haut, deux
    lignes en tiennent 30. */
-body.desk .cfb-label{font-size:13.5px;font-weight:700;letter-spacing:.3px;text-align:left}
+body.desk .nav-tab-label{font-size:13.5px;font-weight:700;letter-spacing:.3px;text-align:left}
 
-/* Les deux flèches de rotation s'en vont : elles étaient déjà le secours du
-   glissement de doigt, et sur un grand écran elles se retrouvaient à 1400 px
-   l'une de l'autre, collées aux coins, sans lien visible avec le cube. Le
-   rail nomme les quatre faces et y mène directement ; les touches ← et →
-   (js/cube-nav.js) tournent toujours le cube d'un cran. */
-body.desk .cube-arrow-side{display:none!important}
+/* Les deux flèches s'en vont : elles étaient déjà le secours du glissement de
+   doigt, et sur un grand écran elles se retrouvaient à 1400 px l'une de
+   l'autre, collées aux coins, sans lien visible avec la rangée. Le rail nomme
+   les cinq pages et y mène directement ; les touches ← et → (js/pages-nav.js)
+   déplacent toujours la rangée d'un cran. */
+body.desk .nav-arrow-side{display:none!important}
 
 /* --- LA GOUTTIÈRE -----------------------------------------------
-   `.face-viewport` est le rectangle utile de chaque face du cube, et
-   l'ancêtre commun de TOUT ce qu'une face affiche — y compris les enfants en
+   `.page-viewport` est le rectangle utile de chaque page de la rangée, et
+   l'ancêtre commun de TOUT ce qu'une page affiche — y compris les enfants en
    position:absolute;inset:0, que ni un padding ni une marge n'atteindraient.
    Le rétrécir est donc la seule façon de réserver la place du rail en une
    règle, sans retoucher chaque page.
-   Le décalage vaut la moitié de la gouttière parce que la face est CENTRÉE
-   (left:50% + translate(-50%)) : pour la coller au bord droit de la gouttière,
-   son centre doit avancer de --rail-w/2.
+   La page commence au bord gauche du cadre : il suffit donc de la pousser de
+   la largeur du rail et de lui retirer autant.
    La gouttière est conditionnée à `body.rail-on`, drapeau posé par
-   updateArrows() (js/cube-nav.js) en même temps que la barre s'affiche : le
+   updateChrome() (js/pages-nav.js) en même temps que la barre s'affiche : le
    retrait doit disparaître EXACTEMENT quand le rail disparaît. Il disparaît
-   pendant une partie (cube verrouillé) et sous une page en overlay (Voie,
-   builder, galerie des adversaires), qui reprennent donc l'écran entier —
-   sans quoi le plateau aurait joué avec une bande vide de 200 px à sa
-   gauche. */
-body.desk.rail-on .face-viewport{
-  width:calc(100vw - var(--rail-w));
-  left:calc(50% + var(--rail-w) / 2)}
+   pendant une partie et sous une page en overlay (Voie, builder, galerie des
+   adversaires), qui reprennent donc l'écran entier — sans quoi le plateau
+   aurait joué avec une bande vide de 200 px à sa gauche. */
+body.desk.rail-on .page-viewport{
+  left:var(--rail-w);
+  width:calc(100% - var(--rail-w))}
 
 /* --- LE MENU PRINCIPAL EN MODE BUREAU -----------------------------
    Le menu est bâti pour un téléphone : le bloc d'identité est ÉPINGLÉ en
@@ -6897,6 +6983,7 @@ body.desk{--content-max:1280px}
 body.desk .armies-inner,
 body.desk .reserve-inner,
 body.desk .adv-inner,
+body.desk .var-inner,
 body.desk .shop-inner{max-width:var(--content-max)}
 /* La Voie garde une colonne plus étroite, et ce n'est pas un oubli : ses
    jalons alternent de part et d'autre d'un chemin central (.vm-l / .vm-r).
@@ -7632,13 +7719,13 @@ button.rp-log-w:hover,button.rp-log-b:hover{border-color:var(--border2);backgrou
    plus haut), qui est DÉJÀ un positionnement — le pseudo-élément s'y ancre
    sans aide. Lui poser `relative` la décollerait du bas de l'écran, et la
    passerait à côté de son rail latéral en mode bureau. */
-.cube-facebar::before{
+.nav-tabbar::before{
   content:'';position:absolute;inset:0;z-index:-1;pointer-events:none;
   border:10px solid transparent;
   border-image:url('../assets/ui/barre-nav.svg') 18 / 10px / 0 stretch;
 }
-.cube-facebar-btn{position:relative}
-.cube-facebar-btn.is-active::after{
+.nav-tab{position:relative}
+.nav-tab.is-active::after{
   content:'';position:absolute;left:22%;right:22%;top:1px;height:2px;border-radius:2px;
   background:linear-gradient(90deg,transparent,#e6cd86,transparent);
   pointer-events:none;
