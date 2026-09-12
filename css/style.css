@@ -4840,34 +4840,12 @@ body.cube-active:not(.nav-overlay) .notif-host{bottom:92px}
 }
 .gc-piece .gc-art.gc-stomp{animation:gcStomp .36s cubic-bezier(.35,0,.35,1) both}
 
-/* COULER — le Garde d'Eau. 380 ms × 53 % = 200 ms.
-   Il ne marche pas d'une case à l'autre : il s'y verse. L'étirement précède
-   toujours le déplacement (le liquide part avant le récipient), et l'arrivée
-   n'a pas d'impact sec mais un ballotement qui s'amortit. */
-@keyframes gcFlow{
-  0%  {transform:scaleX(1) scaleY(1) rotate(0)}
-  22% {transform:scaleX(.86) scaleY(1.18) rotate(calc(var(--glean) * -4deg))}
-  53% {transform:scaleX(1.18) scaleY(.86) rotate(calc(var(--glean) * 3deg))}
-  70% {transform:scaleX(.93) scaleY(1.08) rotate(0)}
-  86% {transform:scaleX(1.04) scaleY(.97) rotate(0)}
-  100%{transform:scaleX(1) scaleY(1) rotate(0)}
-}
-.gc-piece .gc-art.gc-flow{animation:gcFlow .38s cubic-bezier(.4,.1,.3,1) both}
-
-/* VACILLER — le Garde de Feu. 340 ms × 59 % = 200 ms.
-   Une flamme ne glisse pas : elle bat. Trois pulsations serrées pendant la
-   course, et l'`opacity` en fait partie — c'est le seul geste où elle sert,
-   parce que c'est la seule créature dont la matière même est instable. */
-@keyframes gcFlicker{
-  0%  {transform:scaleY(1) scaleX(1);opacity:1}
-  18% {transform:scaleY(1.14) scaleX(.9);opacity:.72}
-  34% {transform:scaleY(.94) scaleX(1.06);opacity:1}
-  50% {transform:scaleY(1.1) scaleX(.93);opacity:.8}
-  59% {transform:scaleY(.9) scaleX(1.12);opacity:1}
-  78% {transform:scaleY(1.05) scaleX(.97);opacity:.94}
-  100%{transform:scaleY(1) scaleX(1);opacity:1}
-}
-.gc-piece .gc-art.gc-flicker{animation:gcFlicker .34s ease-in-out both}
+/* IL N'Y A PLUS DE GESTE « COULER » NI « VACILLER ». Ils appartenaient au
+   Garde d'Eau (qui se versait d'une case à l'autre) et au Garde de Feu (qui
+   battait comme une flamme), tous deux retirés du jeu. Leurs @keyframes sont
+   partis avec eux : une animation que plus aucune classe ne demande est du
+   poids mort dans une feuille de style que le téléphone doit parser à chaque
+   ouverture. */
 
 /* TROTTINER — la Fourmi. 300 ms × 67 % = 200 ms.
    La plus petite pièce du jeu, et la plus pressée : quatre appuis minuscules
@@ -4940,7 +4918,7 @@ body.cube-active:not(.nav-overlay) .notif-host{bottom:92px}
 .gc-piece .gc-art.gc-solemn{animation:gcSolemn .4s cubic-bezier(.4,0,.4,1) both}
 
 /* SE PORTER — les Monarques et les Généraux. 360 ms × 56 % = 200 ms.
-   Le Roi, l'Empereur, la Dame, l'Amazone, le Grand Maître. Ils s'élèvent d'un
+   Le Roi, la Dame, l'Amazone, le Grand Maître. Ils s'élèvent d'un
    rien et se posent d'aplomb : une pièce qui vaut treize points n'a pas
    besoin de s'agiter pour qu'on la regarde. L'élévation suit --gspan — une
    travée d'un bout à l'autre du plateau a le droit à plus d'ampleur qu'un pas
@@ -5023,8 +5001,8 @@ body.cube-active:not(.nav-overlay) .notif-host{bottom:92px}
   /* Les treize gestes de créature tombent sous la même règle : quelqu'un qui
      coupe le mouvement n'a pas demandé un galop plus discret, il a demandé
      qu'il n'y en ait pas. */
-  .gc-piece .gc-art.gc-charge,.gc-piece .gc-art.gc-stomp,.gc-piece .gc-art.gc-flow,
-  .gc-piece .gc-art.gc-flicker,.gc-piece .gc-art.gc-scuttle,.gc-piece .gc-art.gc-spin,
+  .gc-piece .gc-art.gc-charge,.gc-piece .gc-art.gc-stomp,
+  .gc-piece .gc-art.gc-scuttle,.gc-piece .gc-art.gc-spin,
   .gc-piece .gc-art.gc-phase,.gc-piece .gc-art.gc-drift,.gc-piece .gc-art.gc-solemn,
   .gc-piece .gc-art.gc-regal,.gc-piece .gc-art.gc-gallop,.gc-piece .gc-art.gc-slam,
   .gc-piece .gc-art.gc-glide{animation:none;opacity:1}
@@ -5375,8 +5353,8 @@ body.cube-active:not(.nav-overlay) .notif-host{bottom:92px}
    LES POUVOIRS QUI NE SE VOYAIENT PAS
    ================================================================
    Quatre pouvoirs s'appliquaient dans le silence complet : l'ancrage du Garde
-   de Pierre, l'Espadon de l'Empereur, la Foi Inébranlable du Prêtre, la
-   Domination du Grand Maître, et la Cuirasse du Preux Chevalier. Un joueur
+   de Pierre, la Foi Inébranlable du Prêtre, la Domination du Grand Maître et
+   la Cuirasse du Preux Chevalier. Un joueur
    dont le pion refuse d'avancer de deux cases ne conclut pas « le Grand
    Maître me domine » : il conclut que le jeu est cassé. UNE RÈGLE INVISIBLE
    N'EST PAS UNE SUBTILITÉ, C'EST UN BUG AUX YEUX DE CELUI QUI LA SUBIT.
@@ -5412,28 +5390,11 @@ body.cube-active:not(.nav-overlay) .notif-host{bottom:92px}
   100%{opacity:0;transform:translate(0,0) rotate(var(--rot)) scale(0)}
 }
 
-/* ESPADON. Une lame se dessine avec des TRAITS, jamais avec un halo : rien de
-   ce qui coupe n'est flou. Deux arcs se croisent, le second retardé — un
-   croisement simultané ferait une croix, et une croix ne coupe pas, elle
-   marque. */
-.fx-sword{mix-blend-mode:screen;overflow:visible}
-.fx-slash{width:150%;height:5%;border-radius:99px;
-  background:linear-gradient(90deg,transparent,#fff 30%,var(--monarque) 55%,transparent);
-  filter:blur(.6px);
-  animation:fxSlash .34s cubic-bezier(.2,.8,.3,1) both}
-.fx-slash2{animation-delay:.11s;animation-duration:.38s}
-@keyframes fxSlash{
-  0%  {opacity:0;transform:rotate(-42deg) scaleX(.1)}
-  30% {opacity:1;transform:rotate(-42deg) scaleX(1)}
-  100%{opacity:0;transform:rotate(-42deg) scaleX(1.15)}
-}
-.fx-slash2{transform-origin:50% 50%}
-@keyframes fxSlash2{
-  0%  {opacity:0;transform:rotate(38deg) scaleX(.1)}
-  30% {opacity:1;transform:rotate(38deg) scaleX(1)}
-  100%{opacity:0;transform:rotate(38deg) scaleX(1.15)}
-}
-.fx-slash.fx-slash2{animation-name:fxSlash2}
+/* IL N'Y A PLUS D'ESPADON. C'était le pouvoir de l'Empereur — deux arcs qui
+   se croisaient sur sa case quand il menaçait le Roi adverse en cavalier — et
+   l'Empereur est sorti du jeu. Le dessin part avec lui plutôt que de rester
+   en dormance : une règle de style que rien n'appelle finit toujours par être
+   recopiée ailleurs « parce qu'elle existe ». */
 
 /* FOI INÉBRANLABLE. Un dôme, et il monte LENTEMENT — c'est le seul effet du
    jeu qui dure une seconde entière. Tout le reste du plateau est sec et

@@ -321,7 +321,7 @@ place chacun autour de sa vraie force et l'y laisse à vie.
 K de placement valait 60 et la majoration des gains ×3 : la toute première
 victoire rapportait **+127**, une victoire de routine à bas classement **+48**,
 et à 50 % de victoires on décrochait Pierre en 4 parties, Bronze en 17, Acier
-en 37. Tout le catalogue jusqu'à l'Empereur tombait en une soirée — puis, juste
+en 37. Tout le catalogue jusqu'au Typhon tombait en une soirée — puis, juste
 derrière, un **mur** : passé 1000 les bonus s'éteignaient d'un coup, et la même
 simulation demandait 1316 parties pour aller de 1000 à 1500, à 45 % de
 victoires **jamais**. Courbe binaire : tout donné en quarante parties, puis
@@ -389,7 +389,7 @@ atteindre chaque rang :
 | 35 % | 34 | 154 | 342 | 528 | 916 | — | — |
 
 Et les jalons eux-mêmes, à 50 % de victoires : 6 perles dès la **première**
-partie, le Preux Chevalier en 4, la Méduse en 21, l'Empereur en 66, le Prêtre
+partie, le Preux Chevalier en 4, la Méduse en 21, l'Amazone en 30, le Prêtre
 en 153, le Typhon en 211, la Banshee en 268, le Grand Maître en 591.
 
 C'est la promesse, et elle tient en trois points : les premiers jalons tombent
@@ -648,7 +648,7 @@ notation d'échecs n'écrit : la case de départ ne sert à rien tant qu'une seu
 pièce peut atteindre l'arrivée. On note donc **la pièce puis la case
 d'arrivée**, la LETTRE de la pièce étant remplacée par son **logo** — sur un
 jeu où les pièces sont des créatures, « M » ou « G » ne désignerait rien
-(Méduse, Grand Maître ? Garde d'Eau, de Feu, de Pierre ?).
+(Méduse, Monarque ? Garde de Pierre, Grand Maître ?).
 
 La case de départ revient **quand, et seulement quand**, deux créatures du même
 logo pouvaient aller sur la même case : colonne si elle suffit, sinon rangée,
@@ -1233,15 +1233,19 @@ composé. Une victoire ouvre un coffre au contenu **imposé** qui débloque une
 créature, suivie de son exercice de déplacement. Une défaite ne fait pas
 avancer : le savant propose la revanche, autant de fois qu'il le faut.
 
-**Les trois premières créatures sont les trois Gardes**, et c'est un choix :
-la Garde d'Eau ne va que tout droit (une case), la Garde de Feu qu'en biais
-(une case), la Garde de Pierre dans les huit directions. Elles enseignent le
-vocabulaire du plateau — orthogonal, diagonal, les deux — au lieu d'ouvrir sur
-trois pouvoirs à retenir, et les deux premières n'ont volontairement **aucun**
-pouvoir. Elles portent le drapeau `starter` dans `UNLOCK_TABLE` ; la Fourmi et
-l'Éléphant de guerre, qui tenaient ce rôle avant elles, sont devenus les deux
-premiers déblocages par l'ELO (30 et 75). Le Peureux, lui, a été retiré du
-catalogue.
+**Les trois premières créatures sont le Garde de Pierre, la Fourmi et
+l'Éléphant de guerre**, dans cet ordre, et c'est un choix : chacune ajoute
+exactement une idée à la précédente. Le Garde de Pierre pose le déplacement le
+plus simple qui soit (une case, dans les huit directions) et le premier pouvoir
+qu'on déclenche soi-même (l'ancrage). La Fourmi introduit la direction — elle
+avance, elle ne recule jamais — et la promotion, qui récompense d'avoir
+traversé. L'Éléphant de guerre ajoute la portée et le prix à payer : deux cases
+d'un coup, et tout ce qui se trouve entre les deux est détruit.
+
+Le Garde de Pierre porte le drapeau `starter` dans `UNLOCK_TABLE` ; la Fourmi
+et l'Éléphant de guerre **restent en plus des déblocages par l'ELO** (30 et 75),
+parce que c'est leur seul chemin pour qui saute le tutoriel. Le Garde d'Eau, le
+Garde de Feu et le Peureux, eux, ont été retirés du catalogue.
 
 Ces batailles passent par `startGame(true,false,tutoCfg)` : le troisième
 argument impose le plateau et la couleur, **saute l'économie** (rien n'est
@@ -1282,7 +1286,7 @@ quel coffre, voir `chestCeremonyClose`), une page s'ouvre avec la pièce seule
 sur l'échiquier et cinq repères à ramasser. Ni tour par tour, ni adversaire.
 
 Le point délicat : **tous les déplacements ne vont pas partout** (la Fourmi ne
-recule pas, la Garde de Feu ne quitte jamais sa couleur de case). Cinq
+recule pas, et une fois promue elle ne bouge plus comme avant). Cinq
 repères tirés au hasard seraient souvent impossibles à prendre. Ils sont donc
 posés le long d'une **promenade de la pièce** (`drillLayDots`) : un chemin qui
 les ramasse tous existe par construction. Si le joueur s'écarte et se coince,

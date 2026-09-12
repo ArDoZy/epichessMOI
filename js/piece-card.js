@@ -61,8 +61,6 @@
 // La clé est l'identifiant de la pièce : c'est le pouvoir de CETTE créature
 // qu'on illustre, pas une catégorie abstraite.
 const POWER_ICONS={
-  // Espadon (Empereur) : une lame.
-  empereur:'<path d="M4 20l4-1 11-11 1-4-4 1L5 16z"/><path d="M6 18l-2 2"/><path d="M14 6l4 4"/>',
   // Domination (Grand Maître) : une couronne qui pèse sur une barre.
   'grand-maitre':'<path d="M4 8l3 3 5-6 5 6 3-3v8H4z"/><path d="M4 19h16"/>',
   // Promotion (Fourmi) : une flèche qui monte JUSQU'À la dernière rangée, la
@@ -337,7 +335,7 @@ document.addEventListener('click',e=>{
 // Elle s'ouvre AUSSI pour une pièce verrouillée : savoir ce que fait une
 // créature qu'on n'a pas encore est précisément ce qui donne envie de la
 // débloquer. C'est même le seul endroit où l'on peut lire le pouvoir des
-// Primordiales, de l'Empereur ou du Grand Maître avant de les posséder — la
+// Primordiales ou du Grand Maître avant de les posséder — la
 // carte, elle, reste voilée.
 function openPieceSheet(pieceId){
   const p=PIECES.find(x=>x.id===pieceId);

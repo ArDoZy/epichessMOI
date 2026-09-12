@@ -554,8 +554,6 @@ const MOVE_GESTURE={
   'dresseur-elephant': {cls:'gc-charge',  air:true},   // il s'arc-boute, puis il part
   'preux-chevalier':   {cls:'gc-stomp',   air:false},  // le pas d'un homme en armure
   'garde-pierre':      {cls:'gc-stomp',   air:false},
-  'garde-eau':         {cls:'gc-flow',    air:true},   // il se verse d'une case à l'autre
-  'garde-feu':         {cls:'gc-flicker', air:true},   // il vacille au lieu de glisser
   'fourmi':            {cls:'gc-scuttle', air:true},   // pressee, minuscule, saccadee
 
   // SORCIERS. Aucun ne touche vraiment le sol : ils se déplacent par un autre
@@ -569,7 +567,6 @@ const MOVE_GESTURE={
   // rien et se posent d'aplomb. Une pièce qui vaut treize points n'a pas
   // besoin de s'agiter pour qu'on la regarde.
   'roi':               {cls:'gc-regal',   air:false},
-  'empereur':          {cls:'gc-regal',   air:false},
   'dame':              {cls:'gc-regal',   air:false},
   'amazone':           {cls:'gc-regal',   air:false},
   'grand-maitre':      {cls:'gc-regal',   air:false},
@@ -584,7 +581,7 @@ const MOVE_GESTURE={
 };
 // Toutes les classes de geste, pour le nettoyage : un nom oublié ici et deux
 // gestes se superposent sur la même pièce au coup suivant.
-const GESTURE_CLASSES=['gc-leap','gc-land','gc-charge','gc-stomp','gc-flow','gc-flicker',
+const GESTURE_CLASSES=['gc-leap','gc-land','gc-charge','gc-stomp',
   'gc-scuttle','gc-spin','gc-phase','gc-drift','gc-solemn','gc-regal','gc-gallop',
   'gc-slam','gc-glide'];
 

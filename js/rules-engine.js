@@ -167,10 +167,13 @@ function generateMovesRaw(board,r,c,gs){
   if(gs.anchored&&gs.anchored.has(`${r},${c}`))return[];
   let moves=[];const id=p.pieceId||'';
 
-  if(p.isKing||p.type==='k'||['roi','empereur'].includes(id)){
-    if(id==='empereur'){for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++){if(!dr&&!dc)continue;const nr=r+dr,nc=c+dc;if(inB(nr,nc)&&(!board[nr][nc]||board[nr][nc].color!==p.color))moves.push({r:nr,c:nc});}moves=moves.concat(knightMoves(board,r,c,p));}
-    else moves=kingMoves(board,r,c,p,gs);
-    return moves;
+  // LE ROI EST LE SEUL MONARQUE. L'Empereur — qui marchait comme lui ET
+  // sautait comme un cavalier — a été retiré du jeu : il n'y a donc plus de
+  // branche à choisir ici, et plus aucune liste `['roi','empereur']` à tenir
+  // à jour ailleurs dans le fichier. `isKing`/`type==='k'` reste le test :
+  // c'est lui que porte une pièce PROMUE en Roi comme le Roi de départ.
+  if(p.isKing||p.type==='k'||id==='roi'){
+    return kingMoves(board,r,c,p,gs);
   }
 
   switch(id){
@@ -206,14 +209,10 @@ function generateMovesRaw(board,r,c,gs){
       for(const[dr,dc] of[[1,0],[-1,0],[0,1],[0,-1]]){const nr=r+dr,nc=c+dc;if(inB(nr,nc)&&(!board[nr][nc]||board[nr][nc].color!==p.color))moves.push({r:nr,c:nc});}
       for(const[dr,dc] of[[2,0],[-2,0],[0,2],[0,-2]]){const nr=r+dr,nc=c+dc;if(!inB(nr,nc))continue;const mr=r+dr/2,mc2=c+dc/2;if(board[mr][mc2]&&board[mr][mc2].color===p.color)continue;if(board[nr][nc]&&board[nr][nc].color===p.color)continue;moves.push({r:nr,c:nc,destroysPath:true,fromR:r,fromC:c});}
       break;
-    // LES TROIS GARDES, et rien de plus : une seule case, mais chacune sa
-    // grammaire. L'Eau ne connaît que l'orthogonale, le Feu que la diagonale,
-    // la Pierre les deux. Ce sont les trois premières créatures du joueur :
-    // elles enseignent le plateau, elles ne cachent aucun pouvoir.
-    case 'garde-eau':
-      for(const[dr,dc] of[[1,0],[-1,0],[0,1],[0,-1]]){const nr=r+dr,nc=c+dc;if(inB(nr,nc)&&(!board[nr][nc]||board[nr][nc].color!==p.color))moves.push({r:nr,c:nc});}break;
-    case 'garde-feu':
-      for(const[dr,dc] of[[1,1],[1,-1],[-1,1],[-1,-1]]){const nr=r+dr,nc=c+dc;if(inB(nr,nc)&&(!board[nr][nc]||board[nr][nc].color!==p.color))moves.push({r:nr,c:nc});}break;
+    // LE GARDE DE PIERRE : une case dans les huit directions, et son ancrage.
+    // Il était le dernier de trois Gardes — l'Eau n'allait que tout droit, le
+    // Feu qu'en biais — retirés du jeu depuis : il porte donc seul le
+    // vocabulaire complet du plateau, orthogonal et diagonal à la fois.
     case 'garde-pierre':
       for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++){if(!dr&&!dc)continue;const nr=r+dr,nc=c+dc;if(inB(nr,nc)&&(!board[nr][nc]||board[nr][nc].color!==p.color))moves.push({r:nr,c:nc});}break;
     case 'meduse':
@@ -275,15 +274,15 @@ function isInCheckSimple(color,board){
 // donc le raccourci « attaque comme son pieceType » ne doit JAMAIS jouer
 // pour elles, sinon la Banshee, le Typhon ou un Garde donneraient échec
 // comme leur pieceType de base tout le long d'une ligne, ce qui est faux.
-const CUSTOM_MOVE_IDS=new Set(['amazone','fourmi','preux-chevalier','dresseur-elephant','garde-eau','garde-feu','garde-pierre','meduse','typhon','banshee','pretre']);
+const CUSTOM_MOVE_IDS=new Set(['amazone','fourmi','preux-chevalier','dresseur-elephant','garde-pierre','meduse','typhon','banshee','pretre']);
 // Pièces qui donnent échec en GLISSANT (portée illimitée). Le raccourci par
 // pieceType (b/r/q) couvre en plus les pièces standard et promues.
 const DIAG_SLIDER_IDS=new Set(['fou-primordial','amazone','dame','grand-maitre']);
 const ORTHO_SLIDER_IDS=new Set(['tour-primordiale','chevaucheur-rhinoceros','dame','grand-maitre']);
 // Pièces qui donnent échec par un saut de cavalier.
-const KNIGHT_ATK_IDS=new Set(['cavalier-primordial','amazone','chevaucheur-rhinoceros','grand-maitre','empereur']);
+const KNIGHT_ATK_IDS=new Set(['cavalier-primordial','amazone','chevaucheur-rhinoceros','grand-maitre']);
 // Pièces qui donnent échec sur une case adjacente (8 directions, 1 case).
-const KING_ADJ_IDS=new Set(['roi','empereur','garde-pierre']);
+const KING_ADJ_IDS=new Set(['roi','garde-pierre']);
 
 function isSquareAttackedSimple(tr,tc,defColor,board){
   const atk=opp(defColor);
@@ -325,10 +324,6 @@ function isSquareAttackedSimple(tr,tc,defColor,board){
   for(const dc of[-1,1]){const r=tr+atkFwdDir,c=tc+dc;if(inB(r,c)){const p=board[r][c];if(p&&p.color===atk&&p.pieceId==='fourmi')return true;}}}
   // --- Typhon : 1 case en diagonale ---
   for(const[dr,dc] of[[1,1],[1,-1],[-1,1],[-1,-1]]){const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;const p=board[r][c];if(p&&p.color===atk&&p.pieceId==='typhon')return true;}
-  // --- Garde d'Eau : 1 case orthogonale ---
-  for(const[dr,dc] of[[1,0],[-1,0],[0,1],[0,-1]]){const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;const p=board[r][c];if(p&&p.color===atk&&p.pieceId==='garde-eau')return true;}
-  // --- Garde de Feu : 1 case diagonale ---
-  for(const[dr,dc] of[[1,1],[1,-1],[-1,1],[-1,-1]]){const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;const p=board[r][c];if(p&&p.color===atk&&p.pieceId==='garde-feu')return true;}
   // --- Banshee : 1 OU 2 cases en diagonale (les 2 cases sans sauter) ---
   for(const[dr,dc] of[[1,1],[1,-1],[-1,1],[-1,-1]]){const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;const p=board[r][c];if(p&&p.color===atk&&p.pieceId==='banshee')return true;}
   for(const[dr,dc] of[[2,2],[2,-2],[-2,2],[-2,-2]]){const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;const midR=tr+dr/2,midC=tc+dc/2;if(!inB(midR,midC)||board[midR][midC])continue;const p=board[r][c];if(p&&p.color===atk&&p.pieceId==='banshee')return true;}
@@ -350,7 +345,7 @@ function isSquareAttackedSimple(tr,tc,defColor,board){
 
 function getLegalMovesKingFiltered(board,r,c,gs,moves){
   const p=board[r][c];if(!p)return moves;
-  const isKingPiece=p.type==='k'||p.isKing||['roi','empereur'].includes(p.pieceId);
+  const isKingPiece=p.type==='k'||p.isKing||p.pieceId==='roi';
   if(!isKingPiece)return moves;
   return moves.filter(m=>{
     for(const[dr,dc] of[[1,1],[1,-1],[-1,1],[-1,-1]]){const tr=m.r+dr,tc=m.c+dc;if(!inB(tr,tc))continue;const t=board[tr][tc];if(t&&t.color!==p.color&&t.pieceId==='typhon')return false;}
@@ -564,20 +559,6 @@ function fxCreatureSignature(p,to,board,gs){
       if(couvre)fxPower('foi',to.r,to.c);
       break;
     }
-    // ESPADON : l'Empereur ne menace en cavalier que s'il menace VRAIMENT.
-    // L'effet ne se déclenche donc pas à chacun de ses coups, mais au seul
-    // instant où son pouvoir mord — sinon deux lames se croiseraient sur le
-    // plateau toutes les trois secondes sans rien vouloir dire.
-    case 'empereur':{
-      const foe=opp(p.color);
-      for(const[dr,dc] of[[1,2],[2,1],[-1,2],[-2,1],[1,-2],[2,-1],[-1,-2],[-2,-1]]){
-        const kr=to.r+dr,kc=to.c+dc;
-        if(!inB(kr,kc))continue;
-        const t=board[kr][kc];
-        if(t&&t.color===foe&&(t.isKing||t.type==='k')){fxPower('espadon',to.r,to.c);break;}
-      }
-      break;
-    }
     // DOMINATION : UNE SEULE FOIS PAR PARTIE, et c'est tout le raisonnement.
     // La Domination est vraie tant que le Grand Maître vit — c'est un état,
     // porté en permanence par la pièce (.pc-dominant). En rejouer l'onde à
@@ -650,7 +631,7 @@ function executeGameMove(from,to,gs){
       castle:to.castle||null,rook:rook,rookPieceId:rookPieceId,power:power,
     });
     // Les pouvoirs qui ne détruisent rien mais changent une règle : le dôme du
-    // Prêtre, l'Espadon de l'Empereur, la Domination du Grand Maître.
+    // Prêtre, la Domination du Grand Maître.
     if(!REPLAYING)fxCreatureSignature(p,to,b,gs);
   }
 
@@ -861,8 +842,8 @@ function showPromoModal(gs){
 // aucune notation d'échecs ne l'écrit. On note donc comme tout le monde depuis
 // deux siècles — la pièce, puis la case d'arrivée —, la LETTRE de la pièce
 // étant remplacée par son LOGO : sur un jeu où les pièces sont des créatures,
-// « M » ou « G » ne désignerait rien (Méduse, Grand Maître ? Garde d'Eau, de
-// Feu, de Pierre ?), le dessin, si.
+// « M » ou « G » ne désignerait rien (Méduse, Monarque ? Garde de Pierre,
+// Grand Maître ?), le dessin, si.
 //
 // LA CASE DE DÉPART REVIENT QUAND, ET SEULEMENT QUAND, ELLE LÈVE UNE
 // AMBIGUÏTÉ : deux créatures du même logo pouvant aller sur la même case. On

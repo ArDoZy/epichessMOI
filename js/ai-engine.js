@@ -24,14 +24,15 @@
 // ================================================================
 
 const CVAL={
-  'roi':10000,'empereur':10000,
+  'roi':10000,
   'dame':950,'amazone':800,'chevaucheur-rhinoceros':870,'grand-maitre':1200,
   'cavalier-primordial':360,'fou-primordial':360,'tour-primordiale':530,
   'dresseur-elephant':310,'meduse':240,'typhon':520,
   'fourmi':190,'banshee':430,'preux-chevalier':210,
-  // Les trois Gardes : une seule case. L'Eau et le Feu couvrent chacun quatre
-  // directions, la Pierre les huit — et elle sait en plus s'ancrer.
-  'garde-eau':200,'garde-feu':200,'garde-pierre':290,'pretre':420,'std-pawn':100,
+  // Le Garde de Pierre : une seule case, mais dans les huit directions — et
+  // il sait en plus s'ancrer. Ses deux cadets, l'Eau et le Feu, sont sortis du
+  // jeu ; sa valeur, elle, ne bouge pas.
+  'garde-pierre':290,'pretre':420,'std-pawn':100,
 };
 const PVAL={k:10000,q:950,r:530,b:360,n:360,p:100};
 // Classe de chaque pièce, indexée pour l'évaluation : PIECES.find() dans la
@@ -326,7 +327,7 @@ function evalBoard(board,gs){
     }
 
     let devBonus=0;
-    const isKingPiece=p.isKing||p.type==='k'||['roi','empereur'].includes(p.pieceId);
+    const isKingPiece=p.isKing||p.type==='k'||p.pieceId==='roi';
     const isPawn=p.type==='p'||p.pieceId==='std-pawn'||p.pieceId==='fourmi'||p.pieceId==='preux-chevalier';
     if(!isKingPiece&&!isPawn){
       const homeRow=p.color==='b'?0:7;
@@ -420,10 +421,9 @@ function applyMoveQuick(board,from,to,p,anchored){
 const ZK=(()=>{
   let seed=0xDEADBEEF;
   const rnd=()=>{seed=Math.imul(1664525,seed)+1013904223|0;return(seed>>>0);};
-  const pieceIds=['roi','empereur','amazone','chevaucheur-rhinoceros',
+  const pieceIds=['roi','amazone','chevaucheur-rhinoceros',
     'dame','grand-maitre','cavalier-primordial','fou-primordial','tour-primordiale',
-    'fourmi','preux-chevalier','dresseur-elephant',
-    'garde-eau','garde-feu','garde-pierre',
+    'fourmi','preux-chevalier','dresseur-elephant','garde-pierre',
     'meduse','typhon','banshee','pretre',
     'std-pawn','std-r','std-n','std-b'];
   const pidx={};pieceIds.forEach((id,i)=>{pidx[id]=i;});

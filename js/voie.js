@@ -61,7 +61,7 @@ function vvEstimateAiElo(){
 // victoire rapportait +127, et une victoire de routine à bas classement +48.
 // Simulé à 50 % de victoires, cela donnait Pierre en 4 parties, Bronze en 17,
 // Acier en 37, et 1000 ELO en 77. Tout le catalogue de créatures jusqu'à
-// l'Empereur tombait en une soirée.
+// le Typhon tombait en une soirée.
 //
 // Et juste derrière, un MUR : passé 1000 les bonus s'éteignaient d'un coup et
 // l'Elo redevenait pur, c'est-à-dire immobile à 50 % de victoires. La même
@@ -173,8 +173,8 @@ const VV_ELITE_ELO=2000;
 //      35 %   │     34    154    342      528      916       —      —
 //
 // Et les jalons de la Voie eux-mêmes, à 50 % de victoires : 6 perles dès la
-// première partie, le Preux Chevalier en 4, la Méduse en 21, l'Empereur en
-// 66, le Prêtre en 153, le Typhon en 211, la Banshee en 268, le Grand Maître
+// première partie, le Preux Chevalier en 4, la Méduse en 21, l'Amazone en
+// 30, le Prêtre en 153, le Typhon en 211, la Banshee en 268, le Grand Maître
 // en 591.
 //
 // Ce qu'il faut y lire, et qui EST la promesse :
@@ -459,7 +459,7 @@ function renderVoiePage(){
       '</div>';
   };
   UNLOCK_MILESTONES.forEach((milestone,idx)=>{
-    // Les cinq jalons de départ (Roi, Dame et les trois Gardes — `starter`)
+    // Les trois jalons de départ (Roi, Dame et le Garde de Pierre — `starter`)
     // sont à 0 ELO, donc numériquement dans la tranche Bois, mais ils ne
     // portent PAS sa porte : ils forment le socle tout en bas de la Voie,
     // sous l'arène. La porte Bois s'ouvre normalement au jalon suivant

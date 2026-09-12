@@ -95,6 +95,27 @@ function replayArmyFromRecord(a){
          extras:((a&&a.extras)||[]).slice(),placements:(a&&a.pl)||{}};
 }
 
+// UNE ARMÉE DONT UNE CRÉATURE A QUITTÉ LE CATALOGUE NE SE REJOUE PAS.
+// Le Garde d'Eau, le Garde de Feu et l'Empereur sont sortis du jeu
+// (RETIRED_PIECE_IDS, js/data-pieces.js) : les parties enregistrées avant leur
+// retrait citent encore leurs identifiants.
+//
+// On pourrait croire que buildGameBoard s'en sort — il ignore un `extra`
+// introuvable — et c'est bien le problème : il poserait une armée À TROU, puis
+// les coups enregistrés porteraient sur des cases vides. Le replay ne planterait
+// pas (la boucle s'arrête sur `if(!piece)break`), mais il montrerait une partie
+// qui n'a jamais eu lieu, ce qui est pire qu'un refus.
+//
+// On refuse donc AVANT de construire quoi que ce soit, et le message dit
+// pourquoi. Le monarque et le général étaient déjà couverts (fp() rend null,
+// replayFrames sortait) ; c'est le cas des trois créatures libres qui manquait.
+function replayArmyIsPlayable(a){
+  if(!a)return false;
+  const known=id=>(typeof PIECES!=='undefined')&&!!PIECES.find(p=>p.id===id);
+  if(!known(a.mon)||!known(a.gen))return false;
+  return ((a.extras)||[]).every(known);
+}
+
 // Rejoue l'enregistrement du début à la fin et renvoie une IMAGE par position
 // — position de départ comprise, d'où `moves.length + 1` images. Tout est
 // calculé d'un coup à l'ouverture : parcourir une partie de quarante coups en
@@ -106,6 +127,7 @@ function replayArmyFromRecord(a){
 function replayFrames(rec){
   if(!rec||!rec.w||!rec.b)return null;
   if(typeof buildGameBoard!=='function'||typeof executeGameMove!=='function')return null;
+  if(!replayArmyIsPlayable(rec.w)||!replayArmyIsPlayable(rec.b))return null;
   const white=replayArmyFromRecord(rec.w),black=replayArmyFromRecord(rec.b);
   if(!white.mon||!white.gen||!black.mon||!black.gen)return null;
   const pc=rec.pc==='b'?'b':'w';

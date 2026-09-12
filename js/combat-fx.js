@@ -446,15 +446,6 @@ function fxPower(kind,r,c){
       fxShockwave(r,c,'fx-shock-gold');
       break;
     }
-    // ESPADON : l'Empereur menace en cavalier. Deux arcs se croisent sur sa
-    // case — c'est une lame qu'on dessine, donc deux traits fins et rapides,
-    // et surtout pas un halo : rien de ce qui coupe n'est flou.
-    case 'espadon':{
-      const node=fxCellNode(r,c,'fx-sword');
-      node.innerHTML='<span class="fx-slash"></span><span class="fx-slash fx-slash2"></span>';
-      fxMount('over',node,620);
-      break;
-    }
     // FOI INÉBRANLABLE : le dôme du Prêtre. Il s'ouvre sur SA case, et les
     // alliées qu'il couvre portent leur liseré en permanence (.pc-warded,
     // js/game-render.js) : ici l'ÉVÉNEMENT, là-bas l'ÉTAT — le même partage

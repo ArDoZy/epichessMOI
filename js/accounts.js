@@ -287,6 +287,9 @@ function enterAccount(username,isNewAccount){
   army={mon:null,gen:null,extras:[]};
   editingArmyId=null;builderMode='player';
   if(typeof pLoaded!=='undefined')pLoaded=false;
+  // Deux comptes différents dans le même onglet : le second a droit à son
+  // propre avertissement sur les créatures retirées (armiesWarnRetired).
+  if(typeof _arRetiredNotified!=='undefined')_arRetiredNotified=false;
   updateBuilderBanner();updAll();
   if(typeof renderMenuChests==='function')renderMenuChests();
   if(typeof goToMainMenu==='function')goToMainMenu();else showPage('page-builder');
@@ -381,6 +384,10 @@ function loadAccountGlobals(){
   // et de la composition (voir js/armies.js) peut en avoir plusieurs.
   if(savedArmies.length>1){savedArmies=[savedArmies[0]];saveArmies();}
   savedAiArmies=accGet('ai_armies',[]);
+  // LES PIÈCES RETIRÉES SORTENT ICI, avant que quoi que ce soit ne lise ces
+  // données. Le faire plus tard voudrait dire qu'une page a déjà eu l'occasion
+  // de dessiner une armée dont le monarque n'existe pas.
+  accMigrateRetiredPieces();
   // Dotation de départ : le Monarque et le Général, rien de plus. Les
   // créatures s'obtiennent dans les coffres (les trois premières
   // pendant le tutoriel), les paliers d'ELO ouvrant le reste.
@@ -404,6 +411,126 @@ function loadAccountGlobals(){
 
 function saveArmies(){accSet('armies',savedArmies);}
 function saveAiArmies(){accSet('ai_armies',savedAiArmies);}
+
+// ----------------------------------------------------------------
+// MIGRATION : LES TROIS PIÈCES RETIRÉES DU CATALOGUE
+// ----------------------------------------------------------------
+// Le Garde d'Eau, le Garde de Feu et l'Empereur sont sortis du jeu
+// (RETIRED_PIECE_IDS, js/data-pieces.js). Mais un compte créé avant ce
+// changement les porte encore, à cinq endroits différents, et chacun casse
+// quelque chose de différent si on le laisse :
+//
+//   unlocked_pieces   une pièce débloquée qui n'existe plus. Le catalogue de
+//                     composition filtre déjà sur PIECES, donc rien ne
+//                     s'affiche — mais le compte traîne une clé morte que le
+//                     serveur continue de synchroniser à chaque partie.
+//   inventory         des exemplaires d'une créature introuvable. invOwnedIds
+//                     les écarte déjà (isOwnablePiece exige PIECES.find), mais
+//                     le vivier des bots et les statistiques les comptent.
+//   armies            LE CAS QUI FAIT MAL. Si le monarque était l'Empereur,
+//                     pLoad() ne le retrouve pas et laisse l'emplacement vide :
+//                     l'armée devient incomplète, et le joueur arrive sur une
+//                     page de composition amputée sans savoir pourquoi.
+//   ai_armies         même chose pour les armées données à l'Instructeur.
+//   piece_stats       la « créature fétiche » de la fiche de compte pouvait
+//                     être une pièce qui n'existe plus, donc sans nom.
+//
+// LE REMPLACEMENT EST LE CHOIX LE PLUS CONSERVATEUR POSSIBLE : un monarque
+// retiré devient le ROI (le seul monarque restant), ce qui garde l'armée
+// JOUABLE et fait BAISSER sa valeur (le Roi vaut 3, l'Empereur valait 8) — on
+// ne dépasse donc jamais les 24 points. Une créature libre retirée est
+// simplement enlevée : rien ne dit par quoi la remplacer, et choisir à la
+// place du joueur serait pire que lui rendre un emplacement vide.
+//
+// L'ARMÉE DEVENUE INCOMPLÈTE EST SIGNALÉE, PAS RAFISTOLÉE. Elle reste
+// enregistrée telle quelle (deux créatures au lieu de trois, par exemple) ;
+// armiesWarnIncomplete() en avertit le joueur à sa première arrivée sur la page
+// de composition, et l'emplacement vide lui dit exactement quoi faire.
+//
+// Cette fonction est IDEMPOTENTE : un compte déjà migré n'écrit plus rien
+// (chaque bloc ne touche au stockage que s'il a réellement trouvé une clé
+// morte), ce qui évite d'envoyer un état identique au serveur à chaque
+// connexion.
+let ACC_RETIRED_REPORT=null;   // {armies:n, ai:n, monarchs:n, incomplete:bool}
+
+function accMigrateRetiredPieces(){
+  const rep={unlocked:0,inventory:0,armies:0,ai:0,monarchs:0,stats:0,incomplete:false};
+  if(typeof RETIRED_PIECE_IDS==='undefined'){ACC_RETIRED_REPORT=null;return rep;}
+  const dead=id=>!!id&&RETIRED_PIECE_IDS.has(id);
+
+  // --- 1. les déblocages ---
+  const unlocked=accGet('unlocked_pieces',null);
+  if(Array.isArray(unlocked)){
+    const keep=unlocked.filter(id=>!dead(id));
+    if(keep.length!==unlocked.length){rep.unlocked=unlocked.length-keep.length;accSet('unlocked_pieces',keep);}
+  }
+
+  // --- 2. l'inventaire ---
+  const inv=accGet('inventory',null);
+  if(inv&&typeof inv==='object'){
+    let n=0;
+    Object.keys(inv).forEach(id=>{if(dead(id)){delete inv[id];n++;}});
+    if(n){rep.inventory=n;accSet('inventory',inv);}
+  }
+
+  // --- 3. et 4. les armées (celle du joueur, puis celles de l'IA) ---
+  // `placements` est indexé PAR IDENTIFIANT DE PIÈCE : retirer une créature de
+  // `extras` sans retirer sa colonne laisserait buildGameBoard poser une pièce
+  // fantôme — il cherche PIECES.find(id) et abandonne, mais la colonne resterait
+  // réservée pour rien.
+  const fixArmy=a=>{
+    if(!a||typeof a!=='object')return false;
+    let changed=false;
+    if(a.mon&&dead(a.mon.id)){a.mon={id:RETIRED_MONARCH_REPLACEMENT};changed=true;rep.monarchs++;}
+    if(a.gen&&dead(a.gen.id)){a.gen=null;changed=true;}
+    if(Array.isArray(a.extras)){
+      const keep=a.extras.filter(id=>!dead(id));
+      if(keep.length!==a.extras.length){a.extras=keep;changed=true;}
+    }
+    if(a.placements&&typeof a.placements==='object'){
+      Object.keys(a.placements).forEach(id=>{if(dead(id)){delete a.placements[id];changed=true;}});
+    }
+    if(changed){
+      // La valeur enregistrée ne correspond plus : on la recalcule depuis le
+      // catalogue plutôt que de laisser le compteur « Valeur x / 24 » mentir.
+      const val=id=>{const p=PIECES.find(x=>x.id===id);return p?p.value:0;};
+      a.totalValue=val(a.mon&&a.mon.id)+val(a.gen&&a.gen.id)+
+        (a.extras||[]).reduce((s,id)=>s+val(id),0);
+      if(!a.mon||!a.gen||(a.extras||[]).length!==3)rep.incomplete=true;
+    }
+    return changed;
+  };
+
+  if(Array.isArray(savedArmies)){
+    let n=0;savedArmies.forEach(a=>{if(fixArmy(a))n++;});
+    if(n){rep.armies=n;saveArmies();}
+  }
+  if(Array.isArray(savedAiArmies)){
+    let n=0;savedAiArmies.forEach(a=>{if(fixArmy(a))n++;});
+    if(n){rep.ai=n;saveAiArmies();}
+  }
+
+  // --- 5. les statistiques par créature ---
+  const stats=accGet('piece_stats',null);
+  if(stats&&typeof stats==='object'){
+    let n=0;
+    Object.keys(stats).forEach(id=>{if(dead(id)){delete stats[id];n++;}});
+    if(n){rep.stats=n;accSet('piece_stats',stats);}
+  }
+
+  // L'HISTORIQUE DES PARTIES N'EST PAS RÉÉCRIT, et c'est volontaire : c'est une
+  // ARCHIVE, pas un état de jeu. Une partie jouée avec un Empereur a bien été
+  // jouée avec un Empereur, et effacer la pièce de la ligne d'historique
+  // falsifierait le passé. Tout ce qui la lit s'en accommode déjà : la vignette
+  // d'armée filtre sur PIECES (filter(Boolean)) et le replay refuse proprement
+  // un enregistrement dont il ne peut plus reconstruire l'armée
+  // (replayFrames, js/replay.js).
+
+  const total=rep.unlocked+rep.inventory+rep.armies+rep.ai+rep.stats;
+  ACC_RETIRED_REPORT=total?rep:null;
+  return rep;
+}
+
 
 // Le bandeau du haut a disparu : le pseudo et l'ELO sont sur le menu
 // principal, en toutes lettres. La fonction subsiste sous son nom (une

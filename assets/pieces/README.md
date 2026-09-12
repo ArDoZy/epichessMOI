@@ -129,7 +129,6 @@ et son cadre jurent.
 | Fichier | Créature | Sujet |
 |---|---|---|
 | `roi.png` | Roi (Monarque) | Un roi guerrier en armure d'argent et de bleu, cape lourde, couronne de fer et de saphirs, épée longue plantée devant lui à deux mains. Barbe, regard de commandement, aucune arrogance. Lueur bleue. |
-| `empereur.png` | Empereur (Monarque) | Un empereur en armure d'apparat d'or et de bleu nuit, manteau d'hermine porté par le vent, diadème à pointes, **espadon** immense levé d'une main. Éclairs bleus autour de la lame. |
 | `amazone.png` | Amazone (Général) | Une archère en cuir clouté et plaques dorées, arc de guerre bandé, flèche encochée, longue tresse, carquois plein. Traînées ambrées derrière la flèche. |
 | `chevaucheur-rhinoceros.png` | Centaure (Général) | Un centaure en armure de plates dorée, torse humain massif, croupe de cheval de bataille, lance de tournoi calée sous le bras, sabots qui frappent la poussière. |
 | `dame.png` | Dame (Général) | Une reine-guerrière en robe d'or et de blanc sous un plastron gravé, longue cape, couronne rayonnante, les mains ouvertes d'où monte une lumière dorée. Majesté, pas de pose sexy. |
@@ -140,8 +139,6 @@ et son cadre jurent.
 | `fourmi.png` | Fourmi (Brute) | Une fourmi de guerre géante, carapace chitineuse rouge sombre lustrée, mandibules ouvertes, un pavois et une hallebarde sanglés sur le dos, dressée sur ses pattes arrière. |
 | `preux-chevalier.png` | Preux Chevalier (Brute) | Un chevalier en armure de plates complète, grand écu à croix cabossé tenu en avant, heaume clos à plumet, épaules en pierre. Rempart vivant. |
 | `dresseur-elephant.png` | Éléphant de guerre (Brute) | Un éléphant de guerre cuirassé en pleine charge, défenses ferrées, caparaçon rouge et or, tourelle de bois sur le dos, trompe levée. |
-| `garde-eau.png` | Garde d'Eau (Brute) | Un fantassin en armure bleu pâle et écailles, casque en goutte, lance courte et bouclier rond ; l'eau court sur le métal et se relève en vague derrière lui. |
-| `garde-feu.png` | Garde de Feu (Brute) | Un fantassin en armure noircie et bronze, braises entre les plaques, casque en goutte, hache courte ; des flammes montent de ses épaules. |
 | `garde-pierre.png` | Garde de Pierre (Brute) | Un fantassin trapu dont l'armure est faite de blocs de granit assemblés, poings serrés, jambes enfoncées dans le sol qui se fissure autour de lui. Ancré, immobile. |
 | `meduse.png` | Méduse (Sorcier) | Une méduse : buste de femme, chevelure de serpents vivants, queue de serpent enroulée, arc court dans le dos, **regard qui pétrifie** — deux yeux violets brillants, et la pierre qui gagne ce qu'elle fixe. |
 | `typhon.png` | Typhon (Sorcier) | Une créature de tempête : torse humanoïde violet sombre pris dans un tourbillon qui remplace ses jambes, éclairs entre les mains, débris en orbite. |

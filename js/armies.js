@@ -244,13 +244,41 @@ function pRandomize(){
   showNotif('Impossible de générer une armée aléatoire avec vos pièces actuelles.','err');
 }
 
+// ----------------------------------------------------------------
+// L'ARMÉE AMPUTÉE PAR LA SUPPRESSION DE TROIS CRÉATURES
+// ----------------------------------------------------------------
+// Le Garde d'Eau, le Garde de Feu et l'Empereur ont quitté le catalogue.
+// accMigrateRetiredPieces (js/accounts.js) les a déjà retirés de l'armée
+// enregistrée et a remplacé l'Empereur par le Roi là où il tenait le monarque.
+// Il reste à le DIRE : sans un mot, le joueur revient sur sa page de
+// composition, y trouve un emplacement vide qu'il n'a pas vidé, et en conclut
+// que le jeu a perdu son armée.
+//
+// Le message ne part QU'UNE FOIS par chargement de page, et seulement s'il y a
+// vraiment quelque chose à annoncer : le répéter à chaque aller-retour sur la
+// face « armées » ferait exactement le bruit qu'on veut éviter.
+let _arRetiredNotified=false;
+function armiesWarnRetired(){
+  if(_arRetiredNotified)return;
+  const rep=(typeof ACC_RETIRED_REPORT!=='undefined')?ACC_RETIRED_REPORT:null;
+  if(!rep)return;
+  _arRetiredNotified=true;
+  if(typeof showNotif!=='function')return;
+  if(rep.monarchs&&rep.incomplete)
+    showNotif('L\'Empereur et les Gardes d\'Eau et de Feu ont quitté le jeu. Votre Roi a pris le trône, et il reste des emplacements à repourvoir.');
+  else if(rep.monarchs)
+    showNotif('L\'Empereur a quitté le jeu : votre Roi a pris le trône de votre armée.');
+  else if(rep.incomplete)
+    showNotif('Des créatures retirées du jeu ont quitté votre armée. Choisissez-en d\'autres pour la compléter.');
+}
+
 // Point d'entrée de la page "Mes armées" : recharge depuis la seule armée
 // enregistrée et (re)dessine. Appelée à chaque arrivée sur la face "armées"
 // du cube (cube-nav.js) et à chaque rafraîchissement externe (achat/ouverture
 // de coffre, fin de tutoriel...) : dans tous les cas, savedArmies[0] est la
 // seule source de vérité, donc la recharger est toujours sûr.
 const renderArmiesPage=()=>{
-  if(!pLoaded){pLoad();pLoaded=true;}
+  if(!pLoaded){pLoad();pLoaded=true;armiesWarnRetired();}
   pUpdateAll();
 };
 

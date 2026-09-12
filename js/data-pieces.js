@@ -342,7 +342,6 @@ const DAILY_REWARDS=[
 // paraphrase son déplacement.
 const PIECES=[
   {id:'roi',name:'Roi',emoji:'👑',class:'Monarque',value:3,qty:1,pieceType:'k',ability:null},
-  {id:'empereur',name:'Empereur',emoji:'⚜️',class:'Monarque',value:8,qty:1,pieceType:'k',ability:'Espadon : Met en échecs le roi adverse en l\'attaquant en cavalier'},
   {id:'amazone',name:'Amazone',emoji:'🏹',class:'Général',value:7,qty:1,pieceType:'q',ability:null},
   // Le Chevaucheur de Rhinocéros s'appelle désormais le Centaure. L'IDENTIFIANT
   // reste 'chevaucheur-rhinoceros' : c'est la clé sous laquelle les armées, les
@@ -357,20 +356,52 @@ const PIECES=[
   {id:'fourmi',name:'Fourmi',emoji:'🐜',class:'Brute',value:2,qty:2,pieceType:'p',ability:'Promotion : Se promeut si elle arrive sur la dernière rangée'},
   {id:'preux-chevalier',name:'Preux Chevalier',emoji:'🛡️',class:'Brute',value:3,qty:2,pieceType:'r',ability:'Cuirasse : Les pions adverses ne peuvent pas le capturer'},
   {id:'dresseur-elephant',name:'Éléphant de guerre',emoji:'🐘',class:'Brute',value:3,qty:2,pieceType:'r',ability:'Charge : Détruit toutes les pièces ennemies sur son passage'},
-  // LES TROIS GARDES : les premières créatures du jeu, et les plus simples à
-  // comprendre. Chacune ne connaît qu'UNE façon d'aller d'une case à l'autre —
-  // l'Eau tout droit, le Feu en biais, la Pierre partout mais une seule case —
-  // ce qui en fait le vocabulaire de base du plateau : orthogonal, diagonal,
-  // les deux. Les deux premières n'ont AUCUN pouvoir, et c'est voulu : on
-  // apprend à déplacer avant d'apprendre à déclencher.
-  {id:'garde-eau',name:'Garde d\'Eau',emoji:'💧',class:'Brute',value:2,qty:2,pieceType:'p',ability:null},
-  {id:'garde-feu',name:'Garde de Feu',emoji:'🔥',class:'Brute',value:2,qty:2,pieceType:'p',ability:null},
+  // LE GARDE DE PIERRE : la première créature du jeu, et la plus simple à
+  // comprendre. Une case dans les huit directions — le vocabulaire complet du
+  // plateau en un seul déplacement, orthogonal ET diagonal — plus un pouvoir
+  // qu'on déclenche soi-même. C'est par lui que commence le tutoriel.
+  //
+  // IL ÉTAIT LE TROISIÈME DE TROIS GARDES. Le Garde d'Eau (une case tout
+  // droit) et le Garde de Feu (une case en biais) le précédaient et ont été
+  // RETIRÉS du jeu : trois créatures pour enseigner « orthogonal, diagonal,
+  // les deux » faisaient deux créatures de trop, et les deux premières
+  // n'avaient aucun pouvoir à montrer. Le tutoriel enseigne désormais le
+  // Garde de Pierre, puis la Fourmi, puis l'Éléphant de guerre — un
+  // déplacement ET un pouvoir à chaque fois (voir js/tutorial.js).
   {id:'garde-pierre',name:'Garde de Pierre',emoji:'🪨',class:'Brute',value:3,qty:2,pieceType:'p',ability:'Retour à l\'Etat Fondamental : S\'ancre sur place, devenant imprenable mais inamovible',hasPower:true,powerLabel:'Retour à l\'Etat Fondamental'},
   {id:'meduse',name:'Méduse',emoji:'🪼',class:'Sorcier',value:2,qty:2,pieceType:'p',ability:'Pétrification : Paralyse les pièces ennemies diagonalement adjacentes'},
   {id:'typhon',name:'Typhon',emoji:'🌪️',class:'Sorcier',value:6,qty:2,pieceType:'b',ability:'Orage Sanguinaire : Les pièces ennemies adjacentes sont détruites après son déplacement'},
   {id:'banshee',name:'Banshee',emoji:'👻',class:'Sorcier',value:4,qty:2,pieceType:'b',ability:'Hurlement : Les pions ennemis adjacents reculent d\'une case s\'ils le peuvent après son déplacement'},
   {id:'pretre',name:'Prêtre',emoji:'✝️',class:'Sorcier',value:4,qty:2,pieceType:'r',ability:'Foi Inébranlable : Les ennemis ne peuvent pas capturer les pièces alliées (sauf Monarque) dans les cases diagonalement adjacentes'},
 ];
+
+// ----------------------------------------------------------------
+// LES PIÈCES RETIRÉES DU JEU
+// ----------------------------------------------------------------
+// Le GARDE D'EAU, le GARDE DE FEU et l'EMPEREUR ne sont plus au catalogue.
+// Les deux Gardes servaient à enseigner « tout droit » et « en biais » et
+// n'avaient aucun pouvoir à montrer ; l'Empereur était un second Monarque, ce
+// qui obligeait tout le code d'échec et mat à demander LEQUEL des deux avant
+// de savoir quoi protéger.
+//
+// LEURS IDENTIFIANTS, EUX, N'ONT PAS DISPARU DES COMPTES. Ils dorment dans les
+// armées enregistrées, dans les inventaires, dans les historiques de parties et
+// dans les enregistrements de replay des joueurs qui ont commencé avant ce
+// changement. Un compte qui les contient ne doit ni perdre sa page de
+// composition, ni lever d'exception : c'est le rôle de accMigrateRetiredPieces
+// (js/accounts.js), qui les efface au chargement du compte et remplace
+// l'Empereur par le Roi là où il tenait le rôle de monarque.
+//
+// NE JAMAIS RÉUTILISER CES TROIS IDENTIFIANTS pour une nouvelle créature : un
+// compte non migré les porterait encore, et la nouvelle pièce apparaîtrait dans
+// des armées qui ne l'ont jamais choisie.
+const RETIRED_PIECE_IDS=new Set(['garde-eau','garde-feu','empereur']);
+// Ce qui remplace un MONARQUE retiré dans une armée enregistrée. Le Roi est
+// désormais le seul monarque du jeu : le choix ne se pose pas, et c'est
+// précisément ce qui rend le remplacement sûr — l'armée garde sa valeur de
+// budget en baisse (le Roi vaut 3 là où l'Empereur valait 8) et reste jouable.
+const RETIRED_MONARCH_REPLACEMENT='roi';
+function isRetiredPieceId(id){return RETIRED_PIECE_IDS.has(id);}
 
 // LE SEUL VRAI PION du jeu. La Fourmi, la Méduse et les trois Gardes portent
 // `pieceType:'p'` pour le moteur, mais ce ne sont PAS des pions : ni la
@@ -400,26 +431,31 @@ const CLASS_COLOR_VARS={Monarque:'var(--monarque)',Général:'var(--general)',Pr
 // TABLE DE DÉBLOCAGE : pièces débloquées par palier d'ELO
 // ----------------------------------------------------------------
 // Un compte neuf ne possède que son Monarque et son Général : tout le reste
-// s'obtient en jouant. Les TROIS GARDES (Eau, Feu, Pierre) arrivent dans les
-// coffres du tutoriel (js/tutorial.js) ; les trois Primordiales ne s'obtiennent
-// QUE dans les coffres (il n'y a plus de « choix de la Primordiale » à la
-// création du compte : on ne choisit pas ce qu'on ne connaît pas encore).
+// s'obtient en jouant. Le GARDE DE PIERRE arrive dans le premier coffre du
+// tutoriel (js/tutorial.js) ; les trois Primordiales ne s'obtiennent QUE dans
+// les coffres (il n'y a plus de « choix de la Primordiale » à la création du
+// compte : on ne choisit pas ce qu'on ne connaît pas encore).
 // `coffre:true` = la pièce n'est ni donnée au départ, ni débloquée par un
 // palier d'ELO : elle n'existe que comme contenu de coffre. `voieMilestone`
-// la fait quand même apparaître comme jalon sur la Voie (c'est le cas des
-// trois Gardes : offertes par le tutoriel, pas par l'ELO, mais on veut les
-// VOIR sur la Voie). `starter` marque les cinq jalons de départ (Roi, Dame,
-// Garde d'Eau, Garde de Feu, Garde de Pierre) : tous à 0 ELO, ils sont rendus
-// TOUT EN BAS de la Voie, sous l'arène Bois, sans bandeau de rang — voir
-// renderVoiePage (js/voie.js), qui saute leur bandeau et ouvre celui de Bois
-// juste après (à la Fourmi).
+// la fait quand même apparaître comme jalon sur la Voie (c'est le cas du
+// Garde de Pierre : offert par le tutoriel, pas par l'ELO, mais on veut le
+// VOIR sur la Voie). `starter` marque les trois jalons de départ (Roi, Dame,
+// Garde de Pierre) : tous à 0 ELO, ils sont rendus TOUT EN BAS de la Voie,
+// sous l'arène Bois, sans bandeau de rang — voir renderVoiePage (js/voie.js),
+// qui saute leur bandeau et ouvre celui de Bois juste après (aux 6 perles de
+// 25 ELO).
 //
-// LES TROIS PREMIÈRES CRÉATURES SONT LES TROIS GARDES, et non plus le Peureux,
-// la Fourmi et l'Éléphant de guerre. Elles disent le vocabulaire du plateau
-// (tout droit, en biais, les deux) au lieu d'ouvrir sur trois pouvoirs à
-// retenir. La Fourmi et l'Éléphant de guerre n'ont pas disparu : ils sont
-// devenus les DEUX PREMIERS DÉBLOCAGES PAR L'ELO (30 et 75), c'est-à-dire les
-// deux premières récompenses de vraies parties.
+// LE TUTORIEL ENSEIGNE TROIS CRÉATURES : le Garde de Pierre, la Fourmi, puis
+// l'Éléphant de guerre. Elles montent en difficulté — une case partout, puis
+// une avance qui se promeut, puis une charge de deux cases — et chacune porte
+// un vrai pouvoir, ce qui n'était pas le cas des Gardes d'Eau et de Feu, à
+// présent retirés du jeu.
+//
+// LA FOURMI ET L'ÉLÉPHANT RESTENT SUR LA VOIE (30 et 75 ELO) bien que le
+// tutoriel les offre : c'est leur seul chemin pour qui SAUTE le tutoriel, et
+// les retirer de la table fermerait ce chemin à un compte déjà commencé. Un
+// joueur qui a fait le tutoriel franchit simplement un jalon déjà acquis,
+// exactement comme le Garde de Pierre apparaît sur la Voie sans y être dû.
 // Jalons de RÉCOMPENSE (pas de nouvelle pièce) : ils jalonnent la Voie entre
 // deux déblocages, pour qu'il y ait toujours quelque chose à décrocher de
 // proche en proche plutôt que de longues sections vides entre deux pièces.
@@ -435,8 +471,6 @@ const CLASS_COLOR_VARS={Monarque:'var(--monarque)',Général:'var(--general)',Pr
 // à l'ancienne échelle, elles ne payaient même pas le premier.
 const UNLOCK_TABLE=[
   {pieceId:'roi',eloRequired:0,starter:true},{pieceId:'dame',eloRequired:0,starter:true},
-  {pieceId:'garde-eau',eloRequired:0,coffre:true,voieMilestone:true,starter:true},
-  {pieceId:'garde-feu',eloRequired:0,coffre:true,voieMilestone:true,starter:true},
   {pieceId:'garde-pierre',eloRequired:0,coffre:true,voieMilestone:true,starter:true},
   {pieceId:'cavalier-primordial',eloRequired:0,coffre:true},
   {pieceId:'fou-primordial',eloRequired:0,coffre:true},
@@ -451,11 +485,20 @@ const UNLOCK_TABLE=[
   {pieceId:'meduse',eloRequired:210},{pieceId:'amazone',eloRequired:260},
   {id:'rw-320',reward:'copies',copyId:'chevaucheur-rhinoceros',qty:2,eloRequired:320},
   {id:'rw-400',reward:'pearls',amount:10,eloRequired:400},
-  {pieceId:'empereur',eloRequired:480},
+  // 480 PORTAIT L'EMPEREUR, qui n'existe plus. Laisser le palier vide aurait
+  // creusé 150 points sans rien à décrocher, entre les perles de 400 et les
+  // exemplaires de 550 : il verse donc des exemplaires de l'Amazone, la pièce
+  // débloquée juste avant (260) et la seule qu'aucun autre jalon ne réapprovisionne.
+  {id:'rw-480',reward:'copies',copyId:'amazone',qty:2,eloRequired:480},
   {id:'rw-550',reward:'copies',copyId:'meduse',qty:2,eloRequired:550},
   {id:'rw-700',reward:'pearls',amount:12,eloRequired:700},
   {pieceId:'pretre',eloRequired:800},{pieceId:'typhon',eloRequired:1000,bigReward:true},
-  {id:'rw-900',reward:'copies',copyId:'empereur',qty:2,eloRequired:900},
+  // L'ID `rw-900` NE CHANGE PAS alors que son lot change : il est la clé sous
+  // laquelle vvCheckRewardMilestones retient qu'un compte a déjà encaissé ce
+  // palier. Lui en donner un neuf reverserait le lot à tous ceux qui l'ont
+  // déjà pris. Le lot passe des exemplaires d'Empereur (supprimé) à ceux de
+  // l'Éléphant de guerre.
+  {id:'rw-900',reward:'copies',copyId:'dresseur-elephant',qty:2,eloRequired:900},
   {id:'rw-1080',reward:'pearls',amount:14,eloRequired:1080},
   {pieceId:'banshee',eloRequired:1150},
   {id:'rw-1300',reward:'copies',copyId:'garde-pierre',qty:2,eloRequired:1300},

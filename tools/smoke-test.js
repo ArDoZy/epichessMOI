@@ -277,11 +277,11 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
       // empile). La date suit, sinon la frise et les infobulles se
       // contrediraient.
       for(let i=0;i<12;i++)h.push({result:i%3===0?'loss':'win',oldElo:400+i*5,newElo:405+i*5,
-        delta:5,date:Date.now()-(11-i)*86400000,ranked:true,army:['garde-eau','fourmi'],mode:'ia'});
+        delta:5,date:Date.now()-(11-i)*86400000,ranked:true,army:['garde-pierre','fourmi'],mode:'ia'});
       // Ces cinq clés appartiennent au SERVEUR : accSet les refuse, et
       // c'est exactement ce qu'on veut. On sème donc par la porte du bac
       // à sable (ecMockSeed, js/server.js), qui n'existe qu'en `?mock`.
-      ecMockSeed({history:h,piece_stats:{'garde-eau':{g:12,w:8},fourmi:{g:3,w:3}},
+      ecMockSeed({history:h,piece_stats:{'garde-pierre':{g:12,w:8},fourmi:{g:3,w:3}},
                   best_streak:7,ranked_games:12,ranked_wins:8});
       renderAccountPage();
     });
@@ -302,10 +302,10 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
       }
       const fav=document.querySelector('.acc-fav-name');
       if(!fav)out.push('aucune créature fétiche');
-      // La Fourmi a 3 parties, sous le minimum : c'est la Garde d'Eau, 12
+      // La Fourmi a 3 parties, sous le minimum : c'est le Garde de Pierre, 12
       // parties, qui doit sortir — sinon on afficherait un « 100 % » sur trois
       // parties.
-      else if(!/Garde d'Eau/i.test(fav.textContent))out.push('fétiche inattendue : '+fav.textContent);
+      else if(!/Garde de Pierre/i.test(fav.textContent))out.push('fétiche inattendue : '+fav.textContent);
       const stats=[...document.querySelectorAll('.acc-stat-k')].map(e=>e.textContent);
       if(!stats.some(t=>/Meilleure série/.test(t)))out.push('la meilleure série n\'est pas affichée');
       const vals=[...document.querySelectorAll('.acc-stat-v')].map(e=>e.textContent);
@@ -330,7 +330,7 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
       if(vvLoadElo()!==eloAvant)out.push('le client a pu écrire son propre ELO');
       // 2. Une partie déclarée, et c'est le serveur qui tranche.
       const r=await ecReportMatch({result:'win',ranked:true,opp_elo:eloAvant,
-        mode:'ia',army:['garde-eau','garde-eau','fourmi']});
+        mode:'ia',army:['garde-pierre','garde-pierre','fourmi']});
       if(!r||typeof r.delta!=='number')out.push('le serveur n\'a pas répondu au rapport de partie');
       else{
         if(r.delta<=0)out.push('une victoire ne rapporte rien : '+r.delta);
@@ -339,11 +339,11 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
       const apres=vvLoadPieceStats();
       // Une créature alignée en double ne compte qu'UNE partie : on mesure
       // les parties jouées avec elle, pas les exemplaires posés.
-      const g0=(avant['garde-eau']&&avant['garde-eau'].g)||0;
-      const w0=(avant['garde-eau']&&avant['garde-eau'].w)||0;
-      if(apres['garde-eau'].g!==g0+1)
-        out.push('une créature en double compte deux fois : '+g0+' -> '+apres['garde-eau'].g);
-      if(apres['garde-eau'].w!==w0+1)out.push('la victoire n\'est pas comptée');
+      const g0=(avant['garde-pierre']&&avant['garde-pierre'].g)||0;
+      const w0=(avant['garde-pierre']&&avant['garde-pierre'].w)||0;
+      if(apres['garde-pierre'].g!==g0+1)
+        out.push('une créature en double compte deux fois : '+g0+' -> '+apres['garde-pierre'].g);
+      if(apres['garde-pierre'].w!==w0+1)out.push('la victoire n\'est pas comptée');
       // 3. Le record de série ne redescend pas.
       if(vvLoadBestStreak()<7)out.push('le record de série a été écrasé : '+vvLoadBestStreak());
       return out;
@@ -2114,9 +2114,118 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
     if(!r.journal)throw new Error('le journal n\'est plus consultable après la partie');
   });
 
-  await step('l\'Empereur vaut 8 points',async()=>{
-    const v=await page.evaluate(()=>PIECES.find(p=>p.id==='empereur').value);
-    if(v!==8)throw new Error('Empereur à '+v+' points au lieu de 8');
+  // TROIS CRÉATURES ONT QUITTÉ LE JEU, et un identifiant oublié dans une table
+  // ne se voit pas : la pièce n'apparaît nulle part, mais la table continue de
+  // la citer, et le jour où quelqu'un lit cette table pour en déduire quoi que
+  // ce soit (la Voie, l'évaluation de l'IA, le hachage Zobrist), il retombe sur
+  // un fantôme. On balaie donc TOUTES les tables qui indexent par identifiant.
+  await step('le Garde d\'Eau, le Garde de Feu et l\'Empereur ont quitté toutes les tables',async()=>{
+    const bad=await page.evaluate(()=>{
+      const morts=['garde-eau','garde-feu','empereur'];
+      const out=[];
+      morts.forEach(id=>{
+        if(PIECES.find(p=>p.id===id))out.push(id+' est encore au catalogue');
+        if(UNLOCK_TABLE.some(u=>u.pieceId===id))out.push(id+' est encore un déblocage de la Voie');
+        if(UNLOCK_TABLE.some(u=>u.copyId===id))out.push(id+' est encore le lot d\'un jalon de la Voie');
+        if(UNLOCK_MILESTONES.some(u=>u.pieceId===id))out.push(id+' est encore un jalon de la Voie');
+        if(typeof CVAL!=='undefined'&&CVAL[id]!==undefined)out.push(id+' a encore une valeur d\'évaluation');
+        if(typeof MOVE_GESTURE!=='undefined'&&MOVE_GESTURE[id])out.push(id+' a encore un geste de déplacement');
+        if(typeof PIECE_ART!=='undefined'&&PIECE_ART[id])out.push(id+' a encore un dessin de plateau');
+        if(!RETIRED_PIECE_IDS.has(id))out.push(id+' n\'est pas déclaré retiré');
+      });
+      // LE ROI EST LE SEUL MONARQUE. C'est ce qui permet à tout le code d'échec
+      // et mat de ne plus jamais demander DUQUEL des deux il s'agit.
+      const mons=PIECES.filter(p=>p.class==='Monarque');
+      if(mons.length!==1||mons[0].id!=='roi')
+        out.push('le Roi n\'est pas le seul monarque : '+mons.map(m=>m.id).join(', '));
+      // Et aucun jalon de la Voie ne verse d'exemplaires d'une pièce inconnue.
+      UNLOCK_TABLE.forEach(u=>{
+        if(u.copyId&&!PIECES.find(p=>p.id===u.copyId))out.push('le jalon '+u.id+' verse des '+u.copyId+', introuvables');
+        if(u.pieceId&&!PIECES.find(p=>p.id===u.pieceId))out.push('le jalon '+u.id+' débloque '+u.pieceId+', introuvable');
+      });
+      return out;
+    });
+    if(bad.length)throw new Error(bad.join(' · '));
+  });
+
+  // LA MIGRATION D'UN COMPTE DÉJÀ COMMENCÉ. Elle est le seul filet entre un
+  // joueur d'avant le retrait et une page de composition qui ne sait plus quoi
+  // dessiner. On fabrique donc exactement l'état qu'il avait — armée à Empereur,
+  // Gardes en stock, déblocages et statistiques — et on vérifie qu'il retombe
+  // sur ses pieds SANS erreur de console (le test échouerait de lui-même).
+  await step('un compte d\'avant le retrait se recharge sans rien perdre d\'autre',async()=>{
+    const bad=await page.evaluate(()=>{
+      const out=[];
+      const memoire={armies:JSON.parse(JSON.stringify(savedArmies)),
+                     inv:JSON.parse(JSON.stringify(invAll())),
+                     unlocked:[...VV_UNLOCKED]};
+      try{
+        accSet('armies',[{id:'legacy',createdAt:1,updatedAt:1,
+          mon:{id:'empereur'},gen:{id:'dame'},
+          extras:['garde-eau','garde-feu','fourmi'],
+          placements:{'garde-eau':2,'garde-feu':1,'fourmi':0},totalValue:22}]);
+        accSet('ai_armies',[{id:'legacy-ia',mon:{id:'empereur'},gen:{id:'amazone'},
+          extras:['garde-feu','meduse','fourmi'],
+          placements:{'garde-feu':1,'meduse':2,'fourmi':0},totalValue:21}]);
+        accSet('inventory',{'garde-eau':6,'garde-feu':6,'fourmi':4,'garde-pierre':6});
+        accSet('unlocked_pieces',['roi','dame','empereur','garde-eau','garde-feu','garde-pierre','fourmi']);
+        accSet('piece_stats',{'garde-eau':{g:9,w:5},fourmi:{g:2,w:1}});
+
+        loadAccountGlobals();
+
+        const a=savedArmies[0];
+        if(!a)out.push('l\'armée enregistrée a disparu');
+        else{
+          if(!a.mon||a.mon.id!=='roi')out.push('le monarque retiré n\'a pas été remplacé par le Roi : '+JSON.stringify(a.mon));
+          if((a.extras||[]).some(id=>RETIRED_PIECE_IDS.has(id)))out.push('une créature retirée est restée dans l\'armée');
+          if(a.extras.indexOf('fourmi')<0)out.push('la Fourmi, elle, devait rester');
+          if(Object.keys(a.placements||{}).some(id=>RETIRED_PIECE_IDS.has(id)))
+            out.push('une colonne reste réservée à une créature retirée');
+          // La valeur est recalculée : Roi 3 + Dame 10 + Fourmi 2 = 15.
+          if(a.totalValue!==15)out.push('la valeur d\'armée n\'a pas été recalculée : '+a.totalValue);
+        }
+        const ia=savedAiArmies[0];
+        if(ia&&(ia.mon.id!=='roi'||ia.extras.some(id=>RETIRED_PIECE_IDS.has(id))))
+          out.push('l\'armée IA n\'a pas été migrée');
+        const inv=accGet('inventory',{});
+        if(Object.keys(inv).some(id=>RETIRED_PIECE_IDS.has(id)))out.push('l\'inventaire garde des exemplaires fantômes');
+        if(inv['fourmi']!==4)out.push('la migration a touché à un stock qu\'elle ne devait pas toucher');
+        if([...VV_UNLOCKED].some(id=>RETIRED_PIECE_IDS.has(id)))out.push('un déblocage fantôme survit');
+        if(!VV_UNLOCKED.has('garde-pierre'))out.push('la migration a emporté le Garde de Pierre avec les deux autres');
+        const stats=accGet('piece_stats',{});
+        if(Object.keys(stats).some(id=>RETIRED_PIECE_IDS.has(id)))out.push('les statistiques gardent une créature fantôme');
+
+        // ET ELLE EST IDEMPOTENTE : repasser dessus ne doit plus rien changer.
+        const avant=JSON.stringify(savedArmies);
+        accMigrateRetiredPieces();
+        if(JSON.stringify(savedArmies)!==avant)out.push('la migration n\'est pas idempotente');
+
+        // La page de composition se dessine, avec un emplacement libre et sans
+        // exception : c'est tout ce qu'on lui demande.
+        pLoaded=false;renderArmiesPage();
+        const slots=document.querySelectorAll('#ar-comp-grid .comp-slot');
+        if(slots.length!==5)out.push('la page de composition ne montre pas ses cinq emplacements');
+        if(!document.querySelector('#ar-comp-grid .comp-slot.cs-free'))
+          out.push('aucun emplacement libre signalé alors que l\'armée est amputée');
+
+        // UN REPLAY D'AVANT LE RETRAIT SE REFUSE, IL NE PLANTE PAS.
+        const vieux={w:{mon:'empereur',gen:'dame',extras:['garde-eau'],pl:{'garde-eau':2}},
+                     b:{mon:'roi',gen:'dame',extras:['fourmi'],pl:{fourmi:2}},pc:'w',m:['6454']};
+        if(replayFrames(vieux)!==null)out.push('un replay citant une pièce retirée n\'est pas refusé');
+        const troué={w:{mon:'roi',gen:'dame',extras:['garde-eau'],pl:{'garde-eau':2}},
+                     b:{mon:'roi',gen:'dame',extras:['fourmi'],pl:{fourmi:2}},pc:'w',m:['6454']};
+        if(replayFrames(troué)!==null)out.push('un replay à l\'armée trouée n\'est pas refusé');
+      }finally{
+        accSet('armies',memoire.armies);savedArmies=memoire.armies;
+        accSet('ai_armies',[]);savedAiArmies=[];
+        invSaveAll(memoire.inv);
+        VV_UNLOCKED=new Set(memoire.unlocked);vvSaveUnlocked(VV_UNLOCKED);
+        accSet('piece_stats',{});
+        pLoaded=false;renderArmiesPage();
+      }
+      return out;
+    });
+    if(bad.length)throw new Error(bad.join(' · '));
   });
 
   // LES POUVOIRS, un par un. Ils sont ce que le jeu a de particulier et ce
@@ -2141,33 +2250,24 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
       };
       const va=(b,r,c,tr,tc)=>generateMovesRaw(b,r,c,etat(b)).some(m=>m.r===tr&&m.c===tc);
 
-      // LES TROIS GARDES — une case, mais chacune sa grammaire : l'Eau tout
-      // droit, le Feu en biais, la Pierre les deux. Ce sont les trois
-      // premières créatures du joueur : si l'une d'elles se met à aller
-      // ailleurs, c'est tout l'apprentissage du plateau qui ment.
-      let b=vide();pose(b,4,4,'garde-eau','w');
-      if(!va(b,4,4,3,4)||!va(b,4,4,5,4)||!va(b,4,4,4,3)||!va(b,4,4,4,5))
-        out.push('garde d\'eau : elle ne va pas dans les quatre orthogonales');
-      if(va(b,4,4,3,3)||va(b,4,4,5,5))out.push('garde d\'eau : elle va en diagonale');
-      if(va(b,4,4,2,4))out.push('garde d\'eau : elle avance de deux cases');
-      b=vide();pose(b,4,4,'garde-feu','w');
-      if(!va(b,4,4,3,3)||!va(b,4,4,3,5)||!va(b,4,4,5,3)||!va(b,4,4,5,5))
-        out.push('garde de feu : elle ne va pas dans les quatre diagonales');
-      if(va(b,4,4,3,4)||va(b,4,4,4,5))out.push('garde de feu : elle va tout droit');
-      if(va(b,4,4,2,2))out.push('garde de feu : elle avance de deux cases');
-      b=vide();pose(b,4,4,'garde-pierre','w');
-      if(!va(b,4,4,3,4)||!va(b,4,4,3,3))out.push('garde de pierre : elle ne couvre pas les huit directions');
-      // Et elles donnent échec là où elles se déplacent, pas ailleurs : une
-      // pièce au déplacement particulier qui attaquerait comme son pieceType
-      // de base donnerait des échecs imaginaires.
-      b=vide();pose(b,4,4,'garde-eau','w');pose(b,3,4,'roi','b');
-      if(!isInCheckSimple('b',b))out.push('garde d\'eau : elle ne donne pas echec tout droit');
-      b=vide();pose(b,4,4,'garde-eau','w');pose(b,3,3,'roi','b');
-      if(isInCheckSimple('b',b))out.push('garde d\'eau : elle donne echec en diagonale');
-      b=vide();pose(b,4,4,'garde-feu','w');pose(b,3,3,'roi','b');
-      if(!isInCheckSimple('b',b))out.push('garde de feu : elle ne donne pas echec en diagonale');
-      b=vide();pose(b,4,4,'garde-feu','w');pose(b,3,4,'roi','b');
-      if(isInCheckSimple('b',b))out.push('garde de feu : elle donne echec tout droit');
+      // LE GARDE DE PIERRE — une case, mais dans les HUIT directions. Il est la
+      // première créature du joueur (premier coffre du tutoriel) : s'il se met
+      // à aller ailleurs, c'est la toute première leçon du jeu qui ment. Ses
+      // deux cadets, l'Eau (tout droit) et le Feu (en biais), ont été retirés
+      // du jeu ; c'est lui, désormais, qui porte les deux grammaires à la fois.
+      let b=vide();pose(b,4,4,'garde-pierre','w');
+      for(const[dr,dc] of[[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]])
+        if(!va(b,4,4,4+dr,4+dc))out.push('garde de pierre : il ne va pas en '+dr+','+dc);
+      if(va(b,4,4,2,4)||va(b,4,4,2,2)||va(b,4,4,4,6))out.push('garde de pierre : il avance de deux cases');
+      // Et il donne échec là où il se déplace, pas ailleurs : une pièce au
+      // déplacement particulier qui attaquerait comme son pieceType de base
+      // (ici 'p') donnerait des échecs imaginaires.
+      b=vide();pose(b,4,4,'garde-pierre','w');pose(b,3,4,'roi','b');
+      if(!isInCheckSimple('b',b))out.push('garde de pierre : il ne donne pas echec tout droit');
+      b=vide();pose(b,4,4,'garde-pierre','w');pose(b,3,3,'roi','b');
+      if(!isInCheckSimple('b',b))out.push('garde de pierre : il ne donne pas echec en diagonale');
+      b=vide();pose(b,4,4,'garde-pierre','w');pose(b,2,4,'roi','b');
+      if(isInCheckSimple('b',b))out.push('garde de pierre : il donne echec à deux cases');
 
       // CUIRASSE — les pions ne prennent pas le Preux Chevalier, la Fourmi si.
       b=vide();pose(b,4,4,'std-pawn','w');pose(b,3,3,'preux-chevalier','b');
@@ -2218,7 +2318,7 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
   await step('un adversaire ne compose son armée qu\'avec des pièces que le joueur possède',async()=>{
     const bad=await page.evaluate(()=>{
       const avant={unlocked:new Set(VV_UNLOCKED),inv:JSON.parse(JSON.stringify(invAll()))};
-      const permis=['roi','dame','cavalier-primordial','garde-eau','meduse'];
+      const permis=['roi','dame','cavalier-primordial','garde-pierre','meduse'];
       const out=[];
       try{
         VV_UNLOCKED=new Set(permis);
@@ -2810,7 +2910,7 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
       fxSetLevel(1);fxSetFlipped(false);
 
       // -- Les ÉVÉNEMENTS : chaque pouvoir pose quelque chose, et le retire.
-      for(const kind of ['ancre','espadon','foi','cuirasse','domination','typhon','banshee','meduse']){
+      for(const kind of ['ancre','foi','cuirasse','domination','typhon','banshee','meduse']){
         const avant=board.querySelectorAll('.fx-layer > *').length;
         fxPower(kind,4,4);
         if(board.querySelectorAll('.fx-layer > *').length<=avant)
@@ -3062,7 +3162,7 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
       currentArmyData={mon,gen,extras:ex.map(p=>p.id),placements};
       const ex2=['preux-chevalier','banshee','pretre'].map(id=>PIECES.find(p=>p.id===id));
       const pl2={};ex2.forEach((p,i)=>pl2[p.id]=[0,1,2][i]);
-      aiArmyData={mon:PIECES.find(x=>x.id==='empereur'),gen:PIECES.find(x=>x.id==='amazone'),
+      aiArmyData={mon:PIECES.find(x=>x.id==='roi'),gen:PIECES.find(x=>x.id==='amazone'),
                   extras:ex2.map(p=>p.id),placements:pl2};
       showPage('page-game');startGame(true,false,null);
       if(typeof cineDismiss==='function')cineDismiss();
@@ -3113,10 +3213,10 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
   // On partait au duel sans la moindre idée de ce qu'on allait avoir en face.
   await step('un profil montre l\'armée, les pièces, les pouvoirs et les parties',async()=>{
     const seed=await page.evaluate(async()=>{
-      const ids=['roi','empereur','dame','amazone','garde-pierre','meduse','fourmi',
+      const ids=['roi','dame','amazone','garde-pierre','meduse','fourmi',
                  'preux-chevalier','banshee','pretre','typhon'];
       VV_UNLOCKED=new Set(ids);vvSaveUnlocked(VV_UNLOCKED);
-      pArmy={mon:PIECES.find(p=>p.id==='empereur'),gen:PIECES.find(p=>p.id==='amazone'),
+      pArmy={mon:PIECES.find(p=>p.id==='roi'),gen:PIECES.find(p=>p.id==='amazone'),
              extras:['meduse','preux-chevalier','fourmi'].map(id=>PIECES.find(p=>p.id===id))};
       pEditId=null;pAutosave();
       const rec=buildReplayRecord(GS);
@@ -3135,7 +3235,7 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
       parties:document.querySelectorAll('#account-body .rp-game:not(.rp-game-off)').length,
     }));
     if(mien.armee!==5)throw new Error(mien.armee+' emplacements d\'armée sur son profil au lieu de 5');
-    if(mien.pieces!==11)throw new Error(mien.pieces+' pièces débloquées affichées au lieu de 11');
+    if(mien.pieces!==10)throw new Error(mien.pieces+' pièces débloquées affichées au lieu de 10');
     if(!mien.pouvoirs)throw new Error('aucun pouvoir listé sur son profil');
     if(!mien.parties)throw new Error('aucune partie rejouable sur son profil');
     // On ouvre la partie : le plateau, ses soixante-quatre cases, et le journal.
@@ -3173,7 +3273,7 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
       parties:document.querySelectorAll('#lb-body .rp-game').length,
     }));
     if(pub.armee!==5)throw new Error('le profil public montre '+pub.armee+' emplacements d\'armée au lieu de 5');
-    if(pub.pieces!==11)throw new Error('le profil public montre '+pub.pieces+' pièces au lieu de 11');
+    if(pub.pieces!==10)throw new Error('le profil public montre '+pub.pieces+' pièces au lieu de 10');
     if(!pub.pouvoirs)throw new Error('le profil public ne liste aucun pouvoir');
     if(!pub.parties)throw new Error('le profil public ne liste aucune partie');
     await page.evaluate(()=>{if(typeof goToMainMenu==='function')goToMainMenu();});
