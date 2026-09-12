@@ -124,6 +124,86 @@
 </script>
 </head>
 <body>
+<!-- ================================================================
+     LES CINQ PICTOGRAMMES, EN TÊTE DE DOCUMENT
+     ================================================================
+     Sablier, épées croisées, parchemin, drapeau, roue des réglages. On les
+     appelle partout par `<use href="#ec-sablier">`, et ils prennent la
+     couleur de leur porteur.
+
+     POURQUOI ILS SONT ÉCRITS ICI PLUTÔT QUE CHARGÉS DEPUIS assets/ui/icones.svg :
+     un `<use>` qui pointe vers un AUTRE document est refusé par tous les
+     navigateurs, par sécurité. Restaient deux voies, et chacune coûtait
+     quelque chose : aller chercher le fichier en JavaScript fait apparaître
+     les icônes APRÈS le premier rendu — donc un clignotement, exactement ce
+     qu'on vient de retirer de la page d'armées — et le jeu n'a aucune étape
+     de construction qui pourrait recopier le fichier tout seul.
+
+     assets/ui/icones.svg reste la SOURCE (il porte les commentaires de
+     dessin) ; ce bloc en est la copie. Pour que « on recopie » ne reste pas
+     une promesse, tools/smoke-test.js compare les deux et échoue s'ils
+     divergent d'un seul caractère.
+     ================================================================ -->
+<svg id="ec-icones" width="0" height="0" aria-hidden="true" focusable="false" style="position:absolute;width:0;height:0;overflow:hidden">
+<title>Epic Chess, pictogrammes d'interface</title>
+
+  <!-- LE SABLIER : la pendule. Deux triangles qui se touchent par la pointe,
+       et non un vrai sablier galbé — la courbe se perd, l'angle non. -->
+  <symbol id="ec-sablier" viewBox="0 0 24 24">
+    <g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M6 2h12M6 22h12"/>
+      <path d="M7 2v3.2c0 2 1.3 3.6 5 6.8 3.7-3.2 5-4.8 5-6.8V2"/>
+      <path d="M7 22v-3.2c0-2 1.3-3.6 5-6.8 3.7 3.2 5 4.8 5 6.8V22"/>
+    </g>
+  </symbol>
+
+  <!-- LES ÉPÉES CROISÉES : le combat. Les deux lames pointent vers le HAUT,
+       poignées en bas : c'est le seul agencement où l'on distingue encore la
+       lame de la garde à dix-huit pixels. Le croisement est placé au tiers
+       supérieur — croisées au centre, les deux lames font une croix, et une
+       croix ne dit pas « duel ». Les trois traits courts de chaque poignée
+       (pommeau, garde, fusée) sont à la limite de ce qui tient : en dessous de
+       deux unités, ils s'effacent une fois sur deux selon l'arrondi. -->
+  <symbol id="ec-epees" viewBox="0 0 24 24">
+    <g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M14.5 17.5 3 6V3h3l11.5 11.5"/>
+      <path d="M13 19 19 13"/><path d="M16 16 20 20"/><path d="M19 21 21 19"/>
+      <path d="M14.5 6.5 18 3h3v3l-3.5 3.5"/>
+      <path d="M5 14 9 18"/><path d="M7 17 4 20"/><path d="M3 19 5 21"/>
+    </g>
+  </symbol>
+
+  <!-- LE PARCHEMIN : le journal des coups. Un rouleau, donc un enroulement
+       visible en haut ET en bas — sans les deux, c'est une feuille. -->
+  <symbol id="ec-parchemin" viewBox="0 0 24 24">
+    <g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M6 3h12a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6"/>
+      <path d="M6 3a2 2 0 0 0-2 2 2 2 0 0 0 2 2h2"/>
+      <path d="M6 21a2 2 0 0 1-2-2 2 2 0 0 1 2-2h2"/>
+      <path d="M10 8h7M10 12h7M10 16h4"/>
+    </g>
+  </symbol>
+
+  <!-- LE DRAPEAU : abandonner. Hampe à gauche, pan qui retombe : c'est le pan
+       retombant qui dit la reddition plutôt que la conquête. -->
+  <symbol id="ec-drapeau" viewBox="0 0 24 24">
+    <g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M5 22V3"/>
+      <path d="M5 4h11l-2.2 4L16 12H5z"/>
+    </g>
+  </symbol>
+
+  <!-- LA ROUE DES RÉGLAGES. Huit dents, et leur géométrie est CALCULÉE pour
+       rester nette à vingt pixels : dents à r=10,6, pied à r=7,7, moyeu percé
+       à r=4,3 par fill-rule="evenodd". C'est le même rouage que le bouton de
+       réglages du menu (#settings-btn), et c'est exprès : deux rouages
+       différents dans la même interface se lisent comme deux réglages
+       différents. -->
+  <symbol id="ec-reglages" viewBox="0 0 24 24">
+    <path fill="currentColor" fill-rule="evenodd" d="M10.01 4.56 10.16 1.56h3.68l.15 3A7.7 7.7 0 0 1 15.85 5.33L18.08 3.32l2.6 2.6-2.01 2.23a7.7 7.7 0 0 1 .77 1.86l3 .15v3.68l-3 .15a7.7 7.7 0 0 1-.77 1.86l2.01 2.23-2.6 2.6-2.23-2.01a7.7 7.7 0 0 1-1.86.77l-.15 3h-3.68l-.15-3a7.7 7.7 0 0 1-1.86-.77L5.92 20.68l-2.6-2.6 2.01-2.23a7.7 7.7 0 0 1-.77-1.86l-3-.15v-3.68l3-.15a7.7 7.7 0 0 1 .77-1.86L3.32 5.92l2.6-2.6 2.23 2.01a7.7 7.7 0 0 1 1.86-.77ZM12 7.7a4.3 4.3 0 1 0 0 8.6 4.3 4.3 0 0 0 0-8.6Z"/>
+  </symbol>
+</svg>
+
 <div class="drag-ghost" id="drag-ghost"></div>
 
 <!-- VERROU DE PORTRAIT (TÉLÉPHONE UNIQUEMENT).
@@ -708,7 +788,7 @@
                 <span class="jouer-badge" id="jouer-rangee-badge" style="display:none">0</span>
               </button>
             </div>
-            <button class="jouer-btn" id="cube-jouer-btn"><span>COMBAT</span></button>
+            <button class="jouer-btn" id="cube-jouer-btn"><svg class="jouer-btn-ico" aria-hidden="true"><use href="#ec-epees"/></svg><span>COMBAT</span></button>
             <!-- DEUX PORTES DE SORTIE, ET ELLES NE MÈNENT PAS AU MÊME
                  ENDROIT. « Adversaires » ouvre le laboratoire (les IA) ;
                  « Classement » ouvre les AUTRES JOUEURS — le tableau
@@ -1213,7 +1293,7 @@
           <div class="gp-name" id="ai-player-name">L'Instructeur</div>
           <div class="gp-elo" id="ai-player-elo"></div>
         </div>
-        <div class="gp-clock" id="ai-player-clock" style="display:none"></div>
+        <div class="gp-clock" id="ai-player-clock" style="display:none"><svg class="gp-clock-ico" aria-hidden="true"><use href="#ec-sablier"/></svg><span class="gp-clock-t"></span></div>
         <div class="gp-taken" id="cap-opp"></div>
       </div>
 
@@ -1223,7 +1303,7 @@
           <div class="gp-name" id="human-player-name">Joueur</div>
           <div class="gp-elo" id="human-player-elo"></div>
         </div>
-        <div class="gp-clock" id="human-player-clock" style="display:none"></div>
+        <div class="gp-clock" id="human-player-clock" style="display:none"><svg class="gp-clock-ico" aria-hidden="true"><use href="#ec-sablier"/></svg><span class="gp-clock-t"></span></div>
         <div class="gp-taken" id="cap-me"></div>
       </div>
 
@@ -1269,10 +1349,11 @@
         <button class="btn btn-ghost gu-undo" id="game-undo">Annuler coup</button>
 
         <div class="game-tools" id="game-tools">
+          <!-- Le pictogramme était trois traits — le symbole universel d'un
+               MENU, pas d'un journal. Le parchemin du sprite dit ce que le
+               bouton ouvre (voir #ec-parchemin en tête de document). -->
           <button class="gt-btn" id="btn-history" aria-expanded="false" aria-controls="panel-history">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M4 6h16M4 12h16M4 18h10"/>
-            </svg>
+            <svg class="" aria-hidden="true"><use href="#ec-parchemin"/></svg>
             <span>Historique</span>
           </button>
           <!-- Le chat n'a personne à qui parler hors ligne : le bouton
@@ -1329,7 +1410,7 @@
            l'écran, seul sur sa ligne, sous tout le reste : c'est la place
            d'une sortie. En fin de partie il devient « Quitter ». -->
       <div class="game-btns">
-        <button class="btn btn-danger" id="game-quit">Abandonner</button>
+        <button class="btn btn-danger" id="game-quit"><svg class="btn-ico" aria-hidden="true"><use href="#ec-drapeau"/></svg><span>Abandonner</span></button>
       </div>
     </aside>
   </div>
@@ -1433,13 +1514,13 @@
      d'alchimie du XVIIᵉ siècle. Il est maintenant un jeton rond de laiton
      patiné — bord doré, cerne gravé, reflet en haut à gauche, creux en bas —
      frappé d'un ROUAGE à huit dents. Voir #settings-btn dans css/style.css.
-     La géométrie du rouage est calculée (dents à r=10,6 ; pied à r=7,7 ;
-     moyeu percé à r=4,3 par fill-rule="evenodd") pour rester nette à 20 px. -->
-<button id="settings-btn" title="Réglages" aria-label="Réglages">
-  <svg viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd" aria-hidden="true">
-    <path d="M10.01 4.56 10.16 1.56h3.68l.15 3A7.7 7.7 0 0 1 15.85 5.33L18.08 3.32l2.6 2.6-2.01 2.23a7.7 7.7 0 0 1 .77 1.86l3 .15v3.68l-3 .15a7.7 7.7 0 0 1-.77 1.86l2.01 2.23-2.6 2.6-2.23-2.01a7.7 7.7 0 0 1-1.86.77l-.15 3h-3.68l-.15-3a7.7 7.7 0 0 1-1.86-.77L5.92 20.68l-2.6-2.6 2.01-2.23a7.7 7.7 0 0 1-.77-1.86l-3-.15v-3.68l3-.15a7.7 7.7 0 0 1 .77-1.86L3.32 5.92l2.6-2.6 2.23 2.01a7.7 7.7 0 0 1 1.86-.77ZM12 7.7a4.3 4.3 0 1 0 0 8.6 4.3 4.3 0 0 0 0-8.6Z"/>
-  </svg>
-</button>
+     LE ROUAGE N'EST PLUS DESSINÉ ICI : il était écrit en toutes lettres à cet
+     endroit ET dans le sprite d'icônes, c'est-à-dire deux copies d'un même
+     dessin dont une seule serait corrigée le jour venu. Le bouton appelle
+     maintenant #ec-reglages, où la géométrie est calculée (dents à r=10,6 ;
+     pied à r=7,7 ; moyeu percé à r=4,3 par fill-rule="evenodd") pour rester
+     nette à vingt pixels. -->
+<button id="settings-btn" title="Réglages" aria-label="Réglages"><svg aria-hidden="true"><use href="#ec-reglages"/></svg></button>
 <div id="settings-panel">
   <!-- LE COMPTE EN PREMIER, PARCE QU'IL EST LA RAISON PRINCIPALE D'OUVRIR CE
        PANNEAU. Il était tout en bas, sous deux curseurs de volume qu'on règle

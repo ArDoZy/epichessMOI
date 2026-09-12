@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- ================================================================
+     BARRE-NAV.SVG : la barre du bas, et la lueur de l'onglet actif
+     ================================================================
+     Les quatre emblèmes de navigation restent les .webp déjà posés : cette
+     planche ne dessine que ce qui les PORTE — le socle de la barre et son
+     filet supérieur, qui sépare la barre du contenu sans une ligne grise.
+
+     Elle s'étire sur toute la largeur de l'écran, de 360 px à un grand
+     bureau : le filet est donc strictement horizontal (étirement sans perte)
+     et les deux retours d'angle sont ancrés dans les coins.
+
+     LA LUEUR DE L'ONGLET ACTIF n'est PAS dans cette planche. Elle se déplace
+     d'un onglet à l'autre : la dessiner ici reviendrait à la figer à une
+     position. Elle est faite en CSS sur `.cube-facebar-btn.is-active`, où
+     elle peut suivre.
+     ================================================================ -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 64" width="200" height="64" color="#c9a84c">
+  <title>Epic Chess, barre de navigation</title>
+  <rect x="0" y="3" width="200" height="61" fill="#0b1220" fill-opacity=".82"/>
+  <!-- LE FILET SUPÉRIEUR, doublé : un trait d'or franc et son reflet clair
+       juste dessous. C'est la seule chose qui doit se voir à coup sûr — la
+       barre elle-même se confond volontairement avec le fond. -->
+  <path d="M0 3 H200" stroke="currentColor" stroke-width="2" opacity=".75"/>
+  <path d="M0 5.4 H200" stroke="#e6cd86" stroke-width=".8" opacity=".3"/>
+  <defs>
+    <g id="retour">
+      <path d="M0 3 H18" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"/>
+      <path d="M9 3 12.5 6.5 9 10 5.5 6.5Z" fill="#e6cd86" opacity=".8"/>
+    </g>
+  </defs>
+  <use href="#retour"/>
+  <use href="#retour" transform="translate(200,0) scale(-1,1)"/>
+</svg>

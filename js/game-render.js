@@ -673,7 +673,12 @@ function renderClocks(gs){
   const hTime=playerCol==='w'?gs.timeWhite:gs.timeBlack;
   const aTime=aiCol==='w'?gs.timeWhite:gs.timeBlack;
   hEl.style.display='';aEl.style.display='';
-  hEl.textContent=fmt(hTime);aEl.textContent=fmt(aTime);
+  // ON ÉCRIT DANS .gp-clock-t, PAS DANS LE BADGE. Le badge porte maintenant le
+  // SABLIER du sprite d'icônes (voir #ec-sablier, index.html) : un textContent
+  // posé sur le badge lui-même effacerait ce <svg> au premier tic d'horloge.
+  // Le repli sur le badge reste, au cas où le balisage n'aurait pas la travée.
+  const put=(el,txt)=>{const t=el.querySelector('.gp-clock-t');if(t)t.textContent=txt;else el.textContent=txt;};
+  put(hEl,fmt(hTime));put(aEl,fmt(aTime));
   // Sous 30 s la pendule passe en rouge et pulse : c'est le seul moment ou
   // elle doit reclamer l'attention.
   hEl.classList.toggle('clock-low',hTime<30000&&!gs.gameOver);
@@ -1323,7 +1328,16 @@ document.addEventListener('keydown',e=>{
 // corriger. renderGame, lui, passe après.
 function syncGameButtons(gs){
   const qBtn=document.getElementById('game-quit');
-  if(qBtn)qBtn.textContent=gs.gameOver?'Quitter':'Abandonner';
+  // ON ÉCRIT DANS LE <span>, PAS DANS LE BOUTON. Le bouton porte maintenant le
+  // DRAPEAU du sprite d'icônes (voir #ec-drapeau, index.html) : un textContent
+  // posé sur le bouton lui-même effacerait ce <svg> au premier rendu de la
+  // partie. Le repli sur le bouton reste, au cas où le balisage n'aurait pas
+  // la travée — c'est la même précaution que pour la pendule (renderClocks).
+  if(qBtn){
+    const lbl=gs.gameOver?'Quitter':'Abandonner';
+    const t=qBtn.querySelector('span');
+    if(t)t.textContent=lbl;else qBtn.textContent=lbl;
+  }
   const uBtn=document.getElementById('game-undo');
   if(uBtn)uBtn.style.display=(gs.gameOver||gs.multiplayer)?'none':'';
 }

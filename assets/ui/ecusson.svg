@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- ================================================================
+     ECUSSON.SVG : le bouclier d'or où se pose le sceau de l'adversaire
+     ================================================================
+     Le sceau lui-même est dessiné par advSealSVG (js/adversaires.js), qui le
+     déduit de l'identifiant de l'adversaire : il change à chaque partie. Cet
+     écusson, lui, ne change pas — il est ce qui le PORTE, et c'est ce qui
+     permet à deux sceaux très différents de se ressembler assez pour dire
+     « voici qui est en face ».
+
+     LA TEINTE DE CAMP VIENT DE currentColor. Pourpre à gauche (#7e2b2b),
+     azur à droite (#1e3a6e) : ce sont les deux couleurs de bannière de la
+     charte, et elles sont posées par la feuille de style sur le porteur,
+     jamais écrites ici. Une planche par camp voudrait dire deux fichiers à
+     corriger ensemble.
+
+     CARRÉ, jamais étiré : il peut donc porter une silhouette, ce qu'une
+     planche étirable ne peut pas se permettre.
+     ================================================================ -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" color="#1e3a6e">
+  <title>Epic Chess, écusson de camp</title>
+  <!-- Le champ, dans la teinte du camp. -->
+  <path d="M32 3 56 10v22c0 13-10 22-24 29C18 54 8 45 8 32V10Z" fill="currentColor"/>
+  <!-- Le bord d'or, en deux filets : le franc et son reflet, comme partout. -->
+  <path d="M32 3 56 10v22c0 13-10 22-24 29C18 54 8 45 8 32V10Z"
+        fill="none" stroke="#c9a84c" stroke-width="2.6" stroke-linejoin="round"/>
+  <path d="M32 7.6 52 13.4v18.8c0 11-8.4 18.8-20 25-11.6-6.2-20-14-20-25V13.4Z"
+        fill="none" stroke="#e6cd86" stroke-width=".9" opacity=".5" stroke-linejoin="round"/>
+  <!-- La rive du haut : c'est elle qui fait lire « bouclier » et non
+       « goutte », à vingt pixels comme à cent. -->
+  <path d="M12 12.6 32 6.6 52 12.6" fill="none" stroke="#e6cd86" stroke-width="1.4" opacity=".7" stroke-linecap="round"/>
+</svg>

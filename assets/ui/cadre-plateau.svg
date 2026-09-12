@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- ================================================================
+     CADRE-PLATEAU.SVG : l'encadrement de l'échiquier
+     ================================================================
+     C'EST LA PLANCHE QUI JUSTIFIE À ELLE SEULE LE CHOIX DU VECTORIEL. Le
+     plateau est un carré dont le côté dépend de la hauteur disponible : 320 px
+     sur un téléphone tenu à la main, 640 px sur un bureau, et toutes les
+     valeurs entre les deux. Une image de cadre devrait être étirée dans les
+     deux sens à la fois — ses fleurons de coin s'ovaliseraient à chaque
+     taille, différemment.
+
+     En `border-image` (voir [ART] dans css/style.css), les quatre coins sont
+     découpés et posés À TAILLE FIXE, et seuls les quatre bords s'étirent.
+     Comme ces bords ne portent que des filets parallèles à leur propre
+     étirement, il n'y a rien à déformer : le cadre suit le plateau sans
+     jamais écraser un seul ornement.
+
+     LE CENTRE EST TRANSPARENT, et c'est vital : on joue au travers. C'est
+     `border-image-slice` SANS le mot-clé `fill` qui le garantit — avec lui,
+     la région centrale serait peinte par-dessus l'échiquier.
+     ================================================================ -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200" color="#c9a84c">
+  <title>Epic Chess, cadre de l'échiquier</title>
+  <rect x="4" y="4" width="192" height="192" rx="5" fill="none" stroke="#c9a84c" stroke-width="3"/>
+  <rect x="9.5" y="9.5" width="181" height="181" rx="3" fill="none" stroke="#e6cd86" stroke-width="1" opacity=".5"/>
+  <rect x="13" y="13" width="174" height="174" fill="none" stroke="#0b1220" stroke-width="1.6" opacity=".55"/>
+  <defs>
+    <!-- Le fleuron d'angle, entièrement contenu dans le carré de 46 unités
+         que découpe border-image-slice. Une palmette à trois lobes : c'est le
+         plus petit motif qui reste reconnaissable à seize pixels. -->
+    <g id="palmette">
+      <path d="M4 44 V12 Q4 4 12 4 H44" fill="none" stroke="#c9a84c" stroke-width="4.4" stroke-linecap="round"/>
+      <path d="M11 38 V14 Q11 11 14 11 H38" fill="none" stroke="#e6cd86" stroke-width="1.1" opacity=".5"/>
+      <path d="M18 18 Q18 9 27 9 Q22 14 22 18 Q26 14 31 15 Q24 19 22 25 Q19 19 18 18Z" fill="#c9a84c"/>
+      <path d="M9 25 12.5 28.5 9 32 5.5 28.5Z" fill="#e6cd86"/>
+      <path d="M25 9 28.5 12.5 32 9 28.5 5.5Z" fill="#e6cd86"/>
+    </g>
+  </defs>
+  <use href="#palmette"/>
+  <use href="#palmette" transform="translate(200,0) scale(-1,1)"/>
+  <use href="#palmette" transform="translate(0,200) scale(1,-1)"/>
+  <use href="#palmette" transform="translate(200,200) scale(-1,-1)"/>
+</svg>

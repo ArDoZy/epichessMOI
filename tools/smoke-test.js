@@ -958,6 +958,90 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
     await page.evaluate(()=>{GS.gameOver=true;stopClockTick(GS);renderReservePage();renderVoiePage();renderArmiesPage();});
   });
 
+  // LES ONZE PLANCHES VECTORIELLES, ET LE SPRITE RECOPIÉ.
+  //
+  // Une planche absente ne casse rien — c'est la règle de tout le décor du jeu
+  // — mais elle ne se voit pas non plus, et un `url()` mal orthographié dans la
+  // feuille de style ne fait pas le moindre bruit. On demande donc au
+  // navigateur de les charger vraiment, et on compte celles qui reviennent en
+  // 404.
+  //
+  // Et surtout : le sprite d'icônes existe en DEUX exemplaires (le fichier
+  // source assets/ui/icones.svg, et sa copie en tête de index.html, parce qu'un
+  // <use> vers un autre document est refusé par les navigateurs). Deux copies
+  // qui divergent, c'est une icône corrigée d'un côté seulement. Ce test les
+  // compare et échoue si elles ne sont plus identiques : c'est ce qui rend la
+  // duplication tenable.
+  await step('les planches vectorielles se chargent, et le sprite est bien la même copie',async()=>{
+    const bad=await page.evaluate(async()=>{
+      const out=[];
+      const planches=['cadre-carte','cartouche','panneau-elo','anneau','plaque','barre-nav',
+                      'cadre-plateau','bandeau-joueur','ecusson','rangee-prises','separateur','icones'];
+      for(const n of planches){
+        const r=await fetch('assets/ui/'+n+'.svg');
+        if(!r.ok){out.push(n+'.svg : '+r.status);continue;}
+        const t=await r.text();
+        if(!/^\s*<\?xml|^\s*<svg/.test(t))out.push(n+'.svg ne commence pas par du SVG');
+        // AUCUN TEXTE DANS LES PLANCHES : tous les mots du jeu sont du HTML,
+        // sinon ils ne se traduisent plus et le lecteur d'écran ne les voit
+        // pas. <title> est l'exception : il n'est pas peint, il NOMME.
+        if(/<text[\s>]|<tspan[\s>]/.test(t))out.push(n+'.svg contient du texte peint');
+      }
+      // Les cinq plateaux ont leur nappe de veines.
+      for(const b of ['bois','pierre','acier','argent','or']){
+        const t=await (await fetch('assets/boards/'+b+'.svg')).text();
+        if(!/id="mb"/.test(t))out.push('le plateau '+b+' n\'a pas son grain de marbre');
+      }
+      // LES DEUX COPIES DU SPRITE. On compare les <symbol>, pas le fichier :
+      // l'enveloppe <svg> diffère forcément (l'une est un document, l'autre un
+      // bloc caché dans la page), et les commentaires de dessin ne vivent que
+      // dans le fichier source.
+      //
+      // ON COMPARE DES ARBRES, PAS DU TEXTE. Comparer les chaînes échouerait
+      // toujours, et pour des raisons qui n'ont rien à voir avec le dessin :
+      // l'analyseur XML garde `xmlns` sur chaque nœud, celui du HTML déplie
+      // `<path/>` en `<path></path>`, et ni l'un ni l'autre ne conserve
+      // l'ordre d'écriture des attributs. On prend donc de chaque symbole une
+      // EMPREINTE de sa seule structure — balises, profondeur, et attributs
+      // triés —, la même des deux côtés.
+      const normalise=el=>{
+        const out=[];
+        const marche=(n,prof)=>{
+          if(n.nodeType!==1)return;
+          const attrs=[...n.attributes]
+            .filter(a=>a.name!=='xmlns')
+            .map(a=>a.name+'='+a.value.replace(/\s+/g,' ').trim())
+            .sort();
+          out.push(prof+n.tagName.toLowerCase()+'['+attrs.join(',')+']');
+          [...n.childNodes].forEach(c=>marche(c,prof+'>'));
+        };
+        marche(el,'');
+        return out.join('|');
+      };
+      const symbolesDe=racine=>[...racine.querySelectorAll('symbol')].map(normalise);
+      const doc=new DOMParser().parseFromString(
+        await (await fetch('assets/ui/icones.svg')).text(),'image/svg+xml');
+      const fichier=symbolesDe(doc);
+      const hote=document.getElementById('ec-icones');
+      if(!hote){out.push('le sprite n\'est pas recopié dans le document');}
+      else{
+        const page_=symbolesDe(hote);
+        if(fichier.length!==5)out.push('le fichier ne porte pas cinq symboles mais '+fichier.length);
+        if(page_.length!==fichier.length)
+          out.push('le document porte '+page_.length+' symboles, le fichier '+fichier.length);
+        else fichier.forEach((sym,i)=>{
+          if(sym!==page_[i])out.push('le symbole n°'+(i+1)+' a divergé entre le fichier et le document');
+        });
+        // Et chaque icône est réellement appelée quelque part.
+        ['ec-sablier','ec-parchemin','ec-drapeau'].forEach(id=>{
+          if(!document.querySelector('use[href="#'+id+'"]'))out.push(id+' n\'est utilisé nulle part');
+        });
+      }
+      return out;
+    });
+    if(bad.length)throw new Error(bad.join(' · '));
+  });
+
   // LE « RECHARGEMENT » DE LA PAGE D'ARMÉES, mesuré au lieu d'être regardé.
   //
   // En arrivant sur la composition depuis une autre face, des éléments

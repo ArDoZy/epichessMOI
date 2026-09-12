@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- ================================================================
+     ANNEAU.SVG : l'anneau des trois voies
+     ================================================================
+     Posé DERRIÈRE les trois emblèmes déjà dessinés (livre, laurier, éclair)
+     du menu principal. Il ne les remplace pas : il les rassemble. Sans lui,
+     trois pictogrammes flottaient côte à côte sur le vide et rien ne disait
+     qu'ils forment une famille.
+
+     Il est CARRÉ et posé en fond centré, sans étirement : il n'a donc pas
+     besoin de la discipline des planches étirables, et peut porter un double
+     filet circulaire qu'aucun bord ne déformera.
+
+     Le trait extérieur est plein et le second en pointillés d'or clair : deux
+     filets pleins concentriques, à quarante pixels, se confondent en un seul
+     trait épais.
+     ================================================================ -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100" color="#c9a84c">
+  <title>Epic Chess, anneau des voies</title>
+  <circle cx="50" cy="50" r="46" fill="none" stroke="currentColor" stroke-width="2.4"/>
+  <circle cx="50" cy="50" r="41" fill="none" stroke="#e6cd86" stroke-width="1" opacity=".55"
+          stroke-dasharray="3 5" stroke-linecap="round"/>
+  <!-- Quatre perles aux points cardinaux : elles donnent un haut à un cercle,
+       qui n'en a pas, et l'anneau cesse de tourner à vide. -->
+  <g fill="#e6cd86">
+    <circle cx="50" cy="4" r="3"/><circle cx="96" cy="50" r="3"/>
+    <circle cx="50" cy="96" r="3"/><circle cx="4" cy="50" r="3"/>
+  </g>
+</svg>
