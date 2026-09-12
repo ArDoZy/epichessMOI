@@ -10,14 +10,19 @@
 // ramasser cinq repères avec la pièce, seule sur le plateau.
 //
 // LE POINT DÉLICAT, ET LA RAISON DE L'ALGORITHME CI-DESSOUS : tous les
-// déplacements ne vont pas partout. La Fourmi n'a pas le droit de reculer ni
-// d'aller sur le côté, la Garde de Feu ne quitte jamais la couleur de case sur
-// laquelle elle est posée. Cinq repères tirés au hasard seraient, pour ces pièces, souvent impossibles à
-// ramasser. Les repères ne sont donc PAS tirés au hasard sur le plateau : ils
-// sont posés le long d'une PROMENADE de la pièce (on part de sa case, on tire
-// un de ses coups légaux, on pose un repère à l'arrivée, et on recommence
-// depuis là). Un chemin qui les ramasse tous existe donc par construction —
-// celui qui a servi à les poser.
+// déplacements ne vont pas partout. La Fourmi — deuxième créature du tutoriel —
+// n'a pas le droit de reculer ni d'aller sur le côté : arrivée au bord, elle
+// n'a plus un seul coup. Cinq repères tirés au hasard seraient, pour une pièce
+// pareille, souvent impossibles à ramasser. Les repères ne sont donc PAS tirés
+// au hasard sur le plateau : ils sont posés le long d'une PROMENADE de la pièce
+// (on part de sa case, on tire un de ses coups légaux, on pose un repère à
+// l'arrivée, et on recommence depuis là). Un chemin qui les ramasse tous existe
+// donc par construction — celui qui a servi à les poser.
+//
+// C'EST AUSSI CE QUI REND L'EXERCICE JUSTE POUR L'ÉLÉPHANT DE GUERRE, troisième
+// créature du tutoriel : sa charge de deux cases porte `destroysPath`, mais sur
+// un plateau où il est seul il n'y a rien à écraser — l'exercice enseigne la
+// PORTÉE, la partie enseignera le prix.
 //
 // Ni tour par tour, ni adversaire : la pièce est seule, aucun coup n'est
 // illégal pour cause d'échec, et rien ne bloque le passage.

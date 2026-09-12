@@ -14,13 +14,26 @@
 //      faibles (TUTO_INSTRUCTORS dans data-pieces.js). Les deux camps ont
 //      exactement la même armée, posée en dur : personne ne perd parce qu'il
 //      a mal composé. Chaque victoire ouvre un coffre qui débloque UNE
-//      créature (Garde d'Eau, puis Garde de Feu, puis Garde de Pierre), suivie
-//      de son
-//      exercice de déplacement (js/tuto-drill.js). Une défaite ne fait pas
-//      avancer : l'Alchimiste propose la revanche, autant de fois qu'il faut.
-//      C'est ainsi que le joueur se retrouve, à la fin, avec une armée
-//      complète (Roi, Dame et les trois Gardes) qu'il a
-//      gagnée.
+//      créature — le GARDE DE PIERRE, puis la FOURMI, puis l'ÉLÉPHANT DE
+//      GUERRE —, suivie de son exercice de déplacement (js/tuto-drill.js).
+//      Une défaite ne fait pas avancer : l'Alchimiste propose la revanche,
+//      autant de fois qu'il faut. C'est ainsi que le joueur se retrouve, à la
+//      fin, avec une armée complète (Roi, Dame, Garde de Pierre, Fourmi et
+//      Éléphant de guerre) qu'il a gagnée.
+//
+//      L'ORDRE DES TROIS CRÉATURES EST L'ARGUMENT DE TOUT LE TUTORIEL, et il
+//      n'est pas celui d'avant. Le jeu enseignait le Garde d'Eau (une case
+//      tout droit), le Garde de Feu (une case en biais), puis le Garde de
+//      Pierre (les deux) : trois créatures pour une seule idée — la grille —
+//      et deux d'entre elles sans le moindre pouvoir à montrer. Ces deux-là
+//      ont été retirées du jeu. La progression va maintenant d'une idée à la
+//      suivante, et chaque créature apporte UN déplacement ET UN pouvoir :
+//        · Garde de Pierre  une case dans les huit directions, et l'ancrage —
+//                           le premier pouvoir qu'on déclenche soi-même ;
+//        · Fourmi           la direction (elle avance, elle ne recule jamais)
+//                           et la promotion, qui récompense d'avoir traversé ;
+//        · Éléphant         la portée et son prix : deux cases d'un coup, et
+//                           tout ce qui se trouve entre les deux est détruit.
 //   2. LA VISITE DU LABORATOIRE (étapes marquées `click`) : le joueur tourne
 //      réellement le cube, compose réellement une armée, ouvre réellement sa
 //      Guerre des clans.
@@ -76,8 +89,19 @@ const ALCHIMISTE_SVG=
 // d'une créature par bataille, dans l'ordre où le joueur les débloque, et
 // chaque créature se place vers l'extérieur en partant du Monarque.
 //
-//   colonnes :  0        1      2      3      4     5      6      7
-//               pierre   feu    eau    dame   roi   eau    feu    pierre
+//   rangée de fond :  0          1    2       3      4     5       6    7
+//                     éléphant   ·    pierre  dame   roi   pierre  ·    éléphant
+//   rangée des pions : 0          1    2       3      4     5       6    7
+//                     pion       fourmi pion  pion   pion  pion  fourmi pion
+//
+// LA FOURMI SE POSE SUR LA RANGÉE DES PIONS, à leur place, et c'est la seule
+// exception. Posée au fond comme les autres, elle serait ENFERMÉE : elle
+// n'avance que d'une case (tout droit ou en biais) et ne recule jamais, or la
+// rangée devant elle est entièrement occupée par ses propres pions. Le joueur
+// à qui l'on vient d'offrir une Fourmi passerait donc toute la bataille sans
+// pouvoir la bouger une seule fois — exactement le contraire de ce qu'on lui
+// demande d'apprendre. Sur la rangée des pions elle part libre, et sa
+// promotion devient atteignable dans la partie même.
 //
 // L'adversaire monte en force à chaque fois (index dans AI_INSTRUCTORS via
 // tutoInstructorLevel) et la couleur du joueur alterne pour qu'il joue une
@@ -87,12 +111,16 @@ const ALCHIMISTE_SVG=
 // avait une : on apprenait à jouer avec un chronomètre au-dessus de l'épaule,
 // et une première partie perdue au temps ne se comprend pas. La pendule
 // arrive avec les vraies parties, où elle a un sens.
-const TUTO_EXTRA_COLS={'garde-eau':[2,5],'garde-feu':[1,6],'garde-pierre':[0,7]};
+const TUTO_EXTRA_COLS={'garde-pierre':[2,5],'fourmi':[1,6],'dresseur-elephant':[0,7]};
+// Les créatures qui remplacent un PION au lieu d'occuper la rangée de fond
+// (voir le schéma ci-dessus). Un ensemble plutôt qu'un drapeau par pièce :
+// c'est une propriété de la MISE EN PLACE du tutoriel, pas de la créature.
+const TUTO_EXTRA_PAWN_ROW=new Set(['fourmi']);
 const TUTO_BATTLES=[
-  {playerColor:'b',extras:[],                              clockMin:0},
-  {playerColor:'w',extras:['garde-eau'],                            clockMin:0},
-  {playerColor:'b',extras:['garde-eau','garde-feu'],                clockMin:0},
-  {playerColor:'w',extras:['garde-eau','garde-feu','garde-pierre'], clockMin:0},
+  {playerColor:'b',extras:[],                                            clockMin:0},
+  {playerColor:'w',extras:['garde-pierre'],                              clockMin:0},
+  {playerColor:'b',extras:['garde-pierre','fourmi'],                     clockMin:0},
+  {playerColor:'w',extras:['garde-pierre','fourmi','dresseur-elephant'], clockMin:0},
 ];
 
 let _tutoUid=0;
@@ -114,12 +142,18 @@ function tutoBuildBoard(battleIdx){
   [['w',7,6],['b',0,1]].forEach(([color,back,pawnRow])=>{
     b[back][4]=tutoMakePiece('roi',color,'k',true);
     b[back][3]=tutoMakePiece('dame',color,'q',false);
+    // LES PIONS SONT POSÉS AVANT LES CRÉATURES, et non plus après : une
+    // créature de la rangée des pions (la Fourmi) doit PRENDRE la place d'un
+    // pion, pas se faire recouvrir par lui à la ligne suivante.
+    for(let c=0;c<8;c++)b[pawnRow][c]=tutoMakePiece('std-pawn',color,'p');
     cfg.extras.forEach(id=>{
+      const row=TUTO_EXTRA_PAWN_ROW.has(id)?pawnRow:back;
       (TUTO_EXTRA_COLS[id]||[]).forEach(col=>{
-        if(!b[back][col])b[back][col]=tutoMakePiece(id,color);
+        // Sur la rangée de fond on ne bouscule jamais le Roi ni la Dame ; sur
+        // la rangée des pions, remplacer est précisément le but.
+        if(row===pawnRow||!b[row][col])b[row][col]=tutoMakePiece(id,color);
       });
     });
-    for(let c=0;c<8;c++)b[pawnRow][c]=tutoMakePiece('std-pawn',color,'p');
   });
   return b;
 }
@@ -229,29 +263,42 @@ const TUTO_STEPS=[
          'adversaire et lance la charge vaillamment.',
     battle:0,btn:'Au combat !',
   },
-  {reward:{chest:'pion',piece:'garde-eau'}},
-  {drill:'garde-eau'},
-  {
-    text:'Merveilleux&nbsp;! Tu es visiblement un élève prometteur. Défie un nouvel '+
-         'adversaire, et utilise ta <strong>Garde d\'Eau</strong> fraîchement débloquée&nbsp;: '+
-         'elle ne va que <strong>tout droit</strong>, d\'une case.',
-    at:'#cube-jouer-btn',combat:1,
-  },
-  {reward:{chest:'cavalier',piece:'garde-feu'}},
-  {drill:'garde-feu'},
-  {
-    text:'Bravo&nbsp;! La <strong>Garde de Feu</strong> fait l\'exact contraire&nbsp;: '+
-         '<strong>en biais</strong>, d\'une case. À elles deux, elles couvrent tout ce '+
-         'qui entoure une case. Attaque encore, et prends par surprise ton adversaire.',
-    at:'#cube-jouer-btn',combat:2,
-  },
-  {reward:{chest:'fou',piece:'garde-pierre'}},
+  // LES TROIS RÉPLIQUES DE CRÉATURE DISENT LE POUVOIR MOT POUR MOT tel qu'il
+  // est écrit dans PIECES.ability (js/data-pieces.js). C'est la règle posée
+  // là-bas : le libellé du catalogue est LA référence, et une paraphrase
+  // « pédagogique » finit toujours par dériver de ce que le moteur applique
+  // vraiment. Le déplacement, lui, n'est jamais décrit en mots — l'exercice
+  // qui suit chaque coffre le fait faire, ce qui vaut mieux que le dire.
+  {reward:{chest:'pion',piece:'garde-pierre'}},
   {drill:'garde-pierre'},
   {
-    text:'Ton armée est maintenant complète&nbsp;! Lance un dernier combat contre un '+
-         'instructeur, tu affronteras ensuite des joueurs du monde entier. Montre-moi '+
-         'ce que ton armée a dans le ventre&nbsp;: <strong>tout ton arsenal en une '+
-         'seule bataille</strong>.',
+    text:'Merveilleux&nbsp;! Tu es visiblement un élève prometteur. Ton '+
+         '<strong>Garde de Pierre</strong> va d\'une case dans les huit directions&nbsp;— '+
+         'tout ce qui entoure la sienne. Et il sait faire une chose de plus, que '+
+         'tu déclenches toi-même&nbsp;: <em>Retour à l\'Etat Fondamental&nbsp;: '+
+         'S\'ancre sur place, devenant imprenable mais inamovible</em>. Un rocher '+
+         'qu\'on ne prend pas, mais qui ne repartira plus. Défie un nouvel adversaire.',
+    at:'#cube-jouer-btn',combat:1,
+  },
+  {reward:{chest:'cavalier',piece:'fourmi'}},
+  {drill:'fourmi'},
+  {
+    text:'Bravo&nbsp;! La <strong>Fourmi</strong> n\'a qu\'une direction&nbsp;: devant. '+
+         'Une case tout droit ou en biais, jamais un pas en arrière — ce qu\'elle '+
+         'gagne, elle le garde. Et au bout du plateau l\'attend sa récompense&nbsp;: '+
+         '<em>Promotion&nbsp;: Se promeut si elle arrive sur la dernière rangée</em>. '+
+         'Pousse-la, et vois ce qu\'elle devient.',
+    at:'#cube-jouer-btn',combat:2,
+  },
+  {reward:{chest:'fou',piece:'dresseur-elephant'}},
+  {drill:'dresseur-elephant'},
+  {
+    text:'Ton armée est maintenant complète&nbsp;! L\'<strong>Éléphant de guerre</strong> '+
+         'avance d\'une ou de deux cases tout droit, et sa charge ne s\'arrête devant '+
+         'rien&nbsp;: <em>Charge&nbsp;: Détruit toutes les pièces ennemies sur son '+
+         'passage</em>. Deux cases, deux ennemis emportés. Lance un dernier combat '+
+         'contre un instructeur, tu affronteras ensuite des joueurs du monde entier&nbsp;: '+
+         '<strong>tout ton arsenal en une seule bataille</strong>.',
     at:'#cube-jouer-btn',combat:3,
   },
   {
@@ -568,11 +615,13 @@ function tutoRunDrill(pieceId){
 // connaît déjà le jeu (un ami à qui on le montre, un compte recréé).
 //
 // Le bouton donne EXACTEMENT ce que le tutoriel aurait donné, ni plus ni
-// moins : les trois créatures (Garde d'Eau, Garde de Feu, Garde de Pierre) avec leurs
-// exemplaires, plus une première armée composée au hasard — sans quoi on
-// sortirait du tutoriel dans une Guerre des clans vide, incapable de lancer un
-// combat, c'est-à-dire exactement là où le tutoriel sert à ne pas être.
-const TUTO_SKIP_PIECES=['garde-eau','garde-feu','garde-pierre'];
+// moins : les trois créatures (Garde de Pierre, Fourmi, Éléphant de guerre)
+// avec leurs exemplaires, plus une première armée composée au hasard — sans
+// quoi on sortirait du tutoriel dans une Guerre des clans vide, incapable de
+// lancer un combat, c'est-à-dire exactement là où le tutoriel sert à ne pas
+// être. L'ORDRE DE CETTE LISTE SUIT CELUI DES COFFRES : c'est la même dotation,
+// donnée d'un coup au lieu d'une par bataille.
+const TUTO_SKIP_PIECES=['garde-pierre','fourmi','dresseur-elephant'];
 const TUTO_SKIP_QTY=6;   // même dotation qu'un jalon de départ (STARTER_STOCK)
 
 // Armée aléatoire légale : mêmes règles que le builder (1 Monarque, 1
