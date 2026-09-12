@@ -589,7 +589,7 @@ plateau en 6 : les effets se glissent entre.)
 | Prise | noyau + anneaux + éclats projetés, dimensionnés par `sfxCaptureForce()` | Ce qui vient d'être brisé, et **combien ça valait**. |
 | Prise majeure (force > 0,72) | un voile d'ardeur sur tout le plateau | Le pendant visuel du ducking de la musique. |
 | Pièce qui disparaît | une bouffée de poussière et des motes qui montent | Posé par `syncPieces` pour **toute** pièce qui quitte le plateau — donc aussi les victimes collatérales du Typhon, sans que le module connaisse un seul pouvoir. |
-| Typhon / Banshee / Méduse / Dresseur | vortex, ondes de hurlement, éclat de pierre, anneau de poussière | Un pouvoir avait sa règle et son texte de fiche, aucun n'avait de geste. C'est le geste qui l'explique. |
+| Typhon / Banshee / Méduse / Éléphant de guerre | vortex, ondes de hurlement, éclat de pierre, anneau de poussière | Un pouvoir avait sa règle et son texte de fiche, aucun n'avait de geste. C'est le geste qui l'explique. |
 | Promotion | colonne de lumière, cercles runiques, poussière d'or qui monte | Le nœud de la pièce survit à la promotion : il n'y a rien à faire disparaître, seulement à célébrer. |
 | Échec | alarme sur la case du roi + cerne rouge | `.gc-check` dit l'**état** en permanence ; ceci dit l'**instant**. |
 | Mat | détonation sur le roi tombé, rais, plateau désaturé | Entre le coup qui mate et la cinématique d'issue, le plateau ne disait rien. |
@@ -1588,7 +1588,7 @@ sont rejouables depuis son profil.
 **La relecture repasse par le MOTEUR, pas par une copie des règles.**
 `replayFrames()` appelle `executeGameMove()`, le même que la partie en direct,
 et redemande les coups légaux à `getLegalMoves()` pour retrouver les drapeaux
-(roque, prise en passant, charge du Dresseur) que les deux cases seules ne
+(roque, prise en passant, charge de l'Éléphant de guerre) que les deux cases seules ne
 disent pas. C'est la seule façon d'être certain qu'une partie relue se déroule
 comme elle s'est jouée — un second moteur écrit pour la relecture aurait
 divergé du vrai au premier pouvoir modifié. C'est aussi pour cela que le roque

@@ -331,8 +331,8 @@ const DAILY_REWARDS=[
 //
 // `ability` ne garde donc que les vrais POUVOIRS — ce qu'une créature fait EN
 // PLUS de bouger, et qui ne se dessine pas sur une grille de cases (paralysie
-// de la Méduse, Cuirasse du Preux Chevalier, Charge du Dresseur…). Les
-// anciennes « capacités » qui ne faisaient que redire le déplacement
+// de la Méduse, Cuirasse du Preux Chevalier, Charge de l'Éléphant de
+// guerre…). Les anciennes « capacités » qui ne faisaient que redire le déplacement
 // (« Cavalier standard. », « Ne peut pas reculer. ») sont parties avec le
 // champ `movement`.
 // Les libellés de `ability` sont la RÉFÉRENCE du jeu : ce sont eux qu'affichent
@@ -343,10 +343,23 @@ const DAILY_REWARDS=[
 const PIECES=[
   {id:'roi',name:'Roi',emoji:'👑',class:'Monarque',value:3,qty:1,pieceType:'k',ability:null},
   {id:'amazone',name:'Amazone',emoji:'🏹',class:'Général',value:7,qty:1,pieceType:'q',ability:null},
-  // Le Chevaucheur de Rhinocéros s'appelle désormais le Centaure. L'IDENTIFIANT
-  // reste 'chevaucheur-rhinoceros' : c'est la clé sous laquelle les armées, les
-  // inventaires et les déblocages sont déjà enregistrés dans les comptes
-  // existants ; la renommer viderait la Guerre des clans de tout le monde.
+  // DEUX CRÉATURES PORTENT UN IDENTIFIANT QUI NE DIT PLUS LEUR NOM, et c'est
+  // la seule ligne du dépôt qui a le droit de citer les anciens : le
+  // « Chevaucheur de Rhinocéros » s'appelle maintenant le CENTAURE, et le
+  // « Dresseur d'Éléphant » l'ÉLÉPHANT DE GUERRE. Partout ailleurs — écrans,
+  // commentaires, outils, feuille de style — seuls les nouveaux noms
+  // s'écrivent.
+  //
+  // LES IDENTIFIANTS, EUX, NE BOUGENT PAS : 'chevaucheur-rhinoceros' et
+  // 'dresseur-elephant' sont les clés sous lesquelles les armées, les
+  // inventaires et les déblocages sont DÉJÀ enregistrés dans les comptes
+  // existants, et les noms des fichiers d'illustration (assets/pieces/*.webp).
+  // Les renommer viderait la Guerre des clans de tout le monde, sans même une
+  // erreur : les pièces disparaîtraient simplement des armées.
+  //
+  // La contrainte s'arrête là. Les noms de FONCTIONS internes, eux, ne sont pas
+  // des clés de stockage : applyChargeEffect (js/rules-engine.js) a pu prendre
+  // le nom de ce qu'elle fait plutôt que celui d'une pièce.
   {id:'chevaucheur-rhinoceros',name:'Centaure',emoji:'🐴',class:'Général',value:8,qty:1,pieceType:'r',ability:null},
   {id:'dame',name:'Dame',emoji:'♛',class:'Général',value:10,qty:1,pieceType:'q',ability:null},
   {id:'grand-maitre',name:'Grand Maître',emoji:'🔮',class:'Général',value:13,qty:1,pieceType:'q',ability:'Domination : Tant qu\'il est vivant, les pions adverses ne peuvent pas avancer de 2 cases'},

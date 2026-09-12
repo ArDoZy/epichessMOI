@@ -26,7 +26,7 @@
 // calcul : le son, les effets, les quêtes, l'IA, la fin de partie.
 //
 // C'est aussi pour cela que le roque, la prise en passant, la charge du
-// Dresseur et les pouvoirs n'ont rien à noter dans l'enregistrement : ils se
+// Éléphant de guerre et les pouvoirs n'ont rien à noter dans l'enregistrement : ils se
 // déduisent des deux cases, puisque c'est le moteur qui les rejoue.
 //
 // -- CE QU'ON VOIT ------------------------------------------------
@@ -169,7 +169,7 @@ function replayFrames(rec){
         else break;
       }else{
         // Le coup LÉGAL porte ses drapeaux (roque, prise en passant, charge du
-        // Dresseur) : les deux cases seules n'en disent rien. On les retrouve
+        // Éléphant de guerre) : les deux cases seules n'en disent rien. On les retrouve
         // en redemandant au moteur ce que cette pièce pouvait faire.
         const legal=(typeof getLegalMoves==='function')?getLegalMoves(gs.board,from.r,from.c,gs):[];
         const mv=legal.find(m=>m.r===to.r&&m.c===to.c);

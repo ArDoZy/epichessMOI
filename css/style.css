@@ -5158,7 +5158,7 @@ body.cube-active:not(.nav-overlay) .notif-host{bottom:92px}
   background:linear-gradient(90deg,transparent 0%,var(--fx-c) 88%,#fff 100%);
   filter:blur(1px);
   animation:fxTrail .44s cubic-bezier(.2,.75,.35,1) both}
-/* Une prise, ou la charge du Dresseur : le sillage s'épaissit. */
+/* Une prise, ou la charge de l'Éléphant de guerre : le sillage s'épaissit. */
 .fx-trail-heavy{height:3.4%;filter:blur(2px)}
 @keyframes fxTrail{
   0%{opacity:0;transform:translateY(-50%) rotate(var(--rot)) scaleX(.15)}
@@ -5286,7 +5286,7 @@ body.cube-active:not(.nav-overlay) .notif-host{bottom:92px}
   100%{opacity:0;transform:scale(1.15)}
 }
 
-/* LA CHARGE : la case écrasée sur le passage du Dresseur d'Éléphant. Un
+/* LA CHARGE : la case écrasée sur le passage de l'Éléphant de guerre. Un
    anneau de poussière au ras du sol, donc SOUS les pièces. */
 .fx-crush{mix-blend-mode:screen}
 .fx-dustring{width:96%;height:52%;border-radius:50%;

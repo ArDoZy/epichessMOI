@@ -24,7 +24,7 @@
 //     victime, plus un voile d'écran au-delà d'un certain seuil ;
 //   · la MORT d'une pièce, quelle qu'en soit la cause : poussière et motes ;
 //   · les POUVOIRS : vortex du Typhon, hurlement de la Banshee, pétrification
-//     de la Méduse, charge du Dresseur ;
+//     de la Méduse, charge de l'Éléphant de guerre ;
 //   · la PROMOTION : colonne de lumière, cercles runiques, poussière d'or ;
 //   · l'ÉCHEC : alarme sur le roi et cerne rouge sur le plateau ;
 //   · le MAT : détonation et rais depuis le roi tombé — et sur une victoire,

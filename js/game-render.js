@@ -509,7 +509,7 @@ function syncPieces(gs,boardEl,flipped,board){
     // LA POUSSIÈRE EST POSÉE ICI, ET C'EST CE QUI LA REND UNIVERSELLE. Ce
     // point de passage voit TOUTE pièce qui quitte le plateau, sans savoir
     // pourquoi : la prise ordinaire, les victimes collatérales du Typhon, la
-    // case effacée par le Dresseur, et tout pouvoir qui viendra. Le module
+    // case effacée par l'Éléphant de guerre, et tout pouvoir qui viendra. Le module
     // d'effets n'a donc pas un seul pouvoir à connaître (js/combat-fx.js).
     if(typeof fxPuff==='function')fxPuff(+node.dataset.r,+node.dataset.c,node._pid);
     setTimeout(()=>{if(node.parentNode)node.parentNode.removeChild(node);},BOARD_DEATH_MS);

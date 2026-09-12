@@ -167,7 +167,7 @@ function evalPowers(board,fgs){
       s+=sg*best*0.40;
     }
 
-    // DRESSEUR D'ÉLÉPHANT : la charge de 2 cases écrase ce qu'elle traverse.
+    // ÉLÉPHANT DE GUERRE : la charge de 2 cases écrase ce qu'elle traverse.
     else if(id==='dresseur-elephant'){
       let best=0;
       for(const[dr,dc] of [[2,0],[-2,0],[0,2],[0,-2]]){
@@ -402,7 +402,7 @@ function applyMoveQuick(board,from,to,p,anchored){
   if(to.ep){const pr=to.r+(p.color==='w'?1:-1);b[pr][to.c]=null;}
   if(to.castle){if(to.castle==='K'){b[from.r][5]=b[from.r][7];b[from.r][7]=null;}if(to.castle==='Q'){b[from.r][3]=b[from.r][0];b[from.r][0]=null;}}
   b[to.r][to.c]={...p,hasMoved:true};b[from.r][from.c]=null;
-  // Typhon, charge du Dresseur, hurlement de la Banshee : ces effets sont le
+  // Typhon, charge de l'Éléphant de guerre, hurlement de la Banshee : ces effets sont le
   // coup, pas un supplément. Sans eux la recherche évaluait un Typhon comme un
   // fou d'une case et ne jouait jamais le coup qui efface trois pièces.
   applyCollateralOnBoard(b,from,to,b[to.r][to.c],anchored);
@@ -533,7 +533,7 @@ function quiesce(board,alpha,beta,maxing,fgs,qdepth){
   // milieu d'un échange. Elle ne retenait que les prises « classiques », celles
   // qui atterrissent sur une pièce ennemie — or dans ce jeu les coups les plus
   // violents n'en sont pas : un Typhon qui se pose sur une case VIDE efface
-  // jusqu'à huit voisines, et la charge du Dresseur écrase ce qu'elle traverse.
+  // jusqu'à huit voisines, et la charge de l'Éléphant de guerre écrase ce qu'elle traverse.
   // La recherche évaluait donc tranquillement une position à un demi-coup
   // d'être balayée, ce qui est exactement l'effet d'horizon que la quiescence
   // existe pour supprimer.
@@ -909,10 +909,10 @@ function mirrorBoardForWorker(gsData){
 
 // Ramène un coup trouvé sur le plateau miroité dans le repère réel.
 // Les DRAPEAUX du coup font partie du coup : `castle`, `ep`, `typhon`,
-// `destroysPath` et le couple fromR/fromC de la charge du Dresseur étaient
+// `destroysPath` et le couple fromR/fromC de la charge de l'Éléphant de guerre étaient
 // perdus en route, parce que seules les coordonnées étaient recopiées. Une IA
 // jouant les Blancs roquait donc sans déplacer sa tour, prenait en passant
-// sans retirer le pion, et chargeait au Dresseur sans rien écraser.
+// sans retirer le pion, et chargeait à l'Éléphant de guerre sans rien écraser.
 function unmirrorMove(m){
   const to={...m.to,r:7-m.to.r,c:m.to.c};
   if(to.fromR!==undefined)to.fromR=7-to.fromR;

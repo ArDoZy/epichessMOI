@@ -10,7 +10,7 @@
 //   - Mise à jour des états spéciaux (Méduse paralysie, Prêtre protection,
 //     Grand Maître domination)
 //   - Exécution complète d'un coup (executeGameMove) avec tous les effets
-//     spéciaux (Typhon, Banshee, Dresseur, etc.)
+//     spéciaux (Typhon, Banshee, Éléphant de guerre, etc.)
 //   - Le système audio (Web Audio API, sans fichiers externes)
 //   - L'état de partie GS (game state) et sa structure
 //
@@ -330,7 +330,7 @@ function isSquareAttackedSimple(tr,tc,defColor,board){
   // --- Preux Chevalier : 2 ortho (chemin libre) OU 1 diagonale ---
   for(const[dr,dc] of[[2,0],[-2,0],[0,2],[0,-2]]){const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;const mr=tr+dr/2,mc_=tc+dc/2;if(board[mr][mc_])continue;const p=board[r][c];if(p&&p.color===atk&&p.pieceId==='preux-chevalier')return true;}
   for(const[dr,dc] of[[1,1],[1,-1],[-1,1],[-1,-1]]){const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;const p=board[r][c];if(p&&p.color===atk&&p.pieceId==='preux-chevalier')return true;}
-  // --- Dresseur d'Éléphant : 1 ou 2 cases ortho (2 = charge, bloquée
+  // --- Éléphant de guerre : 1 ou 2 cases ortho (2 = charge, bloquée
   //     seulement par une pièce alliée à mi-chemin) ---
   for(const[dr,dc] of[[1,0],[-1,0],[0,1],[0,-1]]){const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;const p=board[r][c];if(p&&p.color===atk&&p.pieceId==='dresseur-elephant')return true;}
   for(const[dr,dc] of[[2,0],[-2,0],[0,2],[0,-2]]){const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;const p=board[r][c];if(!(p&&p.color===atk&&p.pieceId==='dresseur-elephant'))continue;const midR=tr+dr/2,midC=tc+dc/2;if(board[midR][midC]&&board[midR][midC].color===atk)continue;return true;}
@@ -465,7 +465,7 @@ function applyBansheeEffect(toR,toC,board,p){
 // ----------------------------------------------------------------
 // DÉGÂTS COLLATÉRAUX SUR UN PLATEAU SIMULÉ
 // ----------------------------------------------------------------
-// Mêmes effets que applyTyphonEffect / applyDresseurEffect /
+// Mêmes effets que applyTyphonEffect / applyChargeEffect /
 // applyBansheeEffect, mais sur un plateau NU : rien n'est inscrit dans les
 // listes de pièces capturées, aucun état de partie n'est touché. C'est ce
 // dont ont besoin les deux endroits qui SIMULENT un coup sans le jouer :
@@ -473,7 +473,7 @@ function applyBansheeEffect(toR,toC,board,p){
 //   - moveLeavesKingInCheck : sans cela, « j'efface au Typhon la pièce qui me
 //     met en échec » était jugé illégal, parce que la simulation déplaçait le
 //     Typhon sans appliquer sa destruction — le roi restait donc en échec sur
-//     le plateau simulé. Idem pour la charge du Dresseur.
+//     le plateau simulé. Idem pour la charge de l'Éléphant de guerre.
 //   - applyMoveQuick (js/ai-engine.js) : la recherche voyait ces coups comme
 //     de simples déplacements et ne découvrait leurs effets qu'une fois joués,
 //     donc l'IA n'a jamais joué un Typhon POUR ce qu'il fait.
@@ -501,7 +501,7 @@ function applyCollateralOnBoard(b,from,to,p,anchored){
   return b;
 }
 
-function applyDresseurEffect(move,board,p,gs){
+function applyChargeEffect(move,board,p,gs){
   if(!move.destroysPath)return;
   const dr=Math.sign(move.r-move.fromR),dc=Math.sign(move.c-move.fromC);
   let nr=move.fromR+dr,nc=move.fromC+dc;
@@ -597,7 +597,7 @@ function executeGameMove(from,to,gs){
 
   b[to.r][to.c]=p;b[from.r][from.c]=null;p.hasMoved=true;
 
-  if(to.destroysPath)applyDresseurEffect(to,b,p,gs);
+  if(to.destroysPath)applyChargeEffect(to,b,p,gs);
   applyTyphonEffect(to.r,to.c,b,p,gs);
   applyBansheeEffect(to.r,to.c,b,p);
 

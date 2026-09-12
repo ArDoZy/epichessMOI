@@ -59,8 +59,9 @@ const PIECE_ART={
     '<circle class="b" cx="44" cy="37" r="12"/>'+
     '<path class="b" d="M33 46h21c2 10 6 15 10 20 4 6 5 11 5 16H18c0-5 1-10 5-16 4-5 8-10 10-20z"/>',
 
-  // LE CENTAURE (anciennement Chevaucheur de Rhinocéros : l'id n'a pas bougé,
-  // voir data-pieces.js). Ce qui le fait lire, c'est la JONCTION : un buste
+  // LE CENTAURE. Son identifiant ne dit pas son nom, et c'est voulu — la
+  // raison est écrite une fois pour toutes dans data-pieces.js, à côté de la
+  // pièce. Ce qui le fait lire, c'est la JONCTION : un buste
   // dressé planté à l'avant d'un corps équin. Les deux masses se chevauchent
   // franchement, sinon on ne voit qu'un cavalier posé sur une bête.
   'chevaucheur-rhinoceros':
