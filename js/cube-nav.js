@@ -198,6 +198,11 @@
     if(!cube)return;
     if(animating){ queuedKind=kind; return; }
     animating=true; pendingFront=PERM[kind](slots).front; updateArrows();
+    // `will-change` N'EST POSÉ QUE PENDANT LA ROTATION (voir #cube.cube-spin,
+    // css/style.css). En permanence, il réserve une couche de composition de la
+    // taille de l'écran pour un cube qui ne bouge pas les quatre cinquièmes du
+    // temps : c'est de la mémoire vidéo prise à un appareil qui n'en a pas.
+    cube.classList.add('cube-spin');
     // LA FACE QUI ARRIVE EST REMPLIE AVANT DE SE MONTRER. Elle est visible dès
     // le premier degré de la rotation : la remplir seulement à l'arrivée
     // revenait à la laisser tourner avec le contenu de la visite précédente,
@@ -212,6 +217,7 @@
       cube.removeEventListener('transitionend',finish);
       slots=PERM[kind](slots);   // la face amenée au front devient « front »
       animating=false; pendingFront=null;
+      cube.classList.remove('cube-spin');
       settle();                  // cube revient à l'angle 0, faces réaffectées (aucun saut visuel)
       refresh();
       if(after)after();

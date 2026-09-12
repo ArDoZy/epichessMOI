@@ -569,7 +569,12 @@ function chestBreakMount(chestId,onDone){
   const calm=pbCalm();
   host.innerHTML=
     '<div class="pb-shake"><div class="pb-trem"><div class="pb-scene">'+
-      cfg.stages.map((s,i)=>'<img class="pb-frame" alt="" draggable="false" src="'+pbSrc(cfg,i)+'">').join('')+
+      // PAS de `loading="lazy"` ici, et c'est délibéré : ces images sont les
+      // ÉTAPES d'une animation qui démarre dans la seconde qui suit. Une image
+      // paresseuse arriverait après son tour, et la fracture du coffre se
+      // jouerait sur un cadre vide. `decoding="async"` reste juste : il évite
+      // seulement que le décodage bloque le fil principal.
+      cfg.stages.map((s,i)=>'<img class="pb-frame" alt="" draggable="false" decoding="async" src="'+pbSrc(cfg,i)+'">').join('')+
       (pbBloomOn()?'<div class="pb-bloom"></div>':'')+
     '</div></div></div>'+
     '<div class="pb-flash"></div><div class="pb-sparks"></div>'+

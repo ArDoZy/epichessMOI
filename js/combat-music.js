@@ -79,3 +79,28 @@ function startCombatMusic(){
 function endCombatMusic(){
   if(_combatMusicSource)_combatMusicSource.loop=false;
 }
+
+// ----------------------------------------------------------------
+// LA MUSIQUE SE TAIT AVEC LA PAGE
+// ----------------------------------------------------------------
+// Une boucle Web Audio ne s'arrête PAS quand on change d'onglet ou qu'on
+// verrouille le téléphone : le contexte audio continue de décoder et de mixer,
+// et la musique de combat continue de jouer par-dessus ce que le joueur écoute
+// vraiment. C'est le seul son du jeu qui dure — les effets, eux, sont des
+// impulsions d'une demi-seconde — donc le seul qui ait besoin de cette règle.
+//
+// On suspend le CONTEXTE et non la source : suspendre le contexte fige
+// l'horloge audio, donc la boucle reprend exactement où elle en était ; arrêter
+// la source la détruirait et il faudrait la reconstruire, avec le décodage que
+// cela suppose. Et on ne reprend QUE si quelque chose jouait — sinon on
+// rallumerait un contexte que le navigateur venait de mettre en veille tout
+// seul, ce qu'aucune page ne doit faire sans geste de l'utilisateur.
+document.addEventListener('visibilitychange',()=>{
+  const ctx=(typeof getAudioCtx==='function')?getAudioCtx():null;
+  if(!ctx)return;
+  if(document.hidden){
+    if(_combatMusicSource&&ctx.state==='running')ctx.suspend().catch(()=>{});
+  }else if(_combatMusicSource&&ctx.state==='suspended'){
+    ctx.resume().catch(()=>{});
+  }
+});

@@ -104,11 +104,33 @@ function lbError(msg){
 // ----------------------------------------------------------------
 // RENDU
 // ----------------------------------------------------------------
+// LE CLASSEMENT NE SE RÉÉCRIT QUE S'IL A CHANGÉ.
+//
+// Cette fonction est rappelée à chaque arrivée ou départ dans le salon de
+// présence, c'est-à-dire plusieurs fois par minute quand il y a du monde. Elle
+// réécrivait la liste entière et rebranchait ses écouteurs à chaque fois —
+// jusqu'à cinquante lignes, chacune avec son médaillon de rang.
+//
+// Et ce n'était pas qu'une dépense : c'était un BUG. Le champ de recherche fait
+// partie du balisage réécrit, donc il était DÉTRUIT puis recréé au milieu d'une
+// frappe. `_lbKeepFocus` existe pour recoller les morceaux (redonner le focus,
+// remettre le curseur au bout) — un pansement qui ne tenait que si rien
+// d'autre ne bougeait. Un rendu qui ne change rien ne touche plus au DOM du
+// tout : le champ n'est plus détruit, et le pansement n'a plus à servir.
+//
+// La signature est le BALISAGE LUI-MÊME. Construire la chaîne coûte quelques
+// concaténations ; l'analyser, la mettre en page et rebrancher ses écouteurs
+// coûte cent fois plus. Comparer avant d'écrire est donc toujours gagnant, et
+// c'est la seule signature qui ne peut pas se tromper — elle EST ce qu'on
+// allait afficher.
+let _lbHtml=null;
 function renderLeaderboardPage(){
   const host=document.getElementById('lb-body');
   if(!host)return;
-  if(_lbProfile){host.innerHTML=lbProfileHTML(_lbProfile);lbWire();return;}
-  host.innerHTML=lbSearchHTML()+lbListHTML();
+  const html=_lbProfile?lbProfileHTML(_lbProfile):(lbSearchHTML()+lbListHTML());
+  if(html===_lbHtml&&host.firstElementChild)return;
+  _lbHtml=html;
+  host.innerHTML=html;
   lbWire();
 }
 

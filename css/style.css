@@ -1840,7 +1840,13 @@ body.nav-overlay #cube-stage{display:none}
 /* Durée de rotation fluide, pensée pour pouvoir enchaîner deux rotations
    sans temps mort, voir js/cube-nav.js (ROTATE_MS) qui pilote la même
    durée en JS, et queuedKind pour l'enchaînement instantané. */
-#cube{position:absolute;inset:0;transform-style:preserve-3d;will-change:transform;
+/* `will-change` PENDANT LA ROTATION SEULEMENT, comme pour les pièces qui
+   glissent (voir [BOARD]). Posé en permanence, il réserve une couche de
+   composition de la taille de l'écran pour un cube immobile les quatre
+   cinquièmes du temps — de la mémoire vidéo prise à un appareil qui n'en a
+   pas. La classe est posée et retirée par animate() (js/cube-nav.js). */
+#cube.cube-spin{will-change:transform}
+#cube{position:absolute;inset:0;transform-style:preserve-3d;
   transition:transform .46s cubic-bezier(.32,.72,.3,1);
   transform:translateZ(-50vmax) rotateX(0deg) rotateY(0deg)}
 
@@ -2154,7 +2160,14 @@ body.light .cube-face[data-face="magasin"]{background:
   padding:6px 2vw calc(6px + var(--safe-b));
   border:none;border-top:1px solid var(--border2);
   background:linear-gradient(180deg,rgba(23,31,37,.94),rgba(14,18,22,.98));
-  backdrop-filter:blur(18px);box-shadow:0 -8px 26px -10px rgba(0,0,0,.75)}
+  box-shadow:0 -8px 26px -10px rgba(0,0,0,.75)}
+/* LE `backdrop-filter:blur(18px)` A ÉTÉ RETIRÉ D'ICI. Un flou d'arrière-plan
+   oblige le navigateur à garder une copie de tout ce qui est peint DERRIÈRE
+   l'élément et à la reflouter à chaque image où quelque chose bouge dessous —
+   et sous cette barre, il y a le cube, qui tourne. C'était le seul flou du jeu
+   posé sur un élément TOUJOURS à l'écran, donc le seul qu'on payait en
+   permanence. Le fond dégradé au-dessus est déjà opaque à 94-98 % : le flou ne
+   se voyait pas, il se sentait seulement à la chaleur du téléphone. */
 /* Quatre parts ÉGALES : quatre destinations de même rang, donc quatre cibles
    de même largeur. Une répartition selon la longueur des libellés ferait
    croire à une hiérarchie qui n'existe pas. */
@@ -3674,8 +3687,13 @@ body.light .jt-fx{mix-blend-mode:normal;filter:saturate(1.45) brightness(.82)}
              0 .5em 1.1em -.6em rgba(0,0,0,.85)}
 .cv-due .cv-glow{opacity:.75;animation:cvBreathe 2.8s ease-in-out infinite}
 .cv-due .cv-name{color:var(--gold2)}
+/* LE REFLET GLISSE EN `transform`, PLUS EN `left`. Animer `left` relance la
+   MISE EN PAGE à chaque image ; `transform` ne touche qu'au compositeur. Les
+   deux bornes sont exprimées en pourcentage de l'élément (38 % du parent) pour
+   retomber sur le trajet d'origine : −45 % de parent = −118 % de l'élément,
+   +115 % = +303 %. */
 .cv-due .cv-tile::after{content:'';position:absolute;top:0;bottom:0;width:38%;
-  left:-45%;pointer-events:none;z-index:-1;
+  left:0;pointer-events:none;z-index:-1;
   background:linear-gradient(100deg,transparent,rgba(255,246,214,.16) 45%,transparent);
   animation:cvSheen 3.4s ease-in-out infinite}
 .cv-due .chest:not(.chest-pawn),.cv-due .cv-vis-joker svg{
@@ -3727,7 +3745,7 @@ body.light .jt-fx{mix-blend-mode:normal;filter:saturate(1.45) brightness(.82)}
 @keyframes cvNodeBeat{0%,100%{box-shadow:inset 0 1px 0 rgba(255,244,214,.6),0 0 .8em -.2em rgba(201,168,76,.6)}
   50%{box-shadow:inset 0 1px 0 rgba(255,244,214,.6),0 0 1.5em 0 rgba(201,168,76,.95)}}
 @keyframes cvBreathe{0%,100%{opacity:.5}50%{opacity:.9}}
-@keyframes cvSheen{0%{left:-45%}55%,100%{left:115%}}
+@keyframes cvSheen{0%{transform:translateX(-118%)}55%,100%{transform:translateX(303%)}}
 
 /* LES POUSSIÈRES DE LUMIÈRE. Trois points qui montent le long de la vignette
    du palier à prendre, décalés dans le temps pour qu'on ne voie jamais le
@@ -4508,11 +4526,26 @@ body.light .gp-bar.gp-turn{background:linear-gradient(90deg,var(--accent-bg),var
   box-shadow:0 0 0 9999px rgba(4,8,10,.72),0 0 0 2px var(--accent2),0 0 26px var(--potion-glow) inset;
   transition:left .38s cubic-bezier(.32,.72,.3,1),top .38s cubic-bezier(.32,.72,.3,1),
              width .38s cubic-bezier(.32,.72,.3,1),height .38s cubic-bezier(.32,.72,.3,1),opacity .3s}
-#tuto-spot.on{opacity:1;animation:tutoSpotPulse 2s ease-in-out infinite}
-@keyframes tutoSpotPulse{
-  0%,100%{box-shadow:0 0 0 9999px rgba(4,8,10,.72),0 0 0 2px var(--accent2),0 0 26px var(--potion-glow) inset}
-  50%{box-shadow:0 0 0 9999px rgba(4,8,10,.72),0 0 0 3px var(--accent2),0 0 40px rgba(47,177,151,.45) inset}
+#tuto-spot.on{opacity:1}
+/* LA PULSATION EST PASSÉE SUR UN PSEUDO-ÉLÉMENT, EN OPACITÉ, et c'était le
+   plus gros gaspillage de toute la feuille de style.
+   Elle animait le `box-shadow` du projecteur lui-même — celui qui porte le
+   voile de 9999 px. Un `box-shadow` n'est pas composité : il se REPEINT. Le
+   navigateur redessinait donc un rectangle de neuf mille pixels de côté
+   SOIXANTE FOIS PAR SECONDE, pendant tout le tutoriel, c'est-à-dire pendant
+   les premières minutes de jeu d'un joueur neuf — exactement le moment où un
+   téléphone d'entrée de gamme doit faire bonne impression.
+   Le voile est maintenant STATIQUE (il n'a jamais eu besoin de bouger : il ne
+   change pas d'un bout à l'autre de l'animation), et seul un anneau de la
+   taille de la cible change d'`opacity`, ce qui se règle sur le compositeur
+   sans repeindre un pixel. */
+#tuto-spot::after{
+  content:'';position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+  box-shadow:0 0 0 3px var(--accent2),0 0 40px rgba(47,177,151,.45) inset;
+  opacity:0;
 }
+#tuto-spot.on::after{animation:tutoSpotPulse 2s ease-in-out infinite}
+@keyframes tutoSpotPulse{0%,100%{opacity:0}50%{opacity:1}}
 
 /* La bulle capte les clics (c'est elle qui porte « Suivant »), le reste de
    la couche non : d'où le pointer-events:auto local. */
@@ -6477,13 +6510,20 @@ body.light .art-banner::before{opacity:.55;filter:saturate(.7)}
   100%{opacity:0;transform:translate(-50%,-50%) scale(1.15)}
 }
 .cine:has(.cine-motes)::after{
-  content:'';position:absolute;inset:0;z-index:1;pointer-events:none;mix-blend-mode:screen;
-  background:url('../assets/fx/braises.webp') center/cover repeat-y;opacity:.55;
+  content:'';position:absolute;top:0;left:0;right:0;height:200%;
+  z-index:1;pointer-events:none;mix-blend-mode:screen;
+  background:url('../assets/fx/braises.webp') center top/100% 50% repeat-y;opacity:.55;
   animation:artMotes 7s linear infinite;
 }
 /* La planche est demandée TUILABLE VERTICALEMENT (assets/PROMPTS.md) :
-   c'est ce qui permet de la faire défiler en boucle sans raccord. */
-@keyframes artMotes{from{background-position:center 0}to{background-position:center -100vh}}
+   c'est ce qui permet de la faire défiler en boucle sans raccord.
+   LE DÉFILEMENT EST UN `transform`, PLUS UN `background-position`. Déplacer un
+   fond force le navigateur à REPEINDRE toute la surface à chaque image — et
+   cette surface-ci est l'écran entier. La couche fait maintenant deux fois la
+   hauteur du cadre et porte exactement deux tuiles : la glisser d'une demi-
+   hauteur la ramène sur elle-même, le raccord est invisible, et un `transform`
+   se règle sur le compositeur sans repeindre un seul pixel. */
+@keyframes artMotes{from{transform:translateY(0)}to{transform:translateY(-50%)}}
 
 /* L'ÉCHEC : la barre de statut s'embrase. Son fond est OPAQUE
    (`var(--surface2)`) : la planche peut donc être une simple couche de

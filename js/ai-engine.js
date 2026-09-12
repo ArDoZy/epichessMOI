@@ -923,10 +923,34 @@ function unmirrorMove(m){
 // FALLBACK : recherche IA sur le thread principal (si Web Worker
 // indisponible, ex: certains contextes file:// restrictifs)
 // ----------------------------------------------------------------
+// LE BUDGET DU REPLI EST BORNÉ, ET C'EST TOUT L'OBJET DE MAIN_THREAD_MAX_MS.
+// La recherche est écrite pour tourner dans un Worker : le budget d'un
+// adversaire fort y monte à cinq secondes (l'Athanor), et pendant ce temps
+// l'interface reste vivante parce que le calcul est ailleurs. Sur le fil
+// principal — où l'on ne tombe que si le navigateur refuse les Workers —, les
+// mêmes cinq secondes sont cinq secondes d'écran FIGÉ : plus un défilement,
+// plus un appui pris en compte, plus une animation. Un joueur ne conclut pas
+// « l'Instructeur réfléchit », il conclut que le jeu a planté.
+//
+// Six cents millisecondes sont le seuil où une attente reste une attente. La
+// recherche est à profondeur itérative (voir aiSearchRoot) : elle rend
+// toujours le meilleur coup TROUVÉ à l'instant où le budget s'épuise, donc la
+// borne ne casse rien — elle rend l'adversaire un peu moins fort sur un
+// navigateur qui n'a pas de Worker, ce qui est le bon arbitrage.
+//
+// La profondeur est bornée avec le temps : sans cela, un `depthCap` de 30
+// relancerait une itération de plus juste avant l'échéance, et cette
+// itération-là n'est pas interruptible entre deux nœuds.
+const MAIN_THREAD_MAX_MS=600;
+const MAIN_THREAD_MAX_DEPTH=6;
 function doAIMoveMainThread(gs){
   const aiCol=gs.aiColor||'b';
   if(gs.gameOver||gs.turn!==aiCol)return;
-  const opp=AI_INSTRUCTORS[selectedAILevel]||AI_INSTRUCTORS[0];
+  const base=AI_INSTRUCTORS[selectedAILevel]||AI_INSTRUCTORS[0];
+  const opp=(base.timeMs>MAIN_THREAD_MAX_MS||(base.depthCap||30)>MAIN_THREAD_MAX_DEPTH)
+    ?{...base,timeMs:Math.min(base.timeMs,MAIN_THREAD_MAX_MS),
+             depthCap:Math.min(base.depthCap||30,MAIN_THREAD_MAX_DEPTH)}
+    :base;
   // aiSearchRoot raisonne toujours du point de vue des Noirs (c'est la
   // convention de signe d'evalBoard). Une IA qui joue les Blancs reçoit donc
   // le plateau miroité, exactement comme le Worker, et le coup rendu est

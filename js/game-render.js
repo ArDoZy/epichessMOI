@@ -664,7 +664,15 @@ function updateTurnBars(gs){
 }
 
 // Affiche les deux badges d'horloge (masqués si gs.clockMs===0 = illimité).
+// LA PENDULE CONTINUE DE COMPTER SUR UNE PAGE CACHÉE — c'est la règle des
+// échecs, et la triche serait trop facile — MAIS ELLE N'ÉCRIT PLUS RIEN.
+// tickClock (js/rules-engine.js) appelle cette fonction cinq fois par seconde
+// tant que la partie dure ; sur un onglet en arrière-plan, chacun de ces appels
+// posait deux textContent et deux classList.toggle que personne ne verra. Le
+// décompte, lui, est fait dans tickClock à partir de l'horloge du système : il
+// ne dépend pas du rendu, et retrouve la bonne valeur au retour.
 function renderClocks(gs){
+  if(typeof document!=='undefined'&&document.hidden)return;
   const hEl=document.getElementById('human-player-clock');const aEl=document.getElementById('ai-player-clock');
   if(!hEl||!aEl)return;
   if(!gs.clockMs){hEl.style.display='none';aEl.style.display='none';return;}

@@ -195,7 +195,7 @@ function chestVisual(chest,extraCls){
   const poster=(typeof chestBreakPoster==='function')?chestBreakPoster(chest.id):'';
   if(poster)
     return '<div class="chest chest-pawn '+(extraCls||'')+'" style="--chest-c:'+chest.color+'">'+
-      '<img src="'+poster+'" alt="" draggable="false">'+
+      '<img src="'+poster+'" alt="" draggable="false" decoding="async" loading="lazy">'+
     '</div>';
   return '<div class="chest '+(extraCls||'')+'" style="--chest-c:'+chest.color+'">'+
     '<div class="chest-lid"></div><div class="chest-body"></div><div class="chest-lock"></div></div>';
