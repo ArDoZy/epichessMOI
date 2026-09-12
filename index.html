@@ -261,7 +261,7 @@
      répétée en toutes lettres sur le menu principal. Il rognait le haut de
      toutes les pages. Le bouton de réglages, lui, n'est plus épinglé qu'en
      haut à droite du MENU PRINCIPAL (voir #settings-btn et body.main-menu,
-     js/cube-nav.js) : partout ailleurs il ne servait qu'à réserver une bande
+     js/pages-nav.js) : partout ailleurs il ne servait qu'à réserver une bande
      vide au-dessus du titre. -->
 
 <!-- IL N'Y A PLUS AUCUN ÉCRAN AVANT LE JEU.
@@ -438,13 +438,26 @@
 
 
 <!-- ================================================================
-     CUBE DE NAVIGATION : menu principal. Coquille visuelle uniquement :
-     les vraies pages #page-armies / #page-game sont déplacées à
-     l'exécution dans les faces "armees" / "game" par js/cube-nav.js.
-     Le chrome global (barre compte, modals, réglages)
-     reste HORS du cube pour ne pas être piégé par les transforms 3D.
+     RANGÉE DE NAVIGATION : les cinq pages du jeu, alignées côte à côte, que
+     l'on fait glisser de gauche à droite.
+
+        MAGASIN · MES ARMÉES · COMBAT · VARIANTES · GUERRE DES CLANS
+
+     COMBAT est au milieu : c'est la page d'accueil, et les deux moitiés du
+     jeu s'ouvrent de part et d'autre. Coquille visuelle uniquement : les
+     vraies pages #page-armies / #page-reserve / #page-game sont déplacées à
+     l'exécution dans leur emplacement par js/pages-nav.js.
+
+     L'ORDRE DU DOM N'EST PAS L'ORDRE DE LA RANGÉE. Chaque page est placée par
+     sa variable --i (son rang, posé au démarrage d'après la liste PAGES de
+     js/pages-nav.js) : la rangée se réordonne donc en une ligne de JS, sans
+     déplacer un seul bloc de balisage. Les pages sont écrites ici dans
+     l'ordre où elles ont été ajoutées au jeu.
+
+     Le chrome global (barre compte, modals, réglages) reste HORS de la rangée
+     pour ne pas glisser avec elle.
      ================================================================ -->
-<div id="cube-stage">
+<div id="nav-stage">
   <!-- LES MATIÈRES DES EFFETS, DÉCLARÉES UNE SEULE FOIS. Dégradés, filtres de
      turbulence et floraisons de lumière que se partagent les trois emblèmes du
      menu (.jt-fx, css/style.css). Un `<defs>` n'affiche rien par lui-même :
@@ -526,10 +539,10 @@
   </linearGradient>
   <mask id="jtfNearMask"><rect x="0" y="0" width="100" height="100" fill="url(#jtfNear)"/></mask>
 </defs></svg>
-<div id="cube">
-    <!-- Face 1 (avant) : menu principal -->
-    <div class="cube-face is-front" data-face="jouer">
-      <div class="face-viewport">
+<div id="nav-track">
+    <!-- COMBAT (au milieu de la rangée) : le menu principal, page d'accueil. -->
+    <div class="nav-page is-front" data-page="jouer">
+      <div class="page-viewport">
         <div class="jouer-menu">
           <div class="ambient-bubbles"><span></span><span></span><span></span><span></span><span></span><span></span></div>
           <!-- IDENTITÉ DU JOUEUR, en haut au milieu, à la place du titre du
@@ -788,7 +801,7 @@
                 <span class="jouer-badge" id="jouer-rangee-badge" style="display:none">0</span>
               </button>
             </div>
-            <button class="jouer-btn" id="cube-jouer-btn"><svg class="jouer-btn-ico" aria-hidden="true"><use href="#ec-epees"/></svg><span>COMBAT</span></button>
+            <button class="jouer-btn" id="combat-btn"><svg class="jouer-btn-ico" aria-hidden="true"><use href="#ec-epees"/></svg><span>COMBAT</span></button>
             <!-- DEUX PORTES DE SORTIE, ET ELLES NE MÈNENT PAS AU MÊME
                  ENDROIT. « Adversaires » ouvre le laboratoire (les IA) ;
                  « Classement » ouvre les AUTRES JOUEURS — le tableau
@@ -814,31 +827,30 @@
         </div>
       </div>
     </div>
-    <!-- Face 2 (droite) : Mes armées (page-armies déplacée ici). Cette page
+    <!-- MES ARMÉES, à gauche de COMBAT (page-armies déplacée ici). Cette page
          EST la composition d'armée du joueur — les deux ont fusionné, il
          n'y a plus d'overlay séparé pour le joueur (voir js/armies.js). Le
          builder (#page-builder) reste une page à part, mais uniquement pour
          composer les armées de l'IA (page-ai-armies → "Modifier"/"Nouvelle
          armée IA"). -->
-    <div class="cube-face" data-face="armees">
-      <div class="face-viewport" id="face-viewport-armees"></div>
+    <div class="nav-page" data-page="armees">
+      <div class="page-viewport" id="page-viewport-armees"></div>
     </div>
-    <!-- Face 3 (arrière) : la Guerre des clans (page-reserve déplacée ici) :
-         inventaire des pièces, coffre quotidien, choix de l'échiquier. Les
-         coffres, eux, sont passés en bas du menu principal. -->
-    <div class="cube-face" data-face="reserve">
-      <div class="face-viewport" id="face-viewport-reserve"></div>
+    <!-- LA GUERRE DES CLANS, tout à droite de la rangée (page-reserve déplacée
+         ici) : inventaire des pièces, coffre quotidien, choix de l'échiquier.
+         Les coffres, eux, sont passés en bas du menu principal. -->
+    <div class="nav-page" data-page="reserve">
+      <div class="page-viewport" id="page-viewport-reserve"></div>
     </div>
-    <!-- Face 4 (gauche) : LE MAGASIN. Elle a porté la Diagonale de la Puissance, qui
-         est repartie en page à part entière (bouton « Voie » du menu
-         principal, à côté de l'ELO). La face reste dans le cube — le cycle de
-         rotation compte quatre côtés. Elle porte les six coffres, en grand,
-         achetables contre des perles : c'est le SEUL endroit du jeu où ils
-         s'achètent (le rail du menu principal, lui, ne fait plus que montrer
-         la série — voir js/economy-ui.js). Rendue par renderMagasinPage(),
-         appelée à l'arrivée sur la face (refreshFaceContent, js/cube-nav.js). -->
-    <div class="cube-face" data-face="magasin">
-      <div class="face-viewport" id="face-viewport-magasin">
+    <!-- LE MAGASIN, tout à gauche de la rangée. Il a porté la Diagonale de la
+         Puissance, repartie en page à part entière (socle de l'arène, au
+         milieu du menu). Il porte les six coffres, en grand, achetables contre
+         des perles : c'est le SEUL endroit du jeu où ils s'achètent (le rail du
+         menu principal, lui, ne fait plus que montrer la série — voir
+         js/economy-ui.js). Rendu par renderMagasinPage(), appelée à l'arrivée
+         sur la page (refreshPageContent, js/pages-nav.js). -->
+    <div class="nav-page" data-page="magasin">
+      <div class="page-viewport" id="page-viewport-magasin">
         <div class="shop-wrap">
           <div class="shop-inner">
             <div class="shop-hdr">
@@ -850,51 +862,80 @@
         </div>
       </div>
     </div>
-    <!-- Face supérieure : la partie (page-game déplacée ici) -->
-    <div class="cube-face" data-face="game">
-      <div class="face-viewport" id="face-viewport-game"></div>
+    <!-- LES VARIANTES, entre COMBAT et la Guerre des clans. Elle annonce les
+         règles alternatives du laboratoire : le duel classique (celui que
+         lance COMBAT) et les cinq formules en préparation. Rendue par
+         renderVariantesPage() (js/variantes.js) à l'arrivée sur la page. -->
+    <div class="nav-page" data-page="variantes">
+      <div class="page-viewport" id="page-viewport-variantes">
+        <div class="var-wrap">
+          <div class="var-inner">
+            <div class="var-hdr">
+              <div class="var-title">Variantes</div>
+              <div class="var-sub">Les autres façons de jouer aux échecs d'Epic Chess.</div>
+            </div>
+            <div class="var-grid" id="var-grid"></div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
-  <!-- Contrôles de navigation (hors du cube 3D). Icônes en SVG (et non en
-       glyphes unicode) : centrage garanti, indépendant des métriques de la
-       police (voir css [CUBE] .cube-arrow svg).
-       Les deux flèches verticales ont disparu avec la face « Variantes » :
-       elles ne menaient qu'à un écran vide. -->
-  <button class="cube-arrow cube-arrow-side" id="cube-arrow-left" title="Tourner à gauche" style="display:none">
+  <!-- LA PARTIE EST UN CALQUE, PAS UNE PAGE DE LA RANGÉE. Une bataille n'est
+       pas une destination que l'on visite entre deux autres : c'est un état.
+       Elle est donc posée HORS de #nav-track (elle ne glisse avec rien) et ne
+       s'affiche que sous body.in-game, par-dessus tout le reste. Tant qu'elle
+       dure, les onglets, les flèches, le glissement du doigt et les touches
+       fléchées sont éteints (js/pages-nav.js). -->
+  <div class="nav-page" data-page="game">
+    <div class="page-viewport" id="page-viewport-game"></div>
+  </div>
+  <!-- Contrôles de navigation (hors de la rangée : ils ne glissent pas avec
+       elle). Icônes en SVG (et non en glyphes unicode) : centrage garanti,
+       indépendant des métriques de la police (voir css [NAV] .nav-arrow svg).
+       Chacune s'efface au bout de la rangée : il n'y a rien au-delà du magasin
+       ni au-delà de la Guerre des clans. -->
+  <button class="nav-arrow nav-arrow-side" id="nav-arrow-left" title="Page précédente" style="display:none">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 5, 8 12, 15 19"/></svg>
   </button>
-  <button class="cube-arrow cube-arrow-side" id="cube-arrow-right" title="Tourner à droite" style="display:none">
+  <button class="nav-arrow nav-arrow-side" id="nav-arrow-right" title="Page suivante" style="display:none">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 5, 16 12, 9 19"/></svg>
   </button>
-  <!-- Repère des quatre faces du cube, en bas de l'écran : un blason par
-       face, celui de la face affichée s'allume. Sert aussi de raccourci (on
-       peut taper directement le blason d'une face pour y aller). Voir
-       js/cube-nav.js (updateFacebar / goToFace).
+  <!-- LA BARRE D'ONGLETS, en bas de l'écran : un blason par page de la rangée,
+       DANS L'ORDRE DE LA RANGÉE, celui de la page affichée s'allume. Elle sert
+       aussi de raccourci (on peut taper directement le blason d'une page pour
+       y aller, sans passer par les pages intermédiaires). Voir js/pages-nav.js
+       (updateTabs / goToPage).
 
-       QUATRE BLASONS PLEINS, ET PLUS QUATRE PICTOGRAMMES AU TRAIT. Les
-       précédents étaient des icônes d'interface génériques — un sac de
-       courses, un marteau, un écusson vide, une étagère — dessinées au trait
-       fin de 2,2 px : à 22 px de côté, sur un fond translucide, il n'en
-       restait que quatre gribouillis interchangeables, dont aucun ne disait
-       la face qu'il ouvrait. Chacun est maintenant une silhouette PLEINE,
-       taillée pour cette taille-là, et qui nomme sa face d'un seul coup
-       d'œil :
+       C'EST LA CARTE DE LA NAVIGATION, et c'est ce qu'un cube ne pouvait pas
+       donner : cinq onglets alignés disent d'un coup d'œil combien il y a de
+       pages, dans quel ordre, et où l'on se trouve dessus. L'ordre des boutons
+       ci-dessous doit rester celui de la liste PAGES (js/pages-nav.js) — c'est
+       la seule chose que le code ne peut pas vérifier à votre place.
+
+       CINQ BLASONS PLEINS, ET PLUS CINQ PICTOGRAMMES AU TRAIT. Les précédents
+       étaient des icônes d'interface génériques — un sac de courses, un
+       marteau, un écusson vide, une étagère — dessinées au trait fin de 2,2 px :
+       à 22 px de côté, sur un fond translucide, il n'en restait que des
+       gribouillis interchangeables, dont aucun ne disait la page qu'il ouvrait.
+       Chacun est maintenant une silhouette PLEINE, taillée pour cette taille-là,
+       et qui nomme sa page d'un seul coup d'œil :
          · Magasin    → une balance de marchand (on y échange des perles) ;
-         · Combat     → deux épées entrecroisées ;
          · Mes armées → un bouclier, la pointe d'une lance derrière ;
+         · Combat     → deux épées entrecroisées ;
+         · Variantes  → un damier dont un quartier s'est détaché ;
          · Guerre des clans → un coffre ferré, cadenassé.
        Les creux (serrure du coffre, plateaux de la balance) sont de VRAIS
        trous, obtenus par fill-rule="evenodd" : ils restent transparents sur
-       le laiton de la face active comme sur le fond sombre des trois autres.
+       le laiton de l'onglet actif comme sur le fond sombre des autres.
 
        SUR ORDINATEUR, CETTE BARRE DEVIENT UN RAIL VERTICAL À GAUCHE, et les
-       `.cfb-label` ci-dessous sortent de l'ombre : à la souris, il y a la
-       place d'écrire où mènent les quatre blasons, et plus aucune raison de
-       faire deviner. Voir [DESKTOP] dans css/style.css — c'est la MÊME barre,
-       le même balisage et les mêmes gestionnaires de clic : rien n'est
-       dupliqué pour l'ordinateur, tout est déplacé. -->
-  <div class="cube-facebar" id="cube-facebar" style="display:none">
-    <button type="button" class="cube-facebar-btn" data-face="magasin" title="Magasin" aria-label="Magasin">
+       `.nav-tab-label` ci-dessous sortent de l'ombre : à la souris, il y a la
+       place d'écrire où mènent les blasons, et plus aucune raison de faire
+       deviner. Voir [DESKTOP] dans css/style.css — c'est la MÊME barre, le même
+       balisage et les mêmes gestionnaires de clic : rien n'est dupliqué pour
+       l'ordinateur, tout est déplacé. -->
+  <div class="nav-tabbar" id="nav-tabbar" style="display:none">
+    <button type="button" class="nav-tab" data-page="magasin" title="Magasin" aria-label="Magasin">
       <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
         <circle cx="12" cy="3.15" r="1.5"/>
         <path d="M11.2 4.4h1.6v14.3h-1.6z"/>
@@ -905,31 +946,10 @@
         <path d="M8.9 18.2h6.2l1.6 2.15H7.3z"/>
         <path d="M6.1 20.1h11.8v1.6H6.1z"/>
       </svg>
-      <img class="cfb-art" src="assets/ui/logo-magasin.webp" alt="" aria-hidden="true" onerror="this.remove()">
-      <span class="cfb-label">Magasin</span>
+      <img class="nav-tab-art" src="assets/ui/logo-magasin.webp" alt="" aria-hidden="true" onerror="this.remove()">
+      <span class="nav-tab-label">Magasin</span>
     </button>
-    <button type="button" class="cube-facebar-btn" data-face="jouer" title="Combat" aria-label="Combat">
-      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-        <!-- Une seule épée, dessinée pointe en haut, puis pivotée de ±42°
-             autour du centre : les deux lames se croisent donc exactement au
-             milieu du blason, gardes en bas, pointes en haut. -->
-        <g transform="rotate(42 12 12)">
-          <path d="M12 1.2l1.2 3.2v11.05h-2.4V4.4z"/>
-          <path d="M7.35 15.15h9.3v1.85h-9.3z"/>
-          <path d="M11.1 17.2h1.8v2.9h-1.8z"/>
-          <circle cx="12" cy="21.35" r="1.35"/>
-        </g>
-        <g transform="rotate(-42 12 12)">
-          <path d="M12 1.2l1.2 3.2v11.05h-2.4V4.4z"/>
-          <path d="M7.35 15.15h9.3v1.85h-9.3z"/>
-          <path d="M11.1 17.2h1.8v2.9h-1.8z"/>
-          <circle cx="12" cy="21.35" r="1.35"/>
-        </g>
-      </svg>
-      <img class="cfb-art" src="assets/ui/logo-combat.webp" alt="" aria-hidden="true" onerror="this.remove()">
-      <span class="cfb-label">Combat</span>
-    </button>
-    <button type="button" class="cube-facebar-btn" data-face="armees" title="Mes armées" aria-label="Mes armées">
+    <button type="button" class="nav-tab" data-page="armees" title="Mes armées" aria-label="Mes armées">
       <!-- UN BOUCLIER, ET LA POINTE D'UNE LANCE QUI DÉPASSE DERRIÈRE. Ce
            blason a d'abord été le Monarque encadré de deux pions sur son
            socle : trois objets, huit sous-formes et deux gorges de 1 px entre
@@ -954,17 +974,54 @@
         <!-- Le bouclier, devant, posé au bas du blason. -->
         <path d="M3.2 10.9h17.6v4.4c0 3.7-2.9 6.4-8.8 8-5.9-1.6-8.8-4.3-8.8-8z"/>
       </svg>
-      <img class="cfb-art" src="assets/ui/logo-armees.webp" alt="" aria-hidden="true" onerror="this.remove()">
-      <span class="cfb-label">Mes armées</span>
+      <img class="nav-tab-art" src="assets/ui/logo-armees.webp" alt="" aria-hidden="true" onerror="this.remove()">
+      <span class="nav-tab-label">Mes armées</span>
     </button>
-    <button type="button" class="cube-facebar-btn" data-face="reserve" title="Guerre des clans" aria-label="Guerre des clans">
+    <button type="button" class="nav-tab" data-page="jouer" title="Combat" aria-label="Combat">
+      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <!-- Une seule épée, dessinée pointe en haut, puis pivotée de ±42°
+             autour du centre : les deux lames se croisent donc exactement au
+             milieu du blason, gardes en bas, pointes en haut. -->
+        <g transform="rotate(42 12 12)">
+          <path d="M12 1.2l1.2 3.2v11.05h-2.4V4.4z"/>
+          <path d="M7.35 15.15h9.3v1.85h-9.3z"/>
+          <path d="M11.1 17.2h1.8v2.9h-1.8z"/>
+          <circle cx="12" cy="21.35" r="1.35"/>
+        </g>
+        <g transform="rotate(-42 12 12)">
+          <path d="M12 1.2l1.2 3.2v11.05h-2.4V4.4z"/>
+          <path d="M7.35 15.15h9.3v1.85h-9.3z"/>
+          <path d="M11.1 17.2h1.8v2.9h-1.8z"/>
+          <circle cx="12" cy="21.35" r="1.35"/>
+        </g>
+      </svg>
+      <img class="nav-tab-art" src="assets/ui/logo-combat.webp" alt="" aria-hidden="true" onerror="this.remove()">
+      <span class="nav-tab-label">Combat</span>
+    </button>
+    <button type="button" class="nav-tab" data-page="variantes" title="Variantes" aria-label="Variantes">
+      <!-- UN DAMIER DONT UN QUARTIER S'EST DÉTACHÉ. « Variante » n'a pas
+           d'objet : ce n'est ni une arme, ni un lieu, c'est une RÈGLE qui
+           change. Le seul dessin qui dise cela à 24 px, c'est l'échiquier
+           lui-même — la chose commune à toutes les variantes — avec un coin
+           qui part de travers : la règle qu'on déplace.
+           Les cases claires sont de vrais trous (fill-rule:evenodd), donc le
+           damier se lit aussi bien en négatif sur le laiton de l'onglet actif
+           que sur le fond sombre des autres. -->
+      <svg viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd" aria-hidden="true">
+        <path d="M2.4 2.4h14.2v14.2H2.4Zm3.55 3.55v3.55H9.5V5.95Zm7.1 0h-3.55v3.55h3.55Zm-7.1 7.1h3.55V9.5H5.95Zm7.1 0V9.5H9.5v3.55Z"/>
+        <path d="M14.15 18.35 18.35 14.15l5.05 5.05-4.2 4.2Zm4.2-1.4-1.4 1.4 2.25 2.25 1.4-1.4Z"/>
+      </svg>
+      <img class="nav-tab-art" src="assets/ui/logo-variantes.webp" alt="" aria-hidden="true" onerror="this.remove()">
+      <span class="nav-tab-label">Variantes</span>
+    </button>
+    <button type="button" class="nav-tab" data-page="reserve" title="Guerre des clans" aria-label="Guerre des clans">
       <svg viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd" aria-hidden="true">
         <path d="M2.9 9.75V8.3c0-2.95 2.4-5.35 5.35-5.35h7.5c2.95 0 5.35 2.4 5.35 5.35v1.45h-4.7V8.3a.65.65 0 0 0-.65-.65h-7.5a.65.65 0 0 0-.65.65v1.45Z"/>
         <path d="M2.9 11.05h18.2v8.15c0 1-.8 1.8-1.8 1.8H4.7c-1 0-1.8-.8-1.8-1.8Zm7.5 2.2v3.95h3.2v-3.95Z"/>
         <path d="M10.4 7.65h3.2v2.1h-3.2z"/>
       </svg>
-      <img class="cfb-art" src="assets/ui/logo-clans.webp" alt="" aria-hidden="true" onerror="this.remove()">
-      <span class="cfb-label">Guerre des clans</span>
+      <img class="nav-tab-art" src="assets/ui/logo-clans.webp" alt="" aria-hidden="true" onerror="this.remove()">
+      <span class="nav-tab-label">Guerre des clans</span>
     </button>
   </div>
 </div>
@@ -1099,7 +1156,7 @@
 </div>
 
 <!-- PAGE GUERRE DES CLANS : déplacée dans la face "reserve" du cube au démarrage
-     (voir js/cube-nav.js). Tout le contenu est rendu par js/economy-ui.js.
+     (voir js/pages-nav.js). Tout le contenu est rendu par js/economy-ui.js.
      L'identifiant page-reserve est conservé : c'est une clé interne (cube,
      showPage, comptes enregistrés), la renommer n'aurait rien changé à
      l'écran et aurait cassé les trois. -->
@@ -1629,7 +1686,7 @@
 <script src="js/data-pieces.js"></script>
 <script src="js/piece-art.js"></script>
 <script src="js/main.js"></script>
-<script src="js/cube-nav.js"></script>
+<script src="js/pages-nav.js"></script>
 <script src="js/accounts.js"></script>
 <script src="js/economy.js"></script>
 <script src="js/ai-level-modal.js"></script>
@@ -1663,6 +1720,7 @@
 <script src="js/voie.js"></script>
 <script src="js/chest-break.js"></script>
 <script src="js/economy-ui.js"></script>
+<script src="js/variantes.js"></script>
 <script src="js/rewards.js"></script>
 <script src="js/rewards-ui.js"></script>
 <script src="js/tuto-drill.js"></script>

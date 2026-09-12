@@ -818,7 +818,7 @@ document.getElementById('daily-modal')?.addEventListener('click',e=>{
   if(e.target.id==='daily-modal')closeDailyModal();
 });
 document.getElementById('rw-ok')?.addEventListener('click',()=>{
-  if(typeof goToMainMenu==='function')goToMainMenu();else showPage('face-jouer');
+  if(typeof goToMainMenu==='function')goToMainMenu();else showPage('page-jouer');
 });
 document.getElementById('joker-close')?.addEventListener('click',closeJokerModal);
 document.getElementById('joker-modal')?.addEventListener('click',e=>{

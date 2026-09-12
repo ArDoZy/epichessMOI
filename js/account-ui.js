@@ -33,7 +33,7 @@
 // accountsNameError),
 // data-pieces.js (vvGetRank, RANKS), economy.js (pearlBalance),
 // main.js (escH, showPage, showNotif, showConfirmModal),
-// cube-nav.js (goToMainMenu).
+// pages-nav.js (goToMainMenu).
 // Utilisé par : settings-admin.js (la ligne « Compte » du panneau de
 // réglages ouvre cette page), accounts.js (updateCab la rafraîchit).
 // ================================================================
@@ -485,9 +485,9 @@ function wireAccountPage(){
 function accountBusy(){
   // On se fie à ce qui est À L'ÉCRAN, pas à l'objet GS : GS survit à la fin
   // d'une partie et à un tutoriel abandonné, il resterait donc « en partie »
-  // longtemps après le retour au menu. cubeIsInGame (js/cube-nav.js) dit si
-  // la face partie est bien devant et le cube verrouillé.
-  const playing=typeof cubeIsInGame==='function'&&cubeIsInGame()
+  // longtemps après le retour au menu. navIsInGame (js/pages-nav.js) dit si
+  // le calque de la partie est bien posé sur la rangée.
+  const playing=typeof navIsInGame==='function'&&navIsInGame()
     &&typeof GS!=='undefined'&&GS&&!GS.gameOver;
   if(playing){
     showNotif('Terminez ou abandonnez la partie en cours avant de changer de compte.','err');

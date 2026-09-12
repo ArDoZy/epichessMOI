@@ -210,7 +210,7 @@ function lockPortrait(){
 // LA LISTE EST COURTE, ET C'EST VOLONTAIRE. Échap ne touche qu'à ce qui a
 // DÉJÀ un bouton de fermeture explicite, et dont la fermeture ne décide de
 // rien : le panneau de réglages, la fenêtre de série, et les pages posées
-// par-dessus le cube (Voie, composition d'armée IA, galerie des adversaires),
+// par-dessus la rangée (Voie, composition d'armée IA, galerie des adversaires),
 // que leur propre bouton « OK »/« Retour » ramène au menu.
 // Sont délibérément EXCLUS : la cérémonie d'un coffre (fermer applique le
 // lot), la fenêtre de fin de partie (elle règle l'ELO et la mise), la
@@ -229,9 +229,10 @@ function wireEscape(){
       if(typeof closeDailyModal==='function')closeDailyModal();
       return;
     }
-    // Une page en surimpression : `nav-overlay` est posée par cube-nav.js
-    // exactement pour celles-là (la partie, elle, est une FACE du cube et n'en
-    // porte pas — Échap n'abandonne donc jamais une partie en cours).
+    // Une page en surimpression : `nav-overlay` est posée par pages-nav.js
+    // exactement pour celles-là (la partie, elle, est un CALQUE posé sur la
+    // rangée et n'en porte pas — Échap n'abandonne donc jamais une partie en
+    // cours).
     if(document.body.classList.contains('nav-overlay')&&typeof goToMainMenu==='function'){
       goToMainMenu();
     }
@@ -406,15 +407,16 @@ function dismissNotif(el){
 
 // showPage reste le point de contrôle UNIQUE de la navigation (tous les
 // modules l'appellent). Il bascule les overlays .page/.active comme avant,
-// puis délègue au cube (cube-nav.js) qui gère les faces embarquées
-// (armées/partie). Les ids non-.page (ex. 'face-jouer', 'page-game' devenu
-// une face) sont tolérés.
+// puis délègue à la rangée (pages-nav.js), qui gère les pages qu'elle
+// héberge (armées, Guerre des clans) et le calque de la partie. Les ids
+// non-.page (ex. 'page-jouer', 'page-game' déplacée dans la rangée) sont
+// tolérés.
 function showPage(id){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   const el=document.getElementById(id);
   if(el&&el.classList.contains('page'))el.classList.add('active');
   window.scrollTo(0,0);
-  if(typeof cubeOnShowPage==='function')cubeOnShowPage(id);
+  if(typeof navOnShowPage==='function')navOnShowPage(id);
 }
 
 // ----------------------------------------------------------------
@@ -583,11 +585,11 @@ function initApp(){
   watchDeskMode();
   wireEscape();
   // accountsBoot() peut entrer directement dans le jeu (compte déjà connu,
-  // voir js/accounts.js) et donc faire tourner le cube dès le démarrage —
-  // il lui faut #cube déjà repéré par cube-nav.js (son propre init(), posé
+  // voir js/accounts.js) et donc afficher la rangée dès le démarrage —
+  // il lui faut #nav-track déjà repéré par pages-nav.js (son propre init(), posé
   // sur DOMContentLoaded). initApp() tourne PENDANT le chargement du
   // document (juste après le dernier <script>, avant DOMContentLoaded) :
-  // on attend donc le même évènement, en s'inscrivant APRÈS cube-nav.js
+  // on attend donc le même évènement, en s'inscrivant APRÈS pages-nav.js
   // (chargé plus tôt dans index.html) pour que son listener s'exécute
   // d'abord.
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',accountsBoot);

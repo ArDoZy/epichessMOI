@@ -2,12 +2,12 @@
 // ECONOMY-UI.JS : la Guerre des clans (perles, échiquiers), les coffres du menu
 // principal, et les affichages liés à l'économie ailleurs dans le jeu
 // ================================================================
-// Contient : le rendu de la face « Guerre des clans » du cube (#page-reserve), la
+// Contient : le rendu de la page « Guerre des clans » (#page-reserve), la
 // texture du plateau (suit automatiquement l'ELO, voir bestUnlockedSkin),
 // la cérémonie d'ouverture d'un coffre,
 // les coffres illimités du mode test (renderAdminChests), la fenêtre de la
 // récompense journalière (renderDailyModal, js/rewards-ui.js), la
-// face « Magasin » du cube où les coffres s'achètent
+// page « Magasin » où les coffres s'achètent
 // (renderMagasinPage/buyChestFromShop), le coffre de réapprovisionnement
 // quotidien (renderDailyChest) et le rappel de la mise pendant la partie.
 //
@@ -15,7 +15,7 @@
 // data-pieces.js (PIECES, CHESTS, BOARD_SKINS), piece-art.js
 // (pieceIcon/pieceSVG), accounts.js (accGet/accSet, VV_UNLOCKED), main.js
 // (escH, showPage).
-// Utilisé par : cube-nav.js (ouverture des faces jouer/Guerre des clans/magasin),
+// Utilisé par : pages-nav.js (ouverture des faces jouer/Guerre des clans/magasin),
 // game-flow.js (mise en partie), game-render.js (texture de plateau).
 // ================================================================
 
@@ -358,11 +358,11 @@ function magasinChestCardHTML(chest){
     '<div class="shop-chest-price">'+pearlAmountHTML(price,1.15)+'</div>'+
   '</button>';
 }
-// Face « magasin » du cube (voir refreshFaceContent, js/cube-nav.js) : les
+// Page « Magasin » de la rangée (voir refreshPageContent, js/pages-nav.js) : les
 // six coffres, en grand, achetables contre des perles — le seul endroit du
 // jeu où ils s'achètent (voir la note sur buyChestFromShop plus haut).
 // LE MÊME DÉFAUT QUE LA PAGE D'ARMÉES, EN PLUS PETIT, ET LA MÊME CORRECTION.
-// Cette fonction est appelée à chaque arrivée sur la face « magasin » du cube.
+// Cette fonction est appelée à chaque arrivée sur la page « Magasin ».
 // Elle réécrivait la grille entière : six <button>, six <img> de coffre jetées
 // et recréées — donc rechargées et redécodées —, et six écouteurs rebranchés
 // sur des nœuds que le passage suivant jetterait à son tour.
@@ -438,7 +438,7 @@ function renderAdminChests(){
 // Retour au MENU PRINCIPAL après une ouverture lancée depuis le menu (coffre
 // quotidien, coffre acheté en perles).
 function chestBackToMenu(){
-  if(typeof showPage==='function')showPage('face-jouer');
+  if(typeof showPage==='function')showPage('page-jouer');
   renderMenuChests();
   if(typeof updAll==='function')updAll();
   if(typeof renderArmiesPage==='function')renderArmiesPage();
@@ -457,7 +457,7 @@ function chestBackToMenu(){
 // seulement quand le joueur est disponible pour le regarder :
 //   · pas connecté      → à sa prochaine connexion (voir enterAccount)
 //   · en pleine partie  → à la fin de la partie, une fois qu'il l'a quittée
-//                         (goToMainMenu, js/cube-nav.js)
+//                         (goToMainMenu, js/pages-nav.js)
 //   · déjà devant une   → on laisse passer et on retentera au prochain retour
 //     fenêtre ouverte      au menu
 //
@@ -468,11 +468,11 @@ function chestBackToMenu(){
 // Le joueur est-il en train de faire autre chose ? On ne s'invite pas
 // par-dessus une partie, une cinématique, un tutoriel ou un autre coffre.
 function dailyChestBusy(){
-  // Le plateau est à l'écran : la face « partie » du cube est au front, ou une
-  // page en surimpression (composition, engagement, exercice…) est ouverte.
+  // Le plateau est à l'écran : le calque de la partie est posé, ou une page
+  // en surimpression (composition, engagement, exercice…) est ouverte.
   // On ne se fie pas à GS.gameOver seul : cet objet existe dès le chargement,
   // avec gameOver à false, alors qu'aucune partie n'a commencé.
-  if(document.querySelector('.cube-face[data-face="game"].is-front'))return true;
+  if(document.body.classList.contains('in-game'))return true;
   if(document.querySelector('.page.active'))return true;
   if(_chestState)return true;                                      // coffre déjà ouvert
   if(typeof tutoActive==='function'&&tutoActive())return true;      // l'Alchimiste parle

@@ -4,8 +4,8 @@
 // Le jeu expliquait ses règles dans un parchemin de bienvenue : un mur de
 // texte, lu une fois, oublié aussitôt, et qui ne montrait rien. Or ce jeu a
 // trois systèmes qu'aucun joueur d'échecs ne peut deviner (la composition
-// d'armée, la possession des pièces, les coffres), et une navigation par cube
-// qu'il faut avoir vu tourner une fois.
+// d'armée, la possession des pièces, les coffres), et cinq pages de
+// navigation qu'il faut avoir parcourues une fois.
 //
 // Le tutoriel est donc une visite guidée où l'Alchimiste parle et le joueur
 // AGIT. Il se déroule en deux temps :
@@ -34,9 +34,9 @@
 //                           et la promotion, qui récompense d'avoir traversé ;
 //        · Éléphant         la portée et son prix : deux cases d'un coup, et
 //                           tout ce qui se trouve entre les deux est détruit.
-//   2. LA VISITE DU LABORATOIRE (étapes marquées `click`) : le joueur tourne
-//      réellement le cube, compose réellement une armée, ouvre réellement sa
-//      Guerre des clans.
+//   2. LA VISITE DU LABORATOIRE (étapes marquées `click`) : le joueur parcourt
+//      réellement les cinq pages, compose réellement une armée, ouvre
+//      réellement sa Guerre des clans.
 //
 // PRINCIPES DE ROBUSTESSE, parce qu'un tutoriel cassé est pire que pas de
 // tutoriel :
@@ -229,7 +229,7 @@ function tutoOnBattleEnd(result){
 //   skipIf   fonction : si elle renvoie vrai, l'étape est sautée
 //   battle   n° de bataille lancée par le bouton de l'étape
 //   combat   n° de bataille lancée par le bouton COMBAT du menu (le clic est
-//            intercepté par tutoInterceptCombat, appelé depuis cube-nav.js)
+//            intercepté par tutoInterceptCombat, appelé depuis pages-nav.js)
 //   combatStep  le bouton COMBAT fait simplement avancer d'une étape (la
 //            flèche désigne COMBAT, mais l'Alchimiste a encore quelque chose à
 //            dire avant que le combat ne commence)
@@ -256,7 +256,7 @@ const TUTO_STEPS=[
   {
     text:'Pour un grand stratège, comprendre ses soldats est primordial, mais savoir les '+
          'manœuvrer est tout aussi important.',
-    at:'#cube-jouer-btn',combatStep:true,
+    at:'#combat-btn',combatStep:true,
   },
   {
     text:'Ta première bataille est sur le point de commencer. Croise le fer avec ton '+
@@ -278,7 +278,7 @@ const TUTO_STEPS=[
          'tu déclenches toi-même&nbsp;: <em>Retour à l\'Etat Fondamental&nbsp;: '+
          'S\'ancre sur place, devenant imprenable mais inamovible</em>. Un rocher '+
          'qu\'on ne prend pas, mais qui ne repartira plus. Défie un nouvel adversaire.',
-    at:'#cube-jouer-btn',combat:1,
+    at:'#combat-btn',combat:1,
   },
   {reward:{chest:'cavalier',piece:'fourmi'}},
   {drill:'fourmi'},
@@ -288,7 +288,7 @@ const TUTO_STEPS=[
          'gagne, elle le garde. Et au bout du plateau l\'attend sa récompense&nbsp;: '+
          '<em>Promotion&nbsp;: Se promeut si elle arrive sur la dernière rangée</em>. '+
          'Pousse-la, et vois ce qu\'elle devient.',
-    at:'#cube-jouer-btn',combat:2,
+    at:'#combat-btn',combat:2,
   },
   {reward:{chest:'fou',piece:'dresseur-elephant'}},
   {drill:'dresseur-elephant'},
@@ -299,20 +299,21 @@ const TUTO_STEPS=[
          'passage</em>. Deux cases, deux ennemis emportés. Lance un dernier combat '+
          'contre un instructeur, tu affronteras ensuite des joueurs du monde entier&nbsp;: '+
          '<strong>tout ton arsenal en une seule bataille</strong>.',
-    at:'#cube-jouer-btn',combat:3,
+    at:'#combat-btn',combat:3,
   },
   {
     text:'Tu es venu. Tu as vu. <strong>Tu as vaincu&nbsp;!</strong>',
   },
-  // ---- La visite du laboratoire, inchangée ----------------------
+  // ---- La visite du laboratoire ----------------------------------
   {
     text:'La règle qui change tout&nbsp;: personne ne reçoit la même armée. '+
          'Vous allez composer la vôtre, pièce par pièce. Suivez-moi.',
   },
   {
-    text:'Ce laboratoire est un cube. Chaque face est une salle.<br>'+
-         '<strong>Cliquez la flèche de droite</strong> pour aller à vos armées.',
-    at:'#cube-arrow-right',click:'#cube-arrow-right',wait:700,
+    text:'Ce laboratoire a cinq salles, alignées sur une seule rangée. La barre '+
+         'du bas est le plan&nbsp;: vous êtes au milieu, sur <strong>Combat</strong>.<br>'+
+         '<strong>Touchez « Mes armées »</strong>, juste à gauche.',
+    at:'.nav-tab[data-page="armees"]',click:'.nav-tab[data-page="armees"]',wait:560,
   },
   {
     text:'Voici votre armée. Vous n\'en avez aucune, forcément, vous venez d\'arriver&nbsp;: '+
@@ -346,8 +347,8 @@ const TUTO_STEPS=[
   },
   {
     text:'Elle est à vous. Maintenant, la partie que les gens comprennent toujours '+
-         'trop tard. <strong>Tournez encore à droite.</strong>',
-    at:'#cube-arrow-right',click:'#cube-arrow-right',wait:700,
+         'trop tard. <strong>Allez tout à droite, à la Guerre des clans.</strong>',
+    at:'.nav-tab[data-page="reserve"]',click:'.nav-tab[data-page="reserve"]',wait:560,
   },
   {
     text:'La Guerre des clans. Tout ce que vous possédez, vous le possédez en '+
@@ -373,15 +374,30 @@ const TUTO_STEPS=[
          'tout en haut. Ils s\'ouvrent en montant dans les rangs, tout seuls.',
   },
   {
-    text:'Il reste une salle. <strong>Encore une face à droite.</strong>',
-    at:'#cube-arrow-right',click:'#cube-arrow-right',wait:700,
+    text:'Il reste deux salles. <strong>Revenez d\'un cran vers la gauche</strong>, '+
+         'sur les Variantes.',
+    at:'.nav-tab[data-page="variantes"]',click:'.nav-tab[data-page="variantes"]',wait:560,
   },
   {
-    text:'Celle-ci est vide. J\'y prépare quelque chose, et je ne vous dirai pas quoi.',
+    text:'Le <strong>duel classique</strong> est la partie que vous venez de jouer, et '+
+         'la seule qui compte pour votre rang. Les autres formules sont sous clé&nbsp;: '+
+         'je les prépare, et je ne vous dirai pas quand.',
+    at:'#var-grid',
   },
   {
-    text:'Dernier tour, et nous serons revenus au point de départ.',
-    at:'#cube-arrow-right',click:'#cube-arrow-right',wait:700,
+    text:'Et tout à gauche de la rangée, il y a le <strong>Magasin</strong>. '+
+         'Allons-y&nbsp;: c\'est deux salles avant Combat.',
+    at:'.nav-tab[data-page="magasin"]',click:'.nav-tab[data-page="magasin"]',wait:560,
+  },
+  {
+    text:'Les six coffres, en grand, et leur prix en <strong>perles</strong>. C\'est le '+
+         'seul endroit du jeu où l\'on achète un coffre au lieu de l\'attendre.',
+    at:'#shop-chest-grid',
+  },
+  {
+    text:'Retour au milieu. <strong>Touchez « Combat »</strong>&nbsp;: c\'est là que '+
+         'tout commence, et c\'est là qu\'on revient toujours.',
+    at:'.nav-tab[data-page="jouer"]',click:'.nav-tab[data-page="jouer"]',wait:560,
   },
   {
     text:'<strong>COMBAT</strong> vous envoie contre un autre joueur, quelque part dans le '+
@@ -403,7 +419,7 @@ const TUTO_STEPS=[
          'jours de suite, puis <strong>ça recommence</strong>. Manquer un jour ne coûte '+
          'rien&nbsp;: vous reprenez le cycle là où vous l\'aviez laissé. Et si vous êtes '+
          'pressé, <strong>n\'importe quel coffre s\'achète en perles</strong> au '+
-         '<strong>Magasin</strong>, la face du cube à votre gauche.',
+         '<strong>Magasin</strong>, tout à gauche de la rangée.',
     at:'#jouer-daily',
   },
   {
@@ -467,7 +483,7 @@ function tutoMarkDone(){accSet('tuto_done',true);accSet('tuto_step',null);}
 function tutoSaveStep(){accSet('tuto_step',_tutoIdx);}
 function tutoLoadStep(){const v=accGet('tuto_step',null);return (typeof v==='number'&&v>=0)?v:0;}
 
-// Le tutoriel est en cours (utilisé par cube-nav.js pour savoir s'il doit lui
+// Le tutoriel est en cours (utilisé par pages-nav.js pour savoir s'il doit lui
 // laisser la main sur le bouton COMBAT).
 function tutoActive(){return document.body.classList.contains('tuto-on');}
 
@@ -565,7 +581,7 @@ function tutoNext(){
   if(step.reward){tutoRunReward(step.reward);return;}
   if(step.drill){tutoRunDrill(step.drill);return;}
   // Le DOM de l'étape précédente peut encore être en train de se mettre en
-  // place (rotation du cube, rendu d'une page) : on laisse passer une frame.
+  // place (glissement de la rangée, rendu d'une page) : on laisse passer une frame.
   tutoHideBox(false);
   requestAnimationFrame(()=>tutoRender(step));
 }
@@ -699,7 +715,7 @@ function tutoSkip(){
 // ----------------------------------------------------------------
 // BOUTON COMBAT PENDANT LE TUTORIEL
 // ----------------------------------------------------------------
-// Appelé par cube-nav.js AVANT son propre traitement : pendant le tutoriel, le
+// Appelé par pages-nav.js AVANT son propre traitement : pendant le tutoriel, le
 // bouton COMBAT ne mène pas à la sélection d'armée (le joueur n'en a pas
 // encore), il lance la bataille scriptée de l'étape en cours. Rend true quand
 // il a pris la main.
@@ -742,7 +758,7 @@ function tutoRender(step){
   const clickTarget=step.click?document.querySelector(step.click):null;
   // Étape `combat` : c'est le bouton COMBAT du menu qui fait avancer, mais le
   // clic n'est pas guetté ici — il passe par tutoInterceptCombat(), appelé
-  // depuis cube-nav.js, sinon la navigation normale partirait en parallèle.
+  // depuis pages-nav.js, sinon la navigation normale partirait en parallèle.
   const waitsCombat=(typeof step.combat==='number')||!!step.combatStep;
   const waitsClick=!!clickTarget||waitsCombat;
   if(typeof step.combat==='number')_tutoAwaitCombat=step.combat;
@@ -814,7 +830,7 @@ function tutoSpotlight(target){
     spot.classList.add('on');
   };
   place();
-  // Les faces du cube défilent : le projecteur doit suivre sa cible.
+  // Les pages glissent sous le projecteur : il doit suivre sa cible.
   _tutoReposition=place;
   window.addEventListener('resize',place);
   window.addEventListener('scroll',place,true);
