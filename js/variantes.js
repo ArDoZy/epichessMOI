@@ -5,12 +5,15 @@
 // js/pages-nav.js). Elle répond à la seule question que l'écran de combat ne
 // répond pas : « est-ce qu'on joue toujours à la même chose ? »
 //
-// DEUX VARIANTES SONT JOUABLES, ET LA PAGE LE DIT. Le duel classique — cinq
+// TROIS VARIANTES SONT JOUABLES, ET LA PAGE LE DIT. Le duel classique — cinq
 // pièces, 24 points, un échiquier 8×8 — est ce que lance le bouton COMBAT ;
 // la Chute des Royaumes est une partie d'échecs ordinaire où, après chaque
 // coup, les quatre rangées centrales glissent d'une case vers la droite (voir
-// js/fok-rules.js). Les quatre autres formules sont annoncées, verrouillées,
-// et n'ouvrent rien :
+// js/fok-rules.js) ; Mirror Chess est une partie d'échecs ordinaire où chaque
+// pièce est jumelée à sa symétrique et où bouger l'une fait bouger l'autre en
+// miroir — sauf au coup d'ouverture de chaque camp, qui part seul (voir
+// js/mirror-rules.js). Les quatre autres formules sont annoncées,
+// verrouillées, et n'ouvrent rien :
 // une carte grisée qui dit « bientôt » est honnête ; un bouton qui ouvre un
 // écran vide ne l'est pas. C'est exactement le reproche qu'on faisait à la
 // face « Variantes » de l'ancien cube de navigation, retirée pour cette raison.
@@ -24,10 +27,11 @@
 //
 // Dépendances : pages-nav.js (appel du rendu), armies.js (startArmySelection,
 // pour le duel classique), fok-game.js (fokOpenLobby, pour la Chute des
-// Royaumes), tutorial.js (tutoInterceptCombat), main.js (escH).
+// Royaumes), mirror-game.js (mirOpenLobby, pour Mirror Chess),
+// tutorial.js (tutoInterceptCombat), main.js (escH).
 // ================================================================
 
-// Les sept formules. `on:true` = jouable aujourd'hui. L'ordre est celui de
+// Les huit formules. `on:true` = jouable aujourd'hui. L'ordre est celui de
 // lecture : ce qu'on peut jouer d'abord, les promesses ensuite.
 const VARIANTES=[
   {id:'duel', on:true,
@@ -38,6 +42,10 @@ const VARIANTES=[
    nom:'Chute des Royaumes',
    tag:'Libre',
    txt:'Les échecs ordinaires, seize pièces sur leurs cases — sauf qu\'après chaque coup, les quatre rangées centrales glissent d\'une case vers la droite. Rien n\'est misé, rien n\'est classé.'},
+  {id:'mirror', on:true,
+   nom:'Mirror Chess',
+   tag:'Libre',
+   txt:'Les échecs ordinaires, mais chaque pièce est jumelée à sa symétrique — le Roi à la Dame, les tours entre elles, les pions deux à deux. Bouger l\'une fait bouger l\'autre, en miroir et du même nombre de cases. Seul le coup d\'ouverture de chaque camp part seul.'},
   {id:'blitz',
    nom:'Blitz alchimique',
    tag:'Bientôt',
@@ -88,11 +96,15 @@ function renderVariantesPage(){
     if(!b||!grid.contains(b))return;
     // Le duel classique EST la partie du bouton COMBAT : il passe par le même
     // chemin, sélection d'armée comprise, plutôt que d'en ouvrir un second.
-    // La Chute des Royaumes ne passe par aucune sélection d'armée : elle se
-    // joue avec les seize pièces d'un jeu d'échecs, elle ouvre donc son propre
-    // salon (js/fok-game.js).
+    // Les deux variantes d'échecs ne passent par aucune sélection d'armée :
+    // elles se jouent avec les seize pièces d'un jeu d'échecs, et ouvrent donc
+    // chacune leur propre salon (js/fok-game.js, js/mirror-game.js).
     if(b.dataset.variante==='fok'){
       if(typeof fokOpenLobby==='function')fokOpenLobby();
+      return;
+    }
+    if(b.dataset.variante==='mirror'){
+      if(typeof mirOpenLobby==='function')mirOpenLobby();
       return;
     }
     if(typeof tutoInterceptCombat==='function'&&tutoInterceptCombat())return;
