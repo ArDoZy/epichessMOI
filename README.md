@@ -98,8 +98,19 @@ epic-chess/
     │                          # combat, variantes, guerre des clans). Déplace
     │                          # armées/guerre des clans dans leur emplacement,
     │                          # et pose la partie en calque par-dessus.
-    ├── variantes.js          # La page « Variantes » : le duel classique, ouvert,
-    │                          # et cinq formules annoncées et verrouillées.
+    ├── variantes.js          # La page « Variantes » : le duel classique et la
+    │                          # Chute des Royaumes, ouverts, et quatre formules
+    │                          # annoncées et verrouillées.
+    ├── fok-rules.js          # CHUTE DES ROYAUMES : le moteur de la variante.
+    │                          # Échecs ordinaires + décalage des quatre rangées
+    │                          # centrales d'une case vers la droite après CHAQUE
+    │                          # coup. Aucune dépendance, aucun DOM.
+    ├── fok-ai.js             # Son adversaire : alpha-bêta, quatre niveaux,
+    │                          # recherche bornée à 700 ms sur le fil principal
+    ├── fok-game.js           # Son écran de jeu (#page-fok) et son salon. Réutilise
+    │                          # les CLASSES de la partie ordinaire, aucun état
+    ├── fok-mp.js             # Ses parties à deux joueurs : mêmes canaux Supabase
+    │                          # que le jeu principal, sujets `epichess-fok-*`
     ├── server.js             # LA SEULE PORTE vers le serveur : sessions,
     │                          # appels ec_*, envoi groupé des écritures,
     │                          # rapport de fin de partie, présence. Contient
@@ -1434,6 +1445,77 @@ joueurs en attente et la fenêtre courante, et propose un adversaire du
 laboratoire au bout de 40 secondes. Le salon d'attente a changé de nom (`epichess-lobby-v2`) :
 les anciens clients ne peuvent pas s'y tromper de protocole.
 
+## La Chute des Royaumes (`js/fok-*.js`)
+
+La première variante réellement jouable à côté du duel classique, ouverte
+depuis la page Variantes. **Sa règle tient en une phrase** : on joue aux échecs
+ordinaires, avec les seize pièces sur leurs cases de départ, mais **après
+chaque coup — le sien comme celui de l'adversaire — toutes les pièces des
+quatre rangées centrales (3 à 6) glissent d'une case vers la droite**, la
+droite étant celle du camp blanc. Les rangées 1, 2, 7 et 8 ne bougent jamais.
+
+Trois décisions de règle méritent d'être connues avant d'y toucher :
+
+- **La bande est un anneau.** Une pièce en colonne h reparaît en colonne a de
+  la même rangée. C'est le seul choix qui ne détruit rien au hasard : les
+  quatre rangées glissent d'un bloc, les positions relatives y sont donc
+  conservées et deux pièces ne peuvent jamais atterrir sur la même case. Une
+  bande qui ferait tomber la pièce de bord hors de l'échiquier supprimerait une
+  Dame sur un coup joué à l'autre bout du plateau.
+- **La légalité se juge APRÈS le décalage.** Le décalage fait partie du coup :
+  un coup est légal si, une fois la bande décalée, le roi du joueur n'est pas
+  en échec. C'est ce qui rend la partie bien définie — au début de chaque tour,
+  aucun roi n'est prenable.
+- **Le roque est conservé, la prise en passant non.** Le roque se joue sur les
+  rangées fixes, il reste donc parfaitement cohérent (et le roi y trouve le
+  seul sol stable de la partie). La prise en passant, elle, désigne une case
+  « traversée » que le décalage a déplacée entre les deux demi-coups : elle ne
+  désignerait plus rien.
+
+Le découpage est volontairement étanche au reste du jeu :
+
+| Fichier | Rôle |
+|---|---|
+| `js/fok-rules.js` | Le moteur : état, déplacements, décalage, légalité, fin de partie, notation, sérialisation réseau. Ne connaît ni le DOM ni le réseau. |
+| `js/fok-ai.js` | L'adversaire : négamax alpha-bêta, quiescence, approfondissement itératif, quatre niveaux (Apprenti, Soldat, Capitaine, Usurpateur). |
+| `js/fok-game.js` | L'écran de jeu (`#page-fok`) et le salon. |
+| `js/fok-mp.js` | Les parties à deux joueurs, sur les canaux `epichess-fok-*`. |
+
+**Pourquoi un moteur séparé plutôt qu'un drapeau dans `rules-engine.js`.** La
+partie ordinaire tient dans un objet `GS` que quinze fichiers lisent et
+écrivent (pouvoirs, coffres, classement, tutoriel, rejouabilité, mise
+d'armée...). Y greffer un décalage de rangées aurait demandé de toucher à
+chacun d'eux, et la variante n'en utilise presque rien : elle n'a ni créature,
+ni pouvoir, ni pendule, ni ELO, ni armée misée. La variante réutilise donc la
+**feuille de style** de la partie (mêmes classes de plateau, de bandeaux et de
+colonne latérale, même mise en page sur téléphone) et le **dessin des pièces**
+(`pieceSVG`, avec les Primordiales pour la tour, le cavalier et le fou, et les
+dessins d'Epic Chess pour le Roi et la Dame) — et rien d'autre. Aucun état
+n'est partagé : supprimer les quatre `<script>` retire la variante sans
+toucher au jeu.
+
+**Le coup se joue en deux temps, et c'est la mise en scène de la règle.** La
+pièce se déplace d'abord (`fokMakeRaw`), puis, 260 ms plus tard, la bande
+glisse (`fokShiftState`). Les jouer dans le même rendu donnerait une pièce qui
+part en biais sans qu'on comprenne pourquoi ; les jouer l'un après l'autre
+MONTRE la règle. La couche des pièces est la même que celle du jeu principal
+(`.gc-layer` / `.gc-piece` en `translate3d`), donc le décalage est une vraie
+transition CSS : huit à seize pièces qui glissent ensemble d'une case.
+
+**L'IA tourne sur le fil principal**, contrairement à celle du jeu principal
+qui vit dans un Web Worker. C'est possible parce que son budget est court (au
+plus 700 ms) et que la recherche est à approfondissement itératif : elle rend
+toujours le meilleur coup trouvé à l'instant où le budget s'épuise. Son
+évaluation n'utilise **aucune table de colonnes** — la colonne d'une pièce de
+la bande change à chaque demi-coup, un bonus de colonne serait un bonus tiré au
+sort. Ne subsistent que des termes de rangée (avancée des pions, tour sur la
+septième), le matériel, la mobilité, et une pénalité pour le roi resté dans la
+bande mobile, qui est le vrai conseil stratégique de la variante.
+
+**Rien n'est misé et rien n'est classé** : la variante ne touche ni à l'ELO, ni
+à la réserve de pièces, ni aux voies de récompenses. C'est une partie qu'on
+joue pour la règle.
+
 ## Le serveur fait autorité (`supabase/schema.sql`, `js/server.js`)
 
 **Le fichier à connaître, c'est `supabase/schema.sql`.** On le colle en entier
@@ -1735,11 +1817,12 @@ server.js → data-pieces.js → piece-art.js → main.js → pages-nav.js → a
 → sfx.js → combat-fx.js → rules-engine.js → piece-moves.js → combat-music.js
 → cinematics.js
 → game-render.js
-→ ai-engine.js → game-flow.js → voie.js → economy-ui.js → variantes.js
+→ ai-engine.js → game-flow.js → voie.js → economy-ui.js
+→ fok-rules.js → fok-ai.js → fok-game.js → variantes.js
 → rewards.js → rewards-ui.js → tuto-drill.js
 → tutorial.js
 → pwa.js → account-ui.js → replay.js → leaderboard.js → settings-admin.js
-→ multiplayer.js
+→ multiplayer.js → fok-mp.js
 → (script inline) initApp()
 ```
 
@@ -1757,6 +1840,15 @@ qu'il partage sa carrosserie.
 écrans de profil, qui appellent `profileArsenalHTML()` et `replayListHTML()`.
 Ce ne sont que des appels à l'exécution, donc l'ordre réel n'est contraint que
 par ce dernier point ; le poser là le rend lisible.
+Les quatre fichiers `fok-*` forment la variante « Chute des Royaumes » et sont
+indépendants du reste : `fok-rules.js` (moteur) avant `fok-ai.js` et
+`fok-game.js` qui l'utilisent, `variantes.js` après `fok-game.js` parce que sa
+carte ouvre `fokOpenLobby()`, et `fok-mp.js` après `multiplayer.js`, dont il
+réutilise `mpInitClient()` et la configuration Supabase. Aucun autre fichier ne
+les appelle, et ils n'écrivent dans aucun état du jeu principal : la variante
+peut être retirée en supprimant ses quatre `<script>` sans rien casser d'autre
+que sa propre carte.
+
 `economy.js` doit venir après `accounts.js` (il utilise `accGet`/`accSet`) et
 avant tous les modules de page qui affichent des stocks. `piece-art.js` doit
 venir juste après `data-pieces.js` : à peu près tous les rendus l'utilisent.
@@ -1888,6 +1980,9 @@ mais dans une version que Playwright refuse, le script le retrouve tout seul
 | Changer l'ordre ou le nombre des pages de la rangée | la liste `PAGES` dans `js/pages-nav.js` **et** l'ordre des onglets `#nav-tabbar` dans `index.html` (le reste suit tout seul) |
 | Régler la vitesse de glissement de la rangée | `js/pages-nav.js` (`SLIDE_MS`) **et** la transition de `#nav-track` dans `css/style.css` |
 | Modifier la page Variantes | `VARIANTES` dans `js/variantes.js` + `#page-viewport-variantes` dans `index.html` + `[VARIANTES]` de `css/style.css` |
+| Modifier la règle de la Chute des Royaumes | `FOK_SHIFT_ROWS` / `fokShiftBoard` dans `js/fok-rules.js` (la règle tient en quatre lignes) |
+| Modifier l'adversaire de la Chute des Royaumes | `FOK_AI_LEVELS` et `fokEvalBoard` dans `js/fok-ai.js` |
+| Modifier son écran de jeu | `#page-fok` dans `index.html` + `js/fok-game.js` + `[FOK]` de `css/style.css` |
 | Modifier le système de comptes/sauvegarde | `js/accounts.js` (copie de travail) + `js/server.js` (échanges) |
 | Ajouter un champ stocké par compte | `accGet`/`accSet` comme avant — rien à toucher ailleurs, le serveur stocke `state` sans l'interpréter |
 | Changer une règle du serveur (ELO, unicité, classement) | `supabase/schema.sql`, puis le recoller dans l'éditeur SQL Supabase (en **commentant le `DROP TABLE`**) |

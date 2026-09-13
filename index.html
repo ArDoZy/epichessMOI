@@ -1475,6 +1475,117 @@
   </div>
 </div>
 
+<!-- ================================================================
+     CHUTE DES ROYAUMES (variante) — js/fok-game.js
+     ================================================================
+     LE MÊME ÉCRAN QUE LA PARTIE ORDINAIRE, aux identifiants près : les
+     classes sont exactement celles de #page-game (.game-wrap, .game-main,
+     .board-frame, .gp-bar, .status-bar, .game-under, .game-btns), donc la
+     feuille de style du plateau, des bandeaux et de la colonne latérale
+     s'applique sans une ligne de plus. Seuls les `id` changent, parce que
+     deux parties ne peuvent pas porter le même plateau — la variante est
+     un module à part, elle ne partage ni l'état ni le moteur de la partie
+     classique (voir l'en-tête de js/fok-rules.js).
+     Ce qui manque ici par rapport à #page-game manque exprès : pas de
+     pendule (la variante n'est pas chronométrée), pas de prises d'armée
+     misées, pas d'effets spéciaux — la demande était « retire les effets
+     spéciaux ». -->
+<div id="page-fok" class="page">
+  <div class="game-wrap">
+    <div class="game-main">
+      <div class="board-frame">
+        <div class="game-board-outer">
+          <div class="game-board-col">
+            <div class="game-board" id="fok-board"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <aside class="game-side">
+      <div class="gp-bar" id="fok-opp-bar">
+        <div class="gp-av" id="fok-opp-av">?</div>
+        <div class="gp-id">
+          <div class="gp-name" id="fok-opp-name">Adversaire</div>
+          <div class="gp-elo" id="fok-opp-sub"></div>
+        </div>
+        <div class="gp-taken" id="fok-cap-opp"></div>
+      </div>
+      <div class="gp-bar" id="fok-me-bar">
+        <div class="gp-av" id="fok-me-av">?</div>
+        <div class="gp-id">
+          <div class="gp-name" id="fok-me-name">Joueur</div>
+          <div class="gp-elo" id="fok-me-sub"></div>
+        </div>
+        <div class="gp-taken" id="fok-cap-me"></div>
+      </div>
+      <div class="status-bar" id="fok-status" role="status" aria-live="polite" aria-atomic="true">En attente...</div>
+      <div class="game-under" id="fok-under">
+        <div class="game-tools">
+          <button class="gt-btn" id="fok-btn-history" aria-expanded="false" aria-controls="fok-panel-history">
+            <svg aria-hidden="true"><use href="#ec-parchemin"/></svg>
+            <span>Historique</span>
+          </button>
+          <button class="gt-btn" id="fok-btn-regle" aria-expanded="false" aria-controls="fok-panel-regle">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 7.6v.8"/></svg>
+            <span>La règle</span>
+          </button>
+        </div>
+        <section class="game-panel" id="fok-panel-history" hidden aria-label="Journal des coups">
+          <div class="gpanel-head">
+            <div class="gpanel-title">Journal des coups</div>
+            <button class="gpanel-close" data-fok-close aria-label="Fermer le journal">✕</button>
+          </div>
+          <div class="move-log" id="fok-log"></div>
+        </section>
+        <section class="game-panel" id="fok-panel-regle" hidden aria-label="La règle de la variante">
+          <div class="gpanel-head">
+            <div class="gpanel-title">Chute des Royaumes</div>
+            <button class="gpanel-close" data-fok-close aria-label="Fermer">✕</button>
+          </div>
+          <div class="move-log fok-regle">
+            <p>Échecs ordinaires, seize pièces, cases de départ habituelles.</p>
+            <p><b>Après chaque coup</b> — le vôtre comme celui de l'adversaire — toutes les pièces des <b>rangées 3 à 6</b> glissent d'une case <b>vers la droite</b> du camp blanc. Une pièce en colonne h reparaît en colonne a.</p>
+            <p>Les <b>rangées 1, 2, 7 et 8 ne bougent jamais</b> : c'est le sol ferme des rois et des tours.</p>
+            <p>Un coup n'est légal que si votre roi est en sûreté <b>une fois le décalage fait</b>. Le roque est conservé ; la prise en passant, non — le décalage déplace la case traversée.</p>
+          </div>
+        </section>
+      </div>
+      <div class="game-btns">
+        <button class="btn btn-danger" id="fok-quit"><svg class="btn-ico" aria-hidden="true"><use href="#ec-drapeau"/></svg><span>Abandonner</span></button>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<!-- Le salon de la variante : choix de l'adversaire (IA ou joueur en ligne).
+     Ouvert par la carte « Chute des Royaumes » de la page Variantes. -->
+<div class="confirm-modal" id="fok-lobby">
+  <div class="confirm-box fok-lobby-box">
+    <div class="fok-lobby-title">Chute des Royaumes</div>
+    <div class="fok-lobby-sub">Après chaque coup, les quatre rangées centrales glissent d'une case vers la droite.</div>
+    <div id="fok-lobby-body"></div>
+    <button class="btn btn-ghost" id="fok-lobby-close" style="width:100%;margin-top:14px">Fermer</button>
+  </div>
+</div>
+
+<!-- Choix de la pièce de promotion, propre à la variante (le modal du jeu
+     principal propose des créatures, qui n'existent pas ici). -->
+<div class="confirm-modal" id="fok-promo">
+  <div class="confirm-box">
+    <div class="fok-lobby-title">Promotion</div>
+    <div class="fok-promo-row" id="fok-promo-row"></div>
+  </div>
+</div>
+
+<!-- Fin de partie. -->
+<div class="confirm-modal" id="fok-result">
+  <div class="confirm-box">
+    <div class="fok-res-title" id="fok-res-title"></div>
+    <div class="fok-res-sub" id="fok-res-sub"></div>
+    <div class="fok-res-btns" id="fok-res-btns"></div>
+  </div>
+</div>
+
 <!-- MODALS -->
 <div class="promo-modal" id="promo-modal"><div class="promo-box"><div class="promo-title">Choisir la promotion</div><div class="promo-pieces-row" id="promo-box"></div></div></div>
 <!-- Le badge « Admin » flottant a disparu : le mode admin est désormais
@@ -1720,6 +1831,9 @@
 <script src="js/voie.js"></script>
 <script src="js/chest-break.js"></script>
 <script src="js/economy-ui.js"></script>
+<script src="js/fok-rules.js"></script>
+<script src="js/fok-ai.js"></script>
+<script src="js/fok-game.js"></script>
 <script src="js/variantes.js"></script>
 <script src="js/rewards.js"></script>
 <script src="js/rewards-ui.js"></script>
@@ -1733,6 +1847,7 @@
 <script src="js/settings-admin.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/multiplayer.js"></script>
+<script src="js/fok-mp.js"></script>
 <script>
 // ================================================================
 // APP-INIT : dernier script exécuté, démarre l'application
