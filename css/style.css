@@ -3321,8 +3321,17 @@ body.light .var-card{background:linear-gradient(180deg,rgba(255,255,255,.7),rgba
    Le thème clair, lui, n'a rien à éclaircir : en `screen` sur du blanc, tout
    disparaît. Il repasse donc en peinture normale, un cran plus saturé et plus
    sombre pour tenir sur le fond pâle. */
-.jt-fx{display:none;position:absolute;left:50%;top:50%;
-  width:160%;height:160%;margin:-30% 0 0 -30%;
+/* LA COUCHE EST CENTRÉE SUR L'EMBLÈME, ET RIEN D'AUTRE NE LA DÉPLACE. Elle
+   l'était par `left:50%;top:50%` corrigés d'une marge de -30 % : or une marge
+   en pourcentage se résout sur la LARGEUR de la boîte, pas sur celle de la
+   couche — le compte tombait donc à +20 % au lieu de -30 %, et le feu, les
+   éclairs et l'orbite claquaient un demi-emblème plus bas et plus à droite que
+   le dessin qu'ils sont censés entourer. `inset:-30%` place les quatre bords
+   d'un coup, sur la boîte de l'emblème, sans arithmétique : la couche de 160 %
+   déborde alors de 30 % de chaque côté, ce qui est exactement la définition
+   de « centrée ». */
+.jt-fx{display:none;position:absolute;inset:-30%;
+  width:160%;height:160%;margin:0;
   overflow:visible;pointer-events:none;mix-blend-mode:screen}
 .jt-fx-back{z-index:0}
 .jt-fx-front{z-index:2}
@@ -7640,7 +7649,14 @@ button.rp-log-w:hover,button.rp-log-b:hover{border-color:var(--border2);backgrou
   opacity:.5;transition:opacity .2s ease;
 }
 .jouer-track.is-ready::after{opacity:1}
-.jouer-track>*{position:relative;z-index:1}
+/* Tout le contenu du bouton passe DEVANT l'anneau — sauf la pastille, qui doit
+   RESTER HORS DU FLUX. Ce `position:relative` la remettait dedans (il est plus
+   spécifique que `.jouer-badge`, et il vient après) : elle se plaçait alors à
+   côté de l'emblème, dans une boîte flex centrée, et poussait le laurier,
+   l'éclair ou le livre vers la gauche de son cercle. Le chiffre retourne donc
+   en haut à droite, en absolu, et l'emblème retrouve le centre. */
+.jouer-track>*:not(.jouer-badge){position:relative;z-index:1}
+.jouer-track>.jouer-badge{z-index:3}
 
 /* --- LA PLAQUE UNIQUE DE TOUS LES BOUTONS -------------------------
    Le grand COMBAT doré, les boutons bleu nuit (« Annuler coup »,

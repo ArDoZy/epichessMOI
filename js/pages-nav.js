@@ -12,11 +12,11 @@
 // À la place : CINQ PAGES ALIGNÉES SUR UNE SEULE RANGÉE, que l'on parcourt de
 // gauche à droite, comme dans Clash Royale. De gauche à droite :
 //
-//     MAGASIN · MES ARMÉES · COMBAT · VARIANTES · GUERRE DES CLANS
+//     MAGASIN · MES ARMÉES · COMBAT · GUERRE DES CLANS · VARIANTES
 //
 // COMBAT est au milieu, c'est la page d'accueil : on y revient toujours, et
 // les deux moitiés de l'écran s'ouvrent de part et d'autre. La rangée n'est
-// PAS un anneau — on ne repasse pas du magasin à la guerre des clans en
+// PAS un anneau — on ne repasse pas du magasin aux variantes en
 // continuant vers la gauche. C'est la contrepartie du modèle : chaque page a
 // une position fixe dans l'espace, et le joueur finit par savoir « le magasin
 // est tout à gauche » sans y penser.
@@ -48,7 +48,7 @@
   // sens des flèches en découlent. Les changer ici les change partout — à
   // condition de garder le même ordre dans les onglets d'index.html, qui sont
   // écrits à la main pour leurs blasons.
-  const PAGES=['magasin','armees','jouer','variantes','reserve'];
+  const PAGES=['magasin','armees','jouer','reserve','variantes'];
   const HOME=PAGES.indexOf('jouer');
   // Durée du glissement. Elle DOIT rester alignée sur la transition CSS de
   // #nav-track (voir [NAV] dans style.css) : c'est elle qui décide quand la
@@ -124,8 +124,8 @@
 
   // Les flèches restent cliquables PENDANT un glissement : c'est ce qui permet
   // d'enchaîner deux pages sans temps mort. Elles disparaissent en revanche au
-  // bout de la rangée — il n'y a rien au-delà du magasin ni au-delà de la
-  // guerre des clans, et une flèche qui ne mène nulle part est un mensonge.
+  // bout de la rangée — il n'y a rien au-delà du magasin ni au-delà des
+  // variantes, et une flèche qui ne mène nulle part est un mensonge.
   function updateChrome(){
     const active=isBrowsing() && !locked && !inGame;
     const dest=animating&&pending!=null?pending:idx;
