@@ -3552,6 +3552,9 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
       };
       // Un plateau construit à la main : c'est la seule façon d'isoler une
       // règle de repli, qui ne se présente pas dans la position de départ.
+      // `ply=2` met la partie APRÈS les deux coups d'ouverture, qui eux sont
+      // libres de miroir (voir le test suivant) : sans ça, aucune de ces
+      // positions n'aurait de coup jumeau du tout.
       const pose=(spec,paires,droits)=>{
         const st=mirNewState();
         for(let r2=0;r2<8;r2++)for(let c=0;c<8;c++)st.board[r2][c]=null;
@@ -3563,11 +3566,11 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
         }
         for(const[a,b]of paires||[]){at[a].mate=at[b].id;at[b].mate=at[a].id;}
         st.rights=Object.assign({wK:false,wQ:false,bK:false,bQ:false},droits||{});
-        st.ep=[];st.turn='w';
+        st.ep=[];st.turn='w';st.ply=2;
         return st;
       };
       const out={};
-      const dep=mirNewState();
+      const dep=mirNewState();dep.ply=2;
       out.e4=dit(dep,'e2','e4');                       // les deux pions centraux
       out.cf3=dit(dep,'g1','f3');                      // le saut miroir du cavalier
       // La Dame traîne le Roi, d'UNE case seulement.
@@ -3597,6 +3600,34 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
     };
     for(const k of Object.keys(attendu))
       if(r[k]!==attendu[k])throw new Error(k+' : « '+r[k]+' » au lieu de « '+attendu[k]+' »');
+  });
+
+  // LE COUP D'OUVERTURE EST LIBRE, un de chaque côté : sans lui, 1.e4 donne d4
+  // par-dessus le marché et les Blancs prennent tout le centre d'un seul coup.
+  // Si ce test tombe, c'est que le miroir s'est remis à s'appliquer dès le
+  // premier coup — ou qu'il a cessé de s'appliquer au troisième.
+  await step('Mirror Chess : le premier coup de chaque camp part sans sa jumelle',async()=>{
+    const r=await page.evaluate(()=>{
+      const sq=s=>({r:8-(+s[1]),c:'abcdefgh'.indexOf(s[0])});
+      const st=mirNewState();mirUpdateStatus(st);
+      const joue=(a,b)=>{
+        const l=mirMovesTo(st,sq(a),sq(b));
+        if(!l.length)throw new Error('coup impossible : '+a+'-'+b);
+        const rec=mirMake(st,l[0]);
+        mirUpdateStatus(st);
+        mirRecord(st,l[0],rec.taken,mirOpp(st.turn),'p');
+      };
+      const libres=[mirFreeMove(st)];
+      joue('e2','e4');libres.push(mirFreeMove(st));
+      joue('e7','e5');libres.push(mirFreeMove(st));
+      joue('g1','f3');
+      joue('b8','c6');
+      return{libres,journal:st.moves.map(m=>m.text).join(' | ')};
+    });
+    if(r.libres.join()!=='true,true,false')
+      throw new Error('le coup libre ne couvre pas exactement les deux ouvertures : '+r.libres.join());
+    const attendu='e2–e4 | e7–e5 | g1–f3 · b1–c3 | b8–c6 · g8–f6';
+    if(r.journal!==attendu)throw new Error('journal : « '+r.journal+' » au lieu de « '+attendu+' »');
   });
 
   await step('Mirror Chess : faire puis défaire rend le plateau à l’identique',async()=>{
@@ -3650,7 +3681,9 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
     if(jeu.pieces!==32)throw new Error(jeu.pieces+' pièces au lieu de 32');
     if(!jeu.axe)throw new Error('l\'axe de symétrie n\'est pas posé sur le plateau');
     // Saisir e2 doit marquer d2 (sa jumelle) ; survoler e4 doit montrer d4.
+    // On se place APRÈS les deux coups d'ouverture, où le miroir dort.
     const marques=await page.evaluate(()=>{
+      MIR.st.ply=2;
       mirSelect(6,4);mirSetHover(4,4);
       const trouve=cls=>{
         const c=[...document.querySelectorAll('#mir-board .gc')].find(x=>x.classList.contains(cls));
@@ -3661,10 +3694,11 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
     if(marques.mate!=='6,3')throw new Error('la jumelle de e2 est marquée en '+marques.mate+' au lieu de d2');
     if(marques.twin!=='4,3')throw new Error('l\'arrivée du coup jumeau est marquée en '+marques.twin+' au lieu de d4');
     // Et le coup se joue vraiment, en deux temps.
-    await page.evaluate(()=>mirClick(4,4));
+    await page.evaluate(()=>{MIR.st.ply=0;mirClick(4,4);});
     await page.waitForTimeout(900);
     const journal=await page.evaluate(()=>MIR.st.moves.map(m=>m.text).join(' | '));
-    if(!/^e2–e4 · d2–d4/.test(journal))throw new Error('journal inattendu : '+journal);
+    // Premier coup des Blancs : il est LIBRE, d2 ne suit pas.
+    if(!/^e2–e4($| )/.test(journal))throw new Error('journal inattendu : '+journal);
     await page.evaluate(()=>{MIR.st.gameOver=true;if(typeof goToMainMenu==='function')goToMainMenu();});
     await page.waitForTimeout(400);
   });

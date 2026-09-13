@@ -1542,6 +1542,17 @@ gauche et la droite s'échangent, l'avant et l'arrière ne changent pas — et d
 `Fc1–a3` (haut-gauche) envoie `Ff1` en `h3`. Tant que rien ne bloque, la
 symétrie de la position se conserve d'elle-même.
 
+**Le coup d'ouverture est libre, un de chaque côté.** Au tout premier coup des
+Blancs et au tout premier coup des Noirs, le miroir ne s'applique pas : une
+seule pièce part, sans sa compagne. Ensuite la règle vaut pour tout le reste de
+la partie. Ce n'est pas une facilité — sans lui, `1.e4` donne `d4` par-dessus le
+marché, les Blancs prennent tout le centre d'un seul coup et rien de ce que les
+Noirs peuvent répondre ne le leur reprend. Il casse aussi la symétrie de la
+position dès l'entrée : deux camps qui se reflètent exactement joueraient une
+partie où chaque menace est immédiatement rendue, et l'avantage du trait
+deviendrait tout. `mirFreeMove(st)` (`st.ply < 2`) est le seul endroit qui en
+décide ; l'écran, la recherche et le réseau le lisent tous là.
+
 Six décisions de règle méritent d'être connues avant d'y toucher :
 
 - **Le repli, et sa borne.** Quand la jumelle ne peut pas faire les N cases
@@ -1600,6 +1611,11 @@ deux pièces qui bougent ensemble sans qu'on comprenne laquelle commande. Les
 deux chemins — celui de l'écran en deux temps et celui de la recherche d'un
 bloc (`mirMake`) — passent par les mêmes fonctions : il n'y a jamais deux
 façons de jouer un coup.
+
+Pendant les deux coups d'ouverture, **le bandeau de statut le dit en toutes
+lettres** et la jumelle de la pièce saisie n'est pas marquée : rien à l'écran ne
+distingue une position où le miroir dort d'une position où il veille, et le
+joueur qui l'ignore croit à un défaut du jeu.
 
 **Trois marques montrent le jumelage à l'écran**, parce qu'une règle qui ne se
 voit pas se prend pour un défaut d'affichage : l'**axe de symétrie** (un trait

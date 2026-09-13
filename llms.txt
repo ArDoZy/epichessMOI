@@ -219,7 +219,10 @@ côté du duel classique :
   symétrique par l'axe central du plateau, et que bouger l'une fait bouger
   l'autre**. Chez les Blancs : le Roi e1 avec la Dame d1, les fous c1 et f1,
   les cavaliers b1 et g1, les tours a1 et h1, et les pions deux à deux (d2–e2,
-  c2–f2, b2–g2, a2–h2) ; les Noirs ont les mêmes paires. La jumelle part dans
+  c2–f2, b2–g2, a2–h2) ; les Noirs ont les mêmes paires. **Le coup d'ouverture
+  de chaque camp est libre** : au tout premier coup des Blancs et au tout
+  premier coup des Noirs, le miroir ne s'applique pas et une seule pièce part.
+  Ensuite la règle vaut jusqu'à la fin. La jumelle part dans
   la **direction miroir** — la gauche et la droite s'échangent, l'avant ne
   change pas — et du **même nombre de cases** ; si elle ne peut pas aller si
   loin, elle va **le plus loin possible sans dépasser**, s'arrêtant devant une

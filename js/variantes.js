@@ -11,7 +11,8 @@
 // coup, les quatre rangées centrales glissent d'une case vers la droite (voir
 // js/fok-rules.js) ; Mirror Chess est une partie d'échecs ordinaire où chaque
 // pièce est jumelée à sa symétrique et où bouger l'une fait bouger l'autre en
-// miroir (voir js/mirror-rules.js). Les quatre autres formules sont annoncées,
+// miroir — sauf au coup d'ouverture de chaque camp, qui part seul (voir
+// js/mirror-rules.js). Les quatre autres formules sont annoncées,
 // verrouillées, et n'ouvrent rien :
 // une carte grisée qui dit « bientôt » est honnête ; un bouton qui ouvre un
 // écran vide ne l'est pas. C'est exactement le reproche qu'on faisait à la
@@ -44,7 +45,7 @@ const VARIANTES=[
   {id:'mirror', on:true,
    nom:'Mirror Chess',
    tag:'Libre',
-   txt:'Les échecs ordinaires, mais chaque pièce est jumelée à sa symétrique — le Roi à la Dame, les tours entre elles, les pions deux à deux. Bouger l\'une fait bouger l\'autre, en miroir et du même nombre de cases.'},
+   txt:'Les échecs ordinaires, mais chaque pièce est jumelée à sa symétrique — le Roi à la Dame, les tours entre elles, les pions deux à deux. Bouger l\'une fait bouger l\'autre, en miroir et du même nombre de cases. Seul le coup d\'ouverture de chaque camp part seul.'},
   {id:'blitz',
    nom:'Blitz alchimique',
    tag:'Bientôt',

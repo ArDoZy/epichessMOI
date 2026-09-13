@@ -37,6 +37,18 @@
 // LE VEUVAGE. Une pièce dont la jumelle est prise bouge SEULE pour le reste
 // de la partie : on ne se re-jumelle jamais. Perdre une pièce libère donc sa
 // sœur — c'est la seule compensation d'une perte, et elle compte.
+
+// LE COUP D'OUVERTURE EST LIBRE, UN DE CHAQUE CÔTÉ. Au tout premier coup des
+// Blancs et au tout premier coup des Noirs, LE MIROIR NE S'APPLIQUE PAS : une
+// seule pièce part, sans sa compagne. Ensuite la règle vaut pour tout le reste
+// de la partie.
+//
+// Ce n'est pas une facilité, c'est ce qui rend la partie jouable. Sans lui,
+// 1.e4 donne d4 par-dessus le marché : les Blancs prennent tout le centre d'un
+// seul coup, et rien de ce que les Noirs peuvent répondre ne le leur reprend.
+// Le coup libre casse aussi la symétrie de la position dès l'entrée — deux
+// camps qui se reflètent exactement joueraient une partie où chaque menace est
+// immédiatement rendue, et l'avantage du trait deviendrait tout.
 //
 // CE QUI EST CONSERVÉ DES ÉCHECS : tous les déplacements, la prise, l'échec,
 // le mat, le pat, la promotion, le roque, la prise en passant, la règle des
@@ -75,6 +87,11 @@ const MIR_VALUE={p:100,n:320,b:330,r:500,q:900,k:0};
 const MIR_ART={p:'std-pawn',n:'std-n',b:'std-b',r:'std-r',q:'dame',k:'roi'};
 const MIR_NAME={p:'Pion',n:'Cavalier',b:'Fou',r:'Tour',q:'Dame',k:'Roi'};
 const MIR_FILES=['a','b','c','d','e','f','g','h'];
+
+// Le coup d'ouverture, libre de miroir : le tout premier des Blancs (ply 0) et
+// le tout premier des Noirs (ply 1). UN SEUL ENDROIT décide, et tout le reste
+// — l'écran, la recherche, le réseau — le lit ici.
+function mirFreeMove(st){return st.ply<2;}
 
 function mirIn(r,c){return r>=0&&r<8&&c>=0&&c<8;}
 function mirOpp(color){return color==='w'?'b':'w';}
@@ -447,8 +464,9 @@ function mirGenerate(st,color){
     if(p&&p.color===color)mirPieceMoves(st.board,r,c,raw,st.rights,st.ep);
   }
   const out=[];
+  const libre=mirFreeMove(st);
   for(const mv of raw){
-    const tw=mirResolveTwin(st.board,mv,st.ep);
+    const tw=libre?null:mirResolveTwin(st.board,mv,st.ep);
     // Un pion jumeau qui atteint la dernière rangée promeut lui aussi, et le
     // joueur choisit sa pièce SÉPARÉMENT : on ouvre donc les quatre branches.
     if(tw&&tw.needPromo){
@@ -685,10 +703,11 @@ function mirFindMove(st,pk){
 
 if(typeof window!=='undefined'){
   window.mirNewState=mirNewState;
+  window.mirFreeMove=mirFreeMove;
 }
 if(typeof module!=='undefined'&&module.exports){
   module.exports={mirNewState,mirCloneState,mirFindMate,mirShape,mirResolveTwin,
-    mirDoMove,mirUndoMove,mirMake,mirMakeFirst,mirMakeRest,mirUnmake,mirDoStep,mirUndoStep,mirGenerate,mirLegalMoves,mirMovesFrom,mirMovesTo,
+    mirFreeMove,mirDoMove,mirUndoMove,mirMake,mirMakeFirst,mirMakeRest,mirUnmake,mirDoStep,mirUndoStep,mirGenerate,mirLegalMoves,mirMovesFrom,mirMovesTo,
     mirMoveIsSafe,mirPieceMoves,mirAttacked,mirInCheck,mirFindKing,mirInsufficient,
     mirUpdateStatus,mirPositionKey,mirRecord,mirMoveText,mirStepText,mirPackMove,mirFindMove,
     mirSquare,mirOpp,mirIn,MIR_VALUE,MIR_ART,MIR_NAME,MIR_DIR,MIR_KNIGHT,MIR_FILES};

@@ -27,8 +27,11 @@
 //   · L'AXE, un trait vertical au milieu du plateau — la symétrie qui a
 //     distribué les paires au coup d'envoi ;
 //   · LA JUMELLE DE LA PIÈCE SAISIE, marquée dès qu'on saisit une pièce
-//     (.mir-mate). Une pièce veuve n'en marque aucune : on apprend son
-//     veuvage en la prenant en main, pas en perdant un coup ;
+//     (.mir-mate). Une pièce veuve n'en marque aucune, et le COUP
+//     D'OUVERTURE n'en marque aucune non plus : au premier coup de chaque
+//     camp le miroir ne s'applique pas, et une marque qui promettrait une
+//     jumelle immobile serait un mensonge. C'est le bandeau de statut qui le
+//     dit alors en toutes lettres ;
 //   · LA DESTINATION DU COUP JUMEAU, montrée quand on survole une case
 //     d'arrivée (.mir-twin). C'est LA question qu'on se pose avant chaque
 //     coup de cette variante — « et ma jumelle, elle va où ? » — et il serait
@@ -130,7 +133,7 @@ function mirLayer(){return mirBoardEl().querySelector('.gc-layer');}
 // est veuve, ou si rien n'est saisi).
 function mirSelMate(){
   const st=MIR.st;
-  if(!st||!MIR.sel)return null;
+  if(!st||!MIR.sel||mirFreeMove(st))return null;
   const p=st.board[MIR.sel.r][MIR.sel.c];
   return p?mirFindMate(st.board,p):null;
 }
@@ -267,7 +270,11 @@ function mirSetStatus(){
     if(st.result==='draw')txt='Partie nulle — '+st.reason+'.';
     else txt=(st.result===MIR.myColor?'Victoire':'Défaite')+' — '+st.reason+'.';
   }else if(st.turn===MIR.myColor){
-    txt=st.check?'Échec ! À vous de jouer.':'À votre tour.';
+    // LE COUP D'OUVERTURE SE DIT, il ne se devine pas : rien à l'écran ne
+    // distingue une position où le miroir dort d'une position où il veille,
+    // et le joueur qui l'ignore croit à un défaut du jeu.
+    txt=st.check?'Échec ! À vous de jouer.'
+      :(mirFreeMove(st)?'Votre coup d’ouverture : votre pièce part seule, sans sa jumelle.':'À votre tour.');
     cls+=st.check?' check':' ok';
   }else{
     txt=st.check?'Échec à l’adversaire.':(MIR.mode==='ia'?'L’adversaire réfléchit…':'Au tour de votre adversaire.');
@@ -474,6 +481,8 @@ function mirPlayMove(mv,local){
   // LA JUMELLE, un battement plus tard. C'est la variante elle-même : on lui
   // laisse son propre temps à l'écran, sans quoi on ne verrait qu'une position
   // qui change à deux endroits à la fois.
+  // Un coup sans jumelle — coup d'ouverture, ou pièce veuve — n'a pas de
+  // second temps à montrer : on enchaîne sans faire attendre pour rien.
   setTimeout(()=>{
     mirMakeRest(st,rec);
     if(rec.taken[1])st.captured[color].push(rec.taken[1].t);
@@ -488,7 +497,7 @@ function mirPlayMove(mv,local){
     if(st.check&&!st.gameOver&&typeof playSound==='function')playSound('check');
     if(st.gameOver){mirFinish();return;}
     if(MIR.mode==='ia'&&st.turn!==MIR.myColor)setTimeout(mirAITurn,MIR_AI_DELAY);
-  },MIR_TWIN_MS);
+  },mv.twin?MIR_TWIN_MS:40);
 }
 
 function mirAITurn(){
