@@ -5,9 +5,12 @@
 // js/pages-nav.js). Elle répond à la seule question que l'écran de combat ne
 // répond pas : « est-ce qu'on joue toujours à la même chose ? »
 //
-// UNE SEULE VARIANTE EST JOUABLE, ET LA PAGE LE DIT. Le duel classique — cinq
-// pièces, 24 points, un échiquier 8×8 — est ce que lance le bouton COMBAT.
-// Les cinq autres formules sont annoncées, verrouillées, et n'ouvrent rien :
+// DEUX VARIANTES SONT JOUABLES, ET LA PAGE LE DIT. Le duel classique — cinq
+// pièces, 24 points, un échiquier 8×8 — est ce que lance le bouton COMBAT ;
+// la Chute des Royaumes est une partie d'échecs ordinaire où, après chaque
+// coup, les quatre rangées centrales glissent d'une case vers la droite (voir
+// js/fok-rules.js). Les quatre autres formules sont annoncées, verrouillées,
+// et n'ouvrent rien :
 // une carte grisée qui dit « bientôt » est honnête ; un bouton qui ouvre un
 // écran vide ne l'est pas. C'est exactement le reproche qu'on faisait à la
 // face « Variantes » de l'ancien cube de navigation, retirée pour cette raison.
@@ -20,16 +23,21 @@
 // ailleurs.
 //
 // Dépendances : pages-nav.js (appel du rendu), armies.js (startArmySelection,
-// pour le duel classique), tutorial.js (tutoInterceptCombat), main.js (escH).
+// pour le duel classique), fok-game.js (fokOpenLobby, pour la Chute des
+// Royaumes), tutorial.js (tutoInterceptCombat), main.js (escH).
 // ================================================================
 
-// Les six formules. `on:true` = jouable aujourd'hui. L'ordre est celui de
+// Les sept formules. `on:true` = jouable aujourd'hui. L'ordre est celui de
 // lecture : ce qu'on peut jouer d'abord, les promesses ensuite.
 const VARIANTES=[
   {id:'duel', on:true,
    nom:'Duel classique',
    tag:'Classée',
    txt:'Cinq pièces, vingt-quatre points, un échiquier 8×8. La partie que lance COMBAT, et la seule qui compte pour l\'ELO.'},
+  {id:'fok', on:true,
+   nom:'Chute des Royaumes',
+   tag:'Libre',
+   txt:'Les échecs ordinaires, seize pièces sur leurs cases — sauf qu\'après chaque coup, les quatre rangées centrales glissent d\'une case vers la droite. Rien n\'est misé, rien n\'est classé.'},
   {id:'blitz',
    nom:'Blitz alchimique',
    tag:'Bientôt',
@@ -73,13 +81,20 @@ function renderVariantesPage(){
   if(!grid||_varBuilt&&grid.firstElementChild)return;
   grid.innerHTML=VARIANTES.map(varianteCardHTML).join('');
   // Un seul écouteur, posé sur la grille : les cartes ne sont jamais
-  // recréées, mais la délégation évite d'en rebrancher six si elles le
+  // recréées, mais la délégation évite d'en rebrancher sept si elles le
   // devenaient un jour.
   grid.addEventListener('click',e=>{
     const b=e.target.closest&&e.target.closest('.var-card.is-on');
     if(!b||!grid.contains(b))return;
     // Le duel classique EST la partie du bouton COMBAT : il passe par le même
     // chemin, sélection d'armée comprise, plutôt que d'en ouvrir un second.
+    // La Chute des Royaumes ne passe par aucune sélection d'armée : elle se
+    // joue avec les seize pièces d'un jeu d'échecs, elle ouvre donc son propre
+    // salon (js/fok-game.js).
+    if(b.dataset.variante==='fok'){
+      if(typeof fokOpenLobby==='function')fokOpenLobby();
+      return;
+    }
     if(typeof tutoInterceptCombat==='function'&&tutoInterceptCombat())return;
     if(typeof startArmySelection==='function')startArmySelection('online');
   });

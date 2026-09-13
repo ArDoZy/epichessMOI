@@ -198,6 +198,25 @@ C'est la mécanique qui distingue le plus Epic Chess des autres variantes :
   créature, donner échec trois fois, la déplacer cinq fois, promouvoir un
   pion en telle créature, gagner en l'alignant…).
 
+## Variantes
+
+Le jeu propose une page **Variantes**, où une seconde formule est jouable à
+côté du duel classique :
+
+- **Chute des Royaumes** : une partie d'échecs **ordinaire** — seize pièces,
+  cases de départ habituelles, les Blancs commencent — à ceci près qu'**après
+  chaque coup, le sien comme celui de l'adversaire, toutes les pièces des
+  quatre rangées centrales glissent d'une case vers la droite** (la droite du
+  camp blanc). Les rangées 1, 2, 7 et 8 ne bougent jamais, et une pièce sortie
+  par la colonne h reparaît en colonne a. Un coup n'est légal que si le roi est
+  en sûreté **une fois le décalage fait**. Le roque est conservé, la prise en
+  passant non. Elle se joue **contre l'ordinateur** (quatre niveaux) ou
+  **contre un autre joueur** (partie rapide ou partie privée par code). Elle ne
+  met aucune pièce en jeu et ne compte pas pour le classement.
+
+Quatre autres formules sont annoncées et verrouillées (blitz, brouillard de
+guerre, siège, repêchage, chaos).
+
 ## Confidentialité
 
 Les comptes sont **enregistrés sur le serveur du jeu** (une base Postgres
