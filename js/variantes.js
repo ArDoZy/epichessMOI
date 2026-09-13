@@ -5,9 +5,12 @@
 // js/pages-nav.js). Elle répond à la seule question que l'écran de combat ne
 // répond pas : « est-ce qu'on joue toujours à la même chose ? »
 //
-// UNE VARIANTE, UNE SEULE, ET ELLE EST JOUABLE. La Chute des Royaumes est une
-// partie d'échecs ordinaire où, après chaque coup, les quatre rangées
-// centrales glissent d'une case vers la droite (voir js/fok-rules.js).
+// DEUX VARIANTES, ET LES DEUX SE JOUENT. La Chute des Royaumes est une partie
+// d'échecs ordinaire où, après chaque coup, les quatre rangées centrales
+// glissent d'une case vers la droite (voir js/fok-rules.js) ; Mirror Chess en
+// est une autre, où chaque pièce est jumelée à sa symétrique et où bouger
+// l'une fait bouger l'autre en miroir — sauf au coup d'ouverture de chaque
+// camp, qui part seul (voir js/mirror-rules.js).
 //
 // CE QUI N'EST PAS LÀ N'EST PAS ANNONCÉ. La page portait six autres cartes :
 // le duel classique — qui n'est pas une variante, c'est LA partie, celle que
@@ -23,17 +26,23 @@
 // glissement, ce qui est précisément le clignotement qu'on a chassé partout
 // ailleurs.
 //
-// Dépendances : pages-nav.js (appel du rendu), fok-game.js (fokOpenLobby),
-// main.js (escH).
+// Dépendances : pages-nav.js (appel du rendu), fok-game.js (fokOpenLobby,
+// pour la Chute des Royaumes), mirror-game.js (mirOpenLobby, pour Mirror
+// Chess), main.js (escH).
 // ================================================================
 
 // Les variantes. Elles sont toutes jouables : une carte qui ne mène nulle
-// part n'a rien à faire ici (voir l'en-tête).
+// part n'a rien à faire ici (voir l'en-tête). `lobby` nomme la fonction qui
+// ouvre le salon de chacune — c'est tout ce qui les distingue à ce niveau.
 const VARIANTES=[
-  {id:'fok',
+  {id:'fok', lobby:'fokOpenLobby',
    nom:'Chute des Royaumes',
    tag:'Libre',
    txt:'Les échecs ordinaires, seize pièces sur leurs cases — sauf qu\'après chaque coup, les quatre rangées centrales glissent d\'une case vers la droite. Rien n\'est misé, rien n\'est classé.'},
+  {id:'mirror', lobby:'mirOpenLobby',
+   nom:'Mirror Chess',
+   tag:'Libre',
+   txt:'Les échecs ordinaires, mais chaque pièce est jumelée à sa symétrique — le Roi à la Dame, les tours entre elles, les pions deux à deux. Bouger l\'une fait bouger l\'autre, en miroir et du même nombre de cases. Seul le coup d\'ouverture de chaque camp part seul.'},
 ];
 
 function varianteCardHTML(v){
@@ -52,16 +61,17 @@ function renderVariantesPage(){
   const grid=document.getElementById('var-grid');
   if(!grid||_varBuilt&&grid.firstElementChild)return;
   grid.innerHTML=VARIANTES.map(varianteCardHTML).join('');
-  // Un seul écouteur, posé sur la grille : la carte n'est jamais recréée,
-  // mais la délégation évite d'en rebrancher autant qu'il y en aura le jour
-  // où il y en aura plusieurs.
+  // Un seul écouteur, posé sur la grille : les cartes ne sont jamais
+  // recréées, mais la délégation évite d'en rebrancher autant qu'il y en aura
+  // le jour où il y en aura plus.
   grid.addEventListener('click',e=>{
     const b=e.target.closest&&e.target.closest('.var-card.is-on');
     if(!b||!grid.contains(b))return;
-    // La Chute des Royaumes ne passe par aucune sélection d'armée : elle se
-    // joue avec les seize pièces d'un jeu d'échecs, elle ouvre donc son
-    // propre salon (js/fok-game.js).
-    if(b.dataset.variante==='fok'&&typeof fokOpenLobby==='function')fokOpenLobby();
+    // Aucune variante ne passe par la sélection d'armée : elles se jouent
+    // avec les seize pièces d'un jeu d'échecs, et ouvrent donc chacune leur
+    // propre salon (js/fok-game.js, js/mirror-game.js).
+    const v=VARIANTES.find(x=>x.id===b.dataset.variante);
+    if(v&&typeof window[v.lobby]==='function')window[v.lobby]();
   });
   _varBuilt=true;
 }

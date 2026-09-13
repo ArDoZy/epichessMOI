@@ -98,8 +98,8 @@ epic-chess/
     │                          # combat, guerre des clans, variantes). Déplace
     │                          # armées/guerre des clans dans leur emplacement,
     │                          # et pose la partie en calque par-dessus.
-    ├── variantes.js          # La page « Variantes » : la Chute des Royaumes,
-    │                          # seule formule de la page — et jouable. Rien
+    ├── variantes.js          # La page « Variantes » : la Chute des Royaumes
+    │                          # et Mirror Chess, les deux jouables. Rien
     │                          # d'annoncé, rien de verrouillé.
     ├── fok-rules.js          # CHUTE DES ROYAUMES : le moteur de la variante.
     │                          # Échecs ordinaires + décalage des quatre rangées
@@ -111,6 +111,16 @@ epic-chess/
     │                          # les CLASSES de la partie ordinaire, aucun état
     ├── fok-mp.js             # Ses parties à deux joueurs : mêmes canaux Supabase
     │                          # que le jeu principal, sujets `epichess-fok-*`
+    ├── mirror-rules.js       # MIRROR CHESS : le moteur de la variante. Échecs
+    │                          # ordinaires + chaque pièce jumelée à sa symétrique
+    │                          # (Roi↔Dame, tours entre elles, pions deux à deux) :
+    │                          # bouger l'une fait bouger l'autre en miroir, du même
+    │                          # nombre de cases. Aucune dépendance, aucun DOM.
+    ├── mirror-ai.js          # Son adversaire : alpha-bêta qui fait et défait au
+    │                          # lieu de cloner, quatre niveaux, budget borné
+    ├── mirror-game.js        # Son écran de jeu (#page-mirror) et son salon
+    ├── mirror-mp.js          # Ses parties à deux joueurs, sujets
+    │                          # `epichess-mirror-*`
     ├── server.js             # LA SEULE PORTE vers le serveur : sessions,
     │                          # appels ec_*, envoi groupé des écritures,
     │                          # rapport de fin de partie, présence. Contient
@@ -1447,9 +1457,8 @@ les anciens clients ne peuvent pas s'y tromper de protocole.
 
 ## La Chute des Royaumes (`js/fok-*.js`)
 
-La seule variante de la page Variantes, et elle est jouable — le duel
-classique n'y figure pas : ce n'est pas une variante, c'est la partie que
-lance COMBAT. **Sa règle tient en une phrase** : on joue aux échecs
+La première des deux variantes de la page Variantes — le duel classique n'y
+figure pas : ce n'est pas une variante, c'est la partie que lance COMBAT. **Sa règle tient en une phrase** : on joue aux échecs
 ordinaires, avec les seize pièces sur leurs cases de départ, mais **après
 chaque coup — le sien comme celui de l'adversaire — toutes les pièces des
 quatre rangées centrales (3 à 6) glissent d'une case vers la droite**, la
@@ -1516,6 +1525,118 @@ bande mobile, qui est le vrai conseil stratégique de la variante.
 **Rien n'est misé et rien n'est classé** : la variante ne touche ni à l'ELO, ni
 à la réserve de pièces, ni aux voies de récompenses. C'est une partie qu'on
 joue pour la règle.
+
+## Mirror Chess (`js/mirror-*.js`)
+
+La deuxième variante jouable, ouverte depuis la même page. **Sa règle tient en
+une phrase** : on joue aux échecs ordinaires, avec les seize pièces sur leurs
+cases de départ, mais **chaque pièce est jumelée à sa symétrique, et bouger
+l'une fait bouger l'autre**. Les paires sont fixées au coup d'envoi par la
+symétrie axiale du plateau (colonne `c` ↔ colonne `7−c`) : chez les Blancs, le
+Roi e1 avec la Dame d1, les fous c1 et f1, les cavaliers b1 et g1, les tours a1
+et h1, les pions d2–e2, c2–f2, b2–g2, a2–h2. Les Noirs ont les mêmes paires.
+
+Quand vous jouez une pièce, sa jumelle part dans la **direction miroir** — la
+gauche et la droite s'échangent, l'avant et l'arrière ne changent pas — et du
+**même nombre de cases**. `Ta1–c1` (deux cases à droite) envoie `Th1` en `f1` ;
+`Fc1–a3` (haut-gauche) envoie `Ff1` en `h3`. Tant que rien ne bloque, la
+symétrie de la position se conserve d'elle-même.
+
+**Le coup d'ouverture est libre, un de chaque côté.** Au tout premier coup des
+Blancs et au tout premier coup des Noirs, le miroir ne s'applique pas : une
+seule pièce part, sans sa compagne. Ensuite la règle vaut pour tout le reste de
+la partie. Ce n'est pas une facilité — sans lui, `1.e4` donne `d4` par-dessus le
+marché, les Blancs prennent tout le centre d'un seul coup et rien de ce que les
+Noirs peuvent répondre ne le leur reprend. Il casse aussi la symétrie de la
+position dès l'entrée : deux camps qui se reflètent exactement joueraient une
+partie où chaque menace est immédiatement rendue, et l'avantage du trait
+deviendrait tout. `mirFreeMove(st)` (`st.ply < 2`) est le seul endroit qui en
+décide ; l'écran, la recherche et le réseau le lisent tous là.
+
+Six décisions de règle méritent d'être connues avant d'y toucher :
+
+- **Le repli, et sa borne.** Quand la jumelle ne peut pas faire les N cases
+  demandées, elle en fait **le plus possible sans dépasser N** : elle s'arrête
+  devant une pièce amie, **prend** la pièce ennemie sur laquelle elle tombe, et
+  reste sur place si aucune case n'est possible — auquel cas le coup d'origine
+  reste parfaitement légal. Elle ne va jamais plus loin que la pièce jouée,
+  elle ne saute rien, elle ne pousse rien.
+- **Le Roi est jumelé à la DAME, et c'est le cœur de la variante.** La Dame qui
+  traverse le plateau en quatre cases fait marcher le Roi d'une case, dans la
+  direction miroir. Jouer sa Dame, c'est donc promener son Roi à chaque coup —
+  et le Roi tiré sur une case attaquée ne se sauve pas tout seul : le coup
+  entier devient simplement illégal. C'est aussi ce qui fait perdre le roque à
+  un Roi qui n'a jamais été joué.
+- **La légalité se juge APRÈS les deux déplacements.** Le coup jumeau fait
+  partie du coup, et il n'est jamais facultatif : on ne peut pas le refuser
+  pour se sauver d'un échec. On peut donc être maté parce que le seul coup qui
+  parerait l'échec traîne le Roi ailleurs.
+- **La pièce jouée bouge d'abord, la jumelle ensuite.** La jumelle voit le
+  plateau d'après : elle est bloquée par la case que la pièce jouée vient
+  d'occuper, et elle ne peut pas y atterrir. Il n'y a **aucune réaction en
+  chaîne** — le coup jumeau ne réveille rien, et la tour du roque, qui saute
+  avec le Roi, ne déclenche pas la sienne (le roque est UN coup de roi).
+- **Le cavalier fait le saut miroir exact, ou rien.** Il n'y a rien à
+  raccourcir dans un saut : si la case d'arrivée miroir est occupée par un ami
+  ou hors du plateau, le cavalier jumeau ne bouge pas.
+- **Le veuvage libère.** Une pièce dont la jumelle est prise joue **seule** pour
+  le reste de la partie ; on ne se re-jumelle jamais. Perdre une pièce est donc
+  la seule façon d'en affranchir une autre, et l'évaluation de l'IA le sait
+  (sans ce terme, elle refuse des échanges qui la libéreraient).
+
+Roque, prise en passant et promotion sont tous conservés. Deux conséquences
+qu'on ne devine pas : une **paire de pions peut pousser de deux ensemble**, ce
+qui ouvre **deux** cases de prise en passant d'un coup ; et une paire arrivée
+ensemble sur la dernière rangée **promeut des deux côtés**, avec un choix de
+pièce indépendant — l'écran pose alors la question deux fois de suite.
+
+| Fichier | Rôle |
+|---|---|
+| `js/mirror-rules.js` | Le moteur : état, jumelage, résolution du coup jumeau, légalité, fin de partie, notation, sérialisation réseau. Ne connaît ni le DOM ni le réseau. |
+| `js/mirror-ai.js` | L'adversaire : négamax alpha-bêta, quiescence, approfondissement itératif, quatre niveaux (Apprenti, Soldat, Capitaine, Usurpateur). |
+| `js/mirror-game.js` | L'écran de jeu (`#page-mirror`) et le salon. |
+| `js/mirror-mp.js` | Les parties à deux joueurs, sur les canaux `epichess-mirror-*`. |
+
+**Le moteur fait et défait, il ne clone pas.** Un coup de cette variante est
+DEUX déplacements : cloner huit rangées par nœud, comme le fait le moteur de la
+Chute des Royaumes, en coûterait le double pour rien. Tout passe donc par
+`mirDoMove`/`mirUndoMove`, qui mutent le plateau et savent le remettre
+exactement comme il était — droits au roque et cases de prise en passant
+compris. C'est la seule optimisation du fichier, et elle est locale.
+
+**Le coup se joue en deux temps, et c'est la mise en scène de la règle.** La
+pièce jouée se déplace d'abord (`mirMakeFirst`), puis, 300 ms plus tard, sa
+jumelle part à son tour (`mirMakeRest`). Les jouer dans le même rendu donnerait
+deux pièces qui bougent ensemble sans qu'on comprenne laquelle commande. Les
+deux chemins — celui de l'écran en deux temps et celui de la recherche d'un
+bloc (`mirMake`) — passent par les mêmes fonctions : il n'y a jamais deux
+façons de jouer un coup.
+
+Pendant les deux coups d'ouverture, **le bandeau de statut le dit en toutes
+lettres** et la jumelle de la pièce saisie n'est pas marquée : rien à l'écran ne
+distingue une position où le miroir dort d'une position où il veille, et le
+joueur qui l'ignore croit à un défaut du jeu.
+
+**Trois marques montrent le jumelage à l'écran**, parce qu'une règle qui ne se
+voit pas se prend pour un défaut d'affichage : l'**axe de symétrie** (un trait
+vertical entre les colonnes d et e, celui qui a distribué les paires), la
+**jumelle de la pièce saisie** (liseré d'or — une pièce veuve n'en marque
+aucune, on apprend son veuvage en la prenant en main) et la **destination du
+coup jumeau** au survol d'une case d'arrivée (liseré vert-de-gris). Cette
+dernière répond à LA question qu'on se pose avant chaque coup de la variante —
+« et ma jumelle, elle va où ? » —, qu'il serait absurde d'obliger à calculer de
+tête.
+
+**Sur le réseau ne passe que la pièce jouée**, jamais sa jumelle : chaque camp
+recalcule le coup jumeau avec le même moteur, à partir de la même position. Un
+client bricolé ne peut donc pas décider où part une jumelle chez l'adversaire —
+il ne peut que se faire ignorer, puisque le coup reçu est revérifié en entier
+(`mirFindMove`). Seul le choix de promotion de la jumelle voyage, parce que lui
+seul ne se déduit pas.
+
+**Rien n'est misé et rien n'est classé**, comme pour la Chute des Royaumes : la
+variante ne touche ni à l'ELO, ni à la réserve de pièces, ni aux voies de
+récompenses.
 
 ## Le serveur fait autorité (`supabase/schema.sql`, `js/server.js`)
 
@@ -1819,11 +1940,12 @@ server.js → data-pieces.js → piece-art.js → main.js → pages-nav.js → a
 → cinematics.js
 → game-render.js
 → ai-engine.js → game-flow.js → voie.js → economy-ui.js
-→ fok-rules.js → fok-ai.js → fok-game.js → variantes.js
+→ fok-rules.js → fok-ai.js → fok-game.js
+→ mirror-rules.js → mirror-ai.js → mirror-game.js → variantes.js
 → rewards.js → rewards-ui.js → tuto-drill.js
 → tutorial.js
 → pwa.js → account-ui.js → replay.js → leaderboard.js → settings-admin.js
-→ multiplayer.js → fok-mp.js
+→ multiplayer.js → fok-mp.js → mirror-mp.js
 → (script inline) initApp()
 ```
 

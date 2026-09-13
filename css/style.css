@@ -7894,17 +7894,61 @@ body.has-acc #page-fok{min-height:0}
    [MOBILE-GAME]) : `display:contents` fait de ses enfants des enfants directs
    de .game-wrap, qu'on ordonne alors dans l'ordre d'un échiquier réel —
    l'adverse au-dessus, le sien en dessous. Les règles d'origine désignent les
-   bandeaux de la partie classique par leur identifiant ; ceux de la variante
-   ont besoin des mêmes. */
+   bandeaux de la partie classique par leur identifiant ; ceux des DEUX
+   variantes — Chute des Royaumes et Mirror Chess — ont besoin des mêmes. */
 @media(max-width:820px){
-  #fok-opp-bar{order:1;padding-right:52px}
-  #page-fok .game-main{order:2}
-  #fok-me-bar{order:3}
-  #page-fok .status-bar{order:4}
-  #fok-under{order:5}
-  #page-fok .game-btns{order:6;margin-top:auto;padding-top:2px}
-  #fok-opp-bar.gp-turn{box-shadow:inset 0 -2px 0 var(--accent2)}
-  #fok-me-bar.gp-turn{box-shadow:inset 0 2px 0 var(--accent2)}
-  #page-fok{overflow-y:auto;-webkit-overflow-scrolling:touch}
+  #fok-opp-bar,#mir-opp-bar{order:1;padding-right:52px}
+  #page-fok .game-main,#page-mirror .game-main{order:2}
+  #fok-me-bar,#mir-me-bar{order:3}
+  #page-fok .status-bar,#page-mirror .status-bar{order:4}
+  #fok-under,#mir-under{order:5}
+  #page-fok .game-btns,#page-mirror .game-btns{order:6;margin-top:auto;padding-top:2px}
+  #fok-opp-bar.gp-turn,#mir-opp-bar.gp-turn{box-shadow:inset 0 -2px 0 var(--accent2)}
+  #fok-me-bar.gp-turn,#mir-me-bar.gp-turn{box-shadow:inset 0 2px 0 var(--accent2)}
+  #page-fok,#page-mirror{overflow-y:auto;-webkit-overflow-scrolling:touch}
   .fok-lobby-box{max-width:none}
 }
+
+/* [MIRROR] =======================================================
+   MIRROR CHESS — la variante où chaque pièce est jumelée à sa symétrique
+   par l'axe central, et où bouger l'une fait bouger l'autre en miroir
+   (js/mirror-rules.js).
+
+   MÊME PRINCIPE QUE [FOK] : l'écran de jeu n'a presque pas de style à lui,
+   son balisage porte exactement les classes de la partie ordinaire, et il
+   réutilise même le décor du salon, de la promotion et du résultat de la
+   Chute des Royaumes (.fok-lobby-*, .fok-lob-*, .fok-res-*) — deux
+   variantes qui se ressemblent doivent se ressembler. Ne restent ici que
+   les trois marques qui MONTRENT le jumelage, et elles n'existent nulle
+   part ailleurs dans le jeu.
+   ============================================================== */
+#page-mirror{padding:0;min-height:100dvh;background:var(--bg)}
+body.has-acc #page-mirror{min-height:0}
+
+/* L'AXE DE SYMÉTRIE, entre les colonnes d et e. C'est lui qui a distribué
+   les paires au coup d'envoi et il ne bouge plus de la partie : un trait
+   sous les pièces (z-index 1, la couche des pièces est à 2), assez discret
+   pour qu'on cesse de le voir, assez présent pour qu'on se souvienne
+   pourquoi la position reste symétrique. */
+.mir-axis{position:absolute;top:0;bottom:0;left:50%;width:0;pointer-events:none;z-index:1;
+  border-left:1px dashed rgba(47,177,151,.42);
+  box-shadow:0 0 10px rgba(47,177,151,.25)}
+
+/* LA JUMELLE DE LA PIÈCE SAISIE. Un liseré d'or posé en surimpression : la
+   case garde ::before (pastille de déplacement) et ::after (dernier coup),
+   il ne restait que le contour. Une pièce veuve n'en marque aucune — on
+   apprend son veuvage en la prenant en main, pas en perdant un coup. */
+.gc.mir-mate{box-shadow:inset 0 0 0 2px var(--gold);border-radius:2px}
+/* LA DESTINATION DU COUP JUMEAU, montrée au survol d'une case d'arrivée :
+   c'est LA question qu'on se pose avant chaque coup de cette variante, et
+   il serait absurde d'obliger à la calculer de tête. Pointillé pour la
+   distinguer du plein de la case jumelle : l'une est une pièce, l'autre est
+   une promesse. */
+.gc.mir-twin{box-shadow:inset 0 0 0 2px var(--accent2);border-radius:2px}
+.gc.mir-mate.mir-twin{box-shadow:inset 0 0 0 2px var(--gold),inset 0 0 0 4px var(--accent2)}
+
+/* La fenêtre de promotion de la variante porte un sous-titre (elle peut être
+   posée deux fois de suite, pour la pièce jouée puis pour sa jumelle) : sans
+   cette marge, il collerait aux quatre boutons. */
+#mir-promo .fok-lobby-sub{margin-bottom:6px}
+
