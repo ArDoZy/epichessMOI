@@ -200,7 +200,7 @@ C'est la mécanique qui distingue le plus Epic Chess des autres variantes :
 
 ## Variantes
 
-Le jeu propose une page **Variantes**, où une seconde formule est jouable à
+Le jeu propose une page **Variantes**, où deux autres formules sont jouables à
 côté du duel classique :
 
 - **Chute des Royaumes** : une partie d'échecs **ordinaire** — seize pièces,
@@ -213,6 +213,26 @@ côté du duel classique :
   passant non. Elle se joue **contre l'ordinateur** (quatre niveaux) ou
   **contre un autre joueur** (partie rapide ou partie privée par code). Elle ne
   met aucune pièce en jeu et ne compte pas pour le classement.
+
+- **Mirror Chess** : une partie d'échecs **ordinaire** — seize pièces, cases de
+  départ habituelles — à ceci près que **chaque pièce est jumelée à sa
+  symétrique par l'axe central du plateau, et que bouger l'une fait bouger
+  l'autre**. Chez les Blancs : le Roi e1 avec la Dame d1, les fous c1 et f1,
+  les cavaliers b1 et g1, les tours a1 et h1, et les pions deux à deux (d2–e2,
+  c2–f2, b2–g2, a2–h2) ; les Noirs ont les mêmes paires. La jumelle part dans
+  la **direction miroir** — la gauche et la droite s'échangent, l'avant ne
+  change pas — et du **même nombre de cases** ; si elle ne peut pas aller si
+  loin, elle va **le plus loin possible sans dépasser**, s'arrêtant devant une
+  pièce amie et prenant la pièce ennemie sur laquelle elle tombe, et ne bouge
+  pas du tout si aucune case n'est possible. Un cavalier jumeau fait le saut
+  miroir exact ou rien. Le Roi étant jumelé à la Dame, chaque coup de Dame le
+  fait marcher d'une case. Une pièce dont la jumelle est prise joue seule
+  jusqu'à la fin. Un coup n'est légal que si le roi est en sûreté **une fois
+  les deux déplacements faits**, et le coup jumeau ne se refuse pas. Roque,
+  prise en passant et promotion sont conservés. Elle se joue **contre
+  l'ordinateur** (quatre niveaux) ou **contre un autre joueur** (partie rapide
+  ou partie privée par code). Elle ne met aucune pièce en jeu et ne compte pas
+  pour le classement.
 
 Quatre autres formules sont annoncées et verrouillées (blitz, brouillard de
 guerre, siège, repêchage, chaos).

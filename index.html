@@ -1586,6 +1586,109 @@
   </div>
 </div>
 
+<!-- MIRROR CHESS (js/mirror-game.js) : les mêmes classes que la partie
+     ordinaire, donc la même mise en page — seuls les identifiants changent. -->
+<div id="page-mirror" class="page">
+  <div class="game-wrap">
+    <div class="game-main">
+      <div class="board-frame">
+        <div class="game-board-outer">
+          <div class="game-board-col">
+            <div class="game-board" id="mir-board"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <aside class="game-side">
+      <div class="gp-bar" id="mir-opp-bar">
+        <div class="gp-av" id="mir-opp-av">?</div>
+        <div class="gp-id">
+          <div class="gp-name" id="mir-opp-name">Adversaire</div>
+          <div class="gp-elo" id="mir-opp-sub"></div>
+        </div>
+        <div class="gp-taken" id="mir-cap-opp"></div>
+      </div>
+      <div class="gp-bar" id="mir-me-bar">
+        <div class="gp-av" id="mir-me-av">?</div>
+        <div class="gp-id">
+          <div class="gp-name" id="mir-me-name">Joueur</div>
+          <div class="gp-elo" id="mir-me-sub"></div>
+        </div>
+        <div class="gp-taken" id="mir-cap-me"></div>
+      </div>
+      <div class="status-bar" id="mir-status" role="status" aria-live="polite" aria-atomic="true">En attente...</div>
+      <div class="game-under" id="mir-under">
+        <div class="game-tools">
+          <button class="gt-btn" id="mir-btn-history" aria-expanded="false" aria-controls="mir-panel-history">
+            <svg aria-hidden="true"><use href="#ec-parchemin"/></svg>
+            <span>Historique</span>
+          </button>
+          <button class="gt-btn" id="mir-btn-regle" aria-expanded="false" aria-controls="mir-panel-regle">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 7.6v.8"/></svg>
+            <span>La règle</span>
+          </button>
+        </div>
+        <section class="game-panel" id="mir-panel-history" hidden aria-label="Journal des coups">
+          <div class="gpanel-head">
+            <div class="gpanel-title">Journal des coups</div>
+            <button class="gpanel-close" data-mir-close aria-label="Fermer le journal">✕</button>
+          </div>
+          <div class="move-log" id="mir-log"></div>
+        </section>
+        <section class="game-panel" id="mir-panel-regle" hidden aria-label="La règle de la variante">
+          <div class="gpanel-head">
+            <div class="gpanel-title">Mirror Chess</div>
+            <button class="gpanel-close" data-mir-close aria-label="Fermer">✕</button>
+          </div>
+          <div class="move-log fok-regle">
+            <p>Échecs ordinaires, seize pièces, cases de départ habituelles.</p>
+            <p><b>Chaque pièce est jumelée à sa symétrique</b> par l'axe central : le Roi e1 avec la Dame d1, les fous c1 et f1, les cavaliers b1 et g1, les tours a1 et h1, et les pions deux à deux — d2 avec e2, c2 avec f2, b2 avec g2, a2 avec h2. Les Noirs ont les mêmes paires.</p>
+            <p>Quand vous jouez une pièce, <b>sa jumelle part en miroir</b> : la gauche et la droite s'échangent, l'avant ne change pas, et elle fait le <b>même nombre de cases</b>. Ta1–c1 envoie Th1 en f1 ; Fc1–a3 envoie Ff1 en h3.</p>
+            <p>Si elle ne peut pas aller si loin, elle va <b>le plus loin possible sans dépasser</b> : elle s'arrête devant une pièce amie, prend la pièce ennemie sur laquelle elle tombe, et reste sur place si aucune case n'est possible. Elle ne dépasse jamais, ne saute rien, ne pousse rien.</p>
+            <p>Le <b>Roi est jumelé à la Dame</b> : chaque coup de Dame le fait marcher d'une case. Un cavalier jumeau fait le <b>saut miroir exact</b>, ou rien du tout.</p>
+            <p>Une pièce dont la jumelle est prise <b>joue seule</b> jusqu'à la fin : on ne se re-jumelle jamais.</p>
+            <p>Un coup n'est légal que si votre roi est en sûreté <b>une fois les deux déplacements faits</b> — le coup jumeau ne se refuse pas. Roque, prise en passant et promotion sont conservés.</p>
+          </div>
+        </section>
+      </div>
+      <div class="game-btns">
+        <button class="btn btn-danger" id="mir-quit"><svg class="btn-ico" aria-hidden="true"><use href="#ec-drapeau"/></svg><span>Abandonner</span></button>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<!-- Le salon de Mirror Chess (IA ou joueur en ligne), ouvert par sa carte de
+     la page Variantes. -->
+<div class="confirm-modal" id="mir-lobby">
+  <div class="confirm-box fok-lobby-box">
+    <div class="fok-lobby-title">Mirror Chess</div>
+    <div class="fok-lobby-sub">Chaque pièce est jumelée à sa symétrique : bouger l'une fait bouger l'autre, en miroir et du même nombre de cases.</div>
+    <div id="mir-lobby-body"></div>
+    <button class="btn btn-ghost" id="mir-lobby-close" style="width:100%;margin-top:14px">Fermer</button>
+  </div>
+</div>
+
+<!-- Promotion. Elle peut être demandée DEUX FOIS : une paire de pions arrivée
+     ensemble sur la dernière rangée promeut des deux côtés, et rien n'oblige à
+     choisir la même pièce. -->
+<div class="confirm-modal" id="mir-promo">
+  <div class="confirm-box">
+    <div class="fok-lobby-title" id="mir-promo-title">Promotion</div>
+    <div class="fok-lobby-sub" id="mir-promo-sub"></div>
+    <div class="fok-promo-row" id="mir-promo-row"></div>
+  </div>
+</div>
+
+<!-- Fin de partie. -->
+<div class="confirm-modal" id="mir-result">
+  <div class="confirm-box">
+    <div class="fok-res-title" id="mir-res-title"></div>
+    <div class="fok-res-sub" id="mir-res-sub"></div>
+    <div class="fok-res-btns" id="mir-res-btns"></div>
+  </div>
+</div>
+
 <!-- MODALS -->
 <div class="promo-modal" id="promo-modal"><div class="promo-box"><div class="promo-title">Choisir la promotion</div><div class="promo-pieces-row" id="promo-box"></div></div></div>
 <!-- Le badge « Admin » flottant a disparu : le mode admin est désormais
@@ -1834,6 +1937,9 @@
 <script src="js/fok-rules.js"></script>
 <script src="js/fok-ai.js"></script>
 <script src="js/fok-game.js"></script>
+<script src="js/mirror-rules.js"></script>
+<script src="js/mirror-ai.js"></script>
+<script src="js/mirror-game.js"></script>
 <script src="js/variantes.js"></script>
 <script src="js/rewards.js"></script>
 <script src="js/rewards-ui.js"></script>
@@ -1848,6 +1954,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/multiplayer.js"></script>
 <script src="js/fok-mp.js"></script>
+<script src="js/mirror-mp.js"></script>
 <script>
 // ================================================================
 // APP-INIT : dernier script exécuté, démarre l'application

@@ -3514,6 +3514,161 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
     await page.waitForTimeout(400);
   });
 
+  // ================================================================
+  // MIRROR CHESS : la règle du jumelage, vérifiée sur le vrai moteur
+  // ================================================================
+  // La variante a son propre moteur (js/mirror-rules.js), qui ne partage rien
+  // avec celui de la partie ordinaire : rien d'autre dans ce fichier ne le
+  // touche. On vérifie ici ce qui définit la variante — les paires de départ,
+  // la direction MIROIR du coup jumeau, le repli « le plus possible sans
+  // dépasser », le Roi traîné par sa Dame, et le veuvage — plus le fait que
+  // faire puis défaire un coup rend le plateau à l'identique, ce dont dépend
+  // toute la recherche de son IA.
+  await step('Mirror Chess : les paires de départ sont les symétriques',async()=>{
+    const r=await page.evaluate(()=>{
+      const st=mirNewState();
+      const sq=s=>({r:8-(+s[1]),c:'abcdefgh'.indexOf(s[0])});
+      const lie=(a,b)=>{
+        const A=st.board[sq(a).r][sq(a).c],B=st.board[sq(b).r][sq(b).c];
+        return A&&B&&A.mate===B.id&&B.mate===A.id;
+      };
+      const paires=[['e1','d1'],['c1','f1'],['b1','g1'],['a1','h1'],
+                    ['d2','e2'],['c2','f2'],['b2','g2'],['a2','h2'],
+                    ['e8','d8'],['a7','h7']];
+      return{rompues:paires.filter(p=>!lie(p[0],p[1])).map(p=>p.join('-')),
+             coups:mirLegalMoves(st,'w').length};
+    });
+    if(r.rompues.length)throw new Error('paires non jumelées : '+r.rompues.join(', '));
+    if(r.coups!==20)throw new Error(r.coups+' coups légaux au départ au lieu de 20');
+  });
+
+  await step('Mirror Chess : la jumelle part en miroir, et pas plus loin',async()=>{
+    const r=await page.evaluate(()=>{
+      const sq=s=>({r:8-(+s[1]),c:'abcdefgh'.indexOf(s[0])});
+      const dit=(st,a,b)=>{
+        const l=mirMovesTo(st,sq(a),sq(b));
+        return l.length?mirMoveText(l[0],[st.board[l[0].to.r][l[0].to.c],
+          l[0].twin?st.board[l[0].twin.to.r][l[0].twin.to.c]:null]):'ILLÉGAL';
+      };
+      // Un plateau construit à la main : c'est la seule façon d'isoler une
+      // règle de repli, qui ne se présente pas dans la position de départ.
+      const pose=(spec,paires,droits)=>{
+        const st=mirNewState();
+        for(let r2=0;r2<8;r2++)for(let c=0;c<8;c++)st.board[r2][c]=null;
+        let i=0;const at={};
+        for(const s of spec){
+          const[o,td]=s.split(':');
+          const p={t:td[0],color:td[1],id:'x'+(i++),mate:null};
+          st.board[sq(o).r][sq(o).c]=p;at[o]=p;
+        }
+        for(const[a,b]of paires||[]){at[a].mate=at[b].id;at[b].mate=at[a].id;}
+        st.rights=Object.assign({wK:false,wQ:false,bK:false,bQ:false},droits||{});
+        st.ep=[];st.turn='w';
+        return st;
+      };
+      const out={};
+      const dep=mirNewState();
+      out.e4=dit(dep,'e2','e4');                       // les deux pions centraux
+      out.cf3=dit(dep,'g1','f3');                      // le saut miroir du cavalier
+      // La Dame traîne le Roi, d'UNE case seulement.
+      out.dame=dit(pose(['d1:qw','e1:kw','e8:kb','a8:rb'],[['d1','e1']]),'d1','d5');
+      // Le repli : la tour jumelle s'arrête devant l'ami, prend l'ennemi.
+      out.bloque=dit(pose(['a1:rw','h1:rw','g1:nw','e1:kw','e8:kb'],[['a1','h1']]),'a1','d1');
+      out.prend=dit(pose(['a4:rw','h4:rw','f4:pb','e1:kw','e8:kb'],[['a4','h4']]),'a4','d4');
+      // Un pion ne va en diagonale que s'il prend.
+      out.pion=dit(pose(['d4:pw','e4:pw','c5:pb','e1:kw','e8:kb'],[['d4','e4']]),'d4','c5');
+      // Le roque tire la Dame de deux cases.
+      out.roque=dit(pose(['e1:kw','d1:qw','h1:rw','e8:kb'],[['e1','d1']],{wK:true}),'e1','g1');
+      // Une pièce veuve joue seule.
+      const veuve=pose(['a1:rw','e1:kw','e8:kb'],[]);
+      veuve.board[7][0].mate='personne';
+      out.veuve=dit(veuve,'a1','d1');
+      return out;
+    });
+    const attendu={
+      e4:'e2–e4 · d2–d4',
+      cf3:'g1–f3 · b1–c3',
+      dame:'d1–d5 · e1–e2',
+      bloque:'a1–d1',
+      prend:'a4–d4 · h4×f4',
+      pion:'d4×c5',
+      roque:'O-O · d1–b1',
+      veuve:'a1–d1',
+    };
+    for(const k of Object.keys(attendu))
+      if(r[k]!==attendu[k])throw new Error(k+' : « '+r[k]+' » au lieu de « '+attendu[k]+' »');
+  });
+
+  await step('Mirror Chess : faire puis défaire rend le plateau à l’identique',async()=>{
+    const r=await page.evaluate(()=>{
+      const empreinte=b=>b.map(l=>l.map(p=>p?p.t+p.color+p.id:'.').join('|')).join('/');
+      let anomalies=0,parties=0,fins={};
+      for(let g=0;g<12;g++){
+        const st=mirNewState();mirUpdateStatus(st);
+        let n=0;
+        while(!st.gameOver&&n<80){
+          const avant=empreinte(st.board);
+          const legaux=mirLegalMoves(st,st.turn);
+          if(empreinte(st.board)!==avant){anomalies++;break;}   // engendrer ne salit rien
+          if(!legaux.length)break;
+          const mv=legaux[(n*7+g*3)%legaux.length];             // déterministe : un test doit l'être
+          const rec=mirMake(st,mv);
+          mirUnmake(st,rec);
+          if(empreinte(st.board)!==avant){anomalies++;break;}
+          mirMake(st,mv);mirUpdateStatus(st);
+          n++;
+        }
+        parties++;fins[st.reason||'(en cours)']=(fins[st.reason||'(en cours)']||0)+1;
+      }
+      return{anomalies,parties,fins};
+    });
+    if(r.anomalies)throw new Error(r.anomalies+' coup(s) mal défait(s) sur '+r.parties+' parties');
+  });
+
+  await step('Mirror Chess : sa carte ouvre son salon, et le salon sa partie',async()=>{
+    await page.evaluate(()=>{
+      if(typeof renderVariantesPage==='function')renderVariantesPage();
+      const c=document.querySelector('#var-grid .var-card[data-variante="mirror"]');
+      if(!c)throw new Error('aucune carte Mirror Chess sur la page Variantes');
+      c.click();
+    });
+    await page.waitForTimeout(300);
+    const ouvert=await page.evaluate(()=>document.getElementById('mir-lobby').classList.contains('show'));
+    if(!ouvert)throw new Error('la carte Mirror Chess n\'ouvre pas son salon');
+    await page.evaluate(()=>document.querySelector('#mir-lobby-body [data-view="ia"]').click());
+    await page.waitForTimeout(200);
+    await page.evaluate(()=>document.querySelector('#mir-lobby-body [data-level="apprenti"]').click());
+    await page.waitForTimeout(800);
+    const jeu=await page.evaluate(()=>({
+      page:!!document.querySelector('#page-mirror.active'),
+      cases:document.querySelectorAll('#mir-board .gc').length,
+      pieces:document.querySelectorAll('#mir-board .gc-piece').length,
+      axe:!!document.querySelector('#mir-board .mir-axis'),
+    }));
+    if(!jeu.page)throw new Error('la partie Mirror Chess ne s\'est pas ouverte');
+    if(jeu.cases!==64)throw new Error(jeu.cases+' cases au lieu de 64');
+    if(jeu.pieces!==32)throw new Error(jeu.pieces+' pièces au lieu de 32');
+    if(!jeu.axe)throw new Error('l\'axe de symétrie n\'est pas posé sur le plateau');
+    // Saisir e2 doit marquer d2 (sa jumelle) ; survoler e4 doit montrer d4.
+    const marques=await page.evaluate(()=>{
+      mirSelect(6,4);mirSetHover(4,4);
+      const trouve=cls=>{
+        const c=[...document.querySelectorAll('#mir-board .gc')].find(x=>x.classList.contains(cls));
+        return c?c.dataset.r+','+c.dataset.c:'aucune';
+      };
+      return{mate:trouve('mir-mate'),twin:trouve('mir-twin')};
+    });
+    if(marques.mate!=='6,3')throw new Error('la jumelle de e2 est marquée en '+marques.mate+' au lieu de d2');
+    if(marques.twin!=='4,3')throw new Error('l\'arrivée du coup jumeau est marquée en '+marques.twin+' au lieu de d4');
+    // Et le coup se joue vraiment, en deux temps.
+    await page.evaluate(()=>mirClick(4,4));
+    await page.waitForTimeout(900);
+    const journal=await page.evaluate(()=>MIR.st.moves.map(m=>m.text).join(' | '));
+    if(!/^e2–e4 · d2–d4/.test(journal))throw new Error('journal inattendu : '+journal);
+    await page.evaluate(()=>{MIR.st.gameOver=true;if(typeof goToMainMenu==='function')goToMainMenu();});
+    await page.waitForTimeout(400);
+  });
+
   await browser.close();
   server.close();
 
