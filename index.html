@@ -441,7 +441,7 @@
      RANGÉE DE NAVIGATION : les cinq pages du jeu, alignées côte à côte, que
      l'on fait glisser de gauche à droite.
 
-        MAGASIN · MES ARMÉES · COMBAT · VARIANTES · GUERRE DES CLANS
+        MAGASIN · MES ARMÉES · COMBAT · GUERRE DES CLANS · VARIANTES
 
      COMBAT est au milieu : c'est la page d'accueil, et les deux moitiés du
      jeu s'ouvrent de part et d'autre. Coquille visuelle uniquement : les
@@ -893,7 +893,7 @@
        elle). Icônes en SVG (et non en glyphes unicode) : centrage garanti,
        indépendant des métriques de la police (voir css [NAV] .nav-arrow svg).
        Chacune s'efface au bout de la rangée : il n'y a rien au-delà du magasin
-       ni au-delà de la Guerre des clans. -->
+       ni au-delà des Variantes. -->
   <button class="nav-arrow nav-arrow-side" id="nav-arrow-left" title="Page précédente" style="display:none">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 5, 8 12, 15 19"/></svg>
   </button>
@@ -922,8 +922,8 @@
          · Magasin    → une balance de marchand (on y échange des perles) ;
          · Mes armées → un bouclier, la pointe d'une lance derrière ;
          · Combat     → deux épées entrecroisées ;
-         · Variantes  → un damier dont un quartier s'est détaché ;
-         · Guerre des clans → un coffre ferré, cadenassé.
+         · Guerre des clans → un coffre ferré, cadenassé ;
+         · Variantes  → un damier dont un quartier s'est détaché.
        Les creux (serrure du coffre, plateaux de la balance) sont de VRAIS
        trous, obtenus par fill-rule="evenodd" : ils restent transparents sur
        le laiton de l'onglet actif comme sur le fond sombre des autres.
@@ -998,6 +998,15 @@
       <img class="nav-tab-art" src="assets/ui/logo-combat.webp" alt="" aria-hidden="true" onerror="this.remove()">
       <span class="nav-tab-label">Combat</span>
     </button>
+    <button type="button" class="nav-tab" data-page="reserve" title="Guerre des clans" aria-label="Guerre des clans">
+      <svg viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd" aria-hidden="true">
+        <path d="M2.9 9.75V8.3c0-2.95 2.4-5.35 5.35-5.35h7.5c2.95 0 5.35 2.4 5.35 5.35v1.45h-4.7V8.3a.65.65 0 0 0-.65-.65h-7.5a.65.65 0 0 0-.65.65v1.45Z"/>
+        <path d="M2.9 11.05h18.2v8.15c0 1-.8 1.8-1.8 1.8H4.7c-1 0-1.8-.8-1.8-1.8Zm7.5 2.2v3.95h3.2v-3.95Z"/>
+        <path d="M10.4 7.65h3.2v2.1h-3.2z"/>
+      </svg>
+      <img class="nav-tab-art" src="assets/ui/logo-clans.webp" alt="" aria-hidden="true" onerror="this.remove()">
+      <span class="nav-tab-label">Guerre des clans</span>
+    </button>
     <button type="button" class="nav-tab" data-page="variantes" title="Variantes" aria-label="Variantes">
       <!-- UN DAMIER DONT UN QUARTIER S'EST DÉTACHÉ. « Variante » n'a pas
            d'objet : ce n'est ni une arme, ni un lieu, c'est une RÈGLE qui
@@ -1013,15 +1022,6 @@
       </svg>
       <img class="nav-tab-art" src="assets/ui/logo-variantes.webp" alt="" aria-hidden="true" onerror="this.remove()">
       <span class="nav-tab-label">Variantes</span>
-    </button>
-    <button type="button" class="nav-tab" data-page="reserve" title="Guerre des clans" aria-label="Guerre des clans">
-      <svg viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd" aria-hidden="true">
-        <path d="M2.9 9.75V8.3c0-2.95 2.4-5.35 5.35-5.35h7.5c2.95 0 5.35 2.4 5.35 5.35v1.45h-4.7V8.3a.65.65 0 0 0-.65-.65h-7.5a.65.65 0 0 0-.65.65v1.45Z"/>
-        <path d="M2.9 11.05h18.2v8.15c0 1-.8 1.8-1.8 1.8H4.7c-1 0-1.8-.8-1.8-1.8Zm7.5 2.2v3.95h3.2v-3.95Z"/>
-        <path d="M10.4 7.65h3.2v2.1h-3.2z"/>
-      </svg>
-      <img class="nav-tab-art" src="assets/ui/logo-clans.webp" alt="" aria-hidden="true" onerror="this.remove()">
-      <span class="nav-tab-label">Guerre des clans</span>
     </button>
   </div>
 </div>

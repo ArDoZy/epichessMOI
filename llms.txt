@@ -200,8 +200,8 @@ C'est la mécanique qui distingue le plus Epic Chess des autres variantes :
 
 ## Variantes
 
-Le jeu propose une page **Variantes**, où deux autres formules sont jouables à
-côté du duel classique :
+Le jeu propose une page **Variantes**, tout à droite de la rangée de
+navigation. Elle en porte deux, et les deux sont jouables :
 
 - **Chute des Royaumes** : une partie d'échecs **ordinaire** — seize pièces,
   cases de départ habituelles, les Blancs commencent — à ceci près qu'**après

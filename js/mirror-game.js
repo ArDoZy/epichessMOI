@@ -313,7 +313,22 @@ function mirSelect(r,c){
 }
 function mirDeselect(){MIR.sel=null;MIR.moves=[];MIR.hover=null;mirPaintCells();}
 
+// UN APPUI COURT DOIT SUFFIRE À SÉLECTIONNER. Le geste commence sur
+// `pointerdown` (c'est lui qui arme le glissé-déposé et qui sélectionne la
+// pièce), et le navigateur envoie ENSUITE un `click` sur la même case : ce
+// clic voyait une pièce déjà sélectionnée — par le pointerdown d'il y a
+// quelques millisecondes — et la désélectionnait aussitôt. La pièce
+// s'éteignait donc au lever du doigt, et seul un appui LONG, qui n'engendre
+// pas de clic sur écran tactile, laissait la sélection en place. C'est le
+// geste qui décide maintenant : quand le pointerup a déjà résolu l'appui, il
+// pose ce drapeau et le clic qui suit passe son tour.
+// Le drapeau est remis à zéro à chaque pointerdown : un clic qui ne viendrait
+// jamais (relâchement hors de la case, geste annulé) ne peut pas manger le
+// suivant. Même correctif que la Chute des Royaumes (js/fok-game.js).
+let _mirSkipClick=false;
+
 function mirClick(r,c){
+  if(_mirSkipClick){_mirSkipClick=false;return;}
   if(!mirPlayable())return;
   const st=MIR.st,cell=st.board[r][c];
   if(MIR.sel){
@@ -386,6 +401,7 @@ function mirChoosePromo(t){
 // et on résout sur la case relâchée. ---
 let _mirDrag=null;
 function mirPointerDown(e,r,c){
+  _mirSkipClick=false;
   if(!mirPlayable()||e.button&&e.button!==0)return;
   const cell=MIR.st.board[r][c];
   if(!cell||cell.color!==MIR.myColor)return;
@@ -422,7 +438,17 @@ function mirPointerUp(e){
   if(ghost)ghost.style.display='none';
   const n=_mirPieceAt[d.r]&&_mirPieceAt[d.r][d.c];
   if(n)n.classList.remove('dragging');
-  if(!d.moved)return;      // simple appui : le clic s'en charge
+  if(!d.moved){
+    // Simple appui. Sur une pièce DÉJÀ sélectionnée, on laisse le clic faire
+    // son travail : il la désélectionnera, et c'est le comportement attendu.
+    // Sur une pièce que CE geste vient de sélectionner (pointerdown), le clic
+    // ferait exactement l'inverse de ce qu'on demande — il passe son tour.
+    if(!d.already)_mirSkipClick=true;
+    return;
+  }
+  // Un glissé s'est résolu ici : le clic qui suit parfois (relâchement sur la
+  // case de départ) ne doit pas reprendre le geste à son compte.
+  _mirSkipClick=true;
   const cell=mirCellFromPoint(e.clientX,e.clientY);
   if(cell&&MIR.moves.some(m=>m.to.r===cell.r&&m.to.c===cell.c))mirTryMove({r:d.r,c:d.c},cell);
   else mirDeselect();

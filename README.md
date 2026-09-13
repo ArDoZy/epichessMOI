@@ -95,12 +95,12 @@ epic-chess/
     ├── main.js               # État global partagé + helpers (showPage, showNotif...)
     ├── pages-nav.js          # Navigation principale : cinq pages alignées sur
     │                          # une rangée qu'on fait glisser (magasin, armées,
-    │                          # combat, variantes, guerre des clans). Déplace
+    │                          # combat, guerre des clans, variantes). Déplace
     │                          # armées/guerre des clans dans leur emplacement,
     │                          # et pose la partie en calque par-dessus.
-    ├── variantes.js          # La page « Variantes » : le duel classique, la
-    │                          # Chute des Royaumes et Mirror Chess, ouverts, et
-    │                          # quatre formules annoncées et verrouillées.
+    ├── variantes.js          # La page « Variantes » : la Chute des Royaumes
+    │                          # et Mirror Chess, les deux jouables. Rien
+    │                          # d'annoncé, rien de verrouillé.
     ├── fok-rules.js          # CHUTE DES ROYAUMES : le moteur de la variante.
     │                          # Échecs ordinaires + décalage des quatre rangées
     │                          # centrales d'une case vers la droite après CHAQUE
@@ -1457,8 +1457,8 @@ les anciens clients ne peuvent pas s'y tromper de protocole.
 
 ## La Chute des Royaumes (`js/fok-*.js`)
 
-La première variante réellement jouable à côté du duel classique, ouverte
-depuis la page Variantes. **Sa règle tient en une phrase** : on joue aux échecs
+La première des deux variantes de la page Variantes — le duel classique n'y
+figure pas : ce n'est pas une variante, c'est la partie que lance COMBAT. **Sa règle tient en une phrase** : on joue aux échecs
 ordinaires, avec les seize pièces sur leurs cases de départ, mais **après
 chaque coup — le sien comme celui de l'adversaire — toutes les pièces des
 quatre rangées centrales (3 à 6) glissent d'une case vers la droite**, la
@@ -1990,7 +1990,7 @@ deux voies de récompenses.
 
 `pages-nav.js` est chargé juste après `main.js` : il étend `showPage()` (la
 navigation devient une rangée de cinq pages qui glisse, de gauche à droite
-**magasin · mes armées · combat · variantes · guerre des clans**) et déplace à
+**magasin · mes armées · combat · guerre des clans · variantes**) et déplace à
 l'exécution les pages `#page-armies` / `#page-reserve` / `#page-game` dans leur
 emplacement. La rangée n'est **pas un anneau** : les flèches s'effacent à ses
 deux bouts. La partie n'est pas une page de la rangée : c'est un **calque**

@@ -347,7 +347,7 @@ const TUTO_STEPS=[
   },
   {
     text:'Elle est à vous. Maintenant, la partie que les gens comprennent toujours '+
-         'trop tard. <strong>Allez tout à droite, à la Guerre des clans.</strong>',
+         'trop tard. <strong>Allez vers la droite, à la Guerre des clans.</strong>',
     at:'.nav-tab[data-page="reserve"]',click:'.nav-tab[data-page="reserve"]',wait:560,
   },
   {
@@ -374,14 +374,15 @@ const TUTO_STEPS=[
          'tout en haut. Ils s\'ouvrent en montant dans les rangs, tout seuls.',
   },
   {
-    text:'Il reste deux salles. <strong>Revenez d\'un cran vers la gauche</strong>, '+
-         'sur les Variantes.',
+    text:'Il reste deux salles. <strong>Encore un cran vers la droite</strong>, '+
+         'sur les Variantes — le bout de la rangée.',
     at:'.nav-tab[data-page="variantes"]',click:'.nav-tab[data-page="variantes"]',wait:560,
   },
   {
-    text:'Le <strong>duel classique</strong> est la partie que vous venez de jouer, et '+
-         'la seule qui compte pour votre rang. Les autres formules sont sous clé&nbsp;: '+
-         'je les prépare, et je ne vous dirai pas quand.',
+    text:'Une autre façon de jouer aux échecs, et elle ne coûte rien&nbsp;: la '+
+         '<strong>Chute des Royaumes</strong>. Les seize pièces habituelles, sauf '+
+         'qu\'après chaque coup, les quatre rangées du milieu <strong>glissent d\'une '+
+         'case vers la droite</strong>. Rien n\'y est misé, rien n\'y est classé.',
     at:'#var-grid',
   },
   {

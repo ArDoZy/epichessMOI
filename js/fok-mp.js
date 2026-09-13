@@ -13,9 +13,20 @@
 // client modifié ne peut pas faire bouger une pièce comme il veut chez
 // l'adversaire, il ne peut que se faire ignorer.
 //
-// L'HÔTE JOUE LES BLANCS, l'invité les Noirs : réparti d'avance, aucune
-// négociation. Les blancs commencent, puis on alterne — c'est la règle de la
-// variante et c'est aussi, ici, la seule chose à savoir pour démarrer.
+// L'HÔTE JOUE LES BLANCS, l'invité les Noirs. Les blancs commencent, puis on
+// alterne — c'est la règle de la variante et c'est aussi, ici, la seule chose
+// à savoir pour démarrer.
+//
+// MAIS LE RÔLE EST VÉRIFIÉ, PAS SUPPOSÉ. Chaque camp ANNONCE le sien dans sa
+// présentation (`hello`), et les deux comparent. Tant que les deux annonces se
+// contredisent — un hôte, un invité —, chacun garde la sienne. Si elles
+// disent la MÊME chose (deux hôtes, ou deux invités : un appariement joué deux
+// fois, une confirmation perdue, un salon rouvert sur le même code), on ne
+// peut plus croire le rôle : on tranche alors sur les identifiants, dont
+// l'ordre est le même des deux côtés. C'est ce qui manquait — les deux joueurs
+// se retrouvaient de la même couleur, chacun persuadé que l'autre avait
+// l'autre, et la partie ne pouvait pas commencer : les deux attendaient le
+// coup de l'adversaire, ou les deux jouaient les mêmes pièces.
 //
 // RATTRAPAGE. Chaque camp garde le journal ordonné des coups. Un coup qui
 // arrive avec un numéro qu'on n'attendait pas déclenche une demande de
@@ -36,6 +47,7 @@ const FMP={
   myId:Math.random().toString(36).slice(2),
   oppId:null,
   oppName:null,
+  oppHost:null,       // rôle ANNONCÉ par l'adversaire (voir fokMpColor)
   started:false,
   leaving:false,
   helloId:null,       // renvoi de la présentation tant que la partie n'a pas démarré
@@ -111,9 +123,15 @@ function fokMpQuick(){
   const ch=client.channel(FOK_LOBBY,{config:{presence:{key:FMP.myId}}});
   FMP.lobby=ch;
 
-  ch.on('broadcast',{event:'pair'},({payload})=>{
+  ch.on('broadcast',{event:'pair'},async ({payload})=>{
     if(!payload||FMP.matched||payload.guest!==FMP.myId)return;
-    ch.send({type:'broadcast',event:'pair-ok',payload:{host:payload.host,guest:FMP.myId}});
+    // LA CONFIRMATION PART AVANT QU'ON QUITTE LE SALON. fokMpEnterPair()
+    // enchaîne sur un `unsubscribe()`, et un envoi encore en vol part avec le
+    // canal : l'hôte n'apprenait alors jamais que sa proposition avait été
+    // acceptée, et repartait chercher quelqu'un d'autre pendant que l'invité
+    // l'attendait dans un salon vide.
+    try{await ch.send({type:'broadcast',event:'pair-ok',payload:{host:payload.host,guest:FMP.myId}});}
+    catch(e){}
     fokMpEnterPair(payload.host);
   });
   ch.on('broadcast',{event:'pair-ok'},({payload})=>{
@@ -175,6 +193,7 @@ function fokMpEnterPair(hostId){
 function fokMpConnect(code,asHost){
   const client=mpInitClient();if(!client)return;
   FMP.code=code;FMP.isHost=asHost;FMP.started=false;FMP.oppId=null;FMP.oppName=null;
+  FMP.oppHost=null;
   FMP.log=[];FMP.leaving=false;
 
   const ch=client.channel('epichess-fok-'+code,{config:{presence:{key:FMP.myId}}});
@@ -186,7 +205,10 @@ function fokMpConnect(code,asHost){
   ch.on('broadcast',{event:'hello'},({payload})=>{
     if(!payload||payload.id===FMP.myId)return;
     FMP.oppId=payload.id;FMP.oppName=payload.name||'Adversaire';
-    ch.send({type:'broadcast',event:'hello',payload:{id:FMP.myId,name:fokMpName()}});
+    // `host` peut manquer (client plus ancien) : on le prend alors pour
+    // l'inverse du nôtre, ce qui revient à l'ancien comportement.
+    FMP.oppHost=typeof payload.host==='boolean'?payload.host:!FMP.isHost;
+    ch.send({type:'broadcast',event:'hello',payload:fokMpHello()});
     fokMpBegin();
   });
 
@@ -226,11 +248,11 @@ function fokMpConnect(code,asHost){
   ch.subscribe(async status=>{
     if(status==='SUBSCRIBED'){
       await ch.track({id:FMP.myId});
-      ch.send({type:'broadcast',event:'hello',payload:{id:FMP.myId,name:fokMpName()}});
+      ch.send({type:'broadcast',event:'hello',payload:fokMpHello()});
       if(FMP.helloId)clearInterval(FMP.helloId);
       FMP.helloId=setInterval(()=>{
         if(FMP.started){clearInterval(FMP.helloId);FMP.helloId=null;return;}
-        ch.send({type:'broadcast',event:'hello',payload:{id:FMP.myId,name:fokMpName()}});
+        ch.send({type:'broadcast',event:'hello',payload:fokMpHello()});
       },1200);
       if(FMP.started)fokMpRequestSync();
     }else if(status==='CHANNEL_ERROR'||status==='TIMED_OUT'){
@@ -246,17 +268,36 @@ function fokMpPresent(id){
   }catch(e){return true;}
 }
 
-// Les deux camps se connaissent : la partie commence. L'hôte joue les Blancs.
+// La présentation : qui je suis, et QUEL RÔLE JE CROIS AVOIR.
+function fokMpHello(){
+  return {id:FMP.myId,name:fokMpName(),host:!!FMP.isHost};
+}
+
+// LA COULEUR, DÉCIDÉE PAREIL DES DEUX CÔTÉS.
+// Cas normal : les deux rôles se contredisent, l'hôte prend les Blancs.
+// Cas dégradé : les deux camps se croient hôtes (ou tous deux invités). Le
+// rôle ne dit plus rien, on tranche sur les identifiants — une comparaison
+// SYMÉTRIQUE : celui dont l'identifiant vient en premier prend les Blancs, et
+// comme les deux camps comparent les deux mêmes chaînes, ils tombent
+// forcément sur des couleurs opposées.
+function fokMpColor(){
+  if(FMP.oppId&&FMP.oppHost===!!FMP.isHost)
+    return FMP.myId<FMP.oppId?'w':'b';
+  return FMP.isHost?'w':'b';
+}
+
+// Les deux camps se connaissent : la partie commence.
 function fokMpBegin(){
   if(FMP.started)return;
   FMP.started=true;
   if(FMP.helloId){clearInterval(FMP.helloId);FMP.helloId=null;}
   document.getElementById('fok-lobby')?.classList.remove('show');
+  const mine=fokMpColor();
   fokStartGame({
     mode:'online',
-    myColor:FMP.isHost?'w':'b',
+    myColor:mine,
     oppName:FMP.oppName||'Adversaire',
-    oppSub:FMP.isHost?'Noirs':'Blancs',
+    oppSub:mine==='w'?'Noirs':'Blancs',
   });
   // C'est ici que l'écran de jeu apprend à parler au réseau : il n'a aucune
   // autre attache avec ce fichier.

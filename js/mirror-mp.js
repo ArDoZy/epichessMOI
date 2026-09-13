@@ -15,8 +15,19 @@
 // jumelle — il ne peut que se faire ignorer, puisque le coup reçu est
 // revérifié en entier avant d'être joué (mirFindMove).
 //
-// L'HÔTE JOUE LES BLANCS, l'invité les Noirs : réparti d'avance, aucune
-// négociation.
+// L'HÔTE JOUE LES BLANCS, l'invité les Noirs.
+//
+// MAIS LE RÔLE EST VÉRIFIÉ, PAS SUPPOSÉ. Chaque camp ANNONCE le sien dans sa
+// présentation (`hello`), et les deux comparent. Tant que les deux annonces se
+// contredisent — un hôte, un invité —, chacun garde la sienne. Si elles disent
+// la MÊME chose (deux hôtes, ou deux invités : un appariement joué deux fois,
+// une confirmation perdue, un salon rouvert sur le même code), on ne peut plus
+// croire le rôle : on tranche alors sur les identifiants, dont l'ordre est le
+// même des deux côtés. Sans cela, les deux joueurs peuvent se retrouver de la
+// même couleur, chacun persuadé que l'autre a l'autre, et la partie ne peut
+// plus être jouée — les deux attendent le coup de l'adversaire, ou les deux
+// jouent les mêmes pièces. Même protocole que la Chute des Royaumes
+// (js/fok-mp.js).
 //
 // RATTRAPAGE. Chaque camp garde le journal ordonné des coups. Un coup qui
 // arrive avec un numéro qu'on n'attendait pas déclenche une demande de
@@ -34,6 +45,7 @@ const MMP={
   lobbyTickId:null,
   code:null,
   isHost:false,
+  oppHost:null,       // rôle ANNONCÉ par l'adversaire (voir mirMpColor)
   myId:Math.random().toString(36).slice(2),
   oppId:null,
   oppName:null,
@@ -112,9 +124,15 @@ function mirMpQuick(){
   const ch=client.channel(MIR_LOBBY,{config:{presence:{key:MMP.myId}}});
   MMP.lobby=ch;
 
-  ch.on('broadcast',{event:'pair'},({payload})=>{
+  ch.on('broadcast',{event:'pair'},async ({payload})=>{
     if(!payload||MMP.matched||payload.guest!==MMP.myId)return;
-    ch.send({type:'broadcast',event:'pair-ok',payload:{host:payload.host,guest:MMP.myId}});
+    // LA CONFIRMATION PART AVANT QU'ON QUITTE LE SALON. mirMpEnterPair()
+    // enchaîne sur un `unsubscribe()`, et un envoi encore en vol part avec le
+    // canal : l'hôte n'apprenait alors jamais que sa proposition avait été
+    // acceptée, et repartait chercher quelqu'un d'autre pendant que l'invité
+    // l'attendait dans un salon vide.
+    try{await ch.send({type:'broadcast',event:'pair-ok',payload:{host:payload.host,guest:MMP.myId}});}
+    catch(e){}
     mirMpEnterPair(payload.host);
   });
   ch.on('broadcast',{event:'pair-ok'},({payload})=>{
@@ -176,6 +194,7 @@ function mirMpEnterPair(hostId){
 function mirMpConnect(code,asHost){
   const client=mpInitClient();if(!client)return;
   MMP.code=code;MMP.isHost=asHost;MMP.started=false;MMP.oppId=null;MMP.oppName=null;
+  MMP.oppHost=null;
   MMP.log=[];MMP.leaving=false;
 
   const ch=client.channel('epichess-mirror-'+code,{config:{presence:{key:MMP.myId}}});
@@ -187,7 +206,10 @@ function mirMpConnect(code,asHost){
   ch.on('broadcast',{event:'hello'},({payload})=>{
     if(!payload||payload.id===MMP.myId)return;
     MMP.oppId=payload.id;MMP.oppName=payload.name||'Adversaire';
-    ch.send({type:'broadcast',event:'hello',payload:{id:MMP.myId,name:mirMpName()}});
+    // `host` peut manquer (client plus ancien) : on le prend alors pour
+    // l'inverse du nôtre, ce qui revient à l'ancien comportement.
+    MMP.oppHost=typeof payload.host==='boolean'?payload.host:!MMP.isHost;
+    ch.send({type:'broadcast',event:'hello',payload:mirMpHello()});
     mirMpBegin();
   });
 
@@ -227,11 +249,11 @@ function mirMpConnect(code,asHost){
   ch.subscribe(async status=>{
     if(status==='SUBSCRIBED'){
       await ch.track({id:MMP.myId});
-      ch.send({type:'broadcast',event:'hello',payload:{id:MMP.myId,name:mirMpName()}});
+      ch.send({type:'broadcast',event:'hello',payload:mirMpHello()});
       if(MMP.helloId)clearInterval(MMP.helloId);
       MMP.helloId=setInterval(()=>{
         if(MMP.started){clearInterval(MMP.helloId);MMP.helloId=null;return;}
-        ch.send({type:'broadcast',event:'hello',payload:{id:MMP.myId,name:mirMpName()}});
+        ch.send({type:'broadcast',event:'hello',payload:mirMpHello()});
       },1200);
       if(MMP.started)mirMpRequestSync();
     }else if(status==='CHANNEL_ERROR'||status==='TIMED_OUT'){
@@ -247,17 +269,36 @@ function mirMpPresent(id){
   }catch(e){return true;}
 }
 
-// Les deux camps se connaissent : la partie commence. L'hôte joue les Blancs.
+// La présentation : qui je suis, et QUEL RÔLE JE CROIS AVOIR.
+function mirMpHello(){
+  return {id:MMP.myId,name:mirMpName(),host:!!MMP.isHost};
+}
+
+// LA COULEUR, DÉCIDÉE PAREIL DES DEUX CÔTÉS.
+// Cas normal : les deux rôles se contredisent, l'hôte prend les Blancs.
+// Cas dégradé : les deux camps se croient hôtes (ou tous deux invités). Le
+// rôle ne dit plus rien, on tranche sur les identifiants — une comparaison
+// SYMÉTRIQUE : celui dont l'identifiant vient en premier prend les Blancs, et
+// comme les deux camps comparent les deux mêmes chaînes, ils tombent
+// forcément sur des couleurs opposées.
+function mirMpColor(){
+  if(MMP.oppId&&MMP.oppHost===!!MMP.isHost)
+    return MMP.myId<MMP.oppId?'w':'b';
+  return MMP.isHost?'w':'b';
+}
+
+// Les deux camps se connaissent : la partie commence.
 function mirMpBegin(){
   if(MMP.started)return;
   MMP.started=true;
   if(MMP.helloId){clearInterval(MMP.helloId);MMP.helloId=null;}
   document.getElementById('mir-lobby')?.classList.remove('show');
+  const mine=mirMpColor();
   mirStartGame({
     mode:'online',
-    myColor:MMP.isHost?'w':'b',
+    myColor:mine,
     oppName:MMP.oppName||'Adversaire',
-    oppSub:MMP.isHost?'Noirs':'Blancs',
+    oppSub:mine==='w'?'Noirs':'Blancs',
   });
   // C'est ici que l'écran de jeu apprend à parler au réseau : il n'a aucune
   // autre attache avec ce fichier.
