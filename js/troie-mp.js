@@ -33,30 +33,24 @@
 // jouer adopte ce verdict au lieu du sien (troApplyVerdict). Le message ne
 // dit jamais PAR QUOI on est en échec : il ne fuite rien.
 //
-// -- 4. L'ARBITRE SCELLE LE SECRET -------------------------------
+// -- 4. LE SCEAU : PROUVER SON CHEVAL SANS LE MONTRER -------------
 // Un secret que personne d'autre ne connaît, personne d'autre ne peut le
-// vérifier : sans arbitre, le client d'en face n'a d'autre choix que de CROIRE
-// celui qui invoque son espion, et un client bricolé pouvait ignorer un échec
-// une fois. Le serveur ferme cette porte, et lui seul le pouvait.
+// vérifier : celui qui reçoit un coup reposant sur l'espion d'en face n'a
+// d'autre choix que de CROIRE, et un client bricolé pouvait donc ignorer un
+// échec une fois. C'est fermé par un ENGAGEMENT CRYPTOGRAPHIQUE, calculé dans
+// le navigateur et qui ne demande rien à personne :
+//   · au coup d'envoi, chacun publie l'EMPREINTE SHA-256 de son cheval salé
+//     d'un aléa de 256 bits — elle n'apprend rien à qui n'a pas l'aléa ;
+//   · le coup qui repose sur le secret emporte sa PREUVE (la pièce et l'aléa) ;
+//   · l'autre recalcule l'empreinte et la compare. Un menteur n'a pas de
+//     preuve à joindre, et n'en fabriquera pas : son coup est refusé.
+// Voir « LE SCEAU » plus bas pour le détail.
 //
-// Au coup d'envoi, chacun SCELLE sa pièce (ec_troie_seal) : le serveur la
-// range dans une table que personne ne peut lire, pas même son propriétaire —
-// aucune fonction ne la renvoie jamais. Ensuite :
-//   · celui qui joue un coup reposant sur son espion le RÉCLAME d'abord
-//     (ec_troie_claim) : le serveur ne dit « oui » que pour la pièce scellée ;
-//   · celui qui reçoit le coup fait VÉRIFIER l'hypothèse (ec_troie_verify) :
-//     le serveur ne confirme que ce qui vient d'être réclamé, pour ce
-//     demi-coup-là. Sonder les deux cavaliers d'en face ne rend donc rien.
-// Un mensonge n'obtient pas de réclamation, donc pas de confirmation, donc le
-// coup est refusé en face. Voir supabase/schema.sql pour le détail et pour ce
-// que le serveur ne fait PAS — il ne sait pas jouer aux échecs, et ne valide
-// que le secret.
-//
-// SI L'ARBITRE EST ABSENT, LA PARTIE A LIEU QUAND MÊME. Serveur injoignable,
-// hors ligne, fonctions pas encore installées : on retombe sur la parole
-// donnée, comme avant lui, et le joueur en est AVERTI une fois (troMpArbiterDown).
-// Un renfort qui empêcherait de jouer quand il manque serait un mauvais
-// renfort.
+// SI LE SCEAU N'EST PAS DISPONIBLE — navigateur sans WebCrypto, page servie en
+// http:// ailleurs que sur localhost —, LA PARTIE A LIEU QUAND MÊME : on
+// retombe sur la parole donnée et le joueur en est AVERTI une fois
+// (troMpSealDown). Un renfort qui empêcherait de jouer quand il manque serait
+// un mauvais renfort.
 //
 // L'HÔTE JOUE LES BLANCS, l'invité les Noirs — mais le rôle est VÉRIFIÉ, pas
 // supposé, comme dans les deux autres variantes (voir troMpColor).
@@ -83,8 +77,14 @@ const TMP={
   ready:false,        // on a choisi son espion
   oppReady:false,     // l'autre aussi
   lastVerdict:null,   // notre dernier état annoncé, renvoyé en cas de rattrapage
-  sealed:false,       // notre cheval est scellé chez l'arbitre
-  arbiter:true,       // l'arbitre répond (mis à false au premier silence)
+  sealed:false,       // notre cheval est scellé (empreinte publiée)
+  myPiece:null,       // la pièce scellée — NE SORT JAMAIS D'ICI
+  myNonce:null,       // son aléa — NE SORT D'ICI QU'AU MOMENT DE PROUVER
+  mySeal:null,        // l'empreinte, elle, est publique
+  oppSeal:null,       // celle de l'adversaire
+  proof:null,         // la preuve à coller au prochain coup
+  incoming:null,      // celle qui accompagne le coup qu'on est en train de lire
+  arbiter:true,       // le sceau est utilisable des deux côtés
   warned:false,       // on n'avertit qu'une fois de son absence
   pairPending:null,
   matched:false,
@@ -231,6 +231,8 @@ function troMpConnect(code,asHost){
   TMP.log=[];TMP.leaving=false;
   TMP.ready=false;TMP.oppReady=false;TMP.lastVerdict=null;
   TMP.sealed=false;TMP.arbiter=true;TMP.warned=false;
+  TMP.myPiece=null;TMP.myNonce=null;TMP.mySeal=null;TMP.oppSeal=null;
+  TMP.proof=null;TMP.incoming=null;
 
   const ch=client.channel('epichess-troie-'+code,{config:{presence:{key:TMP.myId}}});
   TMP.channel=ch;
@@ -259,6 +261,10 @@ function troMpConnect(code,asHost){
   // message perdu ici bloquerait la partie avant son premier coup.
   ch.on('broadcast',{event:'ready'},({payload})=>{
     if(!payload||payload.id===TMP.myId)return;
+    // L'EMPREINTE DE SON CHEVAL VOYAGE ICI, et elle ne dit rien : c'est un
+    // SHA-256 sur un aléa de 256 bits qu'il garde. On la garde telle quelle —
+    // c'est elle qu'on comparera quand il prouvera quelque chose.
+    if(payload.seal&&!TMP.oppSeal)TMP.oppSeal=String(payload.seal);
     if(!TMP.oppReady){
       TMP.oppReady=true;
       if(typeof troOppReady==='function')troOppReady();
@@ -366,20 +372,31 @@ function troMpBegin(){
   // C'est ici que l'écran de jeu apprend à parler au réseau : il n'a aucune
   // autre attache avec ce fichier.
   TRO.onLocalMove=pk=>{
-    TMP.log.push(pk);
+    // LE JOURNAL GARDE LE COUP ET SA PREUVE ENSEMBLE : un rattrapage après une
+    // coupure rejoue des coups qui ont pu en avoir besoin, et une preuve
+    // perdue en route ferait refuser un coup parfaitement honnête.
+    TMP.log.push({mv:pk,proof:TMP.proof||null});
+    // LA PREUVE EST COLLÉE AU COUP QU'ELLE JUSTIFIE, et à lui seul : elle ne
+    // peut donc ni arriver avant, ni resservir pour un autre. Une fois partie,
+    // le nonce est public — le cheval qu'il ouvre l'est aussi, et c'est la
+    // règle même de la variante.
+    const proof=TMP.proof;TMP.proof=null;
     TMP.channel&&TMP.channel.send({type:'broadcast',event:'move',
-      payload:{id:TMP.myId,n:TMP.log.length-1,mv:pk}});
+      payload:{id:TMP.myId,n:TMP.log.length-1,mv:pk,proof:proof||null}});
   };
-  // « J'ai choisi mon espion » — sans dire lequel — et le sceau part à
-  // l'arbitre, qui est le seul à en garder la trace.
+  // « J'ai choisi mon espion » — sans dire lequel —, accompagné de l'EMPREINTE
+  // de ce choix, qui ne le dit pas davantage mais l'engage.
   TRO.onReady=()=>{
     TMP.ready=true;
     const mine=troFindSpy(TRO.st.board,TRO.myColor);
-    if(mine)troMpSeal(mine.p.id);
-    troMpSendReady();
+    // Le sceau d'abord : c'est lui qui part avec « j'ai choisi ». Sans lui
+    // (navigateur sans WebCrypto), on annonce quand même — la partie a lieu,
+    // sur parole, et le joueur a été averti.
+    if(mine)troMpSeal(mine.p.id).then(ok=>{if(!ok)troMpSendReady();});
+    else troMpSendReady();
   };
-  TRO.onClaim=(pieceId,ply)=>troMpClaim(pieceId,ply);
-  TRO.onVerify=(pieceId,ply)=>troMpVerify(pieceId,ply);
+  TRO.onClaim=pieceId=>troMpClaim(pieceId);
+  TRO.onVerify=pieceId=>troMpVerify(pieceId);
   // Notre état, que l'autre ne peut pas calculer.
   TRO.onVerdict=v=>{
     TMP.lastVerdict=v;
@@ -395,50 +412,119 @@ function troMpBegin(){
 }
 
 // ----------------------------------------------------------------
-// L'ARBITRE (supabase/schema.sql : ec_troie_seal / _claim / _verify)
+// LE SCEAU : PROUVER SON CHEVAL SANS LE MONTRER, ET SANS SERVEUR
 // ----------------------------------------------------------------
-// Le salon sert de nom de partie : les deux camps y sont, et il est éphémère.
-function troMpArena(){return 'troie-'+(TMP.code||'?');}
+// LE PROBLÈME. Deux coups reposent sur le secret et sur lui seul : la
+// révélation, et le coup qui n'est légal que parce qu'un cavalier d'en face
+// est mon espion. Celui qui les reçoit ne peut pas les vérifier — il ne
+// connaît pas mon cheval — et n'a d'autre choix que de CROIRE. Un client
+// bricolé pouvait donc ignorer un échec une fois, en désignant un cavalier au
+// hasard.
+//
+// LA SOLUTION TIENT DANS LE NAVIGATEUR, et ne demande rien à personne : un
+// ENGAGEMENT CRYPTOGRAPHIQUE, le plus vieux tour de la cryptographie à deux
+// joueurs.
+//   · AU COUP D'ENVOI, chacun tire un aléa de 256 bits (le « nonce »), calcule
+//     l'empreinte SHA-256 de « salon | pièce | nonce » et PUBLIE CETTE
+//     EMPREINTE. Elle ne dit rien : sans le nonce, on ne peut pas la comparer
+//     aux deux cavaliers possibles, et le nonce ne sort pas de la machine.
+//   · QUAND UN COUP A BESOIN DU SECRET, on joint la PREUVE au coup : la pièce
+//     et le nonce. L'autre recalcule l'empreinte et la compare à celle qu'il a
+//     reçue au départ. Si ça tombe juste, c'est bien le cheval scellé — il n'y
+//     a pas moyen de fabriquer un second antécédent pour une autre pièce.
+//   · UN MENTEUR N'A PAS DE PREUVE À JOINDRE : son coup est refusé.
+//
+// POURQUOI PAS LE SERVEUR. Une première version faisait arbitrer Supabase
+// (ec_troie_seal / _claim / _verify). Ça marchait, mais il fallait aller
+// installer trois fonctions SQL à la main dans le projet avant que la
+// protection n'existe — une garantie qui dépend d'une manipulation n'est pas
+// une garantie, c'est une intention. Ici, la protection est dans le jeu
+// lui-même, elle marche au premier chargement, et elle marche même si le
+// serveur du jeu est éteint : les deux navigateurs se suffisent.
+//
+// CE QUE ÇA NE FAIT PAS. Le sceau prouve QUEL cheval, pas le reste : la
+// géométrie, la propriété des pièces et la légalité restent vérifiées par les
+// deux moteurs (troRemoteOptions, js/troie-rules.js). Et si le navigateur n'a
+// pas WebCrypto — page servie en http:// ailleurs que sur localhost —, on
+// retombe sur la parole donnée, et le joueur en est averti une fois.
 
-// L'arbitre s'est tu : on le dit UNE FOIS, en clair, et on continue à jouer.
-// Taire une garantie qui n'est plus là serait pire que de ne pas l'avoir.
-function troMpArbiterDown(){
+// L'empreinte, ou null si ce navigateur n'a pas de quoi la calculer.
+function troMpDigest(text){
+  const c=(typeof crypto!=='undefined')?crypto:null;
+  if(!c||!c.subtle||!c.subtle.digest||typeof TextEncoder==='undefined')
+    return Promise.resolve(null);
+  return c.subtle.digest('SHA-256',new TextEncoder().encode(text))
+    .then(buf=>Array.from(new Uint8Array(buf))
+      .map(b=>b.toString(16).padStart(2,'0')).join(''))
+    .catch(()=>null);
+}
+// Le nonce : 256 bits de hasard, qui ne quittent la machine qu'au moment de
+// prouver. C'est lui qui rend l'empreinte muette — sans lui, deux cavaliers
+// possibles, deux empreintes à essayer, et le secret ne tiendrait pas dix
+// millisecondes.
+function troMpNonce(){
+  const c=(typeof crypto!=='undefined')?crypto:null;
+  if(c&&c.getRandomValues){
+    const a=new Uint8Array(32);c.getRandomValues(a);
+    return Array.from(a).map(b=>b.toString(16).padStart(2,'0')).join('');
+  }
+  let out='';
+  for(let i=0;i<8;i++)out+=Math.random().toString(36).slice(2,10);
+  return out;
+}
+// Le salon entre dans l'empreinte : un sceau d'une partie ne peut pas servir
+// dans une autre.
+function troMpSealText(piece,nonce){
+  return 'epichess-troie|'+(TMP.code||'?')+'|'+piece+'|'+nonce;
+}
+
+// Le sceau n'a pas pu être posé (pas de WebCrypto), ou l'adversaire n'en a pas
+// envoyé : on le dit UNE FOIS, en clair, et on continue à jouer. Taire une
+// garantie qui n'est plus là serait pire que de ne pas l'avoir.
+function troMpSealDown(){
   if(!TMP.arbiter)return;
   TMP.arbiter=false;
   if(!TMP.warned){
     TMP.warned=true;
     if(typeof showNotif==='function')
-      showNotif('Arbitre injoignable : la partie continue sur parole.','warn');
+      showNotif('Sceau indisponible : la partie continue sur parole.','warn');
   }
 }
 
-// SCELLER, au moment du choix. La pièce part vers une table que personne ne
-// peut lire ; ce qui revient n'est qu'un accusé de réception.
+// SCELLER, au moment du choix. Ce qui part sur le réseau est l'empreinte, et
+// elle seule : la pièce et le nonce restent ici.
 function troMpSeal(pieceId){
-  if(typeof ecRpc!=='function'){troMpArbiterDown();return Promise.resolve(false);}
-  return ecRpc('ec_troie_seal',{p_code:troMpArena(),p_player:TMP.myId,p_piece:pieceId})
-    .then(r=>{TMP.sealed=!!(r&&r.ok);return TMP.sealed;})
-    .catch(()=>{troMpArbiterDown();return false;});
+  TMP.myPiece=pieceId;
+  TMP.myNonce=troMpNonce();
+  return troMpDigest(troMpSealText(pieceId,TMP.myNonce)).then(h=>{
+    if(!h){troMpSealDown();return false;}
+    TMP.mySeal=h;TMP.sealed=true;
+    troMpSendReady();          // le sceau voyage avec « j'ai choisi »
+    return true;
+  });
 }
 
-// RÉCLAMER son cheval avant d'envoyer le coup qui s'appuie dessus.
-function troMpClaim(pieceId,ply){
-  if(!TMP.arbiter||typeof ecRpc!=='function')return Promise.resolve(false);
-  return ecRpc('ec_troie_claim',
-      {p_code:troMpArena(),p_player:TMP.myId,p_piece:pieceId,p_ply:ply})
-    .then(r=>!!(r&&r.ok))
-    .catch(()=>{troMpArbiterDown();return false;});
+// RÉCLAMER son cheval : on prépare la preuve, qui partira COLLÉE au coup.
+// Rien ne transite ici — c'est le coup lui-même qui la porte, donc elle ne
+// peut pas arriver avant lui ni servir deux fois.
+function troMpClaim(pieceId){
+  if(!TMP.mySeal||pieceId!==TMP.myPiece)return Promise.resolve(false);
+  TMP.proof={piece:pieceId,nonce:TMP.myNonce};
+  return Promise.resolve(true);
 }
 
-// VÉRIFIER l'hypothèse qu'un coup reçu nous impose. Rend `null` — et non
-// `false` — quand l'arbitre ne répond pas : l'écran doit pouvoir distinguer
-// « il a menti » de « je n'ai pas pu demander ».
-function troMpVerify(pieceId,ply){
-  if(!TMP.arbiter||!TMP.oppId||typeof ecRpc!=='function')return Promise.resolve(null);
-  return ecRpc('ec_troie_verify',
-      {p_code:troMpArena(),p_player:TMP.oppId,p_piece:pieceId,p_ply:ply})
-    .then(r=>!!(r&&r.ok))
-    .catch(()=>{troMpArbiterDown();return null;});
+// VÉRIFIER l'hypothèse qu'un coup reçu nous impose, contre la preuve qui
+// l'accompagne. Rend `null` — et non `false` — quand il n'y a rien à vérifier
+// avec quoi : l'écran doit pouvoir distinguer « il a menti » de « je n'ai pas
+// les moyens de savoir ».
+function troMpVerify(pieceId){
+  const pr=TMP.incoming;
+  if(!TMP.oppSeal||!pr||!pr.piece||!pr.nonce)return Promise.resolve(null);
+  if(pr.piece!==pieceId)return Promise.resolve(false);
+  return troMpDigest(troMpSealText(pr.piece,pr.nonce)).then(h=>{
+    if(!h)return null;
+    return h===TMP.oppSeal;
+  });
 }
 
 // La présence du choix se réémet tant que l'autre n'a pas répondu : les deux
@@ -447,11 +533,13 @@ function troMpVerify(pieceId,ply){
 let _troReadyId=null;
 function troMpSendReady(){
   if(!TMP.channel)return;
-  TMP.channel.send({type:'broadcast',event:'ready',payload:{id:TMP.myId}});
+  const dis=()=>TMP.channel.send({type:'broadcast',event:'ready',
+    payload:{id:TMP.myId,seal:TMP.mySeal||null}});
+  dis();
   if(_troReadyId)clearInterval(_troReadyId);
   _troReadyId=setInterval(()=>{
     if(!TMP.started||TMP.oppReady||!TMP.channel){clearInterval(_troReadyId);_troReadyId=null;return;}
-    TMP.channel.send({type:'broadcast',event:'ready',payload:{id:TMP.myId}});
+    dis();
   },1500);
 }
 
@@ -460,10 +548,13 @@ function troMpReceiveMove(payload){
   if(typeof n!=='number'||!payload.mv)return;
   if(n<TMP.log.length)return;                  // déjà connu : rien à faire
   if(n>TMP.log.length){troMpRequestSync();return;} // il nous manque des coups
-  // La vérification peut passer par l'arbitre : on attend sa réponse avant de
-  // décider si ce coup est entré dans la partie.
+  // LA PREUVE QUI ACCOMPAGNE CE COUP-CI, le temps de le lire. troMpVerify la
+  // compare à l'empreinte reçue au coup d'envoi ; elle est jetée ensuite, pour
+  // qu'aucun coup suivant n'en hérite.
+  TMP.incoming=payload.proof||null;
   Promise.resolve(troRemoteMove(payload.mv)).then(ok=>{
-    if(ok)TMP.log.push(payload.mv);
+    TMP.incoming=null;
+    if(ok)TMP.log.push({mv:payload.mv,proof:payload.proof||null});
     else troMpRequestSync();
   });
 }
@@ -486,9 +577,14 @@ function troMpApplyLog(log){
   const suivant=i=>{
     if(i>=log.length)return;
     if(TRO.st.turn===TRO.myColor)return;       // ce coup-là est à nous : on s'arrête
-    Promise.resolve(troRemoteMove(log[i])).then(ok=>{
+    // Le rattrapage rejoue des coups qui ont pu avoir besoin d'une preuve :
+    // elle voyage donc dans le journal, à côté du coup.
+    const e=log[i],pk=(e&&e.mv)?e.mv:e;
+    TMP.incoming=(e&&e.proof)||null;
+    Promise.resolve(troRemoteMove(pk)).then(ok=>{
+      TMP.incoming=null;
       if(!ok)return;
-      TMP.log.push(log[i]);
+      TMP.log.push(e);
       suivant(i+1);
     });
   };

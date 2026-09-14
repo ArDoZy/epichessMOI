@@ -46,12 +46,11 @@
 // d'état. Dépendances : aucune. Utilisé par : troie-ai.js (recherche),
 // troie-game.js (écran de jeu).
 //
-// PAS DE PARTIE EN LIGNE, ET C'EST UNE DÉCISION. Les deux autres variantes se
-// jouent à deux parce que les deux joueurs voient la même chose. Ici, la
-// moitié de la partie est une information cachée : la faire tenir sur deux
-// navigateurs demande un arbitre à qui les deux camps font confiance, que le
-// jeu n'a pas (voir README). On joue donc contre l'IA, qui elle ne triche pas
-// — troBeliefState lui retire ce qu'elle n'a pas le droit de savoir.
+// EN LIGNE, PERSONNE NE CONNAÎT LES DEUX CHEVAUX. Le choix ne traverse jamais
+// le réseau : chaque camp ne tient que le sien, et ce que l'autre en prouve
+// (js/troie-mp.js). Contre l'IA, un seul programme tient la partie et les
+// connaît tous les deux — troBeliefState lui retire alors ce qu'elle n'a pas
+// le droit de savoir.
 // ================================================================
 
 const TRO_VALUE={p:100,n:320,b:330,r:500,q:900,k:0};
@@ -501,13 +500,13 @@ function troRecord(st,mv,taken,mover,pieceType){
 //    laisser son roi en prise.
 //
 // DANS LES DEUX DERNIERS CAS, LE COUP REPOSE SUR UNE PIÈCE PRÉCISE, et c'est
-// exactement ce que l'ARBITRE sait vérifier : le serveur détient les deux
-// chevaux scellés et répond « oui, cette pièce-là est bien son espion », sans
-// jamais dire laquelle c'est à qui ne le lui a pas déjà prouvé (voir
-// ec_troie_* dans supabase/schema.sql, et js/troie-mp.js).
+// exactement ce que la PREUVE jointe au coup permet de vérifier : chacun a
+// publié au coup d'envoi l'empreinte de son cheval, et le coup qui s'appuie
+// dessus l'ouvre (le sceau, js/troie-mp.js). Un menteur n'a pas de preuve à
+// joindre.
 //
 // troRemoteOptions ÉNUMÈRE donc les hypothèses au lieu d'en choisir une : à
-// l'appelant de les faire trancher par l'arbitre, ou — quand il n'y en a pas —
+// l'appelant de les faire trancher par la preuve, ou — quand il n'y en a pas —
 // de prendre la première, ce que fait troResolveRemote.
 //
 // Ce qu'on refuse toujours, arbitre ou pas : un trajet impossible, une pièce
@@ -585,11 +584,11 @@ function troNeedsClaim(st,mv,me){
   return bad;
 }
 
-// SANS ARBITRE : la première hypothèse qui tient. C'est le comportement de
-// repli — hors ligne, serveur injoignable, ou partie contre l'IA — et c'est
-// lui qui laisse la dernière tricherie possible : un client bricolé peut faire
-// passer UN coup qui laisse son roi en échec d'un de nos cavaliers, en le
-// faisant passer pour son espion. Avec l'arbitre, ce coup-là est refusé.
+// SANS PREUVE : la première hypothèse qui tient. C'est le comportement de
+// repli — partie contre l'IA, ou navigateur sans WebCrypto — et c'est lui qui
+// laisserait la dernière tricherie possible : un client bricolé faisant passer
+// UN coup qui laisse son roi en échec d'un de nos cavaliers, en le faisant
+// passer pour son espion. Avec le sceau, ce coup-là est refusé.
 function troResolveRemote(st,pk,side,myColor){
   const opts=troRemoteOptions(st,pk,side,myColor);
   return opts.length?opts[0].mv:null;
