@@ -12,8 +12,9 @@
 // l'une fait bouger l'autre en miroir — sauf au coup d'ouverture de chaque
 // camp, qui part seul (voir js/mirror-rules.js) ; le Cheval de Troie en est
 // une troisième, où chacun a choisi avant le premier coup un cavalier adverse
-// pour être son espion, et où l'autre ne sait pas lequel (voir
-// js/troie-rules.js).
+// pour être son espion, et où l'autre ne sait pas lequel — y compris en
+// ligne, où le choix ne traverse jamais le réseau (voir js/troie-rules.js et
+// js/troie-mp.js).
 //
 // CE QUI N'EST PAS LÀ N'EST PAS ANNONCÉ. La page portait six autres cartes :
 // le duel classique — qui n'est pas une variante, c'est LA partie, celle que

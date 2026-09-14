@@ -477,6 +477,124 @@ function troRecord(st,mv,taken,mover,pieceType){
   });
 }
 
+// ----------------------------------------------------------------
+// LIRE UN COUP REÇU QUAND ON IGNORE L'ESPION D'EN FACE
+// ----------------------------------------------------------------
+// En ligne, chaque camp ne connaît que SON espion (js/troie-mp.js) : le coup
+// annoncé par l'adversaire peut donc ne pas exister dans notre lecture de la
+// position, sans que personne ait triché. Trois lectures, de la plus simple à
+// la plus retorse, et c'est la seule concession que le moteur fait à
+// l'information cachée.
+//
+// 1. LE COUP TEL QU'ON LE VOIT. La plupart du temps il suffit : les pièces et
+//    leurs trajets sont publics, seuls les espions ne le sont pas.
+//
+// 2. UNE RÉVÉLATION. L'adversaire joue un de NOS cavaliers : dans notre
+//    lecture, c'est une pièce qui ne lui appartient pas. On apprend donc à cet
+//    instant — et pas avant — que ce cavalier-là était son espion. C'est le
+//    seul moment où l'information cachée devient publique, et c'est la règle
+//    qui le veut.
+//
+// 3. UN COUP ORDINAIRE QUI NOUS PARAÎT ILLÉGAL. Son espion est un de nos
+//    cavaliers : chez lui, ce cavalier n'attaque rien ; chez nous, il a l'air
+//    de clouer son roi. Un coup parfaitement légal peut donc nous sembler
+//    laisser son roi en prise.
+//
+// DANS LES DEUX DERNIERS CAS, LE COUP REPOSE SUR UNE PIÈCE PRÉCISE, et c'est
+// exactement ce que l'ARBITRE sait vérifier : le serveur détient les deux
+// chevaux scellés et répond « oui, cette pièce-là est bien son espion », sans
+// jamais dire laquelle c'est à qui ne le lui a pas déjà prouvé (voir
+// ec_troie_* dans supabase/schema.sql, et js/troie-mp.js).
+//
+// troRemoteOptions ÉNUMÈRE donc les hypothèses au lieu d'en choisir une : à
+// l'appelant de les faire trancher par l'arbitre, ou — quand il n'y en a pas —
+// de prendre la première, ce que fait troResolveRemote.
+//
+// Ce qu'on refuse toujours, arbitre ou pas : un trajet impossible, une pièce
+// qui n'est pas à lui, une seconde révélation, et toute hypothèse une fois son
+// cheval ouvert.
+function troRemoteOptions(st,pk,side,myColor){
+  const out=[];
+  if(!pk)return out;
+  const direct=troFindMove(st,pk);
+  if(direct)return[{mv:direct,pieceId:null,mark:null}];   // rien à prouver
+
+  if(pk.reveal===side){
+    const p=st.board[pk.fr]&&st.board[pk.fr][pk.fc];
+    // UN SEUL CHEVAL PAR CAMP, ET UNE SEULE FOIS. `revealed` garde la trace du
+    // camp qui a déjà ouvert le sien : sans ce garde-fou, un client bricolé
+    // annoncerait une seconde révélation sur un autre de nos cavaliers, et
+    // s'offrirait une pièce à chaque coup.
+    if(p&&p.t==='n'&&p.color===myColor&&!p.spy&&
+       !st.revealed[side]&&!troFindSpy(st.board,side)){
+      const keep=p;
+      st.board[pk.fr][pk.fc]={t:'n',color:p.color,id:p.id,spy:side};
+      const mv=troFindMove(st,pk);
+      st.board[pk.fr][pk.fc]=keep;
+      if(mv)out.push({mv,pieceId:p.id,mark:{r:pk.fr,c:pk.fc}});
+    }
+    return out;
+  }
+
+  // Son espion est connu, ou il l'a déjà joué : il n'y a plus d'information
+  // cachée de son côté, donc plus rien à excuser.
+  if(st.revealed[side]||troFindSpy(st.board,side))return out;
+  for(const k of troSpyChoices(st.board,side)){
+    const keep=k.p;
+    if(keep.spy)continue;
+    st.board[k.r][k.c]={t:'n',color:keep.color,id:keep.id,spy:side};
+    const mv=troFindMove(st,pk);
+    st.board[k.r][k.c]=keep;                // l'hypothèse ne survit pas au test
+    if(mv)out.push({mv,pieceId:keep.id,mark:{r:k.r,c:k.c}});
+  }
+  return out;
+}
+
+// Poser l'hypothèse pour de bon : à n'appeler QUE sur une option confirmée
+// par l'arbitre. Sans arbitre on ne marque rien — on n'a rien appris, on a
+// seulement cessé de refuser ce qu'on ne pouvait pas comprendre.
+function troAdoptOption(st,opt,side){
+  if(!opt||!opt.mark)return;
+  const p=st.board[opt.mark.r][opt.mark.c];
+  if(!p||p.spy)return;
+  st.board[opt.mark.r][opt.mark.c]={t:p.t,color:p.color,id:p.id,spy:side};
+}
+
+// CE COUP-LÀ A-T-IL BESOIN DE MON SECRET POUR ÊTRE LÉGAL ?
+// ----------------------------------------------------------------
+// La question que le joueur qui JOUE doit se poser, et le pendant exact de
+// troRemoteOptions : si mon coup n'est légal que parce qu'un des cavaliers
+// d'en face est mon espion, l'adversaire ne pourra pas le comprendre — il
+// faudra le lui prouver par l'arbitre (js/troie-mp.js). Une révélation en a
+// toujours besoin ; un coup ordinaire, seulement s'il laisse mon roi sous la
+// menace apparente de mon propre cheval.
+function troNeedsClaim(st,mv,me){
+  if(!mv)return false;
+  if(mv.reveal)return true;
+  const spy=troFindSpy(st.board,me);
+  if(!spy)return false;
+  const b=st.board,saved=[];
+  for(let r=0;r<8;r++)saved[r]=b[r].slice();
+  // L'espion rendu ORDINAIRE : c'est la position telle que l'adversaire la
+  // lit. Si notre roi y est en prise, c'est que seul le secret rend ce coup
+  // jouable.
+  b[spy.r][spy.c]={t:spy.p.t,color:spy.p.color,id:spy.p.id};
+  troApplyToBoard(b,mv);
+  const bad=troInCheck(b,me);
+  for(let r=0;r<8;r++)b[r]=saved[r];
+  return bad;
+}
+
+// SANS ARBITRE : la première hypothèse qui tient. C'est le comportement de
+// repli — hors ligne, serveur injoignable, ou partie contre l'IA — et c'est
+// lui qui laisse la dernière tricherie possible : un client bricolé peut faire
+// passer UN coup qui laisse son roi en échec d'un de nos cavaliers, en le
+// faisant passer pour son espion. Avec l'arbitre, ce coup-là est refusé.
+function troResolveRemote(st,pk,side,myColor){
+  const opts=troRemoteOptions(st,pk,side,myColor);
+  return opts.length?opts[0].mv:null;
+}
+
 function troPackMove(mv){
   return{fr:mv.from.r,fc:mv.from.c,tr:mv.to.r,tc:mv.to.c,
     promo:mv.promo||null,castle:mv.castle||null,reveal:mv.reveal||null};
@@ -501,6 +619,7 @@ if(typeof module!=='undefined'&&module.exports){
     troApplyToBoard,troMakeRaw,troMake,troMoveIsSafe,troPseudoMoves,troLegalMoves,
     troMovesFrom,troPieceMoves,troSpyMoves,troAttacked,troInCheck,troFindKing,
     troInsufficient,troUpdateStatus,troPositionKey,troRecord,troMoveText,
-    troPackMove,troFindMove,troSquare,troOpp,troIn,
+    troPackMove,troFindMove,troResolveRemote,troRemoteOptions,troAdoptOption,troNeedsClaim,
+    troSquare,troOpp,troIn,
     TRO_VALUE,TRO_ART,TRO_NAME,TRO_FILES,TRO_DIR,TRO_KNIGHT};
 }

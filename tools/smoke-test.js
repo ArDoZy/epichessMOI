@@ -3794,6 +3794,23 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
     await page.waitForTimeout(300);
     const ouvert=await page.evaluate(()=>document.getElementById('tro-lobby').classList.contains('show'));
     if(!ouvert)throw new Error('la carte Cheval de Troie n\'ouvre pas son salon');
+    // Le salon offre les DEUX adversaires, comme les deux autres variantes :
+    // l'IA et un joueur en ligne (js/troie-mp.js).
+    const portes=await page.evaluate(()=>({
+      ia:!!document.querySelector('#tro-lobby-body [data-view="ia"]'),
+      online:!!document.querySelector('#tro-lobby-body [data-view="online"]'),
+    }));
+    if(!portes.ia)throw new Error('le salon ne propose pas l\'IA');
+    if(!portes.online)throw new Error('le salon ne propose pas de partie à deux joueurs');
+    await page.evaluate(()=>document.querySelector('#tro-lobby-body [data-view="online"]').click());
+    await page.waitForTimeout(200);
+    const enLigne=await page.evaluate(()=>document.getElementById('tro-lobby-body').textContent);
+    if(!/partie rapide|n’est pas disponible/i.test(enLigne))
+      throw new Error('la vue « en ligne » ne mène nulle part : '+enLigne.slice(0,80));
+    await page.evaluate(()=>document.querySelector('#tro-lobby-body [data-view="menu"]').click());
+    await page.waitForTimeout(150);
+    await page.evaluate(()=>document.querySelector('#tro-lobby-body [data-view="ia"]').click());
+    await page.waitForTimeout(200);
     await page.evaluate(()=>document.querySelector('#tro-lobby-body [data-level="apprenti"]').click());
     await page.waitForTimeout(600);
     // La fenêtre du choix s'ouvre par-dessus le plateau posé : deux cavaliers.
@@ -3829,6 +3846,211 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
     if(secret.marquesAdverse)throw new Error('un espion est peint en pleine partie : '+secret.marquesAdverse+' marque(s)');
     if(secret.marquesSiennes!==1)throw new Error('votre propre espion n\'est pas marqué ('+secret.marquesSiennes+')');
     if(/espion/.test(secret.etiquette))throw new Error('l\'étiquette trahit l\'espion adverse : '+secret.etiquette);
+  });
+
+  // ================================================================
+  // LE CHEVAL DE TROIE À DEUX JOUEURS (js/troie-mp.js)
+  // ================================================================
+  // LE PROTOCOLE EST LA PARTIE LA PLUS FRAGILE DE CETTE VARIANTE, et c'est
+  // le seul endroit du jeu où DEUX MOTEURS TRAVAILLENT SUR DES CONNAISSANCES
+  // DIFFÉRENTES : chaque camp ignore l'espion de l'autre, et doit malgré tout
+  // accepter ses coups et tomber d'accord sur la position. On le joue donc
+  // ici pour de bon — deux états, deux secrets, des parties entières — sans
+  // réseau ni second navigateur : ce qui se vérifie est le RAISONNEMENT
+  // (troResolveRemote), pas le transport, qui est celui des deux autres
+  // variantes.
+  await step('Cheval de Troie en ligne : deux clients, deux secrets, un seul plateau',async()=>{
+    const r=await page.evaluate(()=>{
+      const empreinte=b=>b.map(l=>l.map(p=>p?p.t+p.color+p.id:'.').join('|')).join('/');
+      const rnd=seed=>{let x=seed;return()=>{x=(x*1103515245+12345)&0x7fffffff;return x/0x7fffffff;};};
+      let hypotheses=0,revelations=0,coups=0;
+      for(let g=1;g<=12;g++){
+        const rand=rnd(g*7919);
+        const cl={w:{me:'w',st:troNewState()},b:{me:'b',st:troNewState()}};
+        // Chacun choisit CHEZ LUI, et ne pose son espion que dans son état.
+        for(const me of['w','b']){
+          const choix=troSpyChoices(cl[me].st.board,me);
+          const k=choix[Math.floor(rand()*choix.length)];
+          troSetSpy(cl[me].st,me,k.r,k.c);
+          troUpdateStatus(cl[me].st);
+        }
+        for(let n=0;n<40;n++){
+          const trait=cl.w.st.turn;
+          if(trait!==cl.b.st.turn)return{err:'traits divergents'};
+          const A=cl[trait],B=cl[troOpp(trait)];
+          if(A.st.gameOver)break;                  // le camp au trait tranche
+          const legaux=troLegalMoves(A.st,trait);
+          if(!legaux.length)break;
+          const mv=legaux[Math.floor(rand()*legaux.length)];
+          if(mv.reveal)revelations++;
+          const pk=troPackMove(mv);
+          const tk=troMake(A.st,mv);troUpdateStatus(A.st);troRecord(A.st,mv,tk,trait,'p');
+          const vu=troFindMove(B.st,pk);
+          const mv2=troResolveRemote(B.st,pk,trait,B.me);
+          if(!mv2)return{err:'coup refusé par l’adversaire : '+JSON.stringify(pk)};
+          if(!vu)hypotheses++;
+          const tk2=troMake(B.st,mv2);troUpdateStatus(B.st);troRecord(B.st,mv2,tk2,trait,'p');
+          if(empreinte(A.st.board)!==empreinte(B.st.board))return{err:'plateaux divergents au demi-coup '+n};
+          // Le verdict : le camp au trait annonce SON état, l'autre l'adopte.
+          A.st.check=B.st.check;
+          if(B.st.gameOver){A.st.gameOver=true;A.st.result=B.st.result;A.st.reason=B.st.reason;}
+          coups++;
+        }
+      }
+      return{hypotheses,revelations,coups};
+    });
+    if(r.err)throw new Error(r.err);
+    if(r.coups<200)throw new Error('trop peu de coups joués ('+r.coups+') : le test ne prouve rien');
+    // SANS LE RATTRAPAGE PAR HYPOTHÈSE, ces coups-là auraient été refusés et
+    // les deux parties auraient divergé. Si ce compteur tombe à zéro, c'est
+    // que le cas ne se présente plus — et le test ne vérifie plus rien.
+    if(!r.hypotheses)throw new Error('aucun coup n’a demandé d’hypothèse : le cas n’est plus couvert');
+    if(!r.revelations)throw new Error('aucune révélation jouée : le cas n’est plus couvert');
+  });
+
+  await step('Cheval de Troie en ligne : le moteur refuse ce qu’un client bricolé annoncerait',async()=>{
+    const r=await page.evaluate(()=>{
+      const st=troNewState();
+      troSetSpy(st,'b',7,1);              // b1 : espion des Noirs, nous sommes les Blancs
+      troUpdateStatus(st);st.turn='b';
+      const essaie=pk=>!!troResolveRemote(st,pk,'b','w');
+      const out={
+        trajet:essaie({fr:7,fc:1,tr:4,tc:4,reveal:'b'}),      // un cavalier ne va pas là
+        piece:essaie({fr:7,fc:6,tr:5,tc:5,reveal:null}),      // notre cavalier, sans révélation
+        pion:essaie({fr:6,fc:0,tr:5,tc:0,reveal:'b'}),        // un pion annoncé espion
+      };
+      const vraie=troResolveRemote(st,{fr:7,fc:1,tr:5,tc:0,reveal:'b'},'b','w');
+      out.vraie=!!vraie;
+      if(vraie){troMake(st,vraie);troUpdateStatus(st);st.turn='b';}
+      out.second=essaie({fr:7,fc:6,tr:5,tc:5,reveal:'b'});    // un SECOND cheval
+      return out;
+    });
+    if(!r.vraie)throw new Error('la vraie révélation est refusée');
+    for(const[k,quoi]of[['trajet','un trajet impossible'],['piece','une pièce qui n’est pas à lui'],
+                        ['pion','une révélation annoncée sur un pion'],['second','un second espion révélé']])
+      if(r[k])throw new Error(quoi+' est accepté');
+  });
+
+  // POURQUOI CHAQUE CAMP JUGE SA PROPRE POSITION. Un mat étouffé dont le
+  // cavalier est l'espion du camp mené : celui qui l'ignore croit avoir
+  // gagné, celui qui sait n'est même pas en échec. C'est ce désaccord que le
+  // message `state` de js/troie-mp.js résout — et s'il disparaissait, une
+  // partie en ligne se terminerait sur deux verdicts contraires.
+  await step('Cheval de Troie en ligne : le camp au trait est seul juge de son mat',async()=>{
+    const r=await page.evaluate(()=>{
+      const pose=spy=>{
+        const st=troNewState();
+        for(let r2=0;r2<8;r2++)for(let c=0;c<8;c++)st.board[r2][c]=null;
+        st.board[0][7]={t:'k',color:'b',id:'kb'};              // Rh8
+        st.board[0][6]={t:'r',color:'b',id:'rb'};              // Tg8
+        st.board[1][6]={t:'p',color:'b',id:'pg'};              // g7
+        st.board[1][7]={t:'p',color:'b',id:'ph'};              // h7
+        st.board[1][5]=spy?{t:'n',color:'w',id:'nw',spy:'b'}   // Cf7 : le mat étouffé
+                         :{t:'n',color:'w',id:'nw'};
+        st.board[7][0]={t:'k',color:'w',id:'kw'};
+        st.turn='b';
+        troUpdateStatus(st);
+        return{over:!!st.gameOver,reason:st.reason,check:!!st.check};
+      };
+      return{ignorant:pose(false),sachant:pose(true)};
+    });
+    if(!r.ignorant.over||r.ignorant.reason!=='mat')
+      throw new Error('la position n’est plus un mat pour qui ignore l’espion');
+    if(r.sachant.over)throw new Error('le camp qui sait est quand même maté');
+    if(r.sachant.check)throw new Error('l’espion met en échec alors qu’il est encore secret');
+  });
+
+  // ================================================================
+  // L'ARBITRE DU CHEVAL DE TROIE (supabase/schema.sql, js/troie-mp.js)
+  // ================================================================
+  // LE SERVEUR NE SAIT PAS JOUER AUX ÉCHECS, et il n'a pas à l'apprendre : il
+  // détient les deux chevaux SCELLÉS et tranche la seule question que les deux
+  // clients ne peuvent pas trancher — « la pièce que ce joueur invoque est-elle
+  // bien celle qu'il a scellée ? ». On l'exerce ici à travers ecRpc, donc par
+  // le même chemin que le jeu, dans le bac à sable `?mock` (js/server.js), qui
+  // rejoue les mêmes réponses que les fonctions SQL.
+  await step('Arbitre du Cheval de Troie : on scelle une fois, et rien ne fuite',async()=>{
+    const r=await page.evaluate(async()=>{
+      const code='smoke-'+Date.now();
+      const out={};
+      out.scelle=(await ecRpc('ec_troie_seal',{p_code:code,p_player:'A',p_piece:'p1'})).ok;
+      out.rejeu=(await ecRpc('ec_troie_seal',{p_code:code,p_player:'A',p_piece:'p1'})).ok;
+      out.change=(await ecRpc('ec_troie_seal',{p_code:code,p_player:'A',p_piece:'p6'})).ok;
+      // SONDER SANS RÉCLAMATION N'APPREND RIEN : c'est « non » pour les deux
+      // cavaliers, donc autant ne pas demander.
+      out.sondeVraie=(await ecRpc('ec_troie_verify',{p_code:code,p_player:'A',p_piece:'p1',p_ply:3})).ok;
+      out.sondeFausse=(await ecRpc('ec_troie_verify',{p_code:code,p_player:'A',p_piece:'p6',p_ply:3})).ok;
+      // Une réclamation mensongère ne laisse aucune trace.
+      out.reclameFausse=(await ecRpc('ec_troie_claim',{p_code:code,p_player:'A',p_piece:'p6',p_ply:3})).ok;
+      out.apresFausse=(await ecRpc('ec_troie_verify',{p_code:code,p_player:'A',p_piece:'p6',p_ply:3})).ok;
+      // La vraie, elle, se vérifie — pour cette pièce et ce demi-coup.
+      out.reclameVraie=(await ecRpc('ec_troie_claim',{p_code:code,p_player:'A',p_piece:'p1',p_ply:3})).ok;
+      out.verifie=(await ecRpc('ec_troie_verify',{p_code:code,p_player:'A',p_piece:'p1',p_ply:3})).ok;
+      out.autrePly=(await ecRpc('ec_troie_verify',{p_code:code,p_player:'A',p_piece:'p1',p_ply:4})).ok;
+      out.autrePiece=(await ecRpc('ec_troie_verify',{p_code:code,p_player:'A',p_piece:'p2',p_ply:3})).ok;
+      out.sansSceau=(await ecRpc('ec_troie_claim',{p_code:code,p_player:'Z',p_piece:'p1',p_ply:1})).ok;
+      return out;
+    });
+    const attendu={scelle:true,rejeu:true,change:false,sondeVraie:false,sondeFausse:false,
+      reclameFausse:false,apresFausse:false,reclameVraie:true,verifie:true,
+      autrePly:false,autrePiece:false,sansSceau:false};
+    for(const k of Object.keys(attendu))
+      if(r[k]!==attendu[k])throw new Error(k+' : '+r[k]+' au lieu de '+attendu[k]);
+  });
+
+  // LA TRICHERIE QUE L'ARBITRE FERME, jouée pour de bon sur un plateau. Sans
+  // lui, ce coup passait — c'était la dernière faille connue de la variante en
+  // ligne, et elle est nommée dans l'en-tête de js/troie-rules.js.
+  await step('Arbitre du Cheval de Troie : un coup qui invoque un cheval qu’on n’a pas est refusé',async()=>{
+    const r=await page.evaluate(async()=>{
+      const code='triche-'+Date.now();
+      const pose=()=>{
+        const st=troNewState();
+        for(let r2=0;r2<8;r2++)for(let c=0;c<8;c++)st.board[r2][c]=null;
+        st.board[7][4]={t:'k',color:'w',id:'kw'};    // Re1
+        st.board[5][3]={t:'n',color:'b',id:'nb'};    // Cd3 : il fait échec au roi e1
+        st.board[5][6]={t:'n',color:'b',id:'nb2'};   // Cg3 : l'autre cavalier noir
+        st.board[0][0]={t:'k',color:'b',id:'kb'};
+        st.board[7][7]={t:'r',color:'w',id:'rw'};    // Th1
+        st.turn='w';
+        return st;
+      };
+      const A=pose(),B=pose();
+      A.board[5][6]={t:'n',color:'b',id:'nb2',spy:'w'};   // son VRAI cheval
+      await ecRpc('ec_troie_seal',{p_code:code,p_player:'W',p_piece:'nb2'});
+      troUpdateStatus(A);troUpdateStatus(B);
+      // Th1–g1 : illégal (le roi reste en échec de Cd3), sauf si Cd3 était son
+      // espion. Il ne peut pas le réclamer.
+      const menteur=(await ecRpc('ec_troie_claim',{p_code:code,p_player:'W',p_piece:'nb',p_ply:A.ply})).ok;
+      const pk={fr:7,fc:7,tr:7,tc:6,promo:null,castle:null,reveal:null};
+      const opts=troRemoteOptions(B,pk,'w','b');
+      let passe=false;
+      for(const o of opts)
+        if((await ecRpc('ec_troie_verify',{p_code:code,p_player:'W',p_piece:o.pieceId,p_ply:B.ply})).ok)passe=true;
+      // Et le coup HONNÊTE du même joueur, lui, passe : son vrai cheval est
+      // celui qui semblait clouer son roi.
+      const C=pose(),D=pose();
+      C.board[5][3]={t:'n',color:'b',id:'nb',spy:'w'};
+      const code2='honnete-'+Date.now();
+      await ecRpc('ec_troie_seal',{p_code:code2,p_player:'W',p_piece:'nb'});
+      troUpdateStatus(C);troUpdateStatus(D);
+      const mv=troLegalMoves(C,'w').find(m=>m.from.r===7&&m.from.c===7&&m.to.r===7&&m.to.c===6);
+      const besoin=troNeedsClaim(C,mv,'w');
+      await ecRpc('ec_troie_claim',{p_code:code2,p_player:'W',p_piece:'nb',p_ply:C.ply});
+      const opts2=troRemoteOptions(D,troPackMove(mv),'w','b');
+      let honnete=false;
+      for(const o of opts2)
+        if((await ecRpc('ec_troie_verify',{p_code:code2,p_player:'W',p_piece:o.pieceId,p_ply:D.ply})).ok){
+          troAdoptOption(D,o,'w');honnete=true;break;
+        }
+      return{menteur,hypotheses:opts.length,passe,besoin,honnete,appris:!!troFindSpy(D.board,'w')};
+    });
+    if(r.menteur)throw new Error('l’arbitre a accepté une réclamation mensongère');
+    if(!r.hypotheses)throw new Error('le cas n’est plus couvert : ce coup n’a plus besoin d’hypothèse');
+    if(r.passe)throw new Error('le coup du tricheur passe malgré l’arbitre');
+    if(!r.besoin)throw new Error('le coup honnête ne demande plus de preuve : le cas n’est plus couvert');
+    if(!r.honnete)throw new Error('l’arbitre refuse un coup honnête');
+    if(!r.appris)throw new Error('l’hypothèse confirmée n’est pas retenue');
   });
 
   // ================================================================

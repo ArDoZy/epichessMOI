@@ -1781,6 +1781,7 @@
             <p>À votre tour, vous pouvez <b>jouer votre espion au lieu d'une de vos pièces</b> : il saute comme un cavalier, <b>change de couleur</b> sur-le-champ, devient un cavalier ordinaire du vôtre — et peut prendre en arrivant, y compris une pièce de son ancien camp. C'est la seule façon de le révéler, et elle est définitive.</p>
             <p>Un espion <b>pris avant d'avoir été révélé</b> meurt comme une pièce ordinaire : personne n'apprend que c'en était un. Le bandeau de statut vous dit où en est le vôtre.</p>
             <p>Dans le journal, <b>⚑</b> marque le coup par lequel un espion s'est révélé. En <b>mode analyse</b>, les espions non révélés prennent leur couleur — marron pour l'espion des Noirs, bleu clair pour celui des Blancs — celui de l'adversaire une fois la partie finie.</p>
+            <p><b>En ligne</b>, chacun choisit son espion chez soi et <b>le choix ne traverse jamais le réseau</b> : l'adversaire ne l'apprendra que le jour où vous le jouerez. Chaque camp annonce seulement « j'ai choisi », et la partie part quand les deux l'ont dit.</p>
             <p>Roque, prise en passant et promotion sont conservés.</p>
           </div>
         </section>
@@ -1792,12 +1793,12 @@
   </div>
 </div>
 
-<!-- Le salon du Cheval de Troie (IA seulement), ouvert par sa carte de la
-     page Variantes. -->
+<!-- Le salon du Cheval de Troie (IA ou joueur en ligne), ouvert par sa carte
+     de la page Variantes. -->
 <div class="confirm-modal" id="tro-lobby">
   <div class="confirm-box fok-lobby-box">
     <div class="fok-lobby-title">Cheval de Troie</div>
-    <div class="fok-lobby-sub">Chacun choisit un cavalier adverse pour être son espion, et l'autre ne sait pas lequel. L'espion se révèle le jour où son propriétaire le joue : il change alors de camp.</div>
+    <div class="fok-lobby-sub">Chacun choisit un cavalier adverse pour être son espion, et l'autre ne sait pas lequel. L'espion se révèle le jour où son propriétaire le joue : il change alors de camp. Contre l'IA, ou contre un joueur — le choix ne quitte jamais votre appareil.</div>
     <div id="tro-lobby-body"></div>
     <button class="btn btn-ghost" id="tro-lobby-close" style="width:100%;margin-top:14px">Fermer</button>
   </div>
@@ -2103,6 +2104,7 @@
 <script src="js/multiplayer.js"></script>
 <script src="js/fok-mp.js"></script>
 <script src="js/mirror-mp.js"></script>
+<script src="js/troie-mp.js"></script>
 <script>
 // ================================================================
 // APP-INIT : dernier script exécuté, démarre l'application

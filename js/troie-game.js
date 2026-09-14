@@ -31,12 +31,31 @@
 //
 // -- LE CHOIX DE L'ESPION ------------------------------------------
 // Une fenêtre au coup d'envoi, deux cartes : les deux cavaliers d'en face. On
-// ne peut pas la refuser — sans espion, il n'y a pas de partie — et l'IA
-// choisit le sien en même temps, au hasard (voir troAIChooseSpy).
+// ne peut pas la refuser — sans espion, il n'y a pas de partie. Contre l'IA,
+// elle choisit le sien en même temps, au hasard (troAIChooseSpy) ; EN LIGNE,
+// chacun choisit chez soi et le choix NE TRAVERSE JAMAIS LE RÉSEAU (voir
+// js/troie-mp.js). Les deux camps s'annoncent seulement « j'ai choisi », et la
+// partie part quand les deux l'ont dit.
+//
+// -- EN LIGNE, CHAQUE CAMP EN SAIT MOINS QUE LE MOTEUR -------------
+// Contre l'IA, un seul programme tient la partie et connaît les deux espions.
+// En ligne, PERSONNE ne les connaît tous les deux, et c'est ce qui rend la
+// variante honnête. Deux conséquences, portées par trois fonctions de ce
+// fichier :
+//   · troResolveRemote — un coup reçu peut paraître illégal parce qu'il
+//     dépend de l'espion d'en face, qu'on ne connaît pas. On essaie alors les
+//     hypothèses, sans en garder aucune ;
+//   · troVerdict / troApplyVerdict — ON NE JUGE PAS LA POSITION DE
+//     L'ADVERSAIRE. Échec, mat et pat du camp au trait sont calculés par le
+//     client de CE camp-là, seul à savoir ce qu'il faut savoir, et annoncés à
+//     l'autre. Sans cela, un camp croirait mater avec un cavalier qui,
+//     en face, ne met même pas en échec.
 //
 // Dépendances : troie-rules.js, troie-ai.js, variant-analysis.js,
 // piece-art.js (pieceSVG), main.js (showPage, escH, showConfirmModal),
 // rules-engine.js (playSound), economy-ui.js (getBoardSkin, facultatif).
+// js/troie-mp.js se branche dessus pour les parties en ligne, et n'est pas
+// nécessaire pour jouer contre l'IA.
 // ================================================================
 
 const TRO_MOVE_MS=200;    // durée du déplacement, alignée sur .gc-piece
@@ -44,7 +63,7 @@ const TRO_AI_DELAY=320;   // temps de respiration avant que l'IA ne joue
 
 const TRO={
   st:null,
-  mode:'ia',
+  mode:'ia',              // 'ia' | 'online'
   level:'soldat',
   myColor:'w',
   oppName:'Adversaire',
@@ -54,6 +73,14 @@ const TRO={
   anim:false,
   pendingPromo:null,
   choosing:false,         // la fenêtre du choix de l'espion est ouverte
+  oppReady:false,         // l'adversaire en ligne a choisi son espion
+  awaiting:false,         // on attend son verdict sur le coup qu'on vient de jouer
+  onLocalMove:null,       // branché par troie-mp.js : émet le coup sur le réseau
+  onReady:null,           // branché par troie-mp.js : « j'ai choisi mon espion »
+  onClaim:null,           // branché par troie-mp.js : prouver son cheval à l'arbitre
+  onVerify:null,          // branché par troie-mp.js : faire vérifier le sien
+  onVerdict:null,         // branché par troie-mp.js : l'état de NOTRE camp
+  onEnd:null,             // branché par troie-mp.js : prévient l'adversaire
   an:null,                // le mode analyse (js/variant-analysis.js)
 };
 
@@ -283,11 +310,18 @@ function troSetStatus(){
     cls+=' mate';
     if(st.result==='draw')txt='Partie nulle — '+st.reason+'.';
     else txt=(st.result===TRO.myColor?'Victoire':'Défaite')+' — '+st.reason+'.';
+  }else if(TRO.mode==='online'&&!troBothReady()){
+    // LES DEUX CHOIX D'ABORD. Personne ne joue tant que les deux chevaux ne
+    // sont pas entrés : un premier coup joué avant que l'autre ait choisi lui
+    // retirerait des cavaliers à infiltrer.
+    txt=TRO.choosing?'Choisissez votre espion.':'En attente du choix de l’adversaire…';
+    cls+=' thinking';
   }else if(st.turn===TRO.myColor){
     txt=(st.check?'Échec ! À vous de jouer. ':'À votre tour. ')+troSpyNote();
     cls+=st.check?' check':' ok';
   }else{
-    txt=st.check?'Échec à l’adversaire.':'L’adversaire réfléchit…';
+    txt=st.check?'Échec à l’adversaire.'
+      :(TRO.mode==='ia'?'L’adversaire réfléchit…':'Au tour de votre adversaire.');
     cls+=st.check?' check':' thinking';
   }
   el.className=cls;
@@ -306,9 +340,14 @@ function troMarkLog(){vanMarkLog(TRO.an,document.getElementById('tro-log'));}
 // ----------------------------------------------------------------
 // SAISIE
 // ----------------------------------------------------------------
+// Les deux espions sont-ils entrés ? Contre l'IA, elle choisit le sien au
+// coup d'envoi, donc la question ne se pose qu'en ligne.
+function troBothReady(){
+  return TRO.mode!=='online'||(!TRO.choosing&&TRO.oppReady);
+}
 function troPlayable(){
   return TRO.st&&!TRO.st.gameOver&&!TRO.anim&&!TRO.pendingPromo&&!TRO.choosing&&
-    vanLive(TRO.an)&&TRO.st.turn===TRO.myColor;
+    troBothReady()&&vanLive(TRO.an)&&TRO.st.turn===TRO.myColor;
 }
 // Les pièces que l'on peut prendre en main : les siennes, plus son espion.
 function troCanHold(cell){
@@ -348,7 +387,7 @@ function troTryMove(from,to){
   const promos=all.filter(m=>m.promo);
   troDeselect();
   if(promos.length){TRO.pendingPromo=promos;troShowPromo();return;}
-  troPlayMove(all[0]);
+  troSendWithClaim(all[0]);
 }
 
 function troShowPromo(){
@@ -362,7 +401,7 @@ function troChoosePromo(t){
   const list=TRO.pendingPromo;TRO.pendingPromo=null;
   document.getElementById('tro-promo').classList.remove('show');
   if(!list)return;
-  troPlayMove(list.find(m=>m.promo===t)||list[0]);
+  troSendWithClaim(list.find(m=>m.promo===t)||list[0]);
 }
 
 // --- Glissé-déposé, identique aux deux autres variantes. ---
@@ -442,13 +481,44 @@ function troKey(e,r,c,vi,vc){
 // second déplacement à montrer. Ce qu'il y a à voir — le cavalier qui change
 // de couleur sur sa case d'arrivée — est déjà porté par le morphing de la
 // pièce (troSyncPieces).
-function troPlayMove(mv){
+// LE COUP QUI REPOSE SUR LE SECRET PASSE D'ABORD PAR L'ARBITRE. Une
+// révélation, ou un coup qui n'est légal que parce qu'un cavalier d'en face
+// est notre espion (troNeedsClaim) : l'adversaire ne pourra pas le comprendre
+// tout seul, et le serveur est le seul à pouvoir lui confirmer qu'on ne ment
+// pas (ec_troie_claim, supabase/schema.sql). On réclame AVANT d'envoyer : si
+// la réclamation échoue, on joue quand même — l'arbitre est un renfort, pas
+// une condition d'existence de la partie (voir troMpArbiterDown).
+function troSendWithClaim(mv){
+  const st=TRO.st;
+  if(TRO.mode!=='online'||!TRO.onClaim||!troNeedsClaim(st,mv,TRO.myColor)){
+    troPlayMove(mv,true);
+    return;
+  }
+  const spy=troFindSpy(st.board,TRO.myColor);
+  const piece=mv.reveal?(st.board[mv.from.r][mv.from.c]||{}).id:(spy&&spy.p.id);
+  if(!piece){troPlayMove(mv,true);return;}
+  TRO.anim=true;                       // le plateau ne répond plus le temps de l'aller-retour
+  troSetStatus();
+  Promise.resolve(TRO.onClaim(piece,st.ply)).catch(()=>false).then(()=>{
+    TRO.anim=false;
+    troPlayMove(mv,true);
+  });
+}
+
+// `local` distingue le coup du joueur (à émettre sur le réseau) de celui qui
+// arrive de l'adversaire ou de l'IA (déjà connu de tout le monde).
+function troPlayMove(mv,local){
   const st=TRO.st;
   if(st.gameOver||TRO.anim)return;
   const mover=st.board[mv.from.r][mv.from.c];
   if(!mover)return;
   const type=mover.t;
   const side=mv.reveal||mover.color;     // le camp à qui ce coup appartient
+  // ON ATTEND SON VERDICT DÈS L'ENVOI, et non après notre animation : le
+  // réseau peut répondre avant que notre pièce ait fini de glisser, et un
+  // verdict qui arrive trop tôt serait jeté.
+  if(local&&TRO.mode==='online')TRO.awaiting=true;
+  if(local&&TRO.onLocalMove)TRO.onLocalMove(troPackMove(mv));
   const taken=troMakeRaw(st,mv);
   if(taken)st.captured[side].push(taken.t);
   st.lastMove={from:{r:mv.from.r,c:mv.from.c},to:{r:mv.to.r,c:mv.to.c}};
@@ -461,26 +531,145 @@ function troPlayMove(mv){
 
   setTimeout(()=>{
     troUpdateStatus(st);
+    // EN LIGNE, ON NE JUGE PAS LA POSITION D'EN FACE. Le camp qui vient de
+    // recevoir le coup est le seul à connaître son propre espion : lui seul
+    // sait s'il est en échec, mat ou pat. On efface donc notre verdict sur
+    // SON camp et on attend le sien (troApplyVerdict) ; le nôtre, en
+    // revanche, on le calcule et on l'annonce.
+    const judgeThem=(TRO.mode==='online'&&st.turn!==TRO.myColor);
+    if(judgeThem){
+      st.gameOver=false;st.result=null;st.reason='';st.check=false;
+      TRO.awaiting=true;
+    }
     troRecord(st,mv,taken,side,type);
     vanPush(TRO.an,st);
     TRO.anim=false;
     troRender();troRenderLog();troSetStatus();troSyncChrome();
     if(st.check&&!st.gameOver&&typeof playSound==='function')playSound('check');
+    if(TRO.mode==='online'&&!local)troSendVerdict();
     if(st.gameOver){troFinish();return;}
-    if(st.turn!==TRO.myColor)setTimeout(troAITurn,TRO_AI_DELAY);
+    if(TRO.mode==='ia'&&st.turn!==TRO.myColor)setTimeout(troAITurn,TRO_AI_DELAY);
   },TRO_MOVE_MS);
+}
+
+// ----------------------------------------------------------------
+// LE VERDICT, EN LIGNE : ce que NOTRE camp est seul à pouvoir dire
+// ----------------------------------------------------------------
+// Il part après chaque coup reçu, et il contient exactement ce que l'autre ne
+// peut pas calculer : sommes-nous en échec, la partie est-elle finie, et
+// pourquoi. Aucune information sur notre espion n'y transite — « je suis en
+// échec » ne dit pas par quoi.
+function troSendVerdict(){
+  const st=TRO.st;
+  if(!st||!TRO.onVerdict)return;
+  TRO.onVerdict({
+    check:!!st.check,
+    over:!!st.gameOver,
+    result:st.gameOver?st.result:null,
+    reason:st.gameOver?st.reason:'',
+  });
+}
+// Le verdict de l'adversaire sur le coup qu'on vient de jouer.
+function troApplyVerdict(v){
+  const st=TRO.st;
+  if(!st||!v||!TRO.awaiting)return;
+  // Notre coup glisse encore : on laisse la pièce arriver avant de poser le
+  // verdict, sinon la fin de partie s'afficherait par-dessus un plateau qui
+  // n'a pas fini de bouger.
+  if(TRO.anim){setTimeout(()=>troApplyVerdict(v),TRO_MOVE_MS);return;}
+  TRO.awaiting=false;
+  if(st.gameOver)return;                       // déjà fini de notre côté
+  st.check=!!v.check;
+  if(v.over){
+    st.gameOver=true;
+    st.result=(v.result==='draw')?'draw':(v.result||troOpp(TRO.myColor));
+    st.reason=v.reason||'mat';
+    troRender();troSetStatus();troFinish();
+    return;
+  }
+  troRender();troSetStatus();
+}
+
+// ----------------------------------------------------------------
+// LE COUP REÇU DU RÉSEAU (js/troie-mp.js)
+// ----------------------------------------------------------------
+// Il est REVÉRIFIÉ par le moteur local, comme dans les deux autres variantes :
+// un client modifié ne peut pas faire bouger une pièce comme il veut chez
+// l'adversaire. Mais ici la vérification doit composer avec ce qu'on IGNORE,
+// et c'est tout le sel de troResolveRemote.
+// Elle rend une PROMESSE : quand le coup reçu repose sur son espion, il faut
+// demander à l'arbitre, et l'arbitre est au bout du réseau.
+function troRemoteMove(pk){
+  const st=TRO.st;
+  if(!st||st.gameOver)return Promise.resolve(false);
+  const side=troOpp(TRO.myColor);
+  if(st.turn!==side)return Promise.resolve(false);
+  if(TRO.anim)return new Promise(res=>setTimeout(()=>res(troRemoteMove(pk)),TRO_MOVE_MS));
+  // La lecture d'un coup reçu quand on ignore l'espion d'en face est un
+  // raisonnement sur les RÈGLES, pas sur l'écran : elle vit dans le moteur
+  // (troRemoteOptions, js/troie-rules.js), où elle se teste sans navigateur.
+  const opts=troRemoteOptions(st,pk,side,TRO.myColor);
+  if(!opts.length)return Promise.resolve(false);
+  // Le coup se lit tel quel : rien à prouver, rien à demander.
+  if(!opts[0].pieceId){troPlayMove(opts[0].mv,false);return Promise.resolve(true);}
+  return troJudge(opts,side);
+}
+
+// LES HYPOTHÈSES, SOUMISES À L'ARBITRE, UNE PAR UNE. Il ne répond « oui » que
+// pour la pièce que l'adversaire vient de réclamer : une seule hypothèse peut
+// donc être confirmée, et une invention n'en obtient aucune. Quand l'arbitre
+// est absent — hors ligne, serveur injoignable, multijoueur non configuré —,
+// on retombe sur la parole donnée : la première hypothèse qui tient, ce qui
+// était le seul comportement possible avant lui.
+function troJudge(opts,side){
+  const st=TRO.st;
+  // LE DEMI-COUP NE VOYAGE PAS : les deux camps sont au même `ply` avant le
+  // coup, et c'est celui-là que l'arbitre a enregistré. Un numéro transmis
+  // serait un numéro qu'on peut écrire soi-même.
+  const ply=st.ply;
+  if(!TRO.onVerify){
+    troPlayMove(opts[0].mv,false);
+    return Promise.resolve(true);
+  }
+  let i=0;
+  const suivant=()=>{
+    if(i>=opts.length)return Promise.resolve(false);
+    const opt=opts[i++];
+    return Promise.resolve(TRO.onVerify(opt.pieceId,ply)).catch(()=>null).then(ok=>{
+      if(ok===null){                       // l'arbitre n'a pas répondu du tout
+        troPlayMove(opts[0].mv,false);
+        return true;
+      }
+      if(!ok)return suivant();
+      // CONFIRMÉ : ce cavalier EST son espion, et on a le droit de le savoir —
+      // c'est son propre coup qui vient de nous le dire. On garde donc la
+      // marque, et le moteur devient exact pour la suite de la partie.
+      troAdoptOption(st,opt,side);
+      troPlayMove(opt.mv,false);
+      return true;
+    });
+  };
+  return suivant();
+}
+
+// Défaite/victoire imposée de l'extérieur (adversaire parti, abandon reçu).
+function troDeclare(result,reason){
+  const st=TRO.st;
+  if(!st||st.gameOver)return;
+  st.gameOver=true;st.result=result;st.reason=reason||'abandon';
+  troFinish();troRender();
 }
 
 function troAITurn(){
   const st=TRO.st;
-  if(!st||st.gameOver||st.turn===TRO.myColor)return;
+  if(!st||st.gameOver||st.turn===TRO.myColor||TRO.mode!=='ia')return;
   // La recherche est synchrone et bornée (voir troie-ai.js) : on la laisse
   // partir après un rendu, pour que « L'adversaire réfléchit… » soit
   // effectivement affiché avant que le fil ne se bloque.
   requestAnimationFrame(()=>{
     const mv=troAIMove(st,TRO.level);
     if(!mv)return;
-    troPlayMove(mv);
+    troPlayMove(mv,false);
   });
 }
 
@@ -510,7 +699,7 @@ function troFinish(){
     escH('Cheval de Troie — '+st.reason+', en '+Math.ceil(st.moves.length/2)+' coups.')+
     '<br>'+escH(troSpyStory());
   const btns=document.getElementById('tro-res-btns');
-  btns.innerHTML='<button class="btn btn-gold" id="tro-res-again">Rejouer</button>'+
+  btns.innerHTML=(TRO.mode==='ia'?'<button class="btn btn-gold" id="tro-res-again">Rejouer</button>':'')+
     '<button class="btn btn-primary" id="tro-res-an">Analyser</button>'+
     '<button class="btn btn-ghost" id="tro-res-quit">Quitter</button>';
   document.getElementById('tro-result').classList.add('show');
@@ -518,9 +707,10 @@ function troFinish(){
     document.getElementById('tro-result').classList.remove('show');
     troOpenAnalysis();
   };
-  document.getElementById('tro-res-again').onclick=()=>{
+  const again=document.getElementById('tro-res-again');
+  if(again)again.onclick=()=>{
     document.getElementById('tro-result').classList.remove('show');
-    troStartGame({level:TRO.level,myColor:TRO.myColor==='w'?'b':'w',
+    troStartGame({mode:'ia',level:TRO.level,myColor:TRO.myColor==='w'?'b':'w',
       oppName:TRO.oppName,oppSub:TRO.oppSub});
   };
   document.getElementById('tro-res-quit').onclick=troLeave;
@@ -543,6 +733,7 @@ function troResign(){
   showConfirmModal('Abandonner cette partie ?',()=>{
     if(!TRO.st||TRO.st.gameOver)return;
     TRO.st.gameOver=true;TRO.st.result=troOpp(TRO.myColor);TRO.st.reason='abandon';
+    if(TRO.onEnd)TRO.onEnd('resign');
     troFinish();troRender();
   },{okLabel:'Abandonner',cancelLabel:'Continuer'});
 }
@@ -553,6 +744,9 @@ function troLeave(){
   document.getElementById('tro-promo').classList.remove('show');
   document.getElementById('tro-spy').classList.remove('show');
   TRO.pendingPromo=null;
+  if(TRO.onEnd)TRO.onEnd('leave');
+  TRO.onLocalMove=null;TRO.onReady=null;TRO.onVerdict=null;TRO.onEnd=null;
+  TRO.onClaim=null;TRO.onVerify=null;
   if(typeof goToMainMenu==='function')goToMainMenu();
   else showPage('page-jouer');
 }
@@ -567,20 +761,25 @@ function troLeave(){
 function troStartGame(opts){
   opts=opts||{};
   TRO.st=troNewState();
-  TRO.mode='ia';
+  TRO.mode=opts.mode||'ia';
   TRO.level=opts.level||'soldat';
   TRO.myColor=opts.myColor||'w';
   TRO.oppName=opts.oppName||'Adversaire';
   TRO.oppSub=opts.oppSub||'';
   TRO.sel=null;TRO.moves=[];TRO.anim=false;TRO.pendingPromo=null;TRO.choosing=true;
+  TRO.oppReady=false;TRO.awaiting=false;
   _troCells=null;_troFlipped=null;_troNodes=new Map();
   const board=troBoardEl();
   if(board)board.innerHTML='';
 
   // L'IA choisit SON espion tout de suite, et personne ne l'apprendra avant
-  // la fin de la partie (troSpyShown).
-  const pick=troAIChooseSpy(TRO.st,troOpp(TRO.myColor));
-  if(pick)troSetSpy(TRO.st,troOpp(TRO.myColor),pick.r,pick.c);
+  // la fin de la partie (troSpyShown). EN LIGNE, il n'y a rien à choisir ici :
+  // l'espion de l'adversaire est choisi sur SA machine et n'existe pas dans
+  // cet onglet — c'est ce qui rend le secret réel plutôt que promis.
+  if(TRO.mode==='ia'){
+    const pick=troAIChooseSpy(TRO.st,troOpp(TRO.myColor));
+    if(pick)troSetSpy(TRO.st,troOpp(TRO.myColor),pick.r,pick.c);
+  }
   troUpdateStatus(TRO.st);
   vanReset(TRO.an,TRO.st);
   vanBind(TRO.an,'tro');
@@ -623,9 +822,17 @@ function troChooseSpy(r,c){
   document.getElementById('tro-spy').classList.remove('show');
   if(typeof playSound==='function')playSound('promo');
   troUpdateStatus(TRO.st);
-  vanReset(TRO.an,TRO.st);          // la photo de départ porte les deux espions
+  vanReset(TRO.an,TRO.st);          // la photo de départ porte ce qu'on sait
   troRender();troSetStatus();
-  if(TRO.st.turn!==TRO.myColor)setTimeout(troAITurn,600);
+  // EN LIGNE, ON ANNONCE QU'ON A CHOISI — pas ce qu'on a choisi. C'est tout
+  // ce que l'adversaire a besoin de savoir pour que la partie parte.
+  if(TRO.mode==='online'&&TRO.onReady)TRO.onReady();
+  if(TRO.mode==='ia'&&TRO.st.turn!==TRO.myColor)setTimeout(troAITurn,600);
+}
+// L'adversaire en ligne vient d'annoncer son choix (js/troie-mp.js).
+function troOppReady(){
+  TRO.oppReady=true;
+  if(TRO.st)troSetStatus();
 }
 
 // ----------------------------------------------------------------
@@ -714,37 +921,81 @@ document.addEventListener('DOMContentLoaded',()=>{
 // ================================================================
 // LE SALON DE LA VARIANTE
 // ================================================================
-// Deux vues seulement : le niveau de l'IA, et c'est tout. PAS DE PARTIE EN
-// LIGNE, et la vue le DIT — une case grisée « bientôt » serait une promesse,
-// et cette variante ne se joue pas à deux navigateurs sans arbitre (voir
-// l'en-tête de js/troie-rules.js).
-let _troLobbyView='ia';
+// Une seule fenêtre, quatre vues : choisir l'adversaire, choisir le niveau de
+// l'IA, choisir la façon de trouver un joueur, attendre — exactement comme
+// les deux autres variantes.
+//
+// Les trois entrées en ligne appellent js/troie-mp.js. Si ce fichier n'est pas
+// chargé — ou si le multijoueur n'est pas configuré —, la vue le DIT au lieu
+// d'ouvrir un écran qui n'aboutit pas.
+let _troLobbyView='menu';
 
 function troOpenLobby(){
-  _troLobbyView='ia';
+  _troLobbyView='menu';
   troLobbyRender();
   document.getElementById('tro-lobby').classList.add('show');
 }
 function troCloseLobby(){
   document.getElementById('tro-lobby').classList.remove('show');
+  if(typeof troMpCancel==='function')troMpCancel();
 }
 
-function troLobbyRender(){
+function troLobbyRender(msg){
   const body=document.getElementById('tro-lobby-body');
   if(!body)return;
-  body.innerHTML='<div class="fok-lob-grid">'+TRO_AI_LEVELS.map(l=>
-    '<button class="fok-lob-card" data-level="'+l.id+'"><b>'+escH(l.nom)+'</b><span>'+
-    escH(l.desc)+'</span></button>').join('')+'</div>'+
-    '<div class="fok-lob-note">Cette variante se joue contre l’IA : la moitié de la partie est une information cachée, et la tenir secrète entre deux joueurs demanderait un arbitre que le jeu n’a pas.</div>';
+  let h='';
+  if(_troLobbyView==='menu'){
+    h='<div class="fok-lob-grid">'+
+      '<button class="fok-lob-card" data-view="ia"><b>Affronter l’IA</b><span>Quatre adversaires, de l’Apprenti à l’Usurpateur.</span></button>'+
+      '<button class="fok-lob-card" data-view="online"><b>Affronter un joueur</b><span>Partie rapide, ou partie privée entre amis. Chacun choisit son espion chez soi.</span></button>'+
+    '</div>';
+  }else if(_troLobbyView==='ia'){
+    h='<div class="fok-lob-grid">'+TRO_AI_LEVELS.map(l=>
+      '<button class="fok-lob-card" data-level="'+l.id+'"><b>'+escH(l.nom)+'</b><span>'+escH(l.desc)+'</span></button>').join('')+
+      '</div><button class="btn btn-ghost fok-lob-back" data-view="menu">Retour</button>';
+  }else if(_troLobbyView==='online'){
+    const ok=(typeof troMpAvailable==='function')&&troMpAvailable();
+    h=ok?('<div class="fok-lob-grid">'+
+      '<button class="fok-lob-card" data-online="quick"><b>Partie rapide</b><span>On vous trouve un adversaire qui attend la même chose.</span></button>'+
+      '<button class="fok-lob-card" data-online="host"><b>Créer une partie privée</b><span>Vous recevez un code à quatre lettres à transmettre.</span></button>'+
+      '</div>'+
+      '<div class="fok-lob-join"><input id="tro-code" maxlength="4" placeholder="CODE" autocomplete="off" spellcheck="false">'+
+      '<button class="btn btn-gold" data-online="join">Rejoindre</button></div>'+
+      '<div class="fok-lob-note">Votre espion ne quitte jamais cet appareil : l’adversaire ne l’apprendra que si vous le jouez.</div>')
+      :'<div class="fok-lob-note">Le jeu en ligne n’est pas disponible ici (bibliothèque réseau bloquée ou hors connexion). L’IA, elle, fonctionne toujours.</div>';
+    h+='<button class="btn btn-ghost fok-lob-back" data-view="menu">Retour</button>';
+  }else if(_troLobbyView==='wait'){
+    h='<div class="fok-lob-wait"><div class="mp-radar"><span></span><span></span><span></span></div>'+
+      '<div class="fok-lob-note" id="tro-wait-note">'+escH(msg||'Recherche d’un adversaire…')+'</div></div>'+
+      '<button class="btn btn-ghost fok-lob-back" data-view="cancel">Annuler</button>';
+  }
+  body.innerHTML=h;
+}
+
+// Message d'attente, sans reconstruire la vue (js/troie-mp.js l'appelle à
+// chaque changement d'état du salon).
+function troLobbyWait(msg){
+  if(_troLobbyView!=='wait'){_troLobbyView='wait';troLobbyRender(msg);return;}
+  const n=document.getElementById('tro-wait-note');
+  if(n)n.textContent=msg;
 }
 
 document.addEventListener('DOMContentLoaded',()=>{
   document.getElementById('tro-lobby-close')?.addEventListener('click',troCloseLobby);
   document.getElementById('tro-lobby-body')?.addEventListener('click',e=>{
     const b=e.target.closest('button');
-    if(!b||!b.dataset.level)return;
-    const l=troAILevel(b.dataset.level);
-    document.getElementById('tro-lobby').classList.remove('show');
-    troStartGame({level:l.id,myColor:'w',oppName:l.nom,oppSub:'Intelligence artificielle'});
+    if(!b)return;
+    if(b.dataset.view==='cancel'){_troLobbyView='online';if(typeof troMpCancel==='function')troMpCancel();troLobbyRender();return;}
+    if(b.dataset.view){_troLobbyView=b.dataset.view;troLobbyRender();return;}
+    if(b.dataset.level){
+      const l=troAILevel(b.dataset.level);
+      document.getElementById('tro-lobby').classList.remove('show');
+      troStartGame({mode:'ia',level:l.id,myColor:'w',oppName:l.nom,oppSub:'Intelligence artificielle'});
+      return;
+    }
+    if(b.dataset.online&&typeof troMpStart==='function'){
+      const code=(document.getElementById('tro-code')?.value||'').trim().toUpperCase();
+      troMpStart(b.dataset.online,code);
+    }
   });
 });
