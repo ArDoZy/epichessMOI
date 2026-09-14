@@ -98,10 +98,14 @@ epic-chess/
     │                          # combat, guerre des clans, variantes). Déplace
     │                          # armées/guerre des clans dans leur emplacement,
     │                          # et pose la partie en calque par-dessus.
-    ├── variantes.js          # La page « Variantes » : la Chute des Royaumes
-    │                          # et Mirror Chess, les deux jouables. Rien
-    │                          # d'annoncé, rien de verrouillé.
-    ├── fok-rules.js          # CHUTE DES ROYAUMES : le moteur de la variante.
+    ├── variantes.js          # La page « Variantes » : Board Quake,
+    │                          # Mirror Chess et le Cheval de Troie, les trois
+    │                          # jouables. Rien d'annoncé, rien de verrouillé.
+    ├── variant-analysis.js   # LE MODE ANALYSE DES TROIS VARIANTES : une photo
+    │                          # de la position après chaque demi-coup, les
+    │                          # commandes ⏮ ◀ ▶ ⏭ et le journal cliquable.
+    │                          # Générique : un préfixe d'identifiants suffit.
+    ├── fok-rules.js          # BOARD QUAKE : le moteur de la variante.
     │                          # Échecs ordinaires + décalage des quatre rangées
     │                          # centrales d'une case vers la droite après CHAQUE
     │                          # coup. Aucune dépendance, aucun DOM.
@@ -121,6 +125,16 @@ epic-chess/
     ├── mirror-game.js        # Son écran de jeu (#page-mirror) et son salon
     ├── mirror-mp.js          # Ses parties à deux joueurs, sujets
     │                          # `epichess-mirror-*`
+    ├── troie-rules.js        # CHEVAL DE TROIE : le moteur de la variante.
+    │                          # Échecs ordinaires + chacun a choisi avant le
+    │                          # premier coup UN cavalier adverse pour être son
+    │                          # espion : il sert en face, ne donne jamais échec,
+    │                          # et change de camp le jour où on le joue.
+    ├── troie-ai.js           # Son adversaire : alpha-bêta qui cherche dans une
+    │                          # VISION INCOMPLÈTE de la partie (troBeliefState) —
+    │                          # l'IA ne connaît pas l'espion du joueur
+    ├── troie-game.js         # Son écran de jeu (#page-troie), le choix de
+    │                          # l'espion et son salon (IA seulement)
     ├── server.js             # LA SEULE PORTE vers le serveur : sessions,
     │                          # appels ec_*, envoi groupé des écritures,
     │                          # rapport de fin de partie, présence. Contient
@@ -1455,9 +1469,9 @@ joueurs en attente et la fenêtre courante, et propose un adversaire du
 laboratoire au bout de 40 secondes. Le salon d'attente a changé de nom (`epichess-lobby-v2`) :
 les anciens clients ne peuvent pas s'y tromper de protocole.
 
-## La Chute des Royaumes (`js/fok-*.js`)
+## Board Quake (`js/fok-*.js`)
 
-La première des deux variantes de la page Variantes — le duel classique n'y
+La première des trois variantes de la page Variantes — le duel classique n'y
 figure pas : ce n'est pas une variante, c'est la partie que lance COMBAT. **Sa règle tient en une phrase** : on joue aux échecs
 ordinaires, avec les seize pièces sur leurs cases de départ, mais **après
 chaque coup — le sien comme celui de l'adversaire — toutes les pièces des
@@ -1528,7 +1542,7 @@ joue pour la règle.
 
 ## Mirror Chess (`js/mirror-*.js`)
 
-La deuxième variante jouable, ouverte depuis la même page. **Sa règle tient en
+La deuxième des trois variantes jouables, ouverte depuis la même page. **Sa règle tient en
 une phrase** : on joue aux échecs ordinaires, avec les seize pièces sur leurs
 cases de départ, mais **chaque pièce est jumelée à sa symétrique, et bouger
 l'une fait bouger l'autre**. Les paires sont fixées au coup d'envoi par la
@@ -1599,7 +1613,7 @@ pièce indépendant — l'écran pose alors la question deux fois de suite.
 
 **Le moteur fait et défait, il ne clone pas.** Un coup de cette variante est
 DEUX déplacements : cloner huit rangées par nœud, comme le fait le moteur de la
-Chute des Royaumes, en coûterait le double pour rien. Tout passe donc par
+Board Quake, en coûterait le double pour rien. Tout passe donc par
 `mirDoMove`/`mirUndoMove`, qui mutent le plateau et savent le remettre
 exactement comme il était — droits au roque et cases de prise en passant
 compris. C'est la seule optimisation du fichier, et elle est locale.
@@ -1634,9 +1648,119 @@ il ne peut que se faire ignorer, puisque le coup reçu est revérifié en entier
 (`mirFindMove`). Seul le choix de promotion de la jumelle voyage, parce que lui
 seul ne se déduit pas.
 
-**Rien n'est misé et rien n'est classé**, comme pour la Chute des Royaumes : la
+**Rien n'est misé et rien n'est classé**, comme pour Board Quake : la
 variante ne touche ni à l'ELO, ni à la réserve de pièces, ni aux voies de
 récompenses.
+
+## Le Cheval de Troie (`js/troie-*.js`)
+
+La troisième variante jouable. **Sa règle tient en une phrase** : on joue aux
+échecs ordinaires, mais **chaque joueur a choisi, avant le premier coup, un des
+deux cavaliers adverses pour être son espion — et l'adversaire ne sait pas
+lequel**.
+
+Ce qu'un espion fait, et ce qu'il ne fait pas :
+
+- **Il reste dans le camp où il est.** Tant qu'il n'est pas révélé, c'est une
+  pièce ordinaire de son camp d'accueil : ce camp le joue, le déplace, prend
+  avec, sans se douter de rien.
+- **Il ne met jamais en échec.** Un espion non révélé n'attaque **aucune**
+  case : pas d'échec, pas de case interdite au roi d'en face, pas de clouage.
+  Il continue de **bloquer les lignes** — c'est une pièce, elle est là — mais
+  il ne menace personne. C'est écrit à un seul endroit, dans `troAttacked`.
+- **Il se révèle en étant joué, et seulement comme ça.** À son tour, son
+  propriétaire secret peut le jouer au lieu d'une de ses pièces : le cavalier
+  **change de couleur** sur-le-champ, devient un cavalier parfaitement
+  ordinaire du nouveau camp, et le saut qu'il fait en se révélant peut prendre
+  — y compris une pièce de son ancien camp. C'est définitif.
+- **Pris avant d'être révélé, il meurt sans un mot.** Rien n'annonce que le
+  cavalier qui vient de tomber en était un : ni le journal, ni le plateau, ni
+  le bandeau de statut de celui qui l'a pris. Son propriétaire, lui, l'apprend
+  — c'est son cheval.
+
+**Un joueur a donc deux jeux de coups** : ceux de ses seize pièces, et le saut
+de son espion s'il est encore en vie et encore secret. C'est tout ce que
+`troPseudoMoves` ajoute aux échecs, et c'est toute la variante.
+
+**L'espion vit dans la pièce, et nulle part ailleurs.** Une pièce porte
+`spy:'w'` ou `spy:'b'` — la couleur de son propriétaire secret, toujours
+l'inverse de sa couleur affichée. Pas de seconde table à tenir à jour : un
+espion pris disparaît avec la pièce, un espion révélé perd son marquage parce
+qu'on **remplace l'objet** (comme pour une promotion, et pour la même raison :
+les objets de pièce sont partagés entre un plateau et ses copies). Deux sources
+de vérité sur une information cachée finissent toujours par diverger, et une
+divergence ici, c'est un espion fantôme.
+
+**L'IA ne triche pas, et ce n'est pas une politesse.** Avant chaque recherche,
+`troBeliefState` lui donne une copie de la partie où **l'espion du joueur
+n'existe pas** : elle voit ses deux cavaliers comme deux cavaliers ordinaires,
+exactement comme un humain à sa place. Elle garde en revanche le sien, qu'elle
+a le droit de connaître. Cette vision est **sûre** : un coup légal dans la
+vision l'est aussi dans la partie réelle, puisque la légalité ne dépend que de
+la sécurité de son propre roi et que le cavalier qu'on lui a « démasqué » est
+de sa couleur. Le seul écart possible est en sa défaveur — elle croit donner un
+échec qui n'a pas lieu —, et c'est très exactement ce qu'un joueur trompé
+ressent.
+
+**L'écran doit se taire** (`js/troie-game.js`). Votre espion porte une marque
+discrète ; celui de l'adversaire n'est marqué **nulle part** tant que la partie
+dure : ni classe, ni attribut, ni étiquette de lecteur d'écran — ce qui est
+écrit dans le DOM se lit, et un joueur curieux ouvre l'inspecteur. Une seule
+fonction décide, `troSpyShown`, et tout le fichier la lit.
+
+**En mode analyse**, les espions non révélés prennent leur couleur : **marron**
+pour l'espion des Noirs infiltré chez les Blancs, **bleu clair** pour l'espion
+des Blancs infiltré chez les Noirs. Celui de l'adversaire n'apparaît qu'une
+fois la partie **terminée** — sinon, remonter le temps de trois coups suffirait
+à le démasquer, et la variante n'existerait plus.
+
+**Pas de partie en ligne, et c'est une décision.** Les deux autres variantes se
+jouent à deux parce que les deux joueurs voient la même chose. Ici, la moitié
+de la partie est une information cachée : la faire tenir sur deux navigateurs
+demanderait un arbitre à qui les deux camps font confiance, que le jeu n'a pas
+(les deux clients s'échangent des coups en pair-à-pair, chacun avec son propre
+moteur). Le salon le dit en toutes lettres au lieu d'afficher une case grisée
+« bientôt ».
+
+**Rien n'est misé et rien n'est classé**, comme pour les deux autres variantes.
+
+| Fichier | Ce qu'il porte |
+| --- | --- |
+| `js/troie-rules.js` | Le moteur : état, choix de l'espion, les deux jeux de coups, la révélation, l'attaque qui ignore les espions, légalité, fin de partie, notation. Ne connaît ni le DOM ni le réseau. |
+| `js/troie-ai.js` | L'adversaire : alpha-bêta sur une **vision incomplète** de la partie, quatre niveaux, budget borné à 700 ms. |
+| `js/troie-game.js` | L'écran de jeu (`#page-troie`), le choix de l'espion, le salon. |
+
+## Le mode analyse des variantes (`js/variant-analysis.js`)
+
+Les trois variantes savent **revenir en arrière dans la partie**. Le panneau
+« Historique » porte les commandes ⏮ ◀ ▶ ⏭, dit toujours où l'on est
+(« Position actuelle », « Coup 7 sur 21 »), et **chaque demi-coup du journal
+est un bouton** qui saute à sa position. Les flèches ← → et les touches
+Début/Fin marchent aussi quand le panneau a le focus. Le modal de fin de partie
+a son bouton **Analyser**, qui ferme le verdict et ouvre le journal sur la
+position de départ.
+
+**Des images, pas un moteur.** La relecture du jeu principal (`js/replay.js`)
+REJOUE les coups ; ici, on **photographie** la position après chaque demi-coup
+et on affiche la photo. Deux raisons : les trois variantes ont trois moteurs
+différents, dont deux jouent un coup en deux temps et un troisième cache de
+l'information — rejouer voudrait dire écrire et maintenir trois relectures ; et
+une photo est **exacte par construction**, là où une relecture qui diverge du
+moteur montre une partie qui n'a pas eu lieu. Une photo coûte 64 cases et une
+poignée de champs : quelques kilo-octets pour une partie entière.
+
+**Un seul champ dit dans quel temps on est** (`an.view` : `null` en direct,
+l'indice de la photo sinon), et les écrans ne lisent plus `st.board`
+directement — ils passent par `vanBoard()`, `vanLastMove()`, `vanCaptured()` et
+`vanTurn()`. C'est toute l'empreinte du mode analyse dans `fok-game.js`,
+`mirror-game.js` et `troie-game.js`, avec `vanPush()` après chaque coup et le
+`vanLive()` qui interdit de jouer depuis le passé.
+
+**La partie continue pendant qu'on regarde en arrière** : un coup de l'IA ou de
+l'adversaire en ligne ajoute sa photo à la pile. En revanche le plateau ne
+répond plus tant qu'on n'est pas revenu au présent — jouer un coup depuis une
+position ancienne n'aurait aucun sens, et la tentation d'y croire serait
+grande.
 
 ## Le serveur fait autorité (`supabase/schema.sql`, `js/server.js`)
 
@@ -1940,8 +2064,10 @@ server.js → data-pieces.js → piece-art.js → main.js → pages-nav.js → a
 → cinematics.js
 → game-render.js
 → ai-engine.js → game-flow.js → voie.js → economy-ui.js
+→ variant-analysis.js
 → fok-rules.js → fok-ai.js → fok-game.js
-→ mirror-rules.js → mirror-ai.js → mirror-game.js → variantes.js
+→ mirror-rules.js → mirror-ai.js → mirror-game.js
+→ troie-rules.js → troie-ai.js → troie-game.js → variantes.js
 → rewards.js → rewards-ui.js → tuto-drill.js
 → tutorial.js
 → pwa.js → account-ui.js → replay.js → leaderboard.js → settings-admin.js
@@ -1963,7 +2089,7 @@ qu'il partage sa carrosserie.
 écrans de profil, qui appellent `profileArsenalHTML()` et `replayListHTML()`.
 Ce ne sont que des appels à l'exécution, donc l'ordre réel n'est contraint que
 par ce dernier point ; le poser là le rend lisible.
-Les quatre fichiers `fok-*` forment la variante « Chute des Royaumes » et sont
+Les quatre fichiers `fok-*` forment la variante « Board Quake » et sont
 indépendants du reste : `fok-rules.js` (moteur) avant `fok-ai.js` et
 `fok-game.js` qui l'utilisent, `variantes.js` après `fok-game.js` parce que sa
 carte ouvre `fokOpenLobby()`, et `fok-mp.js` après `multiplayer.js`, dont il
@@ -1971,6 +2097,14 @@ réutilise `mpInitClient()` et la configuration Supabase. Aucun autre fichier ne
 les appelle, et ils n'écrivent dans aucun état du jeu principal : la variante
 peut être retirée en supprimant ses quatre `<script>` sans rien casser d'autre
 que sa propre carte.
+
+`variant-analysis.js` vient **avant les trois écrans de variante** : chacun
+crée son objet d'analyse (`vanNew`) au chargement, et lit ses photos à chaque
+rendu. Il ne dépend que de `piece-art.js` (`pieceIcon`) et de `main.js`
+(`escH`). Les trois fichiers `troie-*` suivent la même règle que les `fok-*` :
+moteur, puis IA, puis écran, puis `variantes.js` — dont la carte appelle
+`troOpenLobby()`. La variante n'a **pas** de fichier `-mp` : elle ne se joue
+pas en ligne (voir plus bas).
 
 `economy.js` doit venir après `accounts.js` (il utilise `accGet`/`accSet`) et
 avant tous les modules de page qui affichent des stocks. `piece-art.js` doit
@@ -2103,9 +2237,13 @@ mais dans une version que Playwright refuse, le script le retrouve tout seul
 | Changer l'ordre ou le nombre des pages de la rangée | la liste `PAGES` dans `js/pages-nav.js` **et** l'ordre des onglets `#nav-tabbar` dans `index.html` (le reste suit tout seul) |
 | Régler la vitesse de glissement de la rangée | `js/pages-nav.js` (`SLIDE_MS`) **et** la transition de `#nav-track` dans `css/style.css` |
 | Modifier la page Variantes | `VARIANTES` dans `js/variantes.js` + `#page-viewport-variantes` dans `index.html` + `[VARIANTES]` de `css/style.css` |
-| Modifier la règle de la Chute des Royaumes | `FOK_SHIFT_ROWS` / `fokShiftBoard` dans `js/fok-rules.js` (la règle tient en quatre lignes) |
-| Modifier l'adversaire de la Chute des Royaumes | `FOK_AI_LEVELS` et `fokEvalBoard` dans `js/fok-ai.js` |
+| Modifier la règle de Board Quake | `FOK_SHIFT_ROWS` / `fokShiftBoard` dans `js/fok-rules.js` (la règle tient en quatre lignes) |
+| Modifier l'adversaire de Board Quake | `FOK_AI_LEVELS` et `fokEvalBoard` dans `js/fok-ai.js` |
 | Modifier son écran de jeu | `#page-fok` dans `index.html` + `js/fok-game.js` + `[FOK]` de `css/style.css` |
+| Modifier la règle du Cheval de Troie | `troPseudoMoves` / `troSpyMoves` / `troAttacked` dans `js/troie-rules.js` (les trois endroits où la variante existe) |
+| Modifier ce que l'IA du Cheval de Troie a le droit de savoir | `troBeliefState` dans `js/troie-ai.js` |
+| Changer ce que l'écran montre d'un espion | `troSpyShown` / `troSpyClass` dans `js/troie-game.js` + `[TROIE]` de `css/style.css` |
+| Modifier le mode analyse des variantes | `js/variant-analysis.js` + le bloc `.van-nav` des trois panneaux « Historique » (`index.html`) + `[VAN]` de `css/style.css` |
 | Modifier le système de comptes/sauvegarde | `js/accounts.js` (copie de travail) + `js/server.js` (échanges) |
 | Ajouter un champ stocké par compte | `accGet`/`accSet` comme avant — rien à toucher ailleurs, le serveur stocke `state` sans l'interpréter |
 | Changer une règle du serveur (ELO, unicité, classement) | `supabase/schema.sql`, puis le recoller dans l'éditeur SQL Supabase (en **commentant le `DROP TABLE`**) |

@@ -201,9 +201,9 @@ C'est la mécanique qui distingue le plus Epic Chess des autres variantes :
 ## Variantes
 
 Le jeu propose une page **Variantes**, tout à droite de la rangée de
-navigation. Elle en porte deux, et les deux sont jouables :
+navigation. Elle en porte trois, et les trois sont jouables :
 
-- **Chute des Royaumes** : une partie d'échecs **ordinaire** — seize pièces,
+- **Board Quake** : une partie d'échecs **ordinaire** — seize pièces,
   cases de départ habituelles, les Blancs commencent — à ceci près qu'**après
   chaque coup, le sien comme celui de l'adversaire, toutes les pièces des
   quatre rangées centrales glissent d'une case vers la droite** (la droite du
@@ -237,8 +237,29 @@ navigation. Elle en porte deux, et les deux sont jouables :
   ou partie privée par code). Elle ne met aucune pièce en jeu et ne compte pas
   pour le classement.
 
-Quatre autres formules sont annoncées et verrouillées (blitz, brouillard de
-guerre, siège, repêchage, chaos).
+- **Cheval de Troie** : une partie d'échecs **ordinaire** — seize pièces, cases
+  de départ habituelles — à ceci près qu'**avant le premier coup, chaque joueur
+  choisit un des deux cavaliers adverses pour être son espion**, et que
+  l'adversaire ne sait pas lequel. L'espion **reste dans son camp d'accueil**,
+  qui le joue comme une pièce ordinaire sans se douter de rien, mais il **ne
+  donne jamais échec** tant qu'il n'est pas révélé. À son tour, son
+  propriétaire secret peut **le jouer au lieu d'une de ses pièces** : le
+  cavalier change alors de couleur sur-le-champ, devient un cavalier ordinaire
+  du nouveau camp et peut prendre en arrivant, y compris une pièce de son
+  ancien camp. C'est la seule façon de le révéler, et elle est définitive. Un
+  espion **pris avant d'avoir été révélé** meurt comme une pièce ordinaire :
+  personne n'apprend que c'en était un. Roque, prise en passant et promotion
+  sont conservés. Elle se joue **contre l'ordinateur** (quatre niveaux)
+  uniquement : la moitié de la partie est une information cachée, et la tenir
+  secrète entre deux joueurs demanderait un arbitre que le jeu n'a pas. Elle ne
+  met aucune pièce en jeu et ne compte pas pour le classement.
+
+Les trois variantes ont un **mode analyse** : le panneau « Historique » permet
+de revenir en arrière dans la partie coup par coup (⏮ ◀ ▶ ⏭, flèches du
+clavier, ou en touchant un coup du journal), et un bouton « Analyser » s'ouvre
+à la fin de la partie. Dans ce mode, les cavaliers espions non révélés du
+Cheval de Troie prennent leur couleur — marron pour celui des Noirs, bleu clair
+pour celui des Blancs — celui de l'adversaire une fois la partie terminée.
 
 ## Confidentialité
 

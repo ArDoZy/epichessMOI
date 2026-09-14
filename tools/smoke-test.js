@@ -3703,6 +3703,196 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
     await page.waitForTimeout(400);
   });
 
+  // ================================================================
+  // LE CHEVAL DE TROIE : l'espion, vérifié sur le vrai moteur
+  // ================================================================
+  // La variante a son propre moteur (js/troie-rules.js). On vérifie ici ce qui
+  // la définit — le choix de l'espion, les DEUX jeux de coups d'un joueur,
+  // l'espion qui ne met jamais en échec, la révélation qui change la couleur
+  // du cavalier — plus la seule chose que l'écran ne doit jamais faire :
+  // montrer l'espion de l'adversaire pendant la partie.
+  await step('Cheval de Troie : on n’infiltre que le camp d’en face, et une seule fois',async()=>{
+    const r=await page.evaluate(()=>{
+      const sq=s=>({r:8-(+s[1]),c:'abcdefgh'.indexOf(s[0])});
+      const st=troNewState();
+      const pose=(owner,c)=>troSetSpy(st,owner,sq(c).r,sq(c).c);
+      return{
+        adverse:pose('w','g8'),          // un cavalier noir : oui
+        sien:pose('b','b8'),             // son propre cavalier : non
+        pion:pose('b','e2'),             // pas un cavalier : non
+        deuxieme:pose('w','b8'),         // un second espion : non
+        ok:pose('b','b1'),
+      };
+    });
+    const attendu={adverse:true,sien:false,pion:false,deuxieme:false,ok:true};
+    for(const k of Object.keys(attendu))
+      if(r[k]!==attendu[k])throw new Error(k+' : '+r[k]+' au lieu de '+attendu[k]);
+  });
+
+  await step('Cheval de Troie : l’espion joue pour son camp, ne met pas en échec, et se révèle',async()=>{
+    const r=await page.evaluate(()=>{
+      const sq=s=>({r:8-(+s[1]),c:'abcdefgh'.indexOf(s[0])});
+      const st=troNewState();
+      troSetSpy(st,'w',sq('g8').r,sq('g8').c);   // les Blancs tiennent le cavalier g8
+      troSetSpy(st,'b',sq('b1').r,sq('b1').c);   // les Noirs tiennent le cavalier b1
+      troUpdateStatus(st);
+      const blancs=troLegalMoves(st,'w');
+      const sauts=blancs.filter(m=>m.reveal).map(m=>troSquare(m.to.r,m.to.c)).sort();
+      // g8 reste jouable par les NOIRS, qui ne savent rien : c'est le même
+      // cavalier dans deux listes de coups.
+      const parNoirs=troLegalMoves(st,'b')
+        .filter(m=>m.from.r===sq('g8').r&&m.from.c===sq('g8').c&&!m.reveal).length;
+      // On révèle g8 en f6 : le cavalier devient BLANC et donne échec (e8).
+      const mv=blancs.find(m=>m.reveal&&m.to.r===sq('f6').r&&m.to.c===sq('f6').c);
+      const tk=troMake(st,mv);troUpdateStatus(st);troRecord(st,mv,tk,'w','n');
+      const f6=st.board[sq('f6').r][sq('f6').c];
+      return{
+        coups:blancs.length,
+        sauts:sauts.join(','),
+        parNoirs,
+        couleur:f6?f6.color:'(vide)',
+        secret:f6?!!f6.spy:true,
+        echec:!!st.check,
+        texte:st.moves[0].text,
+      };
+    });
+    if(r.coups!==23)throw new Error(r.coups+' coups blancs au départ au lieu de 23 (20 + les 3 sauts de l’espion)');
+    if(r.sauts!=='e7,f6,h6')throw new Error('sauts de l’espion : '+r.sauts+' au lieu de e7,f6,h6');
+    if(!r.parNoirs)throw new Error('les Noirs ne peuvent plus jouer leur propre cavalier g8');
+    if(r.couleur!=='w')throw new Error('le cavalier révélé est '+r.couleur+' au lieu de blanc');
+    if(r.secret)throw new Error('le cavalier révélé porte encore son marquage d’espion');
+    if(!r.echec)throw new Error('le cavalier révélé en f6 ne donne pas échec');
+    if(!/⚑/.test(r.texte))throw new Error('le journal n’a pas marqué la révélation : '+r.texte);
+  });
+
+  // L'ESPION NE MET PAS EN ÉCHEC, isolé sur un plateau construit à la main :
+  // c'est la règle la plus facile à casser sans s'en apercevoir, puisqu'elle
+  // ne vit qu'à un seul endroit (troAttacked).
+  await step('Cheval de Troie : un espion non révélé n’attaque rien',async()=>{
+    const r=await page.evaluate(()=>{
+      const st=troNewState();
+      for(let r2=0;r2<8;r2++)for(let c=0;c<8;c++)st.board[r2][c]=null;
+      st.board[4][3]={t:'n',color:'w',id:'x',spy:'b'};   // d4, espion des Noirs
+      st.board[7][4]={t:'k',color:'w',id:'k1'};
+      st.board[2][4]={t:'k',color:'b',id:'k2'};          // e6, à portée du cavalier
+      const muet=troAttacked(st.board,2,4,'w')||troInCheck(st.board,'b');
+      st.board[4][3]={t:'n',color:'w',id:'x'};           // le même, révélé
+      const parlant=troAttacked(st.board,2,4,'w')&&troInCheck(st.board,'b');
+      return{muet,parlant};
+    });
+    if(r.muet)throw new Error('un espion non révélé met en échec');
+    if(!r.parlant)throw new Error('une fois révélé, le cavalier n’attaque plus rien');
+  });
+
+  await step('Cheval de Troie : sa carte ouvre son salon, et l’écran ne trahit pas l’espion adverse',async()=>{
+    await page.evaluate(()=>{
+      if(typeof renderVariantesPage==='function')renderVariantesPage();
+      const c=document.querySelector('#var-grid .var-card[data-variante="troie"]');
+      if(!c)throw new Error('aucune carte Cheval de Troie sur la page Variantes');
+      c.click();
+    });
+    await page.waitForTimeout(300);
+    const ouvert=await page.evaluate(()=>document.getElementById('tro-lobby').classList.contains('show'));
+    if(!ouvert)throw new Error('la carte Cheval de Troie n\'ouvre pas son salon');
+    await page.evaluate(()=>document.querySelector('#tro-lobby-body [data-level="apprenti"]').click());
+    await page.waitForTimeout(600);
+    // La fenêtre du choix s'ouvre par-dessus le plateau posé : deux cavaliers.
+    const choix=await page.evaluate(()=>({
+      page:!!document.querySelector('#page-troie.active'),
+      modal:document.getElementById('tro-spy').classList.contains('show'),
+      cartes:document.querySelectorAll('#tro-spy-row .tro-spy-btn').length,
+      pieces:document.querySelectorAll('#tro-board .gc-piece').length,
+    }));
+    if(!choix.page)throw new Error('la partie Cheval de Troie ne s\'est pas ouverte');
+    if(!choix.modal)throw new Error('la fenêtre du choix de l\'espion ne s\'ouvre pas');
+    if(choix.cartes!==2)throw new Error(choix.cartes+' cavaliers proposés au lieu de 2');
+    if(choix.pieces!==32)throw new Error(choix.pieces+' pièces au lieu de 32');
+    await page.evaluate(()=>document.querySelector('#tro-spy-row .tro-spy-btn').click());
+    await page.waitForTimeout(400);
+    // CE QUE L'ÉCRAN DOIT TAIRE. Le sien est marqué (il l'a choisi) ; celui de
+    // l'IA n'est marqué nulle part — ni classe, ni étiquette : ce qui est
+    // écrit dans le DOM se lit.
+    const secret=await page.evaluate(()=>{
+      const foe=troOpp(TRO.myColor);
+      const his=troFindSpy(TRO.st.board,foe);
+      const mine=troFindSpy(TRO.st.board,TRO.myColor);
+      const cell=his?document.querySelector('#tro-board .gc[data-r="'+his.r+'"][data-c="'+his.c+'"]'):null;
+      return{
+        ia:!!his,moi:!!mine,
+        marquesAdverse:document.querySelectorAll('#tro-board .tro-spy-w,#tro-board .tro-spy-b').length,
+        marquesSiennes:document.querySelectorAll('#tro-board .tro-mine').length,
+        etiquette:cell?cell.getAttribute('aria-label'):'',
+      };
+    });
+    if(!secret.ia)throw new Error('l\'IA n\'a pas choisi d\'espion');
+    if(!secret.moi)throw new Error('le choix du joueur n\'a pas été enregistré');
+    if(secret.marquesAdverse)throw new Error('un espion est peint en pleine partie : '+secret.marquesAdverse+' marque(s)');
+    if(secret.marquesSiennes!==1)throw new Error('votre propre espion n\'est pas marqué ('+secret.marquesSiennes+')');
+    if(/espion/.test(secret.etiquette))throw new Error('l\'étiquette trahit l\'espion adverse : '+secret.etiquette);
+  });
+
+  // ================================================================
+  // LE MODE ANALYSE DES VARIANTES (js/variant-analysis.js)
+  // ================================================================
+  // Revenir en arrière dans la partie, sur l'écran du Cheval de Troie ouvert
+  // au test précédent : deux coups joués, le ⏮ ramène à la position de
+  // départ, le plateau cesse de répondre, et le ⏭ rend la main.
+  await step('Mode analyse : on remonte la partie, et on ne joue pas depuis le passé',async()=>{
+    // Deux demi-coups pour avoir une histoire (le joueur, puis l'IA).
+    await page.evaluate(()=>{
+      const mv=troLegalMoves(TRO.st,TRO.myColor).find(m=>!m.reveal);
+      troPlayMove(mv);
+    });
+    await page.waitForTimeout(1600);
+    const avant=await page.evaluate(()=>({
+      photos:TRO.an.frames.length,
+      coups:TRO.st.moves.length,
+      lignes:document.querySelectorAll('#tro-log [data-ply]').length,
+    }));
+    if(avant.photos!==avant.coups+1)
+      throw new Error(avant.photos+' photos pour '+avant.coups+' demi-coups (il en faut un de plus)');
+    if(avant.lignes!==avant.coups)throw new Error('le journal montre '+avant.lignes+' coups cliquables sur '+avant.coups);
+    const passe=await page.evaluate(()=>{
+      document.querySelector('#tro-nav [data-van="first"]').click();
+      const depart=troNewState();
+      let identique=true;
+      for(let r=0;r<8;r++)for(let c=0;c<8;c++){
+        const a=vanBoard(TRO.an,TRO.st)[r][c],b=depart.board[r][c];
+        if(!!a!==!!b||(a&&(a.t!==b.t||a.color!==b.color)))identique=false;
+      }
+      return{
+        identique,
+        live:vanLive(TRO.an),
+        jouable:troPlayable(),
+        texte:document.getElementById('tro-nav-pos').textContent,
+        statut:document.getElementById('tro-status').className,
+      };
+    });
+    if(!passe.identique)throw new Error('⏮ ne rend pas la position de départ');
+    if(passe.live)throw new Error('⏮ n\'a pas fait sortir du direct');
+    if(passe.jouable)throw new Error('on peut encore jouer depuis une position passée');
+    if(!/Début de la partie/.test(passe.texte))throw new Error('le bandeau dit « '+passe.texte+' »');
+    if(!/van-mode/.test(passe.statut))throw new Error('le statut ne dit pas qu\'on analyse');
+    const retour=await page.evaluate(()=>{
+      document.querySelector('#tro-nav [data-van="last"]').click();
+      return{live:vanLive(TRO.an),jouable:troPlayable(),
+             texte:document.getElementById('tro-nav-pos').textContent};
+    });
+    if(!retour.live)throw new Error('⏭ ne ramène pas au direct');
+    if(!retour.jouable)throw new Error('le plateau ne répond pas une fois revenu au direct');
+    if(!/Position actuelle/.test(retour.texte))throw new Error('le bandeau dit « '+retour.texte+' » au retour');
+    // Toucher un coup du journal saute à sa position : c'est la façon la plus
+    // directe de revenir en arrière, et c'est celle qu'on utilise.
+    const saut=await page.evaluate(()=>{
+      document.querySelector('#tro-log [data-ply="1"]').click();
+      return{idx:vanIndex(TRO.an),marques:document.querySelectorAll('#tro-log .van-at').length};
+    });
+    if(saut.idx!==1)throw new Error('le clic sur le premier coup mène à la photo '+saut.idx);
+    if(saut.marques!==1)throw new Error(saut.marques+' coup(s) marqué(s) dans le journal au lieu d\'un seul');
+    await page.evaluate(()=>{TRO.st.gameOver=true;if(typeof goToMainMenu==='function')goToMainMenu();});
+    await page.waitForTimeout(400);
+  });
+
   await browser.close();
   server.close();
 

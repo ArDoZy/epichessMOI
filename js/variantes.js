@@ -5,12 +5,15 @@
 // js/pages-nav.js). Elle répond à la seule question que l'écran de combat ne
 // répond pas : « est-ce qu'on joue toujours à la même chose ? »
 //
-// DEUX VARIANTES, ET LES DEUX SE JOUENT. La Chute des Royaumes est une partie
+// TROIS VARIANTES, ET LES TROIS SE JOUENT. Board Quake est une partie
 // d'échecs ordinaire où, après chaque coup, les quatre rangées centrales
 // glissent d'une case vers la droite (voir js/fok-rules.js) ; Mirror Chess en
 // est une autre, où chaque pièce est jumelée à sa symétrique et où bouger
 // l'une fait bouger l'autre en miroir — sauf au coup d'ouverture de chaque
-// camp, qui part seul (voir js/mirror-rules.js).
+// camp, qui part seul (voir js/mirror-rules.js) ; le Cheval de Troie en est
+// une troisième, où chacun a choisi avant le premier coup un cavalier adverse
+// pour être son espion, et où l'autre ne sait pas lequel (voir
+// js/troie-rules.js).
 //
 // CE QUI N'EST PAS LÀ N'EST PAS ANNONCÉ. La page portait six autres cartes :
 // le duel classique — qui n'est pas une variante, c'est LA partie, celle que
@@ -27,8 +30,9 @@
 // ailleurs.
 //
 // Dépendances : pages-nav.js (appel du rendu), fok-game.js (fokOpenLobby,
-// pour la Chute des Royaumes), mirror-game.js (mirOpenLobby, pour Mirror
-// Chess), main.js (escH).
+// pour Board Quake), mirror-game.js (mirOpenLobby, pour Mirror
+// Chess), troie-game.js (troOpenLobby, pour le Cheval de Troie),
+// main.js (escH).
 // ================================================================
 
 // Les variantes. Elles sont toutes jouables : une carte qui ne mène nulle
@@ -36,13 +40,17 @@
 // ouvre le salon de chacune — c'est tout ce qui les distingue à ce niveau.
 const VARIANTES=[
   {id:'fok', lobby:'fokOpenLobby',
-   nom:'Chute des Royaumes',
+   nom:'Board Quake',
    tag:'Libre',
    txt:'Les échecs ordinaires, seize pièces sur leurs cases — sauf qu\'après chaque coup, les quatre rangées centrales glissent d\'une case vers la droite. Rien n\'est misé, rien n\'est classé.'},
   {id:'mirror', lobby:'mirOpenLobby',
    nom:'Mirror Chess',
    tag:'Libre',
    txt:'Les échecs ordinaires, mais chaque pièce est jumelée à sa symétrique — le Roi à la Dame, les tours entre elles, les pions deux à deux. Bouger l\'une fait bouger l\'autre, en miroir et du même nombre de cases. Seul le coup d\'ouverture de chaque camp part seul.'},
+  {id:'troie', lobby:'troOpenLobby',
+   nom:'Cheval de Troie',
+   tag:'Libre',
+   txt:'Avant le premier coup, chacun choisit un des deux cavaliers adverses pour être son espion — et l\'autre ne sait pas lequel. Il sert en face, sans jamais donner échec, jusqu\'au jour où vous le jouez : il change alors de camp pour de bon.'},
 ];
 
 function varianteCardHTML(v){

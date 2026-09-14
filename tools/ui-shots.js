@@ -200,6 +200,21 @@ const SCREENS=[
                                        aiArmyData=generateAIArmy(20,{});
                                        showPage('page-game');startGame(false,false,null);});
                                      await p.waitForTimeout(3000);}},
+  // LES DEUX ÉCRANS DU CHEVAL DE TROIE : la partie, puis le MODE ANALYSE avec
+  // ses espions peints (marron et bleu clair). C'est la seule planche où l'on
+  // voit ces deux couleurs — et donc le seul endroit où l'on verrait qu'elles
+  // se confondent avec le plateau.
+  {name:'14-troie',     go:async p=>{await p.evaluate(()=>{
+                                       troStartGame({level:'apprenti',myColor:'w',oppName:'Apprenti'});
+                                       const k=troSpyChoices(TRO.st.board,'w')[0];
+                                       troChooseSpy(k.r,k.c);});
+                                     await p.waitForTimeout(900);}},
+  {name:'15-troie-analyse',go:async p=>{await p.evaluate(()=>{
+                                       // On force la fin de partie : c'est elle qui autorise
+                                       // l'écran à montrer AUSSI l'espion adverse.
+                                       TRO.st.gameOver=true;TRO.st.result='w';TRO.st.reason='mat';
+                                       troOpenAnalysis();});
+                                     await p.waitForTimeout(600);}},
   {name:'13-journaliere',go:async p=>{await p.evaluate(()=>{goToMainMenu();});await p.waitForTimeout(600);
                                      await p.click('#jouer-daily').catch(()=>{});await p.waitForTimeout(500);}},
 ];

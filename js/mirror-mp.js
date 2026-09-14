@@ -26,7 +26,7 @@
 // même des deux côtés. Sans cela, les deux joueurs peuvent se retrouver de la
 // même couleur, chacun persuadé que l'autre a l'autre, et la partie ne peut
 // plus être jouée — les deux attendent le coup de l'adversaire, ou les deux
-// jouent les mêmes pièces. Même protocole que la Chute des Royaumes
+// jouent les mêmes pièces. Même protocole que Board Quake
 // (js/fok-mp.js).
 //
 // RATTRAPAGE. Chaque camp garde le journal ordonné des coups. Un coup qui

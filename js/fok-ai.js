@@ -1,5 +1,5 @@
 // ================================================================
-// FOK-AI.JS : l'adversaire de la « Chute des Royaumes »
+// FOK-AI.JS : l'adversaire de « Board Quake »
 // ================================================================
 // Une recherche alpha-bêta ordinaire — négamax, approfondissement itératif,
 // quiescence sur les prises — posée sur le moteur de la variante
