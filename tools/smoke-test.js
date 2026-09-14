@@ -3961,49 +3961,44 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
   });
 
   // ================================================================
-  // L'ARBITRE DU CHEVAL DE TROIE (supabase/schema.sql, js/troie-mp.js)
+  // LE SCEAU DU CHEVAL DE TROIE (js/troie-mp.js)
   // ================================================================
-  // LE SERVEUR NE SAIT PAS JOUER AUX ÉCHECS, et il n'a pas à l'apprendre : il
-  // détient les deux chevaux SCELLÉS et tranche la seule question que les deux
-  // clients ne peuvent pas trancher — « la pièce que ce joueur invoque est-elle
-  // bien celle qu'il a scellée ? ». On l'exerce ici à travers ecRpc, donc par
-  // le même chemin que le jeu, dans le bac à sable `?mock` (js/server.js), qui
-  // rejoue les mêmes réponses que les fonctions SQL.
-  await step('Arbitre du Cheval de Troie : on scelle une fois, et rien ne fuite',async()=>{
+  // PROUVER SON CHEVAL SANS LE MONTRER, et sans rien demander à personne : au
+  // coup d'envoi chacun publie l'empreinte SHA-256 de « salon | pièce | aléa »,
+  // et le coup qui repose sur le secret emporte sa preuve (la pièce et l'aléa).
+  // On exerce ici le calcul lui-même — c'est WebCrypto, donc c'est le vrai
+  // navigateur qui répond — puis la tricherie qu'il ferme.
+  await step('Sceau du Cheval de Troie : l’empreinte engage sans rien dire',async()=>{
     const r=await page.evaluate(async()=>{
-      const code='smoke-'+Date.now();
-      const out={};
-      out.scelle=(await ecRpc('ec_troie_seal',{p_code:code,p_player:'A',p_piece:'p1'})).ok;
-      out.rejeu=(await ecRpc('ec_troie_seal',{p_code:code,p_player:'A',p_piece:'p1'})).ok;
-      out.change=(await ecRpc('ec_troie_seal',{p_code:code,p_player:'A',p_piece:'p6'})).ok;
-      // SONDER SANS RÉCLAMATION N'APPREND RIEN : c'est « non » pour les deux
-      // cavaliers, donc autant ne pas demander.
-      out.sondeVraie=(await ecRpc('ec_troie_verify',{p_code:code,p_player:'A',p_piece:'p1',p_ply:3})).ok;
-      out.sondeFausse=(await ecRpc('ec_troie_verify',{p_code:code,p_player:'A',p_piece:'p6',p_ply:3})).ok;
-      // Une réclamation mensongère ne laisse aucune trace.
-      out.reclameFausse=(await ecRpc('ec_troie_claim',{p_code:code,p_player:'A',p_piece:'p6',p_ply:3})).ok;
-      out.apresFausse=(await ecRpc('ec_troie_verify',{p_code:code,p_player:'A',p_piece:'p6',p_ply:3})).ok;
-      // La vraie, elle, se vérifie — pour cette pièce et ce demi-coup.
-      out.reclameVraie=(await ecRpc('ec_troie_claim',{p_code:code,p_player:'A',p_piece:'p1',p_ply:3})).ok;
-      out.verifie=(await ecRpc('ec_troie_verify',{p_code:code,p_player:'A',p_piece:'p1',p_ply:3})).ok;
-      out.autrePly=(await ecRpc('ec_troie_verify',{p_code:code,p_player:'A',p_piece:'p1',p_ply:4})).ok;
-      out.autrePiece=(await ecRpc('ec_troie_verify',{p_code:code,p_player:'A',p_piece:'p2',p_ply:3})).ok;
-      out.sansSceau=(await ecRpc('ec_troie_claim',{p_code:code,p_player:'Z',p_piece:'p1',p_ply:1})).ok;
-      return out;
+      // Les mêmes fonctions que celles du jeu : elles vivent dans TMP
+      // (js/troie-mp.js), qui est chargé sur la page.
+      TMP.code='ZZZZ';
+      const nonce=troMpNonce();
+      const seal=await troMpDigest(troMpSealText('p12',nonce));
+      const memeEntree=await troMpDigest(troMpSealText('p12',nonce));
+      const autrePiece=await troMpDigest(troMpSealText('p25',nonce));
+      const autreAlea=await troMpDigest(troMpSealText('p12',troMpNonce()));
+      TMP.code='YYYY';
+      const autreSalon=await troMpDigest(troMpSealText('p12',nonce));
+      TMP.code=null;
+      return{seal,longueur:(seal||'').length,alea:nonce.length,
+             stable:seal===memeEntree,piece:seal===autrePiece,
+             sel:seal===autreAlea,salon:seal===autreSalon};
     });
-    const attendu={scelle:true,rejeu:true,change:false,sondeVraie:false,sondeFausse:false,
-      reclameFausse:false,apresFausse:false,reclameVraie:true,verifie:true,
-      autrePly:false,autrePiece:false,sansSceau:false};
-    for(const k of Object.keys(attendu))
-      if(r[k]!==attendu[k])throw new Error(k+' : '+r[k]+' au lieu de '+attendu[k]);
+    if(!r.seal)throw new Error('pas d’empreinte : WebCrypto n’a pas répondu');
+    if(r.longueur!==64)throw new Error('empreinte de '+r.longueur+' caractères au lieu de 64 (SHA-256)');
+    if(r.alea<32)throw new Error('l’aléa ne fait que '+r.alea+' caractères : le sceau se devinerait');
+    if(!r.stable)throw new Error('deux calculs de la même empreinte ne donnent pas la même chose');
+    if(r.piece)throw new Error('deux pièces différentes donnent la même empreinte');
+    if(r.sel)throw new Error('deux aléas différents donnent la même empreinte');
+    if(r.salon)throw new Error('un sceau d’une partie vaut dans une autre');
   });
 
-  // LA TRICHERIE QUE L'ARBITRE FERME, jouée pour de bon sur un plateau. Sans
+  // LA TRICHERIE QUE LE SCEAU FERME, jouée pour de bon sur un plateau. Sans
   // lui, ce coup passait — c'était la dernière faille connue de la variante en
-  // ligne, et elle est nommée dans l'en-tête de js/troie-rules.js.
-  await step('Arbitre du Cheval de Troie : un coup qui invoque un cheval qu’on n’a pas est refusé',async()=>{
+  // ligne.
+  await step('Sceau du Cheval de Troie : un coup qui invoque un cheval qu’on n’a pas est refusé',async()=>{
     const r=await page.evaluate(async()=>{
-      const code='triche-'+Date.now();
       const pose=()=>{
         const st=troNewState();
         for(let r2=0;r2<8;r2++)for(let c=0;c<8;c++)st.board[r2][c]=null;
@@ -4015,42 +4010,54 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
         st.turn='w';
         return st;
       };
+      // Le joueur blanc scelle son VRAI cheval : Cg3.
+      TMP.code='TRICHE';
+      const nonce=troMpNonce();
+      const seal=await troMpDigest(troMpSealText('nb2',nonce));
+      // L'adversaire n'a que l'empreinte.
+      TMP.oppSeal=seal;
       const A=pose(),B=pose();
-      A.board[5][6]={t:'n',color:'b',id:'nb2',spy:'w'};   // son VRAI cheval
-      await ecRpc('ec_troie_seal',{p_code:code,p_player:'W',p_piece:'nb2'});
+      A.board[5][6]={t:'n',color:'b',id:'nb2',spy:'w'};
       troUpdateStatus(A);troUpdateStatus(B);
       // Th1–g1 : illégal (le roi reste en échec de Cd3), sauf si Cd3 était son
-      // espion. Il ne peut pas le réclamer.
-      const menteur=(await ecRpc('ec_troie_claim',{p_code:code,p_player:'W',p_piece:'nb',p_ply:A.ply})).ok;
+      // espion. Il l'annonce donc — avec la seule preuve qu'il possède.
       const pk={fr:7,fc:7,tr:7,tc:6,promo:null,castle:null,reveal:null};
       const opts=troRemoteOptions(B,pk,'w','b');
-      let passe=false;
-      for(const o of opts)
-        if((await ecRpc('ec_troie_verify',{p_code:code,p_player:'W',p_piece:o.pieceId,p_ply:B.ply})).ok)passe=true;
-      // Et le coup HONNÊTE du même joueur, lui, passe : son vrai cheval est
+      const essaie=async proof=>{
+        TMP.incoming=proof;
+        for(const o of opts)if(await troMpVerify(o.pieceId)===true)return true;
+        return false;
+      };
+      const menteur=await essaie({piece:'nb',nonce:nonce});      // la mauvaise pièce
+      const bricole=await essaie({piece:'nb',nonce:troMpNonce()}); // un aléa inventé
+      // Et le coup HONNÊTE du même joueur passe : son vrai cheval est bien
       // celui qui semblait clouer son roi.
+      TMP.code='HONNETE';
+      const nonce2=troMpNonce();
+      TMP.oppSeal=await troMpDigest(troMpSealText('nb',nonce2));
       const C=pose(),D=pose();
       C.board[5][3]={t:'n',color:'b',id:'nb',spy:'w'};
-      const code2='honnete-'+Date.now();
-      await ecRpc('ec_troie_seal',{p_code:code2,p_player:'W',p_piece:'nb'});
       troUpdateStatus(C);troUpdateStatus(D);
       const mv=troLegalMoves(C,'w').find(m=>m.from.r===7&&m.from.c===7&&m.to.r===7&&m.to.c===6);
       const besoin=troNeedsClaim(C,mv,'w');
-      await ecRpc('ec_troie_claim',{p_code:code2,p_player:'W',p_piece:'nb',p_ply:C.ply});
       const opts2=troRemoteOptions(D,troPackMove(mv),'w','b');
+      TMP.incoming={piece:'nb',nonce:nonce2};
       let honnete=false;
-      for(const o of opts2)
-        if((await ecRpc('ec_troie_verify',{p_code:code2,p_player:'W',p_piece:o.pieceId,p_ply:D.ply})).ok){
-          troAdoptOption(D,o,'w');honnete=true;break;
-        }
-      return{menteur,hypotheses:opts.length,passe,besoin,honnete,appris:!!troFindSpy(D.board,'w')};
+      for(const o of opts2)if(await troMpVerify(o.pieceId)===true){troAdoptOption(D,o,'w');honnete=true;break;}
+      // Sans sceau du tout, on ne sait pas : `null`, et non `false`.
+      TMP.oppSeal=null;TMP.incoming=null;
+      const sansSceau=await troMpVerify('nb');
+      TMP.code=null;
+      return{hypotheses:opts.length,menteur,bricole,besoin,honnete,
+             appris:!!troFindSpy(D.board,'w'),sansSceau};
     });
-    if(r.menteur)throw new Error('l’arbitre a accepté une réclamation mensongère');
     if(!r.hypotheses)throw new Error('le cas n’est plus couvert : ce coup n’a plus besoin d’hypothèse');
-    if(r.passe)throw new Error('le coup du tricheur passe malgré l’arbitre');
+    if(r.menteur)throw new Error('une preuve portant sur une autre pièce est acceptée');
+    if(r.bricole)throw new Error('une preuve à l’aléa inventé est acceptée');
     if(!r.besoin)throw new Error('le coup honnête ne demande plus de preuve : le cas n’est plus couvert');
-    if(!r.honnete)throw new Error('l’arbitre refuse un coup honnête');
-    if(!r.appris)throw new Error('l’hypothèse confirmée n’est pas retenue');
+    if(!r.honnete)throw new Error('le sceau refuse un coup honnête');
+    if(!r.appris)throw new Error('l’hypothèse prouvée n’est pas retenue');
+    if(r.sansSceau!==null)throw new Error('sans sceau, la réponse devrait être « je ne sais pas » et non '+r.sansSceau);
   });
 
   // ================================================================

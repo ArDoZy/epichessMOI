@@ -252,9 +252,10 @@ navigation. Elle en porte trois, et les trois sont jouables :
   sont conservés. Elle se joue **contre l'ordinateur** (quatre niveaux) ou
   **contre un autre joueur** (partie rapide ou partie privée par code). En
   ligne, **chacun choisit son espion sur son propre appareil et le choix ne
-  traverse jamais le réseau** : l'adversaire ne l'apprend que si on le joue. Le
-  serveur en garde une empreinte scellée, que personne ne peut lire, et qui lui
-  permet de refuser un joueur qui invoquerait un espion qu'il n'a pas.
+  traverse jamais le réseau** : l'adversaire ne l'apprend que si on le joue. Chaque
+  camp publie au départ une **empreinte** de son choix, qui ne le révèle pas
+  mais l'engage : un joueur qui invoquerait un espion qu'il n'a pas ne peut pas
+  en fournir la preuve, et son coup est refusé.
   Elle ne met aucune pièce en jeu et ne compte pas pour le classement.
 
 Les trois variantes ont un **mode analyse** : le panneau « Historique » permet

@@ -477,15 +477,6 @@ function ecMockLoad(){
   catch(e){return{players:{}};}
 }
 function ecMockSave(db){try{localStorage.setItem(EC_MOCK_DB,JSON.stringify(db));}catch(e){}}
-// Le sceau d'un joueur dans une partie, créé à la volée. Le bac à sable vit
-// dans le localStorage de CE navigateur : les deux camps d'une partie arbitrée
-// n'y coexistent que le temps d'un test.
-function ecMockTroie(db,code,player){
-  if(!db.troie)db.troie={};
-  const k=String(code)+'/'+String(player);
-  if(!db.troie[k])db.troie[k]={piece:null,claim_piece:null,claim_ply:null,claimed_at:0};
-  return db.troie[k];
-}
 function ecMockKey(n){return String(n||'').trim().replace(/\s+/g,' ').toLowerCase();}
 function ecMockFail(msg,code){const e=new Error(msg);e.code=code||'P0001';return Promise.reject(e);}
 function ecMockNameError(n){
@@ -635,32 +626,6 @@ function ecMockRpc(fn,args){
         .map(x=>({id:x.id,username:x.username,elo:x.elo,elo_peak:x.elo_peak,
                   ranked_games:x.ranked_games,ranked_wins:x.ranked_wins,
                   online:ecMockOnline(x)})));
-    }
-    // L'ARBITRE DU CHEVAL DE TROIE, en bac à sable. Mêmes réponses que les
-    // fonctions SQL du même nom (supabase/schema.sql) : sceller une fois,
-    // ne jamais rendre la pièce scellée, et ne confirmer une pièce à
-    // l'adversaire QUE si son propriétaire vient de la réclamer. C'est ce qui
-    // permet au test de fumée de jouer une partie arbitrée — et une partie
-    // trichée — sans projet Supabase.
-    case 'ec_troie_seal':{
-      const g=ecMockTroie(db,a.p_code,a.p_player);
-      if(!g.piece){g.piece=a.p_piece;ecMockSave(db);return Promise.resolve({ok:true,sealed:true});}
-      return Promise.resolve({ok:g.piece===a.p_piece,sealed:true});
-    }
-    case 'ec_troie_claim':{
-      const g=ecMockTroie(db,a.p_code,a.p_player);
-      if(!g.piece)return Promise.resolve({ok:false,reason:'unsealed'});
-      if(g.piece!==a.p_piece)return Promise.resolve({ok:false,reason:'mismatch'});
-      g.claim_piece=a.p_piece;g.claim_ply=a.p_ply;g.claimed_at=Date.now();
-      ecMockSave(db);
-      return Promise.resolve({ok:true});
-    }
-    case 'ec_troie_verify':{
-      const g=ecMockTroie(db,a.p_code,a.p_player);
-      const ok=!!g.claim_piece&&g.claim_piece===a.p_piece&&
-        (a.p_ply===null||a.p_ply===undefined||g.claim_ply===a.p_ply)&&
-        (Date.now()-(g.claimed_at||0))<90000;
-      return Promise.resolve({ok});
     }
     case 'ec_profile':{
       const found=a.p_id?db.players[a.p_id]

@@ -45,6 +45,9 @@
 //   · troResolveRemote — un coup reçu peut paraître illégal parce qu'il
 //     dépend de l'espion d'en face, qu'on ne connaît pas. On essaie alors les
 //     hypothèses, sans en garder aucune ;
+//   · troJudge — les hypothèses sont soumises à la PREUVE qui accompagne le
+//     coup (le sceau, js/troie-mp.js) ; sans preuve vérifiable, on retombe sur
+//     la parole donnée ;
 //   · troVerdict / troApplyVerdict — ON NE JUGE PAS LA POSITION DE
 //     L'ADVERSAIRE. Échec, mat et pat du camp au trait sont calculés par le
 //     client de CE camp-là, seul à savoir ce qu'il faut savoir, et annoncés à
@@ -77,8 +80,8 @@ const TRO={
   awaiting:false,         // on attend son verdict sur le coup qu'on vient de jouer
   onLocalMove:null,       // branché par troie-mp.js : émet le coup sur le réseau
   onReady:null,           // branché par troie-mp.js : « j'ai choisi mon espion »
-  onClaim:null,           // branché par troie-mp.js : prouver son cheval à l'arbitre
-  onVerify:null,          // branché par troie-mp.js : faire vérifier le sien
+  onClaim:null,           // branché par troie-mp.js : préparer la preuve de son cheval
+  onVerify:null,          // branché par troie-mp.js : vérifier la preuve reçue
   onVerdict:null,         // branché par troie-mp.js : l'état de NOTRE camp
   onEnd:null,             // branché par troie-mp.js : prévient l'adversaire
   an:null,                // le mode analyse (js/variant-analysis.js)
@@ -481,13 +484,14 @@ function troKey(e,r,c,vi,vc){
 // second déplacement à montrer. Ce qu'il y a à voir — le cavalier qui change
 // de couleur sur sa case d'arrivée — est déjà porté par le morphing de la
 // pièce (troSyncPieces).
-// LE COUP QUI REPOSE SUR LE SECRET PASSE D'ABORD PAR L'ARBITRE. Une
-// révélation, ou un coup qui n'est légal que parce qu'un cavalier d'en face
-// est notre espion (troNeedsClaim) : l'adversaire ne pourra pas le comprendre
-// tout seul, et le serveur est le seul à pouvoir lui confirmer qu'on ne ment
-// pas (ec_troie_claim, supabase/schema.sql). On réclame AVANT d'envoyer : si
-// la réclamation échoue, on joue quand même — l'arbitre est un renfort, pas
-// une condition d'existence de la partie (voir troMpArbiterDown).
+// LE COUP QUI REPOSE SUR LE SECRET EMPORTE SA PREUVE. Une révélation, ou un
+// coup qui n'est légal que parce qu'un cavalier d'en face est notre espion
+// (troNeedsClaim) : l'adversaire ne pourra pas le comprendre tout seul, et il
+// n'a aucune raison de nous croire sur parole. On prépare donc la preuve AVANT
+// d'envoyer — la pièce et l'aléa qui ouvrent l'empreinte publiée au coup
+// d'envoi (troMpClaim, js/troie-mp.js) —, et elle part collée au coup. Si le
+// sceau n'est pas disponible, on joue quand même : c'est un renfort, pas une
+// condition d'existence de la partie (voir troMpSealDown).
 function troSendWithClaim(mv){
   const st=TRO.st;
   if(TRO.mode!=='online'||!TRO.onClaim||!troNeedsClaim(st,mv,TRO.myColor)){
@@ -598,7 +602,8 @@ function troApplyVerdict(v){
 // l'adversaire. Mais ici la vérification doit composer avec ce qu'on IGNORE,
 // et c'est tout le sel de troResolveRemote.
 // Elle rend une PROMESSE : quand le coup reçu repose sur son espion, il faut
-// demander à l'arbitre, et l'arbitre est au bout du réseau.
+// vérifier la preuve qui l'accompagne, et une empreinte se calcule de façon
+// asynchrone (WebCrypto).
 function troRemoteMove(pk){
   const st=TRO.st;
   if(!st||st.gameOver)return Promise.resolve(false);
@@ -615,17 +620,16 @@ function troRemoteMove(pk){
   return troJudge(opts,side);
 }
 
-// LES HYPOTHÈSES, SOUMISES À L'ARBITRE, UNE PAR UNE. Il ne répond « oui » que
-// pour la pièce que l'adversaire vient de réclamer : une seule hypothèse peut
-// donc être confirmée, et une invention n'en obtient aucune. Quand l'arbitre
-// est absent — hors ligne, serveur injoignable, multijoueur non configuré —,
-// on retombe sur la parole donnée : la première hypothèse qui tient, ce qui
-// était le seul comportement possible avant lui.
+// LES HYPOTHÈSES, SOUMISES À LA PREUVE, UNE PAR UNE. Elle n'ouvre l'empreinte
+// que pour UNE pièce — celle que l'adversaire a scellée au coup d'envoi —,
+// donc une seule hypothèse peut être confirmée, et une invention n'en obtient
+// aucune. Quand il n'y a pas de sceau — navigateur sans WebCrypto, adversaire
+// d'une version plus ancienne —, on retombe sur la parole donnée : la première
+// hypothèse qui tient, ce qui était le seul comportement possible avant lui.
 function troJudge(opts,side){
   const st=TRO.st;
-  // LE DEMI-COUP NE VOYAGE PAS : les deux camps sont au même `ply` avant le
-  // coup, et c'est celui-là que l'arbitre a enregistré. Un numéro transmis
-  // serait un numéro qu'on peut écrire soi-même.
+  // Le demi-coup, pour mémoire : la preuve, elle, vaut par son empreinte et
+  // n'a pas besoin d'être datée.
   const ply=st.ply;
   if(!TRO.onVerify){
     troPlayMove(opts[0].mv,false);
@@ -636,12 +640,12 @@ function troJudge(opts,side){
     if(i>=opts.length)return Promise.resolve(false);
     const opt=opts[i++];
     return Promise.resolve(TRO.onVerify(opt.pieceId,ply)).catch(()=>null).then(ok=>{
-      if(ok===null){                       // l'arbitre n'a pas répondu du tout
+      if(ok===null){                       // rien à vérifier, et rien pour le faire
         troPlayMove(opts[0].mv,false);
         return true;
       }
       if(!ok)return suivant();
-      // CONFIRMÉ : ce cavalier EST son espion, et on a le droit de le savoir —
+      // PROUVÉ : ce cavalier EST son espion, et on a le droit de le savoir —
       // c'est son propre coup qui vient de nous le dire. On garde donc la
       // marque, et le moteur devient exact pour la suite de la partie.
       troAdoptOption(st,opt,side);
