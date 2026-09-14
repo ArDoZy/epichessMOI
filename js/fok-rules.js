@@ -1,5 +1,5 @@
 // ================================================================
-// FOK-RULES.JS : « Chute des Royaumes », le moteur de règles
+// FOK-RULES.JS : « Board Quake », le moteur de règles
 // ================================================================
 // La variante tient en une phrase : ON JOUE AUX ÉCHECS ORDINAIRES, MAIS
 // APRÈS CHAQUE COUP — le sien comme celui de l'adversaire — TOUTES LES

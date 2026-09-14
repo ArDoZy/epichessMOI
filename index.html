@@ -863,9 +863,9 @@
       </div>
     </div>
     <!-- LES VARIANTES, entre COMBAT et la Guerre des clans. Elle annonce les
-         règles alternatives du laboratoire : le duel classique (celui que
-         lance COMBAT) et les cinq formules en préparation. Rendue par
-         renderVariantesPage() (js/variantes.js) à l'arrivée sur la page. -->
+         trois variantes jouables : Board Quake, Mirror Chess et le Cheval de
+         Troie. Rendue par renderVariantesPage() (js/variantes.js) à l'arrivée
+         sur la page. -->
     <div class="nav-page" data-page="variantes">
       <div class="page-viewport" id="page-viewport-variantes">
         <div class="var-wrap">
@@ -1476,7 +1476,7 @@
 </div>
 
 <!-- ================================================================
-     CHUTE DES ROYAUMES (variante) — js/fok-game.js
+     BOARD QUAKE (variante) — js/fok-game.js
      ================================================================
      LE MÊME ÉCRAN QUE LA PARTIE ORDINAIRE, aux identifiants près : les
      classes sont exactement celles de #page-game (.game-wrap, .game-main,
@@ -1536,10 +1536,21 @@
             <button class="gpanel-close" data-fok-close aria-label="Fermer le journal">✕</button>
           </div>
           <div class="move-log" id="fok-log"></div>
+          <!-- REVENIR EN ARRIÈRE DANS LA PARTIE (js/variant-analysis.js) :
+               les quatre commandes du mode analyse, plus la position
+               regardée en toutes lettres. Toucher un coup du journal saute
+               directement à sa position. -->
+          <div class="van-nav" id="fok-nav" role="group" aria-label="Naviguer dans la partie">
+            <button type="button" class="van-btn" data-van="first" title="Début de la partie" aria-label="Début de la partie">⏮</button>
+            <button type="button" class="van-btn" data-van="prev" title="Coup précédent" aria-label="Coup précédent">◀</button>
+            <div class="van-pos" id="fok-nav-pos" aria-live="polite">Position actuelle</div>
+            <button type="button" class="van-btn" data-van="next" title="Coup suivant" aria-label="Coup suivant">▶</button>
+            <button type="button" class="van-btn" data-van="last" title="Revenir à la partie" aria-label="Revenir à la partie">⏭</button>
+          </div>
         </section>
         <section class="game-panel" id="fok-panel-regle" hidden aria-label="La règle de la variante">
           <div class="gpanel-head">
-            <div class="gpanel-title">Chute des Royaumes</div>
+            <div class="gpanel-title">Board Quake</div>
             <button class="gpanel-close" data-fok-close aria-label="Fermer">✕</button>
           </div>
           <div class="move-log fok-regle">
@@ -1558,10 +1569,10 @@
 </div>
 
 <!-- Le salon de la variante : choix de l'adversaire (IA ou joueur en ligne).
-     Ouvert par la carte « Chute des Royaumes » de la page Variantes. -->
+     Ouvert par la carte « Board Quake » de la page Variantes. -->
 <div class="confirm-modal" id="fok-lobby">
   <div class="confirm-box fok-lobby-box">
-    <div class="fok-lobby-title">Chute des Royaumes</div>
+    <div class="fok-lobby-title">Board Quake</div>
     <div class="fok-lobby-sub">Après chaque coup, les quatre rangées centrales glissent d'une case vers la droite.</div>
     <div id="fok-lobby-body"></div>
     <button class="btn btn-ghost" id="fok-lobby-close" style="width:100%;margin-top:14px">Fermer</button>
@@ -1634,6 +1645,17 @@
             <button class="gpanel-close" data-mir-close aria-label="Fermer le journal">✕</button>
           </div>
           <div class="move-log" id="mir-log"></div>
+          <!-- REVENIR EN ARRIÈRE DANS LA PARTIE (js/variant-analysis.js) :
+               les quatre commandes du mode analyse, plus la position
+               regardée en toutes lettres. Toucher un coup du journal saute
+               directement à sa position. -->
+          <div class="van-nav" id="mir-nav" role="group" aria-label="Naviguer dans la partie">
+            <button type="button" class="van-btn" data-van="first" title="Début de la partie" aria-label="Début de la partie">⏮</button>
+            <button type="button" class="van-btn" data-van="prev" title="Coup précédent" aria-label="Coup précédent">◀</button>
+            <div class="van-pos" id="mir-nav-pos" aria-live="polite">Position actuelle</div>
+            <button type="button" class="van-btn" data-van="next" title="Coup suivant" aria-label="Coup suivant">▶</button>
+            <button type="button" class="van-btn" data-van="last" title="Revenir à la partie" aria-label="Revenir à la partie">⏭</button>
+          </div>
         </section>
         <section class="game-panel" id="mir-panel-regle" hidden aria-label="La règle de la variante">
           <div class="gpanel-head">
@@ -1687,6 +1709,127 @@
     <div class="fok-res-title" id="mir-res-title"></div>
     <div class="fok-res-sub" id="mir-res-sub"></div>
     <div class="fok-res-btns" id="mir-res-btns"></div>
+  </div>
+</div>
+
+<!-- LE CHEVAL DE TROIE (js/troie-game.js) : les mêmes classes que la partie
+     ordinaire, donc la même mise en page — seuls les identifiants changent. -->
+<div id="page-troie" class="page">
+  <div class="game-wrap">
+    <div class="game-main">
+      <div class="board-frame">
+        <div class="game-board-outer">
+          <div class="game-board-col">
+            <div class="game-board" id="tro-board"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <aside class="game-side">
+      <div class="gp-bar" id="tro-opp-bar">
+        <div class="gp-av" id="tro-opp-av">?</div>
+        <div class="gp-id">
+          <div class="gp-name" id="tro-opp-name">Adversaire</div>
+          <div class="gp-elo" id="tro-opp-sub"></div>
+        </div>
+        <div class="gp-taken" id="tro-cap-opp"></div>
+      </div>
+      <div class="gp-bar" id="tro-me-bar">
+        <div class="gp-av" id="tro-me-av">?</div>
+        <div class="gp-id">
+          <div class="gp-name" id="tro-me-name">Joueur</div>
+          <div class="gp-elo" id="tro-me-sub"></div>
+        </div>
+        <div class="gp-taken" id="tro-cap-me"></div>
+      </div>
+      <div class="status-bar" id="tro-status" role="status" aria-live="polite" aria-atomic="true">En attente...</div>
+      <div class="game-under" id="tro-under">
+        <div class="game-tools">
+          <button class="gt-btn" id="tro-btn-history" aria-expanded="false" aria-controls="tro-panel-history">
+            <svg aria-hidden="true"><use href="#ec-parchemin"/></svg>
+            <span>Historique</span>
+          </button>
+          <button class="gt-btn" id="tro-btn-regle" aria-expanded="false" aria-controls="tro-panel-regle">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 7.6v.8"/></svg>
+            <span>La règle</span>
+          </button>
+        </div>
+        <section class="game-panel" id="tro-panel-history" hidden aria-label="Journal des coups">
+          <div class="gpanel-head">
+            <div class="gpanel-title">Journal des coups</div>
+            <button class="gpanel-close" data-tro-close aria-label="Fermer le journal">✕</button>
+          </div>
+          <div class="move-log" id="tro-log"></div>
+          <!-- REVENIR EN ARRIÈRE DANS LA PARTIE (js/variant-analysis.js). -->
+          <div class="van-nav" id="tro-nav" role="group" aria-label="Naviguer dans la partie">
+            <button type="button" class="van-btn" data-van="first" title="Début de la partie" aria-label="Début de la partie">⏮</button>
+            <button type="button" class="van-btn" data-van="prev" title="Coup précédent" aria-label="Coup précédent">◀</button>
+            <div class="van-pos" id="tro-nav-pos" aria-live="polite">Position actuelle</div>
+            <button type="button" class="van-btn" data-van="next" title="Coup suivant" aria-label="Coup suivant">▶</button>
+            <button type="button" class="van-btn" data-van="last" title="Revenir à la partie" aria-label="Revenir à la partie">⏭</button>
+          </div>
+        </section>
+        <section class="game-panel" id="tro-panel-regle" hidden aria-label="La règle de la variante">
+          <div class="gpanel-head">
+            <div class="gpanel-title">Cheval de Troie</div>
+            <button class="gpanel-close" data-tro-close aria-label="Fermer">✕</button>
+          </div>
+          <div class="move-log fok-regle">
+            <p>Échecs ordinaires, seize pièces, cases de départ habituelles.</p>
+            <p><b>Avant le premier coup, chacun choisit un des deux cavaliers adverses</b> pour être son espion. L'adversaire ne sait pas lequel vous avez choisi ; vous ne savez pas lequel il a choisi.</p>
+            <p>L'espion <b>reste dans son camp d'accueil</b>, qui le joue comme une pièce ordinaire sans se douter de rien — mais il <b>ne donne jamais échec</b> tant qu'il n'est pas révélé.</p>
+            <p>À votre tour, vous pouvez <b>jouer votre espion au lieu d'une de vos pièces</b> : il saute comme un cavalier, <b>change de couleur</b> sur-le-champ, devient un cavalier ordinaire du vôtre — et peut prendre en arrivant, y compris une pièce de son ancien camp. C'est la seule façon de le révéler, et elle est définitive.</p>
+            <p>Un espion <b>pris avant d'avoir été révélé</b> meurt comme une pièce ordinaire : personne n'apprend que c'en était un. Le bandeau de statut vous dit où en est le vôtre.</p>
+            <p>Dans le journal, <b>⚑</b> marque le coup par lequel un espion s'est révélé. En <b>mode analyse</b>, les espions non révélés prennent leur couleur — marron pour l'espion des Noirs, bleu clair pour celui des Blancs — celui de l'adversaire une fois la partie finie.</p>
+            <p>Roque, prise en passant et promotion sont conservés.</p>
+          </div>
+        </section>
+      </div>
+      <div class="game-btns">
+        <button class="btn btn-danger" id="tro-quit"><svg class="btn-ico" aria-hidden="true"><use href="#ec-drapeau"/></svg><span>Abandonner</span></button>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<!-- Le salon du Cheval de Troie (IA seulement), ouvert par sa carte de la
+     page Variantes. -->
+<div class="confirm-modal" id="tro-lobby">
+  <div class="confirm-box fok-lobby-box">
+    <div class="fok-lobby-title">Cheval de Troie</div>
+    <div class="fok-lobby-sub">Chacun choisit un cavalier adverse pour être son espion, et l'autre ne sait pas lequel. L'espion se révèle le jour où son propriétaire le joue : il change alors de camp.</div>
+    <div id="tro-lobby-body"></div>
+    <button class="btn btn-ghost" id="tro-lobby-close" style="width:100%;margin-top:14px">Fermer</button>
+  </div>
+</div>
+
+<!-- LE CHOIX DE L'ESPION, au coup d'envoi. On ne peut pas y couper : une
+     partie sans espion ne serait pas cette partie. -->
+<div class="confirm-modal" id="tro-spy">
+  <div class="confirm-box fok-lobby-box">
+    <div class="fok-lobby-title">Choisissez votre espion</div>
+    <div class="fok-lobby-sub">Un des deux cavaliers adverses est déjà à vous — il ne le sait pas encore, et son camp non plus. Il continuera de servir en face jusqu'au jour où vous le jouerez.</div>
+    <div class="tro-spy-row" id="tro-spy-row"></div>
+    <!-- On ne peut pas commencer sans espion — mais on peut toujours partir :
+         une fenêtre sans sortie est une impasse, pas une règle. -->
+    <button class="btn btn-ghost" id="tro-spy-quit" style="width:100%;margin-top:14px">Quitter la partie</button>
+  </div>
+</div>
+
+<!-- Choix de la pièce de promotion, propre à la variante. -->
+<div class="confirm-modal" id="tro-promo">
+  <div class="confirm-box">
+    <div class="fok-lobby-title">Promotion</div>
+    <div class="fok-promo-row" id="tro-promo-row"></div>
+  </div>
+</div>
+
+<!-- Fin de partie. -->
+<div class="confirm-modal" id="tro-result">
+  <div class="confirm-box">
+    <div class="fok-res-title" id="tro-res-title"></div>
+    <div class="fok-res-sub" id="tro-res-sub"></div>
+    <div class="fok-res-btns" id="tro-res-btns"></div>
   </div>
 </div>
 
@@ -1935,12 +2078,16 @@
 <script src="js/voie.js"></script>
 <script src="js/chest-break.js"></script>
 <script src="js/economy-ui.js"></script>
+<script src="js/variant-analysis.js"></script>
 <script src="js/fok-rules.js"></script>
 <script src="js/fok-ai.js"></script>
 <script src="js/fok-game.js"></script>
 <script src="js/mirror-rules.js"></script>
 <script src="js/mirror-ai.js"></script>
 <script src="js/mirror-game.js"></script>
+<script src="js/troie-rules.js"></script>
+<script src="js/troie-ai.js"></script>
+<script src="js/troie-game.js"></script>
 <script src="js/variantes.js"></script>
 <script src="js/rewards.js"></script>
 <script src="js/rewards-ui.js"></script>

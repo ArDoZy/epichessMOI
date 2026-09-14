@@ -7823,7 +7823,7 @@ button.rp-log-w:hover,button.rp-log-b:hover{border-color:var(--border2);backgrou
 }
 
 /* [FOK] ==========================================================
-   CHUTE DES ROYAUMES — la variante où, après chaque coup, les quatre
+   BOARD QUAKE — la variante où, après chaque coup, les quatre
    rangées centrales glissent d'une case vers la droite (js/fok-rules.js).
 
    L'ÉCRAN DE JEU N'A PRESQUE PAS DE STYLE À LUI, et c'est le but : son
@@ -7895,19 +7895,121 @@ body.has-acc #page-fok{min-height:0}
    de .game-wrap, qu'on ordonne alors dans l'ordre d'un échiquier réel —
    l'adverse au-dessus, le sien en dessous. Les règles d'origine désignent les
    bandeaux de la partie classique par leur identifiant ; ceux des DEUX
-   variantes — Chute des Royaumes et Mirror Chess — ont besoin des mêmes. */
+   TROIS variantes — Board Quake, Mirror Chess et le Cheval de Troie — ont
+   besoin des mêmes. */
 @media(max-width:820px){
-  #fok-opp-bar,#mir-opp-bar{order:1;padding-right:52px}
-  #page-fok .game-main,#page-mirror .game-main{order:2}
-  #fok-me-bar,#mir-me-bar{order:3}
-  #page-fok .status-bar,#page-mirror .status-bar{order:4}
-  #fok-under,#mir-under{order:5}
-  #page-fok .game-btns,#page-mirror .game-btns{order:6;margin-top:auto;padding-top:2px}
-  #fok-opp-bar.gp-turn,#mir-opp-bar.gp-turn{box-shadow:inset 0 -2px 0 var(--accent2)}
-  #fok-me-bar.gp-turn,#mir-me-bar.gp-turn{box-shadow:inset 0 2px 0 var(--accent2)}
-  #page-fok,#page-mirror{overflow-y:auto;-webkit-overflow-scrolling:touch}
+  #fok-opp-bar,#mir-opp-bar,#tro-opp-bar{order:1;padding-right:52px}
+  #page-fok .game-main,#page-mirror .game-main,#page-troie .game-main{order:2}
+  #fok-me-bar,#mir-me-bar,#tro-me-bar{order:3}
+  #page-fok .status-bar,#page-mirror .status-bar,#page-troie .status-bar{order:4}
+  #fok-under,#mir-under,#tro-under{order:5}
+  #page-fok .game-btns,#page-mirror .game-btns,#page-troie .game-btns{order:6;margin-top:auto;padding-top:2px}
+  #fok-opp-bar.gp-turn,#mir-opp-bar.gp-turn,#tro-opp-bar.gp-turn{box-shadow:inset 0 -2px 0 var(--accent2)}
+  #fok-me-bar.gp-turn,#mir-me-bar.gp-turn,#tro-me-bar.gp-turn{box-shadow:inset 0 2px 0 var(--accent2)}
+  #page-fok,#page-mirror,#page-troie{overflow-y:auto;-webkit-overflow-scrolling:touch}
   .fok-lobby-box{max-width:none}
 }
+
+/* [TROIE] ========================================================
+   LE CHEVAL DE TROIE — la variante où chacun a choisi, avant le premier
+   coup, un cavalier adverse pour être son espion (js/troie-rules.js).
+
+   MÊME PRINCIPE QUE [FOK] ET [MIRROR] : l'écran de jeu n'a presque pas de
+   style à lui, son balisage porte les classes de la partie ordinaire, et il
+   réutilise le décor du salon, de la promotion et du résultat de Board
+   Quake (.fok-lobby-*, .fok-lob-*, .fok-promo-*, .fok-res-*). Ne restent
+   ici que les marques des espions — et elles n'existent nulle part
+   ailleurs dans le jeu.
+
+   CE QUI EST PEINT ICI SE LIT : c'est js/troie-game.js qui décide QUAND
+   poser ces classes (troSpyShown), et il ne les pose jamais sur l'espion de
+   l'adversaire tant que la partie dure. Une couleur de plus ici, appliquée
+   trop tôt, ferait perdre toute la variante.
+   ============================================================== */
+#page-troie{padding:0;min-height:100dvh;background:var(--bg)}
+body.has-acc #page-troie{min-height:0}
+
+/* VOTRE ESPION, PENDANT LA PARTIE. Discret — un socle doré, la couleur de ce
+   qui vous appartient ailleurs dans le jeu — parce qu'il faut le retrouver
+   d'un coup d'œil sans que la case se transforme en enseigne. */
+.gc-piece.tro-mine::before{
+  content:'';position:absolute;left:50%;top:72%;transform:translate(-50%,-50%);
+  width:74%;height:26%;border-radius:50%;pointer-events:none;z-index:-1;
+  background:radial-gradient(ellipse,rgba(208,169,80,.8) 0%,rgba(208,169,80,.3) 52%,transparent 76%);
+  box-shadow:0 0 8px 2px rgba(208,169,80,.4)}
+
+/* LES DEUX COULEURS DU MODE ANALYSE, et elles ne servent QUE là.
+   · MARRON : l'espion des NOIRS, infiltré dans le camp blanc.
+   · BLEU CLAIR : l'espion des BLANCS, infiltré dans le camp noir.
+   Une teinte portée par la pièce elle-même (drop-shadow sur le dessin) plus
+   un halo au sol : le cavalier se repère alors dans une position entière
+   sans qu'on ait à le chercher case par case. */
+.gc-piece.tro-spy-b .gc-art{
+  filter:drop-shadow(0 0 2px #2e1b08) drop-shadow(0 0 5px #9c5f22)
+         drop-shadow(0 0 10px rgba(156,95,34,.95))}
+.gc-piece.tro-spy-w .gc-art{
+  filter:drop-shadow(0 0 2px #0b2c47) drop-shadow(0 0 5px #7fc4ff)
+         drop-shadow(0 0 10px rgba(127,196,255,.9))}
+/* LE HALO AU SOL, avec son cerne sombre. Même leçon que la Cuirasse plus
+   haut : ces deux teintes ont été réglées sur un plateau sombre, et la moitié
+   du catalogue est en BOIS CLAIR, où un marron à 50 % se fond dans le
+   chêne. Le cerne donne un bord au halo quel que soit le plateau dessous. */
+.gc-piece.tro-spy-b::before,.gc-piece.tro-spy-w::before{
+  content:'';position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  width:104%;height:104%;border-radius:50%;pointer-events:none;z-index:-1}
+.gc-piece.tro-spy-b::before{
+  background:radial-gradient(circle,rgba(156,95,34,.66) 0%,rgba(94,55,18,.3) 48%,transparent 72%);
+  box-shadow:inset 0 0 0 1px rgba(36,20,6,.45)}
+.gc-piece.tro-spy-w::before{
+  background:radial-gradient(circle,rgba(127,196,255,.58) 0%,rgba(40,96,150,.26) 48%,transparent 72%);
+  box-shadow:inset 0 0 0 1px rgba(8,30,52,.4)}
+
+/* LE CHOIX DE L'ESPION, au coup d'envoi : deux cartes côte à côte, les deux
+   cavaliers d'en face. */
+.tro-spy-row{display:flex;gap:10px;justify-content:center;margin-top:14px}
+.tro-spy-btn{display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;
+  background:var(--surface);border:1px solid var(--border2);border-radius:12px;padding:12px 8px;
+  color:var(--text);font-family:var(--f-ui);font-size:11.5px;flex:1;
+  transition:border-color .16s,background .16s,transform .12s}
+.tro-spy-btn:hover{border-color:var(--gold);background:var(--accent-bg);transform:translateY(-1px)}
+.tro-spy-btn svg{width:46px;height:46px}
+
+/* [VAN] ==========================================================
+   LE MODE ANALYSE DES VARIANTES — le bandeau de commande sous le journal
+   des coups, et le journal lui-même devenu une table des matières
+   (js/variant-analysis.js).
+
+   IL SERT AUX TROIS VARIANTES : Board Quake, Mirror Chess et le Cheval de
+   Troie ont le même panneau « Historique », donc la même barre. Rien ici
+   n'est propre à une variante.
+   ============================================================== */
+.van-nav{display:flex;align-items:center;gap:6px;margin-top:8px;padding-top:8px;
+  border-top:1px solid var(--border2)}
+.van-btn{flex:0 0 auto;min-width:34px;height:30px;cursor:pointer;
+  background:var(--surface);border:1px solid var(--border2);border-radius:9px;
+  color:var(--text);font-family:var(--f-ui);font-size:13px;line-height:1;
+  transition:border-color .16s,background .16s,color .16s}
+.van-btn:hover:not(:disabled){border-color:var(--accent2);background:var(--accent-bg)}
+/* Un bout de partie qui n'existe pas ne se demande pas : les commandes de
+   bord s'éteignent au lieu de ne rien faire. */
+.van-btn:disabled{opacity:.35;cursor:default}
+.van-pos{flex:1;min-width:0;text-align:center;font-family:var(--f-ui);font-size:11.5px;
+  color:var(--muted);line-height:1.3}
+/* ON REGARDE LE PASSÉ, ET ÇA SE VOIT. Sans cette marque, un plateau figé sur
+   une position ancienne se lit comme un plateau cassé — et le joueur clique
+   sur ses pièces en se demandant pourquoi elles ne répondent plus. */
+.van-nav.is-past .van-pos{color:var(--gold2)}
+.van-nav.is-past [data-van="last"]{border-color:var(--gold);color:var(--gold2)}
+
+/* Le journal devient cliquable : chaque demi-coup saute à sa position. */
+.van-jump{cursor:pointer;border-radius:6px;transition:background .14s,color .14s}
+.van-jump:hover{background:var(--accent-bg);color:var(--text)}
+.van-jump:focus-visible{outline:2px solid var(--accent2);outline-offset:1px}
+.move-log-w.van-at,.move-log-b.van-at{background:var(--accent-bg);color:var(--gold2)}
+
+/* Le bandeau de statut pendant l'analyse : ni « à vous », ni « il réfléchit »
+   — on ne joue pas, on regarde. */
+.status-bar.van-mode{color:var(--gold2);border-color:var(--gold)}
 
 /* [MIRROR] =======================================================
    MIRROR CHESS — la variante où chaque pièce est jumelée à sa symétrique
@@ -7917,7 +8019,7 @@ body.has-acc #page-fok{min-height:0}
    MÊME PRINCIPE QUE [FOK] : l'écran de jeu n'a presque pas de style à lui,
    son balisage porte exactement les classes de la partie ordinaire, et il
    réutilise même le décor du salon, de la promotion et du résultat de la
-   Chute des Royaumes (.fok-lobby-*, .fok-lob-*, .fok-res-*) — deux
+   Board Quake (.fok-lobby-*, .fok-lob-*, .fok-res-*) — deux
    variantes qui se ressemblent doivent se ressembler. Ne restent ici que
    les trois marques qui MONTRENT le jumelage, et elles n'existent nulle
    part ailleurs dans le jeu.

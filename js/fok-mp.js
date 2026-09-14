@@ -1,5 +1,5 @@
 // ================================================================
-// FOK-MP.JS : la « Chute des Royaumes » à deux joueurs
+// FOK-MP.JS : « Board Quake » à deux joueurs
 // ================================================================
 // Le multijoueur de la variante, sur le même transport que celui du jeu
 // principal — les canaux temps réel de Supabase — mais sur ses PROPRES sujets

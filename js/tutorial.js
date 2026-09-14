@@ -379,8 +379,8 @@ const TUTO_STEPS=[
     at:'.nav-tab[data-page="variantes"]',click:'.nav-tab[data-page="variantes"]',wait:560,
   },
   {
-    text:'Une autre façon de jouer aux échecs, et elle ne coûte rien&nbsp;: la '+
-         '<strong>Chute des Royaumes</strong>. Les seize pièces habituelles, sauf '+
+    text:'Une autre façon de jouer aux échecs, et elle ne coûte rien&nbsp;: '+
+         '<strong>Board Quake</strong>. Les seize pièces habituelles, sauf '+
          'qu\'après chaque coup, les quatre rangées du milieu <strong>glissent d\'une '+
          'case vers la droite</strong>. Rien n\'y est misé, rien n\'y est classé.',
     at:'#var-grid',

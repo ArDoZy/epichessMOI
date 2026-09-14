@@ -7,7 +7,7 @@
 // La variante ne coûte rien et ne rapporte rien — on y joue pour la règle.
 //
 // POURQUOI UN ÉCRAN SÉPARÉ PLUTÔT QUE #page-game : même raison que pour la
-// Chute des Royaumes. La partie ordinaire tient dans un objet GS que quinze
+// Board Quake. La partie ordinaire tient dans un objet GS que quinze
 // fichiers lisent et écrivent ; y greffer des pièces jumelées aurait demandé
 // de toucher à chacun d'eux. Cet écran réutilise donc la FEUILLE DE STYLE de
 // la partie (mêmes classes, même plateau, même colonne latérale, même mise en
@@ -37,7 +37,14 @@
 //     coup de cette variante — « et ma jumelle, elle va où ? » — et il serait
 //     absurde d'obliger à la calculer de tête.
 //
-// Dépendances : mirror-rules.js, mirror-ai.js, piece-art.js (pieceSVG),
+// LE MODE ANALYSE est en dehors de ce fichier : js/variant-analysis.js
+// photographie la position après chaque demi-coup et l'écran lit ses photos
+// (vanBoard, vanLastMove, vanCaptured) au lieu du plateau vivant dès qu'on
+// remonte le temps — utile ici plus qu'ailleurs, puisqu'un coup de cette
+// variante déplace DEUX pièces et qu'on veut souvent revoir où la jumelle
+// était partie.
+//
+// Dépendances : mirror-rules.js, mirror-ai.js, variant-analysis.js, piece-art.js (pieceSVG),
 // main.js (showPage, escH, showConfirmModal), rules-engine.js (playSound),
 // economy-ui.js (getBoardSkin, facultatif). mirror-mp.js se branche dessus
 // pour les parties en ligne, et n'est pas nécessaire pour jouer contre l'IA.
@@ -62,7 +69,12 @@ const MIR={
   promoStage:0,       // 0 = la pièce jouée, 1 = sa jumelle
   onLocalMove:null,   // branché par mirror-mp.js : émet le coup sur le réseau
   onEnd:null,         // branché par mirror-mp.js : prévient l'adversaire
+  an:null,            // le mode analyse (js/variant-analysis.js)
 };
+
+// L'analyse est créée une fois pour toutes : vanReset la vide au coup d'envoi
+// de chaque partie.
+MIR.an=vanNew({prefix:'mir',render:()=>{mirRender();mirSetStatus();mirMarkLog();}});
 
 function mirBoardEl(){return document.getElementById('mir-board');}
 function mirFlipped(){return MIR.myColor==='b';}
@@ -133,13 +145,13 @@ function mirLayer(){return mirBoardEl().querySelector('.gc-layer');}
 // est veuve, ou si rien n'est saisi).
 function mirSelMate(){
   const st=MIR.st;
-  if(!st||!MIR.sel||mirFreeMove(st))return null;
+  if(!st||!MIR.sel||!vanLive(MIR.an)||mirFreeMove(st))return null;
   const p=st.board[MIR.sel.r][MIR.sel.c];
   return p?mirFindMate(st.board,p):null;
 }
 // Où irait la jumelle si on jouait la case survolée.
 function mirHoverTwin(){
-  if(!MIR.hover)return null;
+  if(!MIR.hover||!vanLive(MIR.an))return null;
   const m=MIR.moves.find(x=>x.to.r===MIR.hover.r&&x.to.c===MIR.hover.c);
   return m&&m.twin?m.twin.to:null;
 }
@@ -153,25 +165,31 @@ function mirSetHover(r,c){
 
 function mirPaintCells(){
   const st=MIR.st;if(!st||!_mirCells)return;
-  const check=mirInCheck(st.board,st.turn);
-  const mine=!st.gameOver&&st.turn===MIR.myColor&&!MIR.anim;
+  // EN ANALYSE, C'EST LA PHOTO QUI EST PEINTE : ni saisie, ni jumelle
+  // marquée, ni destination du coup jumeau — rien qui promette un coup
+  // qu'on ne peut plus jouer.
+  const board=vanBoard(MIR.an,st);
+  const turn=vanTurn(MIR.an,st);
+  const past=!vanLive(MIR.an);
+  const check=mirInCheck(board,turn);
+  const mine=!past&&!st.gameOver&&st.turn===MIR.myColor&&!MIR.anim;
   const mate=mirSelMate();
   const twin=mirHoverTwin();
-  const lm=st.lastMove;
+  const lm=vanLastMove(MIR.an,st);
   for(const el of _mirCells){
     const r=+el.dataset.r,c=+el.dataset.c;
-    const cell=st.board[r][c];
+    const cell=board[r][c];
     let cls='gc '+(((r+c)%2===0)?'l':'d');
-    if(MIR.sel&&MIR.sel.r===r&&MIR.sel.c===c)cls+=' sel';
+    if(!past&&MIR.sel&&MIR.sel.r===r&&MIR.sel.c===c)cls+=' sel';
     if(mate&&mate.r===r&&mate.c===c)cls+=' mir-mate';
     if(twin&&twin.r===r&&twin.c===c)cls+=' mir-twin';
-    const avail=MIR.moves.some(m=>m.to.r===r&&m.to.c===c);
+    const avail=!past&&MIR.moves.some(m=>m.to.r===r&&m.to.c===c);
     if(avail)cls+=(cell?' avail-cap':' avail');
     if(lm){
       if((lm.from.r===r&&lm.from.c===c)||(lm.tfrom&&lm.tfrom.r===r&&lm.tfrom.c===c))cls+=' lm-from';
       else if((lm.to.r===r&&lm.to.c===c)||(lm.tto&&lm.tto.r===r&&lm.tto.c===c))cls+=' lm-to';
     }
-    if(cell&&cell.t==='k'&&cell.color===st.turn&&check)cls+=' gc-check';
+    if(cell&&cell.t==='k'&&cell.color===turn&&check)cls+=' gc-check';
     if(cell&&cell.color===MIR.myColor&&mine)cls+=' gc-holds';
     if(el.className!==cls)el.className=cls;
     // Le jumelage est ANNONCÉ : ce qui se voit par un liseré doit s'entendre,
@@ -189,10 +207,11 @@ function mirPaintCells(){
 // lieu d'apparaître d'un coup ailleurs.
 function mirSyncPieces(){
   const st=MIR.st,layer=mirLayer(),flipped=mirFlipped();
+  const board=vanBoard(MIR.an,st);
   const seen=new Set();
   const at=[];for(let r=0;r<8;r++)at.push(new Array(8).fill(null));
   for(let r=0;r<8;r++)for(let c=0;c<8;c++){
-    const p=st.board[r][c];
+    const p=board[r][c];
     if(!p)continue;
     seen.add(p.id);
     const vi=flipped?7-r:r,vc=flipped?7-c:c;
@@ -247,11 +266,13 @@ function mirRender(){
 // ----------------------------------------------------------------
 function mirPaintBars(){
   const st=MIR.st;
-  const mine=st.turn===MIR.myColor;
-  document.getElementById('mir-me-bar').classList.toggle('gp-turn',mine&&!st.gameOver);
-  document.getElementById('mir-opp-bar').classList.toggle('gp-turn',!mine&&!st.gameOver);
-  mirDrawCaptured('mir-cap-me',st.captured[MIR.myColor],mirOpp(MIR.myColor));
-  mirDrawCaptured('mir-cap-opp',st.captured[mirOpp(MIR.myColor)],MIR.myColor);
+  const turn=vanTurn(MIR.an,st);
+  const mine=turn===MIR.myColor;
+  const over=st.gameOver&&vanLive(MIR.an);
+  document.getElementById('mir-me-bar').classList.toggle('gp-turn',mine&&!over);
+  document.getElementById('mir-opp-bar').classList.toggle('gp-turn',!mine&&!over);
+  mirDrawCaptured('mir-cap-me',vanCaptured(MIR.an,st,MIR.myColor),mirOpp(MIR.myColor));
+  mirDrawCaptured('mir-cap-opp',vanCaptured(MIR.an,st,mirOpp(MIR.myColor)),MIR.myColor);
 }
 function mirDrawCaptured(id,list,color){
   const el=document.getElementById(id);if(!el)return;
@@ -265,6 +286,12 @@ function mirSetStatus(){
   const st=MIR.st,el=document.getElementById('mir-status');
   if(!el)return;
   let cls='status-bar',txt;
+  const past=vanStatusText(MIR.an);
+  if(past){
+    el.className='status-bar van-mode';
+    if(el.textContent!==past)el.textContent=past;
+    return;
+  }
   if(st.gameOver){
     cls+=' mate';
     if(st.result==='draw')txt='Partie nulle — '+st.reason+'.';
@@ -284,25 +311,23 @@ function mirSetStatus(){
   if(el.textContent!==txt)el.textContent=txt;
 }
 
+// Le journal est écrit par le mode analyse : chaque demi-coup y est un bouton
+// qui saute à sa position (js/variant-analysis.js).
 function mirRenderLog(){
   const el=document.getElementById('mir-log');if(!el)return;
-  const rows=[];
-  const m=MIR.st.moves;
-  for(let i=0;i<m.length;i+=2){
-    const w=m[i],b=m[i+1];
-    rows.push('<div class="move-log-item"><span class="move-log-num">'+(i/2+1)+'.</span>'+
-      '<span class="move-log-w">'+pieceIcon(MIR_ART[w.piece],'w')+escH(w.text)+'</span>'+
-      '<span class="move-log-b">'+(b?pieceIcon(MIR_ART[b.piece],'b')+escH(b.text):'')+'</span></div>');
-  }
-  el.innerHTML=rows.join('');
-  el.scrollTop=el.scrollHeight;
+  el.innerHTML=vanLogHTML(MIR.st.moves,MIR_ART);
+  vanMarkLog(MIR.an,el);
 }
+function mirMarkLog(){vanMarkLog(MIR.an,document.getElementById('mir-log'));}
 
 // ----------------------------------------------------------------
 // SAISIE
 // ----------------------------------------------------------------
 function mirPlayable(){
-  return MIR.st&&!MIR.st.gameOver&&!MIR.anim&&!MIR.pendingPromo&&MIR.st.turn===MIR.myColor;
+  // ON NE JOUE PAS DEPUIS LE PASSÉ : tant qu'on regarde une position ancienne,
+  // le plateau ne répond plus. Le ⏭ du bandeau d'analyse rend la main.
+  return MIR.st&&!MIR.st.gameOver&&!MIR.anim&&!MIR.pendingPromo&&
+    vanLive(MIR.an)&&MIR.st.turn===MIR.myColor;
 }
 
 function mirSelect(r,c){
@@ -324,7 +349,7 @@ function mirDeselect(){MIR.sel=null;MIR.moves=[];MIR.hover=null;mirPaintCells();
 // pose ce drapeau et le clic qui suit passe son tour.
 // Le drapeau est remis à zéro à chaque pointerdown : un clic qui ne viendrait
 // jamais (relâchement hors de la case, geste annulé) ne peut pas manger le
-// suivant. Même correctif que la Chute des Royaumes (js/fok-game.js).
+// suivant. Même correctif que Board Quake (js/fok-game.js).
 let _mirSkipClick=false;
 
 function mirClick(r,c){
@@ -516,6 +541,7 @@ function mirPlayMove(mv,local){
     if(mv.twin)st.lastMove.tto={r:mv.twin.to.r,c:mv.twin.to.c};
     mirUpdateStatus(st);
     mirRecord(st,mv,rec.taken,color,type);
+    vanPush(MIR.an,st);
     MIR.anim=false;
     mirRender();mirRenderLog();mirSetStatus();mirSyncChrome();
     if(mv.twin&&typeof playSound==='function')
@@ -567,8 +593,15 @@ function mirFinish(){
     'Mirror Chess — '+st.reason+', en '+Math.ceil(st.moves.length/2)+' coups.';
   const btns=document.getElementById('mir-res-btns');
   btns.innerHTML=(MIR.mode==='ia'?'<button class="btn btn-gold" id="mir-res-again">Rejouer</button>':'')+
+    '<button class="btn btn-primary" id="mir-res-an">Analyser</button>'+
     '<button class="btn btn-ghost" id="mir-res-quit">Quitter</button>';
   document.getElementById('mir-result').classList.add('show');
+  // ANALYSER SA PARTIE est la première chose qu'on veut faire en la perdant :
+  // le bouton ferme le verdict et ouvre le journal, déjà navigable.
+  document.getElementById('mir-res-an').onclick=()=>{
+    document.getElementById('mir-result').classList.remove('show');
+    mirOpenAnalysis();
+  };
   const again=document.getElementById('mir-res-again');
   if(again)again.onclick=()=>{
     document.getElementById('mir-result').classList.remove('show');
@@ -578,6 +611,14 @@ function mirFinish(){
   document.getElementById('mir-res-quit').onclick=mirLeave;
   const quit=document.getElementById('mir-quit');
   if(quit)quit.querySelector('span').textContent='Quitter';
+}
+
+// Ouvre le journal sur la position de départ : l'entrée du mode analyse
+// depuis le modal de fin de partie.
+function mirOpenAnalysis(){
+  const btn=document.getElementById('mir-btn-history');
+  if(btn&&_mirPanel!=='mir-panel-history')mirPanelToggle('mir-panel-history',btn);
+  vanGoto(MIR.an,0);
 }
 
 function mirResign(){
@@ -626,6 +667,8 @@ function mirStartGame(opts){
   const board=mirBoardEl();
   if(board)board.innerHTML='';
   mirUpdateStatus(MIR.st);
+  vanReset(MIR.an,MIR.st);
+  vanBind(MIR.an,'mir');
 
   const me=(typeof CUR_ACC==='string'&&CUR_ACC)?CUR_ACC:'Joueur';
   document.getElementById('mir-me-name').textContent=me;

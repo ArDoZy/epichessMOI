@@ -1,5 +1,5 @@
 // ================================================================
-// FOK-GAME.JS : l'écran de la « Chute des Royaumes »
+// FOK-GAME.JS : l'écran de « Board Quake »
 // ================================================================
 // Le plateau, les bandeaux, le journal, la fin de partie. C'est le pendant de
 // game-render.js + game-flow.js pour la variante, en beaucoup plus court : il
@@ -22,7 +22,14 @@
 // (.gc-layer / .gc-piece en translate3d), donc le glissement est une vraie
 // transition CSS et non un redessin.
 //
-// Dépendances : fok-rules.js, fok-ai.js, piece-art.js (pieceSVG), main.js
+// LE MODE ANALYSE est en dehors de ce fichier : js/variant-analysis.js
+// photographie la position après chaque demi-coup et l'écran lit ses photos
+// (vanBoard, vanLastMove, vanCaptured) au lieu du plateau vivant dès qu'on
+// remonte le temps. Tout ce qu'il en reste ici tient dans ces trois lectures,
+// dans vanPush après chaque coup, et dans fokPlayable() qui refuse de jouer
+// depuis une position passée.
+//
+// Dépendances : fok-rules.js, fok-ai.js, variant-analysis.js, piece-art.js (pieceSVG), main.js
 // (showPage, escH, showConfirmModal), rules-engine.js (playSound),
 // economy-ui.js (getBoardSkin, facultatif). fok-mp.js se branche dessus pour
 // les parties en ligne, et n'est pas nécessaire pour jouer contre l'IA.
@@ -45,7 +52,12 @@ const FOK={
   pendingPromo:null,  // coup en attente du choix de la pièce promue
   onLocalMove:null,   // branché par fok-mp.js : émet le coup sur le réseau
   onEnd:null,         // branché par fok-mp.js : prévient l'adversaire
+  an:null,            // le mode analyse (js/variant-analysis.js)
 };
+
+// L'analyse est créée une fois pour toutes : elle survit aux parties, c'est
+// vanReset qui la vide au coup d'envoi de chacune.
+FOK.an=vanNew({prefix:'fok',render:()=>{fokRender();fokSetStatus();fokMarkLog();}});
 
 function fokBoardEl(){return document.getElementById('fok-board');}
 function fokFlipped(){return FOK.myColor==='b';}
@@ -64,7 +76,7 @@ function fokEnsureCells(){
   if(_fokCells&&_fokFlipped===flipped&&el.querySelector('.gc'))return;
   el.innerHTML='';
   el.setAttribute('role','grid');
-  el.setAttribute('aria-label','Échiquier de la Chute des Royaumes');
+  el.setAttribute('aria-label','Échiquier de Board Quake');
   _fokCells=[];_fokFlipped=flipped;_fokNodes=new Map();_fokPieceAt=[];
   _fokCellAt=[];for(let i=0;i<8;i++)_fokCellAt.push(new Array(8).fill(null));
   for(let vi=0;vi<8;vi++)for(let vc=0;vc<8;vc++){
@@ -115,20 +127,26 @@ function fokLayer(){return fokBoardEl().querySelector('.gc-layer');}
 // ----------------------------------------------------------------
 function fokPaintCells(){
   const st=FOK.st;if(!st||!_fokCells)return;
-  const check=fokInCheck(st.board,st.turn);
-  const mine=!st.gameOver&&st.turn===FOK.myColor&&!FOK.anim;
+  // EN ANALYSE, C'EST LA PHOTO QUI EST PEINTE, et rien d'autre ne change :
+  // pas de sélection, pas de destination, pas de pièce à prendre en main.
+  const board=vanBoard(FOK.an,st);
+  const turn=vanTurn(FOK.an,st);
+  const last=vanLastMove(FOK.an,st);
+  const past=!vanLive(FOK.an);
+  const check=fokInCheck(board,turn);
+  const mine=!past&&!st.gameOver&&st.turn===FOK.myColor&&!FOK.anim;
   for(const el of _fokCells){
     const r=+el.dataset.r,c=+el.dataset.c;
-    const cell=st.board[r][c];
+    const cell=board[r][c];
     let cls='gc '+(((r+c)%2===0)?'l':'d');
-    if(FOK.sel&&FOK.sel.r===r&&FOK.sel.c===c)cls+=' sel';
-    const avail=FOK.moves.some(m=>m.to.r===r&&m.to.c===c);
+    if(!past&&FOK.sel&&FOK.sel.r===r&&FOK.sel.c===c)cls+=' sel';
+    const avail=!past&&FOK.moves.some(m=>m.to.r===r&&m.to.c===c);
     if(avail)cls+=(cell?' avail-cap':' avail');
-    if(st.lastMove){
-      if(st.lastMove.from.r===r&&st.lastMove.from.c===c)cls+=' lm-from';
-      else if(st.lastMove.to.r===r&&st.lastMove.to.c===c)cls+=' lm-to';
+    if(last){
+      if(last.from.r===r&&last.from.c===c)cls+=' lm-from';
+      else if(last.to.r===r&&last.to.c===c)cls+=' lm-to';
     }
-    if(cell&&cell.t==='k'&&cell.color===st.turn&&check)cls+=' gc-check';
+    if(cell&&cell.t==='k'&&cell.color===turn&&check)cls+=' gc-check';
     if(cell&&cell.color===FOK.myColor&&mine)cls+=' gc-holds';
     if(el.className!==cls)el.className=cls;
     // La rangée mobile est ANNONCÉE : ce qui se voit par un lavis doit
@@ -145,10 +163,11 @@ function fokPaintCells(){
 // d'une case — au lieu d'apparaître d'un coup ailleurs.
 function fokSyncPieces(){
   const st=FOK.st,layer=fokLayer(),flipped=fokFlipped();
+  const board=vanBoard(FOK.an,st);
   const seen=new Set();
   const at=[];for(let r=0;r<8;r++)at.push(new Array(8).fill(null));
   for(let r=0;r<8;r++)for(let c=0;c<8;c++){
-    const p=st.board[r][c];
+    const p=board[r][c];
     if(!p)continue;
     seen.add(p.id);
     const vi=flipped?7-r:r,vc=flipped?7-c:c;
@@ -204,11 +223,13 @@ function fokRender(){
 // ----------------------------------------------------------------
 function fokPaintBars(){
   const st=FOK.st;
-  const mine=st.turn===FOK.myColor;
-  document.getElementById('fok-me-bar').classList.toggle('gp-turn',mine&&!st.gameOver);
-  document.getElementById('fok-opp-bar').classList.toggle('gp-turn',!mine&&!st.gameOver);
-  fokDrawCaptured('fok-cap-me',st.captured[FOK.myColor],fokOpp(FOK.myColor));
-  fokDrawCaptured('fok-cap-opp',st.captured[fokOpp(FOK.myColor)],FOK.myColor);
+  const turn=vanTurn(FOK.an,st);
+  const mine=turn===FOK.myColor;
+  const over=st.gameOver&&vanLive(FOK.an);
+  document.getElementById('fok-me-bar').classList.toggle('gp-turn',mine&&!over);
+  document.getElementById('fok-opp-bar').classList.toggle('gp-turn',!mine&&!over);
+  fokDrawCaptured('fok-cap-me',vanCaptured(FOK.an,st,FOK.myColor),fokOpp(FOK.myColor));
+  fokDrawCaptured('fok-cap-opp',vanCaptured(FOK.an,st,fokOpp(FOK.myColor)),FOK.myColor);
 }
 function fokDrawCaptured(id,list,color){
   const el=document.getElementById(id);if(!el)return;
@@ -222,6 +243,12 @@ function fokSetStatus(){
   const st=FOK.st,el=document.getElementById('fok-status');
   if(!el)return;
   let cls='status-bar',txt;
+  const past=vanStatusText(FOK.an);
+  if(past){
+    el.className='status-bar van-mode';
+    if(el.textContent!==past)el.textContent=past;
+    return;
+  }
   if(st.gameOver){
     cls+=' mate';
     if(st.result==='draw')txt='Partie nulle — '+st.reason+'.';
@@ -237,25 +264,23 @@ function fokSetStatus(){
   if(el.textContent!==txt)el.textContent=txt;
 }
 
+// Le journal est écrit par le mode analyse : chaque demi-coup y est un bouton
+// qui saute à sa position (js/variant-analysis.js).
 function fokRenderLog(){
   const el=document.getElementById('fok-log');if(!el)return;
-  const rows=[];
-  const m=FOK.st.moves;
-  for(let i=0;i<m.length;i+=2){
-    const w=m[i],b=m[i+1];
-    rows.push('<div class="move-log-item"><span class="move-log-num">'+(i/2+1)+'.</span>'+
-      '<span class="move-log-w">'+pieceIcon(FOK_ART[w.piece],'w')+escH(w.text)+'</span>'+
-      '<span class="move-log-b">'+(b?pieceIcon(FOK_ART[b.piece],'b')+escH(b.text):'')+'</span></div>');
-  }
-  el.innerHTML=rows.join('');
-  el.scrollTop=el.scrollHeight;
+  el.innerHTML=vanLogHTML(FOK.st.moves,FOK_ART);
+  vanMarkLog(FOK.an,el);
 }
+function fokMarkLog(){vanMarkLog(FOK.an,document.getElementById('fok-log'));}
 
 // ----------------------------------------------------------------
 // SAISIE
 // ----------------------------------------------------------------
 function fokPlayable(){
-  return FOK.st&&!FOK.st.gameOver&&!FOK.anim&&!FOK.pendingPromo&&FOK.st.turn===FOK.myColor;
+  // ON NE JOUE PAS DEPUIS LE PASSÉ : tant qu'on regarde une position ancienne,
+  // le plateau ne répond plus. Le ⏭ du bandeau d'analyse rend la main.
+  return FOK.st&&!FOK.st.gameOver&&!FOK.anim&&!FOK.pendingPromo&&
+    vanLive(FOK.an)&&FOK.st.turn===FOK.myColor;
 }
 
 function fokSelect(r,c){
@@ -429,6 +454,7 @@ function fokPlayMove(mv,local){
     st.lastMove={from:fokShiftCoord(mv.from.r,mv.from.c),to:fokShiftCoord(mv.to.r,mv.to.c)};
     fokUpdateStatus(st);
     fokRecord(st,mv,taken,color,type);
+    vanPush(FOK.an,st);
     FOK.anim=false;
     fokRender();fokRenderLog();fokSetStatus();fokSyncChrome();
     if(st.check&&!st.gameOver&&typeof playSound==='function')playSound('check');
@@ -474,11 +500,19 @@ function fokFinish(){
   document.getElementById('fok-res-title').textContent=
     st.result==='draw'?'Partie nulle':(win?'Victoire':'Défaite');
   document.getElementById('fok-res-sub').textContent=
-    'Chute des Royaumes — '+st.reason+', en '+Math.ceil(st.moves.length/2)+' coups.';
+    'Board Quake — '+st.reason+', en '+Math.ceil(st.moves.length/2)+' coups.';
   const btns=document.getElementById('fok-res-btns');
   btns.innerHTML=(FOK.mode==='ia'?'<button class="btn btn-gold" id="fok-res-again">Rejouer</button>':'')+
+    '<button class="btn btn-primary" id="fok-res-an">Analyser</button>'+
     '<button class="btn btn-ghost" id="fok-res-quit">Quitter</button>';
   document.getElementById('fok-result').classList.add('show');
+  // ANALYSER SA PARTIE PERDUE est la seule chose qu'on veut faire juste après
+  // l'avoir perdue : le bouton ferme le verdict et ouvre le journal, déjà
+  // navigable.
+  document.getElementById('fok-res-an').onclick=()=>{
+    document.getElementById('fok-result').classList.remove('show');
+    fokOpenAnalysis();
+  };
   const again=document.getElementById('fok-res-again');
   if(again)again.onclick=()=>{
     document.getElementById('fok-result').classList.remove('show');
@@ -488,6 +522,14 @@ function fokFinish(){
   document.getElementById('fok-res-quit').onclick=fokLeave;
   const quit=document.getElementById('fok-quit');
   if(quit)quit.querySelector('span').textContent='Quitter';
+}
+
+// Ouvre le journal sur la position de départ : c'est l'entrée du mode analyse
+// depuis le modal de fin de partie.
+function fokOpenAnalysis(){
+  const btn=document.getElementById('fok-btn-history');
+  if(btn&&_fokPanel!=='fok-panel-history')fokPanelToggle('fok-panel-history',btn);
+  vanGoto(FOK.an,0);
 }
 
 // Abandon : la partie est perdue tout de suite, et l'adversaire en ligne est
@@ -537,6 +579,8 @@ function fokStartGame(opts){
   const board=fokBoardEl();
   if(board)board.innerHTML='';
   fokUpdateStatus(FOK.st);
+  vanReset(FOK.an,FOK.st);
+  vanBind(FOK.an,'fok');
 
   const me=(typeof CUR_ACC==='string'&&CUR_ACC)?CUR_ACC:'Joueur';
   document.getElementById('fok-me-name').textContent=me;
@@ -645,7 +689,7 @@ document.addEventListener('DOMContentLoaded',()=>{
 // ================================================================
 // Une seule fenêtre, quatre vues : choisir l'adversaire, choisir le niveau de
 // l'IA, choisir la façon de trouver un joueur, attendre. Elle est ouverte par
-// la carte « Chute des Royaumes » de la page Variantes (js/variantes.js).
+// la carte « Board Quake » de la page Variantes (js/variantes.js).
 //
 // Les trois entrées en ligne (partie rapide, partie privée, code) appellent
 // js/fok-mp.js. Si ce fichier n'est pas chargé — ou si le multijoueur n'est
