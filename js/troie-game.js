@@ -77,6 +77,8 @@ const TRO={
   awaiting:false,         // on attend son verdict sur le coup qu'on vient de jouer
   onLocalMove:null,       // branché par troie-mp.js : émet le coup sur le réseau
   onReady:null,           // branché par troie-mp.js : « j'ai choisi mon espion »
+  onClaim:null,           // branché par troie-mp.js : prouver son cheval à l'arbitre
+  onVerify:null,          // branché par troie-mp.js : faire vérifier le sien
   onVerdict:null,         // branché par troie-mp.js : l'état de NOTRE camp
   onEnd:null,             // branché par troie-mp.js : prévient l'adversaire
   an:null,                // le mode analyse (js/variant-analysis.js)
@@ -385,7 +387,7 @@ function troTryMove(from,to){
   const promos=all.filter(m=>m.promo);
   troDeselect();
   if(promos.length){TRO.pendingPromo=promos;troShowPromo();return;}
-  troPlayMove(all[0],true);
+  troSendWithClaim(all[0]);
 }
 
 function troShowPromo(){
@@ -399,7 +401,7 @@ function troChoosePromo(t){
   const list=TRO.pendingPromo;TRO.pendingPromo=null;
   document.getElementById('tro-promo').classList.remove('show');
   if(!list)return;
-  troPlayMove(list.find(m=>m.promo===t)||list[0],true);
+  troSendWithClaim(list.find(m=>m.promo===t)||list[0]);
 }
 
 // --- Glissé-déposé, identique aux deux autres variantes. ---
@@ -479,6 +481,30 @@ function troKey(e,r,c,vi,vc){
 // second déplacement à montrer. Ce qu'il y a à voir — le cavalier qui change
 // de couleur sur sa case d'arrivée — est déjà porté par le morphing de la
 // pièce (troSyncPieces).
+// LE COUP QUI REPOSE SUR LE SECRET PASSE D'ABORD PAR L'ARBITRE. Une
+// révélation, ou un coup qui n'est légal que parce qu'un cavalier d'en face
+// est notre espion (troNeedsClaim) : l'adversaire ne pourra pas le comprendre
+// tout seul, et le serveur est le seul à pouvoir lui confirmer qu'on ne ment
+// pas (ec_troie_claim, supabase/schema.sql). On réclame AVANT d'envoyer : si
+// la réclamation échoue, on joue quand même — l'arbitre est un renfort, pas
+// une condition d'existence de la partie (voir troMpArbiterDown).
+function troSendWithClaim(mv){
+  const st=TRO.st;
+  if(TRO.mode!=='online'||!TRO.onClaim||!troNeedsClaim(st,mv,TRO.myColor)){
+    troPlayMove(mv,true);
+    return;
+  }
+  const spy=troFindSpy(st.board,TRO.myColor);
+  const piece=mv.reveal?(st.board[mv.from.r][mv.from.c]||{}).id:(spy&&spy.p.id);
+  if(!piece){troPlayMove(mv,true);return;}
+  TRO.anim=true;                       // le plateau ne répond plus le temps de l'aller-retour
+  troSetStatus();
+  Promise.resolve(TRO.onClaim(piece,st.ply)).catch(()=>false).then(()=>{
+    TRO.anim=false;
+    troPlayMove(mv,true);
+  });
+}
+
 // `local` distingue le coup du joueur (à émettre sur le réseau) de celui qui
 // arrive de l'adversaire ou de l'IA (déjà connu de tout le monde).
 function troPlayMove(mv,local){
@@ -571,19 +597,59 @@ function troApplyVerdict(v){
 // un client modifié ne peut pas faire bouger une pièce comme il veut chez
 // l'adversaire. Mais ici la vérification doit composer avec ce qu'on IGNORE,
 // et c'est tout le sel de troResolveRemote.
+// Elle rend une PROMESSE : quand le coup reçu repose sur son espion, il faut
+// demander à l'arbitre, et l'arbitre est au bout du réseau.
 function troRemoteMove(pk){
   const st=TRO.st;
-  if(!st||st.gameOver)return false;
+  if(!st||st.gameOver)return Promise.resolve(false);
   const side=troOpp(TRO.myColor);
-  if(st.turn!==side)return false;
-  if(TRO.anim){setTimeout(()=>troRemoteMove(pk),TRO_MOVE_MS);return true;}
+  if(st.turn!==side)return Promise.resolve(false);
+  if(TRO.anim)return new Promise(res=>setTimeout(()=>res(troRemoteMove(pk)),TRO_MOVE_MS));
   // La lecture d'un coup reçu quand on ignore l'espion d'en face est un
   // raisonnement sur les RÈGLES, pas sur l'écran : elle vit dans le moteur
-  // (troResolveRemote, js/troie-rules.js), où elle se teste sans navigateur.
-  const mv=troResolveRemote(st,pk,side,TRO.myColor);
-  if(!mv)return false;
-  troPlayMove(mv,false);
-  return true;
+  // (troRemoteOptions, js/troie-rules.js), où elle se teste sans navigateur.
+  const opts=troRemoteOptions(st,pk,side,TRO.myColor);
+  if(!opts.length)return Promise.resolve(false);
+  // Le coup se lit tel quel : rien à prouver, rien à demander.
+  if(!opts[0].pieceId){troPlayMove(opts[0].mv,false);return Promise.resolve(true);}
+  return troJudge(opts,side);
+}
+
+// LES HYPOTHÈSES, SOUMISES À L'ARBITRE, UNE PAR UNE. Il ne répond « oui » que
+// pour la pièce que l'adversaire vient de réclamer : une seule hypothèse peut
+// donc être confirmée, et une invention n'en obtient aucune. Quand l'arbitre
+// est absent — hors ligne, serveur injoignable, multijoueur non configuré —,
+// on retombe sur la parole donnée : la première hypothèse qui tient, ce qui
+// était le seul comportement possible avant lui.
+function troJudge(opts,side){
+  const st=TRO.st;
+  // LE DEMI-COUP NE VOYAGE PAS : les deux camps sont au même `ply` avant le
+  // coup, et c'est celui-là que l'arbitre a enregistré. Un numéro transmis
+  // serait un numéro qu'on peut écrire soi-même.
+  const ply=st.ply;
+  if(!TRO.onVerify){
+    troPlayMove(opts[0].mv,false);
+    return Promise.resolve(true);
+  }
+  let i=0;
+  const suivant=()=>{
+    if(i>=opts.length)return Promise.resolve(false);
+    const opt=opts[i++];
+    return Promise.resolve(TRO.onVerify(opt.pieceId,ply)).catch(()=>null).then(ok=>{
+      if(ok===null){                       // l'arbitre n'a pas répondu du tout
+        troPlayMove(opts[0].mv,false);
+        return true;
+      }
+      if(!ok)return suivant();
+      // CONFIRMÉ : ce cavalier EST son espion, et on a le droit de le savoir —
+      // c'est son propre coup qui vient de nous le dire. On garde donc la
+      // marque, et le moteur devient exact pour la suite de la partie.
+      troAdoptOption(st,opt,side);
+      troPlayMove(opt.mv,false);
+      return true;
+    });
+  };
+  return suivant();
 }
 
 // Défaite/victoire imposée de l'extérieur (adversaire parti, abandon reçu).
@@ -680,6 +746,7 @@ function troLeave(){
   TRO.pendingPromo=null;
   if(TRO.onEnd)TRO.onEnd('leave');
   TRO.onLocalMove=null;TRO.onReady=null;TRO.onVerdict=null;TRO.onEnd=null;
+  TRO.onClaim=null;TRO.onVerify=null;
   if(typeof goToMainMenu==='function')goToMainMenu();
   else showPage('page-jouer');
 }

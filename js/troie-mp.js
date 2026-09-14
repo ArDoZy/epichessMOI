@@ -33,6 +33,31 @@
 // jouer adopte ce verdict au lieu du sien (troApplyVerdict). Le message ne
 // dit jamais PAR QUOI on est en échec : il ne fuite rien.
 //
+// -- 4. L'ARBITRE SCELLE LE SECRET -------------------------------
+// Un secret que personne d'autre ne connaît, personne d'autre ne peut le
+// vérifier : sans arbitre, le client d'en face n'a d'autre choix que de CROIRE
+// celui qui invoque son espion, et un client bricolé pouvait ignorer un échec
+// une fois. Le serveur ferme cette porte, et lui seul le pouvait.
+//
+// Au coup d'envoi, chacun SCELLE sa pièce (ec_troie_seal) : le serveur la
+// range dans une table que personne ne peut lire, pas même son propriétaire —
+// aucune fonction ne la renvoie jamais. Ensuite :
+//   · celui qui joue un coup reposant sur son espion le RÉCLAME d'abord
+//     (ec_troie_claim) : le serveur ne dit « oui » que pour la pièce scellée ;
+//   · celui qui reçoit le coup fait VÉRIFIER l'hypothèse (ec_troie_verify) :
+//     le serveur ne confirme que ce qui vient d'être réclamé, pour ce
+//     demi-coup-là. Sonder les deux cavaliers d'en face ne rend donc rien.
+// Un mensonge n'obtient pas de réclamation, donc pas de confirmation, donc le
+// coup est refusé en face. Voir supabase/schema.sql pour le détail et pour ce
+// que le serveur ne fait PAS — il ne sait pas jouer aux échecs, et ne valide
+// que le secret.
+//
+// SI L'ARBITRE EST ABSENT, LA PARTIE A LIEU QUAND MÊME. Serveur injoignable,
+// hors ligne, fonctions pas encore installées : on retombe sur la parole
+// donnée, comme avant lui, et le joueur en est AVERTI une fois (troMpArbiterDown).
+// Un renfort qui empêcherait de jouer quand il manque serait un mauvais
+// renfort.
+//
 // L'HÔTE JOUE LES BLANCS, l'invité les Noirs — mais le rôle est VÉRIFIÉ, pas
 // supposé, comme dans les deux autres variantes (voir troMpColor).
 //
@@ -58,6 +83,9 @@ const TMP={
   ready:false,        // on a choisi son espion
   oppReady:false,     // l'autre aussi
   lastVerdict:null,   // notre dernier état annoncé, renvoyé en cas de rattrapage
+  sealed:false,       // notre cheval est scellé chez l'arbitre
+  arbiter:true,       // l'arbitre répond (mis à false au premier silence)
+  warned:false,       // on n'avertit qu'une fois de son absence
   pairPending:null,
   matched:false,
   searchStartedAt:0,
@@ -202,6 +230,7 @@ function troMpConnect(code,asHost){
   TMP.oppHost=null;
   TMP.log=[];TMP.leaving=false;
   TMP.ready=false;TMP.oppReady=false;TMP.lastVerdict=null;
+  TMP.sealed=false;TMP.arbiter=true;TMP.warned=false;
 
   const ch=client.channel('epichess-troie-'+code,{config:{presence:{key:TMP.myId}}});
   TMP.channel=ch;
@@ -341,8 +370,16 @@ function troMpBegin(){
     TMP.channel&&TMP.channel.send({type:'broadcast',event:'move',
       payload:{id:TMP.myId,n:TMP.log.length-1,mv:pk}});
   };
-  // « J'ai choisi mon espion » — sans dire lequel.
-  TRO.onReady=()=>{TMP.ready=true;troMpSendReady();};
+  // « J'ai choisi mon espion » — sans dire lequel — et le sceau part à
+  // l'arbitre, qui est le seul à en garder la trace.
+  TRO.onReady=()=>{
+    TMP.ready=true;
+    const mine=troFindSpy(TRO.st.board,TRO.myColor);
+    if(mine)troMpSeal(mine.p.id);
+    troMpSendReady();
+  };
+  TRO.onClaim=(pieceId,ply)=>troMpClaim(pieceId,ply);
+  TRO.onVerify=(pieceId,ply)=>troMpVerify(pieceId,ply);
   // Notre état, que l'autre ne peut pas calculer.
   TRO.onVerdict=v=>{
     TMP.lastVerdict=v;
@@ -355,6 +392,53 @@ function troMpBegin(){
       TMP.channel.send({type:'broadcast',event:'end',payload:{id:TMP.myId,kind:kind}});
     if(kind==='leave')troMpLeave();
   };
+}
+
+// ----------------------------------------------------------------
+// L'ARBITRE (supabase/schema.sql : ec_troie_seal / _claim / _verify)
+// ----------------------------------------------------------------
+// Le salon sert de nom de partie : les deux camps y sont, et il est éphémère.
+function troMpArena(){return 'troie-'+(TMP.code||'?');}
+
+// L'arbitre s'est tu : on le dit UNE FOIS, en clair, et on continue à jouer.
+// Taire une garantie qui n'est plus là serait pire que de ne pas l'avoir.
+function troMpArbiterDown(){
+  if(!TMP.arbiter)return;
+  TMP.arbiter=false;
+  if(!TMP.warned){
+    TMP.warned=true;
+    if(typeof showNotif==='function')
+      showNotif('Arbitre injoignable : la partie continue sur parole.','warn');
+  }
+}
+
+// SCELLER, au moment du choix. La pièce part vers une table que personne ne
+// peut lire ; ce qui revient n'est qu'un accusé de réception.
+function troMpSeal(pieceId){
+  if(typeof ecRpc!=='function'){troMpArbiterDown();return Promise.resolve(false);}
+  return ecRpc('ec_troie_seal',{p_code:troMpArena(),p_player:TMP.myId,p_piece:pieceId})
+    .then(r=>{TMP.sealed=!!(r&&r.ok);return TMP.sealed;})
+    .catch(()=>{troMpArbiterDown();return false;});
+}
+
+// RÉCLAMER son cheval avant d'envoyer le coup qui s'appuie dessus.
+function troMpClaim(pieceId,ply){
+  if(!TMP.arbiter||typeof ecRpc!=='function')return Promise.resolve(false);
+  return ecRpc('ec_troie_claim',
+      {p_code:troMpArena(),p_player:TMP.myId,p_piece:pieceId,p_ply:ply})
+    .then(r=>!!(r&&r.ok))
+    .catch(()=>{troMpArbiterDown();return false;});
+}
+
+// VÉRIFIER l'hypothèse qu'un coup reçu nous impose. Rend `null` — et non
+// `false` — quand l'arbitre ne répond pas : l'écran doit pouvoir distinguer
+// « il a menti » de « je n'ai pas pu demander ».
+function troMpVerify(pieceId,ply){
+  if(!TMP.arbiter||!TMP.oppId||typeof ecRpc!=='function')return Promise.resolve(null);
+  return ecRpc('ec_troie_verify',
+      {p_code:troMpArena(),p_player:TMP.oppId,p_piece:pieceId,p_ply:ply})
+    .then(r=>!!(r&&r.ok))
+    .catch(()=>{troMpArbiterDown();return null;});
 }
 
 // La présence du choix se réémet tant que l'autre n'a pas répondu : les deux
@@ -376,8 +460,12 @@ function troMpReceiveMove(payload){
   if(typeof n!=='number'||!payload.mv)return;
   if(n<TMP.log.length)return;                  // déjà connu : rien à faire
   if(n>TMP.log.length){troMpRequestSync();return;} // il nous manque des coups
-  if(troRemoteMove(payload.mv))TMP.log.push(payload.mv);
-  else troMpRequestSync();
+  // La vérification peut passer par l'arbitre : on attend sa réponse avant de
+  // décider si ce coup est entré dans la partie.
+  Promise.resolve(troRemoteMove(payload.mv)).then(ok=>{
+    if(ok)TMP.log.push(payload.mv);
+    else troMpRequestSync();
+  });
 }
 
 let _troSyncAt=0;
@@ -390,14 +478,21 @@ function troMpRequestSync(){
 
 // Rejoue les coups manquants du journal reçu. On ne fait confiance à rien : ce
 // sont les mêmes vérifications que pour un coup ordinaire.
+// Rejoue les coups manquants, UN PAR UN et dans l'ordre : chacun peut demander
+// l'arbitre, donc chacun peut attendre. Un `for` synchrone les aurait tous
+// lancés en même temps sur une position qui n'existe pas encore.
 function troMpApplyLog(log){
   if(!Array.isArray(log)||log.length<=TMP.log.length)return;
-  for(let i=TMP.log.length;i<log.length;i++){
-    const pk=log[i];
+  const suivant=i=>{
+    if(i>=log.length)return;
     if(TRO.st.turn===TRO.myColor)return;       // ce coup-là est à nous : on s'arrête
-    if(!troRemoteMove(pk))return;
-    TMP.log.push(pk);
-  }
+    Promise.resolve(troRemoteMove(log[i])).then(ok=>{
+      if(!ok)return;
+      TMP.log.push(log[i]);
+      suivant(i+1);
+    });
+  };
+  suivant(TMP.log.length);
 }
 
 function troMpLeave(){

@@ -1762,12 +1762,53 @@ navigateur). Trois lectures, dans l'ordre :
 
 **Ce qu'on refuse toujours** : un trajet impossible, une pièce qui n'est pas à
 lui, une seconde révélation, et toute hypothèse une fois son cheval ouvert.
-**Ce qui reste possible, et qu'on assume** : tant qu'il n'a pas révélé, un
-client bricolé peut faire passer **un** coup qui laisse son roi en échec d'un
-de nos cavaliers, en le faisant passer pour son espion. C'est le prix exact de
-l'information cachée sans arbitre — ce cas est indiscernable d'un coup
-parfaitement légal, et personne, pas même un serveur, ne pourrait trancher sans
-connaître le secret.
+
+### L'arbitre : ce que le serveur scelle (`supabase/schema.sql`)
+
+Les deux lectures « retorses » ci-dessus reposent sur une **pièce précise**, et
+c'est exactement ce qu'un serveur peut vérifier sans rejouer la partie. Sans
+lui, le client d'en face n'avait d'autre choix que de **croire** : il acceptait
+le coup dès qu'une hypothèse le rendait légal, et un client bricolé pouvait
+donc ignorer un échec une fois, en désignant un cavalier au hasard. Cette
+faille est fermée.
+
+Trois fonctions, et le serveur ne sait rien d'autre :
+
+| Fonction | Ce qu'elle fait |
+| --- | --- |
+| `ec_troie_seal(code, joueur, pièce)` | **Sceller** son cheval au coup d'envoi, une fois pour toutes. Le rejeu à l'identique est permis (message perdu, onglet rechargé) ; changer de pièce ne l'est pas. |
+| `ec_troie_claim(code, joueur, pièce, demi-coup)` | **Réclamer** son cheval avant d'envoyer le coup qui s'appuie dessus. Ne répond « oui » — et n'enregistre quoi que ce soit — que pour la pièce scellée. |
+| `ec_troie_verify(code, autre, pièce, demi-coup)` | **Vérifier** l'hypothèse qu'un coup reçu impose. Ne confirme que ce qui vient d'être réclamé, pour ce demi-coup-là. |
+
+**Pourquoi ça ne fuite pas.** La table `ec_troie_seals` a RLS activé et
+**aucune policy** : la clé publishable ne peut pas en lire une ligne, et aucune
+fonction ne renvoie jamais la pièce scellée — seulement des booléens.
+`ec_troie_verify` répond « non » par défaut : sans réclamation en cours, sonder
+les deux cavaliers d'en face n'apprend rien. Et réclamer, c'est se découvrir —
+mais le joueur qui réclame a de toute façon révélé son espion **par son coup**,
+c'est la règle elle-même qui le veut.
+
+**Ce que le serveur ne fait pas** : valider les coups. Il ne sait pas jouer aux
+échecs, et lui apprendre demanderait d'y porter tout le moteur. Les deux
+clients continuent donc de vérifier la géométrie, la propriété des pièces et la
+légalité ; le serveur ne tranche que ce qu'eux ne peuvent pas trancher — le
+secret.
+
+**Quand l'hypothèse est confirmée, on la garde** (`troAdoptOption`) : ce
+cavalier **est** son espion, son propre coup vient de nous le dire, et le
+moteur devient exact pour la suite. Sans arbitre, on ne garde rien — on n'avait
+rien appris.
+
+**Si l'arbitre est absent, la partie a lieu quand même** : serveur injoignable,
+hors ligne, fonctions pas encore installées dans le projet Supabase. On retombe
+sur la parole donnée, comme avant lui, et le joueur en est **averti une fois**
+(« Arbitre injoignable : la partie continue sur parole. »). Un renfort qui
+empêcherait de jouer quand il manque serait un mauvais renfort — mais une
+garantie disparue qu'on tairait serait pire que pas de garantie du tout.
+
+**Pour l'installer** : rejouer `supabase/schema.sql` dans l'éditeur SQL du
+projet (**en commentant le `drop table` du haut**, voir l'en-tête du fichier).
+Le bloc de l'arbitre est idempotent, et il ne touche à rien d'autre.
 
 **Rien n'est misé et rien n'est classé**, comme pour les deux autres variantes.
 
@@ -1776,7 +1817,8 @@ connaître le secret.
 | `js/troie-rules.js` | Le moteur : état, choix de l'espion, les deux jeux de coups, la révélation, l'attaque qui ignore les espions, légalité, fin de partie, notation. Ne connaît ni le DOM ni le réseau. |
 | `js/troie-ai.js` | L'adversaire : alpha-bêta sur une **vision incomplète** de la partie, quatre niveaux, budget borné à 700 ms. |
 | `js/troie-game.js` | L'écran de jeu (`#page-troie`), le choix de l'espion, le salon. |
-| `js/troie-mp.js` | Les parties à deux joueurs : l'espion n'y voyage pas, et chaque camp annonce son propre verdict. |
+| `js/troie-mp.js` | Les parties à deux joueurs : l'espion n'y voyage pas, chaque camp annonce son propre verdict, et le secret est scellé chez l'arbitre. |
+| `supabase/schema.sql` | `ec_troie_seal` / `_claim` / `_verify` : l'arbitre du secret, et rien d'autre. |
 
 ## Le mode analyse des variantes (`js/variant-analysis.js`)
 
@@ -2291,7 +2333,8 @@ mais dans une version que Playwright refuse, le script le retrouve tout seul
 | Modifier la règle du Cheval de Troie | `troPseudoMoves` / `troSpyMoves` / `troAttacked` dans `js/troie-rules.js` (les trois endroits où la variante existe) |
 | Modifier ce que l'IA du Cheval de Troie a le droit de savoir | `troBeliefState` dans `js/troie-ai.js` |
 | Changer ce que l'écran montre d'un espion | `troSpyShown` / `troSpyClass` dans `js/troie-game.js` + `[TROIE]` de `css/style.css` |
-| Modifier le protocole en ligne du Cheval de Troie | `troResolveRemote` dans `js/troie-rules.js` (la lecture d'un coup reçu) + les messages `ready` / `state` de `js/troie-mp.js` |
+| Modifier le protocole en ligne du Cheval de Troie | `troRemoteOptions` / `troNeedsClaim` dans `js/troie-rules.js` (la lecture d'un coup reçu) + les messages `ready` / `state` de `js/troie-mp.js` |
+| Modifier l'arbitre du secret | `ec_troie_*` dans `supabase/schema.sql` (à rejouer dans l'éditeur SQL du projet) + `troMpSeal` / `troMpClaim` / `troMpVerify` dans `js/troie-mp.js` + le bac à sable `ec_troie_*` de `js/server.js` |
 | Modifier le mode analyse des variantes | `js/variant-analysis.js` + le bloc `.van-nav` des trois panneaux « Historique » (`index.html`) + `[VAN]` de `css/style.css` |
 | Modifier le système de comptes/sauvegarde | `js/accounts.js` (copie de travail) + `js/server.js` (échanges) |
 | Ajouter un champ stocké par compte | `accGet`/`accSet` comme avant — rien à toucher ailleurs, le serveur stocke `state` sans l'interpréter |
