@@ -249,10 +249,11 @@ navigation. Elle en porte trois, et les trois sont jouables :
   ancien camp. C'est la seule façon de le révéler, et elle est définitive. Un
   espion **pris avant d'avoir été révélé** meurt comme une pièce ordinaire :
   personne n'apprend que c'en était un. Roque, prise en passant et promotion
-  sont conservés. Elle se joue **contre l'ordinateur** (quatre niveaux)
-  uniquement : la moitié de la partie est une information cachée, et la tenir
-  secrète entre deux joueurs demanderait un arbitre que le jeu n'a pas. Elle ne
-  met aucune pièce en jeu et ne compte pas pour le classement.
+  sont conservés. Elle se joue **contre l'ordinateur** (quatre niveaux) ou
+  **contre un autre joueur** (partie rapide ou partie privée par code). En
+  ligne, **chacun choisit son espion sur son propre appareil et le choix ne
+  traverse jamais le réseau** : l'adversaire ne l'apprend que si on le joue.
+  Elle ne met aucune pièce en jeu et ne compte pas pour le classement.
 
 Les trois variantes ont un **mode analyse** : le panneau « Historique » permet
 de revenir en arrière dans la partie coup par coup (⏮ ◀ ▶ ⏭, flèches du
