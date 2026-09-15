@@ -349,10 +349,15 @@
      joué. Le bouton « Réessayer » remplace le cul-de-sac quand le serveur ne
      répond pas. -->
 <div class="ec-boot ec-load" id="ec-boot">
-  <!-- LA TOILE. Le fichier assets/backgrounds/chargement.webp est FACULTATIF
-       (voir assets/PROMPTS.md) : absent, il ne reste que le dégradé posé
-       dessous, et l'écran garde exactement la mise en page ci-dessous. C'est
-       la règle de toutes les planches du jeu, voir [ART] dans css/style.css. -->
+  <!-- LA TOILE : l'échiquier pris dans la tempête, la même image que la
+       recherche d'adversaire (assets/backgrounds/duel-wait.webp). Elle n'est
+       pas peinte pour le démarrage, mais elle dit en une seconde ce que le
+       jeu est, et c'est le seul moment où on la regarde vraiment.
+       Une planche dédiée (chargement.webp, § 3 bis d'assets/PROMPTS.md)
+       passerait devant sans rien à recoder ; les deux fichiers restent
+       FACULTATIFS, absents il ne reste que le dégradé posé dessous et l'écran
+       garde exactement la mise en page ci-dessous — la règle de toutes les
+       planches du jeu, voir [ART] dans css/style.css. -->
   <div class="ec-load-art ec-load-art-boot" aria-hidden="true"></div>
   <div class="ec-load-veil" aria-hidden="true"></div>
   <!-- Les braises : dix points de lumière qui montent lentement en travers de

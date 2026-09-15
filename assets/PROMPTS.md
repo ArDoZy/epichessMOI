@@ -6,8 +6,9 @@ et le prompt à donner à un générateur d'images pour chacune.
 > **Statut au dernier inventaire** : les 16 fonds d'écran (`backgrounds/`),
 > les 6 effets (`fx/`) et 6 des 7 médaillons de rang (`ranks/`, il manque
 > `acier.png`) **et les 7 logos de navigation** (`ui/logo-*.webp`) sont
-> posés. Restent à générer : **la planche de l'écran de chargement**
-> (`backgrounds/chargement.png`, § 3 bis), **les 7 paysages de la Diagonale**
+> posés. L'écran de chargement emprunte la tempête de `duel-wait.webp` ; sa
+> planche à lui (`backgrounds/chargement.png`, § 3 bis) reste facultative.
+> Restent à générer : **les 7 paysages de la Diagonale**
 > (`voie/biome-*.png`, § 3 ter), les 4 bannières de titre (`banners/`), les 5
 > pièces de mobilier (`ui/`), les 12 portraits d'adversaires,
 > `ranks/acier.png`, et les planches des coffres Dame et Roi. Chaque section
@@ -360,9 +361,12 @@ bataille.
 
 ## 3 bis. L'ÉCRAN DE CHARGEMENT — `assets/backgrounds/chargement.png`
 
-> **Statut : à générer.** Le jeu affiche aujourd'hui le dégradé de repli, et
-> tout le reste de l'écran (nom du jeu, braises, barre, conseils) fonctionne
-> déjà sans la planche.
+> **Statut : facultative.** L'écran de démarrage affiche aujourd'hui
+> `backgrounds/duel-wait.webp` — l'échiquier pris dans la tempête, emprunté à
+> la recherche d'adversaire. Une planche portrait peinte pour ce cadrage
+> (ci-dessous) passerait devant sans rien à recoder : le CSS empile les deux
+> images, `chargement.webp` par-dessus (`.ec-load-art-boot`, [LOADING] dans
+> `css/style.css`).
 
 C'est la **première image que voit qui que ce soit**, et la seule qu'on
 regarde en n'ayant rien d'autre à faire. Elle a donc des règles à elle,
@@ -1086,6 +1090,7 @@ sont illustrées se lit déjà comme une grille de cartes.
 
 ```
 assets/backgrounds/  chargement.png  ← l'écran de chargement, format PORTRAIT
+                                       (facultative : à défaut, duel-wait)
                      main-page.png  armees.png  armurerie.png  magasin.png
                      adversaires.png  voie.png  recompenses.png  comptes.png
                      atelier.png  combat-intro.png  duel-wait.png
@@ -1113,9 +1118,9 @@ assets/chests/dame/  01-intact.webp … 05-eclats.webp
 assets/chests/roi/   01-intact.webp … 05-eclats.webp
 ```
 
-**Par quoi commencer, si tu n'en fais que cinq :** `chargement.png` (c'est
-littéralement la première image du jeu, avant même le menu), `main-page.png`
-(c'est le premier écran jouable), les sept `voie/biome-*.png` (ils changent
+**Par quoi commencer, si tu n'en fais que cinq :** `main-page.png` (c'est le
+premier écran jouable), `chargement.png` (la première image du jeu, avant
+même le menu — mais l'écran n'est plus nu sans elle), les sept `voie/biome-*.png` (ils changent
 un écran entier, et sept planches d'un coup), les sept `ranks/` (c'est ce
 qu'on regarde le plus souvent) et `cadre-plateau.png` (c'est l'écran où on
 passe le plus de temps). Le reste est du confort.

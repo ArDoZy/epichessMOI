@@ -15,3 +15,9 @@ avant que ces images existent. Chemins, dimensions et prompts :
 `tools/opt-images.js` : `main-page`, `armees`, `armurerie`, `magasin`,
 `adversaires`, `voie`, `recompenses`, `comptes`, `atelier`, `combat-intro`,
 `duel-wait`, `table`, `lore-1` à `lore-4`.
+
+`duel-wait.webp` — l'échiquier pris dans la tempête — sert **deux** écrans :
+la recherche d'un adversaire et le démarrage du jeu (la barre de progression
+à l'ouverture). La planche dédiée au démarrage, `chargement.webp`
+(`assets/PROMPTS.md`, § 3 bis), reste facultative : posée, elle passe devant
+sans rien à recoder.

@@ -7401,10 +7401,15 @@ button.rp-log-w:hover,button.rp-log-b:hover{border-color:var(--border2);backgrou
    de jeu, et elle vaut pour la raison qui la fait exister partout : on
    supporte d'attendre ce qu'on voit avancer.
 
-   LES DEUX TOILES SONT FACULTATIVES (assets/backgrounds/chargement.webp et
-   duel-wait.webp). Absentes, le dégradé posé dessous reste seul et l'écran
-   fonctionne à l'identique — la règle de toutes les planches du jeu, voir
-   [ART].
+   LES DEUX ATTENTES PARTAGENT MAINTENANT LA MÊME TOILE : l'échiquier pris
+   dans la tempête (assets/backgrounds/duel-wait.webp). Le démarrage
+   affichait le dégradé nu, faute de planche à lui ; il n'y a aucune raison
+   d'attendre une image de plus pour que la première chose qu'on voie en
+   ouvrant le jeu soit une image.
+
+   LES DEUX TOILES RESTENT FACULTATIVES. Absentes, le dégradé posé dessous
+   reste seul et l'écran fonctionne à l'identique — la règle de toutes les
+   planches du jeu, voir [ART].
    ============================================================== */
 .ec-load{
   display:flex;flex-direction:column;align-items:center;justify-content:space-between;
@@ -7418,7 +7423,13 @@ button.rp-log-w:hover,button.rp-log-b:hover{border-color:var(--border2);backgrou
    mouvement se remarque. */
 .ec-load-art{position:absolute;inset:-4%;background:center/cover no-repeat;
   animation:ecLoadDrift 26s ease-in-out infinite alternate}
-.ec-load-art-boot{background-image:url('../assets/backgrounds/chargement.webp')}
+/* LA TOILE DU DÉMARRAGE : la tempête du salon en ligne, réemployée telle
+   quelle. Les deux images sont empilées : chargement.webp est posée PAR-DESSUS
+   duel-wait.webp, donc le jour où la planche dédiée existe (voir § 3 bis
+   d'assets/PROMPTS.md) elle prend la place sans rien à recoder, et tant
+   qu'elle manque le navigateur ne dessine que celle du dessous. */
+.ec-load-art-boot{background-image:url('../assets/backgrounds/chargement.webp'),
+  url('../assets/backgrounds/duel-wait.webp')}
 @keyframes ecLoadDrift{0%{transform:scale(1.04) translateY(0)}100%{transform:scale(1.12) translateY(-1.5%)}}
 /* LE VOILE. Sombre en haut et en bas, clair au milieu : le nom du jeu et la
    barre se détachent, et la toile garde le centre — c'est-à-dire l'endroit où
