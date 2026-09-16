@@ -11,3 +11,11 @@ node_modules/
 # Le PNG reste sur le disque : c'est le fichier qu'on retouche et qu'on
 # reconvertit. Pour en verser un malgre tout : git add -f assets/pieces/xxx.png
 assets/pieces/*.png
+
+# Les PNG D'ORIGINE des huit planches du menu principal (la grande salle, le
+# cartouche du titre, le cadre de l'arene, l'anneau des voies, la plaque
+# COMBAT et les trois emblemes). Meme regle que les creatures ci-dessus : dix
+# megaoctets de rendus bruts, dont le depot n'a besoin que sous leur forme
+# .webp detouree. Ils restent sur le disque -- ce sont les fichiers qu'on
+# retouche et que `tools/prep-menu-art.py` reconvertit.
+assets/sources/

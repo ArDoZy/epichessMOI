@@ -32,6 +32,12 @@
 //     illustrations. v3 marque leur arrivée et la nappe de marbre ajoutée aux
 //     plateaux : sans ce numéro, un joueur déjà venu aurait gardé les anciens
 //     plateaux et n'aurait jamais vu une seule des nouvelles planches.
+//     v4 marque le menu principal repeint (voir [GRANDE-SALLE] dans
+//     css/style.css) : le fond `backgrounds/main-page.webp` et les trois
+//     emblèmes `ui/logo-{journaliere,victoires,richesse}.webp` ont changé
+//     SOUS LE MÊME NOM. Sans ce numéro, un joueur déjà venu aurait gardé
+//     l'ancien fond et les anciens emblèmes dans le neuf des autres
+//     planches — c'est le seul cas où le cache ment.
 //
 // -- METTRE À JOUR -------------------------------------------------------
 // Monter CACHE_VERSION suffit : l'ancien cache est effacé à l'activation, et
@@ -39,7 +45,7 @@
 // immédiatement plutôt qu'au prochain lancement.
 // ================================================================
 
-const CACHE_VERSION = 'epicchess-v3';
+const CACHE_VERSION = 'epicchess-v4';
 const CACHE_MEDIA   = CACHE_VERSION + '-media';
 const CACHE_SHELL   = CACHE_VERSION + '-shell';
 

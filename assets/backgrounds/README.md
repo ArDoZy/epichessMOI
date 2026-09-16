@@ -21,3 +21,20 @@ la recherche d'un adversaire et le démarrage du jeu (la barre de progression
 à l'ouverture). La planche dédiée au démarrage, `chargement.webp`
 (`assets/PROMPTS.md`, § 3 bis), reste facultative : posée, elle passe devant
 sans rien à recoder.
+
+## `main-page.webp` a changé de tableau
+
+Le menu principal ne montre plus le champ de bataille nuageux en paysage,
+mais **la grande salle** : une nef gothique en portrait (1024 × 1536), deux
+cavaliers cabrés sur leurs socles, un damier de marbre au sol et la cité qui
+s'ouvre au fond. Le fichier garde son nom — rien à recâbler — mais il est
+posé autrement : **plus de masque radial qui perçait son milieu**, et une
+opacité de 92 % au lieu de 40 %.
+
+C'est le reste du menu qui l'autorise : le titre, l'arène et le bouton
+COMBAT portent maintenant leurs propres planches opaques (voir
+`assets/ui/README.md` et `[GRANDE-SALLE]` dans `css/style.css`), et n'ont
+plus besoin qu'on éteigne l'image sous eux pour rester lisibles.
+
+Le PNG d'origine est dans `assets/sources/menu/`, hors du dépôt ;
+`tools/prep-menu-art.py` le reconvertit.
