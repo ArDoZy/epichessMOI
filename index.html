@@ -65,7 +65,7 @@
      (le LCP compte dans le classement Google). -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Cinzel+Decorative:wght@400;700;900&family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Cinzel+Decorative:wght@400;700;900&family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Grenze+Gotisch:wght@500;700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/style.css">
 
 <!-- Données structurées Schema.org. Les faits (19 pièces, 5 classes,
@@ -620,8 +620,13 @@
                qu'on ne peut pas manquer. Rempli par renderMenuArena()
                (js/accounts.js). -->
           <button class="jouer-arena" id="jouer-arena" aria-label="Voir la Diagonale de la Puissance">
+            <!-- PLUS DE POUSSIÈRES. Cinq points dorés montaient le long du
+                 socle dès que le rang suivant était à portée. Sur le dégradé
+                 translucide d'avant, c'était une braise ; sur le bleu nuit
+                 peint du cadre, c'étaient cinq taches de couleur qui
+                 traversaient le panneau, et le seul mouvement de l'écran qui
+                 ne désignait rien. -->
             <div class="ja-halo" aria-hidden="true"></div>
-            <div class="ja-motes" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
             <div class="ja-medal" id="jouer-arena-medal"></div>
             <div class="ja-name" id="jouer-arena-name"></div>
             <div class="ja-elo" id="jouer-arena-elo"></div>
@@ -806,7 +811,14 @@
                 <span class="jouer-badge" id="jouer-rangee-badge" style="display:none">0</span>
               </button>
             </div>
-            <button class="jouer-btn" id="combat-btn"><svg class="jouer-btn-ico" aria-hidden="true"><use href="#ec-epees"/></svg><span>COMBAT</span></button>
+            <!-- PAS DE BLASON SUR LA PLAQUE. Les deux épées entrecroisées
+                 disaient « combat » à côté du mot COMBAT, et elles le
+                 disaient sur une plaque d'or déjà couverte de losanges
+                 ciselés : un dessin de plus dans un dessin. Elles poussaient
+                 surtout le mot hors de l'axe de la plaque — un libellé centré
+                 dans une boîte flex qui porte aussi une icône n'est plus
+                 centré sur le bouton, il est centré sur ce qui reste. -->
+            <button class="jouer-btn" id="combat-btn"><span>COMBAT</span></button>
             <!-- DEUX PORTES DE SORTIE, ET ELLES NE MÈNENT PAS AU MÊME
                  ENDROIT. « Adversaires » ouvre le laboratoire (les IA) ;
                  « Classement » ouvre les AUTRES JOUEURS — le tableau
