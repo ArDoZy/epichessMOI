@@ -8065,3 +8065,175 @@ body.has-acc #page-mirror{min-height:0}
    cette marge, il collerait aux quatre boutons. */
 #mir-promo .fok-lobby-sub{margin-bottom:6px}
 
+
+/* [GRANDE-SALLE] =================================================
+   LE MENU PRINCIPAL REPEINT : huit planches, un seul écran.
+
+   Jusqu'ici le menu était fait de rectangles CSS — un dégradé sombre pour
+   l'arène, un aplat doré pour COMBAT, trois cercles translucides pour les
+   voies — posés sur un fond flouté et percé en son milieu. C'était propre,
+   et c'était NEUTRE : rien à cet écran ne disait de quel jeu on ouvrait le
+   menu. Les huit planches disent la salle du trône, et elles la disent
+   ensemble : même or, mêmes losanges à quatre branches, même bleu nuit.
+
+   CE BLOC NE FAIT QUE REMPLACER DES MATIÈRES. Aucune règle ici ne déplace
+   quoi que ce soit ni n'ajoute d'élément : les boîtes, les tailles et les
+   gestionnaires de clic sont ceux d'avant, seuls le fond, la bordure et
+   l'ombre changent. Une planche absente (404) laisse donc l'écran DÉGRADÉ,
+   pas cassé — c'est la règle de tout le décor du jeu, voir [ART].
+
+   Les huit fichiers, et ce qu'ils remplacent :
+     · backgrounds/main-page.webp  le fond (la grande salle, en portrait) ;
+     · ui/ornement-titre.webp      le cartouche autour d'« Epic Chess » ;
+     · ui/cadre-arene.webp         le cadre de l'arène (rang, ELO, jauge) ;
+     · ui/cercle-voie.webp         l'anneau des trois boutons de voie ;
+     · ui/plaque-combat.webp       la plaque du grand bouton COMBAT ;
+     · ui/logo-journaliere.webp    le livre ouvert (récompense du jour) ;
+     · ui/logo-victoires.webp      la couronne de lauriers ;
+     · ui/logo-richesse.webp       l'éclair.
+   Les trois derniers écrasent les emblèmes précédents : même nom, même
+   format (256 px, canal alpha), donc rien à recâbler — voir
+   assets/ui/README.md.
+   ============================================================== */
+
+/* --- LE FOND N'EST PLUS PERCÉ ------------------------------------
+   Le fond d'avant était éteint à 40 % et TROUÉ en son milieu par un masque
+   radial, parce que le menu y posait du texte clair à même l'image. Les
+   planches apportent maintenant leur propre fond opaque : le titre est dans
+   son cartouche, l'ELO dans son cadre, le mot COMBAT sur sa plaque d'or. Le
+   trou n'a plus rien à protéger, et il effaçait justement le centre de la
+   salle — les deux cavaliers, le damier et la lumière au fond de la nef.
+   Reste un voile sombre en plein écran (.jouer-menu::before), qui assoit
+   l'image d'un cran sans la percer. */
+.nav-page[data-page="jouer"] .page-viewport::before{
+  background-position:center center;
+  opacity:.92;filter:saturate(.92) contrast(1.02);
+  -webkit-mask-image:none;mask-image:none;
+}
+body.light .nav-page[data-page="jouer"] .page-viewport::before{opacity:.5}
+@media(prefers-reduced-motion:reduce){
+  .nav-page[data-page="jouer"] .page-viewport::before{opacity:.92}
+}
+/* LE VOILE. Plus dense en haut et en bas — là où passent la barre de compte
+   et la barre d'onglets, qui sont du texte posé à même l'image — et presque
+   transparent au milieu, là où les planches se défendent toutes seules. */
+.jouer-menu::before{
+  content:'';position:absolute;inset:0;z-index:-1;pointer-events:none;
+  background:linear-gradient(180deg,rgba(4,7,11,.72) 0%,rgba(4,7,11,.18) 32%,
+                                    rgba(4,7,11,.18) 62%,rgba(4,7,11,.8) 100%);
+}
+body.light .jouer-menu::before{display:none}
+
+/* --- LE CARTOUCHE DU TITRE ---------------------------------------
+   `.menu-title::before` portait le cartouche SVG commun aux titres du jeu
+   (voir [ORFEVRERIE]). Le menu prend la planche peinte — deux volutes d'or,
+   l'une au-dessus du mot, l'autre en dessous —, les autres titres gardent le
+   SVG : la règle ci-dessous ne nomme que `.menu-title`.
+   La planche est ÉTIRÉE (`100% 100%`) et non contenue : son milieu est vide
+   par construction, c'est le mot qui l'occupe, et les deux volutes doivent
+   donc suivre la largeur du mot quelle que soit la taille de l'écran.
+   Le retrait du haut de la colonne du menu (--menu-title-h) monte d'autant
+   que le cartouche déborde du texte, sans quoi COMBAT remonterait dessous. */
+.menu-title{padding:10px 42px 14px}
+.menu-title::before{
+  inset:-2px -4px;border:0;border-image:none;
+  background:url('../assets/ui/ornement-titre.webp') center/100% 100% no-repeat;
+  opacity:1;
+}
+.jouer-menu{--menu-title-h:82px}
+@media(max-width:760px){.jouer-menu{--menu-title-h:74px}}
+body.desk .jouer-menu{--menu-title-h:116px}
+
+/* --- LE CADRE DE L'ARÈNE -----------------------------------------
+   Le socle bleu nuit et son filet d'or, d'un seul tenant. Il est posé en
+   fond ÉTIRÉ plutôt qu'en `border-image` : la couronne qui surmonte le bord
+   haut et les quatre losanges d'angle sont le dessin lui-même, et une
+   découpe en neuf régions les aurait étirés chacun de son côté.
+   L'ombre portée passe en `drop-shadow` : elle suit la silhouette découpée
+   de la planche (créneau du haut compris) là où `box-shadow` aurait dessiné
+   l'ombre d'un rectangle sous un objet qui n'en est pas un. */
+.jouer-arena{
+  border:none;border-radius:0;box-shadow:none;backdrop-filter:none;
+  background:url('../assets/ui/cadre-arene.webp') center/100% 100% no-repeat;
+  padding:clamp(20px,5vw,28px) clamp(30px,8vw,42px) clamp(22px,5.4vw,30px);
+  filter:drop-shadow(0 .8em 1.8em rgba(0,0,0,.85));
+  transition:filter .2s ease,transform .12s ease;
+}
+.jouer-arena:hover{filter:drop-shadow(0 .8em 1.8em rgba(0,0,0,.85)) brightness(1.07)}
+/* LE MÉDAILLON CHEVAUCHE LE BORD HAUT, comme le sceau d'un blason posé sur
+   son cadre : c'est ce qui fait qu'il est DEVANT le panneau et non dedans. */
+.ja-medal{margin-top:calc(-1 * clamp(26px,6.4vw,36px))}
+.ja-motes{border-radius:0}
+/* La jauge recule de la dorure : le filet intérieur du cadre passe à quelques
+   pixels du bord de la boîte, et une barre pleine largeur venait mordre
+   dessus. */
+.ja-gauge{width:92%}
+
+/* --- L'ANNEAU DES TROIS VOIES ------------------------------------
+   La planche remplace `assets/ui/anneau.svg` (voir [ORFEVRERIE]) sur le même
+   pseudo-élément : anneau d'or, gorge noire, un losange à chaque point
+   cardinal. Elle est toujours pleinement allumée — un anneau à demi effacé se
+   lisait comme un bouton désactivé —, et c'est la LUEUR qui dit maintenant
+   qu'une récompense attend, en plus de la pastille et des effets.
+   Le disque bleu nuit sous l'emblème est peint ici et non dans la planche :
+   son centre doit rester transparent pour que le fond de la salle passe
+   derrière l'or quand le thème clair éteint le disque. */
+.jouer-track{
+  border:none;box-shadow:none;backdrop-filter:none;
+  width:clamp(62px,17vw,72px);
+  background:radial-gradient(circle at 50% 42%,
+             rgba(26,38,52,.96) 0 37%,rgba(8,13,19,.96) 37% 39%,transparent 39%);
+}
+.jouer-track::after{
+  inset:0;opacity:1;
+  background-image:url('../assets/ui/cercle-voie.webp');
+  transition:filter .2s ease;
+}
+.jouer-track.is-ready::after{filter:drop-shadow(0 0 .45em rgba(240,209,137,.75))}
+body.light .jouer-track{background:radial-gradient(circle at 50% 42%,
+  rgba(255,250,238,.9) 0 39%,transparent 39%)}
+
+/* --- LA PLAQUE DU GRAND COMBAT -----------------------------------
+   Le lingot d'or à pointes, avec ses losanges aux quatre coins et au milieu
+   de chaque bord. Il remplace l'aplat `var(--gold)` ET la plaque SVG posée
+   en `border-image` plus haut (voir [ORFEVRERIE], bloc @supports) : deux
+   plaques l'une sur l'autre auraient fait deux liserés.
+
+   LE BOUTON PREND LE FORMAT DE SA PLAQUE (`aspect-ratio`), au lieu de garder
+   sa hauteur fixe. C'est la seule façon que les pointes et les losanges
+   restent des pointes et des losanges : une plaque étirée de moitié sur sa
+   largeur ovalise tout ce qu'elle porte. Il y gagne en surface ce que le
+   menu peut lui donner — il reste, et de loin, la plus grosse cible de
+   l'écran.
+   Le texte recule des pointes (padding en pourcentage) : les 18 % de chaque
+   côté sont la part que le dessin de la planche leur réserve. */
+.jouer-btn{
+  border:none;border-image:none;border-radius:0;box-shadow:none;
+  background:url('../assets/ui/plaque-combat.webp') center/100% 100% no-repeat;
+  width:min(100% - 16px,340px);height:auto;aspect-ratio:1280/365;
+  padding:0 18%;color:#20150a;
+  text-shadow:0 1px 0 rgba(255,240,200,.35);
+}
+.jouer-btn:hover{background:url('../assets/ui/plaque-combat.webp') center/100% 100% no-repeat;
+  box-shadow:none;filter:brightness(1.06)}
+/* LA PULSATION RESTE, et elle épouse la plaque : les deux souffles sont la
+   SILHOUETTE du bouton passée au flou (voir plus haut). Le rayon d'angle de
+   18 px dessinait celle du rectangle d'avant — la plaque, elle, est pointue.
+   Un rayon plus serré et un léger débord suffisent : ce qu'on voit d'un halo,
+   c'est ce qui dépasse, et ce qui dépasse d'une plaque pointue suit ses
+   pointes. */
+.jouer-btn::before,.jouer-btn::after{border-radius:8px}
+.jouer-btn::before{inset:6% 2%}
+.jouer-btn::after{inset:3% 0}
+/* L'EMBLÈME GRANDIT AVEC SON ANNEAU. La boîte de 28 à 38 px était taillée
+   pour un cercle dessiné en CSS, qui n'avait pas d'épaisseur ; l'anneau
+   peint, lui, mange une gorge noire et un filet d'or sur tout son pourtour.
+   À taille égale, le livre et la couronne se retrouvaient au fond d'un puits.
+   Ils reprennent la place que l'anneau leur laisse, et pas un pixel de plus :
+   la planche est à bord perdu, le dessin ne doit pas la toucher. */
+.jt-ico{width:clamp(30px,8.8vw,40px);height:clamp(30px,8.8vw,40px)}
+/* Le nom du rang est peint de la couleur de son rang (renderMenuArena,
+   js/accounts.js) : sur le bleu nuit de la planche, la pierre et le bois
+   tombaient à deux doigts du fond. La lueur dorée ne change pas la teinte —
+   elle décolle la lettre de son fond, ce qui suffit. */
+.ja-name{text-shadow:0 0 .7em rgba(240,209,137,.5),0 2px 6px rgba(0,0,0,.95)}

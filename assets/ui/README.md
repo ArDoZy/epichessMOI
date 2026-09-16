@@ -30,3 +30,37 @@ Le mobilier, lui, reste à faire. Dossier facultatif fichier par fichier :
 sans image, l'interface garde ses aplats, ses bordures et ses pictogrammes
 dessinés en SVG. Chemins, dimensions et prompts : **`assets/PROMPTS.md`,
 § 5 et § 5 bis**. Câblage : `[ART]` dans `css/style.css`.
+
+## Les cinq planches du menu principal, et les trois emblèmes repeints
+
+Le menu était fait de rectangles CSS ; il est maintenant fait de planches
+peintes. Cinq sont arrivées, et trois des sept logos ont été **remplacés
+sous le même nom** :
+
+| Fichier | Ce qu'il habille |
+|---|---|
+| `ornement-titre.webp` | le cartouche autour d'« Epic Chess » (deux volutes, le mot au milieu) |
+| `cadre-arene.webp` | le cadre de l'arène : rang, ELO, jauge |
+| `cercle-voie.webp` | l'anneau des trois boutons de voie |
+| `plaque-combat.webp` | la plaque d'or du grand bouton COMBAT |
+| `logo-journaliere.webp` | le livre ouvert — **nouveau dessin** |
+| `logo-victoires.webp` | la couronne de lauriers — **nouveau dessin** |
+| `logo-richesse.webp` | l'éclair — **nouveau dessin** |
+
+Les trois emblèmes gardent le format des quatre autres (256 px, canal alpha,
+carré, détourés au plus près puis recentrés) : rien à recâbler, ni dans le
+CSS ni dans le balisage.
+
+Ils ne portent toujours **AUCUN effet peint** — c'est la règle du haut de ce
+fichier, et le livre est celui qui la teste : son rendu d'origine était
+traversé d'un halo de lumière. Le halo est coupé au détourage
+(`tools/prep-menu-art.py`), parce que la spirale qui tourne autour du livre
+est dessinée et animée par le navigateur (`.jtf-*`) et ne s'allume QUE quand
+une récompense attend. Une lueur cuite dans la planche resterait allumée pour
+toujours, et ferait double feu quand l'autre s'allume.
+
+Ces cinq planches remplacent trois des dessins SVG de `[ORFEVRERIE]` sur le
+seul menu : `cartouche.svg` (qui sert toujours les autres titres),
+`anneau.svg` et `plaque.svg`. Câblage : `[GRANDE-SALLE]` en fin de
+`css/style.css`. Sources et reconversion : `assets/sources/menu/` et
+`tools/prep-menu-art.py`.
