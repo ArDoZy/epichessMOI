@@ -64,3 +64,12 @@ seul menu : `cartouche.svg` (qui sert toujours les autres titres),
 `anneau.svg` et `plaque.svg`. Câblage : `[GRANDE-SALLE]` en fin de
 `css/style.css`. Sources et reconversion : `assets/sources/menu/` et
 `tools/prep-menu-art.py`.
+
+### Le mot COMBAT n'a plus de blason
+
+Les deux épées entrecroisées ont quitté la plaque : elles disaient « combat »
+à côté du mot COMBAT, sur un lingot déjà couvert de losanges ciselés. Elles
+poussaient surtout le libellé hors de l'axe — un mot centré dans une boîte
+flex qui porte aussi une icône est centré sur ce qui reste, pas sur le bouton.
+Le `<use href="#ec-epees">` reste dans le `<defs>` d'`index.html` : c'est le
+même blason qui sert l'onglet Combat de la barre du bas.
