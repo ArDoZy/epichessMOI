@@ -169,13 +169,9 @@ const SCREENS=[
   {name:'02-reglages',  go:async p=>{await p.evaluate(()=>goToMainMenu());await p.waitForTimeout(600);
                                      await p.click('#settings-btn');await p.waitForTimeout(300);}},
   {name:'03-comptes',   go:async p=>{await p.evaluate(()=>openAccountPage());await p.waitForTimeout(500);}},
-  {name:'04-comptes-2', go:async p=>{await p.evaluate(()=>{
-                                       // Deux comptes voisins, pour voir la liste peuplée.
-                                       const l=accountsList();
-                                       if(!l.includes('Vitriol de Test')){l.push('Vitriol de Test');accountsSaveList(l);
-                                         localStorage.setItem('mc_p_Vitriol de Test_elo','940');
-                                         localStorage.setItem('mc_p_Vitriol de Test_ranked_games','62');}
-                                       openAccountPage();});await p.waitForTimeout(500);}},
+  // « 04-comptes-2 » semait un second compte dans localStorage : les
+  // comptes vivent désormais sur le serveur (js/server.js), et en créer un
+  // recharge la page. La planche a été retirée plutôt que de mentir.
   {name:'05-armees',    go:async p=>{await p.evaluate(()=>showPage('page-armies'));await p.waitForTimeout(700);}},
   {name:'06-armurerie', go:async p=>{await p.evaluate(()=>showPage('page-reserve'));await p.waitForTimeout(700);}},
   {name:'07-magasin',   go:async p=>{await p.evaluate(()=>{goToMainMenu();if(typeof goToPage==='function')goToPage('magasin');
@@ -237,8 +233,12 @@ const SCREENS=[
     page.on('pageerror',e=>problemes.push(size.name+' · ERREUR JS · '+e.message));
     // Le mode test débloque tout : on veut voir les écrans PLEINS (tous les
     // coffres, toutes les créatures), c'est là que les débordements arrivent.
-    await page.goto('http://localhost:'+PORT+'/?test',{waitUntil:'domcontentloaded'});
-    await page.waitForSelector('#combat-btn',{state:'visible',timeout:15000});
+    // `?mock` : le bac à sable hors ligne (js/server.js). Sans lui, la
+    // première ouverture attend un projet Supabase que l'outil n'a pas.
+    // Un compte neuf entre par le Lore : COMBAT n'est visible qu'après, on
+    // attend donc l'un OU l'autre.
+    await page.goto('http://localhost:'+PORT+'/?mock&test',{waitUntil:'domcontentloaded'});
+    await page.waitForSelector('#lore-intro:visible, #combat-btn:visible',{timeout:15000});
 
     // Sauter le Lore, le tutoriel et le coffre du jour : ils couvrent tout.
     for(let i=0;i<6&&await page.isVisible('#lore-intro');i++){

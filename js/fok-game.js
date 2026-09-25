@@ -642,21 +642,11 @@ function fokSyncChrome(){
   for(const el of[document.getElementById('fok-me-bar'),document.getElementById('fok-status'),
                   under,page.querySelector('.game-btns')]){
     if(!el||el.offsetParent===null)continue;
-    if(el===under){
-      // La zone des panneaux s'étend sur tout l'espace libre : on ne compte
-      // que ce qu'elle porte VRAIMENT, sinon le plateau rétrécirait pour
-      // laisser de la place à du vide (la boucle serait sans fin).
-      let h=0,k=0;
-      for(const ch of el.children){
-        if(ch.hidden)continue;
-        const st2=getComputedStyle(ch);
-        if(st2.position==='absolute'||st2.display==='none')continue;
-        const rr=ch.getBoundingClientRect();
-        if(rr.height>0){h+=rr.height;k++;}
-      }
-      const g2=parseFloat(getComputedStyle(el).rowGap||getComputedStyle(el).gap)||0;
-      below+=k?h+g2*(k-1):0;
-    }else below+=el.getBoundingClientRect().height;
+    // La zone des panneaux s'étend sur tout l'espace libre : on ne compte
+    // que ce qu'elle porte, avec le plancher du panneau (gameUnderContentH,
+    // js/game-render.js) — sans lui, sur tablette, le journal débordait sur
+    // « Abandonner ».
+    below+=(el===under)?gameUnderContentH(el):el.getBoundingClientRect().height;
     n++;
   }
   below+=gap*n+padB;
