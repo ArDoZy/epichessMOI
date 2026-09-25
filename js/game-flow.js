@@ -292,7 +292,15 @@ function showResultModal(result,oldElo,newElo,delta,newUnlockIds,noEloReason,elo
   const unlockSec=document.getElementById('unlock-section');
   if(newUnlockIds&&newUnlockIds.length>0){
     const pid=newUnlockIds[0];const pd=PIECES.find(p=>p.id===pid);
-    if(pd){unlockSec.style.display='';document.getElementById('unlock-piece-emoji').innerHTML=pieceIcon(pd.id,'n');document.getElementById('unlock-piece-name').textContent=pd.name;const clsEl=document.getElementById('unlock-piece-class');clsEl.textContent=pd.class;clsEl.className='unlock-piece-class pc-class '+pd.class;document.getElementById('unlock-piece-ability').textContent=pd.ability||'Aucun pouvoir spécial.';}
+    // LA CRÉATURE DÉBLOQUÉE SE MONTRE EN PEINTURE. C'était son logo
+    // monochrome de 72 px — le dessin fait pour une case de quarante pixels —
+    // au moment précis où le jeu la donne. Elle arrive maintenant sous sa
+    // carte illustrée (pieceCardArtHTML, js/piece-card.js), qui retombe
+    // d'elle-même sur le logo si la planche manque.
+    const art=!pd?'':(typeof pieceCardArtHTML==='function')
+      ?'<span class="unlock-card" data-class="'+escH(pd.class)+'">'+pieceCardArtHTML(pd)+'</span>'
+      :pieceIcon(pd.id,'n');
+    if(pd){unlockSec.style.display='';document.getElementById('unlock-piece-emoji').innerHTML=art;document.getElementById('unlock-piece-name').textContent=pd.name;const clsEl=document.getElementById('unlock-piece-class');clsEl.textContent=pd.class;clsEl.className='unlock-piece-class pc-class '+pd.class;document.getElementById('unlock-piece-ability').textContent=pd.ability||'Aucun pouvoir spécial.';}
     else unlockSec.style.display='none';
   }else unlockSec.style.display='none';
   // PLUS DE RAPPEL DE COFFRE SUR L'ÉCRAN DE RÉSULTAT. Une victoire ouvrait un
