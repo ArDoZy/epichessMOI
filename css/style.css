@@ -6542,9 +6542,11 @@ body.light .adv-advised{color:#f6f5f1}
    Les pages de la rangée. La page COMBAT garde sa règle historique
    ([LAB-BG] plus haut) : elle est la seule à masquer en ellipse serrée
    autour du bouton COMBAT. */
-.nav-page[data-page="armees"]  .page-viewport::before{background-image:url('../assets/backgrounds/armees.webp')}
-.nav-page[data-page="reserve"] .page-viewport::before{background-image:url('../assets/backgrounds/armurerie.webp')}
-.nav-page[data-page="magasin"] .page-viewport::before{background-image:url('../assets/backgrounds/magasin.webp')}
+/* `.is-seen` (js/pages-nav.js) : le fond ne se télécharge qu'une fois la
+   page demandée, et non pour les cinq pages dès le démarrage. */
+.nav-page.is-seen[data-page="armees"]  .page-viewport::before{background-image:url('../assets/backgrounds/armees.webp')}
+.nav-page.is-seen[data-page="reserve"] .page-viewport::before{background-image:url('../assets/backgrounds/armurerie.webp')}
+.nav-page.is-seen[data-page="magasin"] .page-viewport::before{background-image:url('../assets/backgrounds/magasin.webp')}
 .nav-page[data-page="armees"]  .page-viewport::before,
 .nav-page[data-page="reserve"] .page-viewport::before,
 .nav-page[data-page="magasin"] .page-viewport::before{
@@ -6629,6 +6631,17 @@ html #page-game,html #page-fok,html #page-mirror,html #page-troie{
   background-color:var(--bg);
 }
 body.light #page-game,body.light #page-fok,body.light #page-mirror,body.light #page-troie{background:var(--bg)}
+
+/* Sur un grand écran, la colonne des pendules était un aplat opaque collé à
+   la salle : elle devient une vitre fumée, qui laisse deviner le décor et
+   ne se lit pas moins bien (l'ardoise reste à 86 %). */
+@media(min-width:821px){
+  html #page-game .game-side,html #page-fok .game-side,html #page-mirror .game-side,html #page-troie .game-side{
+    background:linear-gradient(180deg,rgba(38,49,58,.86),rgba(28,36,43,.9));
+    -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);
+    border-left-color:rgba(208,169,80,.22);
+    box-shadow:-18px 0 40px -24px rgba(0,0,0,.8)}
+}
 
 /* LA TABLE, DERRIÈRE LE PLATEAU. Le plateau est posé sur quelque chose :
    sans cette planche, c'est le fond de page ; avec, c'est un établi. */
