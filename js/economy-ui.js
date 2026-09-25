@@ -349,11 +349,21 @@ function buyChestFromShop(chestId){
 // La carte ne dit que ce qu'il faut pour décider : quel coffre, et combien il
 // coûte. Le nombre de lots et la probabilité de pièce inédite
 // (chestPromiseHTML) restent réservés aux cartes du mode test.
+// LA RARETÉ SE LIT AVANT LE PRIX. La carte ne disait que le nom et le prix :
+// rien qui dise d'un coup d'œil pourquoi un Coffre Roi coûte douze fois un
+// Coffre Pion. Le rang du coffre (`tier`, CHESTS) lui donne un NOM de rareté
+// et un halo à sa couleur. Toujours PAS de fiche technique (lots, % de pièce
+// inédite) : elle a été retirée exprès du Magasin, et le test de fumée y
+// veille.
+const CHEST_TIER_NAMES=['Commun','Peu commun','Rare','Épique','Légendaire','Mythique'];
 function magasinChestCardHTML(chest){
   const price=chestPearlPrice(chest.id);
   const afford=pearlInfinite()||pearlBalance()>=price;
-  return '<button class="shop-chest'+(afford?'':' shop-poor')+'" data-chest="'+chest.id+'" style="--chest-c:'+chest.color+'">'+
-    chestVisual(chest,'chest-lg')+
+  const tier=chest.tier|0;
+  return '<button class="shop-chest shop-tier-'+tier+(afford?'':' shop-poor')+'" data-chest="'+chest.id+'" style="--chest-c:'+chest.color+'"'+
+    ' aria-label="'+escH(chest.name)+', '+(CHEST_TIER_NAMES[tier]||'')+', '+price+' perles">'+
+    '<span class="shop-chest-tier">'+(CHEST_TIER_NAMES[tier]||'')+'</span>'+
+    '<span class="shop-chest-stage">'+chestVisual(chest,'chest-lg')+'</span>'+
     '<div class="shop-chest-name">'+escH(chest.name)+'</div>'+
     '<div class="shop-chest-price">'+pearlAmountHTML(price,1.15)+'</div>'+
   '</button>';

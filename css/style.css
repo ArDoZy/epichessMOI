@@ -2582,6 +2582,29 @@ body.light .pmv-dark{background:#c3bdae}
    `--text` plutôt que #fff : il vaut #e7ecea sur fond sombre (blanc à l'œil)
    et bascule au sombre dans le thème clair, où un blanc pur disparaîtrait. */
 .shop-chest-price .pearl-amt{font-size:13px;color:var(--text)}
+/* LA RARETÉ ET LE HALO. Le nom de rareté coiffe la carte à la couleur du
+   coffre ; la statuette est posée sur une flaque de lumière de la même
+   couleur (un dégradé, pas une image : il suit --chest-c tout seul). Les deux coffres du haut de l'échelle
+   ont en plus un reflet qui passe — lentement, une fois toutes les cinq
+   secondes : un magasin qui clignote partout ne signale plus rien. */
+.shop-chest{position:relative;overflow:hidden}
+.shop-chest-tier{font-family:var(--f-ui);font-size:9.5px;font-weight:800;letter-spacing:.14em;
+  text-transform:uppercase;color:color-mix(in srgb,var(--chest-c) 78%,#fff);
+  padding:2px 9px;border-radius:99px;
+  border:1px solid color-mix(in srgb,var(--chest-c) 45%,transparent);
+  background:color-mix(in srgb,var(--chest-c) 12%,transparent)}
+.shop-chest-stage{position:relative;display:block}
+.shop-chest-stage::before{content:'';position:absolute;left:50%;top:58%;width:100%;height:70%;
+  transform:translate(-50%,-50%);border-radius:50%;pointer-events:none;
+  background:radial-gradient(closest-side,color-mix(in srgb,var(--chest-c) 42%,transparent),transparent);
+  filter:blur(4px);opacity:.75;transition:opacity .2s}
+.shop-chest:hover .shop-chest-stage::before{opacity:1}
+.shop-tier-4::after,.shop-tier-5::after{content:'';position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(105deg,transparent 35%,rgba(255,240,200,.13) 48%,transparent 60%);
+  transform:translateX(-120%);animation:shopSheen 5s ease-in-out infinite}
+.shop-tier-5::after{animation-delay:1.3s}
+@keyframes shopSheen{0%,62%{transform:translateX(-120%)}86%,100%{transform:translateX(120%)}}
+.shop-tier-5{border-color:color-mix(in srgb,var(--chest-c) 38%,var(--border))}
 .shop-chest.shop-poor{opacity:.62}
 .shop-chest.shop-poor:hover{opacity:.85}
 /* Le Coffre Pion montre LA STATUETTE de sa première planche
@@ -2620,8 +2643,30 @@ body.light .pmv-dark{background:#c3bdae}
   .shop-chest .chest-lg .chest-lock{width:19px;height:22px;margin-left:-9.5px;top:21px;border-width:2px}
   .shop-chest .chest-lg .chest-lock::after{width:5px;height:8px;margin-left:-2.5px;top:6px}
   .shop-chest-price .pearl-amt{font-size:11px}
+  .shop-chest-tier{font-size:8px;letter-spacing:.08em;padding:2px 6px}
 }
 
+
+/* « GAGNER DES PERLES », SOUS LES COFFRES. Deux rangées-boutons, discrètes :
+   c'est un renvoi, pas une offre. Les emblèmes sont les planches du menu
+   (assets/ui/logo-*.webp). */
+.shop-earn{margin-top:26px;display:flex;flex-direction:column;gap:9px}
+.shop-earn-title{font-family:var(--f-ui);font-size:11px;font-weight:800;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--gold);display:flex;align-items:center;gap:10px}
+.shop-earn-title::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,rgba(208,169,80,.45),transparent)}
+.shop-earn-row{display:flex;align-items:center;gap:12px;width:100%;text-align:left;cursor:pointer;
+  padding:11px 14px;border-radius:14px;border:1px solid var(--border2);color:var(--text);
+  background:linear-gradient(180deg,rgba(38,49,58,.78),rgba(20,27,33,.82));
+  font-family:var(--f-ui);transition:border-color .16s,transform .12s}
+.shop-earn-row:hover{border-color:var(--gold)}
+.shop-earn-row:active{transform:scale(.99)}
+.shop-earn-ico{flex:0 0 auto;width:40px;height:40px;background:center/contain no-repeat}
+.se-richesse{background-image:url('../assets/ui/logo-richesse.webp')}
+.se-journaliere{background-image:url('../assets/ui/logo-journaliere.webp')}
+.shop-earn-txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.shop-earn-txt b{font-family:var(--f-title);font-size:14px;font-weight:800;color:var(--gold2)}
+.shop-earn-txt span{font-size:12px;line-height:1.4;color:var(--muted)}
+.shop-earn-go{flex:0 0 auto;font-size:22px;line-height:1;color:var(--muted)}
 
 /* [VARIANTES] ====================================================
    Page « Variantes » (js/variantes.js), quatrième de la rangée : les autres
@@ -2660,6 +2705,39 @@ body.light .pmv-dark{background:#c3bdae}
   color:var(--muted);max-width:52ch}
 /* La carte ouverte : bordure de laiton, l'étiquette en négatif sur l'or, et le
    seul appel à l'action de la page. */
+/* L'EMBLÈME, ET LA PLANCHE DERRIÈRE LA CARTE.
+   L'emblème (VAR_EMBLEMS, js/variantes.js) ouvre l'en-tête : un médaillon de
+   laiton avec la règle dessinée dedans. Le nom se range à sa droite, le
+   badge « Libre » garde le bord droit (`margin-left:auto`).
+   La planche `assets/variantes/<id>.webp` est FACULTATIVE (assets/PROMPTS.md,
+   § 8) : posée à droite de la carte, fondue vers la gauche pour ne jamais
+   passer sous le texte. Absente, la carte reste telle quelle. */
+.var-card{overflow:hidden;isolation:isolate}
+.var-card::before{content:'';position:absolute;inset:0;z-index:-1;pointer-events:none;
+  background-repeat:no-repeat;background-size:auto 100%;background-position:right center;opacity:.34;
+  -webkit-mask-image:linear-gradient(270deg,#000 0%,rgba(0,0,0,.5) 30%,transparent 62%);
+  mask-image:linear-gradient(270deg,#000 0%,rgba(0,0,0,.5) 30%,transparent 62%)}
+.var-card[data-variante="fok"]::before{background-image:url('../assets/variantes/fok.webp')}
+.var-card[data-variante="mirror"]::before{background-image:url('../assets/variantes/mirror.webp')}
+.var-card[data-variante="troie"]::before{background-image:url('../assets/variantes/troie.webp')}
+.var-card-hdr{align-items:center}
+.var-card-emblem{flex:0 0 auto;width:46px;height:46px;border-radius:50%;
+  display:grid;place-items:center;color:var(--gold2);
+  background:radial-gradient(circle at 50% 38%,#2c3a44,#141b21 70%);
+  box-shadow:0 0 0 1.5px rgba(208,169,80,.65),0 0 0 4px rgba(20,27,33,.9),0 0 0 5px rgba(208,169,80,.28),
+    0 6px 14px -6px rgba(0,0,0,.8)}
+.var-card-emblem svg{width:34px;height:34px;overflow:visible}
+.var-card-hdr .var-card-name{flex:1 1 auto;min-width:0}
+.var-card:hover .var-card-emblem{color:#fff3cf}
+.var-mv{transform-box:fill-box;transform-origin:center}
+.var-mv-slide{animation:varSlide 2.6s ease-in-out infinite}
+.var-mv-l{animation:varMirL 2.6s ease-in-out infinite}
+.var-mv-r{animation:varMirR 2.6s ease-in-out infinite}
+.var-mv-eye{animation:varEye 3.4s ease-in-out infinite}
+@keyframes varSlide{0%,30%{transform:translateX(0)}50%,80%{transform:translateX(3px)}100%{transform:translateX(0)}}
+@keyframes varMirL{0%,30%,100%{transform:translateY(0)}50%,80%{transform:translateY(-4px)}}
+@keyframes varMirR{0%,30%,100%{transform:translateY(0)}50%,80%{transform:translateY(-4px)}}
+@keyframes varEye{0%,70%,100%{opacity:.25}78%,92%{opacity:1}}
 .var-card.is-on{cursor:pointer;border-color:rgba(193,154,69,.5)}
 .var-card.is-on:hover{border-color:var(--gold2)}
 .var-card.is-on:active{transform:scale(.99)}
@@ -4074,6 +4152,25 @@ body.light .jt-fx{mix-blend-mode:normal;filter:saturate(1.45) brightness(.82)}
   text-align:center;line-height:1.25}
 .joker-choice-stock{font-family:var(--f-ui);font-size:min(2.8vw,10px);color:var(--muted)}
 
+/* LA GERBE DE PERLES (rewardPearlBurst, js/rewards-ui.js). Posée au-dessus
+   de tout, transparente au doigt, et partie d'elle-même au bout de 1,7 s. */
+.rw-burst{position:fixed;left:50%;top:44%;z-index:12000;pointer-events:none;width:0;height:0}
+.rw-burst-glow{position:absolute;left:-120px;top:-120px;width:240px;height:240px;border-radius:50%;
+  background:radial-gradient(closest-side,rgba(223,234,242,.42),rgba(143,166,184,.12) 55%,transparent);
+  animation:rwGlow 1.5s ease-out both}
+.rw-burst-num{position:absolute;left:0;top:0;transform:translate(-50%,-50%);white-space:nowrap;
+  display:flex;align-items:center;gap:.18em;
+  font-family:var(--f-display);font-weight:900;font-size:clamp(40px,11vw,64px);color:#f4f8fb;
+  text-shadow:0 0 18px rgba(170,205,230,.75),0 4px 14px rgba(0,0,0,.8);
+  animation:rwNum 1.6s cubic-bezier(.2,.9,.25,1) both}
+.rw-burst-p{position:absolute;left:0;top:0;font-size:18px;line-height:0;
+  animation:rwFly 1.25s cubic-bezier(.15,.75,.35,1) var(--dl,0ms) both}
+@keyframes rwGlow{0%{opacity:0;transform:scale(.3)}25%{opacity:1}100%{opacity:0;transform:scale(1.6)}}
+@keyframes rwNum{0%{opacity:0;transform:translate(-50%,-50%) scale(.4)}18%{opacity:1;transform:translate(-50%,-50%) scale(1.12)}
+  30%{transform:translate(-50%,-50%) scale(1)}75%{opacity:1;transform:translate(-50%,-62%)}100%{opacity:0;transform:translate(-50%,-90%)}}
+@keyframes rwFly{0%{opacity:0;transform:translate(-50%,-50%) scale(.4)}12%{opacity:1}
+  70%{opacity:1}100%{opacity:0;transform:translate(calc(-50% + var(--dx)),calc(-50% + var(--dy) + 40px)) scale(.8)}}
+
 /* [ECONOMY-INLINE] : rappels d'économie dans les écrans existants ====
    Le stock possédé doit être visible LÀ OÙ on compose et LÀ OÙ on engage,
    pas seulement dans la Guerre des clans : sinon on découvre qu'on ne peut pas jouer
@@ -4507,6 +4604,13 @@ body.light .gp-bar.gp-turn{background:linear-gradient(90deg,var(--accent-bg),var
   color:var(--muted);font-size:16px;line-height:1;cursor:pointer;
   font-family:inherit;transition:color .15s,border-color .15s}
 .gpanel-close:hover{color:var(--danger);border-color:var(--danger)}
+/* LA CIBLE DÉBORDE LE DESSIN. 34 px (30 sur un écran court) restent sous
+   les 44 px qu'un pouce vise sans regarder ; grossir la croix alourdirait
+   l'en-tête. Le pseudo-élément élargit la zone qui répond au doigt, pas ce
+   qu'on voit. Même recette pour l'interrupteur des réglages (48 × 28). */
+.gpanel-close,.gpanel-mute{position:relative}
+.gpanel-close::after,.gpanel-mute::after{content:'';position:absolute;inset:-6px}
+.sp-switch::after{content:'';position:absolute;inset:-9px -4px}
 .gpanel-mute:hover{color:var(--accent2);border-color:var(--accent2)}
 /* La sourdine allumée (on REÇOIT) se lit comme un état, pas comme un bouton
    éteint : sans ça, on ne sait jamais dans quel sens l'interrupteur est. */
@@ -5762,7 +5866,8 @@ body.nav-active:not(.nav-overlay) .notif-host{bottom:92px}
    ============================================================== */
 .btn:focus-visible,.nav-arrow:focus-visible,.jouer-btn:focus-visible,
 .linput:focus-visible,.history-nav button:focus-visible,
-.chest-card:focus-visible{
+.chest-card:focus-visible,.shop-chest:focus-visible,.shop-earn-row:focus-visible,
+.var-card:focus-visible,.van-btn:focus-visible{
   outline:2px solid var(--accent2);outline-offset:3px}
 /* Les pièces sont redessinées 32 fois par plateau : la transition universelle
    de couleur du reset s'appliquait à chaque tracé SVG, pour rien. */
@@ -6457,6 +6562,36 @@ body.light .lore-page[data-lore]::before{opacity:.20}
   mask-image:radial-gradient(ellipse 50% 52% at 50% 50%,transparent 14%,#000 84%);
 }
 
+/* LA SALLE DE LA PARTIE. L'écran qu'on regarde le plus longtemps était le
+   seul resté en aplat d'ardoise : autour du plateau sur un ordinateur, sous
+   les commandes sur un téléphone, un grand vide gris. Il reçoit maintenant
+   une salle, très en retrait.
+   Les couches sont posées SUR LA PAGE ELLE-MÊME et non dans un ::before en
+   z-index:-1 : #page-game vit dans la rangée de pages et n'ouvre pas de
+   contexte d'empilement ; lui en donner un piégerait les fenêtres de fin de
+   partie qu'elle contient. Quatre couches, de haut en bas :
+     1. un voile d'ardoise qui s'éclaircit vers les bords — c'est lui qui
+        tient l'opacité (un calque de fond n'en a pas d'autre) ;
+     2. `partie.webp`, LA planche de cet écran (assets/PROMPTS.md, § 1) —
+        facultative : absente, la couche est vide et laisse voir…
+     3. `combat-intro.webp`, la planche de la présentation des armées, déjà
+        en cache puisqu'elle précède chaque partie ;
+     4. l'ardoise, --bg, comme avant.
+   Les trois variantes partagent la même salle. Le préfixe `html` n'est
+   pas décoratif : il passe devant `#page-fok{background:var(--bg)}` et ses
+   deux sœurs, écrites plus bas ; et `.page` ne marcherait pas, pages-nav.js
+   le retire à #page-game quand il la range dans la rangée. */
+html #page-game,html #page-fok,html #page-mirror,html #page-troie{
+  background:
+    radial-gradient(ellipse 75% 60% at 50% 42%,rgba(28,36,43,.93) 0%,rgba(28,36,43,.80) 55%,rgba(20,26,31,.70) 100%),
+    url('../assets/backgrounds/partie.webp') center/cover no-repeat,
+    url('../assets/backgrounds/combat-intro.webp') center/cover no-repeat;
+  /* La couleur à part : un var() dans le raccourci `background` le rend
+     entier invalide au calcul chez Chrome, et les trois images tombaient. */
+  background-color:var(--bg);
+}
+body.light #page-game,body.light #page-fok,body.light #page-mirror,body.light #page-troie{background:var(--bg)}
+
 /* LA TABLE, DERRIÈRE LE PLATEAU. Le plateau est posé sur quelque chose :
    sans cette planche, c'est le fond de page ; avec, c'est un établi. */
 .board-frame{position:relative}
@@ -6488,13 +6623,23 @@ body.light .lore-page[data-lore]::before{opacity:.20}
    prend donc aucune place dans la mise en page, ce qui était l'objection
    d'origine à border-image. Et `border-image-slice` est écrit SANS le
    mot-clé `fill` : la région centrale reste transparente, on joue au travers. */
-.game-board::after{
-  content:'';position:absolute;inset:-9px;z-index:6;pointer-events:none;
-  border:9px solid transparent;
-  border-image:url('../assets/ui/cadre-plateau.svg') 46 / 9px / 0 stretch;
+/* LE CADRE N'ÉTAIT JAMAIS VISIBLE. Il était posé sur .game-board::after, en
+   débord de 9 px (inset négatif)… sur un plateau en `overflow:hidden`, qui
+   rogne justement tout ce qui déborde : le fichier était chargé, le cadre
+   peint, et rogné en entier. Il est maintenant porté par la colonne qui
+   entoure le plateau (.game-board-col, exactement la même boîte, mais sans
+   rognage) — et donc aussi par les plateaux des trois variantes.
+   5 px sur un téléphone : le plateau y arrive à cinq pixels du bord de
+   l'écran, un cadre plus épais y serait coupé. */
+.game-board-col{position:relative}
+.game-board-col::after{
+  content:'';position:absolute;inset:-5px;z-index:6;pointer-events:none;
+  border:5px solid transparent;
+  border-image:url('../assets/ui/cadre-plateau.svg') 46 / 5px / 0 stretch;
+  filter:drop-shadow(0 0 5px rgba(208,169,80,.18));
 }
 @media (min-width:560px){
-  .game-board::after{inset:-11px;border-width:11px;
+  .game-board-col::after{inset:-11px;border-width:11px;
     border-image:url('../assets/ui/cadre-plateau.svg') 46 / 11px / 0 stretch}
 }
 
@@ -8005,7 +8150,7 @@ body.has-acc #page-troie{min-height:0}
    ============================================================== */
 .van-nav{display:flex;align-items:center;gap:6px;margin-top:8px;padding-top:8px;
   border-top:1px solid var(--border2)}
-.van-btn{flex:0 0 auto;min-width:34px;height:30px;cursor:pointer;
+.van-btn{flex:0 0 auto;min-width:40px;height:36px;cursor:pointer;
   background:var(--surface);border:1px solid var(--border2);border-radius:9px;
   color:var(--text);font-family:var(--f-ui);font-size:13px;line-height:1;
   transition:border-color .16s,background .16s,color .16s}
