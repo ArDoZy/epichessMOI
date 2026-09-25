@@ -15,6 +15,10 @@ la mise en page redevient exactement celle d'avant.
 `tools/opt-images.js`). Il manque `acier.png` — voir le prompt dans
 `assets/PROMPTS.md`, § 7.
 
+**Ils sont ramenés à 288 px** par `tools/opt-images.js` (recette `ranks`) :
+les six premiers avaient été versés à la taille du générateur, 1254 px et
+~400 Ko pièce, soit 2,3 Mo pour des images jamais affichées au-delà de 88 px.
+
 **Ils s'affichent à 26 px** sur les bandeaux de rang de la Diagonale. Un
 dessin compliqué n'y est plus qu'une tache : une seule silhouette centrale,
 massive, et rien d'autre.

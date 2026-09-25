@@ -38,6 +38,9 @@
 //     SOUS LE MÊME NOM. Sans ce numéro, un joueur déjà venu aurait gardé
 //     l'ancien fond et les anciens emblèmes dans le neuf des autres
 //     planches — c'est le seul cas où le cache ment.
+//     v5 marque les médaillons de rang ramenés de 1254 à 288 px (ils ne
+//     s'affichent jamais au-delà de 88 px : 2,3 Mo devenus 210 Ko) et la
+//     table recomprimée, eux aussi SOUS LE MÊME NOM.
 //
 // -- METTRE À JOUR -------------------------------------------------------
 // Monter CACHE_VERSION suffit : l'ancien cache est effacé à l'activation, et
@@ -45,7 +48,7 @@
 // immédiatement plutôt qu'au prochain lancement.
 // ================================================================
 
-const CACHE_VERSION = 'epicchess-v4';
+const CACHE_VERSION = 'epicchess-v5';
 const CACHE_MEDIA   = CACHE_VERSION + '-media';
 const CACHE_SHELL   = CACHE_VERSION + '-shell';
 
