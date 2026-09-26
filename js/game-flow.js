@@ -52,19 +52,26 @@ function buildGameBoard(playerArmyData,aiArmyData){
     console.warn('[ARMEE] pièce introuvable ('+((p&&p.id)||'aucune')+'), remplacée par '+secours);
     return PIECES.find(x=>x.id===secours)||PIECES[0];
   };
+  // LE GÉNÉRAL PORTE UNE MARQUE (`isGeneral`) : c'est à elle que la
+  // Matriarche reconnaît qu'il est tombé (updateMatriarche,
+  // js/rules-engine.js). Une pièce promue du même type n'est pas LE Général.
+  // LES PIONS SONT CEUX DE LA TROUPE de l'armée (`pawns`, voir PAWN_ARMIES,
+  // js/data-pieces.js) ; une armée sans troupe aligne des soldats.
+  const pawnOf=a=>pawnArmyById(a&&a.pawns).pawnId;
   const wm=repli(playerArmyData.mon,'roi');
   const wg=repli(playerArmyData.gen,'dame');
-  b[7][4]=make(wm.id,'k','w',wm.emoji,true);b[7][3]=make(wg.id,wg.pieceType||'q','w',wg.emoji,false);
+  b[7][4]=make(wm.id,'k','w',wm.emoji,true);b[7][3]=make(wg.id,wg.pieceType||'q','w',wg.emoji,false);b[7][3].isGeneral=true;
   (playerArmyData.extras||[]).forEach(id=>{
     const piece=PIECES.find(p=>p.id===id);if(!piece)return;
     const col=playerArmyData.placements?.[id];if(col===undefined)return;
     if(!b[7][col])b[7][col]=make(piece.id,piece.pieceType||'r','w',piece.emoji,false);
     if(piece.qty>=2){const mirCol=7-col;if(mirCol!==4&&mirCol!==3&&!b[7][mirCol])b[7][mirCol]=make(piece.id,piece.pieceType||'r','w',piece.emoji,false);}
   });
-  for(let c=0;c<8;c++)if(!b[6][c])b[6][c]=make('std-pawn','p','w','♙',false);
+  const wp=pawnOf(playerArmyData);
+  for(let c=0;c<8;c++)if(!b[6][c])b[6][c]=make(wp,'p','w','♙',false);
   const am=repli(aiArmyData.mon,'roi');
   const ag=repli(aiArmyData.gen,'dame');
-  b[0][4]=make(am.id,'k','b',am.emoji,true);b[0][3]=make(ag.id,ag.pieceType||'q','b',ag.emoji,false);
+  b[0][4]=make(am.id,'k','b',am.emoji,true);b[0][3]=make(ag.id,ag.pieceType||'q','b',ag.emoji,false);b[0][3].isGeneral=true;
   (aiArmyData.extras||[]).forEach(id=>{
     const piece=PIECES.find(p=>p.id===id);if(!piece)return;
     const col=aiArmyData.placements?.[id];if(col===undefined)return;
@@ -73,7 +80,8 @@ function buildGameBoard(playerArmyData,aiArmyData){
   });
   const stdFill=[{t:'r',e:'♜'},{t:'n',e:'♞'},{t:'b',e:'♝'},null,null,{t:'b',e:'♝'},{t:'n',e:'♞'},{t:'r',e:'♜'}];
   for(let c=0;c<8;c++){if(!b[0][c]&&stdFill[c]&&c!==3&&c!==4)b[0][c]=make('std-'+stdFill[c].t,stdFill[c].t,'b',stdFill[c].e,false);}
-  for(let c=0;c<8;c++)if(!b[1][c])b[1][c]=make('std-pawn','p','b','♟',false);
+  const bp=pawnOf(aiArmyData);
+  for(let c=0;c<8;c++)if(!b[1][c])b[1][c]=make(bp,'p','b','♟',false);
   return b;
 }
 
@@ -163,7 +171,7 @@ function startGame(colorAlreadyChosen,multiplayer,tutoCfg){
   // Le journal des coups garde le contenu de la partie PRÉCÉDENTE tant qu'un
   // premier coup n'a pas été joué : on le vide ici, en même temps que GS.
   if(typeof renderMoveLog==='function')renderMoveLog(GS);
-  updateMedusaParalysis(GS.board,GS);updatePretreProtection(GS.board,GS);updateGrandMaitre(GS.board,GS);
+  updateMedusaParalysis(GS.board,GS);updatePretreProtection(GS.board,GS);updateGrandMaitre(GS.board,GS);updateMatriarche(GS.board,GS);
   // Les exemplaires quittent la Guerre des clans MAINTENANT : ils sont sur le terrain
   // et donc en jeu (voir js/economy.js, en-tête). Rien de tel en tutoriel :
   // ces pièces sont prêtées par l'Alchimiste, les perdre ne coûte rien.
@@ -495,10 +503,12 @@ document.getElementById('game-undo').addEventListener('click',()=>{
     if(h.turnCount!==undefined)GS.turnCount=h.turnCount;
     if(h.timeWhite!==undefined)GS.timeWhite=h.timeWhite;
     if(h.timeBlack!==undefined)GS.timeBlack=h.timeBlack;
+    if(h.matriarche){GS.generalSeen={...h.matriarche.seen};GS.reviveUsed={...h.matriarche.used};}
   }
   GS.selected=null;GS.legalMoves=[];GS.gameOver=false;GS.lastMove=null;GS.amazonePostCapture=null;
   _endGameTriggered=false;
-  updateMedusaParalysis(GS.board,GS);updatePretreProtection(GS.board,GS);updateGrandMaitre(GS.board,GS);
+  updateMedusaParalysis(GS.board,GS);updatePretreProtection(GS.board,GS);updateGrandMaitre(GS.board,GS);updateMatriarche(GS.board,GS);
+  GS._reviveNote=null;
   renderMoveLog(GS);renderGame(GS);updateStatus(GS);updateHistoryNav();
   startClockTick(GS); // relance le décompte (l'annulation peut suivre une fin de partie)
 });

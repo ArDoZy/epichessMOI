@@ -41,7 +41,7 @@
 
 // Pièces fournies gratuitement à chaque partie : elles ne sont ni possédées,
 // ni perdues, ni gagnées.
-const FREE_PIECE_IDS=new Set(['std-pawn','std-r','std-n','std-b']);
+const FREE_PIECE_IDS=new Set(['std-r','std-n','std-b',...TRUE_PAWN_IDS]);
 function isOwnablePiece(id){return !!id&&!FREE_PIECE_IDS.has(id)&&!!PIECES.find(p=>p.id===id);}
 
 // Quantité d'exemplaires qu'une pièce mobilise dans une armée. buildGameBoard
@@ -189,6 +189,9 @@ function countSurvivors(gs){
     const p=gs.board?.[r]?.[c];
     if(!p||p.color!==col)continue;
     if(!isOwnablePiece(p.pieceId))continue;
+    // Une créature relevée par la Matriarche n'a jamais été engagée : elle ne
+    // rentre pas à l'inventaire à la place d'une vraie survivante.
+    if(p.id&&String(p.id).startsWith('rv-'))continue;
     out[p.pieceId]=(out[p.pieceId]||0)+1;
   }
   return out;

@@ -43,10 +43,14 @@ la création de son compte (js/lore-intro.js).
 
 ## Les pièces
 
-Le catalogue compte **16 créatures** réparties en **5 classes** :
+Le catalogue compte **27 créatures** réparties en **5 classes** :
 
-- **Monarque** : l'équivalent du roi, la pièce à protéger. Le **Roi**
-  (3 pts, 1 case dans toutes les directions) en est le seul représentant.
+- **Monarque** : l'équivalent du roi, la pièce à protéger. Une armée en
+  aligne toujours un seul, au choix : le **Roi** (3 pts, 1 case dans toutes
+  les directions), la **Matriarche** (3 pts, 1 case en diagonale seulement ;
+  si le Général tombe, elle peut une fois le relever en une créature de
+  valeur 2 posée à côté d'elle, sans perdre son tour) ou l'**Empereur**
+  (7 pts, déplacement du roi plus le saut du cavalier).
 - **Général** : l'équivalent de la dame, la pièce maîtresse. Exemples :
   Amazone (7 pts, cavalier + fou), Centaure (8 pts, tour + cavalier),
   Dame (10 pts, dame standard), Grand Maître (13 pts, dame + cavalier, et
@@ -60,9 +64,21 @@ Le catalogue compte **16 créatures** réparties en **5 classes** :
   inamovible), Fourmi (2 pts, avance d'une case tout droit ou en diagonale,
   sans jamais reculer, et **se promeut** si elle atteint la dernière rangée),
   Preux Chevalier, Éléphant de guerre (3 pts, une ou deux cases
-  orthogonales, et sa charge de deux cases détruit tout sur son passage).
+  orthogonales, et sa charge de deux cases détruit tout sur son passage),
+  Berserk (4 pts, une case en ligne droite ; chaque prise lui rend un pas,
+  si bien qu'il enchaîne les prises dans le même coup — une chaîne qui
+  mène au Monarque adverse le met en échec), Boucher (4 pts, une ou deux
+  cases en ligne droite ; il mange sans bouger une pièce collée à lui, et
+  se déplace pour manger à deux cases).
 - **Sorcier** : les pièces possédant des capacités spéciales avancées, mais
   à la mobilité réduite. Exemples : Méduse, Typhon, Banshee, Prêtre.
+
+Les huit pions ne sont pas forcément des pions d'échecs : chaque armée
+choisit sa **troupe**, gratuitement. Les **soldats** avancent tout droit et
+mangent en diagonale (le pion classique), les **mercenaires** avancent en
+diagonale et mangent tout droit, les **légionnaires** avancent et mangent
+tout droit, les **barbares** avancent et mangent en diagonale. Toutes les
+troupes font leur bond de deux cases au premier pas et se promeuvent au bout.
 
 Chaque pièce possède son propre schéma de déplacement. Le jeu ne le décrit
 pas en mots : la carte de la créature montre un petit échiquier 9×9 où elle

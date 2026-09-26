@@ -40,6 +40,23 @@ const PIECE_ART={
     '<path class="b" d="M27 51h46l-4 15c8 6 12 10 12 16H19c0-6 4-10 12-16z"/>'+
     '<path class="l" d="M31 63h38"/>',
 
+  // LA MATRIARCHE : un diadème bas et un voile qui tombe sur les épaules ;
+  // le visage est le creux d'ombre sous le voile, comme le Grand Maître.
+  'matriarche':
+    '<path class="b" d="M34 27l4-12 6 7 6-12 6 12 6-7 4 12z"/>'+
+    '<path class="b" d="M30 29h40c3 10 2 19-2 26l3 11c7 5 10 10 10 16H19c0-6 3-11 10-16l3-11c-4-7-5-16-2-26z"/>'+
+    '<path class="k" d="M40 35c0-3 4-5 10-5s10 2 10 5c0 9-4 16-10 16s-10-7-10-16z"/>'+
+    '<path class="l" d="M31 64h38"/>',
+
+  // L'EMPEREUR : la couronne FERMÉE (le dôme et ses arceaux) sous le globe
+  // crucifère — ce qui le distingue du Roi à quarante pixels.
+  'imperator':
+    '<path class="b" d="M47 3h6v4h4v5h-4v5h-6v-5h-4V7h4z"/>'+
+    '<path class="b" d="M22 45c0-15 12-27 28-27s28 12 28 27z"/>'+
+    '<path class="l" d="M50 19v26M37 23c-4 6-6 14-6 22M63 23c4 6 6 14 6 22"/>'+
+    '<path class="b" d="M23 45h54l-3 8H26z"/>'+
+    '<path class="b" d="M28 55h44l-4 12c8 6 12 10 12 15H20c0-5 4-9 12-15z"/>'+
+    '<path class="l" d="M31 67h38"/>',
 
   // ---- Généraux --------------------------------------------------
   'dame':
@@ -176,6 +193,25 @@ const PIECE_ART={
     '<circle class="k" cx="57" cy="38" r="3.4"/>'+
     '<path class="l" d="M47 47h.5M53 47h.5M44 53c4 3 8 3 12 0"/>',
 
+  // LE BERSERK : le casque à cornes, la fente des yeux, la barbe tressée.
+  'berserk':
+    '<path class="b" d="M28 27c-9-2-15-10-15-20 8 2 14 8 17 15z"/>'+
+    '<path class="b" d="M72 27c9-2 15-10 15-20-8 2-14 8-17 15z"/>'+
+    '<path class="b" d="M29 37c0-14 9-22 21-22s21 8 21 22v6H29z"/>'+
+    '<path class="b" d="M31 43h38v8c0 7-8 12-19 12s-19-5-19-12z"/>'+
+    '<path class="k" d="M37 45h9v4h-9zM54 45h9v4h-9z"/>'+
+    '<path class="b" d="M24 82c0-11 10-20 26-20s26 9 26 20z"/>'+
+    '<path class="l" d="M43 56l7 6 7-6"/>',
+
+  // LE BOUCHER : trapu, le tablier, et le couperet levé à côté de lui.
+  'boucher':
+    '<path class="l" d="M60 60l12-25"/>'+
+    '<path class="b" d="M64 11h26v21c0 3-2 5-5 5H64z"/>'+
+    '<circle class="k" cx="84" cy="18" r="2.8"/>'+
+    '<circle class="b" cx="41" cy="25" r="13"/>'+
+    '<path class="b" d="M20 82c0-21 9-36 21-36s21 15 21 36z"/>'+
+    '<path class="l" d="M31 58h20v24M31 58v24"/>',
+
   // ---- Sorciers --------------------------------------------------
   'meduse':
     '<path class="l" d="M33 56c-3 11 2 15 0 26M42 59c-3 12 2 16 0 25M50 60c-3 12 2 16 0 25M58 59c-3 12 2 16 0 25M67 56c-3 11 2 15 0 26"/>'+
@@ -243,6 +279,24 @@ PIECE_ART.__pawn=
   '<circle class="b" cx="50" cy="25" r="13"/>'+
   '<path class="b" d="M40 36h20l2 7H38z"/>'+
   '<path class="b" d="M38 43h24c0 16 4 27 10 37H28c6-10 10-21 10-37z"/>';
+
+// LES QUATRE TROUPES (PAWN_ARMIES, js/data-pieces.js) gardent la silhouette
+// du pion — ce sont des pions — et se distinguent par la coiffe : le
+// chapeau à large bord du mercenaire, le casque à cimier et le bouclier du
+// légionnaire, les cornes du barbare.
+PIECE_ART['pion-mercenaire']=PIECE_ART.__pawn+
+  '<path class="b" d="M26 19h48l-5 5H31z"/>'+
+  '<path class="b" d="M37 19c0-8 6-13 13-13s13 5 13 13z"/>'+
+  '<circle class="k" cx="50" cy="61" r="4"/>';
+PIECE_ART['pion-legionnaire']=PIECE_ART.__pawn+
+  '<path class="b" d="M36 18c2-9 8-14 14-14s12 5 14 14c-4-3-9-4-14-4s-10 1-14 4z"/>'+
+  '<path class="b" d="M40 50h20v18c0 5-5 9-10 11-5-2-10-6-10-11z"/>'+
+  '<path class="l" d="M50 53v22"/>';
+PIECE_ART['pion-barbare']=
+  '<path class="b" d="M39 20c-7-1-12-7-12-14 6 1 11 5 13 10z"/>'+
+  '<path class="b" d="M61 20c7-1 12-7 12-14-6 1-11 5-13 10z"/>'+
+  PIECE_ART.__pawn+
+  '<path class="l" d="M42 50l8 8 8-8"/>';
 
 // Jeton neutre : garantit qu'une pièce ajoutée sans dessin reste visible et
 // jouable au lieu de laisser une case vide.

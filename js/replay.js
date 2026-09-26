@@ -55,6 +55,9 @@ function replayArmyRecord(a){
     mon:id(a.mon),gen:id(a.gen),
     extras:(a.extras||[]).map(id).filter(Boolean),
     pl:a.placements||{},
+    // La troupe de pions, seulement quand ce ne sont pas des soldats : une
+    // partie d'avant les troupes n'a pas la clé, et se relit pareil.
+    ...(a.pawns&&a.pawns!=='soldats'?{pw:a.pawns}:{}),
   };
 }
 function buildReplayRecord(gs){
@@ -92,7 +95,8 @@ function replayPromoOption(pieceId,color){
 function replayArmyFromRecord(a){
   const fp=id=>(typeof PIECES!=='undefined')?PIECES.find(p=>p.id===id):null;
   return{mon:fp(a&&a.mon),gen:fp(a&&a.gen),
-         extras:((a&&a.extras)||[]).slice(),placements:(a&&a.pl)||{}};
+         extras:((a&&a.extras)||[]).slice(),placements:(a&&a.pl)||{},
+         pawns:(a&&a.pw)||'soldats'};
 }
 
 // UNE ARMÉE DONT UNE CRÉATURE A QUITTÉ LE CATALOGUE NE SE REJOUE PAS.
@@ -151,10 +155,19 @@ function replayFrames(rec){
     updateMedusaParalysis(gs.board,gs);
     updatePretreProtection(gs.board,gs);
     updateGrandMaitre(gs.board,gs);
+    updateMatriarche(gs.board,gs);
     frames=[{board:cloneBoard(gs.board),pairs:[],from:null,to:null,
              capW:[],capB:[]}];
     for(const code of (rec.m||[])){
       const s=String(code);
+      // LA RÉANIMATION DE LA MATRIARCHE : « R54:fourmi ». Elle ne coûte pas de
+      // tour et n'a donc pas d'image à elle : elle apparaît avec le coup qui
+      // la suit, comme dans le journal.
+      if(s[0]==='R'){
+        const at={r:+s[1],c:+s[2]};const i=s.indexOf(':');
+        if(i<0||!applyMatriarcheRevive(gs,gs.turn,s.slice(i+1),at.r,at.c))break;
+        continue;
+      }
       const from={r:+s[0],c:+s[1]},to={r:+s[2],c:+s[3]};
       if(!(from.r>=0&&from.r<8&&from.c>=0&&from.c<8&&to.r>=0&&to.r<8&&to.c>=0&&to.c<8))break;
       const piece=gs.board[from.r][from.c];
@@ -173,7 +186,12 @@ function replayFrames(rec){
         // en redemandant au moteur ce que cette pièce pouvait faire.
         const legal=(typeof getLegalMoves==='function')?getLegalMoves(gs.board,from.r,from.c,gs):[];
         const at=s.match(/@(\d)(\d)/);
-        const want=at?{r:to.r,c:to.c,via:{r:+at[1],c:+at[2]}}:to;
+        const want=at?{r:to.r,c:to.c,via:{r:+at[1],c:+at[2]}}:{r:to.r,c:to.c};
+        // Les prises en passant du Berserk : « ~5453 ». Sans elles, un coup de
+        // Berserk désigne son pas le plus simple.
+        const fu=s.match(/~((?:\d\d)+)/);
+        if(fu)want.path=fu[1].match(/\d\d/g).map(x=>({r:+x[0],c:+x[1]}));
+        else if(piece.pieceId==='berserk')want.path=[];
         const mv=legal.find(m=>sameMove(m,want));
         if(!mv)break;                        // coup devenu illégal : on s'arrête là
         executeGameMove(from,mv,gs);

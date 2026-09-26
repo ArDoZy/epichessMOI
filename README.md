@@ -1087,6 +1087,56 @@ Il ne fait **pas** de notifications : elles demandent un serveur (VAPID, un
 service de push, une base d'abonnements). Le jour où le backend existera,
 c'est là qu'elles se brancheront.
 
+### 1 nonies. Les Monarques, les troupes et les coups à chemin (`js/rules-engine.js`)
+
+**Trois Monarques, un seul par armée.** Le Roi, la Matriarche (une case en
+biais, sans roque) et l'Empereur (le Roi plus le saut du Cavalier). L'armée
+n'a toujours qu'UN emplacement Monarque : le code d'échec et mat n'a donc
+jamais à choisir quelle pièce protéger, et continue de reconnaître le
+Monarque à `isKing` / `type==='k'`. Seul le déplacement se choisit sur
+l'identifiant, en tête de `generateMovesRaw`, et l'attaque dans
+`isSquareAttackedSimple` (la Matriarche ne frappe qu'en biais). L'Empereur
+s'appelle **`imperator`** : l'identifiant `empereur` est retiré
+(`RETIRED_PIECE_IDS`) et migré vers le Roi dans les vieux comptes, il ne
+doit jamais resservir.
+
+**La Réanimation de la Matriarche.** `buildGameBoard` marque le Général
+(`isGeneral`) ; `updateMatriarche` (appelée par `postMoveUpdate`, au
+démarrage et à l'annulation) tient `generalSeen` / `reviveUsed` /
+`reviveReady` par camp. `applyMatriarcheRevive` est le **guichet unique** :
+joueur (fenêtre de promotion prêtée, puis case sur le plateau —
+`reviveOpenModal` / `reviveClick`, `js/game-render.js`), IA
+(`matriarcheAIRevive`, avant sa recherche), adversaire en ligne (message
+`power` avec `pieceId:'matriarche'` et `revive`) et relecture (code
+`R<r><c>:<id>`). Elle ne change pas le trait. Le mat en tient compte :
+`updateStatus` n'annonce ni mat ni pat tant que `reviveCouldSave` trouve une
+Réanimation qui rend un coup au camp.
+
+**Les coups à chemin.** Le Singe portait déjà `via` (son premier pas). Le
+**Berserk** porte `path` : la liste ordonnée des cases qu'il mange en
+passant, sa Furie (`berserkMoves`). Tout ce qui transporte un coup transporte
+donc `path` : `applyCollateralOnBoard` (simulation), `executeGameMove`,
+`sameMove`, `unmirrorMove` (IA jouant les Blancs), le multijoueur
+(`mpSendMove` / `mpApplyRemoteMove`), la relecture (`~5453` dans le code du
+coup). À l'écran, le joueur joue chaque pas (« LE BERSERK PAS À PAS »,
+`js/game-render.js`). L'échec du Berserk se détecte en remontant la chaîne
+depuis la case visée.
+
+**Le Couperet du Boucher.** Une prise collée à lui porte `shoot:true` : la
+victime disparaît, le Boucher reste sur sa case. `moveLeavesKingInCheck`,
+`applyMoveQuick` (IA) et `executeGameMove` le traitent avant tout
+déplacement ; la contagion de l'Infecté ne le touche pas (il ne se pose pas
+sur la case).
+
+**Les troupes de pions.** `PAWN_ARMIES` (`js/data-pieces.js`) : soldats
+(`std-pawn`), mercenaires, légionnaires, barbares. Ce n'est pas une pièce du
+catalogue : c'est le champ `pawns` de l'armée, choisi sous les cinq
+emplacements de « Mes armées » (`pRenderTroop`, `js/armies.js`), lu par
+`buildGameBoard`, enregistré dans la relecture (`pw`) et vérifié en ligne
+(`mpArmyProblem`). Une armée sans `pawns` aligne des soldats. Les règles
+tiennent dans `PAWN_STYLE` + `pawnMoves` ; tous sont des pions pour le reste
+du jeu (`TRUE_PAWN_IDS`, `PROMOTING_IDS`).
+
 ### 2. Les logos de pièces (`js/piece-art.js`)
 
 Les émojis ont été remplacés par des silhouettes SVG. `pieceSVG(id,color)`
@@ -2281,6 +2331,9 @@ mais dans une version que Playwright refuse, le script le retrouve tout seul
 | Changer le prémouvement (cases proposées, annulation, exécution) | section « LE PRÉMOUVEMENT » de `js/game-render.js` (`premoveTargets`, `premoveClick`, `premoveRun`) + les règles `.pm-*` de `[BOARD-MOTION]` dans `css/style.css` |
 | Changer la façon dont une pièce se déplace à l'écran (saut, atterrissage) | `markMoveStyle` dans `js/game-render.js` + `gcLeap`/`gcLand` dans `[BOARD-MOTION]` |
 | Changer la notation du journal des coups | `recordMove` / `mlDisambiguation` dans `js/rules-engine.js` (+ `.ml-*` dans `css/style.css`) |
+| Changer une troupe de pions (déplacement, prise) ou en ajouter une | `PAWN_ARMIES` dans `js/data-pieces.js` + `PAWN_STYLE` dans `js/rules-engine.js` (+ la détection d'échec si elle mange autrement qu'en biais) + son dessin dans `js/piece-art.js` |
+| Changer la Réanimation de la Matriarche | « LA RÉANIMATION DE LA MATRIARCHE » dans `js/rules-engine.js` (règle) + « LA RÉANIMATION DE LA MATRIARCHE, côté joueur » dans `js/game-render.js` (fenêtre, cases) |
+| Changer la Furie du Berserk ou sa sélection pas à pas | `berserkMoves` + le bloc Berserk de `isSquareAttackedSimple` dans `js/rules-engine.js` ; « LE BERSERK PAS À PAS » dans `js/game-render.js` |
 | Changer ce qui se promeut en arrivant au bout | `PROMOTING_IDS` dans `js/data-pieces.js` — `showPromoModal`, l'IA et le multijoueur excluent tous les trois ces pièces de la LISTE des promotions possibles |
 | Changer le calcul d'ELO, les rangs, les paliers de déblocage | `js/voie.js` (calcul) + `js/data-pieces.js` (table `UNLOCK_TABLE`/`RANKS`) |
 | Ajouter / régler un adversaire (niveau, style, lore) | `js/data-pieces.js` (`AI_OPPONENTS`), puis `node tools/ai-bench.js` pour vérifier l'échelle |

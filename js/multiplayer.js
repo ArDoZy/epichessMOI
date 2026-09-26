@@ -380,7 +380,7 @@ function mpBindRoomHandlers(channel){
       if(payload.idx<MP.log.length)return;              // déjà joué chez nous
       if(payload.idx>MP.log.length)return mpRequestSync(); // il nous manque un coup
     }
-    mpApplyRemoteMove(payload.from,payload.to,payload.promo,payload.via);
+    mpApplyRemoteMove(payload.from,payload.to,payload.promo,payload.via,payload.path);
   });
 
   channel.on('broadcast',{event:'power'},({payload})=>{
@@ -391,7 +391,7 @@ function mpBindRoomHandlers(channel){
       if(payload.idx<MP.log.length)return;
       if(payload.idx>MP.log.length)return mpRequestSync();
     }
-    mpApplyRemotePower(payload.r,payload.c,payload.pieceId);
+    mpApplyRemotePower(payload.r,payload.c,payload.pieceId,payload.revive);
   });
 
   // BATTEMENT DE CŒUR : chaque camp annonce régulièrement combien de coups il
@@ -544,6 +544,10 @@ function mpArmyProblem(army){
 
   const total=mon.value+gen.value+pieces.reduce((t,p)=>t+p.value,0);
   if(total>MP_ARMY_BUDGET)return 'son armée vaut '+total+' points au lieu de '+MP_ARMY_BUDGET+' au maximum';
+
+  // La troupe de pions : absente (vieux client, soldats), ou l'une des quatre.
+  if(army.pawns!==undefined&&army.pawns!==null&&!PAWN_ARMIES.some(a=>a.id===army.pawns))
+    return 'sa troupe de pions n\'existe pas';
 
   // Les placements décident des colonnes de départ (voir buildGameBoard,
   // js/game-flow.js) : hors du plateau ou en double, le plateau se
@@ -707,8 +711,8 @@ function mpApplySyncEntries(entries){
     if(e.i<MP.log.length)continue;      // déjà appliqué
     if(e.i>MP.log.length)break;         // trou : on s'arrête là
     const ok=(e.kind==='power')
-      ? mpApplyRemotePower(e.r,e.c,e.pieceId)
-      : mpApplyRemoteMove(e.from,e.to,e.promo,e.via);
+      ? mpApplyRemotePower(e.r,e.c,e.pieceId,e.revive)
+      : mpApplyRemoteMove(e.from,e.to,e.promo,e.via,e.path);
     if(!ok)break;                        // coup refusé : inutile d'insister
     if(GS.gameOver)break;
   }
@@ -1252,7 +1256,8 @@ function mpSanitizePromo(promo){
 // suite sur une position qui n'est plus la bonne.
 let _mpApplyingRemote=false;
 // `via` : le premier pas du Singe, quand le coup en a un (voir singeMoves).
-function mpApplyRemoteMove(from,to,promo,via){
+// `path` : les prises en passant du Berserk (voir berserkMoves).
+function mpApplyRemoteMove(from,to,promo,via,path){
   if(!GS||!GS.multiplayer||GS.gameOver)return false;
   const oppCol=mpOppColor();
 
@@ -1268,7 +1273,11 @@ function mpApplyRemoteMove(from,to,promo,via){
   // viennent donc de notre moteur, pas du message reçu.
   const legal=getLegalMoves(GS.board,from.r,from.c,GS);
   const okVia=via&&inB(via.r,via.c)?{r:via.r,c:via.c}:null;
-  const want={r:to.r,c:to.c,via:okVia};
+  const okPath=Array.isArray(path)&&path.length<=32&&path.every(q=>q&&inB(q.r,q.c))
+    ?path.map(q=>({r:q.r,c:q.c})):null;
+  // Un coup de Berserk sans chemin désigne son pas le plus simple (chemin
+  // vide) : c'est ce qu'envoie un client qui ne connaît pas la Furie.
+  const want={r:to.r,c:to.c,via:okVia,path:okPath||(piece.pieceId==='berserk'?[]:null)};
   const move=legal.find(m=>sameMove(m,want)&&!m.stayPut)||legal.find(m=>sameMove(m,want));
   if(!move)return mpRejectMove('coup illégal');
 
@@ -1289,17 +1298,24 @@ function mpApplyRemoteMove(from,to,promo,via){
   _mpApplyingRemote=false;
   // Le coup adverse entre au journal EXACTEMENT comme chez lui : les deux
   // journaux gardent la même longueur, qui sert de repère au rattrapage.
-  mpLogPush({i:MP.log.length,kind:'move',from:{r:from.r,c:from.c},to:{r:to.r,c:to.c},promo:safePromo,via:okVia});
+  mpLogPush({i:MP.log.length,kind:'move',from:{r:from.r,c:from.c},to:{r:to.r,c:to.c},promo:safePromo,via:okVia,path:okPath});
   return true;
 }
 
 // Pouvoir du Garde de Pierre : il change le tour sans passer par
 // executeGameMove, il a donc son propre message, revalidé de la même façon.
-function mpApplyRemotePower(r,c,pieceId){
+// La Réanimation de la Matriarche emprunte le même message : (r,c) est alors
+// la case où la créature `revive` est relevée, et le trait NE change PAS.
+function mpApplyRemotePower(r,c,pieceId,revive){
   if(!GS||!GS.multiplayer||GS.gameOver)return false;
   const oppCol=mpOppColor();
   if(GS.turn!==oppCol)return mpRejectMove('pouvoir hors tour');
   if(!inB(r,c))return mpRejectMove('pouvoir hors plateau');
+  if(pieceId==='matriarche'){
+    if(typeof revive!=='string'||!applyMatriarcheRevive(GS,oppCol,revive,r,c))return mpRejectMove('réanimation impossible');
+    mpLogPush({i:MP.log.length,kind:'power',r,c,pieceId,revive});
+    return true;
+  }
   const cell=GS.board[r][c];
   if(!cell||cell.color!==oppCol)return mpRejectMove('pouvoir sur une pièce qui ne lui appartient pas');
   if(cell.pieceId!==pieceId||pieceId!=='garde-pierre')return mpRejectMove('pouvoir inconnu');
@@ -1316,15 +1332,17 @@ function mpSendMove(from,to,promo){
   if(!GS||!GS.multiplayer)return;
   const idx=MP.log.length;
   const via=to.via?{r:to.via.r,c:to.via.c}:null;
-  mpLogPush({i:idx,kind:'move',from:{r:from.r,c:from.c},to:{r:to.r,c:to.c},promo:promo||null,via});
-  mpSend('move',{idx,from:{r:from.r,c:from.c},to:{r:to.r,c:to.c},promo:promo||null,via});
+  const path=to.path?to.path.map(q=>({r:q.r,c:q.c})):null;
+  mpLogPush({i:idx,kind:'move',from:{r:from.r,c:from.c},to:{r:to.r,c:to.c},promo:promo||null,via,path});
+  mpSend('move',{idx,from:{r:from.r,c:from.c},to:{r:to.r,c:to.c},promo:promo||null,via,path});
 }
 
-function mpSendPower(r,c,pieceId){
+function mpSendPower(r,c,pieceId,revive){
   if(!GS||!GS.multiplayer)return;
   const idx=MP.log.length;
-  mpLogPush({i:idx,kind:'power',r,c,pieceId});
-  mpSend('power',{idx,r,c,pieceId});
+  const extra=revive?{revive}:{};
+  mpLogPush({i:idx,kind:'power',r,c,pieceId,...extra});
+  mpSend('power',{idx,r,c,pieceId,...extra});
 }
 
 // executeGameMove est le point de passage unique de tout coup joué :
@@ -1496,7 +1514,8 @@ const MP_TIPS=[
   'Les pièces primordiales furent les premières expériences des Alchimistes, c\'est pour cela qu\'elles n\'ont pas de pouvoir.',
   'Une victoire courte rapporte plus de lauriers qu\'une victoire arrachée : dix en dix coups, cinq au-delà de cinquante.',
   'Votre armée est misée. Une créature perdue sur l\'échiquier quitte vraiment votre réserve — d\'où l\'intérêt de ne pas tout engager.',
-  'Le Monarque et le Général ne se remplacent pas : toute armée en compte un de chaque, quel que soit le reste.',
+  'Toute armée compte un Monarque et un Général, quel que soit le reste. Le Monarque, lui, se choisit : Roi, Matriarche ou Empereur.',
+  'Un Berserk qui mange avance encore : une chaîne de prises qui finit sur votre Monarque, c\'est l\'échec.',
   'Chaque créature garde le déplacement de sa pièce d\'échecs. C\'est son POUVOIR qui change tout, jamais sa marche.',
   'La Diagonale de la Puissance se lit sur votre sommet atteint, pas sur votre classement du jour : un jalon franchi l\'est pour toujours.',
   'Un coffre ne donne jamais une créature que votre rang ne vous permet pas encore de jouer.',
