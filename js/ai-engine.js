@@ -37,6 +37,10 @@ const CVAL={
   // n'a que quatre bonds ; le Singe vaut par sa double prise ; l'Illusion par
   // la ligne qu'elle ferme derrière elle.
   'pegase':420,'loup-geant':200,'singe':400,'illusion':460,
+  // Nyx marche en Roi et bondit en Cavalier. L'Infecté vaut peu en lui-même
+  // (il meurt de sa première prise), la recherche voit le reste : le prendre
+  // coûte la pièce qui le prend.
+  'nyx':720,'infecte':240,
   // Un reflet n'est pas du matériel, c'est un mur provisoire : il vaut ce
   // qu'il bouche, pas plus.
   'reflet':35,
@@ -437,7 +441,7 @@ const ZK=(()=>{
     'fourmi','preux-chevalier','dresseur-elephant','garde-pierre',
     'meduse','typhon','banshee','pretre',
     'std-pawn','std-r','std-n','std-b',
-    'pegase','loup-geant','singe','illusion','reflet'];
+    'pegase','loup-geant','singe','illusion','reflet','nyx','infecte'];
   const pidx={};pieceIds.forEach((id,i)=>{pidx[id]=i;});
   const T=[];
   for(let s=0;s<64;s++){T[s]=[];for(let p=0;p<pieceIds.length;p++)T[s][p]=[rnd(),rnd()];}
@@ -788,7 +792,7 @@ let _aiWorkerBusy=false;
 function getWorkerCode(){
   const fns=[
     inB,opp,cloneBoard,getPieceEmoji,
-    canLand,barsPath,singeViaRank,singeMoves,refletOwnerKey,applyIllusionReflet,refletSweep,
+    canLand,barsPath,singeViaRank,singeMoves,refletOwnerKey,applyIllusionReflet,refletSweep,infectionKills,
     slidingMoves,jumpMoves,knightMoves,kingMoves,pawnMoves,generateMovesRaw,
     isInCheckSimple,isSquareAttackedSimple,getLegalMovesKingFiltered,isTruePawn,applyBansheePush,applyCollateralOnBoard,moveLeavesKingInCheck,getLegalMoves,
     updateMedusaParalysis,updateGrandMaitre,

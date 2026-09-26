@@ -81,6 +81,17 @@ const PIECE_ART={
     '<circle class="b" cx="50" cy="70" r="12"/>'+
     '<path class="l" d="M43 66c2-4 6-6 11-5"/>',
 
+  // NYX : une silhouette voilée sous le croissant de lune, deux yeux qui
+  // luisent dans le noir du capuchon — la nuit qu'elle jette autour d'elle.
+  'nyx':
+    '<path class="b" d="M73 5a15 15 0 1 0 14 22 12 12 0 1 1-14-22z"/>'+
+    '<path class="k" d="M22 12l1.6 3.4L27 17l-3.4 1.6L22 22l-1.6-3.4L17 17l3.4-1.6zM30 32l1.2 2.3 2.3 1.2-2.3 1.2L30 39l-1.2-2.3-2.3-1.2 2.3-1.2z"/>'+
+    '<path class="b" d="M50 18c-13 0-21 10-21 22 0 8 3 14 7 18l-12 24h52L64 58c4-4 7-10 7-18 0-12-8-22-21-22z"/>'+
+    '<path class="k" d="M39 40c0-8 5-13 11-13s11 5 11 13-5 15-11 15-11-7-11-15z"/>'+
+    '<circle class="b" cx="45.5" cy="40" r="3.2"/>'+
+    '<circle class="b" cx="54.5" cy="40" r="3.2"/>'+
+    '<path class="l" d="M36 64c5 4 9 10 10 18M64 64c-5 4-9 10-10 18"/>',
+
   // ---- Primordiales ----------------------------------------------
   'cavalier-primordial':
     '<path class="b" d="M58 9l3-8 6 8z"/>'+
@@ -185,6 +196,19 @@ const PIECE_ART={
   'pretre':
     '<path class="b" d="M50 7c-10 0-18 8-18 18 0 6 2 11 5 14L24 50c-6 5-9 11-9 16v16h70V66c0-5-3-11-9-16L63 39c3-3 5-8 5-14 0-10-8-18-18-18z"/>'+
     '<path class="k" d="M46 48h8v11h11v8H54v18h-8V67H35v-8h11z"/>',
+
+  // L'INFECTÉ : un crâne à l'oeil barré, la bouche recousue, le corps
+  // piqué de pustules — ce qu'on attrape en le mangeant.
+  'infecte':
+    '<path class="b" d="M26 82c0-12 10-19 24-19s24 7 24 19z"/>'+
+    '<circle class="l" cx="37" cy="74" r="3"/>'+
+    '<circle class="l" cx="60" cy="72" r="2.2"/>'+
+    '<circle class="l" cx="50" cy="77" r="1.6"/>'+
+    '<path class="b" d="M50 10c14 0 24 10 24 23 0 9-4 15-9 19v10H35V52c-5-4-9-10-9-19 0-13 10-23 24-23z"/>'+
+    '<path class="b" d="M70 42c3 4 4 9 2 13-1 3-5 3-5 0 0-3 2-6 1-10z"/>'+
+    '<path class="l" d="M35 27l9 9M44 27l-9 9"/>'+
+    '<circle class="k" cx="59" cy="32" r="5"/>'+
+    '<path class="l" d="M39 50h22M44 46v8M50 46v8M56 46v8"/>',
 
   // L'ILLUSION : une silhouette encapuchonnée et, derrière elle, son double
   // en pointillé — ce qu'elle laisse sur la case qu'elle quitte.

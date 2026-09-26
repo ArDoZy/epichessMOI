@@ -185,7 +185,8 @@ function generateMovesRaw(board,r,c,gs){
   // à jour ailleurs dans le fichier. `isKing`/`type==='k'` reste le test :
   // c'est lui que porte une pièce PROMUE en Roi comme le Roi de départ.
   if(p.isKing||p.type==='k'||id==='roi'){
-    return kingMoves(board,r,c,p,gs);
+    // Le Monarque ne mange jamais l'Infecté : la contagion l'emporterait.
+    return kingMoves(board,r,c,p,gs).filter(m=>{const t=board[m.r][m.c];return !(t&&t.pieceId==='infecte'&&t.color!==p.color);});
   }
 
   switch(id){
@@ -248,6 +249,16 @@ function generateMovesRaw(board,r,c,gs){
       moves=jumpMoves(board,r,c,p,[[2,2],[2,-2],[-2,2],[-2,-2]]);break;
     case 'singe':
       moves=singeMoves(board,r,c,p,gs);break;
+    // NYX : le pas du Roi et le bond du Cavalier. Son pouvoir (le brouillard)
+    // ne change aucune règle, il ne touche que ce que l'adversaire VOIT
+    // (nyxFogFor, plus bas).
+    case 'nyx':
+      moves=[...jumpMoves(board,r,c,p,[[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]]),...knightMoves(board,r,c,p)];break;
+    // L'INFECTÉ : exactement deux cases, tout droit ou en diagonale, en
+    // sautant. Sa contagion est appliquée après le coup (voir
+    // infectionKills).
+    case 'infecte':
+      moves=jumpMoves(board,r,c,p,[[2,0],[-2,0],[0,2],[0,-2],[2,2],[2,-2],[-2,2],[-2,-2]]);break;
     // L'ILLUSION : une case tout droit, ou une à deux cases en diagonale (sans
     // sauter). Son reflet est posé par applyIllusionReflet, après le coup.
     case 'illusion':
@@ -286,13 +297,16 @@ function generateMovesRaw(board,r,c,gs){
 // reflet de son camp, ou une ennemie qu'il a le droit de prendre (ni le
 // Monarque, ni un Garde ancré, ni une protégée du Prêtre).
 //
-// UN SEUL COUP PAR CASE D'ARRIVÉE. Deux chemins mènent souvent au même
-// endroit (deux cases plus haut : par la gauche ou par la droite). Or le
-// plateau, le multijoueur et la relecture désignent un coup par ses deux
-// cases seulement : on garde donc, de façon déterministe, le chemin qui mange
-// le plus — une vraie pièce avant un reflet, un reflet avant une case vide, la
-// plus chère des deux pièces sinon. `via` dit la case du premier pas,
-// `viaCap` qu'on y mange.
+// LE JOUEUR CHOISIT SON PREMIER PAS (voir « LE SINGE EN DEUX TEMPS »,
+// js/game-render.js) : deux chemins menant à la même case sont donc deux coups
+// distincts, que distingue `via` (la case du premier pas ; `viaCap` dit qu'on
+// y mange). Le multijoueur et la relecture transmettent `via` avec le coup.
+// Les coups sont rendus du chemin qui mange le PLUS au chemin qui mange le
+// moins : un appelant qui ne connaît que les deux cases (prémouvement,
+// ancienne relecture) tombe ainsi sur le meilleur des deux.
+//
+// L'INFECTÉ ARRÊTE LE SINGE : le manger au premier pas le tuerait sur place,
+// le second pas n'aurait jamais lieu. Il ne peut donc le prendre qu'au second.
 function singeViaRank(v,p){
   if(!v||v.color===p.color)return 0;
   if(v.pieceId==='reflet')return 1;
@@ -300,13 +314,13 @@ function singeViaRank(v,p){
   return 2+((d&&d.value)||1);
 }
 function singeMoves(board,r,c,p,gs){
-  const best=new Map();
+  const paths=[];
   for(const[d1r,d1c] of[[1,1],[1,-1],[-1,1],[-1,-1]]){
     const vr=r+d1r,vc=c+d1c;if(!inB(vr,vc))continue;
     const v=board[vr][vc];
     if(v&&v.color===p.color&&v.pieceId!=='reflet')continue;
     if(v&&v.color!==p.color){
-      if(v.isKing||v.type==='k')continue;
+      if(v.isKing||v.type==='k'||v.pieceId==='infecte')continue;
       if(gs&&gs.anchored&&gs.anchored.has(vr+','+vc))continue;
       if(gs&&gs.pretreProtected&&gs.pretreProtected.has(v.color+':'+vr+','+vc))continue;
     }
@@ -315,14 +329,18 @@ function singeMoves(board,r,c,p,gs){
       const nr=vr+d2r,nc=vc+d2c;
       if(!inB(nr,nc)||(nr===r&&nc===c))continue;
       if(!canLand(board[nr][nc],p))continue;
-      const k=nr*8+nc,prev=best.get(k);
-      if(prev&&prev.rank>=rank)continue;
-      best.set(k,{r:nr,c:nc,vr,vc,rank});
+      paths.push({r:nr,c:nc,vr,vc,rank});
     }
   }
-  const moves=[];
-  best.forEach(m=>{const o={r:m.r,c:m.c,via:{r:m.vr,c:m.vc}};if(m.rank>0)o.viaCap=true;moves.push(o);});
-  return moves;
+  paths.sort((a,b)=>b.rank-a.rank);
+  return paths.map(m=>{const o={r:m.r,c:m.c,via:{r:m.vr,c:m.vc}};if(m.rank>0)o.viaCap=true;return o;});
+}
+// Le coup `m` est-il celui qu'on désigne par `to` ? Les deux cases, et le
+// premier pas du Singe quand il est précisé.
+function sameMove(m,to){
+  if(m.r!==to.r||m.c!==to.c)return false;
+  if(!to.via)return true;
+  return !!m.via&&m.via.r===to.via.r&&m.via.c===to.via.c;
 }
 
 // ----------------------------------------------------------------
@@ -359,6 +377,47 @@ function refletSweep(b){
   }
 }
 
+// ----------------------------------------------------------------
+// LA CONTAGION DE L'INFECTÉ
+// ----------------------------------------------------------------
+// Qui mange l'Infecté meurt, et l'Infecté meurt de ce qu'il mange. Seule la
+// PRISE contamine — la pièce qui se pose sur la case de l'autre —, pas l'orage
+// du Typhon ni la charge de l'Éléphant, qui détruisent à distance. Un reflet
+// n'est pas une pièce : le prendre ne contamine personne.
+function infectionKills(mover,victim){
+  if(!mover||!victim||victim.color===mover.color||victim.pieceId==='reflet')return false;
+  return victim.pieceId==='infecte'||mover.pieceId==='infecte';
+}
+
+// ----------------------------------------------------------------
+// LE BROUILLARD DE NYX
+// ----------------------------------------------------------------
+// Les huit cases autour d'une Nyx sont cachées au camp d'en face quand elles
+// sont vides ou tenues par le camp de Nyx : il n'y voit que ses propres
+// pièces. Ce n'est PAS une règle — le moteur, l'échec, le mat et l'IA
+// raisonnent sur le plateau réel —, c'est ce que le joueur `viewer` a le droit
+// de voir. Nyx prise, le brouillard se lève.
+function nyxFogFor(board,viewer){
+  const fog=new Set();
+  if(!board)return fog;
+  for(let r=0;r<8;r++)for(let c=0;c<8;c++){
+    const n=board[r]&&board[r][c];
+    if(!n||n.pieceId!=='nyx'||n.color===viewer)continue;
+    for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++){
+      if(!dr&&!dc)continue;
+      const nr=r+dr,nc=c+dc;if(!inB(nr,nc))continue;
+      const t=board[nr]&&board[nr][nc];
+      if(!t||t.color===n.color)fog.add(nr+','+nc);
+    }
+  }
+  return fog;
+}
+// Le brouillard à l'écran : seulement pendant une vraie partie en cours.
+function nyxFogLive(gs,board){
+  if(!gs||gs.gameOver||REPLAYING)return new Set();
+  return nyxFogFor(board||gs.board,gs.playerColor||'w');
+}
+
 // ================================================================
 // DÉTECTION D'ÉCHEC
 // ================================================================
@@ -386,15 +445,15 @@ function isInCheckSimple(color,board){
 // pour elles, sinon la Banshee, le Typhon ou un Garde donneraient échec
 // comme leur pieceType de base tout le long d'une ligne, ce qui est faux.
 const CUSTOM_MOVE_IDS=new Set(['amazone','fourmi','preux-chevalier','dresseur-elephant','garde-pierre','meduse','typhon','banshee','pretre',
-  'pegase','loup-geant','singe','illusion','reflet']);
+  'pegase','loup-geant','singe','illusion','reflet','nyx','infecte']);
 // Pièces qui donnent échec en GLISSANT (portée illimitée). Le raccourci par
 // pieceType (b/r/q) couvre en plus les pièces standard et promues.
 const DIAG_SLIDER_IDS=new Set(['fou-primordial','amazone','dame','grand-maitre']);
 const ORTHO_SLIDER_IDS=new Set(['tour-primordiale','chevaucheur-rhinoceros','dame','grand-maitre']);
 // Pièces qui donnent échec par un saut de cavalier.
-const KNIGHT_ATK_IDS=new Set(['cavalier-primordial','amazone','chevaucheur-rhinoceros','grand-maitre']);
+const KNIGHT_ATK_IDS=new Set(['cavalier-primordial','amazone','chevaucheur-rhinoceros','grand-maitre','nyx']);
 // Pièces qui donnent échec sur une case adjacente (8 directions, 1 case).
-const KING_ADJ_IDS=new Set(['roi','garde-pierre']);
+const KING_ADJ_IDS=new Set(['roi','garde-pierre','nyx']);
 
 function isSquareAttackedSimple(tr,tc,defColor,board){
   const atk=opp(defColor);
@@ -455,6 +514,8 @@ function isSquareAttackedSimple(tr,tc,defColor,board){
   for(const[dr,dc] of[[1,0],[-1,0],[0,1],[0,-1]]){const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;const p=board[r][c];if(p&&p.color===atk&&p.pieceId==='meduse')return true;}
   // --- Pégase : bond de 3 + 1 ---
   for(const[dr,dc] of[[3,1],[3,-1],[-3,1],[-3,-1],[1,3],[-1,3],[1,-3],[-1,-3]]){const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;const p=board[r][c];if(p&&p.color===atk&&p.pieceId==='pegase')return true;}
+  // --- Infecté : bond de 2 cases, tout droit ou en diagonale ---
+  for(const[dr,dc] of[[2,0],[-2,0],[0,2],[0,-2],[2,2],[2,-2],[-2,2],[-2,-2]]){const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;const p=board[r][c];if(p&&p.color===atk&&p.pieceId==='infecte')return true;}
   // --- Loup Géant : bond de 2 cases en diagonale ---
   for(const[dr,dc] of[[2,2],[2,-2],[-2,2],[-2,-2]]){const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;const p=board[r][c];if(p&&p.color===atk&&p.pieceId==='loup-geant')return true;}
   // --- Illusion : 1 case tout droit ou en biais, 2 en biais chemin libre ---
@@ -648,6 +709,10 @@ function applyCollateralOnBoard(b,from,to,p,anchored,victim){
   }
   if(p.pieceId==='banshee')applyBansheePush(b,to.r,to.c,p.color);
   if(p.pieceId==='illusion')applyIllusionReflet(b,from,p);
+  if(infectionKills(p,victim)&&b[to.r][to.c]&&b[to.r][to.c].color===p.color){
+    b[to.r][to.c]=null;
+    if(p.pieceId==='illusion')illusionDown=true;
+  }
   if(illusionDown)refletSweep(b);
   return b;
 }
@@ -734,6 +799,7 @@ function fxPromoteAt(board,to){
 // ================================================================
 function executeGameMove(from,to,gs){
   const b=gs.board;const p=b[from.r][from.c];if(!p)return;
+  gs.singeVia=null;   // un Singe à mi-chemin (js/game-render.js) : le coup part, l'étape s'efface
   const snapshot={board:cloneBoard(b),turn:gs.turn,enPassant:gs.enPassant,halfmoveClock:gs.halfmoveClock,movePairs:JSON.parse(JSON.stringify(gs.movePairs)),capturedW:[...gs.capturedW],capturedB:[...gs.capturedB],anchored:new Set(gs.anchored||[]),grandMaitreAlive:{...gs.grandMaitreAlive},turnCount:gs.turnCount,timeWhite:gs.timeWhite,timeBlack:gs.timeBlack,replay:(gs.replay||[]).slice()};
   gs.history.push(snapshot);gs.historyView=null;
 
@@ -763,6 +829,10 @@ function executeGameMove(from,to,gs){
   // prise (par n'importe quel chemin : prise, orage, charge, Singe) emporte
   // le sien.
   applyIllusionReflet(b,from,p);
+  // LA CONTAGION : la pièce qui vient de manger l'Infecté — ou l'Infecté qui
+  // vient de manger — meurt sur la case de sa prise.
+  const contagion=infectionKills(p,captured)&&b[to.r][to.c]===p;
+  if(contagion){pushCaptured(gs,p);b[to.r][to.c]=null;}
   refletSweep(b);
 
   // ---- LES EFFETS SPÉCIAUX (js/combat-fx.js) --------------------------
@@ -776,7 +846,12 @@ function executeGameMove(from,to,gs){
   // C'est posé ICI et non à la fin de la fonction parce que la promotion
   // ouvre une fenêtre modale et RETOURNE (voir plus bas) : les effets du coup
   // qui promeut seraient perdus.
-  if(typeof fxPlayMove==='function'&&!REPLAYING){
+  // LE BROUILLARD NE LAISSE PAS PASSER LA TRAÎNÉE. Une pièce adverse qui entre
+  // dans le brouillard de Nyx (ou en sort) ne dessine pas son chemin : il
+  // dirait où elle est.
+  const fogNow=nyxFogLive(gs,b);
+  const hiddenMove=p.color!==(gs.playerColor||'w')&&(fogNow.has(to.r+','+to.c)||fogNow.has(from.r+','+from.c));
+  if(typeof fxPlayMove==='function'&&!REPLAYING&&!hiddenMove){
     // La prise en passant se joue sur une case que le pion N'ATTEINT PAS :
     // l'éclat doit tomber sur la victime, une rangée derrière, sinon il
     // s'allume sur une case où il ne s'est rien passé.
@@ -808,7 +883,7 @@ function executeGameMove(from,to,gs){
   // LE PION ET LA FOURMI se promeuvent en atteignant la dernière rangée (voir
   // PROMOTING_IDS, js/data-pieces.js). Ni l'un ni l'autre ne recule : la
   // rangée 0 est forcément celle des Blancs, la 7 celle des Noirs.
-  const isPawnPromo=pieceCanPromote(p.pieceId)&&(to.r===0||to.r===7);
+  const isPawnPromo=!contagion&&pieceCanPromote(p.pieceId)&&(to.r===0||to.r===7);
   if(isPawnPromo){
     const aiCol=gs.aiColor||'b';
     // Promotion imposée : coup reçu d'un adversaire en ligne, qui a déjà
@@ -1101,7 +1176,9 @@ function replayNote(p,to,gs,from){
   // Promotion : la pièce posée sur la case d'arrivée n'est plus celle qui est
   // partie. C'est le seul cas où les deux cases ne suffisent pas.
   const promo=(now&&p&&now.pieceId!==p.pieceId)?now.pieceId:null;
-  gs.replay.push(''+from.r+from.c+to.r+to.c+(promo?':'+promo:''));
+  // Le premier pas du Singe, quand il y en a un : « 6442@53 ».
+  const via=to.via?'@'+to.via.r+to.via.c:'';
+  gs.replay.push(''+from.r+from.c+to.r+to.c+via+(promo?':'+promo:''));
 }
 
 function recordMove(p,to,isCapture,gs,from){
@@ -1141,7 +1218,14 @@ function recordMove(p,to,isCapture,gs,from){
       '<span class="ml-sq">'+mlSquare(to.r,to.c)+'</span>'+
       (to.ep?'<span class="ml-flag">e.p.</span>':'')+
       (to.destroysPath?'<span class="ml-flag">charge</span>':'')+
-      (p.pieceId==='typhon'?'<span class="ml-flag">typhon</span>':'');
+      (p.pieceId==='typhon'?'<span class="ml-flag">typhon</span>':'')+
+      // La case d'arrivée est vide après une prise : la pièce y est morte de
+      // la contagion de l'Infecté.
+      (isCapture&&gs.board&&gs.board[to.r]&&!gs.board[to.r][to.c]?'<span class="ml-flag">contagion</span>':'');
+    // UN COUP ADVERSE QUI S'ACHÈVE DANS LE BROUILLARD DE NYX ne s'écrit pas :
+    // le journal dirait ce que le plateau cache.
+    if(!REPLAYING&&p.color!==(gs.playerColor||'w')&&nyxFogLive(gs).has(to.r+','+to.c))
+      txt='<span class="ml-flag">dans le brouillard</span>';
   }
   if(p.color==='w')gs.movePairs.push([txt,'']);
   else{if(gs.movePairs.length>0)gs.movePairs[gs.movePairs.length-1][1]=txt;else gs.movePairs.push(['…',txt]);}

@@ -363,6 +363,11 @@ const PIECES=[
   {id:'chevaucheur-rhinoceros',name:'Centaure',emoji:'🐴',class:'Général',value:8,qty:1,pieceType:'r',ability:null},
   {id:'dame',name:'Dame',emoji:'♛',class:'Général',value:10,qty:1,pieceType:'q',ability:null},
   {id:'grand-maitre',name:'Grand Maître',emoji:'🔮',class:'Général',value:13,qty:1,pieceType:'q',ability:'Domination : Tant qu\'il est vivant, les pions adverses ne peuvent pas avancer de 2 cases'},
+  // NYX marche en Roi et bondit en Cavalier. Son pouvoir ne change aucune
+  // règle : il change ce que l'adversaire VOIT (nyxFogFor, js/rules-engine.js).
+  // Son identifiant est neuf — l'Empereur, qui se déplaçait pareil, est retiré
+  // et son identifiant ne doit jamais resservir (RETIRED_PIECE_IDS).
+  {id:'nyx',name:'Nyx',emoji:'🌑',class:'Général',value:9,qty:1,pieceType:'q',ability:'Voile de la Nuit : L\'adversaire ne voit pas les cases autour de Nyx, vides ou tenues par son camp ; il n\'y voit que ses propres pièces. Nyx prise, le voile se lève'},
   {id:'cavalier-primordial',name:'Cavalier Primordial',emoji:'♞',class:'Primordiale',value:3,qty:2,pieceType:'n',ability:null},
   {id:'fou-primordial',name:'Fou Primordial',emoji:'♝',class:'Primordiale',value:3,qty:2,pieceType:'b',ability:null},
   {id:'tour-primordiale',name:'Tour Primordiale',emoji:'♜',class:'Primordiale',value:5,qty:2,pieceType:'r',ability:null},
@@ -395,6 +400,7 @@ const PIECES=[
   {id:'pegase',name:'Pégase',emoji:'🪽',class:'Brute',value:5,qty:2,pieceType:'n',ability:null},
   {id:'loup-geant',name:'Loup Géant',emoji:'🐺',class:'Brute',value:2,qty:2,pieceType:'b',ability:null},
   {id:'singe',name:'Singe',emoji:'🐒',class:'Brute',value:4,qty:2,pieceType:'b',ability:'Double Bond : Fait deux pas d\'une case en diagonale dans le même coup, et mange ce qu\'il trouve à chacun des deux'},
+  {id:'infecte',name:'Infecté',emoji:'🧟',class:'Sorcier',value:3,qty:2,pieceType:'n',ability:'Contagion : S\'il mange une pièce adverse, il meurt aussi ; la pièce adverse qui le mange meurt aussi. Le Monarque adverse ne peut pas le manger'},
   {id:'illusion',name:'Illusion',emoji:'🪞',class:'Sorcier',value:5,qty:2,pieceType:'q',ability:'Reflet : Laisse un reflet sur la case qu\'elle quitte. Il bloque les pièces ennemies, qui peuvent le prendre ; un seul reflet par Illusion'},
 ];
 
@@ -548,8 +554,10 @@ const UNLOCK_TABLE=[
   // Géant (un seul geste, deux cases de biais), puis le Singe, le Pégase, et
   // l'Illusion, la seule dont le pouvoir change la géométrie du plateau.
   {pieceId:'loup-geant',eloRequired:360},
+  {pieceId:'infecte',eloRequired:450},
   {pieceId:'singe',eloRequired:620},
   {pieceId:'pegase',eloRequired:1250},
+  {pieceId:'nyx',eloRequired:1350},
   {pieceId:'illusion',eloRequired:1500},
   {pieceId:'grand-maitre',eloRequired:1700},
   {id:'rw-1600',reward:'copies',copyId:'pretre',qty:2,eloRequired:1600},

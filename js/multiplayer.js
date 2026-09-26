@@ -380,7 +380,7 @@ function mpBindRoomHandlers(channel){
       if(payload.idx<MP.log.length)return;              // déjà joué chez nous
       if(payload.idx>MP.log.length)return mpRequestSync(); // il nous manque un coup
     }
-    mpApplyRemoteMove(payload.from,payload.to,payload.promo);
+    mpApplyRemoteMove(payload.from,payload.to,payload.promo,payload.via);
   });
 
   channel.on('broadcast',{event:'power'},({payload})=>{
@@ -708,7 +708,7 @@ function mpApplySyncEntries(entries){
     if(e.i>MP.log.length)break;         // trou : on s'arrête là
     const ok=(e.kind==='power')
       ? mpApplyRemotePower(e.r,e.c,e.pieceId)
-      : mpApplyRemoteMove(e.from,e.to,e.promo);
+      : mpApplyRemoteMove(e.from,e.to,e.promo,e.via);
     if(!ok)break;                        // coup refusé : inutile d'insister
     if(GS.gameOver)break;
   }
@@ -1251,7 +1251,8 @@ function mpSanitizePromo(promo){
 // (mpApplySyncEntries) s'arrête au premier refus plutôt que de rejouer la
 // suite sur une position qui n'est plus la bonne.
 let _mpApplyingRemote=false;
-function mpApplyRemoteMove(from,to,promo){
+// `via` : le premier pas du Singe, quand le coup en a un (voir singeMoves).
+function mpApplyRemoteMove(from,to,promo,via){
   if(!GS||!GS.multiplayer||GS.gameOver)return false;
   const oppCol=mpOppColor();
 
@@ -1266,7 +1267,9 @@ function mpApplyRemoteMove(from,to,promo){
   // notre propre objet : les effets spéciaux (destroysPath, castle, ep...)
   // viennent donc de notre moteur, pas du message reçu.
   const legal=getLegalMoves(GS.board,from.r,from.c,GS);
-  const move=legal.find(m=>m.r===to.r&&m.c===to.c&&!m.stayPut)||legal.find(m=>m.r===to.r&&m.c===to.c);
+  const okVia=via&&inB(via.r,via.c)?{r:via.r,c:via.c}:null;
+  const want={r:to.r,c:to.c,via:okVia};
+  const move=legal.find(m=>sameMove(m,want)&&!m.stayPut)||legal.find(m=>sameMove(m,want));
   if(!move)return mpRejectMove('coup illégal');
 
   // Une promotion doit être accompagnée d'un choix valide, sinon la modal de
@@ -1286,7 +1289,7 @@ function mpApplyRemoteMove(from,to,promo){
   _mpApplyingRemote=false;
   // Le coup adverse entre au journal EXACTEMENT comme chez lui : les deux
   // journaux gardent la même longueur, qui sert de repère au rattrapage.
-  mpLogPush({i:MP.log.length,kind:'move',from:{r:from.r,c:from.c},to:{r:to.r,c:to.c},promo:safePromo});
+  mpLogPush({i:MP.log.length,kind:'move',from:{r:from.r,c:from.c},to:{r:to.r,c:to.c},promo:safePromo,via:okVia});
   return true;
 }
 
@@ -1312,8 +1315,9 @@ function mpApplyRemotePower(r,c,pieceId){
 function mpSendMove(from,to,promo){
   if(!GS||!GS.multiplayer)return;
   const idx=MP.log.length;
-  mpLogPush({i:idx,kind:'move',from:{r:from.r,c:from.c},to:{r:to.r,c:to.c},promo:promo||null});
-  mpSend('move',{idx,from:{r:from.r,c:from.c},to:{r:to.r,c:to.c},promo:promo||null});
+  const via=to.via?{r:to.via.r,c:to.via.c}:null;
+  mpLogPush({i:idx,kind:'move',from:{r:from.r,c:from.c},to:{r:to.r,c:to.c},promo:promo||null,via});
+  mpSend('move',{idx,from:{r:from.r,c:from.c},to:{r:to.r,c:to.c},promo:promo||null,via});
 }
 
 function mpSendPower(r,c,pieceId){

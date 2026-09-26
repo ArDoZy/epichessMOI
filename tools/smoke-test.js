@@ -2569,6 +2569,31 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
       b[4][5]=ill;b[5][5]=null;applyCollateralOnBoard(b,{r:5,c:5},{r:4,c:5},ill,null,null);
       if(b[6][4])out.push('reflet : l ancien reflet est reste');
       if(!b[5][5]||b[5][5].pieceId!=='reflet')out.push('reflet : le nouveau reflet manque');
+
+      // LE SINGE EN DEUX TEMPS — chaque chemin est un coup à part : le joueur
+      // choisit son premier pas.
+      b=vide();pose(b,4,4,'singe','w');pose(b,3,5,'dame','b');
+      const chemins=generateMovesRaw(b,4,4,etat(b)).filter(m=>m.r===2&&m.c===4);
+      if(chemins.length!==2)out.push('singe : '+chemins.length+' chemin(s) vers e6 au lieu de 2');
+      else if(!chemins[0].viaCap)out.push('singe : le chemin qui mange ne vient pas en premier');
+
+      // CONTAGION — qui mange l'Infecté meurt, l'Infecté meurt de ce qu'il
+      // mange, et le Monarque ne peut pas le manger.
+      b=vide();const inf=pose(b,4,4,'infecte','w');const dm=pose(b,2,4,'dame','b');
+      b[2][4]=inf;b[4][4]=null;applyCollateralOnBoard(b,{r:4,c:4},{r:2,c:4},inf,null,dm);
+      if(b[2][4])out.push('contagion : l infecte survit a sa prise');
+      b=vide();const tr=pose(b,4,0,'tour-primordiale','w');const inf2=pose(b,4,4,'infecte','b');
+      b[4][4]=tr;b[4][0]=null;applyCollateralOnBoard(b,{r:4,c:0},{r:4,c:4},tr,null,inf2);
+      if(b[4][4])out.push('contagion : la piece qui mange l infecte survit');
+      b=vide();pose(b,4,4,'roi','w');pose(b,3,3,'infecte','b');
+      if(va(b,4,4,3,3))out.push('contagion : le roi peut manger l infecte');
+
+      // VOILE DE LA NUIT — l'adversaire ne voit pas les cases vides ou tenues
+      // par le camp de Nyx autour d'elle ; il voit les siennes.
+      b=vide();pose(b,4,4,'nyx','b');pose(b,3,3,'fourmi','b');pose(b,5,5,'fourmi','w');
+      const voile=nyxFogFor(b,'w');
+      if(!voile.has('3,3')||voile.has('5,5')||voile.has('4,4')||voile.size!==7)out.push('nyx : voile inexact ('+[...voile].join(' ')+')');
+      if(nyxFogFor(b,'b').size)out.push('nyx : son propre camp est dans le brouillard');
       return out;
     });
     if(bad.length)throw new Error(bad.join(' · '));
