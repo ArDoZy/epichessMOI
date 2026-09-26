@@ -218,11 +218,46 @@ function dailyClaim(){
     if(typeof pearlAdd==='function')pearlAdd(step.pearls);
     if(typeof playSound==='function')playSound('rank');
     if(typeof showNotif==='function')showNotif('+'+step.pearls+' perles','ok');
+    rewardPearlBurst(step.pearls);
     dailyAfterClaim();
     return;
   }
   jokerAdd(step.jokers);
   openJokerModal();
+}
+// ----------------------------------------------------------------
+// LA GERBE DE PERLES
+// ----------------------------------------------------------------
+// Des perles encaissées ne se voyaient que dans le bandeau des notifications,
+// en bas à droite, en corps 12 : le moment où l'on est payé avait le poids
+// d'un message d'erreur. Il a maintenant sa gerbe — le nombre gagné, en grand
+// au milieu de l'écran, et une quinzaine de perles qui en jaillissent.
+// Purement décoratif : `pointer-events:none`, retiré tout seul au bout de
+// 1,7 s par un minuteur (et non par `animationend`, qui ne viendrait jamais si
+// `prefers-reduced-motion` réduit l'animation à rien). Les effets éteints
+// dans les réglages (_fxOnPref, js/settings-admin.js) gardent le nombre et
+// renoncent aux perles volantes. Le bandeau de notification reste : c'est
+// lui qui est annoncé aux lecteurs d'écran.
+function rewardPearlBurst(n){
+  if(!n||typeof pearlIcon!=='function')return;
+  const fx=(typeof _fxOnPref==='undefined')||_fxOnPref;
+  const el=document.createElement('div');
+  el.className='rw-burst';
+  el.setAttribute('aria-hidden','true');
+  let parts='';
+  if(fx){
+    const k=16;
+    for(let i=0;i<k;i++){
+      const a=(i/k)*Math.PI*2+Math.random()*.35;
+      const d=90+Math.random()*80;
+      parts+='<span class="rw-burst-p" style="--dx:'+Math.round(Math.cos(a)*d)+'px;--dy:'+
+        Math.round(Math.sin(a)*d-30)+'px;--dl:'+Math.round(Math.random()*120)+'ms">'+pearlIcon(1)+'</span>';
+    }
+  }
+  el.innerHTML='<div class="rw-burst-glow"></div>'+parts+
+    '<div class="rw-burst-num">+'+n+' '+pearlIcon(.9)+'</div>';
+  document.body.appendChild(el);
+  setTimeout(()=>el.remove(),1700);
 }
 function dailyAfterClaim(){
   if(typeof goToMainMenu==='function')goToMainMenu();
@@ -649,6 +684,7 @@ function rewardsClaimRich(){
   // le palier suivant, qui est ce que le joueur veut voir ensuite.
   if(typeof playSound==='function')playSound('rank');
   if(typeof showNotif==='function')showNotif('+'+got.pearls+' perles','ok');
+  rewardPearlBurst(got.pearls);
   const to=Math.min(rwRowTotal()-1,got.idx+1);
   _rwRowSlide=(to>rwRowIdx())?1:0;
   _rwRowIdx=to;
@@ -813,6 +849,10 @@ function renderMenuRewardsCard(){
 document.getElementById('jouer-daily')?.addEventListener('click',openDailyModal);
 document.getElementById('jouer-colonne')?.addEventListener('click',()=>openRewardsPage('colonne'));
 document.getElementById('jouer-rangee')?.addEventListener('click',()=>openRewardsPage('rangee'));
+// Les deux raccourcis « Gagner des perles » du Magasin (index.html) : les
+// mêmes gestes que les boutons du menu principal.
+document.getElementById('shop-earn-rangee')?.addEventListener('click',()=>openRewardsPage('rangee'));
+document.getElementById('shop-earn-daily')?.addEventListener('click',openDailyModal);
 document.getElementById('daily-close')?.addEventListener('click',closeDailyModal);
 document.getElementById('daily-modal')?.addEventListener('click',e=>{
   if(e.target.id==='daily-modal')closeDailyModal();

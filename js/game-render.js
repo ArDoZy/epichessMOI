@@ -744,8 +744,21 @@ function renderClocks(gs){
 // sont en `position:absolute` — ils ne sont pas dans le flux et ne comptent
 // pas, c'est tout l'intérêt : ouvrir le journal ne change pas d'un pixel la
 // place que le plateau doit céder.
+// LA ZONE GARDE UN PLANCHER, OUVERTE COMME FERMÉE. Mesurée au seul contenu,
+// elle ne réservait sur une tablette que la rangée d'outils (~50 px) : le
+// plateau, borné par la largeur, prenait tout le reste, et le panneau posé
+// par-dessus n'avait plus la place de son en-tête ET de ses commandes ⏮ ◀ ▶ ⏭,
+// qui débordaient sur « Abandonner ». Le plancher est compté EN PERMANENCE,
+// pas seulement panneau ouvert : c'est ce qui garde la promesse de
+// [GAME-PANEL] — ouvrir le journal ne change pas d'un pixel la taille du
+// plateau. Sur un téléphone courant, borné par la largeur, il ne coûte rien.
+// Les trois variantes passent par cette même fonction.
+const GAME_PANEL_MIN_H=128;
 function gameUnderContentH(under){
   if(!under)return 0;
+  return Math.max(GAME_PANEL_MIN_H,gameUnderFlowH(under));
+}
+function gameUnderFlowH(under){
   const cs=getComputedStyle(under);
   const gap=parseFloat(cs.rowGap||cs.gap)||0;
   let h=0,n=0;

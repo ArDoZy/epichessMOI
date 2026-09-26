@@ -92,7 +92,21 @@ const RECIPES = {
   banners:     { quality: QUALITY, rewrite: true },
   ui:          { quality: QUALITY, rewrite: true },
   fx:          { quality: QUALITY, rewrite: true },
-  ranks:       { quality: QUALITY, rewrite: true },
+  // LES MÉDAILLONS DE RANG SONT RAMENÉS À 288 PX. Ils étaient convertis à la
+  // taille du générateur (1254 px, ~400 Ko pièce, 2,3 Mo les six) alors
+  // qu'ils ne s'affichent jamais au-delà de 88 px (.ja-medal) : 288 couvre un
+  // écran à 3× de densité. `contain` sur fond transparent : ils n'existent que
+  // par leur détourage.
+  ranks:       { quality: 88, rewrite: true,
+                 resize: { width: 288, height: 288, fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } } },
+  // Les planches des cartes de variantes (assets/PROMPTS.md, § 8) : posées
+  // à droite de la carte, jamais plus hautes que 200 px à l'écran.
+  variantes:   { quality: QUALITY, rewrite: true,
+                 resize: { width: 768, height: 512, fit: 'cover', position: 'centre' } },
+  // Les paysages de la Diagonale (§ 3 ter) : leur chemin est construit en JS
+  // (voie.js), qui demande le .webp — rien à repointer, convertir suffit.
+  voie:        { quality: QUALITY, rewrite: false,
+                 resize: { width: 1024, height: 1024, fit: 'cover', position: 'centre' } },
   pieces:      { quality: 80, rewrite: false,
                  resize: { width: PIECE_W, height: PIECE_H, fit: 'cover', position: 'centre' } },
 };

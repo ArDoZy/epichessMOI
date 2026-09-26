@@ -54,9 +54,33 @@ const VARIANTES=[
    txt:'Avant le premier coup, chacun choisit un des deux cavaliers adverses pour être son espion — et l\'autre ne sait pas lequel. Il sert en face, sans jamais donner échec, jusqu\'au jour où vous le jouez : il change alors de camp pour de bon.'},
 ];
 
+// L'EMBLÈME DE CHAQUE VARIANTE : la règle, dessinée. Trois paragraphes de
+// texte se ressemblaient à s'y méprendre ; un dessin de 48 px dit la
+// différence avant la lecture — les rangées qui glissent, l'axe du miroir, le
+// cavalier masqué. SVG et `currentColor`, comme toutes les icônes du jeu (pas
+// d'émoji, voir les conventions du README). Les parties marquées `var-mv`
+// bougent en boucle ([VARIANTES] de css/style.css) ; la règle globale de
+// `prefers-reduced-motion` les fige.
+const VAR_EMBLEMS={
+  fok:'<svg viewBox="0 0 48 48" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.6">'+
+      '<rect x="8" y="6" width="32" height="8" rx="1.5"/>'+
+      '<g class="var-mv var-mv-slide"><rect x="8" y="16" width="32" height="7" rx="1.5"/><rect x="8" y="25" width="32" height="7" rx="1.5"/>'+
+      '<path d="M16 16v7M24 16v7M32 16v7M16 25v7M24 25v7M32 25v7" stroke-width="1"/></g>'+
+      '<rect x="8" y="34" width="32" height="8" rx="1.5"/>'+
+      '<path d="M41 27.5h4m-2-2 2 2-2 2" stroke-linecap="round" stroke-linejoin="round"/></g></svg>',
+  mirror:'<svg viewBox="0 0 48 48" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">'+
+      '<path d="M24 5v38" stroke-dasharray="2 3"/>'+
+      '<g class="var-mv var-mv-l"><path d="M9 34h9M10.5 34l1.5-9h3l1.5 9M11 25l-1.5-5 3 2 1.5-3 1.5 3 3-2-1.5 5"/></g>'+
+      '<g class="var-mv var-mv-r"><path d="M30 34h9M31.5 34l1.5-9h3l1.5 9M32 25l-1.5-5 3 2 1.5-3 1.5 3 3-2-1.5 5"/></g>'+
+      '<path d="M14 14q10-8 20 0" stroke-width="1.2"/><path d="M31.5 12.5 34 14l-2.8.8M16.5 12.5 14 14l2.8.8" stroke-width="1.2"/></g></svg>',
+  troie:'<svg viewBox="0 0 48 48" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">'+
+      '<path d="M15 41h20M17 41l2-6h14l1 6M19 35c-1-6 1-9 5-12l-6 1-3-3 8-10 3-3 1 4c6 3 9 9 7 17"/>'+
+      '<g class="var-mv var-mv-eye"><path d="M20 19.5q5-4 10 0q-5 4-10 0Z" fill="currentColor" fill-opacity=".18"/><circle cx="25" cy="19.5" r="1.4" fill="currentColor"/></g></g></svg>',
+};
 function varianteCardHTML(v){
   return '<button type="button" class="var-card is-on" data-variante="'+v.id+'">'+
     '<div class="var-card-hdr">'+
+      (VAR_EMBLEMS[v.id]?'<span class="var-card-emblem">'+VAR_EMBLEMS[v.id]+'</span>':'')+
       '<div class="var-card-name">'+escH(v.nom)+'</div>'+
       '<div class="var-card-tag">'+escH(v.tag)+'</div>'+
     '</div>'+

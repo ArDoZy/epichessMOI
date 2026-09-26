@@ -111,6 +111,7 @@
     const front=inGame?'game':current();
     document.querySelectorAll('#nav-stage .nav-page').forEach(p=>{
       p.classList.toggle('is-front', p.dataset.page===front);
+      if(p.dataset.page===front)p.classList.add('is-seen');
       // `inert` retire du parcours clavier ET du hit-testing tout un
       // sous-arbre : c'est ce que `pointer-events:none` ne sait pas faire.
       if('inert' in p) p.inert = p.dataset.page!==front;
@@ -237,6 +238,13 @@
     // revenait à la laisser entrer avec le contenu de la visite précédente,
     // puis à la réécrire une fois posée — le « rechargement » qu'on voyait.
     refreshPageContent(PAGES[i]);
+    // `is-seen` ALLUME LE FOND DE LA PAGE ([ART], css/style.css), et ne
+    // l'éteint plus. Les cinq pages sont dans le document dès l'ouverture :
+    // leurs fonds d'écran se téléchargeaient tous au démarrage — près d'un
+    // demi-mégaoctet pour des pages que le joueur n'ouvrira peut-être pas.
+    // Posé au départ du glissement, il laisse la durée du glissement à
+    // l'image pour arriver.
+    document.querySelector('#nav-stage .nav-page[data-page="'+PAGES[i]+'"]')?.classList.add('is-seen');
     idx=i;
     applyOffset();
     updateChrome();                   // onglets et flèches suivent l'arrivée, pas le départ

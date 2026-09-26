@@ -102,7 +102,7 @@ async function launchChromium(){
 // par un mandataire à certificat propre : c'est la machine de test qui
 // refuse le certificat d'une ressource externe, pas le jeu qui échoue.
 const IGNORED_CONSOLE=/ERR_TUNNEL_CONNECTION_FAILED|ERR_CONNECTION_RESET|ERR_NAME_NOT_RESOLVED|ERR_CERT_AUTHORITY_INVALID|fonts\.googleapis|fonts\.gstatic|jsdelivr|supabase/;
-const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|chests|pieces|voie)\//;
+const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|chests|pieces|voie|variantes)\//;
 
 (async()=>{
   const server=serve();

@@ -63,6 +63,9 @@ epic-chess/
 │   ├── ranks/               # <id du rang>.png, sept médaillons, posés par
 │   │                        #  rankMedalHTML() (js/main.js) : aucune liste
 │   │                        #  à tenir à jour.
+│   ├── variantes/           # <id>.png, une planche par carte de variante
+│   │                        #  (fok, mirror, troie). Absente = l'emblème
+│   │                        #  SVG seul (VAR_EMBLEMS, js/variantes.js)
 │   ├── chests/              # Les planches de destruction des coffres
 │   └── boards/              # Textures d'échiquier en SVG procédural
 │       ├── bois.svg          # (générées par tools/gen-boards.js, ne pas
@@ -2374,6 +2377,11 @@ mais dans une version que Playwright refuse, le script le retrouve tout seul
 | Ajouter une adresse au jeu (comme `/combat`) | `vercel.json` (`rewrites`) + `appPath`/`setAppPath`/`appHomePath` dans `js/main.js` |
 | Changer l'adresse du mode test | `ADMIN_QUERY` + `pathHasAdmin()` dans `js/main.js` (paramètre `?test`, pas un chemin : un chemin inexistant dépend d'une réécriture d'hébergeur et répondait 404) |
 | Changer ce que contient un coffre | `CHESTS`/`CHEST_PEARLS` dans `js/data-pieces.js` + `chestRoll`/`chestLuckyChance` dans `js/economy.js` |
+| Changer le fond de l'écran de partie (et des trois variantes) | déposer `assets/backgrounds/partie.png` (prompt : `assets/PROMPTS.md` § 1) ; le voile et le repli sur `combat-intro.webp` sont dans « LA SALLE DE LA PARTIE », `[ART]` de `css/style.css` |
+| Changer le cadre doré du plateau | `assets/ui/cadre-plateau.svg` (bande pleine, découpée en neuf) + `.game-board-col::after` dans `[ART]` — **pas** sur `.game-board`, qui rogne ce qui déborde |
+| Changer la gerbe de perles (gain de perles) | `rewardPearlBurst()` dans `js/rewards-ui.js` + `.rw-burst*` dans `css/style.css` |
+| Changer la place minimale du journal sous le plateau | `GAME_PANEL_MIN_H` dans `js/game-render.js` (les trois variantes passent par `gameUnderContentH`) |
+| Changer l'emblème dessiné d'une variante | `VAR_EMBLEMS` dans `js/variantes.js` + « L'EMBLÈME » dans `[VARIANTES]` de `css/style.css` |
 | Changer le fond de l'écran d'attente en ligne | remplacer `assets/backgrounds/duel-wait.webp` (rien à coder) |
 | Changer un message de refus / d'information | l'appel `showNotif()` concerné ; l'apparence est dans `[NOTIF]` de `css/style.css` |
 | Modifier l'emblème (logo) du jeu | `EMBLEM_SVG` dans `js/main.js` + `favicon.svg` (même tracé) + `[EMBLEM]` de `css/style.css` — **et incrémenter le `?v=` de l'icône** dans `index.html`, `info.html` et `site.webmanifest`, sinon l'onglet garde l'ancienne en cache |
