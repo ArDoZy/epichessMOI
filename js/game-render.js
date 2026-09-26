@@ -25,7 +25,11 @@ function showCtxMenu(e,r,c,gs){
   e.preventDefault();
   const cell=gs.board[r][c];
   if(!cell)return;
-  const pid=cell.pieceId;const pd=PIECES.find(p=>p.id===pid)||null;
+  // Une case sous le voile de Nyx, ou une Ombre invisible, ne livre pas sa
+  // fiche : il n'y a rien à montrer.
+  if(nyxFogLive(gs).has(r+','+c)||ombreHiddenLive(gs).has(r+','+c))return;
+  // Un reflet n'a pas de fiche : on montre celle de l'Illusion qui l'a laissé.
+  const pid=cell.pieceId==='reflet'?'illusion':cell.pieceId;const pd=PIECES.find(p=>p.id===pid)||null;
   const canUsePower=pd?.hasPower&&cell.color===gs.turn&&!gs.gameOver;
   let opts=null;
   if(canUsePower){
@@ -243,11 +247,21 @@ function bindBoardCell(el,r,c){
   const grabbable=gs=>gs&&!gs.gameOver&&(playable(gs)||premoveAllowed(gs));
   const mine=gs=>{
     const cell=gs&&gs.board&&gs.board[r]&&gs.board[r][c];
-    return !!cell&&cell.color===(gs.playerColor||'w');
+    if(cell&&cell.color===(gs.playerColor||'w')&&cell.pieceId!=='reflet')return true;
+    // Le Singe à mi-chemin se reprend en main là où il est posé à l'écran.
+    const sv=gs&&singeStepActive(gs);
+    return !!sv&&sv.r===r&&sv.c===c;
   };
 
   el.addEventListener('click',()=>{
     const gs=GS;if(!gs)return;
+    // LE CLIC QUI SUIT UN APPUI DÉJÀ TRAITÉ est ignoré. À la souris, l'appui
+    // (mousedown → startDrag) sélectionne la pièce et le relâchement
+    // (endDrag) règle le geste ; le `click` qui arrive ensuite repassait par
+    // handleGameClick et défaisait aussitôt ce qui venait d'être fait — une
+    // pièce cliquée se sélectionnait puis se désélectionnait. Au doigt, le
+    // touchend empêche déjà ce clic (preventDefault).
+    if(Date.now()-_dragEndedAt<400)return;
     if(gs.historyView!==null){gs.historyView=null;renderGame(gs);updateStatus(gs);updateHistoryNav();return;}
     // CE N'EST PAS ENCORE À NOUS : le geste n'est plus perdu, il devient un
     // PRÉMOUVEMENT (voir la section du même nom plus bas).
@@ -316,6 +330,8 @@ function pieceNodeAt(r,c){return (_pieceAt[r]&&_pieceAt[r][c])||null;}
 // aussi ce qui s'affiche en infobulle au pointeur.
 function cellLabel(gs,r,c){
   const coord=FILES[c]+(8-r);
+  if(nyxFogLive(gs).has(r+','+c))return coord+', brouillard';
+  if(ombreHiddenLive(gs).has(r+','+c))return coord+', case vide';
   const cell=gs.board&&gs.board[r]&&gs.board[r][c];
   if(!cell)return coord+', case vide';
   const p=(typeof PIECES!=='undefined')?PIECES.find(x=>x.id===cell.pieceId):null;
@@ -361,33 +377,43 @@ function bindBoardKeys(el,r,c){
 // l'intérêt, et c'est ce qui rend un rendu quasi gratuit.
 function paintBoardCells(gs){
   if(!_boardCells)return;
-  const b=gs.board;
+  // Le Singe à mi-chemin est montré sur sa case de premier pas : les cases se
+  // peignent d'après ce plateau-là (voir « LE SINGE EN DEUX TEMPS »).
+  const b=singeViewBoard(gs)||gs.board;
   const playerCol=gs.playerColor||'w';
-  const checkedColor=isInCheckSimple(gs.turn,b)?gs.turn:null;
+  const checkedColor=isInCheckSimple(gs.turn,gs.board)?gs.turn:null;
+  const shown=shownTargets(gs);
+  const sel=singeStepActive(gs)||gs.selected;
+  const fog=nyxFogLive(gs,b);
+  const ombres=ombreHiddenLive(gs,b);
   for(const el of _boardCells){
     const r=+el.dataset.r,c=+el.dataset.c;
-    const cell=b[r][c];
+    // Une Ombre invisible : la case se peint comme une case vide.
+    const cell=ombres.has(r+','+c)?null:b[r][c];
+    const fogged=fog.has(r+','+c);
     let cls='gc '+(((r+c)%2===0)?'l':'d');
-    if(gs.selected&&gs.selected.r===r&&gs.selected.c===c)cls+=' sel';
-    const isAvail=gs.legalMoves.some(m=>m.r===r&&m.c===c&&!m.stayPut);
-    const hasEnemy=cell&&isAvail&&cell.color!==gs.turn;
+    if(fogged)cls+=' gc-fog';
+    if(sel&&sel.r===r&&sel.c===c)cls+=' sel';
+    const isAvail=shown.some(m=>m.r===r&&m.c===c&&!m.stayPut);
+    // Sous le voile, une case jouable ne dit pas si elle est occupée.
+    const hasEnemy=!fogged&&cell&&isAvail&&cell.color!==gs.turn;
     if(isAvail&&hasEnemy)cls+=' avail-cap';
     else if(isAvail)cls+=' avail';
     // Départ et arrivée reçoivent deux marques DIFFÉRENTES : teintées à
     // l'identique, les deux cases ne disaient pas le sens du coup.
-    if(gs.lastMove){
+    if(gs.lastMove&&!fogged){
       if(gs.lastMove.from.r===r&&gs.lastMove.from.c===c)cls+=' lm-from';
       else if(gs.lastMove.to.r===r&&gs.lastMove.to.c===c)cls+=' lm-to';
     }
-    if(gs.lastMove&&gs.lastMove.capture&&gs.lastMove.to.r===r&&gs.lastMove.to.c===c)cls+=' cap-flash';
+    if(!fogged&&gs.lastMove&&gs.lastMove.capture&&gs.lastMove.to.r===r&&gs.lastMove.to.c===c)cls+=' cap-flash';
     // Le roi en échec est signalé sur le plateau lui-même : la barre de
     // statut seule passait inaperçue au milieu d'une partie rapide.
-    if(cell&&(cell.isKing||cell.type==='k')&&cell.color===gs.turn&&checkedColor===gs.turn)cls+=' gc-check';
+    if(!fogged&&cell&&(cell.isKing||cell.type==='k')&&cell.color===gs.turn&&checkedColor===gs.turn)cls+=' gc-check';
     // Le curseur « main ouverte » vivait sur la pièce ; il vit sur la case,
     // seule chose que le pointeur peut désormais atteindre.
     // Le curseur « main ouverte » reste offert pendant le tour adverse : on
     // peut y prendre une pièce en main, elle inscrit un prémouvement.
-    if(cell&&cell.color===playerCol&&!gs.gameOver&&(gs.turn===playerCol||premoveAllowed(gs)))cls+=' gc-holds';
+    if(cell&&cell.color===playerCol&&cell.pieceId!=='reflet'&&!gs.gameOver&&(gs.turn===playerCol||premoveAllowed(gs)))cls+=' gc-holds';
     // LE PRÉMOUVEMENT A SES PROPRES MARQUES, et elles ne ressemblent à
     // aucune autre : ce qu'elles montrent n'est pas encore joué, et peut
     // très bien ne jamais l'être. Elles sont donc violettes là où tout le
@@ -403,7 +429,7 @@ function paintBoardCells(gs){
     // le resterait après qu'une pièce s'y est posée.
     const lab=cellLabel(gs,r,c)+(isAvail?(hasEnemy?', prise possible':', déplacement possible'):'');
     if(el.getAttribute('aria-label')!==lab)el.setAttribute('aria-label',lab);
-    el.setAttribute('aria-selected',(gs.selected&&gs.selected.r===r&&gs.selected.c===c)?'true':'false');
+    el.setAttribute('aria-selected',(sel&&sel.r===r&&sel.c===c)?'true':'false');
   }
 }
 
@@ -412,6 +438,16 @@ function paintBoardCells(gs){
 function syncPieces(gs,boardEl,flipped,board){
   const b=board||gs.board;
   const layer=boardLayer(boardEl);
+  // Les pièces du camp de Nyx sous son voile restent dans la couche (leur
+  // nœud survit, sinon chaque entrée dans le brouillard serait une « mort »),
+  // mais invisibles : .gc-fogged. Une Ombre adverse invisible est traitée de
+  // même, sans voile sur sa case.
+  const fog=nyxFogLive(gs,b);
+  const ombres=ombreHiddenLive(gs,b);
+  // Nos propres Ombres, quand l'adversaire ne les voit pas, sont estompées :
+  // le joueur sait ainsi qu'elles sont cachées.
+  const mesOmbres=(gs&&!gs.gameOver&&!REPLAYING)
+    ?ombreHiddenFor(b,opp(gs.playerColor||'w'),gs.turnCount||0):new Set();
   const seen=new Set();
   const at=[];
   for(let r=0;r<8;r++)at.push(new Array(8).fill(null));
@@ -467,6 +503,12 @@ function syncPieces(gs,boardEl,flipped,board){
       // porte un geste, le plateau entier se met à tressauter.
       if(node._tf!==tf){
         node._tf=tf;
+        // UNE PIÈCE QUI SORT DU BROUILLARD N'A PAS DE TRAJET : elle apparaît
+        // sur sa case. Glisser depuis le voile dirait d'où elle vient.
+        if(node.classList.contains('gc-fogged')&&!fog.has(r+','+c)&&!ombres.has(r+','+c)){
+          node.style.transition='none';
+          requestAnimationFrame(()=>requestAnimationFrame(()=>{node.style.transition='';}));
+        }
         // Une pièce qui bouge passe au-dessus des autres le temps du
         // glissement : sinon, en capturant, elle disparaît sous sa victime.
         node.style.transform=tf;
@@ -512,6 +554,10 @@ function syncPieces(gs,boardEl,flipped,board){
     // coûteraient une image sur deux à un téléphone d'entrée de gamme, et
     // rendraient le plateau illisible bien avant.
     node.classList.toggle('pc-cuirasse',cell.pieceId==='preux-chevalier');
+    // Le reflet de l'Illusion : la même silhouette, à moitié effacée.
+    node.classList.toggle('pc-reflet',cell.pieceId==='reflet');
+    node.classList.toggle('gc-fogged',fog.has(key)||ombres.has(key));
+    node.classList.toggle('pc-ombre-voilee',mesOmbres.has(key));
     node.classList.toggle('pc-dominant',cell.pieceId==='grand-maitre');
     node.classList.toggle('pc-warded',
       !!(gs.pretreProtected&&gs.pretreProtected.has(cell.color+':'+key)));
@@ -525,6 +571,9 @@ function syncPieces(gs,boardEl,flipped,board){
   _pieceNodes.forEach((node,id)=>{
     if(seen.has(id))return;
     _pieceNodes.delete(id);
+    // Une pièce morte sous le voile s'efface sans poussière : la poussière
+    // dirait qu'il y avait quelqu'un.
+    if(node.classList.contains('gc-fogged')){node.remove();return;}
     node.classList.add('gc-dying');
     // LA POUSSIÈRE EST POSÉE ICI, ET C'EST CE QUI LA REND UNIVERSELLE. Ce
     // point de passage voit TOUTE pièce qui quitte le plateau, sans savoir
@@ -575,6 +624,9 @@ const MOVE_GESTURE={
   'preux-chevalier':   {cls:'gc-stomp',   air:false},  // le pas d'un homme en armure
   'garde-pierre':      {cls:'gc-stomp',   air:false},
   'fourmi':            {cls:'gc-scuttle', air:true},   // pressee, minuscule, saccadee
+  'pegase':            {cls:'gc-gallop',  air:true},   // il galope, puis il vole
+  'loup-geant':        {cls:'gc-leap',    air:true},   // un seul bond, toujours le même
+  'singe':             {cls:'gc-scuttle', air:true},   // deux petits sauts d'affilée
 
   // SORCIERS. Aucun ne touche vraiment le sol : ils se déplacent par un autre
   // moyen que la marche, et le geste est ce qui le dit sans une ligne de texte.
@@ -582,6 +634,9 @@ const MOVE_GESTURE={
   'banshee':           {cls:'gc-phase',   air:true},   // elle s'efface et se repose ailleurs
   'meduse':            {cls:'gc-drift',   air:true},   // elle ondule, elle ne marche pas
   'pretre':            {cls:'gc-solemn',  air:false},  // lent, droit, sans écrasement
+  'infecte':           {cls:'gc-scuttle', air:true},   // il bondit, désarticulé
+  'ombre':             {cls:'gc-drift',   air:true},   // elle glisse sans bruit
+  'illusion':          {cls:'gc-phase',   air:true},   // elle se dédouble plutôt qu'elle ne marche
 
   // GÉNÉRAUX ET MONARQUES. La retenue est leur signature : ils s'élèvent d'un
   // rien et se posent d'aplomb. Une pièce qui vaut treize points n'a pas
@@ -590,6 +645,7 @@ const MOVE_GESTURE={
   'dame':              {cls:'gc-regal',   air:false},
   'amazone':           {cls:'gc-regal',   air:false},
   'grand-maitre':      {cls:'gc-regal',   air:false},
+  'nyx':               {cls:'gc-phase',   air:true},   // elle se fond dans la nuit et reparaît
   'chevaucheur-rhinoceros':{cls:'gc-gallop',air:true}, // deux temps, comme un galop
 
   // PRIMORDIALES. Le vocabulaire de base du plateau, et leurs gestes sont les
@@ -653,7 +709,7 @@ function renderGame(gs){
   // des noirs verrait sinon ses éclats sur la case symétrique de la prise.
   if(typeof fxSetFlipped==='function')fxSetFlipped(flipped);
   paintBoardCells(gs);
-  syncPieces(gs,boardEl,flipped);
+  syncPieces(gs,boardEl,flipped,singeViewBoard(gs));
   if(typeof applyBoardSkin==='function')applyBoardSkin();
 
   buildGameLabels(gs);updateCaptured(gs);updateHistoryNav();renderClocks(gs);updateTurnBars(gs);
@@ -928,7 +984,18 @@ function getBoardCell(clientX,clientY,gs){
 }
 
 function startDrag(r,c,gs,clientX,clientY){
-  const b=gs.board;const cell=b[r][c];if(!cell)return;
+  const b=gs.board;
+  // LE SINGE À MI-CHEMIN se reprend sur sa case de premier pas, où il est
+  // montré : on le glisse vers son second pas.
+  const sv=singeStepActive(gs);
+  if(sv&&sv.r===r&&sv.c===c){
+    const sp=b[gs.selected.r][gs.selected.c];
+    dragState={fromR:r,fromC:c,gs,moved:false,startX:clientX,startY:clientY,alreadySelected:true,pre:false,singeStep:true};
+    dragGhost.innerHTML=pieceSVG(sp.pieceId,sp.color);
+    dragGhost.style.left=clientX+'px';dragGhost.style.top=clientY+'px';
+    return;
+  }
+  const cell=b[r][c];if(!cell)return;
   // Prendre en main pendant le tour adverse, c'est préparer un prémouvement :
   // le geste est le même, seule la destination du résultat change.
   const pre=gs.turn!==(gs.playerColor||'w');
@@ -971,8 +1038,10 @@ function moveDrag(clientX,clientY){
     dragGhost.style.left=clientX+'px';dragGhost.style.top=clientY+'px';
   }
 }
+let _dragEndedAt=0;
 function endDrag(clientX,clientY){
   if(!dragState)return;
+  _dragEndedAt=Date.now();
   dragGhost.style.display='none';
   const held=pieceNodeAt(dragState.fromR,dragState.fromC);
   if(held)held.classList.remove('dragging');
@@ -980,8 +1049,18 @@ function endDrag(clientX,clientY){
   const wasDrag=dragState.moved;
   const wasAlreadySelected=dragState.alreadySelected;
   const wasPre=dragState.pre;
+  const wasSingeStep=!!dragState.singeStep;
   const prevSelected={r:dragState.fromR,c:dragState.fromC};
   dragState=null;
+
+  // LE SECOND PAS DU SINGE, déposé à la main.
+  if(wasSingeStep){
+    if(wasDrag){
+      const cell=getBoardCell(clientX,clientY,gs);
+      if(!cell||!singeClick(gs,cell.r,cell.c))renderGame(gs);
+    }
+    return;
+  }
 
   // GLISSÉ PENDANT LE TOUR ADVERSE : on ne joue pas, on inscrit.
   if(wasPre){
@@ -997,6 +1076,11 @@ function endDrag(clientX,clientY){
   if(wasDrag){
     const cell=getBoardCell(clientX,clientY,gs);
     if(!cell){gs.selected=null;gs.legalMoves=[];renderGame(gs);return;}
+    // Le Singe se dépose d'abord sur son PREMIER pas.
+    if(isSingeSelected(gs)){
+      if(!singeClick(gs,cell.r,cell.c)){gs.selected=null;gs.legalMoves=[];renderGame(gs);}
+      return;
+    }
     const move=gs.legalMoves.find(m=>m.r===cell.r&&m.c===cell.c);
     if(move){
       gs.lastMove={from:prevSelected,to:move,capture:!!gs.board[move.r][move.c]};
@@ -1157,13 +1241,13 @@ function premoveClick(r,c,gs){
     // Tout le reste referme la sélection ; sur une AUTRE de nos pièces, elle
     // se rouvre aussitôt sur celle-là (on change d'avis sans double clic).
     premoveDeselect(gs);
-    if(!same&&cell&&cell.color===playerCol){premoveSelect(r,c,gs);return;}
+    if(!same&&cell&&cell.color===playerCol&&cell.pieceId!=='reflet'){premoveSelect(r,c,gs);return;}
     paintBoardCells(gs);
     return;
   }
 
   gs.premove=null;                       // n'importe quel clic efface l'inscrit
-  if(cell&&cell.color===playerCol){premoveSelect(r,c,gs);return;}
+  if(cell&&cell.color===playerCol&&cell.pieceId!=='reflet'){premoveSelect(r,c,gs);return;}
   paintBoardCells(gs);
 }
 // LA SÉLECTION PRISE EN COURS DE ROUTE. On désigne une pièce pour préparer un
@@ -1234,20 +1318,95 @@ function premoveRun(gs){
 }
 
 // ----------------------------------------------------------------
+// LE SINGE EN DEUX TEMPS
+// ----------------------------------------------------------------
+// Le Singe fait deux pas d'une case en diagonale, et le joueur les JOUE
+// tous les deux : il le pose d'abord sur son premier pas (en mangeant ce qui
+// s'y trouve, à l'écran), puis choisit son second pas depuis là. Ce n'est
+// qu'alors que le coup part — un seul coup, un seul demi-tour, avec son
+// `via` (singeMoves, js/rules-engine.js).
+//
+// Entre les deux, rien n'est joué : le plateau réel n'a pas bougé, on en
+// MONTRE une copie où le Singe est sur son premier pas (singeViewBoard). Un
+// clic sur sa case de départ le ramène ; un clic ailleurs l'y ramène et le
+// désélectionne.
+//
+// L'étape vaut pour UNE sélection : elle retient l'objet `gs.selected` du
+// moment, et toute nouvelle sélection (autre pièce, Échap, coup adverse) la
+// rend caduque sans qu'il faille penser à l'effacer partout.
+function isSingeSelected(gs){
+  const s=gs&&gs.selected;const p=s&&gs.board[s.r]&&gs.board[s.r][s.c];
+  return !!p&&p.pieceId==='singe';
+}
+function singeStepActive(gs){
+  if(!gs||!gs.singeVia||gs.gameOver||gs.singeVia.sel!==gs.selected||!isSingeSelected(gs))return null;
+  return gs.singeVia;
+}
+// Les cases proposées : premiers pas, puis seconds pas depuis le premier.
+function shownTargets(gs){
+  if(!isSingeSelected(gs))return gs.legalMoves;
+  const v=singeStepActive(gs);
+  if(v)return gs.legalMoves.filter(m=>m.via&&m.via.r===v.r&&m.via.c===v.c);
+  const seen=new Set(),out=[];
+  gs.legalMoves.forEach(m=>{
+    if(!m.via)return;const k=m.via.r+','+m.via.c;
+    if(!seen.has(k)){seen.add(k);out.push({r:m.via.r,c:m.via.c});}
+  });
+  return out;
+}
+function singeViewBoard(gs){
+  const v=singeStepActive(gs);if(!v)return null;
+  const b=cloneBoard(gs.board),s=gs.selected;
+  b[v.r][v.c]=b[s.r][s.c];b[s.r][s.c]=null;
+  return b;
+}
+// Rend true si le clic a été pris par le Singe.
+function singeClick(gs,r,c){
+  if(!isSingeSelected(gs)||gs.gameOver)return false;
+  const s=gs.selected;
+  const v=singeStepActive(gs);
+  if(!v){
+    if(!gs.legalMoves.some(m=>m.via&&m.via.r===r&&m.via.c===c))return false;
+    const victim=gs.board[r][c];
+    const mange=!!victim&&victim.color!==gs.board[s.r][s.c].color;
+    gs.singeVia={r,c,sel:s};
+    if(typeof playSound==='function')playSound(mange?'capture':'move',mange&&typeof sfxCaptureForce==='function'?{force:sfxCaptureForce(victim.pieceId)}:undefined);
+    renderGame(gs);
+    return true;
+  }
+  if(r===v.r&&c===v.c)return true;          // le Singe lui-même : il attend son second pas
+  const mv=gs.legalMoves.find(m=>m.via&&m.via.r===v.r&&m.via.c===v.c&&m.r===r&&m.c===c);
+  if(mv){
+    const from={r:s.r,c:s.c};
+    gs.lastMove={from,to:mv,capture:!!gs.board[mv.r][mv.c]||!!mv.viaCap};
+    gs.selected=null;gs.legalMoves=[];gs.singeVia=null;
+    executeGameMove(from,mv,gs);
+    return true;
+  }
+  gs.singeVia=null;
+  if(!(r===s.r&&c===s.c)){gs.selected=null;gs.legalMoves=[];}
+  renderGame(gs);
+  return true;
+}
+
+// ----------------------------------------------------------------
 // HANDLER DE CLIC (sélection / déplacement / cas spéciaux)
 // ----------------------------------------------------------------
 function handleGameClick(r,c,gs){
   const b=gs.board;const cell=b[r][c];const playerCol=gs.playerColor||'w';
 
   if(gs.selected){
+    // Le Singe se joue en deux temps : ses clics passent d'abord par là.
+    if(singeClick(gs,r,c))return;
     if(gs.selected.r===r&&gs.selected.c===c){gs.selected=null;gs.legalMoves=[];renderGame(gs);return;}
     const normalMove=gs.legalMoves.find(m=>m.r===r&&m.c===c&&!m.stayPut);
     const selCell=b[gs.selected.r][gs.selected.c];
-    const move=normalMove||gs.legalMoves.find(m=>m.r===r&&m.c===c);
+    // Un Singe ne rejoint jamais sa case d'arrivée en un seul clic.
+    const move=isSingeSelected(gs)?null:(normalMove||gs.legalMoves.find(m=>m.r===r&&m.c===c));
     if(move){
       gs.lastMove={from:gs.selected,to:move,capture:!!b[move.r][move.c]};const from={...gs.selected};gs.selected=null;gs.legalMoves=[];executeGameMove(from,move,gs);return;
     }
-    if(cell&&cell.color===playerCol){gs.selected={r,c};gs.legalMoves=getLegalMoves(b,r,c,gs);renderGame(gs);return;}
+    if(cell&&cell.color===playerCol&&cell.pieceId!=='reflet'){gs.selected={r,c};gs.legalMoves=getLegalMoves(b,r,c,gs);renderGame(gs);return;}
     // LA CUIRASSE, AU SEUL INSTANT OÙ ELLE S'EXPLIQUE. Le pouvoir du Preux
     // Chevalier — les pions adverses ne peuvent pas le capturer — vit dans la
     // GÉNÉRATION des coups : la prise n'est jamais proposée, et le joueur qui
@@ -1273,7 +1432,7 @@ function handleGameClick(r,c,gs){
     }
     gs.selected=null;gs.legalMoves=[];renderGame(gs);return;
   }
-  if(cell&&cell.color===playerCol){gs.selected={r,c};gs.legalMoves=getLegalMoves(b,r,c,gs);renderGame(gs);}
+  if(cell&&cell.color===playerCol&&cell.pieceId!=='reflet'){gs.selected={r,c};gs.legalMoves=getLegalMoves(b,r,c,gs);renderGame(gs);}
 }
 
 // ----------------------------------------------------------------
@@ -1508,7 +1667,9 @@ function updateStatus(gs){
       if(gs._fxCheckPly!==ply){
         gs._fxCheckPly=ply;
         const kc=fxKingCell(gs.board,t);
-        if(kc)fxCheck(kc.r,kc.c);
+        // Un roi caché par le voile de Nyx est en échec, mais on ne montre
+        // pas OÙ : la barre de statut le dit, le plateau se tait.
+        if(kc&&!nyxFogLive(gs).has(kc.r+','+kc.c))fxCheck(kc.r,kc.c);
       }
     }
   }

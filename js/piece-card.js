@@ -82,6 +82,16 @@ const POWER_ICONS={
   banshee:'<path d="M5 9v6"/><path d="M9 6v12"/><path d="M13 8.5v7"/><path d="M17 5.5v13"/><path d="M21 9v6"/>',
   // Foi Inébranlable (Prêtre) : une croix rayonnante.
   pretre:'<path d="M12 3v18"/><path d="M6.5 9h11"/><path d="M4 5.5L5.6 7"/><path d="M20 5.5L18.4 7"/>',
+  // Double Bond (Singe) : deux sauts d'affilée.
+  singe:'<path d="M3 18c1.5-5 4.5-5 6 0"/><path d="M9 18c2-8 8-8 10 0"/><path d="M16.5 15.5L19 18l2.5-2.5"/>',
+  // Reflet (Illusion) : une silhouette et son double en pointillé.
+  illusion:'<circle cx="15" cy="7" r="3"/><path d="M10 21c0-5 2-8 5-8s5 3 5 8"/><circle cx="7" cy="7" r="3" stroke-dasharray="2 2"/><path d="M2.5 21c0-5 2-8 4.5-8" stroke-dasharray="2 2"/>',
+  // Voile de la Nuit (Nyx) : un croissant de lune.
+  nyx:'<path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5z"/>',
+  // Contagion (Infecté) : une goutte et ses éclaboussures.
+  infecte:'<path d="M12 3c3 4.5 5 7.5 5 10.5a5 5 0 0 1-10 0C7 10.5 9 7.5 12 3z"/><path d="M4 8l1.5 1.5M20 8l-1.5 1.5M4 18h2M18 18h2"/>',
+  // Invisible (Ombre) : un œil barré.
+  ombre:'<path d="M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6-10-6-10-6z"/><circle cx="12" cy="12" r="2.6"/><path d="M4 20L20 4"/>',
   // Pièce sans pouvoir : le pictogramme du déplacement seul (deux flèches).
   _none:'<path d="M12 4v16"/><path d="M4 12h16"/><path d="M8.5 7.5L12 4l3.5 3.5"/><path d="M8.5 16.5L12 20l3.5-3.5"/>',
 };

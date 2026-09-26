@@ -2535,6 +2535,75 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
       if(!b[4][4]||b[4][4].pieceId!=='banshee')out.push('hurlement : la banshee a bouge');
       if(!b[2][4]||b[2][4].pieceId!=='std-pawn')out.push('hurlement : le pion n est pas arrive derriere');
       if(!b[3][5]||b[3][5].pieceId!=='fourmi')out.push('hurlement : la fourmi a ete traitee comme un pion');
+
+      // PÉGASE ET LOUP GÉANT — deux sauteurs : 3 + 1 pour l'un, exactement
+      // deux cases de biais pour l'autre, par-dessus ce qui se trouve entre.
+      b=vide();pose(b,4,4,'pegase','w');pose(b,3,4,'std-pawn','w');pose(b,2,4,'std-pawn','w');
+      if(!va(b,4,4,1,5))out.push('pegase : il ne saute pas 3 + 1');
+      if(va(b,4,4,2,5))out.push('pegase : il fait le bond du cavalier');
+      b=vide();pose(b,4,4,'loup-geant','w');pose(b,3,3,'std-pawn','b');
+      if(!va(b,4,4,2,2))out.push('loup geant : il ne saute pas par-dessus la case du milieu');
+      if(va(b,4,4,3,3)||va(b,4,4,1,1))out.push('loup geant : il va a une ou trois cases');
+
+      // DOUBLE BOND — le Singe mange au premier pas ET au second.
+      b=vide();const singe=pose(b,4,4,'singe','w');pose(b,3,3,'dame','b');pose(b,2,2,'tour-primordiale','b');
+      const sm=generateMovesRaw(b,4,4,etat(b)).find(m=>m.r===2&&m.c===2);
+      if(!sm||!sm.via||!sm.viaCap)out.push('singe : le premier pas ne mange pas');
+      else{
+        b[2][2]=singe;b[4][4]=null;applyCollateralOnBoard(b,{r:4,c:4},sm,singe,null,null);
+        if(b[3][3])out.push('singe : la piece du premier pas est restee');
+      }
+      b=vide();pose(b,4,4,'singe','w');pose(b,3,3,'std-pawn','w');
+      if(va(b,4,4,2,2))out.push('singe : il passe sur une alliee');
+
+      // REFLET — l'Illusion laisse un reflet derrière elle. Il arrête les
+      // lignes adverses et se prend ; son propre camp le traverse.
+      b=vide();const ill=pose(b,6,4,'illusion','w');pose(b,7,4,'roi','w');pose(b,0,4,'tour-primordiale','b');
+      if(!va(b,6,4,5,5))out.push('reflet : l illusion clouee ne peut pas s ecarter');
+      b[5][5]=ill;b[6][4]=null;applyCollateralOnBoard(b,{r:6,c:4},{r:5,c:5},ill,null,null);
+      if(!b[6][4]||b[6][4].pieceId!=='reflet')out.push('reflet : aucun reflet sur la case quittee');
+      if(isInCheckSimple('w',b))out.push('reflet : il n arrete pas la tour adverse');
+      if(!va(b,0,4,6,4))out.push('reflet : la tour adverse ne peut pas le prendre');
+      pose(b,6,0,'tour-primordiale','w');
+      if(!va(b,6,0,6,7))out.push('reflet : il bloque son propre camp');
+      b[4][5]=ill;b[5][5]=null;applyCollateralOnBoard(b,{r:5,c:5},{r:4,c:5},ill,null,null);
+      if(b[6][4])out.push('reflet : l ancien reflet est reste');
+      if(!b[5][5]||b[5][5].pieceId!=='reflet')out.push('reflet : le nouveau reflet manque');
+
+      // LE SINGE EN DEUX TEMPS — chaque chemin est un coup à part : le joueur
+      // choisit son premier pas.
+      b=vide();pose(b,4,4,'singe','w');pose(b,3,5,'dame','b');
+      const chemins=generateMovesRaw(b,4,4,etat(b)).filter(m=>m.r===2&&m.c===4);
+      if(chemins.length!==2)out.push('singe : '+chemins.length+' chemin(s) vers e6 au lieu de 2');
+      else if(!chemins[0].viaCap)out.push('singe : le chemin qui mange ne vient pas en premier');
+
+      // CONTAGION — qui mange l'Infecté meurt, l'Infecté meurt de ce qu'il
+      // mange, et le Monarque ne peut pas le manger.
+      b=vide();const inf=pose(b,4,4,'infecte','w');const dm=pose(b,2,4,'dame','b');
+      b[2][4]=inf;b[4][4]=null;applyCollateralOnBoard(b,{r:4,c:4},{r:2,c:4},inf,null,dm);
+      if(b[2][4])out.push('contagion : l infecte survit a sa prise');
+      b=vide();const tr=pose(b,4,0,'tour-primordiale','w');const inf2=pose(b,4,4,'infecte','b');
+      b[4][4]=tr;b[4][0]=null;applyCollateralOnBoard(b,{r:4,c:0},{r:4,c:4},tr,null,inf2);
+      if(b[4][4])out.push('contagion : la piece qui mange l infecte survit');
+      b=vide();pose(b,4,4,'roi','w');pose(b,3,3,'infecte','b');
+      if(va(b,4,4,3,3))out.push('contagion : le roi peut manger l infecte');
+
+      // VOILE DE LA NUIT — l'adversaire ne voit pas les cases vides ou tenues
+      // par le camp de Nyx autour d'elle ; il voit les siennes.
+      b=vide();pose(b,4,4,'nyx','b');pose(b,3,3,'fourmi','b');pose(b,5,5,'fourmi','w');
+      const voile=nyxFogFor(b,'w');
+      if(!voile.has('3,3')||voile.has('5,5')||voile.has('4,4')||voile.size!==7)out.push('nyx : voile inexact ('+[...voile].join(' ')+')');
+      if(nyxFogFor(b,'b').size)out.push('nyx : son propre camp est dans le brouillard');
+
+      // L'OMBRE — une ou deux cases en ligne droite ; invisible pour
+      // l'adversaire, sauf pendant le demi-coup qui suit son déplacement.
+      b=vide();const om=pose(b,4,4,'ombre','b');pose(b,3,4,'std-pawn','b');
+      if(!va(b,4,4,4,6)||va(b,4,4,4,7)||va(b,4,4,2,4))out.push('ombre : deplacement inexact');
+      if(!ombreHiddenFor(b,'w',5).has('4,4'))out.push('ombre : visible sans avoir bouge');
+      om._seenAt=4;
+      if(ombreHiddenFor(b,'w',5).has('4,4'))out.push('ombre : invisible juste apres son coup');
+      if(!ombreHiddenFor(b,'w',6).has('4,4'))out.push('ombre : reste visible apres le coup adverse');
+      if(ombreHiddenFor(b,'b',9).size)out.push('ombre : invisible pour son propre camp');
       return out;
     });
     if(bad.length)throw new Error(bad.join(' · '));

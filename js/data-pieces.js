@@ -363,6 +363,11 @@ const PIECES=[
   {id:'chevaucheur-rhinoceros',name:'Centaure',emoji:'🐴',class:'Général',value:8,qty:1,pieceType:'r',ability:null},
   {id:'dame',name:'Dame',emoji:'♛',class:'Général',value:10,qty:1,pieceType:'q',ability:null},
   {id:'grand-maitre',name:'Grand Maître',emoji:'🔮',class:'Général',value:13,qty:1,pieceType:'q',ability:'Domination : Tant qu\'il est vivant, les pions adverses ne peuvent pas avancer de 2 cases'},
+  // NYX marche en Roi et bondit en Cavalier. Son pouvoir ne change aucune
+  // règle : il change ce que l'adversaire VOIT (nyxFogFor, js/rules-engine.js).
+  // Son identifiant est neuf — l'Empereur, qui se déplaçait pareil, est retiré
+  // et son identifiant ne doit jamais resservir (RETIRED_PIECE_IDS).
+  {id:'nyx',name:'Nyx',emoji:'🌑',class:'Général',value:9,qty:1,pieceType:'q',ability:'Voile de la Nuit : L\'adversaire ne voit pas les cases autour de Nyx, vides ou tenues par son camp ; il n\'y voit que ses propres pièces. Nyx prise, le voile se lève'},
   {id:'cavalier-primordial',name:'Cavalier Primordial',emoji:'♞',class:'Primordiale',value:3,qty:2,pieceType:'n',ability:null},
   {id:'fou-primordial',name:'Fou Primordial',emoji:'♝',class:'Primordiale',value:3,qty:2,pieceType:'b',ability:null},
   {id:'tour-primordiale',name:'Tour Primordiale',emoji:'♜',class:'Primordiale',value:5,qty:2,pieceType:'r',ability:null},
@@ -386,7 +391,39 @@ const PIECES=[
   {id:'typhon',name:'Typhon',emoji:'🌪️',class:'Sorcier',value:6,qty:2,pieceType:'b',ability:'Orage Sanguinaire : Les pièces ennemies adjacentes sont détruites après son déplacement'},
   {id:'banshee',name:'Banshee',emoji:'👻',class:'Sorcier',value:4,qty:2,pieceType:'b',ability:'Hurlement : Les pions ennemis adjacents reculent d\'une case s\'ils le peuvent après son déplacement'},
   {id:'pretre',name:'Prêtre',emoji:'✝️',class:'Sorcier',value:4,qty:2,pieceType:'r',ability:'Foi Inébranlable : Les ennemis ne peuvent pas capturer les pièces alliées (sauf Monarque) dans les cases diagonalement adjacentes'},
+  // QUATRE CRÉATURES DE PLUS. Leur déplacement est écrit dans le moteur
+  // (generateMovesRaw, js/rules-engine.js) et nulle part ailleurs : le schéma
+  // de la fiche le relit de là. Le Pégase est un cavalier au long bond (3 + 1,
+  // dans les huit sens), le Loup Géant un sauteur de deux diagonales tout
+  // juste, le Singe fait deux pas de biais en un seul coup et l'Illusion
+  // laisse derrière elle un reflet (voir REFLET plus bas).
+  {id:'pegase',name:'Pégase',emoji:'🪽',class:'Brute',value:5,qty:2,pieceType:'n',ability:null},
+  {id:'loup-geant',name:'Loup Géant',emoji:'🐺',class:'Brute',value:2,qty:2,pieceType:'b',ability:null},
+  {id:'singe',name:'Singe',emoji:'🐒',class:'Brute',value:4,qty:2,pieceType:'b',ability:'Double Bond : Fait deux pas d\'une case en diagonale dans le même coup, et mange ce qu\'il trouve à chacun des deux'},
+  {id:'infecte',name:'Infecté',emoji:'🧟',class:'Sorcier',value:4,qty:2,pieceType:'n',ability:'Contagion : S\'il mange une pièce adverse, il meurt aussi ; la pièce adverse qui le mange meurt aussi. Le Monarque adverse ne peut pas le manger'},
+  // L'OMBRE : une ou deux cases en ligne droite, et invisible pour l'adversaire
+  // tant qu'elle ne bouge pas (ombreHiddenFor, js/rules-engine.js). Comme le
+  // voile de Nyx, c'est ce que l'adversaire VOIT qui change, pas les règles.
+  {id:'ombre',name:'Ombre',emoji:'👤',class:'Sorcier',value:3,qty:2,pieceType:'r',ability:'Invisible : L\'adversaire ne la voit pas. Quand elle se déplace, elle reste visible jusqu\'à ce qu\'il ait joué, puis disparaît de nouveau'},
+  {id:'illusion',name:'Illusion',emoji:'🪞',class:'Sorcier',value:5,qty:2,pieceType:'q',ability:'Reflet : Laisse un reflet sur la case qu\'elle quitte. Il bloque les pièces ennemies, qui peuvent le prendre ; un seul reflet par Illusion'},
 ];
+
+// ----------------------------------------------------------------
+// LE REFLET DE L'ILLUSION
+// ----------------------------------------------------------------
+// Ce n'est PAS une créature : il n'est pas au catalogue, ne s'achète pas, ne
+// se compose pas dans une armée. C'est une case occupée que l'Illusion laisse
+// derrière elle, posée sur le plateau comme une pièce de son camp pour que
+// tout le moteur la voie sans rien lui apprendre :
+//   · pour l'ADVERSAIRE, c'est une pièce ennemie : elle arrête ses lignes
+//     (tours, fous, dames, chemins sans saut) et se prend comme une autre ;
+//   · pour SON CAMP, elle est transparente : on la traverse et on peut se
+//     poser dessus, ce qui la dissipe (voir canLand / barsPath,
+//     js/rules-engine.js).
+// Elle ne bouge pas, ne donne pas échec, ne compte ni dans les prises ni dans
+// l'inventaire. `owner` est l'identifiant de l'Illusion qui l'a laissée : un
+// seul reflet par Illusion, et il s'éteint avec elle. Son identifiant de
+// pièce est 'reflet' ; ne jamais le donner à une créature.
 
 // ----------------------------------------------------------------
 // LES PIÈCES RETIRÉES DU JEU
@@ -505,6 +542,7 @@ const UNLOCK_TABLE=[
   {id:'rw-480',reward:'copies',copyId:'amazone',qty:2,eloRequired:480},
   {id:'rw-550',reward:'copies',copyId:'meduse',qty:2,eloRequired:550},
   {id:'rw-700',reward:'pearls',amount:12,eloRequired:700},
+  {pieceId:'ombre',eloRequired:740},
   {pieceId:'pretre',eloRequired:800},{pieceId:'typhon',eloRequired:1000,bigReward:true},
   // L'ID `rw-900` NE CHANGE PAS alors que son lot change : il est la clé sous
   // laquelle vvCheckRewardMilestones retient qu'un compte a déjà encaissé ce
@@ -516,6 +554,16 @@ const UNLOCK_TABLE=[
   {pieceId:'banshee',eloRequired:1150},
   {id:'rw-1300',reward:'copies',copyId:'garde-pierre',qty:2,eloRequired:1300},
   {id:'rw-1450',reward:'pearls',amount:16,eloRequired:1450},
+  // LES QUATRE DERNIÈRES CRÉATURES comblent les trois grands creux de la Voie
+  // — 260 → 800, 1150 → 1700 — dans l'ordre de leur difficulté : le Loup
+  // Géant (un seul geste, deux cases de biais), puis le Singe, le Pégase, et
+  // l'Illusion, la seule dont le pouvoir change la géométrie du plateau.
+  {pieceId:'loup-geant',eloRequired:360},
+  {pieceId:'infecte',eloRequired:450},
+  {pieceId:'singe',eloRequired:620},
+  {pieceId:'pegase',eloRequired:1250},
+  {pieceId:'nyx',eloRequired:1350},
+  {pieceId:'illusion',eloRequired:1500},
   {pieceId:'grand-maitre',eloRequired:1700},
   {id:'rw-1600',reward:'copies',copyId:'pretre',qty:2,eloRequired:1600},
   {id:'rw-1850',reward:'pearls',amount:18,eloRequired:1850},

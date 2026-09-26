@@ -172,7 +172,9 @@ function replayFrames(rec){
         // Éléphant de guerre) : les deux cases seules n'en disent rien. On les retrouve
         // en redemandant au moteur ce que cette pièce pouvait faire.
         const legal=(typeof getLegalMoves==='function')?getLegalMoves(gs.board,from.r,from.c,gs):[];
-        const mv=legal.find(m=>m.r===to.r&&m.c===to.c);
+        const at=s.match(/@(\d)(\d)/);
+        const want=at?{r:to.r,c:to.c,via:{r:+at[1],c:+at[2]}}:to;
+        const mv=legal.find(m=>sameMove(m,want));
         if(!mv)break;                        // coup devenu illégal : on s'arrête là
         executeGameMove(from,mv,gs);
       }

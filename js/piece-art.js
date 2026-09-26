@@ -81,6 +81,17 @@ const PIECE_ART={
     '<circle class="b" cx="50" cy="70" r="12"/>'+
     '<path class="l" d="M43 66c2-4 6-6 11-5"/>',
 
+  // NYX : une silhouette voilée sous le croissant de lune, deux yeux qui
+  // luisent dans le noir du capuchon — la nuit qu'elle jette autour d'elle.
+  'nyx':
+    '<path class="b" d="M73 5a15 15 0 1 0 14 22 12 12 0 1 1-14-22z"/>'+
+    '<path class="k" d="M22 12l1.6 3.4L27 17l-3.4 1.6L22 22l-1.6-3.4L17 17l3.4-1.6zM30 32l1.2 2.3 2.3 1.2-2.3 1.2L30 39l-1.2-2.3-2.3-1.2 2.3-1.2z"/>'+
+    '<path class="b" d="M50 18c-13 0-21 10-21 22 0 8 3 14 7 18l-12 24h52L64 58c4-4 7-10 7-18 0-12-8-22-21-22z"/>'+
+    '<path class="k" d="M39 40c0-8 5-13 11-13s11 5 11 13-5 15-11 15-11-7-11-15z"/>'+
+    '<circle class="b" cx="45.5" cy="40" r="3.2"/>'+
+    '<circle class="b" cx="54.5" cy="40" r="3.2"/>'+
+    '<path class="l" d="M36 64c5 4 9 10 10 18M64 64c-5 4-9 10-10 18"/>',
+
   // ---- Primordiales ----------------------------------------------
   'cavalier-primordial':
     '<path class="b" d="M58 9l3-8 6 8z"/>'+
@@ -132,6 +143,39 @@ const PIECE_ART={
     '<path class="l" d="M37 31l7 21-15 7M63 31l-7 21 15 7M44 52l6 13 6-13"/>'+
     '<circle class="k" cx="41" cy="41" r="3.5"/><circle class="k" cx="59" cy="41" r="3.5"/>',
 
+  // LE PÉGASE : la tête du Cavalier, plus petite, et une aile qui se lève
+  // derrière la crinière — c'est un cavalier, en plus loin.
+  'pegase':
+    '<path class="b" d="M57 55C58 36 69 18 93 7c-1 8-4 13-8 17 5-1 8 0 11 1-4 6-9 10-15 12 4 1 7 3 9 5-6 5-14 8-23 9 3 1 5 2 6 4-5 2-11 2-16 0z"/>'+
+    '<path class="l" d="M66 40c7-6 15-12 23-16M68 48c6-3 12-5 18-6"/>'+
+    '<path class="b" d="M49.6 23.6l2.4-6.4 4.8 6.4z"/>'+
+    '<path class="b" d="M30 82c0-10.4.8-17.6 4-24l-5.6 4c-4.8 3.2-9.6 1.6-10.4-3.2-1.6-5.6 1.6-11.2 6.4-16 4-4 8.8-7.2 12.8-11.2 3.2-3.2 4.8-6.4 5.6-10.4l4.8 4.8 4-4c8 6.4 13.6 16 16 26.4 2.4 10.4 3.2 21.6 3.2 33.6z"/>'+
+    '<path class="l" d="M51.6 30.8c4 6.4 7.2 15.2 8 24"/>'+
+    '<circle class="k" cx="44" cy="38.4" r="3"/>',
+
+  // LE LOUP GÉANT, de profil : le museau long et les oreilles droites le
+  // séparent du chat ou du renard, la collerette de poils du chien.
+  'loup-geant':
+    '<path class="b" d="M28 82l-5-8 6-1-6-8 7-1-2-6-8-4-10-6-4-5c-2-2-1-6 2-7l20-5 9-9 9-17 6 17 6 1 8-15 4 21c5 6 8 13 8 22l1 14 6 7-5 1 4 7-6 1 3 7z"/>'+
+    '<path class="k" d="M31 35l12-5 2 4-11 4z"/>'+
+    '<path class="k" d="M6 38c1-3 4-4 7-3l-1 6c-3 0-5-1-6-3z"/>'+
+    '<path class="l" d="M12 49c7 3 14 4 20 2M60 47c3 7 4 14 2 21M50 16l3 9"/>',
+
+  // LE SINGE : la face ronde et les deux grandes oreilles, et la queue
+  // enroulée qui dépasse du socle.
+  'singe':
+    '<path class="l" d="M68 76c16 1 21-12 15-19-5-6-13-1-9 5"/>'+
+    '<circle class="b" cx="23" cy="36" r="10"/>'+
+    '<circle class="b" cx="77" cy="36" r="10"/>'+
+    '<circle class="k" cx="23" cy="36" r="4"/>'+
+    '<circle class="k" cx="77" cy="36" r="4"/>'+
+    '<path class="b" d="M29 82c0-11 9-19 21-19s21 8 21 19z"/>'+
+    '<circle class="b" cx="50" cy="38" r="24"/>'+
+    '<path class="l" d="M36 38c0-7 6-10 14-5 8-5 14-2 14 5 5 5 5 14-1 19-6 4-20 4-26 0-6-5-6-14-1-19z"/>'+
+    '<circle class="k" cx="43" cy="38" r="3.4"/>'+
+    '<circle class="k" cx="57" cy="38" r="3.4"/>'+
+    '<path class="l" d="M47 47h.5M53 47h.5M44 53c4 3 8 3 12 0"/>',
+
   // ---- Sorciers --------------------------------------------------
   'meduse':
     '<path class="l" d="M33 56c-3 11 2 15 0 26M42 59c-3 12 2 16 0 25M50 60c-3 12 2 16 0 25M58 59c-3 12 2 16 0 25M67 56c-3 11 2 15 0 26"/>'+
@@ -152,6 +196,40 @@ const PIECE_ART={
   'pretre':
     '<path class="b" d="M50 7c-10 0-18 8-18 18 0 6 2 11 5 14L24 50c-6 5-9 11-9 16v16h70V66c0-5-3-11-9-16L63 39c3-3 5-8 5-14 0-10-8-18-18-18z"/>'+
     '<path class="k" d="M46 48h8v11h11v8H54v18h-8V67H35v-8h11z"/>',
+
+  // L'OMBRE : la silhouette garde la couleur de son camp ; c'est l'ombre
+  // portée, pleine, qui se découpe derrière elle.
+  'ombre':
+    '<path class="k" d="M44 7c-9 0-15 7-15 15 0 6 3 10 7 13-7 2-12 7-14 14l-5 20c-1 5 2 9 7 9h40c5 0 8-4 7-9l-5-20c-2-7-7-12-14-14 4-3 7-7 7-13 0-8-6-15-15-15z"/>'+
+    '<path class="b" d="M56 12c-8.5 0-14 6.5-14 14 0 5.5 2.7 9.4 6.5 12.2-6.5 2-11 6.8-13 13.3l-4.5 19c-1 4.5 1.8 8.5 6.5 8.5h37c4.7 0 7.5-4 6.5-8.5l-4.5-19c-2-6.5-6.5-11.3-13-13.3 3.8-2.8 6.5-6.7 6.5-12.2 0-7.5-5.5-14-14-14z"/>'+
+    '<path class="l" d="M49 25h5M58 25h5"/>',
+
+  // L'INFECTÉ : un crâne à l'oeil barré, la bouche recousue, le corps
+  // piqué de pustules — ce qu'on attrape en le mangeant.
+  'infecte':
+    '<path class="b" d="M26 82c0-12 10-19 24-19s24 7 24 19z"/>'+
+    '<circle class="l" cx="37" cy="74" r="3"/>'+
+    '<circle class="l" cx="60" cy="72" r="2.2"/>'+
+    '<circle class="l" cx="50" cy="77" r="1.6"/>'+
+    '<path class="b" d="M50 10c14 0 24 10 24 23 0 9-4 15-9 19v10H35V52c-5-4-9-10-9-19 0-13 10-23 24-23z"/>'+
+    '<path class="b" d="M70 42c3 4 4 9 2 13-1 3-5 3-5 0 0-3 2-6 1-10z"/>'+
+    '<path class="l" d="M35 27l9 9M44 27l-9 9"/>'+
+    '<circle class="k" cx="59" cy="32" r="5"/>'+
+    '<path class="l" d="M39 50h22M44 46v8M50 46v8M56 46v8"/>',
+
+  // L'ILLUSION : une silhouette encapuchonnée et, derrière elle, son double
+  // en pointillé — ce qu'elle laisse sur la case qu'elle quitte.
+  'illusion':
+    '<path class="l" stroke-dasharray="5 5" d="M40 8c-12 0-20 10-20 22 0 7 2 12 5 16l-8 20c-2 5-3 10-3 14"/>'+
+    '<path class="b" d="M58 8c-12 0-20 10-20 22 0 7 2 12 5 16l-8 20c-2 5-3 10-3 14h52c0-4-1-9-3-14l-8-20c3-4 5-9 5-16 0-12-8-22-20-22z"/>'+
+    '<path class="k" d="M49 30c0-7 4-12 9-12s9 5 9 12-4 15-9 15-9-8-9-15z"/>'+
+    '<path class="l" d="M48 62h20M52 70h12"/>',
+
+  // LE REFLET : la même silhouette, tout en pointillé. Le plateau l'affiche
+  // en plus à moitié effacé (.pc-reflet, css/style.css).
+  'reflet':
+    '<path class="b" stroke-dasharray="6 5" d="M50 8c-12 0-20 10-20 22 0 7 2 12 5 16l-8 20c-2 5-3 10-3 14h52c0-4-1-9-3-14l-8-20c3-4 5-9 5-16 0-12-8-22-20-22z"/>'+
+    '<path class="l" d="M38 60h24M42 68h16"/>',
 };
 
 // Pièces standard qui remplissent le fond de plateau : elles réutilisent le
