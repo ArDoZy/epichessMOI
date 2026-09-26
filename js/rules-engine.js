@@ -57,6 +57,8 @@ function inB(r,c){return r>=0&&r<8&&c>=0&&c<8;}
 // caractère emoji) : c'est ce qui permet de les redessiner en SVG dans les
 // bandeaux joueurs, et de les compter pour l'économie.
 function pushCaptured(gs,piece){
+  // Un reflet d'Illusion n'est pas une pièce : le prendre ne se compte pas.
+  if(piece.pieceId==='reflet')return;
   const rec={id:piece.pieceId,color:piece.color};
   if(piece.color==='w')gs.capturedW.push(rec);else gs.capturedB.push(rec);
 }
@@ -107,12 +109,22 @@ function tickClock(gs){
 // ================================================================
 // GÉNÉRATION DE COUPS : helpers génériques
 // ================================================================
+// LE REFLET DE L'ILLUSION (voir data-pieces.js) est une pièce pour l'adversaire
+// et du vent pour son propre camp. Ces deux questions sont donc posées partout
+// où l'on demandait « la case est-elle vide ? » ou « est-elle ennemie ? » :
+//   canLand   p peut-elle se POSER sur t ? Vide, ennemie, ou un reflet (celui
+//             d'en face se prend, le sien se dissipe sous elle).
+//   barsPath  t BARRE-t-elle le passage au camp `col` ? Toute pièce, sauf un
+//             reflet de ce camp-là.
+function canLand(t,p){return !t||t.color!==p.color||t.pieceId==='reflet';}
+function barsPath(t,col){return !!t&&!(t.pieceId==='reflet'&&t.color===col);}
 function slidingMoves(board,r,c,p,dirs,gs){
   const moves=[];
   for(const[dr,dc] of dirs){
     let nr=r+dr,nc=c+dc;
     while(inB(nr,nc)){
       const t=board[nr][nc];
+      if(t&&t.pieceId==='reflet'&&t.color===p.color){moves.push({r:nr,c:nc});nr+=dr;nc+=dc;continue;}
       if(t){if(t.color!==p.color)moves.push({r:nr,c:nc});break;}
       else moves.push({r:nr,c:nc});
       nr+=dr;nc+=dc;
@@ -122,13 +134,13 @@ function slidingMoves(board,r,c,p,dirs,gs){
 }
 function jumpMoves(board,r,c,p,dests){
   const moves=[];
-  for(const[dr,dc] of dests){const nr=r+dr,nc=c+dc;if(inB(nr,nc)&&(!board[nr][nc]||board[nr][nc].color!==p.color))moves.push({r:nr,c:nc});}
+  for(const[dr,dc] of dests){const nr=r+dr,nc=c+dc;if(inB(nr,nc)&&canLand(board[nr][nc],p))moves.push({r:nr,c:nc});}
   return moves;
 }
 function knightMoves(board,r,c,p){return jumpMoves(board,r,c,p,[[2,1],[1,2],[-1,2],[-2,1],[-2,-1],[-1,-2],[1,-2],[2,-1]]);}
 function kingMoves(board,r,c,p,gs){
   const moves=[];
-  for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++){if(!dr&&!dc)continue;const nr=r+dr,nc=c+dc;if(inB(nr,nc)&&(!board[nr][nc]||board[nr][nc].color!==p.color))moves.push({r:nr,c:nc});}
+  for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++){if(!dr&&!dc)continue;const nr=r+dr,nc=c+dc;if(inB(nr,nc)&&canLand(board[nr][nc],p))moves.push({r:nr,c:nc});}
   if(!p.hasMoved){
     const inChk=isInCheckSimple(p.color,board);
     if(!inChk){
@@ -146,9 +158,9 @@ function pawnMoves(board,r,c,p,gs){
   // d'en face, y compris quand il a le sien.
   const gmBlocks=!!gs.grandMaitreAlive[opp(p.color)];
   const fr=r+dir;
-  if(inB(fr,c)&&!board[fr][c]){
+  if(inB(fr,c)&&!barsPath(board[fr][c],p.color)){
     moves.push({r:fr,c});
-    if(r===startRow&&inB(r+2*dir,c)&&!board[r+2*dir][c]&&!gmBlocks)moves.push({r:r+2*dir,c});
+    if(r===startRow&&inB(r+2*dir,c)&&!barsPath(board[r+2*dir][c],p.color)&&!gmBlocks)moves.push({r:r+2*dir,c});
   }
   for(const dc of[-1,1]){
     const tr=r+dir,tc=c+dc;if(!inB(tr,tc))continue;const t=board[tr][tc];
@@ -191,41 +203,57 @@ function generateMovesRaw(board,r,c,gs){
       const fwd=p.color==='w'?-1:1;
       // Avant orthogonal (déplacement ET capture)
       const nrO=r+fwd,ncO=c;
-      if(inB(nrO,ncO)&&(!board[nrO][ncO]||board[nrO][ncO].color!==p.color))moves.push({r:nrO,c:ncO});
+      if(inB(nrO,ncO)&&canLand(board[nrO][ncO],p))moves.push({r:nrO,c:ncO});
       // Avant diagonal gauche et droit (déplacement ET capture)
-      for(const dc of[-1,1]){const nrD=r+fwd,ncD=c+dc;if(inB(nrD,ncD)&&(!board[nrD][ncD]||board[nrD][ncD].color!==p.color))moves.push({r:nrD,c:ncD});}
+      for(const dc of[-1,1]){const nrD=r+fwd,ncD=c+dc;if(inB(nrD,ncD)&&canLand(board[nrD][ncD],p))moves.push({r:nrD,c:ncD});}
       break;}
     // Preux Chevalier : exactement 2 ortho (pas de saut) OU 1 diag
     case 'preux-chevalier':
       for(const[dr,dc] of[[2,0],[-2,0],[0,2],[0,-2]]){
         const nr=r+dr,nc=c+dc;if(!inB(nr,nc))continue;
         const mr=r+dr/2,mc_=c+dc/2;
-        if(board[mr][mc_])continue;// chemin bloqué, pas de saut
-        if(!board[nr][nc]||board[nr][nc].color!==p.color)moves.push({r:nr,c:nc});
+        if(barsPath(board[mr][mc_],p.color))continue;// chemin bloqué, pas de saut
+        if(canLand(board[nr][nc],p))moves.push({r:nr,c:nc});
       }
-      for(const[dr,dc] of[[1,1],[1,-1],[-1,1],[-1,-1]]){const nr=r+dr,nc=c+dc;if(inB(nr,nc)&&(!board[nr][nc]||board[nr][nc].color!==p.color))moves.push({r:nr,c:nc});}
+      for(const[dr,dc] of[[1,1],[1,-1],[-1,1],[-1,-1]]){const nr=r+dr,nc=c+dc;if(inB(nr,nc)&&canLand(board[nr][nc],p))moves.push({r:nr,c:nc});}
       break;
     case 'dresseur-elephant':
-      for(const[dr,dc] of[[1,0],[-1,0],[0,1],[0,-1]]){const nr=r+dr,nc=c+dc;if(inB(nr,nc)&&(!board[nr][nc]||board[nr][nc].color!==p.color))moves.push({r:nr,c:nc});}
-      for(const[dr,dc] of[[2,0],[-2,0],[0,2],[0,-2]]){const nr=r+dr,nc=c+dc;if(!inB(nr,nc))continue;const mr=r+dr/2,mc2=c+dc/2;if(board[mr][mc2]&&board[mr][mc2].color===p.color)continue;if(board[nr][nc]&&board[nr][nc].color===p.color)continue;moves.push({r:nr,c:nc,destroysPath:true,fromR:r,fromC:c});}
+      for(const[dr,dc] of[[1,0],[-1,0],[0,1],[0,-1]]){const nr=r+dr,nc=c+dc;if(inB(nr,nc)&&canLand(board[nr][nc],p))moves.push({r:nr,c:nc});}
+      for(const[dr,dc] of[[2,0],[-2,0],[0,2],[0,-2]]){const nr=r+dr,nc=c+dc;if(!inB(nr,nc))continue;const mr=r+dr/2,mc2=c+dc/2;const mid=board[mr][mc2];if(mid&&mid.color===p.color&&mid.pieceId!=='reflet')continue;if(!canLand(board[nr][nc],p))continue;moves.push({r:nr,c:nc,destroysPath:true,fromR:r,fromC:c});}
       break;
     // LE GARDE DE PIERRE : une case dans les huit directions, et son ancrage.
     // Il était le dernier de trois Gardes — l'Eau n'allait que tout droit, le
     // Feu qu'en biais — retirés du jeu depuis : il porte donc seul le
     // vocabulaire complet du plateau, orthogonal et diagonal à la fois.
     case 'garde-pierre':
-      for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++){if(!dr&&!dc)continue;const nr=r+dr,nc=c+dc;if(inB(nr,nc)&&(!board[nr][nc]||board[nr][nc].color!==p.color))moves.push({r:nr,c:nc});}break;
+      for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++){if(!dr&&!dc)continue;const nr=r+dr,nc=c+dc;if(inB(nr,nc)&&canLand(board[nr][nc],p))moves.push({r:nr,c:nc});}break;
     case 'meduse':
-      for(const[dr,dc] of[[1,0],[-1,0],[0,1],[0,-1]]){const nr=r+dr,nc=c+dc;if(inB(nr,nc)&&(!board[nr][nc]||board[nr][nc].color!==p.color))moves.push({r:nr,c:nc});}break;
+      for(const[dr,dc] of[[1,0],[-1,0],[0,1],[0,-1]]){const nr=r+dr,nc=c+dc;if(inB(nr,nc)&&canLand(board[nr][nc],p))moves.push({r:nr,c:nc});}break;
     case 'typhon':
-      for(const[dr,dc] of[[1,1],[1,-1],[-1,1],[-1,-1]]){const nr=r+dr,nc=c+dc;if(inB(nr,nc)&&(!board[nr][nc]||board[nr][nc].color!==p.color))moves.push({r:nr,c:nc,typhon:true});}break;
+      for(const[dr,dc] of[[1,1],[1,-1],[-1,1],[-1,-1]]){const nr=r+dr,nc=c+dc;if(inB(nr,nc)&&canLand(board[nr][nc],p))moves.push({r:nr,c:nc,typhon:true});}break;
     // Banshee : 1 OU 2 cases en diagonale (les 2 cases sans sauter).
     case 'banshee':
-      for(const[dr,dc] of[[1,1],[1,-1],[-1,1],[-1,-1]]){const nr=r+dr,nc=c+dc;if(!inB(nr,nc))continue;if(!board[nr][nc]||board[nr][nc].color!==p.color)moves.push({r:nr,c:nc,banshee:true});}
-      for(const[dr,dc] of[[2,2],[2,-2],[-2,2],[-2,-2]]){const nr=r+dr,nc=c+dc;if(!inB(nr,nc))continue;const mr=r+dr/2,mc4=c+dc/2;if(board[mr]?.[mc4])continue;if(!board[nr][nc]||board[nr][nc].color!==p.color)moves.push({r:nr,c:nc,banshee:true});}break;
+      for(const[dr,dc] of[[1,1],[1,-1],[-1,1],[-1,-1]]){const nr=r+dr,nc=c+dc;if(!inB(nr,nc))continue;if(canLand(board[nr][nc],p))moves.push({r:nr,c:nc,banshee:true});}
+      for(const[dr,dc] of[[2,2],[2,-2],[-2,2],[-2,-2]]){const nr=r+dr,nc=c+dc;if(!inB(nr,nc))continue;const mr=r+dr/2,mc4=c+dc/2;if(barsPath(board[mr]?.[mc4],p.color))continue;if(canLand(board[nr][nc],p))moves.push({r:nr,c:nc,banshee:true});}break;
     case 'pretre':
       moves=slidingMoves(board,r,c,p,[[1,0],[-1,0],[0,1],[0,-1]],gs);
       moves=moves.filter(m=>Math.abs(m.r-r)+Math.abs(m.c-c)<=2);break;
+    // LE PÉGASE : le bond du cavalier, en plus long — trois cases dans une
+    // direction, puis une de côté. Il saute tout ce qui se trouve entre.
+    case 'pegase':
+      moves=jumpMoves(board,r,c,p,[[3,1],[3,-1],[-3,1],[-3,-1],[1,3],[-1,3],[1,-3],[-1,-3]]);break;
+    // LE LOUP GÉANT : exactement deux cases en diagonale, ni une ni trois, en
+    // sautant par-dessus la case du milieu quelle qu'elle soit.
+    case 'loup-geant':
+      moves=jumpMoves(board,r,c,p,[[2,2],[2,-2],[-2,2],[-2,-2]]);break;
+    case 'singe':
+      moves=singeMoves(board,r,c,p,gs);break;
+    // L'ILLUSION : une case tout droit, ou une à deux cases en diagonale (sans
+    // sauter). Son reflet est posé par applyIllusionReflet, après le coup.
+    case 'illusion':
+      for(const[dr,dc] of[[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]]){const nr=r+dr,nc=c+dc;if(inB(nr,nc)&&canLand(board[nr][nc],p))moves.push({r:nr,c:nc});}
+      for(const[dr,dc] of[[2,2],[2,-2],[-2,2],[-2,-2]]){const nr=r+dr,nc=c+dc;if(!inB(nr,nc))continue;if(barsPath(board[r+dr/2][c+dc/2],p.color))continue;if(canLand(board[nr][nc],p))moves.push({r:nr,c:nc});}
+      break;
     default:
       switch(p.type){
         case 'p':moves=pawnMoves(board,r,c,p,gs);break;
@@ -246,6 +274,89 @@ function generateMovesRaw(board,r,c,gs){
     return true;
   });
   return moves;
+}
+
+// ----------------------------------------------------------------
+// LE SINGE : deux pas d'une case en diagonale, dans le même coup
+// ----------------------------------------------------------------
+// Premier pas sur une voisine en biais, second pas en biais depuis là — et il
+// mange ce qu'il trouve à CHACUN des deux : deux pièces ennemies en un coup.
+// Il ne revient jamais sur sa case de départ (ce serait un coup sans
+// déplacement), et la case du premier pas doit être franchissable : vide, un
+// reflet de son camp, ou une ennemie qu'il a le droit de prendre (ni le
+// Monarque, ni un Garde ancré, ni une protégée du Prêtre).
+//
+// UN SEUL COUP PAR CASE D'ARRIVÉE. Deux chemins mènent souvent au même
+// endroit (deux cases plus haut : par la gauche ou par la droite). Or le
+// plateau, le multijoueur et la relecture désignent un coup par ses deux
+// cases seulement : on garde donc, de façon déterministe, le chemin qui mange
+// le plus — une vraie pièce avant un reflet, un reflet avant une case vide, la
+// plus chère des deux pièces sinon. `via` dit la case du premier pas,
+// `viaCap` qu'on y mange.
+function singeViaRank(v,p){
+  if(!v||v.color===p.color)return 0;
+  if(v.pieceId==='reflet')return 1;
+  const d=PIECES.find(x=>x.id===v.pieceId);
+  return 2+((d&&d.value)||1);
+}
+function singeMoves(board,r,c,p,gs){
+  const best=new Map();
+  for(const[d1r,d1c] of[[1,1],[1,-1],[-1,1],[-1,-1]]){
+    const vr=r+d1r,vc=c+d1c;if(!inB(vr,vc))continue;
+    const v=board[vr][vc];
+    if(v&&v.color===p.color&&v.pieceId!=='reflet')continue;
+    if(v&&v.color!==p.color){
+      if(v.isKing||v.type==='k')continue;
+      if(gs&&gs.anchored&&gs.anchored.has(vr+','+vc))continue;
+      if(gs&&gs.pretreProtected&&gs.pretreProtected.has(v.color+':'+vr+','+vc))continue;
+    }
+    const rank=singeViaRank(v,p);
+    for(const[d2r,d2c] of[[1,1],[1,-1],[-1,1],[-1,-1]]){
+      const nr=vr+d2r,nc=vc+d2c;
+      if(!inB(nr,nc)||(nr===r&&nc===c))continue;
+      if(!canLand(board[nr][nc],p))continue;
+      const k=nr*8+nc,prev=best.get(k);
+      if(prev&&prev.rank>=rank)continue;
+      best.set(k,{r:nr,c:nc,vr,vc,rank});
+    }
+  }
+  const moves=[];
+  best.forEach(m=>{const o={r:m.r,c:m.c,via:{r:m.vr,c:m.vc}};if(m.rank>0)o.viaCap=true;moves.push(o);});
+  return moves;
+}
+
+// ----------------------------------------------------------------
+// LE REFLET DE L'ILLUSION, sur un plateau
+// ----------------------------------------------------------------
+// Après chaque coup de l'Illusion : son ancien reflet s'éteint, un nouveau se
+// pose sur la case qu'elle vient de quitter. Le reflet retient l'identifiant
+// de son Illusion (`owner`) : c'est ce qui limite chacune à un seul reflet et
+// permet d'éteindre celui d'une Illusion prise (refletSweep).
+function refletOwnerKey(p){return p.id||('illusion-'+p.color);}
+function applyIllusionReflet(b,from,p){
+  if(!p||p.pieceId!=='illusion')return;
+  const owner=refletOwnerKey(p);
+  for(let r=0;r<8;r++)for(let c=0;c<8;c++){
+    const t=b[r][c];
+    if(t&&t.pieceId==='reflet'&&t.owner===owner)b[r][c]=null;
+  }
+  if(!b[from.r][from.c])
+    b[from.r][from.c]={type:'x',color:p.color,pieceId:'reflet',emoji:'',hasMoved:true,isKing:false,
+      owner,id:'rf-'+owner+'-'+from.r+from.c};
+}
+// Un reflet dont l'Illusion n'est plus sur le plateau s'éteint avec elle.
+function refletSweep(b){
+  const alive=new Set();let any=false;
+  for(let r=0;r<8;r++)for(let c=0;c<8;c++){
+    const t=b[r][c];if(!t)continue;
+    if(t.pieceId==='illusion')alive.add(refletOwnerKey(t));
+    else if(t.pieceId==='reflet')any=true;
+  }
+  if(!any)return;
+  for(let r=0;r<8;r++)for(let c=0;c<8;c++){
+    const t=b[r][c];
+    if(t&&t.pieceId==='reflet'&&!alive.has(t.owner))b[r][c]=null;
+  }
 }
 
 // ================================================================
@@ -274,7 +385,8 @@ function isInCheckSimple(color,board){
 // donc le raccourci « attaque comme son pieceType » ne doit JAMAIS jouer
 // pour elles, sinon la Banshee, le Typhon ou un Garde donneraient échec
 // comme leur pieceType de base tout le long d'une ligne, ce qui est faux.
-const CUSTOM_MOVE_IDS=new Set(['amazone','fourmi','preux-chevalier','dresseur-elephant','garde-pierre','meduse','typhon','banshee','pretre']);
+const CUSTOM_MOVE_IDS=new Set(['amazone','fourmi','preux-chevalier','dresseur-elephant','garde-pierre','meduse','typhon','banshee','pretre',
+  'pegase','loup-geant','singe','illusion','reflet']);
 // Pièces qui donnent échec en GLISSANT (portée illimitée). Le raccourci par
 // pieceType (b/r/q) couvre en plus les pièces standard et promues.
 const DIAG_SLIDER_IDS=new Set(['fou-primordial','amazone','dame','grand-maitre']);
@@ -296,6 +408,7 @@ function isSquareAttackedSimple(tr,tc,defColor,board){
     let r=tr+dr,c=tc+dc;
     while(inB(r,c)){
       const p=board[r][c];
+      if(p&&p.pieceId==='reflet'&&p.color===atk){r+=dr;c+=dc;continue;}
       if(p){if(p.color===atk&&(ORTHO_SLIDER_IDS.has(p.pieceId)||(!CUSTOM_MOVE_IDS.has(p.pieceId)&&(p.type==='r'||p.type==='q'))))return true;break;}
       r+=dr;c+=dc;
     }
@@ -305,6 +418,7 @@ function isSquareAttackedSimple(tr,tc,defColor,board){
     let r=tr+dr,c=tc+dc;
     while(inB(r,c)){
       const p=board[r][c];
+      if(p&&p.pieceId==='reflet'&&p.color===atk){r+=dr;c+=dc;continue;}
       if(p){if(p.color===atk&&(DIAG_SLIDER_IDS.has(p.pieceId)||(!CUSTOM_MOVE_IDS.has(p.pieceId)&&(p.type==='b'||p.type==='q'))))return true;break;}
       r+=dr;c+=dc;
     }
@@ -326,19 +440,41 @@ function isSquareAttackedSimple(tr,tc,defColor,board){
   for(const[dr,dc] of[[1,1],[1,-1],[-1,1],[-1,-1]]){const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;const p=board[r][c];if(p&&p.color===atk&&p.pieceId==='typhon')return true;}
   // --- Banshee : 1 OU 2 cases en diagonale (les 2 cases sans sauter) ---
   for(const[dr,dc] of[[1,1],[1,-1],[-1,1],[-1,-1]]){const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;const p=board[r][c];if(p&&p.color===atk&&p.pieceId==='banshee')return true;}
-  for(const[dr,dc] of[[2,2],[2,-2],[-2,2],[-2,-2]]){const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;const midR=tr+dr/2,midC=tc+dc/2;if(!inB(midR,midC)||board[midR][midC])continue;const p=board[r][c];if(p&&p.color===atk&&p.pieceId==='banshee')return true;}
+  for(const[dr,dc] of[[2,2],[2,-2],[-2,2],[-2,-2]]){const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;const midR=tr+dr/2,midC=tc+dc/2;if(!inB(midR,midC)||barsPath(board[midR][midC],atk))continue;const p=board[r][c];if(p&&p.color===atk&&p.pieceId==='banshee')return true;}
   // --- Preux Chevalier : 2 ortho (chemin libre) OU 1 diagonale ---
-  for(const[dr,dc] of[[2,0],[-2,0],[0,2],[0,-2]]){const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;const mr=tr+dr/2,mc_=tc+dc/2;if(board[mr][mc_])continue;const p=board[r][c];if(p&&p.color===atk&&p.pieceId==='preux-chevalier')return true;}
+  for(const[dr,dc] of[[2,0],[-2,0],[0,2],[0,-2]]){const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;const mr=tr+dr/2,mc_=tc+dc/2;if(barsPath(board[mr][mc_],atk))continue;const p=board[r][c];if(p&&p.color===atk&&p.pieceId==='preux-chevalier')return true;}
   for(const[dr,dc] of[[1,1],[1,-1],[-1,1],[-1,-1]]){const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;const p=board[r][c];if(p&&p.color===atk&&p.pieceId==='preux-chevalier')return true;}
   // --- Éléphant de guerre : 1 ou 2 cases ortho (2 = charge, bloquée
   //     seulement par une pièce alliée à mi-chemin) ---
   for(const[dr,dc] of[[1,0],[-1,0],[0,1],[0,-1]]){const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;const p=board[r][c];if(p&&p.color===atk&&p.pieceId==='dresseur-elephant')return true;}
-  for(const[dr,dc] of[[2,0],[-2,0],[0,2],[0,-2]]){const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;const p=board[r][c];if(!(p&&p.color===atk&&p.pieceId==='dresseur-elephant'))continue;const midR=tr+dr/2,midC=tc+dc/2;if(board[midR][midC]&&board[midR][midC].color===atk)continue;return true;}
+  for(const[dr,dc] of[[2,0],[-2,0],[0,2],[0,-2]]){const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;const p=board[r][c];if(!(p&&p.color===atk&&p.pieceId==='dresseur-elephant'))continue;const midR=tr+dr/2,midC=tc+dc/2;if(board[midR][midC]&&board[midR][midC].color===atk&&board[midR][midC].pieceId!=='reflet')continue;return true;}
   // --- Prêtre : 1 ou 2 cases ortho (chemin libre pour 2) ---
   for(const[dr,dc] of[[1,0],[-1,0],[0,1],[0,-1]]){const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;const p=board[r][c];if(p&&p.color===atk&&p.pieceId==='pretre')return true;}
-  for(const[dr,dc] of[[2,0],[-2,0],[0,2],[0,-2]]){const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;const mr=tr+dr/2,mc_=tc+dc/2;if(board[mr][mc_])continue;const p=board[r][c];if(p&&p.color===atk&&p.pieceId==='pretre')return true;}
+  for(const[dr,dc] of[[2,0],[-2,0],[0,2],[0,-2]]){const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;const mr=tr+dr/2,mc_=tc+dc/2;if(barsPath(board[mr][mc_],atk))continue;const p=board[r][c];if(p&&p.color===atk&&p.pieceId==='pretre')return true;}
   // --- Méduse : 1 case orthogonale ---
   for(const[dr,dc] of[[1,0],[-1,0],[0,1],[0,-1]]){const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;const p=board[r][c];if(p&&p.color===atk&&p.pieceId==='meduse')return true;}
+  // --- Pégase : bond de 3 + 1 ---
+  for(const[dr,dc] of[[3,1],[3,-1],[-3,1],[-3,-1],[1,3],[-1,3],[1,-3],[-1,-3]]){const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;const p=board[r][c];if(p&&p.color===atk&&p.pieceId==='pegase')return true;}
+  // --- Loup Géant : bond de 2 cases en diagonale ---
+  for(const[dr,dc] of[[2,2],[2,-2],[-2,2],[-2,-2]]){const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;const p=board[r][c];if(p&&p.color===atk&&p.pieceId==='loup-geant')return true;}
+  // --- Illusion : 1 case tout droit ou en biais, 2 en biais chemin libre ---
+  for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++){if(!dr&&!dc)continue;const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;const p=board[r][c];if(p&&p.color===atk&&p.pieceId==='illusion')return true;}
+  for(const[dr,dc] of[[2,2],[2,-2],[-2,2],[-2,-2]]){const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;if(barsPath(board[tr+dr/2][tc+dc/2],atk))continue;const p=board[r][c];if(p&&p.color===atk&&p.pieceId==='illusion')return true;}
+  // --- Singe : son premier pas OU son second peut tomber sur la case ---
+  // Premier pas : il est en biais contre elle. Second pas : il est à deux
+  // pas de biais, par une case V franchissable pour LUI (vide, son propre
+  // reflet, ou une pièce du camp attaqué qu'il mangerait en passant).
+  for(const[d1r,d1c] of[[1,1],[1,-1],[-1,1],[-1,-1]]){
+    const vr=tr+d1r,vc=tc+d1c;if(!inB(vr,vc))continue;
+    const v=board[vr][vc];
+    if(v&&v.color===atk&&v.pieceId==='singe')return true;
+    if(v&&v.color===atk&&v.pieceId!=='reflet')continue;
+    if(v&&v.color!==atk&&(v.isKing||v.type==='k'))continue;
+    for(const[d2r,d2c] of[[1,1],[1,-1],[-1,1],[-1,-1]]){
+      const mr=vr+d2r,mc=vc+d2c;if(!inB(mr,mc)||(mr===tr&&mc===tc))continue;
+      const m=board[mr][mc];if(m&&m.color===atk&&m.pieceId==='singe')return true;
+    }
+  }
 
   return false;
 }
@@ -357,12 +493,13 @@ function getLegalMovesKingFiltered(board,r,c,gs,moves){
 function moveLeavesKingInCheck(board,fromR,fromC,move,color,anchored){
   if(move.stayPut)return false;
   const b=cloneBoard(board);const p=b[fromR][fromC];if(!p)return false;
+  const victim=b[move.r][move.c];
   if(move.ep){const pr=move.r+(color==='w'?1:-1);b[pr][move.c]=null;}
   if(move.castle){if(move.castle==='K'){b[fromR][5]=b[fromR][7];b[fromR][7]=null;}if(move.castle==='Q'){b[fromR][3]=b[fromR][0];b[fromR][0]=null;}}
   b[move.r][move.c]={...p,hasMoved:true};b[fromR][fromC]=null;
   // Les pouvoirs qui effacent ou repoussent une pièce font partie du coup :
   // les ignorer ici, c'était refuser une parade parfaitement valable.
-  applyCollateralOnBoard(b,{r:fromR,c:fromC},move,p,anchored);
+  applyCollateralOnBoard(b,{r:fromR,c:fromC},move,p,anchored,victim);
   return isInCheckSimple(color,b);
 }
 
@@ -412,7 +549,7 @@ function updatePretreProtection(board,gs){
       const nr=r+dr,nc=c+dc;if(!inB(nr,nc))continue;
       const t=board[nr][nc];
       if(!t||t.color!==p.color)continue;
-      if(t.isKing||t.type==='k')continue;
+      if(t.isKing||t.type==='k'||t.pieceId==='reflet')continue;
       gs.pretreProtected.add(t.color+':'+nr+','+nc);
     }
   }
@@ -479,8 +616,20 @@ function applyBansheeEffect(toR,toC,board,p){
 //     donc l'IA n'a jamais joué un Typhon POUR ce qu'il fait.
 //
 // anchored (facultatif) : cases d'un Garde de Pierre ancré, imprenables.
-function applyCollateralOnBoard(b,from,to,p,anchored){
-  const hits=(t,r,c)=>t&&t.color!==p.color&&!(t.isKing||t.type==='k')&&!(anchored&&anchored.has(r+','+c));
+// victim  (facultatif) : ce qui occupait la case d'arrivée AVANT le coup. Sert
+//          seulement à savoir si une Illusion vient d'être prise, pour
+//          éteindre son reflet.
+//
+// Le second pas du Singe (`via`) et le reflet de l'Illusion sont traités ici
+// pour la même raison que la charge ou l'orage : ils font partie du coup.
+function applyCollateralOnBoard(b,from,to,p,anchored,victim){
+  let illusionDown=!!(victim&&victim.pieceId==='illusion'&&victim.color!==p.color);
+  const hits=(t,r,c)=>{
+    const h=t&&t.color!==p.color&&!(t.isKing||t.type==='k')&&!(anchored&&anchored.has(r+','+c));
+    if(h&&t.pieceId==='illusion')illusionDown=true;
+    return h;
+  };
+  if(to.via&&hits(b[to.via.r][to.via.c],to.via.r,to.via.c))b[to.via.r][to.via.c]=null;
   if(to.destroysPath){
     const fr=(to.fromR!==undefined)?to.fromR:from.r,fc=(to.fromC!==undefined)?to.fromC:from.c;
     const dr=Math.sign(to.r-fr),dc=Math.sign(to.c-fc);
@@ -498,6 +647,8 @@ function applyCollateralOnBoard(b,from,to,p,anchored){
     }
   }
   if(p.pieceId==='banshee')applyBansheePush(b,to.r,to.c,p.color);
+  if(p.pieceId==='illusion')applyIllusionReflet(b,from,p);
+  if(illusionDown)refletSweep(b);
   return b;
 }
 
@@ -590,7 +741,15 @@ function executeGameMove(from,to,gs){
   if(to.ep){const pr=to.r+(p.color==='w'?1:-1);captured=b[pr][to.c];if(captured)pushCaptured(gs,captured);b[pr][to.c]=null;}
   else{
     captured=b[to.r][to.c];
+    // Se poser sur SON reflet le dissipe : ce n'est pas une prise.
+    if(captured&&captured.color===p.color&&captured.pieceId==='reflet')captured=null;
     if(captured)pushCaptured(gs,captured);
+  }
+  // LE PREMIER PAS DU SINGE : ce qu'il mange en passant (voir singeMoves).
+  let viaCaptured=null;
+  if(to.via){
+    const v=b[to.via.r][to.via.c];
+    if(v&&v.color!==p.color&&!(v.isKing||v.type==='k')){viaCaptured=v;pushCaptured(gs,v);b[to.via.r][to.via.c]=null;}
   }
 
   if(to.castle){if(to.castle==='K'){b[from.r][5]=b[from.r][7];b[from.r][7]=null;if(b[from.r][5])b[from.r][5].hasMoved=true;}if(to.castle==='Q'){b[from.r][3]=b[from.r][0];b[from.r][0]=null;if(b[from.r][3])b[from.r][3].hasMoved=true;}}
@@ -600,6 +759,11 @@ function executeGameMove(from,to,gs){
   if(to.destroysPath)applyChargeEffect(to,b,p,gs);
   applyTyphonEffect(to.r,to.c,b,p,gs);
   applyBansheeEffect(to.r,to.c,b,p);
+  // L'Illusion laisse son reflet sur la case qu'elle quitte ; une Illusion
+  // prise (par n'importe quel chemin : prise, orage, charge, Singe) emporte
+  // le sien.
+  applyIllusionReflet(b,from,p);
+  refletSweep(b);
 
   // ---- LES EFFETS SPÉCIAUX (js/combat-fx.js) --------------------------
   // UN SEUL APPEL, ET LE MOTEUR N'EN SAIT PAS PLUS. On décrit ce qui vient
@@ -630,6 +794,7 @@ function executeGameMove(from,to,gs){
       pieceId:p.pieceId,captured:captured?captured.pieceId:null,
       castle:to.castle||null,rook:rook,rookPieceId:rookPieceId,power:power,
     });
+    if(viaCaptured&&typeof fxImpact==='function')fxImpact(to.via.r,to.via.c,viaCaptured.pieceId);
     // Les pouvoirs qui ne détruisent rien mais changent une règle : le dôme du
     // Prêtre, la Domination du Grand Maître.
     if(!REPLAYING)fxCreatureSignature(p,to,b,gs);
@@ -637,6 +802,7 @@ function executeGameMove(from,to,gs){
 
   gs.enPassant=null;
   if(p.pieceId==='std-pawn'&&Math.abs(to.r-from.r)===2)gs.enPassant={r:(to.r+from.r)/2,c:from.c};
+  if(!captured&&viaCaptured)captured=viaCaptured;
   gs.halfmoveClock=(p.type==='p'||captured)?0:gs.halfmoveClock+1;
 
   // LE PION ET LA FOURMI se promeuvent en atteignant la dernière rangée (voir
@@ -1027,7 +1193,7 @@ function isInsufficientMaterial(board){
   // Mat impossible si seulement rois + (cavaliers ou fous de même couleur)
   const pieces=[];
   for(let r=0;r<8;r++)for(let c=0;c<8;c++){
-    const p=board[r][c];if(p&&!(p.isKing||p.type==='k'))pieces.push(p);
+    const p=board[r][c];if(p&&!(p.isKing||p.type==='k')&&p.pieceId!=='reflet')pieces.push(p);
   }
   if(pieces.length===0)return true; // Roi vs Roi
   if(pieces.length===1){

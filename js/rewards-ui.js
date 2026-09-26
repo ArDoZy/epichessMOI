@@ -849,10 +849,6 @@ function renderMenuRewardsCard(){
 document.getElementById('jouer-daily')?.addEventListener('click',openDailyModal);
 document.getElementById('jouer-colonne')?.addEventListener('click',()=>openRewardsPage('colonne'));
 document.getElementById('jouer-rangee')?.addEventListener('click',()=>openRewardsPage('rangee'));
-// Les deux raccourcis « Gagner des perles » du Magasin (index.html) : les
-// mêmes gestes que les boutons du menu principal.
-document.getElementById('shop-earn-rangee')?.addEventListener('click',()=>openRewardsPage('rangee'));
-document.getElementById('shop-earn-daily')?.addEventListener('click',openDailyModal);
 document.getElementById('daily-close')?.addEventListener('click',closeDailyModal);
 document.getElementById('daily-modal')?.addEventListener('click',e=>{
   if(e.target.id==='daily-modal')closeDailyModal();

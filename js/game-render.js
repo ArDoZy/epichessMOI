@@ -25,7 +25,8 @@ function showCtxMenu(e,r,c,gs){
   e.preventDefault();
   const cell=gs.board[r][c];
   if(!cell)return;
-  const pid=cell.pieceId;const pd=PIECES.find(p=>p.id===pid)||null;
+  // Un reflet n'a pas de fiche : on montre celle de l'Illusion qui l'a laissé.
+  const pid=cell.pieceId==='reflet'?'illusion':cell.pieceId;const pd=PIECES.find(p=>p.id===pid)||null;
   const canUsePower=pd?.hasPower&&cell.color===gs.turn&&!gs.gameOver;
   let opts=null;
   if(canUsePower){
@@ -243,7 +244,7 @@ function bindBoardCell(el,r,c){
   const grabbable=gs=>gs&&!gs.gameOver&&(playable(gs)||premoveAllowed(gs));
   const mine=gs=>{
     const cell=gs&&gs.board&&gs.board[r]&&gs.board[r][c];
-    return !!cell&&cell.color===(gs.playerColor||'w');
+    return !!cell&&cell.color===(gs.playerColor||'w')&&cell.pieceId!=='reflet';
   };
 
   el.addEventListener('click',()=>{
@@ -387,7 +388,7 @@ function paintBoardCells(gs){
     // seule chose que le pointeur peut désormais atteindre.
     // Le curseur « main ouverte » reste offert pendant le tour adverse : on
     // peut y prendre une pièce en main, elle inscrit un prémouvement.
-    if(cell&&cell.color===playerCol&&!gs.gameOver&&(gs.turn===playerCol||premoveAllowed(gs)))cls+=' gc-holds';
+    if(cell&&cell.color===playerCol&&cell.pieceId!=='reflet'&&!gs.gameOver&&(gs.turn===playerCol||premoveAllowed(gs)))cls+=' gc-holds';
     // LE PRÉMOUVEMENT A SES PROPRES MARQUES, et elles ne ressemblent à
     // aucune autre : ce qu'elles montrent n'est pas encore joué, et peut
     // très bien ne jamais l'être. Elles sont donc violettes là où tout le
@@ -512,6 +513,8 @@ function syncPieces(gs,boardEl,flipped,board){
     // coûteraient une image sur deux à un téléphone d'entrée de gamme, et
     // rendraient le plateau illisible bien avant.
     node.classList.toggle('pc-cuirasse',cell.pieceId==='preux-chevalier');
+    // Le reflet de l'Illusion : la même silhouette, à moitié effacée.
+    node.classList.toggle('pc-reflet',cell.pieceId==='reflet');
     node.classList.toggle('pc-dominant',cell.pieceId==='grand-maitre');
     node.classList.toggle('pc-warded',
       !!(gs.pretreProtected&&gs.pretreProtected.has(cell.color+':'+key)));
@@ -575,6 +578,9 @@ const MOVE_GESTURE={
   'preux-chevalier':   {cls:'gc-stomp',   air:false},  // le pas d'un homme en armure
   'garde-pierre':      {cls:'gc-stomp',   air:false},
   'fourmi':            {cls:'gc-scuttle', air:true},   // pressee, minuscule, saccadee
+  'pegase':            {cls:'gc-gallop',  air:true},   // il galope, puis il vole
+  'loup-geant':        {cls:'gc-leap',    air:true},   // un seul bond, toujours le même
+  'singe':             {cls:'gc-scuttle', air:true},   // deux petits sauts d'affilée
 
   // SORCIERS. Aucun ne touche vraiment le sol : ils se déplacent par un autre
   // moyen que la marche, et le geste est ce qui le dit sans une ligne de texte.
@@ -582,6 +588,7 @@ const MOVE_GESTURE={
   'banshee':           {cls:'gc-phase',   air:true},   // elle s'efface et se repose ailleurs
   'meduse':            {cls:'gc-drift',   air:true},   // elle ondule, elle ne marche pas
   'pretre':            {cls:'gc-solemn',  air:false},  // lent, droit, sans écrasement
+  'illusion':          {cls:'gc-phase',   air:true},   // elle se dédouble plutôt qu'elle ne marche
 
   // GÉNÉRAUX ET MONARQUES. La retenue est leur signature : ils s'élèvent d'un
   // rien et se posent d'aplomb. Une pièce qui vaut treize points n'a pas
@@ -1157,13 +1164,13 @@ function premoveClick(r,c,gs){
     // Tout le reste referme la sélection ; sur une AUTRE de nos pièces, elle
     // se rouvre aussitôt sur celle-là (on change d'avis sans double clic).
     premoveDeselect(gs);
-    if(!same&&cell&&cell.color===playerCol){premoveSelect(r,c,gs);return;}
+    if(!same&&cell&&cell.color===playerCol&&cell.pieceId!=='reflet'){premoveSelect(r,c,gs);return;}
     paintBoardCells(gs);
     return;
   }
 
   gs.premove=null;                       // n'importe quel clic efface l'inscrit
-  if(cell&&cell.color===playerCol){premoveSelect(r,c,gs);return;}
+  if(cell&&cell.color===playerCol&&cell.pieceId!=='reflet'){premoveSelect(r,c,gs);return;}
   paintBoardCells(gs);
 }
 // LA SÉLECTION PRISE EN COURS DE ROUTE. On désigne une pièce pour préparer un
@@ -1247,7 +1254,7 @@ function handleGameClick(r,c,gs){
     if(move){
       gs.lastMove={from:gs.selected,to:move,capture:!!b[move.r][move.c]};const from={...gs.selected};gs.selected=null;gs.legalMoves=[];executeGameMove(from,move,gs);return;
     }
-    if(cell&&cell.color===playerCol){gs.selected={r,c};gs.legalMoves=getLegalMoves(b,r,c,gs);renderGame(gs);return;}
+    if(cell&&cell.color===playerCol&&cell.pieceId!=='reflet'){gs.selected={r,c};gs.legalMoves=getLegalMoves(b,r,c,gs);renderGame(gs);return;}
     // LA CUIRASSE, AU SEUL INSTANT OÙ ELLE S'EXPLIQUE. Le pouvoir du Preux
     // Chevalier — les pions adverses ne peuvent pas le capturer — vit dans la
     // GÉNÉRATION des coups : la prise n'est jamais proposée, et le joueur qui
@@ -1273,7 +1280,7 @@ function handleGameClick(r,c,gs){
     }
     gs.selected=null;gs.legalMoves=[];renderGame(gs);return;
   }
-  if(cell&&cell.color===playerCol){gs.selected={r,c};gs.legalMoves=getLegalMoves(b,r,c,gs);renderGame(gs);}
+  if(cell&&cell.color===playerCol&&cell.pieceId!=='reflet'){gs.selected={r,c};gs.legalMoves=getLegalMoves(b,r,c,gs);renderGame(gs);}
 }
 
 // ----------------------------------------------------------------

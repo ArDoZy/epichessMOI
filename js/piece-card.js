@@ -82,6 +82,10 @@ const POWER_ICONS={
   banshee:'<path d="M5 9v6"/><path d="M9 6v12"/><path d="M13 8.5v7"/><path d="M17 5.5v13"/><path d="M21 9v6"/>',
   // Foi Inébranlable (Prêtre) : une croix rayonnante.
   pretre:'<path d="M12 3v18"/><path d="M6.5 9h11"/><path d="M4 5.5L5.6 7"/><path d="M20 5.5L18.4 7"/>',
+  // Double Bond (Singe) : deux sauts d'affilée.
+  singe:'<path d="M3 18c1.5-5 4.5-5 6 0"/><path d="M9 18c2-8 8-8 10 0"/><path d="M16.5 15.5L19 18l2.5-2.5"/>',
+  // Reflet (Illusion) : une silhouette et son double en pointillé.
+  illusion:'<circle cx="15" cy="7" r="3"/><path d="M10 21c0-5 2-8 5-8s5 3 5 8"/><circle cx="7" cy="7" r="3" stroke-dasharray="2 2"/><path d="M2.5 21c0-5 2-8 4.5-8" stroke-dasharray="2 2"/>',
   // Pièce sans pouvoir : le pictogramme du déplacement seul (deux flèches).
   _none:'<path d="M12 4v16"/><path d="M4 12h16"/><path d="M8.5 7.5L12 4l3.5 3.5"/><path d="M8.5 16.5L12 20l3.5-3.5"/>',
 };

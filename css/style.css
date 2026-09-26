@@ -1340,6 +1340,10 @@ body:not(.main-menu) #settings-panel{display:none}
 /* Pièce paralysée par une Méduse, et pièce ancrée par un Garde de Pierre :
    deux états qui doivent se voir sans lire le journal. */
 .gc-piece.pc-para .gc-art{filter:grayscale(1) brightness(.6) drop-shadow(0 0 6px var(--sorcier))}
+/* LE REFLET DE L'ILLUSION : sa silhouette, à moitié effacée, avec un liseré
+   de la couleur des sorciers. Il doit se lire comme « quelque chose occupe
+   cette case » sans jamais se confondre avec une vraie pièce. */
+.gc-piece.pc-reflet .gc-art{opacity:.5;filter:drop-shadow(0 0 5px var(--sorcier)) saturate(.6)}
 .gc-piece.gc-anchored .gc-art{filter:drop-shadow(0 0 7px var(--gold2)) drop-shadow(0 2px 2px rgba(0,0,0,.5))}
 
 /* ---- LES TROIS POUVOIRS PASSIFS, PORTÉS PAR LA PIÈCE ------------
@@ -2647,26 +2651,6 @@ body.light .pmv-dark{background:#c3bdae}
 }
 
 
-/* « GAGNER DES PERLES », SOUS LES COFFRES. Deux rangées-boutons, discrètes :
-   c'est un renvoi, pas une offre. Les emblèmes sont les planches du menu
-   (assets/ui/logo-*.webp). */
-.shop-earn{margin-top:26px;display:flex;flex-direction:column;gap:9px}
-.shop-earn-title{font-family:var(--f-ui);font-size:11px;font-weight:800;letter-spacing:.14em;
-  text-transform:uppercase;color:var(--gold);display:flex;align-items:center;gap:10px}
-.shop-earn-title::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,rgba(208,169,80,.45),transparent)}
-.shop-earn-row{display:flex;align-items:center;gap:12px;width:100%;text-align:left;cursor:pointer;
-  padding:11px 14px;border-radius:14px;border:1px solid var(--border2);color:var(--text);
-  background:linear-gradient(180deg,rgba(38,49,58,.78),rgba(20,27,33,.82));
-  font-family:var(--f-ui);transition:border-color .16s,transform .12s}
-.shop-earn-row:hover{border-color:var(--gold)}
-.shop-earn-row:active{transform:scale(.99)}
-.shop-earn-ico{flex:0 0 auto;width:40px;height:40px;background:center/contain no-repeat}
-.se-richesse{background-image:url('../assets/ui/logo-richesse.webp')}
-.se-journaliere{background-image:url('../assets/ui/logo-journaliere.webp')}
-.shop-earn-txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
-.shop-earn-txt b{font-family:var(--f-title);font-size:14px;font-weight:800;color:var(--gold2)}
-.shop-earn-txt span{font-size:12px;line-height:1.4;color:var(--muted)}
-.shop-earn-go{flex:0 0 auto;font-size:22px;line-height:1;color:var(--muted)}
 
 /* [VARIANTES] ====================================================
    Page « Variantes » (js/variantes.js), quatrième de la rangée : les autres
@@ -5904,7 +5888,7 @@ body.nav-active:not(.nav-overlay) .notif-host{bottom:92px}
    ============================================================== */
 .btn:focus-visible,.nav-arrow:focus-visible,.jouer-btn:focus-visible,
 .linput:focus-visible,.history-nav button:focus-visible,
-.chest-card:focus-visible,.shop-chest:focus-visible,.shop-earn-row:focus-visible,
+.chest-card:focus-visible,.shop-chest:focus-visible,
 .var-card:focus-visible,.van-btn:focus-visible{
   outline:2px solid var(--accent2);outline-offset:3px}
 /* Les pièces sont redessinées 32 fois par plateau : la transition universelle

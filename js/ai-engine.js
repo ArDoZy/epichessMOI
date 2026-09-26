@@ -33,6 +33,13 @@ const CVAL={
   // il sait en plus s'ancrer. Ses deux cadets, l'Eau et le Feu, sont sortis du
   // jeu ; sa valeur, elle, ne bouge pas.
   'garde-pierre':290,'pretre':420,'std-pawn':100,
+  // Le Pégase bondit loin mais reste sur une couleur de case ; le Loup Géant
+  // n'a que quatre bonds ; le Singe vaut par sa double prise ; l'Illusion par
+  // la ligne qu'elle ferme derrière elle.
+  'pegase':420,'loup-geant':200,'singe':400,'illusion':460,
+  // Un reflet n'est pas du matériel, c'est un mur provisoire : il vaut ce
+  // qu'il bouche, pas plus.
+  'reflet':35,
 };
 const PVAL={k:10000,q:950,r:530,b:360,n:360,p:100};
 // Classe de chaque pièce, indexée pour l'évaluation : PIECES.find() dans la
@@ -275,6 +282,9 @@ function evalBoard(board,gs){
 
   for(let r=0;r<8;r++)for(let c=0;c<8;c++){
     const p=board[r][c];if(!p)continue;
+    // Le reflet ne bouge pas, ne se développe pas, ne protège aucun roi : il
+    // ne compte que pour sa valeur de mur.
+    if(p.pieceId==='reflet'){s+=CVAL.reflet*(p.color==='b'?1:-1);continue;}
     const isAI=SW&&p.color==='b';
     const v=(CVAL[p.pieceId]||PVAL[p.type]||100)*((isAI&&SW.mat)||1);
     const pst=getPST(p,r,c)*((isAI&&SW.pst)||1);
@@ -398,6 +408,7 @@ function getAllMovesColor(color,board,gs,unsorted){
 
 function applyMoveQuick(board,from,to,p,anchored){
   const b=cloneBoard(board);
+  const victim=b[to.r][to.c];
   if(to.stayPut){if(b[to.r][to.c])b[to.r][to.c]=null;return b;}
   if(to.ep){const pr=to.r+(p.color==='w'?1:-1);b[pr][to.c]=null;}
   if(to.castle){if(to.castle==='K'){b[from.r][5]=b[from.r][7];b[from.r][7]=null;}if(to.castle==='Q'){b[from.r][3]=b[from.r][0];b[from.r][0]=null;}}
@@ -405,7 +416,7 @@ function applyMoveQuick(board,from,to,p,anchored){
   // Typhon, charge de l'Éléphant de guerre, hurlement de la Banshee : ces effets sont le
   // coup, pas un supplément. Sans eux la recherche évaluait un Typhon comme un
   // fou d'une case et ne jouait jamais le coup qui efface trois pièces.
-  applyCollateralOnBoard(b,from,to,b[to.r][to.c],anchored);
+  applyCollateralOnBoard(b,from,to,b[to.r][to.c],anchored,victim);
   // Promotion dans la recherche : la Fourmi se promeut comme le pion (voir
   // PROMOTING_IDS, js/data-pieces.js). Sans cette ligne, le moteur évaluerait
   // une Fourmi arrivée au bout comme une Fourmi — et ne verrait donc jamais
@@ -425,7 +436,8 @@ const ZK=(()=>{
     'dame','grand-maitre','cavalier-primordial','fou-primordial','tour-primordiale',
     'fourmi','preux-chevalier','dresseur-elephant','garde-pierre',
     'meduse','typhon','banshee','pretre',
-    'std-pawn','std-r','std-n','std-b'];
+    'std-pawn','std-r','std-n','std-b',
+    'pegase','loup-geant','singe','illusion','reflet'];
   const pidx={};pieceIds.forEach((id,i)=>{pidx[id]=i;});
   const T=[];
   for(let s=0;s<64;s++){T[s]=[];for(let p=0;p<pieceIds.length;p++)T[s][p]=[rnd(),rnd()];}
@@ -541,7 +553,7 @@ function quiesce(board,alpha,beta,maxing,fgs,qdepth){
     const p=board[from.r][from.c];
     const cap=board[to.r][to.c];
     if(cap&&cap.color!==p?.color)return true;
-    if(to.stayPut||to.destroysPath)return true;
+    if(to.stayPut||to.destroysPath||to.viaCap)return true;
     if(p&&p.pieceId==='typhon')return destroysSomething(board,to,p);
     return false;
   });
@@ -776,6 +788,7 @@ let _aiWorkerBusy=false;
 function getWorkerCode(){
   const fns=[
     inB,opp,cloneBoard,getPieceEmoji,
+    canLand,barsPath,singeViaRank,singeMoves,refletOwnerKey,applyIllusionReflet,refletSweep,
     slidingMoves,jumpMoves,knightMoves,kingMoves,pawnMoves,generateMovesRaw,
     isInCheckSimple,isSquareAttackedSimple,getLegalMovesKingFiltered,isTruePawn,applyBansheePush,applyCollateralOnBoard,moveLeavesKingInCheck,getLegalMoves,
     updateMedusaParalysis,updateGrandMaitre,
@@ -916,6 +929,7 @@ function mirrorBoardForWorker(gsData){
 function unmirrorMove(m){
   const to={...m.to,r:7-m.to.r,c:m.to.c};
   if(to.fromR!==undefined)to.fromR=7-to.fromR;
+  if(to.via)to.via={r:7-to.via.r,c:to.via.c};
   return{from:{r:7-m.from.r,c:m.from.c},to};
 }
 
@@ -960,7 +974,7 @@ function doAIMoveMainThread(gs){
   const scored=aiSearchRoot(searchGs,opp);
   let move=aiPickMove(scored,opp);
   if(!move)return;
-  if(mirrored)move={from:{r:7-move.from.r,c:move.from.c},to:{...move.to,r:7-move.to.r,c:move.to.c}};
+  if(mirrored)move=unmirrorMove(move);
   gs.lastMove={from:move.from,to:move.to,capture:!!gs.board[move.to.r][move.to.c]};
   executeGameMove(move.from,move.to,gs);
 }
