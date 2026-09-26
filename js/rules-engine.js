@@ -259,6 +259,11 @@ function generateMovesRaw(board,r,c,gs){
     // infectionKills).
     case 'infecte':
       moves=jumpMoves(board,r,c,p,[[2,0],[-2,0],[0,2],[0,-2],[2,2],[2,-2],[-2,2],[-2,-2]]);break;
+    // L'OMBRE : une ou deux cases en ligne droite (sans sauter). Son
+    // invisibilité ne touche que l'affichage (ombreHiddenFor, plus bas).
+    case 'ombre':
+      moves=slidingMoves(board,r,c,p,[[1,0],[-1,0],[0,1],[0,-1]],gs)
+        .filter(m=>Math.abs(m.r-r)+Math.abs(m.c-c)<=2);break;
     // L'ILLUSION : une case tout droit, ou une à deux cases en diagonale (sans
     // sauter). Son reflet est posé par applyIllusionReflet, après le coup.
     case 'illusion':
@@ -412,6 +417,24 @@ function nyxFogFor(board,viewer){
   }
   return fog;
 }
+// L'OMBRE est invisible pour le camp d'en face, sauf pendant le demi-coup
+// qui suit son propre déplacement : elle a bougé, on l'a vue passer, puis
+// l'adversaire joue et elle disparaît de nouveau. executeGameMove note sur la
+// pièce le numéro du demi-coup où elle a bougé (`_seenAt`) ; elle est visible
+// tant que ce demi-coup est le dernier joué.
+function ombreHiddenFor(board,viewer,turnCount){
+  const hid=new Set();
+  if(!board)return hid;
+  for(let r=0;r<8;r++)for(let c=0;c<8;c++){
+    const t=board[r]&&board[r][c];
+    if(t&&t.pieceId==='ombre'&&t.color!==viewer&&t._seenAt!==turnCount-1)hid.add(r+','+c);
+  }
+  return hid;
+}
+function ombreHiddenLive(gs,board){
+  if(!gs||gs.gameOver||REPLAYING)return new Set();
+  return ombreHiddenFor(board||gs.board,gs.playerColor||'w',gs.turnCount||0);
+}
 // Le brouillard à l'écran : seulement pendant une vraie partie en cours.
 function nyxFogLive(gs,board){
   if(!gs||gs.gameOver||REPLAYING)return new Set();
@@ -445,7 +468,7 @@ function isInCheckSimple(color,board){
 // pour elles, sinon la Banshee, le Typhon ou un Garde donneraient échec
 // comme leur pieceType de base tout le long d'une ligne, ce qui est faux.
 const CUSTOM_MOVE_IDS=new Set(['amazone','fourmi','preux-chevalier','dresseur-elephant','garde-pierre','meduse','typhon','banshee','pretre',
-  'pegase','loup-geant','singe','illusion','reflet','nyx','infecte']);
+  'pegase','loup-geant','singe','illusion','reflet','nyx','infecte','ombre']);
 // Pièces qui donnent échec en GLISSANT (portée illimitée). Le raccourci par
 // pieceType (b/r/q) couvre en plus les pièces standard et promues.
 const DIAG_SLIDER_IDS=new Set(['fou-primordial','amazone','dame','grand-maitre']);
@@ -516,6 +539,14 @@ function isSquareAttackedSimple(tr,tc,defColor,board){
   for(const[dr,dc] of[[3,1],[3,-1],[-3,1],[-3,-1],[1,3],[-1,3],[1,-3],[-1,-3]]){const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;const p=board[r][c];if(p&&p.color===atk&&p.pieceId==='pegase')return true;}
   // --- Infecté : bond de 2 cases, tout droit ou en diagonale ---
   for(const[dr,dc] of[[2,0],[-2,0],[0,2],[0,-2],[2,2],[2,-2],[-2,2],[-2,-2]]){const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;const p=board[r][c];if(p&&p.color===atk&&p.pieceId==='infecte')return true;}
+  // --- Ombre : 1 ou 2 cases en ligne droite (chemin libre pour 2) ---
+  for(const[dr,dc] of[[1,0],[-1,0],[0,1],[0,-1]]){
+    let r=tr+dr,c=tc+dc;if(!inB(r,c))continue;
+    let p=board[r][c];if(p&&p.color===atk&&p.pieceId==='ombre')return true;
+    if(barsPath(p,atk))continue;
+    r+=dr;c+=dc;if(!inB(r,c))continue;
+    p=board[r][c];if(p&&p.color===atk&&p.pieceId==='ombre')return true;
+  }
   // --- Loup Géant : bond de 2 cases en diagonale ---
   for(const[dr,dc] of[[2,2],[2,-2],[-2,2],[-2,-2]]){const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;const p=board[r][c];if(p&&p.color===atk&&p.pieceId==='loup-geant')return true;}
   // --- Illusion : 1 case tout droit ou en biais, 2 en biais chemin libre ---
@@ -802,6 +833,8 @@ function executeGameMove(from,to,gs){
   gs.singeVia=null;   // un Singe à mi-chemin (js/game-render.js) : le coup part, l'étape s'efface
   const snapshot={board:cloneBoard(b),turn:gs.turn,enPassant:gs.enPassant,halfmoveClock:gs.halfmoveClock,movePairs:JSON.parse(JSON.stringify(gs.movePairs)),capturedW:[...gs.capturedW],capturedB:[...gs.capturedB],anchored:new Set(gs.anchored||[]),grandMaitreAlive:{...gs.grandMaitreAlive},turnCount:gs.turnCount,timeWhite:gs.timeWhite,timeBlack:gs.timeBlack,replay:(gs.replay||[]).slice()};
   gs.history.push(snapshot);gs.historyView=null;
+  // L'Ombre qui bouge se montre pour ce demi-coup-ci (ombreHiddenFor).
+  if(p.pieceId==='ombre')p._seenAt=gs.turnCount||0;
 
   let captured=null;
   if(to.ep){const pr=to.r+(p.color==='w'?1:-1);captured=b[pr][to.c];if(captured)pushCaptured(gs,captured);b[pr][to.c]=null;}

@@ -25,8 +25,9 @@ function showCtxMenu(e,r,c,gs){
   e.preventDefault();
   const cell=gs.board[r][c];
   if(!cell)return;
-  // Une case sous le voile de Nyx ne livre pas sa fiche : elle n'a rien à montrer.
-  if(nyxFogLive(gs).has(r+','+c))return;
+  // Une case sous le voile de Nyx, ou une Ombre invisible, ne livre pas sa
+  // fiche : il n'y a rien à montrer.
+  if(nyxFogLive(gs).has(r+','+c)||ombreHiddenLive(gs).has(r+','+c))return;
   // Un reflet n'a pas de fiche : on montre celle de l'Illusion qui l'a laissé.
   const pid=cell.pieceId==='reflet'?'illusion':cell.pieceId;const pd=PIECES.find(p=>p.id===pid)||null;
   const canUsePower=pd?.hasPower&&cell.color===gs.turn&&!gs.gameOver;
@@ -330,6 +331,7 @@ function pieceNodeAt(r,c){return (_pieceAt[r]&&_pieceAt[r][c])||null;}
 function cellLabel(gs,r,c){
   const coord=FILES[c]+(8-r);
   if(nyxFogLive(gs).has(r+','+c))return coord+', brouillard';
+  if(ombreHiddenLive(gs).has(r+','+c))return coord+', case vide';
   const cell=gs.board&&gs.board[r]&&gs.board[r][c];
   if(!cell)return coord+', case vide';
   const p=(typeof PIECES!=='undefined')?PIECES.find(x=>x.id===cell.pieceId):null;
@@ -383,9 +385,11 @@ function paintBoardCells(gs){
   const shown=shownTargets(gs);
   const sel=singeStepActive(gs)||gs.selected;
   const fog=nyxFogLive(gs,b);
+  const ombres=ombreHiddenLive(gs,b);
   for(const el of _boardCells){
     const r=+el.dataset.r,c=+el.dataset.c;
-    const cell=b[r][c];
+    // Une Ombre invisible : la case se peint comme une case vide.
+    const cell=ombres.has(r+','+c)?null:b[r][c];
     const fogged=fog.has(r+','+c);
     let cls='gc '+(((r+c)%2===0)?'l':'d');
     if(fogged)cls+=' gc-fog';
@@ -436,8 +440,14 @@ function syncPieces(gs,boardEl,flipped,board){
   const layer=boardLayer(boardEl);
   // Les pièces du camp de Nyx sous son voile restent dans la couche (leur
   // nœud survit, sinon chaque entrée dans le brouillard serait une « mort »),
-  // mais invisibles : .gc-fogged.
+  // mais invisibles : .gc-fogged. Une Ombre adverse invisible est traitée de
+  // même, sans voile sur sa case.
   const fog=nyxFogLive(gs,b);
+  const ombres=ombreHiddenLive(gs,b);
+  // Nos propres Ombres, quand l'adversaire ne les voit pas, sont estompées :
+  // le joueur sait ainsi qu'elles sont cachées.
+  const mesOmbres=(gs&&!gs.gameOver&&!REPLAYING)
+    ?ombreHiddenFor(b,opp(gs.playerColor||'w'),gs.turnCount||0):new Set();
   const seen=new Set();
   const at=[];
   for(let r=0;r<8;r++)at.push(new Array(8).fill(null));
@@ -495,7 +505,7 @@ function syncPieces(gs,boardEl,flipped,board){
         node._tf=tf;
         // UNE PIÈCE QUI SORT DU BROUILLARD N'A PAS DE TRAJET : elle apparaît
         // sur sa case. Glisser depuis le voile dirait d'où elle vient.
-        if(node.classList.contains('gc-fogged')&&!fog.has(r+','+c)){
+        if(node.classList.contains('gc-fogged')&&!fog.has(r+','+c)&&!ombres.has(r+','+c)){
           node.style.transition='none';
           requestAnimationFrame(()=>requestAnimationFrame(()=>{node.style.transition='';}));
         }
@@ -546,7 +556,8 @@ function syncPieces(gs,boardEl,flipped,board){
     node.classList.toggle('pc-cuirasse',cell.pieceId==='preux-chevalier');
     // Le reflet de l'Illusion : la même silhouette, à moitié effacée.
     node.classList.toggle('pc-reflet',cell.pieceId==='reflet');
-    node.classList.toggle('gc-fogged',fog.has(key));
+    node.classList.toggle('gc-fogged',fog.has(key)||ombres.has(key));
+    node.classList.toggle('pc-ombre-voilee',mesOmbres.has(key));
     node.classList.toggle('pc-dominant',cell.pieceId==='grand-maitre');
     node.classList.toggle('pc-warded',
       !!(gs.pretreProtected&&gs.pretreProtected.has(cell.color+':'+key)));
@@ -624,6 +635,7 @@ const MOVE_GESTURE={
   'meduse':            {cls:'gc-drift',   air:true},   // elle ondule, elle ne marche pas
   'pretre':            {cls:'gc-solemn',  air:false},  // lent, droit, sans écrasement
   'infecte':           {cls:'gc-scuttle', air:true},   // il bondit, désarticulé
+  'ombre':             {cls:'gc-drift',   air:true},   // elle glisse sans bruit
   'illusion':          {cls:'gc-phase',   air:true},   // elle se dédouble plutôt qu'elle ne marche
 
   // GÉNÉRAUX ET MONARQUES. La retenue est leur signature : ils s'élèvent d'un

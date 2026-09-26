@@ -1307,6 +1307,9 @@ body:not(.main-menu) #settings-panel{display:none}
   background:radial-gradient(circle at 38% 32%,rgba(58,44,92,.97),rgba(12,9,22,.99) 78%);
   box-shadow:inset 0 0 12px rgba(0,0,0,.8)}
 .gc-piece.gc-fogged{visibility:hidden}
+/* Notre Ombre, quand l'adversaire ne la voit pas : estompée, pour qu'on sache
+   qu'elle est cachée (ombreHiddenFor, js/rules-engine.js). */
+.gc-piece.pc-ombre-voilee .gc-art{opacity:.45;filter:drop-shadow(0 0 6px rgba(20,12,40,.9))}
 @keyframes captureFlash{0%{box-shadow:inset 0 0 0 6px rgba(255,220,180,.95),inset 0 0 40px rgba(217,85,47,.9)}100%{box-shadow:none}}
 .gc.gc-check{box-shadow:inset 0 0 0 4px var(--ember),inset 0 0 30px rgba(217,85,47,.55)}
 /* LES PIÈCES NE SONT PLUS DANS LES CASES (voir l'en-tête de la section

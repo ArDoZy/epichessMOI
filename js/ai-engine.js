@@ -40,7 +40,9 @@ const CVAL={
   // Nyx marche en Roi et bondit en Cavalier. L'Infecté vaut peu en lui-même
   // (il meurt de sa première prise), la recherche voit le reste : le prendre
   // coûte la pièce qui le prend.
-  'nyx':720,'infecte':240,
+  'nyx':720,'infecte':280,
+  // L'Ombre : un pas de Tour limité à deux cases.
+  'ombre':300,
   // Un reflet n'est pas du matériel, c'est un mur provisoire : il vaut ce
   // qu'il bouche, pas plus.
   'reflet':35,
@@ -441,7 +443,7 @@ const ZK=(()=>{
     'fourmi','preux-chevalier','dresseur-elephant','garde-pierre',
     'meduse','typhon','banshee','pretre',
     'std-pawn','std-r','std-n','std-b',
-    'pegase','loup-geant','singe','illusion','reflet','nyx','infecte'];
+    'pegase','loup-geant','singe','illusion','reflet','nyx','infecte','ombre'];
   const pidx={};pieceIds.forEach((id,i)=>{pidx[id]=i;});
   const T=[];
   for(let s=0;s<64;s++){T[s]=[];for(let p=0;p<pieceIds.length;p++)T[s][p]=[rnd(),rnd()];}

@@ -400,7 +400,11 @@ const PIECES=[
   {id:'pegase',name:'Pégase',emoji:'🪽',class:'Brute',value:5,qty:2,pieceType:'n',ability:null},
   {id:'loup-geant',name:'Loup Géant',emoji:'🐺',class:'Brute',value:2,qty:2,pieceType:'b',ability:null},
   {id:'singe',name:'Singe',emoji:'🐒',class:'Brute',value:4,qty:2,pieceType:'b',ability:'Double Bond : Fait deux pas d\'une case en diagonale dans le même coup, et mange ce qu\'il trouve à chacun des deux'},
-  {id:'infecte',name:'Infecté',emoji:'🧟',class:'Sorcier',value:3,qty:2,pieceType:'n',ability:'Contagion : S\'il mange une pièce adverse, il meurt aussi ; la pièce adverse qui le mange meurt aussi. Le Monarque adverse ne peut pas le manger'},
+  {id:'infecte',name:'Infecté',emoji:'🧟',class:'Sorcier',value:4,qty:2,pieceType:'n',ability:'Contagion : S\'il mange une pièce adverse, il meurt aussi ; la pièce adverse qui le mange meurt aussi. Le Monarque adverse ne peut pas le manger'},
+  // L'OMBRE : une ou deux cases en ligne droite, et invisible pour l'adversaire
+  // tant qu'elle ne bouge pas (ombreHiddenFor, js/rules-engine.js). Comme le
+  // voile de Nyx, c'est ce que l'adversaire VOIT qui change, pas les règles.
+  {id:'ombre',name:'Ombre',emoji:'👤',class:'Sorcier',value:3,qty:2,pieceType:'r',ability:'Invisible : L\'adversaire ne la voit pas. Quand elle se déplace, elle reste visible jusqu\'à ce qu\'il ait joué, puis disparaît de nouveau'},
   {id:'illusion',name:'Illusion',emoji:'🪞',class:'Sorcier',value:5,qty:2,pieceType:'q',ability:'Reflet : Laisse un reflet sur la case qu\'elle quitte. Il bloque les pièces ennemies, qui peuvent le prendre ; un seul reflet par Illusion'},
 ];
 
@@ -538,6 +542,7 @@ const UNLOCK_TABLE=[
   {id:'rw-480',reward:'copies',copyId:'amazone',qty:2,eloRequired:480},
   {id:'rw-550',reward:'copies',copyId:'meduse',qty:2,eloRequired:550},
   {id:'rw-700',reward:'pearls',amount:12,eloRequired:700},
+  {pieceId:'ombre',eloRequired:740},
   {pieceId:'pretre',eloRequired:800},{pieceId:'typhon',eloRequired:1000,bigReward:true},
   // L'ID `rw-900` NE CHANGE PAS alors que son lot change : il est la clé sous
   // laquelle vvCheckRewardMilestones retient qu'un compte a déjà encaissé ce

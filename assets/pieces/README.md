@@ -112,7 +112,7 @@ de camaïeu de gris, jamais de marbre nu.
 
 ## Les identifiants et leur sujet
 
-Vingt-deux créatures, la liste qui fait foi étant celle de `PIECES` dans
+Vingt-trois créatures, la liste qui fait foi étant celle de `PIECES` dans
 `js/data-pieces.js`. La **couleur** est celle de la classe (`CLASS_COLOR_VARS`,
 même fichier) : c'est elle que la carte pose en bordure et en bandeau, et
 c'est donc elle que la lueur du fond doit reprendre — sinon l'illustration
@@ -149,6 +149,7 @@ et son cadre jurent.
 | `singe.png` | Singe (Brute) | Un singe guerrier agile en plein saut, bandeaux de cuir et petite lame recourbée dans chaque main, queue enroulée, regard malicieux. |
 | `nyx.png` | Nyx (Général) | Une déesse de la nuit voilée de noir et d'or orangé, visage perdu dans l'ombre de son capuchon d'où luisent deux yeux, croissant de lune au-dessus d'elle, une brume sombre qui s'enroule autour de ses pieds. |
 | `infecte.png` | Infecté (Sorcier) | Un mort-vivant décharné en haillons violets, peau grise marbrée de pustules luisantes, un œil voilé, penché en avant, une brume verdâtre de contagion qui s'échappe de lui. |
+| `ombre.png` | Ombre (Sorcier) | Une assassine faite d'ombre vivante, contours qui s'effilochent en fumée noire, deux yeux violets à peine visibles, une dague tenue bas, à demi fondue dans l'obscurité derrière elle. |
 | `illusion.png` | Illusion (Sorcier) | Une mage encapuchonnée voilée de violet, dont un double translucide et scintillant se détache derrière elle, reflets de miroir brisé en orbite. |
 
 Un prompt complet se fabrique en collant le bloc de style ci-dessus, puis la

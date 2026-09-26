@@ -2594,6 +2594,16 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
       const voile=nyxFogFor(b,'w');
       if(!voile.has('3,3')||voile.has('5,5')||voile.has('4,4')||voile.size!==7)out.push('nyx : voile inexact ('+[...voile].join(' ')+')');
       if(nyxFogFor(b,'b').size)out.push('nyx : son propre camp est dans le brouillard');
+
+      // L'OMBRE — une ou deux cases en ligne droite ; invisible pour
+      // l'adversaire, sauf pendant le demi-coup qui suit son déplacement.
+      b=vide();const om=pose(b,4,4,'ombre','b');pose(b,3,4,'std-pawn','b');
+      if(!va(b,4,4,4,6)||va(b,4,4,4,7)||va(b,4,4,2,4))out.push('ombre : deplacement inexact');
+      if(!ombreHiddenFor(b,'w',5).has('4,4'))out.push('ombre : visible sans avoir bouge');
+      om._seenAt=4;
+      if(ombreHiddenFor(b,'w',5).has('4,4'))out.push('ombre : invisible juste apres son coup');
+      if(!ombreHiddenFor(b,'w',6).has('4,4'))out.push('ombre : reste visible apres le coup adverse');
+      if(ombreHiddenFor(b,'b',9).size)out.push('ombre : invisible pour son propre camp');
       return out;
     });
     if(bad.length)throw new Error(bad.join(' · '));

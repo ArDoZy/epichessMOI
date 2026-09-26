@@ -90,6 +90,8 @@ const POWER_ICONS={
   nyx:'<path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5z"/>',
   // Contagion (Infecté) : une goutte et ses éclaboussures.
   infecte:'<path d="M12 3c3 4.5 5 7.5 5 10.5a5 5 0 0 1-10 0C7 10.5 9 7.5 12 3z"/><path d="M4 8l1.5 1.5M20 8l-1.5 1.5M4 18h2M18 18h2"/>',
+  // Invisible (Ombre) : un œil barré.
+  ombre:'<path d="M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6-10-6-10-6z"/><circle cx="12" cy="12" r="2.6"/><path d="M4 20L20 4"/>',
   // Pièce sans pouvoir : le pictogramme du déplacement seul (deux flèches).
   _none:'<path d="M12 4v16"/><path d="M4 12h16"/><path d="M8.5 7.5L12 4l3.5 3.5"/><path d="M8.5 16.5L12 20l3.5-3.5"/>',
 };

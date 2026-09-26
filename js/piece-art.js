@@ -197,6 +197,13 @@ const PIECE_ART={
     '<path class="b" d="M50 7c-10 0-18 8-18 18 0 6 2 11 5 14L24 50c-6 5-9 11-9 16v16h70V66c0-5-3-11-9-16L63 39c3-3 5-8 5-14 0-10-8-18-18-18z"/>'+
     '<path class="k" d="M46 48h8v11h11v8H54v18h-8V67H35v-8h11z"/>',
 
+  // L'OMBRE : la silhouette garde la couleur de son camp ; c'est l'ombre
+  // portée, pleine, qui se découpe derrière elle.
+  'ombre':
+    '<path class="k" d="M44 7c-9 0-15 7-15 15 0 6 3 10 7 13-7 2-12 7-14 14l-5 20c-1 5 2 9 7 9h40c5 0 8-4 7-9l-5-20c-2-7-7-12-14-14 4-3 7-7 7-13 0-8-6-15-15-15z"/>'+
+    '<path class="b" d="M56 12c-8.5 0-14 6.5-14 14 0 5.5 2.7 9.4 6.5 12.2-6.5 2-11 6.8-13 13.3l-4.5 19c-1 4.5 1.8 8.5 6.5 8.5h37c4.7 0 7.5-4 6.5-8.5l-4.5-19c-2-6.5-6.5-11.3-13-13.3 3.8-2.8 6.5-6.7 6.5-12.2 0-7.5-5.5-14-14-14z"/>'+
+    '<path class="l" d="M49 25h5M58 25h5"/>',
+
   // L'INFECTÉ : un crâne à l'oeil barré, la bouche recousue, le corps
   // piqué de pustules — ce qu'on attrape en le mangeant.
   'infecte':
