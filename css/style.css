@@ -721,6 +721,21 @@ body.has-acc .builder-inner{padding-top:var(--page-top)}
   font-variant-numeric:tabular-nums;transition:color .16s ease}
 /* Dépassement : le nombre vire à la couleur de tension. */
 .bd-over .bd-budget-num{color:var(--ember)}
+/* --- LA TROUPE : quatre pions au choix, sous les cinq emplacements ----
+   Un réglage de l'armée et non une pièce : ni carte, ni coût. Quatre pastilles
+   côte à côte, la choisie cernée d'accent ; la phrase dessous dit comment
+   elles marchent et mangent. */
+.troop-pick{margin-top:10px;display:flex;flex-direction:column;gap:6px}
+.troop-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.troop-btn{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:0;
+  padding:6px 2px 5px;border-radius:10px;border:1px solid var(--border);
+  background:rgba(255,255,255,.03);color:var(--muted);cursor:pointer;font:inherit}
+.troop-btn .pc-svg{width:30px;height:30px}
+.troop-btn-name{font-family:var(--f-ui);font-size:10px;font-weight:650;letter-spacing:.04em;
+  max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.troop-btn:hover{border-color:var(--border2);color:var(--text)}
+.troop-btn.on{border-color:var(--accent2);color:var(--text);background:var(--accent-bg)}
+.troop-desc{font-family:var(--f-ui);font-size:11px;color:var(--muted);text-align:center;min-height:1.3em}
 /* --- LA BARRE D'ACTION, dans le pouce ----------------------------
    « Valider » était en HAUT de l'écran, alors qu'il conclut un parcours qui
    se déroule vers le bas : il fallait remonter pour valider. */
@@ -5901,7 +5916,7 @@ body.nav-active:not(.nav-overlay) .notif-host{bottom:92px}
 .btn:focus-visible,.nav-arrow:focus-visible,.jouer-btn:focus-visible,
 .linput:focus-visible,.history-nav button:focus-visible,
 .chest-card:focus-visible,.shop-chest:focus-visible,
-.var-card:focus-visible,.van-btn:focus-visible{
+.var-card:focus-visible,.van-btn:focus-visible,.troop-btn:focus-visible{
   outline:2px solid var(--accent2);outline-offset:3px}
 /* Les pièces sont redessinées 32 fois par plateau : la transition universelle
    de couleur du reset s'appliquait à chaque tracé SVG, pour rien. */
@@ -7250,6 +7265,8 @@ body.desk .piece-card-actions{top:100%}
    est celle qui donne à la rangée du haut la taille d'une grande carte
    (~220×293 px) sans dépasser. */
 body.desk .comp-grid{max-width:480px;margin-left:auto;margin-right:auto}
+/* La troupe se range sous les cinq emplacements, à leur largeur. */
+body.desk .troop-pick{max-width:480px;margin-left:auto;margin-right:auto;width:100%}
 
 /* [SERVER] ======================================================== */
 /* Le voile de démarrage et l'avertissement de liaison (js/server.js,

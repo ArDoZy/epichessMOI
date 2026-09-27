@@ -34,7 +34,8 @@ const BOOT_TIPS=[
   'Chaque créature garde le déplacement d\'une pièce d\'échecs — et y ajoute un pouvoir. Le reste des règles ne bouge pas.',
   'Votre armée est MISÉE : les créatures perdues sur l\'échiquier quittent vraiment votre réserve.',
   'La Diagonale de la Puissance se grimpe en ELO. Chaque rang ouvre de nouvelles créatures.',
-  'Le Roi et la Dame ne se remplacent pas : toute armée part avec un Monarque et un Général.',
+  'Toute armée part avec un Monarque et un Général. Le Roi peut céder sa place à la Matriarche ou à l\'Empereur.',
+  'Les huit pions se choisissent aussi : soldats, mercenaires, légionnaires ou barbares.',
   'Trois jokers valent trois exemplaires de la créature de votre choix — parmi celles que vous possédez déjà.',
   'Un coffre ne donne jamais une créature que vous ne pouvez pas encore jouer.',
 ];

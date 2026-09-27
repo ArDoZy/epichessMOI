@@ -59,6 +59,7 @@ function pmvGs(){
 // et les pions promus. Elles n'ont pas d'entrée dans PIECES, donc pas de
 // pieceType : sans cette table, le moteur les prendrait toutes pour des dames.
 const PMV_STD_TYPES={'std-pawn':'p','std-r':'r','std-n':'n','std-b':'b',
+  'pion-mercenaire':'p','pion-legionnaire':'p','pion-barbare':'p',
   'dame-promo':'q','tour-promo':'r','fou-promo':'b','cav-promo':'n'};
 function pmvTypeOf(pieceId){
   const def=PIECES.find(p=>p.id===pieceId);

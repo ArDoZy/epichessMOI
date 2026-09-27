@@ -342,6 +342,21 @@ const DAILY_REWARDS=[
 // paraphrase son déplacement.
 const PIECES=[
   {id:'roi',name:'Roi',emoji:'👑',class:'Monarque',value:3,qty:1,pieceType:'k',ability:null},
+  // LE ROI N'EST PLUS LE SEUL MONARQUE : on peut le REMPLACER. Une armée n'en
+  // aligne toujours qu'un (l'emplacement Monarque du builder), si bien que la
+  // question « lequel des deux protéger ? » qui a fait retirer l'ancien
+  // Empereur ne se pose jamais — il y a un Monarque par camp, quel qu'il soit.
+  //
+  // La MATRIARCHE ne marche qu'en biais, d'une case (ni roque, ni pas droit),
+  // et relève le Général tombé (voir « LA RÉANIMATION DE LA MATRIARCHE »,
+  // js/rules-engine.js).
+  //
+  // L'EMPEREUR marche en Roi et bondit en Cavalier. SON IDENTIFIANT EST
+  // 'imperator', et non 'empereur' : celui-là est retiré (RETIRED_PIECE_IDS
+  // plus bas) et migré vers le Roi dans les vieux comptes — le réutiliser
+  // ferait apparaître l'Empereur dans des armées qui ne l'ont jamais choisi.
+  {id:'matriarche',name:'Matriarche',emoji:'👸',class:'Monarque',value:3,qty:1,pieceType:'k',ability:'Réanimation : Si votre Général tombe, elle le relève une fois en créature de valeur 2, posée sur une case libre à côté d\'elle. Cela ne coûte pas votre tour',hasPower:true,powerLabel:'Réanimation'},
+  {id:'imperator',name:'Empereur',emoji:'🤴',class:'Monarque',value:7,qty:1,pieceType:'k',ability:null},
   {id:'amazone',name:'Amazone',emoji:'🏹',class:'Général',value:7,qty:1,pieceType:'q',ability:null},
   // DEUX CRÉATURES PORTENT UN IDENTIFIANT QUI NE DIT PLUS LEUR NOM, et c'est
   // la seule ligne du dépôt qui a le droit de citer les anciens : le
@@ -406,7 +421,52 @@ const PIECES=[
   // voile de Nyx, c'est ce que l'adversaire VOIT qui change, pas les règles.
   {id:'ombre',name:'Ombre',emoji:'👤',class:'Sorcier',value:3,qty:2,pieceType:'r',ability:'Invisible : L\'adversaire ne la voit pas. Quand elle se déplace, elle reste visible jusqu\'à ce qu\'il ait joué, puis disparaît de nouveau'},
   {id:'illusion',name:'Illusion',emoji:'🪞',class:'Sorcier',value:5,qty:2,pieceType:'q',ability:'Reflet : Laisse un reflet sur la case qu\'elle quitte. Il bloque les pièces ennemies, qui peuvent le prendre ; un seul reflet par Illusion'},
+  // LE BERSERK : une case en ligne droite, et il ne s'arrête pas tant qu'il
+  // mange. Chaque prise lui rend un pas, qu'il peut dépenser à manger encore :
+  // toute une chaîne de pièces tombe dans le même coup (berserkMoves,
+  // js/rules-engine.js). Un chemin de prises qui finit sur le Monarque adverse
+  // le met donc en échec — et en mat, si rien ne peut rompre la chaîne.
+  //
+  // LE BOUCHER : une ou deux cases en ligne droite (sans sauter). Une pièce
+  // ennemie COLLÉE à lui en ligne droite, il la mange SANS BOUGER ; à deux
+  // cases, il se déplace pour la manger, comme n'importe qui.
+  {id:'berserk',name:'Berserk',emoji:'🪓',class:'Brute',value:4,qty:2,pieceType:'r',ability:'Furie : Chaque fois qu\'il mange, il avance encore d\'une case en ligne droite, et peut ainsi enchaîner les prises dans le même coup'},
+  {id:'boucher',name:'Boucher',emoji:'🔪',class:'Brute',value:4,qty:2,pieceType:'r',ability:'Couperet : Mange sans bouger une pièce ennemie collée à lui en ligne droite ; à deux cases, il se déplace pour la manger'},
 ];
+
+// ----------------------------------------------------------------
+// LES ARMÉES DE PIONS
+// ----------------------------------------------------------------
+// Les huit pions du second rang ne sont plus forcément des pions d'échecs :
+// l'armée choisit sa TROUPE, et les huit pions en sont. Ce n'est pas une
+// créature du catalogue — rien ne s'achète, rien ne se débloque, rien ne
+// compte dans les 24 points : c'est un réglage de l'armée (`pawns`, à côté de
+// `mon`/`gen`/`extras`), lu par buildGameBoard (js/game-flow.js).
+//
+// Les quatre troupes croisent les deux façons d'aller (tout droit, en biais)
+// avec les deux façons de manger :
+//   soldats       avancent tout droit, mangent en biais   (le pion d'échecs)
+//   mercenaires   avancent en biais,   mangent tout droit
+//   légionnaires  avancent tout droit, mangent tout droit
+//   barbares      avancent en biais,   mangent en biais
+// Toutes vont vers l'avant, toutes font leur bond de deux cases au premier
+// pas (dans leur direction de marche), toutes se promeuvent au bout : ce sont
+// des PIONS pour toutes les règles (TRUE_PAWN_IDS plus bas) — la Cuirasse du
+// Preux Chevalier, le Hurlement de la Banshee et la Domination du Grand
+// Maître les concernent toutes les quatre.
+//
+// UNE ARMÉE SANS `pawns` — toutes celles d'avant, et celles des vieux clients
+// en ligne — aligne des SOLDATS : c'est exactement ce qu'elle alignait.
+const PAWN_ARMIES=[
+  {id:'soldats',     name:'Soldats',     pawnId:'std-pawn',        desc:'Avancent tout droit, mangent en diagonale.'},
+  {id:'mercenaires', name:'Mercenaires', pawnId:'pion-mercenaire', desc:'Avancent en diagonale, mangent tout droit.'},
+  {id:'legionnaires',name:'Légionnaires',pawnId:'pion-legionnaire',desc:'Avancent et mangent tout droit.'},
+  {id:'barbares',    name:'Barbares',    pawnId:'pion-barbare',    desc:'Avancent et mangent en diagonale.'},
+];
+function pawnArmyById(id){return PAWN_ARMIES.find(a=>a.id===id)||PAWN_ARMIES[0];}
+// Le nom d'un pion posé sur le plateau (fiche, infobulle) : il n'a pas
+// d'entrée dans PIECES.
+function pawnArmyByPawnId(pawnId){return PAWN_ARMIES.find(a=>a.pawnId===pawnId)||null;}
 
 // ----------------------------------------------------------------
 // LE REFLET DE L'ILLUSION
@@ -446,18 +506,19 @@ const PIECES=[
 // compte non migré les porterait encore, et la nouvelle pièce apparaîtrait dans
 // des armées qui ne l'ont jamais choisie.
 const RETIRED_PIECE_IDS=new Set(['garde-eau','garde-feu','empereur']);
-// Ce qui remplace un MONARQUE retiré dans une armée enregistrée. Le Roi est
-// désormais le seul monarque du jeu : le choix ne se pose pas, et c'est
-// précisément ce qui rend le remplacement sûr — l'armée garde sa valeur de
-// budget en baisse (le Roi vaut 3 là où l'Empereur valait 8) et reste jouable.
+// Ce qui remplace un MONARQUE retiré dans une armée enregistrée : le Roi, que
+// tout compte possède dès sa création. Ce n'est plus le seul monarque (la
+// Matriarche et le nouvel Empereur, 'imperator', l'ont rejoint), mais c'est le
+// seul qui soit sûr : l'armée garde une valeur de budget en baisse (le Roi
+// vaut 3 là où l'ancien Empereur valait 8) et reste jouable.
 const RETIRED_MONARCH_REPLACEMENT='roi';
 function isRetiredPieceId(id){return RETIRED_PIECE_IDS.has(id);}
 
-// LE SEUL VRAI PION du jeu. La Fourmi, la Méduse et les trois Gardes portent
-// `pieceType:'p'` pour le moteur, mais ce ne sont PAS des pions : ni la
-// Cuirasse du Preux Chevalier, ni le Hurlement de la Banshee, ni la Domination
-// du Grand Maître ne les concernent.
-const TRUE_PAWN_IDS=new Set(['std-pawn']);
+// LES VRAIS PIONS du jeu : ceux des quatre troupes (PAWN_ARMIES). La Fourmi,
+// la Méduse et le Garde de Pierre portent `pieceType:'p'` pour le moteur, mais
+// ce ne sont PAS des pions : ni la Cuirasse du Preux Chevalier, ni le
+// Hurlement de la Banshee, ni la Domination du Grand Maître ne les concernent.
+const TRUE_PAWN_IDS=new Set(PAWN_ARMIES.map(a=>a.pawnId));
 function isTruePawn(cell){return !!cell&&TRUE_PAWN_IDS.has(cell.pieceId);}
 
 // CE QUI SE PROMEUT EN ARRIVANT AU BOUT. Le pion, bien sûr — et la FOURMI,
@@ -471,7 +532,7 @@ function isTruePawn(cell){return !!cell&&TRUE_PAWN_IDS.has(cell.pieceId);}
 // que de se promouvoir à son tour, sur la case même où elle vient d'arriver.
 // C'est aussi pourquoi cet ensemble n'est PAS `TRUE_PAWN_IDS` : la Fourmi
 // reste tout sauf un pion pour le reste des règles.
-const PROMOTING_IDS=new Set(['std-pawn','fourmi']);
+const PROMOTING_IDS=new Set([...TRUE_PAWN_IDS,'fourmi']);
 function pieceCanPromote(pieceId){return PROMOTING_IDS.has(pieceId);}
 const CLASS_ORDER={Monarque:1,Général:2,Primordiale:3,Brute:4,Sorcier:5};
 // Couleurs partagées par classe de pièce : utilisées par le menu contextuel factorisé
@@ -562,6 +623,13 @@ const UNLOCK_TABLE=[
   {pieceId:'infecte',eloRequired:450},
   {pieceId:'singe',eloRequired:620},
   {pieceId:'pegase',eloRequired:1250},
+  // LES DEUX MONARQUES DE REMPLACEMENT et les deux Brutes de la Furie. La
+  // Matriarche arrive tôt (un Monarque à 3 points, le prix du Roi : c'est un
+  // autre jeu, pas un meilleur) ; l'Empereur vaut 7, il attend l'Acier.
+  {pieceId:'matriarche',eloRequired:290},
+  {pieceId:'berserk',eloRequired:520},
+  {pieceId:'boucher',eloRequired:860},
+  {pieceId:'imperator',eloRequired:1100},
   {pieceId:'nyx',eloRequired:1350},
   {pieceId:'illusion',eloRequired:1500},
   {pieceId:'grand-maitre',eloRequired:1700},

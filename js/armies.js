@@ -31,7 +31,7 @@
 // c'est enregistrer. Un changement qui laisse pArmy incomplet ne touche
 // pas à l'armée déjà enregistrée — elle reste utilisable pour un combat
 // pendant qu'on retouche sa composition.
-let pArmy={mon:null,gen:null,extras:[]};
+let pArmy={mon:null,gen:null,extras:[],pawns:'soldats'};
 let pEditId=null;
 // pLoaded : une composition en cours (vide ou à moitié faite) ne doit pas
 // être écrasée quand on quitte la page puis qu'on y revient — seule la
@@ -62,9 +62,10 @@ function pLoad(){
     let ids=(a.extras||[]).slice();
     if(a.placements)ids.sort((x,y)=>dist(a.placements[x])-dist(a.placements[y]));
     pArmy.extras=ids.map(fp).filter(Boolean).slice(0,3);
+    pArmy.pawns=pawnArmyById(a.pawns).id;
     pEditId=a.id;
   }else{
-    pArmy={mon:null,gen:null,extras:[]};pEditId=null;
+    pArmy={mon:null,gen:null,extras:[],pawns:'soldats'};pEditId=null;
   }
 }
 
@@ -78,9 +79,33 @@ function pAutosave(){
   const ad={
     id,createdAt:(prev&&prev.id===id)?prev.createdAt:Date.now(),updatedAt:Date.now(),
     mon:{id:pArmy.mon.id},gen:{id:pArmy.gen.id},
-    extras:ordered.map(p=>p.id),placements,totalValue:pGetVal()
+    extras:ordered.map(p=>p.id),placements,totalValue:pGetVal(),
+    pawns:pawnArmyById(pArmy.pawns).id
   };
   savedArmies=[ad];pEditId=id;saveArmies();
+}
+
+// ----------------------------------------------------------------
+// LA TROUPE DE PIONS
+// ----------------------------------------------------------------
+// Quatre pastilles sous les cinq emplacements : soldats, mercenaires,
+// légionnaires, barbares (PAWN_ARMIES, js/data-pieces.js). Ce n'est pas une
+// pièce : rien à posséder, rien à payer, elle s'enregistre avec l'armée
+// (`pawns`) comme le reste, dès que l'armée est complète.
+let _pTroopSig=null;
+function pRenderTroop(){
+  const box=document.getElementById('ar-troop');if(!box)return;
+  const cur=pawnArmyById(pArmy.pawns);
+  if(_pTroopSig===cur.id&&box.firstElementChild)return;
+  _pTroopSig=cur.id;
+  box.innerHTML='<div class="troop-row">'+PAWN_ARMIES.map(a=>
+    '<button type="button" class="troop-btn'+(a.id===cur.id?' on':'')+'" role="radio" aria-checked="'+(a.id===cur.id)+
+      '" data-troop="'+a.id+'" title="'+escH(a.desc)+'">'+pieceSVG(a.pawnId,'w')+
+      '<span class="troop-btn-name">'+escH(a.name)+'</span></button>').join('')+'</div>'+
+    '<div class="troop-desc">'+escH(cur.name)+' : '+escH(cur.desc.charAt(0).toLowerCase()+cur.desc.slice(1))+'</div>';
+  box.querySelectorAll('.troop-btn').forEach(el=>el.addEventListener('click',()=>{
+    pArmy.pawns=el.dataset.troop;pUpdateAll();
+  }));
 }
 
 // ----------------------------------------------------------------
@@ -298,7 +323,7 @@ function pUpdStats(){
   const box=document.getElementById('ar-army-box');if(box)box.classList.toggle('bd-over',over);
 }
 function pUpdateAll(){
-  pUpdSlots();pRenderCards();pUpdStats();
+  pUpdSlots();pRenderTroop();pRenderCards();pUpdStats();
   pAutosave();
 }
 
@@ -612,7 +637,7 @@ function generateAIArmy(minValue,opts){
       // donc placement symétrique sans collision. Ordre aléatoire entre les 3.
       const cols=[0,1,2].sort(()=>Math.random()-0.5);const placements={};
       chosen.forEach((p,i)=>{placements[p.id]=cols[i];});
-      return{mon,gen,extras:chosen.map(p=>p.id),placements,totalValue:mon.value+gen.value+val,_random:true};
+      return{mon,gen,extras:chosen.map(p=>p.id),placements,totalValue:mon.value+gen.value+val,pawns:aiPickTroop(opts.style),_random:true};
     }
   }
   // Fallback (budget très serré) : pièces distinctes les moins chères, tirées au hasard
@@ -621,5 +646,18 @@ function generateAIArmy(minValue,opts){
   const ext=shuffledOth.filter((p,i,a)=>a.findIndex(x=>x.id===p.id)===i).slice(0,3);
   const cols=[0,1,2].sort(()=>Math.random()-0.5);const placements={};
   ext.forEach((p,i)=>{placements[p.id]=cols[i];});
-  return{mon,gen,extras:ext.map(p=>p.id),placements,totalValue:mon.value+gen.value+ext.reduce((s,p)=>s+p.value,0),_random:true};
+  return{mon,gen,extras:ext.map(p=>p.id),placements,totalValue:mon.value+gen.value+ext.reduce((s,p)=>s+p.value,0),pawns:aiPickTroop(opts.style),_random:true};
+}
+// LA TROUPE D'UN BOT. Les troupes ne se possèdent pas : un bot peut aligner
+// les quatre. La moitié du temps il prend des soldats — le pion qu'on connaît
+// —, sinon une troupe au hasard, penchée par son style : la nuée et la brute
+// aiment les barbares, le défensif les légionnaires, le mobile les
+// mercenaires.
+const TROOP_BY_STYLE={nuee:'barbares',brute:'barbares',agressif:'barbares',
+  defensif:'legionnaires',positionnel:'legionnaires',mobile:'mercenaires',sorcier:'mercenaires'};
+function aiPickTroop(style){
+  if(Math.random()<0.5)return 'soldats';
+  const fav=TROOP_BY_STYLE[style];
+  if(fav&&Math.random()<0.6)return fav;
+  return PAWN_ARMIES[Math.floor(Math.random()*PAWN_ARMIES.length)].id;
 }

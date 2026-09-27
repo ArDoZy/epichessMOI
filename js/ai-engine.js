@@ -24,7 +24,8 @@
 // ================================================================
 
 const CVAL={
-  'roi':10000,
+  // Les trois Monarques : un seul par camp, et le perdre, c'est perdre.
+  'roi':10000,'matriarche':10000,'imperator':10000,
   'dame':950,'amazone':800,'chevaucheur-rhinoceros':870,'grand-maitre':1200,
   'cavalier-primordial':360,'fou-primordial':360,'tour-primordiale':530,
   'dresseur-elephant':310,'meduse':240,'typhon':520,
@@ -43,6 +44,11 @@ const CVAL={
   'nyx':720,'infecte':280,
   // L'Ombre : un pas de Tour limité à deux cases.
   'ombre':300,
+  // Le Berserk vaut par ses chaînes de prises, le Boucher par la menace qu'il
+  // fait peser sur ses quatre voisines sans jamais s'exposer pour les manger.
+  'berserk':330,'boucher':380,
+  // Les pions des quatre troupes (PAWN_ARMIES, js/data-pieces.js).
+  'pion-mercenaire':100,'pion-legionnaire':95,'pion-barbare':105,
   // Un reflet n'est pas du matériel, c'est un mur provisoire : il vaut ce
   // qu'il bouche, pas plus.
   'reflet':35,
@@ -416,6 +422,12 @@ function applyMoveQuick(board,from,to,p,anchored){
   const b=cloneBoard(board);
   const victim=b[to.r][to.c];
   if(to.stayPut){if(b[to.r][to.c])b[to.r][to.c]=null;return b;}
+  // Le Couperet du Boucher : la victime tombe, lui ne bouge pas.
+  if(to.shoot){
+    b[to.r][to.c]=null;b[from.r][from.c]={...p,hasMoved:true};
+    if(victim&&victim.pieceId==='illusion')refletSweep(b);
+    return b;
+  }
   if(to.ep){const pr=to.r+(p.color==='w'?1:-1);b[pr][to.c]=null;}
   if(to.castle){if(to.castle==='K'){b[from.r][5]=b[from.r][7];b[from.r][7]=null;}if(to.castle==='Q'){b[from.r][3]=b[from.r][0];b[from.r][0]=null;}}
   b[to.r][to.c]={...p,hasMoved:true};b[from.r][from.c]=null;
@@ -443,7 +455,8 @@ const ZK=(()=>{
     'fourmi','preux-chevalier','dresseur-elephant','garde-pierre',
     'meduse','typhon','banshee','pretre',
     'std-pawn','std-r','std-n','std-b',
-    'pegase','loup-geant','singe','illusion','reflet','nyx','infecte','ombre'];
+    'pegase','loup-geant','singe','illusion','reflet','nyx','infecte','ombre',
+    'matriarche','imperator','berserk','boucher','pion-mercenaire','pion-legionnaire','pion-barbare'];
   const pidx={};pieceIds.forEach((id,i)=>{pidx[id]=i;});
   const T=[];
   for(let s=0;s<64;s++){T[s]=[];for(let p=0;p<pieceIds.length;p++)T[s][p]=[rnd(),rnd()];}
@@ -559,7 +572,7 @@ function quiesce(board,alpha,beta,maxing,fgs,qdepth){
     const p=board[from.r][from.c];
     const cap=board[to.r][to.c];
     if(cap&&cap.color!==p?.color)return true;
-    if(to.stayPut||to.destroysPath||to.viaCap)return true;
+    if(to.stayPut||to.destroysPath||to.viaCap||to.shoot||(to.path&&to.path.length))return true;
     if(p&&p.pieceId==='typhon')return destroysSomething(board,to,p);
     return false;
   });
@@ -794,7 +807,7 @@ let _aiWorkerBusy=false;
 function getWorkerCode(){
   const fns=[
     inB,opp,cloneBoard,getPieceEmoji,
-    canLand,barsPath,singeViaRank,singeMoves,refletOwnerKey,applyIllusionReflet,refletSweep,infectionKills,
+    canLand,barsPath,singeViaRank,singeMoves,berserkMoves,pathKey,refletOwnerKey,applyIllusionReflet,refletSweep,infectionKills,
     slidingMoves,jumpMoves,knightMoves,kingMoves,pawnMoves,generateMovesRaw,
     isInCheckSimple,isSquareAttackedSimple,getLegalMovesKingFiltered,isTruePawn,applyBansheePush,applyCollateralOnBoard,moveLeavesKingInCheck,getLegalMoves,
     updateMedusaParalysis,updateGrandMaitre,
@@ -807,6 +820,7 @@ function getWorkerCode(){
   const consts=`
 const PIECES=${JSON.stringify(PIECES)};
 const TRUE_PAWN_IDS=new Set(${JSON.stringify([...TRUE_PAWN_IDS])});
+const PAWN_STYLE=${JSON.stringify(PAWN_STYLE)};
 const PROMOTING_IDS=new Set(${JSON.stringify([...PROMOTING_IDS])});
 const CVAL=${JSON.stringify(CVAL)};
 const PVAL=${JSON.stringify(PVAL)};
@@ -877,6 +891,12 @@ function serializeGs(gs){
 function doAIMove(gs,retry){
   const aiCol=gs.aiColor||'b';
   if(gs.gameOver||gs.turn!==aiCol)return;
+  // La Réanimation ne coûte pas de tour : l'IA l'exerce avant de chercher son
+  // coup, sur le plateau qu'elle vient de changer (js/rules-engine.js).
+  if(!retry&&typeof matriarcheAIRevive==='function'){
+    matriarcheAIRevive(gs,aiCol);
+    if(gs.gameOver||gs.turn!==aiCol)return;
+  }
 
   ensureWorker();
 
@@ -936,6 +956,7 @@ function unmirrorMove(m){
   const to={...m.to,r:7-m.to.r,c:m.to.c};
   if(to.fromR!==undefined)to.fromR=7-to.fromR;
   if(to.via)to.via={r:7-to.via.r,c:to.via.c};
+  if(to.path)to.path=to.path.map(q=>({r:7-q.r,c:q.c}));
   return{from:{r:7-m.from.r,c:m.from.c},to};
 }
 

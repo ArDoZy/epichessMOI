@@ -2367,11 +2367,17 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
         if(typeof PIECE_ART!=='undefined'&&PIECE_ART[id])out.push(id+' a encore un dessin de plateau');
         if(!RETIRED_PIECE_IDS.has(id))out.push(id+' n\'est pas déclaré retiré');
       });
-      // LE ROI EST LE SEUL MONARQUE. C'est ce qui permet à tout le code d'échec
-      // et mat de ne plus jamais demander DUQUEL des deux il s'agit.
-      const mons=PIECES.filter(p=>p.class==='Monarque');
-      if(mons.length!==1||mons[0].id!=='roi')
-        out.push('le Roi n\'est pas le seul monarque : '+mons.map(m=>m.id).join(', '));
+      // TROIS MONARQUES AU CHOIX, UN SEUL PAR ARMÉE. Le Roi (celui de tout compte
+      // neuf), la Matriarche et le nouvel Empereur — sous l'identifiant
+      // 'imperator', jamais sous l'ancien, qui est migré vers le Roi. Le code
+      // d'échec et mat n'a toujours qu'UN Monarque à protéger par camp : c'est
+      // l'emplacement unique du builder qui le garantit, pas le catalogue.
+      const mons=PIECES.filter(p=>p.class==='Monarque').map(p=>p.id).sort();
+      if(mons.join(',')!=='imperator,matriarche,roi')
+        out.push('les monarques ne sont pas roi, matriarche et imperator : '+mons.join(', '));
+      PIECES.filter(p=>p.class==='Monarque').forEach(p=>{
+        if(p.pieceType!=='k')out.push(p.id+' est un monarque qui ne se joue pas en roi');
+      });
       // Et aucun jalon de la Voie ne verse d'exemplaires d'une pièce inconnue.
       UNLOCK_TABLE.forEach(u=>{
         if(u.copyId&&!PIECES.find(p=>p.id===u.copyId))out.push('le jalon '+u.id+' verse des '+u.copyId+', introuvables');
@@ -2604,6 +2610,138 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
       if(ombreHiddenFor(b,'w',5).has('4,4'))out.push('ombre : invisible juste apres son coup');
       if(!ombreHiddenFor(b,'w',6).has('4,4'))out.push('ombre : reste visible apres le coup adverse');
       if(ombreHiddenFor(b,'b',9).size)out.push('ombre : invisible pour son propre camp');
+      return out;
+    });
+    if(bad.length)throw new Error(bad.join(' · '));
+  });
+
+  // LES REMPLAÇANTS ET LES TROUPES : le Berserk (chaîne de prises), le
+  // Boucher (il mange sans bouger ce qui le touche), les deux Monarques de
+  // remplacement (Matriarche, Empereur), la Réanimation, et les quatre
+  // troupes de pions. Chaque assertion est une phrase de leur fiche.
+  await step('berserk, boucher, matriarche, empereur et troupes suivent leur fiche',async()=>{
+    const bad=await page.evaluate(()=>{
+      const out=[];
+      const vide=()=>Array.from({length:8},()=>Array(8).fill(null));
+      const STD={'std-pawn':'p','pion-mercenaire':'p','pion-legionnaire':'p','pion-barbare':'p'};
+      const pose=(b,r,c,pieceId,color)=>{
+        const def=PIECES.find(p=>p.id===pieceId);
+        const type=def?(def.pieceType||'q'):(STD[pieceId]||'q');
+        b[r][c]={type,color,pieceId,emoji:'',hasMoved:true,isKing:type==='k',id:pieceId+r+c};
+        return b[r][c];
+      };
+      const etat=b=>{
+        const gs={medusaParalyzed:new Set(),anchored:new Set(),pretreProtected:new Set(),
+          grandMaitreAlive:{w:false,b:false},enPassant:null,lastMoveHistory:[]};
+        updatePretreProtection(b,gs);updateGrandMaitre(b,gs);
+        return gs;
+      };
+      const coups=(b,r,c)=>generateMovesRaw(b,r,c,etat(b));
+      const va=(b,r,c,tr,tc)=>coups(b,r,c).some(m=>m.r===tr&&m.c===tc);
+      const pk=m=>(m.path||[]).map(q=>''+q.r+q.c).join('');
+
+      // FURIE — chaque prise rend un pas ; la chaîne peut finir sur le Roi.
+      let b=vide();pose(b,4,4,'berserk','w');pose(b,3,4,'dame','b');pose(b,2,4,'tour-primordiale','b');
+      let ms=coups(b,4,4);
+      if(!ms.some(m=>m.r===2&&m.c===4&&pk(m)==='34'))out.push('berserk : pas de seconde prise apres la premiere');
+      if(!ms.some(m=>m.r===1&&m.c===4&&pk(m)==='3424'))out.push('berserk : pas de pas apres deux prises');
+      if(!ms.some(m=>m.r===3&&m.c===4&&!m.path))out.push('berserk : il ne peut pas s arreter sur sa premiere prise');
+      if(ms.some(m=>m.r===4&&m.c===4))out.push('berserk : il revient sur sa case de depart');
+      if(ms.some(m=>m.r===2&&m.c===4&&!m.path))out.push('berserk : il saute par-dessus la dame');
+      const bk=b[4][4];const mv=ms.find(m=>pk(m)==='3424'&&m.r===1&&m.c===4);
+      if(mv){const nb=applyMoveQuick(b,{r:4,c:4},mv,bk,null);
+        if(nb[3][4]||nb[2][4]||!nb[1][4]||nb[1][4].pieceId!=='berserk')out.push('berserk : la chaine ne mange pas tout');}
+      b=vide();pose(b,4,4,'berserk','w');pose(b,3,4,'dame','b');pose(b,2,4,'tour-primordiale','b');pose(b,1,4,'roi','b');
+      if(!isInCheckSimple('b',b))out.push('berserk : la chaine qui mene au roi ne donne pas echec');
+      b[2][4]=null;
+      if(isInCheckSimple('b',b))out.push('berserk : echec sans chaine de prises');
+      b=vide();pose(b,4,4,'berserk','w');pose(b,3,4,'infecte','b');pose(b,2,4,'tour-primordiale','b');
+      if(coups(b,4,4).some(m=>pk(m)==='34'))out.push('berserk : il continue apres avoir mange l infecte');
+
+      // COUPERET — collée à lui, il la mange sans bouger ; à deux cases, il y va.
+      b=vide();const bo=pose(b,4,4,'boucher','w');pose(b,3,4,'dame','b');
+      const sh=coups(b,4,4).find(m=>m.r===3&&m.c===4);
+      if(!sh||!sh.shoot)out.push('boucher : la prise collee n est pas un couperet');
+      else{const nb=applyMoveQuick(b,{r:4,c:4},sh,bo,null);
+        if(nb[3][4]||!nb[4][4]||nb[4][4].pieceId!=='boucher')out.push('boucher : il a bouge pour manger de pres');}
+      if(va(b,4,4,2,4))out.push('boucher : il passe au travers d une piece');
+      b=vide();pose(b,4,4,'boucher','w');pose(b,2,4,'dame','b');
+      const loin=coups(b,4,4).find(m=>m.r===2&&m.c===4);
+      if(!loin||loin.shoot)out.push('boucher : la prise a deux cases ne le deplace pas');
+      if(va(b,4,4,1,4)||va(b,4,4,3,3))out.push('boucher : il va trop loin ou en biais');
+      b=vide();pose(b,4,4,'boucher','w');pose(b,2,4,'roi','b');
+      if(!isInCheckSimple('b',b))out.push('boucher : pas d echec a deux cases');
+      pose(b,3,4,'fourmi','b');
+      if(isInCheckSimple('b',b))out.push('boucher : echec a travers une piece');
+
+      // LES MONARQUES — la Matriarche ne marche qu'en biais, l'Empereur est
+      // un Roi qui bondit aussi en Cavalier.
+      b=vide();pose(b,4,4,'matriarche','w');
+      if(!va(b,4,4,3,3)||va(b,4,4,3,4)||va(b,4,4,4,5))out.push('matriarche : deplacement inexact');
+      b=vide();pose(b,4,4,'matriarche','w');pose(b,3,3,'roi','b');
+      if(!isInCheckSimple('b',b))out.push('matriarche : pas d echec en biais');
+      b=vide();pose(b,4,4,'matriarche','w');pose(b,3,4,'roi','b');
+      if(isInCheckSimple('b',b))out.push('matriarche : echec tout droit');
+      b=vide();pose(b,4,4,'imperator','w');
+      if(!va(b,4,4,2,3)||!va(b,4,4,3,4)||va(b,4,4,2,4))out.push('empereur : deplacement inexact');
+      b=vide();pose(b,4,4,'imperator','w');pose(b,2,5,'roi','b');
+      if(!isInCheckSimple('b',b))out.push('empereur : pas d echec en cavalier');
+
+      // LES TROUPES — la façon d'avancer, la façon de manger.
+      const troupe=(id,marche,prise,pasPrise)=>{
+        let t=vide();pose(t,6,4,id,'w');
+        marche.forEach(([r,c])=>{if(!va(t,6,4,r,c))out.push(id+' : ne va pas en '+r+c);});
+        [[5,4],[5,3],[5,5],[4,4],[4,2],[4,6]].filter(q=>!marche.some(x=>x[0]===q[0]&&x[1]===q[1]))
+          .forEach(([r,c])=>{if(va(t,6,4,r,c))out.push(id+' : va en '+r+c);});
+        prise.forEach(([r,c])=>{t=vide();pose(t,6,4,id,'w');pose(t,r,c,'dame','b');if(!va(t,6,4,r,c))out.push(id+' : ne mange pas en '+r+c);});
+        pasPrise.forEach(([r,c])=>{t=vide();pose(t,6,4,id,'w');pose(t,r,c,'dame','b');if(va(t,6,4,r,c))out.push(id+' : mange en '+r+c);});
+      };
+      troupe('std-pawn',[[5,4],[4,4]],[[5,3],[5,5]],[[5,4]]);
+      troupe('pion-mercenaire',[[5,3],[5,5],[4,2],[4,6]],[[5,4]],[[5,3],[5,5]]);
+      troupe('pion-legionnaire',[[5,4],[4,4]],[[5,4]],[[5,3],[5,5]]);
+      troupe('pion-barbare',[[5,3],[5,5],[4,2],[4,6]],[[5,3],[5,5]],[[5,4]]);
+      b=vide();pose(b,4,4,'pion-mercenaire','w');pose(b,3,4,'roi','b');
+      if(!isInCheckSimple('b',b))out.push('mercenaire : pas d echec tout droit');
+      b=vide();pose(b,4,4,'pion-mercenaire','w');pose(b,3,3,'roi','b');
+      if(isInCheckSimple('b',b))out.push('mercenaire : echec en biais');
+      b=vide();pose(b,6,4,'pion-legionnaire','w');pose(b,5,4,'preux-chevalier','b');
+      if(va(b,6,4,5,4))out.push('cuirasse : un legionnaire capture le preux chevalier');
+      const plateau=buildGameBoard({mon:{id:'matriarche'},gen:{id:'dame'},extras:[],placements:{},pawns:'barbares'},
+        {mon:{id:'imperator'},gen:{id:'dame'},extras:[],placements:{},pawns:'mercenaires'});
+      if(plateau[6].some(x=>!x||x.pieceId!=='pion-barbare'))out.push('troupe : les barbares ne sont pas sur le plateau');
+      if(plateau[1].some(x=>!x||x.pieceId!=='pion-mercenaire'))out.push('troupe : les mercenaires ne sont pas sur le plateau');
+      if(!plateau[7][3].isGeneral||!plateau[0][3].isGeneral)out.push('matriarche : le general n est pas marque');
+      if(plateau[7][4].pieceId!=='matriarche'||!plateau[7][4].isKing)out.push('matriarche : elle n est pas le monarque');
+
+      // LA RÉANIMATION — une fois, une créature de valeur 2, à côté d'elle,
+      // sans changer le trait.
+      const avant=REPLAYING;REPLAYING=true;
+      try{
+        b=vide();pose(b,7,4,'matriarche','w');pose(b,0,4,'roi','b');pose(b,6,0,'std-pawn','w');
+        const g={board:b,turn:'w',generalSeen:{w:true,b:false},reviveUsed:{w:false,b:false},replay:[],
+          medusaParalyzed:new Set(),anchored:new Set(),pretreProtected:new Set(),grandMaitreAlive:{w:false,b:false},turnCount:3};
+        updateMatriarche(b,g);
+        if(!g.reviveReady.w)out.push('reanimation : pas offerte quand le general est tombe');
+        if(applyMatriarcheRevive(g,'w','dame',6,4))out.push('reanimation : une dame relevee');
+        if(applyMatriarcheRevive(g,'w','fourmi',5,4))out.push('reanimation : posee loin de la matriarche');
+        if(!applyMatriarcheRevive(g,'w','fourmi',6,4))out.push('reanimation : refusee sur une case valable');
+        else{
+          if(!b[6][4]||b[6][4].pieceId!=='fourmi')out.push('reanimation : la fourmi n est pas posee');
+          if(g.turn!=='w')out.push('reanimation : elle a coute le tour');
+          if(applyMatriarcheRevive(g,'w','meduse',6,5))out.push('reanimation : utilisee deux fois');
+          if(g.replay[0]!=='R64:fourmi')out.push('reanimation : non enregistree pour la relecture ('+g.replay[0]+')');
+        }
+      }finally{REPLAYING=avant;}
+
+      // L'IA sait jouer avec (et contre) tout ça : le Worker se compile, et
+      // une recherche sur une position qui les contient tous rend un coup.
+      try{new Function(getWorkerCode());}catch(e){out.push('ia : le worker ne compile plus ('+e.message+')');}
+      b=vide();pose(b,7,4,'matriarche','w');pose(b,0,4,'imperator','b');pose(b,4,4,'berserk','b');pose(b,5,4,'dame','w');
+      pose(b,6,4,'pion-legionnaire','w');pose(b,2,2,'boucher','b');pose(b,3,2,'fourmi','w');pose(b,1,1,'pion-barbare','b');
+      const sg={board:b,turn:'b',enPassant:null,halfmoveClock:0,anchored:new Set(),medusaParalyzed:new Set(),
+        pretreProtected:new Set(),grandMaitreAlive:{w:false,b:false},lastMoveHistory:[]};
+      const sc=aiSearchRoot(sg,{...AI_OPPONENTS[4],timeMs:300,depthCap:3});
+      if(!sc||!sc.length)out.push('ia : aucun coup trouve');
       return out;
     });
     if(bad.length)throw new Error(bad.join(' · '));

@@ -92,6 +92,12 @@ const POWER_ICONS={
   infecte:'<path d="M12 3c3 4.5 5 7.5 5 10.5a5 5 0 0 1-10 0C7 10.5 9 7.5 12 3z"/><path d="M4 8l1.5 1.5M20 8l-1.5 1.5M4 18h2M18 18h2"/>',
   // Invisible (Ombre) : un œil barré.
   ombre:'<path d="M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6-10-6-10-6z"/><circle cx="12" cy="12" r="2.6"/><path d="M4 20L20 4"/>',
+  // Réanimation (Matriarche) : une flèche qui remonte d'une tombe.
+  matriarche:'<path d="M5 21h14"/><path d="M7 21v-6a5 5 0 0 1 10 0v6"/><path d="M12 12V3"/><path d="M8.5 6.5L12 3l3.5 3.5"/>',
+  // Furie (Berserk) : une hache, et les pas qui s'enchaînent derrière elle.
+  berserk:'<path d="M14 3l7 7"/><path d="M14 3c-3 1-5 4-4 7l4-4 3 3c3 1 6-1 7-4"/><path d="M13 11L4 20"/><path d="M3 9h3M5 13h3"/>',
+  // Couperet (Boucher) : le couperet, qui frappe à côté de lui.
+  boucher:'<path d="M4 4h11v8H6a2 2 0 0 1-2-2z"/><path d="M15 8l6 6"/><circle cx="7.5" cy="7" r=".8"/><path d="M4 19h8"/>',
   // Pièce sans pouvoir : le pictogramme du déplacement seul (deux flèches).
   _none:'<path d="M12 4v16"/><path d="M4 12h16"/><path d="M8.5 7.5L12 4l3.5 3.5"/><path d="M8.5 16.5L12 20l3.5-3.5"/>',
 };

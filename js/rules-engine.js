@@ -150,22 +150,41 @@ function kingMoves(board,r,c,p,gs){
   }
   return moves;
 }
+// LES QUATRE TROUPES (PAWN_ARMIES, js/data-pieces.js) : chacune a sa façon
+// d'AVANCER (tout droit ou en biais) et sa façon de MANGER (tout droit ou en
+// biais), toujours d'une case vers l'avant. Le bond de deux cases du premier
+// pas suit la direction de marche : tout droit pour les soldats et les
+// légionnaires, en biais (sans sauter) pour les mercenaires et les barbares.
+// Une troupe inconnue marche comme les soldats.
+const PAWN_STYLE={
+  'std-pawn':        {walk:'fwd', take:'diag'},
+  'pion-mercenaire': {walk:'diag',take:'fwd'},
+  'pion-legionnaire':{walk:'fwd', take:'fwd'},
+  'pion-barbare':    {walk:'diag',take:'diag'},
+};
 function pawnMoves(board,r,c,p,gs){
   const moves=[];const dir=p.color==='w'?-1:1;const startRow=p.color==='w'?6:1;
+  const st=PAWN_STYLE[p.pieceId]||PAWN_STYLE['std-pawn'];
   // DOMINATION DU GRAND MAÎTRE : tant qu'il est vivant, les pions ADVERSES ne
   // peuvent pas avancer de 2 cases. La condition s'annulait quand les deux
   // camps en alignaient un — ce qui n'est pas la règle : chacun subit celui
   // d'en face, y compris quand il a le sien.
-  const gmBlocks=!!gs.grandMaitreAlive[opp(p.color)];
-  const fr=r+dir;
-  if(inB(fr,c)&&!barsPath(board[fr][c],p.color)){
-    moves.push({r:fr,c});
-    if(r===startRow&&inB(r+2*dir,c)&&!barsPath(board[r+2*dir][c],p.color)&&!gmBlocks)moves.push({r:r+2*dir,c});
+  const gmBlocks=!!(gs.grandMaitreAlive&&gs.grandMaitreAlive[opp(p.color)]);
+  const walkCols=st.walk==='fwd'?[0]:[-1,1];
+  for(const dc of walkCols){
+    const fr=r+dir,fc=c+dc;
+    if(!inB(fr,fc)||barsPath(board[fr][fc],p.color))continue;
+    moves.push({r:fr,c:fc});
+    const r2=r+2*dir,c2=c+2*dc;
+    if(r===startRow&&!gmBlocks&&inB(r2,c2)&&!barsPath(board[r2][c2],p.color))moves.push({r:r2,c:c2});
   }
-  for(const dc of[-1,1]){
+  const takeCols=st.take==='fwd'?[0]:[-1,1];
+  for(const dc of takeCols){
     const tr=r+dir,tc=c+dc;if(!inB(tr,tc))continue;const t=board[tr][tc];
     if(t&&t.color!==p.color&&t.pieceId!=='preux-chevalier')moves.push({r:tr,c:tc});
-    if(gs.enPassant&&gs.enPassant.r===tr&&gs.enPassant.c===tc)moves.push({r:tr,c:tc,ep:true});
+    // La prise en passant est une prise EN BIAIS : elle reste aux troupes
+    // qui mangent en biais.
+    if(dc&&gs.enPassant&&gs.enPassant.r===tr&&gs.enPassant.c===tc)moves.push({r:tr,c:tc,ep:true});
   }
   return moves;
 }
@@ -179,14 +198,18 @@ function generateMovesRaw(board,r,c,gs){
   if(gs.anchored&&gs.anchored.has(`${r},${c}`))return[];
   let moves=[];const id=p.pieceId||'';
 
-  // LE ROI EST LE SEUL MONARQUE. L'Empereur — qui marchait comme lui ET
-  // sautait comme un cavalier — a été retiré du jeu : il n'y a donc plus de
-  // branche à choisir ici, et plus aucune liste `['roi','empereur']` à tenir
-  // à jour ailleurs dans le fichier. `isKing`/`type==='k'` reste le test :
-  // c'est lui que porte une pièce PROMUE en Roi comme le Roi de départ.
+  // LE MONARQUE. Un seul par camp, mais trois possibles : le Roi, la
+  // Matriarche (une case en biais, ni pas droit ni roque) et l'Empereur
+  // ('imperator' : le Roi, plus le bond du Cavalier). `isKing`/`type==='k'`
+  // reste le test « est-ce le Monarque ? » partout ailleurs ; seul le
+  // DÉPLACEMENT se choisit ici, sur l'identifiant.
   if(p.isKing||p.type==='k'||id==='roi'){
+    let mm;
+    if(id==='matriarche')mm=jumpMoves(board,r,c,p,[[1,1],[1,-1],[-1,1],[-1,-1]]);
+    else if(id==='imperator')mm=[...kingMoves(board,r,c,p,gs),...knightMoves(board,r,c,p)];
+    else mm=kingMoves(board,r,c,p,gs);
     // Le Monarque ne mange jamais l'Infecté : la contagion l'emporterait.
-    return kingMoves(board,r,c,p,gs).filter(m=>{const t=board[m.r][m.c];return !(t&&t.pieceId==='infecte'&&t.color!==p.color);});
+    return mm.filter(m=>{const t=board[m.r][m.c];return !(t&&t.pieceId==='infecte'&&t.color!==p.color);});
   }
 
   switch(id){
@@ -270,6 +293,25 @@ function generateMovesRaw(board,r,c,gs){
       for(const[dr,dc] of[[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]]){const nr=r+dr,nc=c+dc;if(inB(nr,nc)&&canLand(board[nr][nc],p))moves.push({r:nr,c:nc});}
       for(const[dr,dc] of[[2,2],[2,-2],[-2,2],[-2,-2]]){const nr=r+dr,nc=c+dc;if(!inB(nr,nc))continue;if(barsPath(board[r+dr/2][c+dc/2],p.color))continue;if(canLand(board[nr][nc],p))moves.push({r:nr,c:nc});}
       break;
+    // LE BERSERK : une case en ligne droite, et un pas de plus après chaque
+    // prise (voir berserkMoves).
+    case 'berserk':
+      moves=berserkMoves(board,r,c,p,gs);break;
+    // LE BOUCHER : une ou deux cases en ligne droite, sans sauter. Une ennemie
+    // COLLÉE à lui, il la mange SANS BOUGER (`shoot`) ; à deux cases, il y va.
+    case 'boucher':
+      for(const[dr,dc] of[[1,0],[-1,0],[0,1],[0,-1]]){
+        const r1=r+dr,c1=c+dc;if(!inB(r1,c1))continue;
+        const t1=board[r1][c1];
+        if(barsPath(t1,p.color)){
+          if(t1.color!==p.color)moves.push({r:r1,c:c1,shoot:true});
+          continue;
+        }
+        moves.push({r:r1,c:c1});
+        const r2=r+2*dr,c2=c+2*dc;
+        if(inB(r2,c2)&&canLand(board[r2][c2],p))moves.push({r:r2,c:c2});
+      }
+      break;
     default:
       switch(p.type){
         case 'p':moves=pawnMoves(board,r,c,p,gs);break;
@@ -340,10 +382,63 @@ function singeMoves(board,r,c,p,gs){
   paths.sort((a,b)=>b.rank-a.rank);
   return paths.map(m=>{const o={r:m.r,c:m.c,via:{r:m.vr,c:m.vc}};if(m.rank>0)o.viaCap=true;return o;});
 }
+// ----------------------------------------------------------------
+// LE BERSERK : la Furie, une chaîne de prises dans le même coup
+// ----------------------------------------------------------------
+// Il fait un pas d'une case en ligne droite. Si ce pas MANGE, il en fait un
+// autre, et ainsi de suite tant qu'il mange ; le premier pas qui ne mange pas
+// termine le coup, et il peut aussi s'arrêter sur n'importe laquelle de ses
+// prises. Un coup de Berserk est donc un CHEMIN : `path` est la liste des
+// cases mangées EN PASSANT (dans l'ordre), la case d'arrivée étant la
+// dernière — une prise encore, ou un pas dans le vide.
+//
+// Ce qui arrête la chaîne :
+//   · une alliée (il ne passe pas dessus), le bord du plateau ;
+//   · le Monarque adverse : il est la FIN du chemin (c'est l'échec), pas une
+//     étape ;
+//   · l'Infecté : le manger le tue sur place, il ne peut qu'être la dernière
+//     prise ;
+//   · un reflet d'Illusion : ce n'est pas une pièce, le prendre ne rend pas
+//     de pas ;
+//   · une pièce qu'il n'a pas le droit de prendre en passant (protégée du
+//     Prêtre, Garde ancré) — les mêmes exceptions que le premier pas du Singe.
+// Il ne revient jamais sur sa case de départ (ce serait un coup sans
+// déplacement).
+//
+// Comme pour le Singe, deux chemins vers la même case sont deux coups
+// distincts, que distingue `path`. Ils sont rendus du plus court au plus
+// long : un appelant qui ne connaît que les deux cases (prémouvement)
+// retombe sur le pas le plus simple.
+function berserkMoves(board,r,c,p,gs){
+  const out=[];const eaten=new Set();const path=[];
+  const walk=(cr,cc)=>{
+    for(const[dr,dc] of[[1,0],[-1,0],[0,1],[0,-1]]){
+      const nr=cr+dr,nc=cc+dc;
+      if(!inB(nr,nc)||(nr===r&&nc===c))continue;
+      const k=nr+','+nc;
+      const t=eaten.has(k)?null:board[nr][nc];
+      const stop={r:nr,c:nc};if(path.length)stop.path=path.slice();
+      if(!barsPath(t,p.color)){out.push(stop);continue;}   // pas dans le vide : fin
+      if(t.color===p.color)continue;
+      out.push(stop);                                       // il mange et s'arrête là
+      if(t.isKing||t.type==='k'||t.pieceId==='infecte'||t.pieceId==='reflet')continue;
+      if(gs&&gs.anchored&&gs.anchored.has(k))continue;
+      if(gs&&gs.pretreProtected&&gs.pretreProtected.has(t.color+':'+k))continue;
+      eaten.add(k);path.push({r:nr,c:nc});
+      walk(nr,nc);
+      path.pop();eaten.delete(k);
+    }
+  };
+  walk(r,c);
+  return out.sort((a,b)=>(a.path?a.path.length:0)-(b.path?b.path.length:0));
+}
+function pathKey(path){return (path||[]).map(q=>''+q.r+q.c).join('');}
 // Le coup `m` est-il celui qu'on désigne par `to` ? Les deux cases, et le
-// premier pas du Singe quand il est précisé.
+// chemin quand il est précisé : premier pas du Singe (`via`), prises en
+// passant du Berserk (`path`).
 function sameMove(m,to){
   if(m.r!==to.r||m.c!==to.c)return false;
+  if(to.path!==undefined&&to.path!==null&&pathKey(m.path)!==pathKey(to.path))return false;
   if(!to.via)return true;
   return !!m.via&&m.via.r===to.via.r&&m.via.c===to.via.c;
 }
@@ -468,13 +563,14 @@ function isInCheckSimple(color,board){
 // pour elles, sinon la Banshee, le Typhon ou un Garde donneraient échec
 // comme leur pieceType de base tout le long d'une ligne, ce qui est faux.
 const CUSTOM_MOVE_IDS=new Set(['amazone','fourmi','preux-chevalier','dresseur-elephant','garde-pierre','meduse','typhon','banshee','pretre',
-  'pegase','loup-geant','singe','illusion','reflet','nyx','infecte','ombre']);
+  'pegase','loup-geant','singe','illusion','reflet','nyx','infecte','ombre',
+  'berserk','boucher','pion-mercenaire','pion-legionnaire']);
 // Pièces qui donnent échec en GLISSANT (portée illimitée). Le raccourci par
 // pieceType (b/r/q) couvre en plus les pièces standard et promues.
 const DIAG_SLIDER_IDS=new Set(['fou-primordial','amazone','dame','grand-maitre']);
 const ORTHO_SLIDER_IDS=new Set(['tour-primordiale','chevaucheur-rhinoceros','dame','grand-maitre']);
 // Pièces qui donnent échec par un saut de cavalier.
-const KNIGHT_ATK_IDS=new Set(['cavalier-primordial','amazone','chevaucheur-rhinoceros','grand-maitre','nyx']);
+const KNIGHT_ATK_IDS=new Set(['cavalier-primordial','amazone','chevaucheur-rhinoceros','grand-maitre','nyx','imperator']);
 // Pièces qui donnent échec sur une case adjacente (8 directions, 1 case).
 const KING_ADJ_IDS=new Set(['roi','garde-pierre','nyx']);
 
@@ -506,13 +602,19 @@ function isSquareAttackedSimple(tr,tc,defColor,board){
     }
   }
   // --- Roi / pièces à portée 1 case dans les 8 directions (Garde de Pierre) ---
+  // La Matriarche est un Monarque qui ne frappe qu'en biais : elle a sa
+  // propre ligne juste après.
   for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++){
     if(!dr&&!dc)continue;const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;const p=board[r][c];
-    if(p&&p.color===atk&&(p.type==='k'||p.isKing||KING_ADJ_IDS.has(p.pieceId)))return true;
+    if(p&&p.color===atk&&(((p.type==='k'||p.isKing)&&p.pieceId!=='matriarche')||KING_ADJ_IDS.has(p.pieceId)))return true;
   }
-  // --- Pions standard (capture diagonale vers l'avant) ---
+  // --- Matriarche : 1 case en diagonale ---
+  for(const[dr,dc] of[[1,1],[1,-1],[-1,1],[-1,-1]]){const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;const p=board[r][c];if(p&&p.color===atk&&p.pieceId==='matriarche')return true;}
+  // --- Pions standard (capture diagonale vers l'avant) : soldats, barbares ---
   const pawnDir=defColor==='w'?-1:1;
   for(const dc of[-1,1]){const r=tr+pawnDir,c=tc+dc;if(inB(r,c)){const p=board[r][c];if(p&&p.color===atk&&!CUSTOM_MOVE_IDS.has(p.pieceId)&&(p.type==='p'||p.pieceId==='std-pawn'))return true;}}
+  // --- Mercenaires et légionnaires : ils mangent TOUT DROIT vers l'avant ---
+  {const r=tr+pawnDir,c=tc;if(inB(r,c)){const p=board[r][c];if(p&&p.color===atk&&(p.pieceId==='pion-mercenaire'||p.pieceId==='pion-legionnaire'))return true;}}
   // --- Fourmi : avance ortho + diagonale d'1 case (capture comprise) ---
   // atkFwdDir = décalage entre la case cible et la Fourmi (inverse de son avance).
   {const atkFwdDir=atk==='w'?1:-1;
@@ -552,6 +654,34 @@ function isSquareAttackedSimple(tr,tc,defColor,board){
   // --- Illusion : 1 case tout droit ou en biais, 2 en biais chemin libre ---
   for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++){if(!dr&&!dc)continue;const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;const p=board[r][c];if(p&&p.color===atk&&p.pieceId==='illusion')return true;}
   for(const[dr,dc] of[[2,2],[2,-2],[-2,2],[-2,-2]]){const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;if(barsPath(board[tr+dr/2][tc+dc/2],atk))continue;const p=board[r][c];if(p&&p.color===atk&&p.pieceId==='illusion')return true;}
+  // --- Boucher : 1 case en ligne droite (il mange sans bouger), 2 chemin libre ---
+  for(const[dr,dc] of[[1,0],[-1,0],[0,1],[0,-1]]){
+    let r=tr+dr,c=tc+dc;if(!inB(r,c))continue;
+    let p=board[r][c];if(p&&p.color===atk&&p.pieceId==='boucher')return true;
+    if(barsPath(p,atk))continue;
+    r+=dr;c+=dc;if(!inB(r,c))continue;
+    p=board[r][c];if(p&&p.color===atk&&p.pieceId==='boucher')return true;
+  }
+  // --- Berserk : une chaîne de prises qui finit sur la case ---
+  // On remonte la chaîne à l'envers, depuis la case visée : un Berserk collé
+  // à elle en ligne droite la menace ; collé à une pièce du camp attaqué qu'il
+  // pourrait manger en passant (ni Monarque, ni Infecté, ni reflet), il menace
+  // tout ce que cette pièce-là toucherait. Chaque case n'est visitée qu'une
+  // fois : la chaîne ne repasse jamais par une prise déjà faite.
+  {
+    const seen=new Set([tr+','+tc]);const todo=[[tr,tc]];
+    while(todo.length){
+      const[qr,qc]=todo.pop();
+      for(const[dr,dc] of[[1,0],[-1,0],[0,1],[0,-1]]){
+        const r=qr+dr,c=qc+dc;if(!inB(r,c))continue;
+        const k=r+','+c;if(seen.has(k))continue;
+        const p=board[r][c];if(!p)continue;
+        if(p.color===atk){if(p.pieceId==='berserk')return true;continue;}
+        if(p.isKing||p.type==='k'||p.pieceId==='infecte'||p.pieceId==='reflet')continue;
+        seen.add(k);todo.push([r,c]);
+      }
+    }
+  }
   // --- Singe : son premier pas OU son second peut tomber sur la case ---
   // Premier pas : il est en biais contre elle. Second pas : il est à deux
   // pas de biais, par une case V franchissable pour LUI (vide, son propre
@@ -577,7 +707,7 @@ function getLegalMovesKingFiltered(board,r,c,gs,moves){
   if(!isKingPiece)return moves;
   return moves.filter(m=>{
     for(const[dr,dc] of[[1,1],[1,-1],[-1,1],[-1,-1]]){const tr=m.r+dr,tc=m.c+dc;if(!inB(tr,tc))continue;const t=board[tr][tc];if(t&&t.color!==p.color&&t.pieceId==='typhon')return false;}
-    for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++){if(!dr&&!dc)continue;const nr=m.r+dr,nc=m.c+dc;if(!inB(nr,nc))continue;const t=board[nr][nc];if(t&&t.color!==p.color&&(t.type==='k'||t.isKing))return false;}
+    for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++){if(!dr&&!dc)continue;const nr=m.r+dr,nc=m.c+dc;if(!inB(nr,nc))continue;const t=board[nr][nc];if(t&&t.color!==p.color&&(t.type==='k'||t.isKing)&&(t.pieceId!=='matriarche'||(dr&&dc)))return false;}
     return true;
   });
 }
@@ -586,6 +716,12 @@ function moveLeavesKingInCheck(board,fromR,fromC,move,color,anchored){
   if(move.stayPut)return false;
   const b=cloneBoard(board);const p=b[fromR][fromC];if(!p)return false;
   const victim=b[move.r][move.c];
+  // Le Couperet du Boucher : la victime disparaît, le Boucher ne bouge pas.
+  if(move.shoot){
+    b[move.r][move.c]=null;
+    if(victim&&victim.pieceId==='illusion')refletSweep(b);
+    return isInCheckSimple(color,b);
+  }
   if(move.ep){const pr=move.r+(color==='w'?1:-1);b[pr][move.c]=null;}
   if(move.castle){if(move.castle==='K'){b[fromR][5]=b[fromR][7];b[fromR][7]=null;}if(move.castle==='Q'){b[fromR][3]=b[fromR][0];b[fromR][0]=null;}}
   b[move.r][move.c]={...p,hasMoved:true};b[fromR][fromC]=null;
@@ -650,6 +786,119 @@ function updateGrandMaitre(board,gs){
   gs.grandMaitreAlive={w:false,b:false};
   for(let r=0;r<8;r++)for(let c=0;c<8;c++){const p=board[r][c];if(p&&p.pieceId==='grand-maitre')gs.grandMaitreAlive[p.color]=true;}
 }
+// ================================================================
+// LA RÉANIMATION DE LA MATRIARCHE
+// ================================================================
+// Si le Général d'un camp tombe (par n'importe quel chemin : prise, orage,
+// charge, Furie, Couperet…) et que ce camp a une Matriarche pour Monarque, il
+// peut, UNE FOIS dans la partie, relever son Général en une créature de
+// valeur 2 (reviveChoices) posée sur une case LIBRE à côté d'elle. Ça ne
+// coûte pas de tour : le joueur réanime, puis joue son coup comme d'habitude.
+//
+// LE GÉNÉRAL EST LA PIÈCE POSÉE DANS L'EMPLACEMENT « GÉNÉRAL » de l'armée.
+// buildGameBoard (js/game-flow.js) la marque `isGeneral` ; une pièce promue
+// du même type n'est pas LE Général et ne compte pas.
+//
+// L'état tient en trois drapeaux par camp : `generalSeen` (le camp a bien eu
+// un Général — un plateau du tutoriel peut ne pas en avoir), `reviveUsed` (la
+// Réanimation est dépensée) et `reviveReady`, recalculé après chaque coup : le
+// Général est tombé, la Matriarche vit, elle a une case libre à côté d'elle.
+// Le droit ne se perd pas si on ne l'exerce pas tout de suite ; il s'éteint
+// avec la Matriarche.
+function reviveChoices(){
+  return PIECES.filter(p=>p.value===2&&p.class!=='Monarque'&&p.class!=='Général').map(p=>p.id);
+}
+function matriarcheAt(board,color){
+  for(let r=0;r<8;r++)for(let c=0;c<8;c++){const t=board[r][c];if(t&&t.color===color&&t.pieceId==='matriarche')return{r,c};}
+  return null;
+}
+function reviveSquares(board,color){
+  const m=matriarcheAt(board,color);if(!m)return[];
+  const out=[];
+  for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++){
+    if(!dr&&!dc)continue;const r=m.r+dr,c=m.c+dc;
+    if(inB(r,c)&&!board[r][c])out.push({r,c});
+  }
+  return out;
+}
+function updateMatriarche(board,gs){
+  if(!gs.generalSeen)gs.generalSeen={w:false,b:false};
+  if(!gs.reviveUsed)gs.reviveUsed={w:false,b:false};
+  const gen={w:false,b:false};
+  for(let r=0;r<8;r++)for(let c=0;c<8;c++){const t=board[r][c];if(t&&t.isGeneral)gen[t.color]=true;}
+  gs.reviveReady={w:false,b:false};
+  ['w','b'].forEach(col=>{
+    if(gen[col])gs.generalSeen[col]=true;
+    gs.reviveReady[col]=!!(gs.generalSeen[col]&&!gen[col]&&!gs.reviveUsed[col]&&reviveSquares(board,col).length);
+  });
+}
+// Ce que l'annulation d'un coup doit pouvoir remettre (executeGameMove
+// l'empile dans chaque instantané).
+function matriarcheSnapshot(gs){
+  return{seen:{...(gs.generalSeen||{w:false,b:false})},used:{...(gs.reviveUsed||{w:false,b:false})}};
+}
+// La pièce relevée, telle qu'elle se pose sur le plateau.
+function reviveCell(pieceId,color,gs){
+  const d=PIECES.find(p=>p.id===pieceId);
+  return{type:d.pieceType||'r',color,pieceId,emoji:d.emoji,hasMoved:true,isKing:false,
+    id:'rv-'+color+'-'+((gs&&gs.turnCount)||0)};
+}
+// Rend true si la Réanimation a eu lieu. C'est le guichet UNIQUE : le joueur
+// (js/game-render.js), l'IA (matriarcheAIRevive), l'adversaire en ligne
+// (js/multiplayer.js) et la relecture (js/replay.js) passent tous par ici, et
+// c'est ici que tout est revérifié.
+function applyMatriarcheRevive(gs,color,pieceId,r,c){
+  if(!gs||gs.gameOver||gs.turn!==color)return false;
+  updateMatriarche(gs.board,gs);
+  if(!gs.reviveReady[color])return false;
+  if(!reviveChoices().includes(pieceId))return false;
+  if(!reviveSquares(gs.board,color).some(q=>q.r===r&&q.c===c))return false;
+  gs.board[r][c]=reviveCell(pieceId,color,gs);
+  gs.reviveUsed[color]=true;
+  if(!Array.isArray(gs.replay))gs.replay=[];
+  gs.replay.push('R'+r+c+':'+pieceId);
+  const icon=(typeof pieceIcon==='function')?pieceIcon(pieceId,color,1.05):'';
+  gs._reviveNote={color,html:'<span class="ml-flag">réanimation</span>'+icon+'<span class="ml-sq">'+mlSquare(r,c)+'</span> '};
+  updateMedusaParalysis(gs.board,gs);updatePretreProtection(gs.board,gs);updateGrandMaitre(gs.board,gs);updateMatriarche(gs.board,gs);
+  if(!REPLAYING){
+    if(typeof fxPromote==='function')fxPromote(r,c,pieceId);
+    if(typeof playSound==='function')playSound('promo');
+    if(typeof renderGame==='function')renderGame(gs);
+    if(typeof updateStatus==='function')updateStatus(gs);
+  }
+  return true;
+}
+// LE MAT TIENT COMPTE DE LA RÉANIMATION. Un camp sans coup légal n'est pas
+// perdu s'il peut encore relever son Général sur une case qui pare l'échec
+// (ou qui, simplement, lui rend un coup à jouer).
+function reviveCouldSave(color,gs){
+  if(!gs||!gs.reviveReady||!gs.reviveReady[color])return false;
+  const sq=reviveSquares(gs.board,color);
+  for(const id of reviveChoices())for(const q of sq){
+    const b=cloneBoard(gs.board);b[q.r][q.c]=reviveCell(id,color,gs);
+    const g={medusaParalyzed:new Set(),pretreProtected:new Set(),anchored:new Set(gs.anchored||[]),
+      grandMaitreAlive:{w:false,b:false},enPassant:gs.enPassant,lastMoveHistory:[]};
+    updateMedusaParalysis(b,g);updatePretreProtection(b,g);updateGrandMaitre(b,g);
+    if(hasLegalMovesForColor(color,b,g))return true;
+  }
+  return false;
+}
+// L'IA réanime dès qu'elle le peut, là où sa propre évaluation le préfère
+// (evalBoard, js/ai-engine.js : positif = bon pour les Noirs).
+function matriarcheAIRevive(gs,color){
+  if(!gs||gs.gameOver||gs.turn!==color)return false;
+  updateMatriarche(gs.board,gs);
+  if(!gs.reviveReady||!gs.reviveReady[color])return false;
+  let best=null,bestSc=-Infinity;
+  const sign=color==='b'?1:-1;
+  for(const id of reviveChoices())for(const q of reviveSquares(gs.board,color)){
+    const b=cloneBoard(gs.board);b[q.r][q.c]=reviveCell(id,color,gs);
+    const sc=(typeof evalBoard==='function'?evalBoard(b,gs):0)*sign;
+    if(sc>bestSc){bestSc=sc;best={id,r:q.r,c:q.c};}
+  }
+  return !!best&&applyMatriarcheRevive(gs,color,best.id,best.r,best.c);
+}
+
 function applyTyphonEffect(toR,toC,board,p,gs){
   if(p.pieceId!=='typhon')return;
   for(const[dr,dc] of[[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]]){
@@ -722,6 +971,8 @@ function applyCollateralOnBoard(b,from,to,p,anchored,victim){
     return h;
   };
   if(to.via&&hits(b[to.via.r][to.via.c],to.via.r,to.via.c))b[to.via.r][to.via.c]=null;
+  // Les prises en passant du Berserk (sa case d'arrivée, elle, est déjà jouée).
+  if(to.path)to.path.forEach(q=>{if(hits(b[q.r][q.c],q.r,q.c))b[q.r][q.c]=null;});
   if(to.destroysPath){
     const fr=(to.fromR!==undefined)?to.fromR:from.r,fc=(to.fromC!==undefined)?to.fromC:from.c;
     const dr=Math.sign(to.r-fr),dc=Math.sign(to.c-fc);
@@ -831,7 +1082,7 @@ function fxPromoteAt(board,to){
 function executeGameMove(from,to,gs){
   const b=gs.board;const p=b[from.r][from.c];if(!p)return;
   gs.singeVia=null;   // un Singe à mi-chemin (js/game-render.js) : le coup part, l'étape s'efface
-  const snapshot={board:cloneBoard(b),turn:gs.turn,enPassant:gs.enPassant,halfmoveClock:gs.halfmoveClock,movePairs:JSON.parse(JSON.stringify(gs.movePairs)),capturedW:[...gs.capturedW],capturedB:[...gs.capturedB],anchored:new Set(gs.anchored||[]),grandMaitreAlive:{...gs.grandMaitreAlive},turnCount:gs.turnCount,timeWhite:gs.timeWhite,timeBlack:gs.timeBlack,replay:(gs.replay||[]).slice()};
+  const snapshot={board:cloneBoard(b),turn:gs.turn,enPassant:gs.enPassant,halfmoveClock:gs.halfmoveClock,movePairs:JSON.parse(JSON.stringify(gs.movePairs)),capturedW:[...gs.capturedW],capturedB:[...gs.capturedB],anchored:new Set(gs.anchored||[]),grandMaitreAlive:{...gs.grandMaitreAlive},turnCount:gs.turnCount,timeWhite:gs.timeWhite,timeBlack:gs.timeBlack,replay:(gs.replay||[]).slice(),matriarche:matriarcheSnapshot(gs)};
   gs.history.push(snapshot);gs.historyView=null;
   // L'Ombre qui bouge se montre pour ce demi-coup-ci (ombreHiddenFor).
   if(p.pieceId==='ombre')p._seenAt=gs.turnCount||0;
@@ -850,10 +1101,18 @@ function executeGameMove(from,to,gs){
     const v=b[to.via.r][to.via.c];
     if(v&&v.color!==p.color&&!(v.isKing||v.type==='k')){viaCaptured=v;pushCaptured(gs,v);b[to.via.r][to.via.c]=null;}
   }
+  // LA FURIE DU BERSERK : tout ce qu'il a mangé en chemin (voir berserkMoves).
+  const pathCaptured=[];
+  if(to.path)to.path.forEach(q=>{
+    const v=b[q.r][q.c];
+    if(v&&v.color!==p.color&&!(v.isKing||v.type==='k')){pathCaptured.push({r:q.r,c:q.c,v});pushCaptured(gs,v);b[q.r][q.c]=null;}
+  });
 
   if(to.castle){if(to.castle==='K'){b[from.r][5]=b[from.r][7];b[from.r][7]=null;if(b[from.r][5])b[from.r][5].hasMoved=true;}if(to.castle==='Q'){b[from.r][3]=b[from.r][0];b[from.r][0]=null;if(b[from.r][3])b[from.r][3].hasMoved=true;}}
 
-  b[to.r][to.c]=p;b[from.r][from.c]=null;p.hasMoved=true;
+  // LE COUPERET DU BOUCHER : la victime tombe, le Boucher reste où il est.
+  if(to.shoot){b[to.r][to.c]=null;p.hasMoved=true;}
+  else{b[to.r][to.c]=p;b[from.r][from.c]=null;p.hasMoved=true;}
 
   if(to.destroysPath)applyChargeEffect(to,b,p,gs);
   applyTyphonEffect(to.r,to.c,b,p,gs);
@@ -884,7 +1143,11 @@ function executeGameMove(from,to,gs){
   // dirait où elle est.
   const fogNow=nyxFogLive(gs,b);
   const hiddenMove=p.color!==(gs.playerColor||'w')&&(fogNow.has(to.r+','+to.c)||fogNow.has(from.r+','+from.c));
-  if(typeof fxPlayMove==='function'&&!REPLAYING&&!hiddenMove){
+  if(to.shoot&&!REPLAYING&&!hiddenMove){
+    // Le Boucher ne quitte pas sa case : pas de traînée, seulement l'impact.
+    if(captured&&typeof fxImpact==='function')fxImpact(to.r,to.c,captured.pieceId);
+  }
+  else if(typeof fxPlayMove==='function'&&!REPLAYING&&!hiddenMove){
     // La prise en passant se joue sur une case que le pion N'ATTEINT PAS :
     // l'éclat doit tomber sur la victime, une rangée derrière, sinon il
     // s'allume sur une case où il ne s'est rien passé.
@@ -903,20 +1166,24 @@ function executeGameMove(from,to,gs){
       castle:to.castle||null,rook:rook,rookPieceId:rookPieceId,power:power,
     });
     if(viaCaptured&&typeof fxImpact==='function')fxImpact(to.via.r,to.via.c,viaCaptured.pieceId);
+    if(typeof fxImpact==='function')pathCaptured.forEach(x=>fxImpact(x.r,x.c,x.v.pieceId));
     // Les pouvoirs qui ne détruisent rien mais changent une règle : le dôme du
     // Prêtre, la Domination du Grand Maître.
     if(!REPLAYING)fxCreatureSignature(p,to,b,gs);
   }
 
   gs.enPassant=null;
-  if(p.pieceId==='std-pawn'&&Math.abs(to.r-from.r)===2)gs.enPassant={r:(to.r+from.r)/2,c:from.c};
+  // Seul un bond de deux cases TOUT DROIT ouvre une prise en passant (soldats,
+  // légionnaires) : la case sautée est alors juste derrière la pièce.
+  if(isTruePawn(p)&&Math.abs(to.r-from.r)===2&&to.c===from.c)gs.enPassant={r:(to.r+from.r)/2,c:from.c};
   if(!captured&&viaCaptured)captured=viaCaptured;
-  gs.halfmoveClock=(p.type==='p'||captured)?0:gs.halfmoveClock+1;
+  if(!captured&&pathCaptured.length)captured=pathCaptured[pathCaptured.length-1].v;
+  gs.halfmoveClock=(p.type==='p'||captured||pathCaptured.length)?0:gs.halfmoveClock+1;
 
   // LE PION ET LA FOURMI se promeuvent en atteignant la dernière rangée (voir
   // PROMOTING_IDS, js/data-pieces.js). Ni l'un ni l'autre ne recule : la
   // rangée 0 est forcément celle des Blancs, la 7 celle des Noirs.
-  const isPawnPromo=!contagion&&pieceCanPromote(p.pieceId)&&(to.r===0||to.r===7);
+  const isPawnPromo=!contagion&&!to.shoot&&pieceCanPromote(p.pieceId)&&(to.r===0||to.r===7);
   if(isPawnPromo){
     const aiCol=gs.aiColor||'b';
     // Promotion imposée : coup reçu d'un adversaire en ligne, qui a déjà
@@ -1044,7 +1311,7 @@ initAudioOnInteraction();
 //  doAIMove est défini dans ai-engine.js)
 // ================================================================
 function postMoveUpdate(gs){
-  updateMedusaParalysis(gs.board,gs);updatePretreProtection(gs.board,gs);updateGrandMaitre(gs.board,gs);
+  updateMedusaParalysis(gs.board,gs);updatePretreProtection(gs.board,gs);updateGrandMaitre(gs.board,gs);updateMatriarche(gs.board,gs);
   // RELECTURE : on recalcule les états spéciaux (fait juste au-dessus) et on
   // note l'échec ou le mat dans la notation — c'est tout. Pas de barre de
   // statut, pas de rendu, pas de fin de partie, pas de coup d'IA : la partie
@@ -1053,7 +1320,7 @@ function postMoveUpdate(gs){
     if(typeof isInCheckSimple==='function'&&typeof hasLegalMovesForColor==='function'){
       const t=gs.turn;
       const check=isInCheckSimple(t,gs.board);
-      const libre=hasLegalMovesForColor(t,gs.board,gs);
+      const libre=hasLegalMovesForColor(t,gs.board,gs)||reviveCouldSave(t,gs);
       if(typeof markLastMove==='function')markLastMove(gs,(!libre&&check)?'#':check?'+':'');
     }
     return;
@@ -1061,6 +1328,9 @@ function postMoveUpdate(gs){
   updateStatus(gs);renderGame(gs);
   const aiCol=gs.aiColor||'b';
   if(gs.turn===aiCol&&!gs.multiplayer&&!gs.gameOver&&!gs.pendingPromo)setTimeout(()=>doAIMove(gs),500);
+  // Le Général du joueur vient de tomber et sa Matriarche vit : on lui offre
+  // la Réanimation dès que le trait lui revient (js/game-render.js).
+  if(typeof matriarcheOfferRevive==='function')matriarcheOfferRevive(gs);
   // LE PRÉMOUVEMENT PART D'ICI, et de nulle part ailleurs : c'est le seul
   // point qui voit TOUS les coups — le nôtre, celui de l'IA, celui d'un
   // adversaire en ligne — et donc le seul qui sache que le trait vient de
@@ -1209,11 +1479,20 @@ function replayNote(p,to,gs,from){
   // Promotion : la pièce posée sur la case d'arrivée n'est plus celle qui est
   // partie. C'est le seul cas où les deux cases ne suffisent pas.
   const promo=(now&&p&&now.pieceId!==p.pieceId)?now.pieceId:null;
-  // Le premier pas du Singe, quand il y en a un : « 6442@53 ».
+  // Le premier pas du Singe, quand il y en a un : « 6442@53 ». Les prises en
+  // passant du Berserk, dans l'ordre : « 6444~5453 ».
   const via=to.via?'@'+to.via.r+to.via.c:'';
-  gs.replay.push(''+from.r+from.c+to.r+to.c+via+(promo?':'+promo:''));
+  const path=(to.path&&to.path.length)?'~'+pathKey(to.path):'';
+  gs.replay.push(''+from.r+from.c+to.r+to.c+via+path+(promo?':'+promo:''));
 }
 
+// Le nombre de pièces tombées sous la Furie du Berserk : ses prises en
+// passant, plus celle de la case d'arrivée s'il y en avait une.
+function mlFurieCount(p,to,gs){
+  const snap=gs.history&&gs.history[gs.history.length-1];
+  const was=snap&&snap.board&&snap.board[to.r]&&snap.board[to.r][to.c];
+  return to.path.length+((was&&was.color!==p.color&&was.pieceId!=='reflet')?1:0);
+}
 function recordMove(p,to,isCapture,gs,from){
   replayNote(p,to,gs,from);
   // QUÊTES DE LA RANGÉE DE LA RICHESSE (js/rewards.js) : « déplacer 5 fois X »,
@@ -1252,14 +1531,20 @@ function recordMove(p,to,isCapture,gs,from){
       (to.ep?'<span class="ml-flag">e.p.</span>':'')+
       (to.destroysPath?'<span class="ml-flag">charge</span>':'')+
       (p.pieceId==='typhon'?'<span class="ml-flag">typhon</span>':'')+
+      (to.path&&to.path.length?'<span class="ml-flag">furie ×'+mlFurieCount(p,to,gs)+'</span>':'')+
+      (to.shoot?'<span class="ml-flag">couperet</span>':'')+
       // La case d'arrivée est vide après une prise : la pièce y est morte de
-      // la contagion de l'Infecté.
-      (isCapture&&gs.board&&gs.board[to.r]&&!gs.board[to.r][to.c]?'<span class="ml-flag">contagion</span>':'');
+      // la contagion de l'Infecté (le Couperet, lui, laisse toujours la case
+      // vide : le Boucher n'y va pas).
+      (!to.shoot&&isCapture&&gs.board&&gs.board[to.r]&&!gs.board[to.r][to.c]?'<span class="ml-flag">contagion</span>':'');
     // UN COUP ADVERSE QUI S'ACHÈVE DANS LE BROUILLARD DE NYX ne s'écrit pas :
     // le journal dirait ce que le plateau cache.
     if(!REPLAYING&&p.color!==(gs.playerColor||'w')&&nyxFogLive(gs).has(to.r+','+to.c))
       txt='<span class="ml-flag">dans le brouillard</span>';
   }
+  // La Réanimation de la Matriarche ne coûte pas de tour : elle n'a pas de
+  // demi-coup à elle, elle s'écrit devant le coup qui la suit.
+  if(gs._reviveNote&&gs._reviveNote.color===p.color){txt=gs._reviveNote.html+txt;gs._reviveNote=null;}
   if(p.color==='w')gs.movePairs.push([txt,'']);
   else{if(gs.movePairs.length>0)gs.movePairs[gs.movePairs.length-1][1]=txt;else gs.movePairs.push(['…',txt]);}
   renderMoveLog(gs);

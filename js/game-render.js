@@ -33,10 +33,18 @@ function showCtxMenu(e,r,c,gs){
   const canUsePower=pd?.hasPower&&cell.color===gs.turn&&!gs.gameOver;
   let opts=null;
   if(canUsePower){
-    const used=gs.gardePierreUsed[cell.color];
-    opts={powerActive:true,powerLabel:pd.powerLabel||'Activer pouvoir',powerDisabled:!!used,powerCtx:{r,c,pieceId:pd.id,color:cell.color}};
+    // La Réanimation ne s'offre qu'à SA Matriarche, à son tour, et seulement
+    // quand le Général est tombé (gs.reviveReady, js/rules-engine.js).
+    const off=pd.id==='matriarche'
+      ?!(gs.reviveReady&&gs.reviveReady[cell.color])||cell.color!==(gs.playerColor||'w')
+      :!!gs.gardePierreUsed[cell.color];
+    opts={powerActive:true,powerLabel:pd.powerLabel||'Activer pouvoir',powerDisabled:off,powerCtx:{r,c,pieceId:pd.id,color:cell.color}};
   }
-  showPieceCtxMenu(e,pd||{id:pid,name:pid},opts);
+  // Un pion n'a pas d'entrée au catalogue : sa fiche porte le nom et la règle
+  // de sa troupe (PAWN_ARMIES, js/data-pieces.js).
+  const troupe=!pd&&typeof pawnArmyByPawnId==='function'?pawnArmyByPawnId(pid):null;
+  const fallback=troupe?{id:pid,name:troupe.id==='soldats'?'Pion':troupe.name.replace(/s$/,''),class:'Pion',value:1,ability:troupe.desc}:{id:pid,name:pid};
+  showPieceCtxMenu(e,pd||fallback,opts);
 }
 // Ancrage du Garde de Pierre, extrait d'activatePower() : ce pouvoir change
 // le tour sans passer par executeGameMove(), il doit donc pouvoir être rejoué
@@ -90,8 +98,97 @@ window.activatePower=()=>{
     showNotif('Garde de Pierre ancré !','ok');
     if(GS.multiplayer&&typeof mpSendPower==='function')mpSendPower(r,c,pieceId);
   }
+  if(pieceId==='matriarche'){
+    if(GS.gameOver){showNotif('La partie est terminée.');closeCtx();return;}
+    if(color!==(GS.playerColor||'w')||GS.turn!==color){showNotif('Ce n\'est pas à vous de jouer.','err');closeCtx();return;}
+    if(!(GS.reviveReady&&GS.reviveReady[color])){showNotif('Votre Général est encore debout.');closeCtx();return;}
+    closeCtx();
+    reviveOpenModal(GS,false);
+    return;
+  }
   closeCtx();
 };
+
+// ----------------------------------------------------------------
+// LA RÉANIMATION DE LA MATRIARCHE, côté joueur
+// ----------------------------------------------------------------
+// Deux temps, comme une promotion suivie d'un déplacement : on choisit la
+// créature (la fenêtre de promotion, prêtée), puis sa case parmi les cases
+// libres autour de la Matriarche, marquées sur le plateau. La règle elle-même
+// — qui peut, quoi, où — est dans applyMatriarcheRevive (js/rules-engine.js).
+//
+// La fenêtre s'ouvre D'ELLE-MÊME la première fois que le droit apparaît, et
+// chaque fois que le joueur n'a plus AUCUN autre coup (sans elle, il serait
+// mat ou pat : updateStatus l'a laissé jouer précisément pour ça). Le reste du
+// temps, elle attend dans le menu de la Matriarche (clic droit, appui long).
+function reviveModalExtrasClear(modal){
+  modal.querySelectorAll('.revive-extra').forEach(el=>el.remove());
+}
+function reviveOpenModal(gs,forced){
+  const modal=document.getElementById('promo-modal');const box=document.getElementById('promo-box');
+  if(!modal||!box||!gs)return;
+  const col=gs.playerColor||'w';
+  reviveModalExtrasClear(modal);
+  modal.querySelector('.promo-title').textContent='Réanimation : relevez votre Général';
+  const ids=reviveChoices();
+  box.innerHTML=ids.map((id,i)=>{const d=PIECES.find(p=>p.id===id);
+    return '<div class="promo-piece" data-idx="'+i+'" title="'+escH(d.name)+'">'+pieceSVG(id,col)+
+      '<span class="promo-piece-lbl">'+escH(d.name)+'</span></div>';}).join('');
+  const note=document.createElement('div');
+  note.className='revive-extra promo-piece-lbl';
+  note.textContent='Une créature de valeur 2, posée à côté de la Matriarche. Cela ne coûte pas votre tour.';
+  box.after(note);
+  if(!forced){
+    const later=document.createElement('button');
+    later.className='revive-extra btn btn-ghost';
+    later.textContent='Pas maintenant';
+    later.addEventListener('click',()=>{modal.classList.remove('active');reviveModalExtrasClear(modal);});
+    note.after(later);
+  }
+  box.querySelectorAll('.promo-piece').forEach((el,i)=>{el.addEventListener('click',()=>{
+    modal.classList.remove('active');reviveModalExtrasClear(modal);
+    gs.selected=null;gs.legalMoves=[];
+    gs.revivePick={pieceId:ids[i],color:col,forced:!!forced};
+    showNotif('Touchez une case libre à côté de la Matriarche.');
+    renderGame(gs);
+  });});
+  modal.classList.add('active');
+}
+function revivePickActive(gs){
+  return !!(gs&&gs.revivePick&&!gs.gameOver&&gs.turn===gs.revivePick.color&&gs.reviveReady&&gs.reviveReady[gs.revivePick.color]);
+}
+// Rend true si le clic a été pris par la Réanimation en cours.
+function reviveClick(gs,r,c){
+  if(!gs||!gs.revivePick)return false;
+  const pick=gs.revivePick;gs.revivePick=null;
+  if(!revivePickActive({...gs,revivePick:pick})){renderGame(gs);return true;}
+  const ok=reviveSquares(gs.board,pick.color).some(q=>q.r===r&&q.c===c)
+    &&applyMatriarcheRevive(gs,pick.color,pick.pieceId,r,c);
+  if(ok){
+    if(gs.multiplayer&&typeof mpSendPower==='function')mpSendPower(r,c,'matriarche',pick.pieceId);
+    return true;
+  }
+  if(pick.forced)reviveOpenModal(gs,true);
+  else showNotif('Réanimation remise à plus tard : elle attend dans le menu de la Matriarche.');
+  renderGame(gs);
+  return true;
+}
+function matriarcheOfferRevive(gs){
+  if(!gs||REPLAYING||gs.gameOver)return;
+  const col=gs.playerColor||'w';
+  if(gs.turn!==col||!gs.reviveReady||!gs.reviveReady[col])return;
+  const ply=(gs.history||[]).length;
+  if(gs._reviveOfferedAt===ply)return;
+  gs._reviveOfferedAt=ply;
+  const forced=!hasLegalMovesForColor(col,gs.board,gs);
+  if(gs._reviveAutoShown&&!forced)return;
+  gs._reviveAutoShown=true;
+  setTimeout(()=>{
+    if(GS!==gs||gs.gameOver||gs.turn!==col||!gs.reviveReady||!gs.reviveReady[col])return;
+    if(document.getElementById('promo-modal')?.classList.contains('active'))return;
+    reviveOpenModal(gs,forced);
+  },420);
+}
 
 // ----------------------------------------------------------------
 // RENDU DU PLATEAU DE JEU
@@ -248,8 +345,9 @@ function bindBoardCell(el,r,c){
   const mine=gs=>{
     const cell=gs&&gs.board&&gs.board[r]&&gs.board[r][c];
     if(cell&&cell.color===(gs.playerColor||'w')&&cell.pieceId!=='reflet')return true;
-    // Le Singe à mi-chemin se reprend en main là où il est posé à l'écran.
-    const sv=gs&&singeStepActive(gs);
+    // Le Singe à mi-chemin (ou le Berserk en pleine Furie) se reprend en main
+    // là où il est posé à l'écran.
+    const sv=gs&&(singeStepActive(gs)||berserkAt(gs));
     return !!sv&&sv.r===r&&sv.c===c;
   };
 
@@ -335,7 +433,8 @@ function cellLabel(gs,r,c){
   const cell=gs.board&&gs.board[r]&&gs.board[r][c];
   if(!cell)return coord+', case vide';
   const p=(typeof PIECES!=='undefined')?PIECES.find(x=>x.id===cell.pieceId):null;
-  const nom=p?p.name:(cell.pieceId||'').replace('std-','');
+  const troupe=(typeof pawnArmyByPawnId==='function')?pawnArmyByPawnId(cell.pieceId):null;
+  const nom=p?p.name:(troupe&&troupe.id!=='soldats'?troupe.name.replace(/s$/,''):(cell.pieceId||'').replace('std-',''));
   const camp=cell.color==='w'?'blanc':'noir';
   return coord+', '+nom+' '+camp;
 }
@@ -379,11 +478,11 @@ function paintBoardCells(gs){
   if(!_boardCells)return;
   // Le Singe à mi-chemin est montré sur sa case de premier pas : les cases se
   // peignent d'après ce plateau-là (voir « LE SINGE EN DEUX TEMPS »).
-  const b=singeViewBoard(gs)||gs.board;
+  const b=stepViewBoard(gs)||gs.board;
   const playerCol=gs.playerColor||'w';
   const checkedColor=isInCheckSimple(gs.turn,gs.board)?gs.turn:null;
   const shown=shownTargets(gs);
-  const sel=singeStepActive(gs)||gs.selected;
+  const sel=singeStepActive(gs)||berserkAt(gs)||(revivePickActive(gs)?matriarcheAt(gs.board,gs.revivePick.color):null)||gs.selected;
   const fog=nyxFogLive(gs,b);
   const ombres=ombreHiddenLive(gs,b);
   for(const el of _boardCells){
@@ -627,6 +726,8 @@ const MOVE_GESTURE={
   'pegase':            {cls:'gc-gallop',  air:true},   // il galope, puis il vole
   'loup-geant':        {cls:'gc-leap',    air:true},   // un seul bond, toujours le même
   'singe':             {cls:'gc-scuttle', air:true},   // deux petits sauts d'affilée
+  'berserk':           {cls:'gc-charge',  air:true},   // il fonce, de proie en proie
+  'boucher':           {cls:'gc-stomp',   air:false},  // le pas lourd de l'étal
 
   // SORCIERS. Aucun ne touche vraiment le sol : ils se déplacent par un autre
   // moyen que la marche, et le geste est ce qui le dit sans une ligne de texte.
@@ -642,6 +743,8 @@ const MOVE_GESTURE={
   // rien et se posent d'aplomb. Une pièce qui vaut treize points n'a pas
   // besoin de s'agiter pour qu'on la regarde.
   'roi':               {cls:'gc-regal',   air:false},
+  'matriarche':        {cls:'gc-glide',   air:false},  // elle s'incline dans sa diagonale
+  'imperator':         {cls:'gc-regal',   air:true},   // il sait aussi bondir
   'dame':              {cls:'gc-regal',   air:false},
   'amazone':           {cls:'gc-regal',   air:false},
   'grand-maitre':      {cls:'gc-regal',   air:false},
@@ -709,7 +812,7 @@ function renderGame(gs){
   // des noirs verrait sinon ses éclats sur la case symétrique de la prise.
   if(typeof fxSetFlipped==='function')fxSetFlipped(flipped);
   paintBoardCells(gs);
-  syncPieces(gs,boardEl,flipped,singeViewBoard(gs));
+  syncPieces(gs,boardEl,flipped,stepViewBoard(gs));
   if(typeof applyBoardSkin==='function')applyBoardSkin();
 
   buildGameLabels(gs);updateCaptured(gs);updateHistoryNav();renderClocks(gs);updateTurnBars(gs);
@@ -958,7 +1061,7 @@ function drawCaptured(list){
 // Valeur « points d'armee » (celle du builder), pas la valeur interne de
 // l'IA : c'est celle que le joueur connait, affichee sur chaque carte.
 function pieceMaterialValue(id){
-  if(id==='std-pawn')return 1;
+  if(id==='std-pawn'||(typeof TRUE_PAWN_IDS!=='undefined'&&TRUE_PAWN_IDS.has(id)))return 1;
   if(id==='std-r')return 5;
   if(id==='std-n'||id==='std-b')return 3;
   const p=PIECES.find(x=>x.id===id);
@@ -987,10 +1090,13 @@ function startDrag(r,c,gs,clientX,clientY){
   const b=gs.board;
   // LE SINGE À MI-CHEMIN se reprend sur sa case de premier pas, où il est
   // montré : on le glisse vers son second pas.
-  const sv=singeStepActive(gs);
+  // Une Réanimation attendait sa case : toucher une pièce l'abandonne (ou la
+  // repropose, si le joueur n'a pas d'autre coup).
+  if(gs.revivePick){reviveClick(gs,r,c);return;}
+  const sv=singeStepActive(gs)||berserkAt(gs);
   if(sv&&sv.r===r&&sv.c===c){
     const sp=b[gs.selected.r][gs.selected.c];
-    dragState={fromR:r,fromC:c,gs,moved:false,startX:clientX,startY:clientY,alreadySelected:true,pre:false,singeStep:true};
+    dragState={fromR:r,fromC:c,gs,moved:false,startX:clientX,startY:clientY,alreadySelected:true,pre:false,singeStep:!berserkAt(gs),berserkStep:!!berserkAt(gs)};
     dragGhost.innerHTML=pieceSVG(sp.pieceId,sp.color);
     dragGhost.style.left=clientX+'px';dragGhost.style.top=clientY+'px';
     return;
@@ -1050,8 +1156,17 @@ function endDrag(clientX,clientY){
   const wasAlreadySelected=dragState.alreadySelected;
   const wasPre=dragState.pre;
   const wasSingeStep=!!dragState.singeStep;
+  const wasBerserkStep=!!dragState.berserkStep;
   const prevSelected={r:dragState.fromR,c:dragState.fromC};
   dragState=null;
+
+  // LE BERSERK EN PLEINE FURIE : glissé vers sa prochaine case, ou touché sur
+  // place — ce qui l'arrête sur sa dernière prise.
+  if(wasBerserkStep){
+    const cell=wasDrag?getBoardCell(clientX,clientY,gs):prevSelected;
+    if(!cell||!berserkClick(gs,cell.r,cell.c))renderGame(gs);
+    return;
+  }
 
   // LE SECOND PAS DU SINGE, déposé à la main.
   if(wasSingeStep){
@@ -1079,6 +1194,11 @@ function endDrag(clientX,clientY){
     // Le Singe se dépose d'abord sur son PREMIER pas.
     if(isSingeSelected(gs)){
       if(!singeClick(gs,cell.r,cell.c)){gs.selected=null;gs.legalMoves=[];renderGame(gs);}
+      return;
+    }
+    // Le Berserk se dépose pas à pas.
+    if(isBerserkSelected(gs)){
+      if(!berserkClick(gs,cell.r,cell.c)){gs.selected=null;gs.legalMoves=[];renderGame(gs);}
       return;
     }
     const move=gs.legalMoves.find(m=>m.r===cell.r&&m.c===cell.c);
@@ -1344,6 +1464,8 @@ function singeStepActive(gs){
 }
 // Les cases proposées : premiers pas, puis seconds pas depuis le premier.
 function shownTargets(gs){
+  if(revivePickActive(gs))return reviveSquares(gs.board,gs.revivePick.color);
+  if(isBerserkSelected(gs))return berserkTargets(gs);
   if(!isSingeSelected(gs))return gs.legalMoves;
   const v=singeStepActive(gs);
   if(v)return gs.legalMoves.filter(m=>m.via&&m.via.r===v.r&&m.via.c===v.c);
@@ -1359,6 +1481,98 @@ function singeViewBoard(gs){
   const b=cloneBoard(gs.board),s=gs.selected;
   b[v.r][v.c]=b[s.r][s.c];b[s.r][s.c]=null;
   return b;
+}
+// Le plateau MONTRÉ pendant un coup en plusieurs temps (Singe, Berserk).
+function stepViewBoard(gs){return singeViewBoard(gs)||berserkViewBoard(gs);}
+
+// ----------------------------------------------------------------
+// LE BERSERK PAS À PAS
+// ----------------------------------------------------------------
+// Même principe que le Singe, sur une longueur quelconque : le joueur JOUE
+// chaque pas de la Furie. Il pose le Berserk sur une première proie ; tant
+// que le chemin peut continuer, le Berserk reste en main, montré sur la case
+// de sa dernière prise (berserkViewBoard), et les cases suivantes
+// s'allument. Rien n'est joué avant le dernier pas — un seul coup, avec son
+// `path` (berserkMoves, js/rules-engine.js).
+//
+// S'ARRÊTER SUR UNE PRISE. Manger et continuer, ou manger et rester : les
+// deux sont des coups. Poser le Berserk sur une proie qui ouvre une suite le
+// laisse en main ; le toucher là où il se trouve l'y arrête (sa case reste
+// allumée pour le dire). Un clic sur sa case de départ défait la chaîne ; un
+// clic ailleurs l'abandonne.
+//
+// L'étape vaut pour UNE sélection, comme celle du Singe.
+function isBerserkSelected(gs){
+  const s=gs&&gs.selected;const p=s&&gs.board[s.r]&&gs.board[s.r][s.c];
+  return !!p&&p.pieceId==='berserk';
+}
+function berserkStep(gs){
+  if(!gs||!gs.berserkPath||gs.gameOver||gs.berserkPath.sel!==gs.selected||!isBerserkSelected(gs))return null;
+  return gs.berserkPath.path.length?gs.berserkPath:null;
+}
+// La case où le Berserk est MONTRÉ en pleine Furie (null s'il n'a pas bougé).
+function berserkAt(gs){
+  const st=berserkStep(gs);if(!st)return null;
+  const q=st.path[st.path.length-1];return{r:q.r,c:q.c};
+}
+const bkPathEq=(a,b)=>pathKey(a)===pathKey(b);
+const bkStarts=(a,pre)=>pathKey(a).startsWith(pathKey(pre))&&(a||[]).length>=pre.length;
+function berserkTargets(gs){
+  const st=berserkStep(gs);const pre=st?st.path:[];
+  const out=[];const seen=new Set();
+  const add=q=>{const k=q.r+','+q.c;if(!seen.has(k)){seen.add(k);out.push({r:q.r,c:q.c});}};
+  gs.legalMoves.forEach(m=>{
+    const mp=m.path||[];if(!bkStarts(mp,pre))return;
+    add(mp.length===pre.length?{r:m.r,c:m.c}:mp[pre.length]);
+  });
+  // Sa propre case s'allume quand il peut s'y arrêter.
+  if(pre.length){
+    const at=pre[pre.length-1],before=pre.slice(0,-1);
+    if(gs.legalMoves.some(m=>bkPathEq(m.path,before)&&m.r===at.r&&m.c===at.c))add(at);
+  }
+  return out;
+}
+function berserkViewBoard(gs){
+  const st=berserkStep(gs);if(!st)return null;
+  const b=cloneBoard(gs.board),s=gs.selected;
+  const piece=b[s.r][s.c];b[s.r][s.c]=null;
+  st.path.forEach(q=>{b[q.r][q.c]=null;});
+  const at=st.path[st.path.length-1];b[at.r][at.c]=piece;
+  return b;
+}
+function berserkPlay(gs,mv){
+  const from={r:gs.selected.r,c:gs.selected.c};
+  gs.lastMove={from,to:mv,capture:!!gs.board[mv.r][mv.c]||!!(mv.path&&mv.path.length)};
+  gs.selected=null;gs.legalMoves=[];gs.berserkPath=null;
+  executeGameMove(from,mv,gs);
+}
+// Rend true si le clic a été pris par le Berserk.
+function berserkClick(gs,r,c){
+  if(!isBerserkSelected(gs)||gs.gameOver)return false;
+  const s=gs.selected;const st=berserkStep(gs);const pre=st?st.path:[];
+  const at=pre.length?pre[pre.length-1]:s;
+  if(r===at.r&&c===at.c){
+    if(!pre.length)return false;            // le Berserk au repos : désélection ordinaire
+    const mv=gs.legalMoves.find(m=>bkPathEq(m.path,pre.slice(0,-1))&&m.r===r&&m.c===c);
+    if(mv)berserkPlay(gs,mv);
+    return true;
+  }
+  if(pre.length&&r===s.r&&c===s.c){gs.berserkPath=null;renderGame(gs);return true;}
+  const next=pre.concat([{r,c}]);
+  const goesOn=gs.legalMoves.some(m=>(m.path||[]).length>pre.length&&bkStarts(m.path,next));
+  const ends=gs.legalMoves.find(m=>bkPathEq(m.path,pre)&&m.r===r&&m.c===c);
+  if(goesOn){
+    const victim=gs.board[r][c];
+    gs.berserkPath={sel:s,path:next};
+    if(typeof playSound==='function')playSound('capture',victim&&typeof sfxCaptureForce==='function'?{force:sfxCaptureForce(victim.pieceId)}:undefined);
+    renderGame(gs);
+    return true;
+  }
+  if(ends){berserkPlay(gs,ends);return true;}
+  if(!pre.length)return false;
+  gs.berserkPath=null;gs.selected=null;gs.legalMoves=[];
+  renderGame(gs);
+  return true;
 }
 // Rend true si le clic a été pris par le Singe.
 function singeClick(gs,r,c){
@@ -1395,14 +1609,19 @@ function singeClick(gs,r,c){
 function handleGameClick(r,c,gs){
   const b=gs.board;const cell=b[r][c];const playerCol=gs.playerColor||'w';
 
+  // La Réanimation de la Matriarche attend sa case.
+  if(reviveClick(gs,r,c))return;
+
   if(gs.selected){
     // Le Singe se joue en deux temps : ses clics passent d'abord par là.
     if(singeClick(gs,r,c))return;
+    // Le Berserk, en autant de temps que sa Furie en demande.
+    if(berserkClick(gs,r,c))return;
     if(gs.selected.r===r&&gs.selected.c===c){gs.selected=null;gs.legalMoves=[];renderGame(gs);return;}
     const normalMove=gs.legalMoves.find(m=>m.r===r&&m.c===c&&!m.stayPut);
     const selCell=b[gs.selected.r][gs.selected.c];
     // Un Singe ne rejoint jamais sa case d'arrivée en un seul clic.
-    const move=isSingeSelected(gs)?null:(normalMove||gs.legalMoves.find(m=>m.r===r&&m.c===c));
+    const move=(isSingeSelected(gs)||isBerserkSelected(gs))?null:(normalMove||gs.legalMoves.find(m=>m.r===r&&m.c===c));
     if(move){
       gs.lastMove={from:gs.selected,to:move,capture:!!b[move.r][move.c]};const from={...gs.selected};gs.selected=null;gs.legalMoves=[];executeGameMove(from,move,gs);return;
     }
@@ -1582,7 +1801,9 @@ function updateStatus(gs){
   }
 
   const check=isInCheckSimple(t,gs.board);
-  const hasLegal=hasLegalMovesForColor(t,gs.board,gs);
+  // Sans coup à jouer, un camp n'est pas encore perdu s'il peut réanimer son
+  // Général sur une case qui le sauve (reviveCouldSave, js/rules-engine.js).
+  const hasLegal=hasLegalMovesForColor(t,gs.board,gs)||reviveCouldSave(t,gs);
   const playerCol=gs.playerColor||'w';
   // Le jeu n'a plus « une IA » mais UN adversaire nommé : l'Instructeur (ou
   // l'instructeur du tutoriel en cours). Le dire par son nom, partout.
