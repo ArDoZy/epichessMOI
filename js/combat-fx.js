@@ -380,9 +380,103 @@ function fxPuff(r,c,pieceId){
 // pièces autour de lui et rien à l'écran ne disait que c'était LUI. Chaque
 // pouvoir a maintenant son geste, et c'est le geste qui l'explique — un
 // joueur qui n'a jamais lu la fiche du Typhon comprend en une partie.
-function fxPower(kind,r,c){
+function fxPower(kind,r,c,opts){
   if(!fxOn())return;
+  const o=opts||{};
+  // Un effet posé en cascade (la Furie du Berserk) porte son retard sur le
+  // nœud lui-même : les enfants le lisent en --del.
+  const cell=cls=>{const n=fxCellNode(r,c,cls);if(o.delay)n.style.setProperty('--del',o.delay+'ms');return n;};
+  const ttl=ms=>ms+(o.delay||0);
   switch(kind){
+    // ---- LES NOUVELLES CRÉATURES (voir fxCreature) -------------------
+    // LA FURIE : deux entailles croisées, rouge sang, et des éclats.
+    case 'furie':{
+      const node=cell('fx-furie');
+      node.innerHTML='<span class="fx-slash"></span><span class="fx-slash fx-slash2"></span><span class="fx-furie-glow"></span>';
+      fxMount('over',node,ttl(620));
+      break;
+    }
+    // LE REBOND DU SINGE : un anneau qui s'écrase au sol, et trois traits de
+    // poussière qui partent en éventail.
+    case 'bond':{
+      const node=cell('fx-hop');
+      node.innerHTML='<span class="fx-hop-ring"></span><span class="fx-hop-kick"></span><span class="fx-hop-kick k2"></span><span class="fx-hop-kick k3"></span>';
+      fxMount('under',node,ttl(600));
+      break;
+    }
+    // LA CONTAGION : un nuage vert-de-gris qui gonfle, et des bulles.
+    case 'contagion':{
+      const node=cell('fx-toxic');
+      let h='<span class="fx-toxic-cloud"></span><span class="fx-toxic-cloud t2"></span>';
+      for(let i=0;i<6;i++)h+='<span class="fx-bubble" style="--x:'+(18+Math.random()*64).toFixed(0)+'%;--sz:'+(4+Math.random()*6).toFixed(1)+'px;--del:'+(Math.random()*260|0)+'ms"></span>';
+      node.innerHTML=h;
+      fxMount('over',node,ttl(1200));
+      break;
+    }
+    // LE REFLET : une plaque de verre qui se forme, avec son reflet qui passe.
+    case 'reflet':{
+      const node=cell('fx-mirror');
+      node.innerHTML='<span class="fx-mirror-pane"></span><span class="fx-mirror-gloss"></span>';
+      fxMount('under',node,ttl(900));
+      break;
+    }
+    // L'OMBRE : trois volutes de fumée noire qui montent et se défont.
+    case 'ombre':{
+      const node=cell('fx-shadow');
+      node.innerHTML='<span class="fx-wisp"></span><span class="fx-wisp w2"></span><span class="fx-wisp w3"></span>';
+      fxMount('over',node,ttl(900));
+      break;
+    }
+    // LE VOILE DE LA NUIT : un cercle d'encre qui s'étend sur les huit cases
+    // voisines, piqué d'étoiles.
+    case 'nuit':{
+      const node=cell('fx-night');
+      let h='<span class="fx-night-veil"></span>';
+      for(let i=0;i<7;i++){
+        const a=Math.random()*Math.PI*2,d=40+Math.random()*90;
+        h+='<span class="fx-star" style="--dx:'+(Math.cos(a)*d).toFixed(0)+'%;--dy:'+(Math.sin(a)*d).toFixed(0)+'%;--del:'+(80+Math.random()*300|0)+'ms"></span>';
+      }
+      node.innerHTML=h;
+      fxMount('under',node,ttl(1100));
+      break;
+    }
+    // LA RÉANIMATION : une colonne d'âme vert pâle et d'or, qui remonte.
+    case 'reanimation':{
+      const node=cell('fx-revive');
+      let h='<span class="fx-revive-beam"></span><span class="fx-revive-ring"></span>';
+      for(let i=0;i<8;i++)h+='<span class="fx-soul" style="--x:'+(20+Math.random()*60).toFixed(0)+'%;--del:'+(Math.random()*400|0)+'ms"></span>';
+      node.innerHTML=h;
+      fxMount('over',node,ttl(1300));
+      break;
+    }
+    // LE PÉGASE : des plumes qui s'envolent à la réception.
+    case 'ailes':{
+      const node=cell('fx-feathers');
+      let h='';
+      for(let i=0;i<8;i++){
+        const a=-Math.PI/2+(i-3.5)*0.38+(Math.random()-0.5)*0.2;
+        h+='<span class="fx-feather" style="--dx:'+(Math.cos(a)*62).toFixed(0)+'%;--dy:'+(Math.sin(a)*52).toFixed(0)+'%;--rot:'+((Math.random()*300-150)|0)+'deg;--del:'+(i*18)+'ms"></span>';
+      }
+      node.innerHTML=h;
+      fxMount('over',node,ttl(900));
+      break;
+    }
+    // LE LOUP GÉANT : trois griffures qui lacèrent la case d'arrivée.
+    case 'griffes':{
+      const node=cell('fx-claws');
+      node.innerHTML='<span class="fx-claw"></span><span class="fx-claw c2"></span><span class="fx-claw c3"></span>';
+      fxMount('over',node,ttl(640));
+      break;
+    }
+    // L'EMPEREUR : une gerbe d'or en couronne à la réception.
+    case 'couronne':{
+      const node=cell('fx-crown');
+      let h='<span class="fx-crown-ring"></span>';
+      for(let i=0;i<5;i++)h+='<span class="fx-crown-ray" style="--rot:'+(-90+(i-2)*28)+'deg;--del:'+(i*30)+'ms"></span>';
+      node.innerHTML=h;
+      fxMount('under',node,ttl(800));
+      break;
+    }
     // L'ORAGE SANGUINAIRE : un vortex qui s'ouvre sous la créature et balaie
     // ses quatre diagonales. Les pièces détruites, elles, ont déjà leur
     // bouffée de poussière par la voie normale (fxPuff).
@@ -768,4 +862,88 @@ function fxPlayMove(d){
   // dessine pas depuis un point.
   if(d.power==='charge')fxCharge(d.from,d.to,d.pieceId);
   else if(d.power)fxPower(d.power,d.to.r,d.to.c);
+  fxCreature(d);
+}
+
+// ================================================================
+// LES SIGNATURES DES NOUVELLES CRÉATURES
+// ================================================================
+// Onze créatures sont arrivées après la table des effets — le Berserk, le
+// Boucher, le Singe, l'Infecté, l'Illusion, l'Ombre, Nyx, la Matriarche,
+// l'Empereur, le Pégase et le Loup Géant — et toutes se déplaçaient avec le
+// geste générique : une traînée et un sillage. Le Berserk pouvait raser une
+// colonne entière, le Boucher trancher sans bouger, et rien à l'écran ne
+// disait QUI avait fait quoi.
+//
+// Chacune a maintenant son geste, posé À LA FIN d'un coup (fxPlayMove), et
+// toujours selon la même règle : un POUVOIR ne se montre que s'il est éveillé
+// (`d.np`, voir « LES POUVOIRS », js/data-pieces.js) — un Berserk sans sa
+// Furie ne fait pas pleuvoir les coups de hache —, un DÉPLACEMENT se montre
+// toujours (le Pégase a des ailes qu'il ait un pouvoir ou non : il n'en a
+// pas).
+//
+// Le moteur ne connaît toujours qu'un point d'entrée : il décrit le coup
+// (`via`, `path`, `np`, `contagion`), et c'est ici qu'on décide de l'image.
+function fxCreature(d){
+  if(!fxOn()||!d)return;
+  const id=d.pieceId,to=d.to,from=d.from;
+  switch(id){
+    case 'berserk':
+      // LA FURIE : un coup de hache par prise, dans l'ordre de la chaîne, puis
+      // la rage qui éclate à l'arrivée. Une prise simple a son impact
+      // ordinaire : la Furie ne se montre que quand elle ENCHAÎNE.
+      if(!d.np&&d.path&&d.path.length){
+        d.path.concat([to]).forEach((q,i)=>fxPower('furie',q.r,q.c,{delay:i*110}));
+        fxShockwave(to.r,to.c,'fx-shock-rage');
+      }
+      break;
+    case 'singe':
+      // LE DOUBLE BOND : le rebond sur la case du premier pas, puis la
+      // réception. La traînée droite du départ à l'arrivée mentait sur le
+      // trajet : le Singe n'y est jamais passé.
+      if(d.via){
+        fxPower('bond',d.via.r,d.via.c);
+        fxPower('bond',to.r,to.c,{delay:140});
+      }
+      break;
+    case 'infecte':
+      break;   // la contagion est traitée plus bas, pour toutes les pièces
+    case 'illusion':
+      // LE REFLET se pose sur la case qu'elle quitte : c'est là que le verre
+      // se forme.
+      if(!d.np)fxPower('reflet',from.r,from.c);
+      break;
+    case 'ombre':
+      // L'OMBRE se défait en fumée là où elle était, et se reforme là où elle
+      // va. Sans pouvoir, elle n'est qu'une pièce : un pas, pas de fumée.
+      if(!d.np){fxPower('ombre',from.r,from.c);fxPower('ombre',to.r,to.c,{delay:120});}
+      break;
+    case 'nyx':
+      // LE VOILE DE LA NUIT retombe autour d'elle à chaque pas.
+      if(!d.np)fxPower('nuit',to.r,to.c);
+      break;
+    case 'pegase':fxPower('ailes',to.r,to.c);break;
+    case 'loup-geant':fxPower('griffes',to.r,to.c);break;
+    case 'imperator':fxPower('couronne',to.r,to.c);break;
+  }
+  // LA CONTAGION, qu'elle vienne de l'Infecté qui mange ou de la pièce qui
+  // l'a mangé : le nuage monte là où les deux sont morts.
+  if(d.contagion)fxPower('contagion',to.r,to.c);
+}
+
+// LE COUPERET DU BOUCHER : il frappe SANS BOUGER. Pas de traînée, donc : une
+// lame qui balaie de sa case vers la victime, et le coup qui tombe.
+function fxCleaver(from,to){
+  if(!fxOn())return;
+  const a=fxCenter(from.r,from.c),b=fxCenter(to.r,to.c);
+  const node=fxCellNode(to.r,to.c,'fx-chop');
+  node.style.setProperty('--rot',(Math.atan2(b.y-a.y,b.x-a.x)*180/Math.PI).toFixed(1)+'deg');
+  let html='<span class="fx-chop-blade"></span><span class="fx-chop-cut"></span>';
+  for(let i=0;i<7;i++){
+    const ang=(Math.random()-0.5)*2.2+Math.atan2(b.y-a.y,b.x-a.x);
+    const dist=26+Math.random()*34;
+    html+='<span class="fx-drop" style="--dx:'+(Math.cos(ang)*dist).toFixed(1)+'%;--dy:'+(Math.sin(ang)*dist).toFixed(1)+'%;--del:'+(120+Math.random()*80|0)+'ms"></span>';
+  }
+  node.innerHTML=html;
+  fxMount('over',node,820);
 }

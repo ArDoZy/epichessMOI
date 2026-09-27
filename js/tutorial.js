@@ -604,7 +604,11 @@ function tutoStepSkipped(step){
 function tutoRunReward(reward){
   tutoHideBox(true);
   const chest=(typeof chestById==='function')?chestById(reward.chest):null;
-  const lots=[{pieceId:reward.piece,qty:reward.qty||TUTO_SKIP_QTY,isNew:true}];
+  // LE TUTORIEL DONNE LA CRÉATURE AVEC SON POUVOIR (`withPower`) : il vient
+  // d'apprendre au joueur à s'en servir, le lui retirer au sortir de la
+  // leçon ferait mentir la leçon. Partout ailleurs, le pouvoir s'éveille avec
+  // des débris magiques (voir POWER_DEBRIS_NEEDED, js/data-pieces.js).
+  const lots=[{pieceId:reward.piece,qty:reward.qty||TUTO_SKIP_QTY,isNew:true,withPower:true}];
   const after=()=>{
     if(typeof updAll==='function')updAll();
     if(typeof renderReservePage==='function'&&CUR_ACC)renderReservePage();
@@ -695,7 +699,7 @@ function tutoSkip(){
   // exactement pareil. Une créature déjà débloquée n'est pas re-marquée.
   const lots=TUTO_SKIP_PIECES
     .filter(id=>typeof VV_UNLOCKED==='undefined'||!VV_UNLOCKED.has(id))
-    .map(id=>({pieceId:id,qty:TUTO_SKIP_QTY,isNew:true}));
+    .map(id=>({pieceId:id,qty:TUTO_SKIP_QTY,isNew:true,withPower:true}));
   if(lots.length&&typeof chestApply==='function')chestApply(lots);
 
   // Une seule armée suffit : si le joueur en a déjà une (tutoriel repris

@@ -549,6 +549,14 @@ function mpArmyProblem(army){
   if(army.pawns!==undefined&&army.pawns!==null&&!PAWN_ARMIES.some(a=>a.id===army.pawns))
     return 'sa troupe de pions n\'existe pas';
 
+  // Les pouvoirs éveillés : absents (vieux client : tous), ou une liste de
+  // créatures connues. Un client bricolé peut s'en attribuer qu'il n'a pas —
+  // c'est la limite d'une vérification locale, la même que pour l'armée.
+  if(army.powers!==undefined){
+    if(!Array.isArray(army.powers)||army.powers.length>PIECES.length)return 'sa liste de pouvoirs est illisible';
+    if(army.powers.some(id=>typeof id!=='string'||!PIECES.some(p=>p.id===id)))return 'il revendique un pouvoir inconnu';
+  }
+
   // Les placements décident des colonnes de départ (voir buildGameBoard,
   // js/game-flow.js) : hors du plateau ou en double, le plateau se
   // construirait de travers ou perdrait une pièce en chemin.
@@ -567,7 +575,11 @@ function mpArmyProblem(army){
 
 function mpSendArmy(){
   if(!MP.channel)return;
-  MP.channel.send({type:'broadcast',event:'army',payload:{senderId:MP.myId,army:MP.myArmy,card:mpMyCard()}});
+  // L'armée part avec ses POUVOIRS ÉVEILLÉS (voir armyPowerSet,
+  // js/data-pieces.js) : l'adversaire pose ses pièces sans pouvoir avec le
+  // drapeau `np`, exactement comme chez nous.
+  const army=(typeof armyWithPowers==='function')?armyWithPowers(MP.myArmy):MP.myArmy;
+  MP.channel.send({type:'broadcast',event:'army',payload:{senderId:MP.myId,army,card:mpMyCard()}});
 }
 
 // Réémission de la carte de visite tant que la partie n'a pas démarré. Elle
@@ -1283,7 +1295,7 @@ function mpApplyRemoteMove(from,to,promo,via,path){
 
   // Une promotion doit être accompagnée d'un choix valide, sinon la modal de
   // promotion s'ouvrirait chez le mauvais joueur.
-  const isPromo=pieceCanPromote(piece.pieceId)&&(move.r===0||move.r===7);
+  const isPromo=pieceCanPromote(piece.pieceId)&&!piece.np&&(move.r===0||move.r===7);
   let safePromo=null;
   if(isPromo){
     safePromo=mpSanitizePromo(promo);
@@ -1320,6 +1332,7 @@ function mpApplyRemotePower(r,c,pieceId,revive){
   if(!cell||cell.color!==oppCol)return mpRejectMove('pouvoir sur une pièce qui ne lui appartient pas');
   if(cell.pieceId!==pieceId||pieceId!=='garde-pierre')return mpRejectMove('pouvoir inconnu');
   if(GS.gardePierreUsed[oppCol])return mpRejectMove('pouvoir déjà utilisé');
+  if(cell.np)return mpRejectMove('pouvoir non éveillé');
   applyGardePierre(r,c,oppCol,GS);
   mpLogPush({i:MP.log.length,kind:'power',r,c,pieceId});
   return true;
@@ -1364,6 +1377,7 @@ function mpNotifyResign(){
 
 function mpLeave(){
   MP.leaving=true;
+  if(MP.botTimerId){clearTimeout(MP.botTimerId);MP.botTimerId=null;}
   if(MP.joinTimeoutId){clearTimeout(MP.joinTimeoutId);MP.joinTimeoutId=null;}
   if(MP.rejoinId){clearTimeout(MP.rejoinId);MP.rejoinId=null;}
   MP.rejoinTries=0;
@@ -1520,6 +1534,9 @@ const MP_TIPS=[
   'La Diagonale de la Puissance se lit sur votre sommet atteint, pas sur votre classement du jour : un jalon franchi l\'est pour toujours.',
   'Un coffre ne donne jamais une créature que votre rang ne vous permet pas encore de jouer.',
   'Trois jokers valent trois exemplaires de la créature de votre choix, prise parmi celles que vous possédez déjà.',
+  'Une créature se joue dès qu\'on l\'obtient. Son pouvoir, lui, s\'éveille avec huit débris magiques — et c\'est pour toujours.',
+  'Chaque arène ouvre de nouvelles créatures aux coffres. Monter, c\'est élargir ce qui peut tomber.',
+  'Personne en ligne ? Au bout d\'une minute, un adversaire du laboratoire de votre niveau prend la place.',
 ];
 function mpRenderTip(){
   const el=document.getElementById('mp-tip');
@@ -1537,7 +1554,13 @@ function mpRenderSearch(waitS,peerCount,win){
   // aussi « Personne d'autre en attente pour l'instant » : apprendre qu'on est
   // seul en ligne pendant qu'on attend n'aide en rien et décourage d'attendre.
   const note=document.getElementById('mp-search-note');
-  if(note)note.textContent='Recherche d\'adversaire en cours';
+  // Dans les vingt dernières secondes avant le repli sur le laboratoire, la
+  // note annonce ce qui va se passer : un adversaire qui surgit sans prévenir
+  // passerait pour un humain, et ce n'en est pas un.
+  const left=MP_BOT_AFTER_S-waitS;
+  if(note)note.textContent=left<=20&&left>0
+    ?'Personne en vue : un adversaire du laboratoire de votre niveau arrive dans '+left+' s'
+    :'Recherche d\'adversaire en cours';
   // LE CHRONOMÈTRE PREND LA PLACE DU POURCENTAGE. L'écran de démarrage
   // affiche une barre qui monte vers une fin connue ; ici on attend
   // quelqu'un, et il n'y a rien à annoncer d'autre que la durée écoulée —
@@ -1561,6 +1584,8 @@ function mpLobbyTick(){
   mpRenderSearch(waitS,free.length,win);
 
   if(MP.pairPending)return;          // une proposition est déjà en vol
+  // Une minute sans personne : le laboratoire prend la place (mpBotFallback).
+  if(waitS>=MP_BOT_AFTER_S){mpBotFallback();return;}
   if(free.length<2)return;
   // Seul le plus ancien décide. Les autres attendent d'être appelés : c'est
   // ce qui évite d'avoir à supposer que deux navigateurs sont d'accord sur
@@ -1584,13 +1609,60 @@ function mpLobbyTick(){
   },MP_ACK_MS);
 }
 
+// ----------------------------------------------------------------
+// UNE MINUTE SANS PERSONNE : UN ADVERSAIRE DE SON NIVEAU
+// ----------------------------------------------------------------
+// La fenêtre d'appariement s'ouvre en quatre secondes et plafonne à ±600 :
+// au-delà, attendre ne fait plus rien trouver, cela fait seulement attendre.
+// Au bout de MP_BOT_AFTER_S secondes, la recherche s'arrête d'elle-même et
+// la partie part contre l'ADVERSAIRE DU LABORATOIRE LE PLUS PROCHE de son
+// ELO (AI_OPPONENTS, js/data-pieces.js) — une partie CLASSÉE, comme tout duel
+// contre le laboratoire (vvNoEloReason, js/voie.js), avec la même armée.
+//
+// IL N'EST PAS DÉGUISÉ. Son nom, son portrait et son titre sont ceux de la
+// galerie des adversaires, et la note de l'écran de recherche l'annonce vingt
+// secondes avant : un joueur qui croirait avoir battu un humain apprendrait
+// un jour le contraire, et c'est le classement entier qui perdrait sa
+// parole.
+const MP_BOT_AFTER_S=60;
+function mpBotOpponentFor(elo){
+  let best=AI_OPPONENTS[0];
+  AI_OPPONENTS.forEach(o=>{if(Math.abs(o.elo-elo)<Math.abs(best.elo-elo))best=o;});
+  return best;
+}
+function mpBotFallback(){
+  if(MP.matched||MP.started||MP.pairPending)return false;
+  // La recherche a pu être abandonnée entre-temps (bouton Annuler) : seul un
+  // écran de recherche encore ouvert autorise le repli.
+  if(!document.getElementById('mp-modal')?.classList.contains('show'))return false;
+  const army=MP.myArmy||currentArmyData;
+  if(!army||typeof startAiBattle!=='function')return false;
+  const o=mpBotOpponentFor(mpMyCard().elo||0);
+  mpLeave();
+  mpCloseModal();
+  // L'adversaire est posé pour CETTE partie seulement : le choix de la
+  // galerie (chosenOpponentId) n'est pas touché.
+  if(typeof selectedAILevel!=='undefined')selectedAILevel=aiOpponentIndex(o.id);
+  const foe=(typeof generateAIArmy==='function')
+    ?generateAIArmy(Math.max(0,o.budget-4),{style:o.style,budget:o.budget}):null;
+  showNotif('Personne en vue : '+o.name+' ('+o.elo+' ELO), du laboratoire, relève le défi.','info');
+  return startAiBattle(army,foe);
+}
+
 function mpQuickPlay(){
-  const client=mpInitClient();if(!client)return;
-  mpLeaveLobby();
   MP.myArmy=currentArmyData;MP.matched=false;MP.started=false;
-  const card=mpMyCard();
   const joinedAt=Date.now();
   MP.searchStartedAt=joinedAt;
+  // LE REPLI NE DÉPEND PAS DU SALON. Le battement (mpLobbyTick) le déclenche
+  // à l'heure dite ; ce minuteur-ci le déclenche aussi quand le salon n'a
+  // jamais répondu — Realtime en panne, projet en veille, SDK filtré par un
+  // bloqueur —, qui est justement le cas où personne ne viendra. Une seconde
+  // de marge : c'est le battement qui doit passer le premier quand il tourne.
+  if(MP.botTimerId)clearTimeout(MP.botTimerId);
+  MP.botTimerId=setTimeout(()=>{MP.botTimerId=null;mpBotFallback();},(MP_BOT_AFTER_S+1)*1000);
+  const client=mpInitClient();if(!client)return;
+  mpLeaveLobby();
+  const card=mpMyCard();
   MP.lobby=client.channel(MP_LOBBY,{config:{presence:{key:MP.myId}}});
 
   // PROPOSITION reçue d'un chercheur : on confirme puis on entre. La
@@ -1910,7 +1982,9 @@ function mpDuelPaintInvite(){
   const d=MP.duelIn;
   if(!el||!d)return;
   const rank=(typeof vvGetRank==='function')?vvGetRank(d.elo):null;
-  el.querySelector('#mp-duel-who').textContent=d.name;
+  // Un ami se reconnaît : c'est la première chose qui décide d'accepter.
+  const ami=(typeof isFriend==='function')&&isFriend(d.from);
+  el.querySelector('#mp-duel-who').textContent=(ami?'Votre ami ':'')+d.name;
   el.querySelector('#mp-duel-elo').textContent=
     (rank?rank.name+' · ':'')+d.elo+' ELO';
   el.classList.add('show');

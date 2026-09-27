@@ -139,6 +139,8 @@ function evalPowers(board,fgs){
 
   for(let r=0;r<8;r++)for(let c=0;c<8;c++){
     const p=board[r][c];if(!p)continue;
+    // Une créature dont le pouvoir dort (`np`) ne vaut que par son déplacement.
+    if(p.np)continue;
     const id=p.pieceId;const sg=sign(p.color);
 
     // MÉDUSE : chaque pièce ennemie paralysée en diagonale est retirée du jeu
@@ -439,7 +441,7 @@ function applyMoveQuick(board,from,to,p,anchored){
   // PROMOTING_IDS, js/data-pieces.js). Sans cette ligne, le moteur évaluerait
   // une Fourmi arrivée au bout comme une Fourmi — et ne verrait donc jamais
   // l'intérêt de l'y pousser.
-  if(b[to.r]?.[to.c]&&PROMOTING_IDS.has(b[to.r][to.c].pieceId)&&(to.r===0||to.r===7))
+  if(b[to.r]?.[to.c]&&PROMOTING_IDS.has(b[to.r][to.c].pieceId)&&!b[to.r][to.c].np&&(to.r===0||to.r===7))
     b[to.r][to.c]={...b[to.r][to.c],type:'q',emoji:'♛',pieceId:'dame'};
   return b;
 }
@@ -573,7 +575,7 @@ function quiesce(board,alpha,beta,maxing,fgs,qdepth){
     const cap=board[to.r][to.c];
     if(cap&&cap.color!==p?.color)return true;
     if(to.stayPut||to.destroysPath||to.viaCap||to.shoot||(to.path&&to.path.length))return true;
-    if(p&&p.pieceId==='typhon')return destroysSomething(board,to,p);
+    if(p&&p.pieceId==='typhon'&&!p.np)return destroysSomething(board,to,p);
     return false;
   });
   if(!moves.length)return standPat;

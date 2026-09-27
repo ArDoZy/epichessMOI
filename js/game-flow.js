@@ -27,7 +27,16 @@ let _playerColor='w';
 function buildGameBoard(playerArmyData,aiArmyData){
   const b=Array.from({length:8},()=>Array(8).fill(null));
   let uid=0;
-  const make=(pieceId,type,color,emoji,isKing=false)=>({type,color,pieceId,emoji,hasMoved:false,isKing,id:'p'+(uid++)});
+  // LE POUVOIR VOYAGE AVEC LA PIÈCE : une créature dont le pouvoir dort chez
+  // son propriétaire porte `np:true` (voir armyPieceNoPower,
+  // js/data-pieces.js), et c'est ce drapeau que le moteur consulte. Une armée
+  // sans liste `powers` a tous ses pouvoirs.
+  const armyOf={w:playerArmyData,b:aiArmyData};
+  const make=(pieceId,type,color,emoji,isKing=false)=>{
+    const cell={type,color,pieceId,emoji,hasMoved:false,isKing,id:'p'+(uid++)};
+    if(armyPieceNoPower(armyOf[color],pieceId))cell.np=true;
+    return cell;
+  };
   const resolveP=p=>{if(!p)return null;if(p.id&&!p.emoji)return PIECES.find(x=>x.id===p.id)||null;return p;};
   // UNE PIÈCE INTROUVABLE NE FAIT PLUS TOMBER LA PARTIE. `wm.id` sur un
   // `undefined` levait une exception, et une exception ici veut dire un écran
@@ -151,8 +160,17 @@ function startGame(colorAlreadyChosen,multiplayer,tutoCfg){
   else if(!colorAlreadyChosen)_playerColor=Math.random()<0.5?'w':'b';
   const _aiColor=_playerColor==='w'?'b':'w';
   const playerIsWhite=_playerColor==='w';
-  const whiteSideArmy=playerIsWhite?currentArmyData:aiArmyData;
-  const blackSideArmy=playerIsWhite?aiArmyData:currentArmyData;
+  // LES POUVOIRS PARTENT AVEC L'ARMÉE. Le joueur emporte ceux qu'il a
+  // éveillés ; un adversaire du laboratoire emporte LES MÊMES — il ne compose
+  // déjà qu'avec des créatures que le joueur possède (aiPiecePool,
+  // js/armies.js), il ne doit pas non plus lui opposer un pouvoir qu'il n'a
+  // jamais eu entre les mains. En ligne, l'armée d'en face arrive avec sa
+  // propre liste (mpSendArmy, js/multiplayer.js).
+  const myPowers=(!tutoCfg&&typeof playerPowerList==='function')?playerPowerList():null;
+  const meArmy=(!tutoCfg&&myPowers)?armyWithPowers(currentArmyData,myPowers):currentArmyData;
+  const foeArmy=(!tutoCfg&&myPowers&&!multiplayer)?armyWithPowers(aiArmyData,myPowers):aiArmyData;
+  const whiteSideArmy=playerIsWhite?meArmy:foeArmy;
+  const blackSideArmy=playerIsWhite?foeArmy:meArmy;
   // Cadence : 10 min + 5 s par coup pour toute vraie partie (joueur en ligne
   // comme Instructeur à 2000 ELO). Les batailles du tutoriel n'ont PAS de
   // pendule du tout : on n'apprend pas à jouer avec un chronomètre au-dessus
@@ -164,9 +182,13 @@ function startGame(colorAlreadyChosen,multiplayer,tutoCfg){
     ?selectedTimeIncrement*1000:0;
   // En tutoriel, playerArmy sert uniquement à l'affichage et aux choix de
   // promotion : l'armée n'est pas prélevée sur la Guerre des clans.
-  const playerArmy=tutoCfg?tutoCfg.army:currentArmyData;
-  const aiArmy=tutoCfg?tutoCfg.army:aiArmyData;
+  const playerArmy=tutoCfg?tutoCfg.army:meArmy;
+  const aiArmy=tutoCfg?tutoCfg.army:foeArmy;
+  // LES POUVOIRS DE CHAQUE CAMP, pour les pièces qui naîtront en cours de
+  // partie (promotion, Réanimation : voir gsPieceNoPower). null = tous.
+  const powersOf=a=>armyPowerSet(a);
   GS={board:[],turn:'w',selected:null,legalMoves:[],history:[],enPassant:null,halfmoveClock:0,gameOver:false,playerArmy,aiArmy,playerColor:_playerColor,aiColor:_aiColor,multiplayer:!!multiplayer,tuto:tutoCfg||null,movePairs:[],capturedW:[],capturedB:[],pendingPromo:null,medusaParalyzed:new Set(),lastMove:null,anchored:new Set(),pretreProtected:new Set(),amazonePostCapture:null,grandMaitreAlive:{w:false,b:false},gardePierreUsed:{w:false,b:false},turnCount:0,historyView:null,lastMoveHistory:[],clockMs,incrementMs,timeWhite:clockMs,timeBlack:clockMs};
+  GS.powers=tutoCfg?{w:null,b:null}:{w:powersOf(whiteSideArmy),b:powersOf(blackSideArmy)};
   GS.board=tutoCfg?tutoCfg.board():buildGameBoard(whiteSideArmy,blackSideArmy);
   // Le journal des coups garde le contenu de la partie PRÉCÉDENTE tant qu'un
   // premier coup n'a pas été joué : on le vide ici, en même temps que GS.
@@ -238,7 +260,7 @@ function showArmyIntro(playerArmy,aiArmy){
 // noEloReason : renseigné quand la partie n'était pas classée (voir
 // vvNoEloReason dans voie.js). La ligne « ancien → nouveau ELO » laisse alors
 // la place à la raison : afficher « 0 → 0 · +0 » ferait croire à un bug.
-function showResultModal(result,oldElo,newElo,delta,newUnlockIds,noEloReason,eloCalc){
+function showResultModal(result,oldElo,newElo,delta,newUnlockIds,noEloReason,eloCalc,arena){
   setTimeout(()=>playSound(result==='win'?'win':result==='loss'?'loss':'draw'),200);
   const modal=document.getElementById('result-modal');const box=document.getElementById('result-box');
   box.className='result-box '+(result==='win'?'win-result':result==='loss'?'loss-result':'draw-result');
@@ -310,6 +332,20 @@ function showResultModal(result,oldElo,newElo,delta,newUnlockIds,noEloReason,elo
       :pieceIcon(pd.id,'n');
     if(pd){unlockSec.style.display='';document.getElementById('unlock-piece-emoji').innerHTML=art;document.getElementById('unlock-piece-name').textContent=pd.name;const clsEl=document.getElementById('unlock-piece-class');clsEl.textContent=pd.class;clsEl.className='unlock-piece-class pc-class '+pd.class;document.getElementById('unlock-piece-ability').textContent=pd.ability||'Aucun pouvoir spécial.';}
     else unlockSec.style.display='none';
+  }else if(arena&&arena.rank){
+    // UNE NOUVELLE ARÈNE : l'ELO ne donne plus de créature, il en ouvre aux
+    // coffres. Le bloc de déblocage le dit, avec le médaillon du rang et la
+    // liste de ce qui peut désormais tomber.
+    unlockSec.style.display='';
+    document.getElementById('unlock-piece-emoji').innerHTML=
+      (typeof rankMedalHTML==='function')?rankMedalHTML(arena.rank.id,'rm-lg'):'';
+    document.getElementById('unlock-piece-name').textContent='Arène '+arena.rank.name;
+    const clsEl=document.getElementById('unlock-piece-class');
+    clsEl.textContent='Nouvelle arène';clsEl.className='unlock-piece-class';
+    const names=arena.pieces.map(id=>(PIECES.find(p=>p.id===id)||{}).name).filter(Boolean);
+    document.getElementById('unlock-piece-ability').textContent=names.length
+      ?'Peuvent désormais sortir des coffres : '+names.join(', ')+'.'
+      :'Votre rang est acquis pour toujours.';
   }else unlockSec.style.display='none';
   // PLUS DE RAPPEL DE COFFRE SUR L'ÉCRAN DE RÉSULTAT. Une victoire ouvrait un
   // coffre selon la série du jour, et un bloc en rappelait le palier. La série
@@ -380,6 +416,7 @@ function triggerEndOfGame(result){
     return;
   }
   const oldElo=vvLoadElo();const aiElo=vvEstimateAiElo();
+  const peakBefore=(typeof vvLoadPeakElo==='function')?vvLoadPeakElo():oldElo;
   // Partie non classée (mode admin ou compte admin, hors tutoriel qui sort
   // plus haut) : les duels contre les adversaires du laboratoire, eux,
   // comptent. L'ELO ne bouge pas d'un point, donc aucun déblocage par palier
@@ -444,12 +481,17 @@ function triggerEndOfGame(result){
       // calculer sur la prévision offrirait — ou retirerait — une créature
       // sur la foi d'un nombre que le serveur n'a pas validé.
       let newUnlocks=[];
+      let arena=null;
       if(!noEloReason){
         newUnlocks=vvCheckNewUnlocks(oe,ne);
-        if(typeof vvCheckRewardMilestones==='function')vvCheckRewardMilestones(oe,ne);
+        // Le palier se lit sur le SOMMET : ce qu'il était avant la partie,
+        // et ce qu'il est maintenant.
+        const peakNow=(typeof vvLoadPeakElo==='function')?vvLoadPeakElo():ne;
+        if(typeof vvCheckRewardMilestones==='function')vvCheckRewardMilestones(Math.max(oe,peakBefore),Math.max(ne,peakNow));
+        if(typeof vvArenaNews==='function')arena=vvArenaNews(peakBefore,Math.max(ne,peakNow));
       }
       updateCab();
-      showResultModal(result,oe,ne,dl,newUnlocks,noEloReason,eloCalc);
+      showResultModal(result,oe,ne,dl,newUnlocks,noEloReason,eloCalc,arena);
     };
     if(report||noEloReason)paint();
     else Promise.race([reportP,new Promise(r=>setTimeout(r,REPORT_WAIT))]).then(paint);

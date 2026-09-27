@@ -296,7 +296,15 @@ const CHEST_BREAK_GLOW={
   pion:    {rot:0,    sat:0.12, lum:1.00, h:42,  hs:'0%'},   // blanc
   cavalier:{rot:19,   sat:1.35, lum:1.00, h:48,  hs:'92%'},  // jaune
   fou:     {rot:-7,   sat:1.30, lum:1.00, h:30,  hs:'95%'},  // orange
-  tour:    {rot:-45,  sat:1.85, lum:0.93, h:4,   hs:'92%'},  // rouge
+  // LA TOUR EST ROUGE PROFOND, PAS ROSE. Tournées de −45°, ses fissures
+  // sortaient rose bonbon : le cœur des fissures est presque BLANC (une
+  // lumière chaude surexposée), et un blanc tourné puis resaturé ne devient
+  // jamais qu'un rose. Elle ne tourne donc plus : `deep` remplace la teinte
+  // par une rampe de luminance vers le rouge sang (pbDeepMatrix), où même le
+  // blanc devient du rouge. `wide` élargit les fissures (dilatation de la
+  // clé, en pixels de la planche) et `ld` assombrit d'autant les étincelles
+  // et la gerbe dessinées en CSS, qui passaient au saumon.
+  tour:    {rot:0,    sat:1.00, lum:0.96, h:358, hs:'100%', deep:true, wide:1.4, ld:'-16%'},  // rouge sang
   dame:    {rot:-128, sat:1.80, lum:0.90, h:285, hs:'85%'},  // violet
   roi:     {rot:172,  sat:1.70, lum:0.90, h:205, hs:'92%'},  // bleu
 };
@@ -351,12 +359,29 @@ function pbKeyMatrix(){
   return '0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 '+m.k+' 0 '+(-m.k)+' 0 '+m.i;
 }
 
+// LA RAMPE ROUGE SANG (réglage `deep`). Ce n'est plus une rotation : chaque
+// pixel de lumière est ramené à sa LUMINANCE, puis cette luminance est versée
+// presque entière dans le rouge et à peine dans le vert et le bleu. Un
+// blanc pur sort donc rouge vif, un or sombre rouge sombre — il n'y a plus
+// de rose possible, puisque le rose, c'est du rouge plus du blanc.
+const PB_DEEP='0.50 0.46 0.12 0 0  0.05 0.04 0.01 0 0  0.04 0.03 0.02 0 0  0 0 0 1 0';
+const PB_IDENT='1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 1 0';
+
 function pbTintFilterHTML(id){
+  // Deux primitives de plus que le réglage d'origine, INERTES par défaut :
+  // `deep` est l'identité, et une dilatation de rayon 0 rend son entrée telle
+  // quelle (Filter Effects, feMorphology). Les coffres qui ne demandent rien
+  // traversent donc exactement le filtre d'avant.
   return '<filter id="'+id+'" color-interpolation-filters="sRGB">'+
     '<feColorMatrix data-pb="rot" type="hueRotate" values="0" result="pbRot"/>'+
-    '<feColorMatrix data-pb="sat" type="saturate" values="1" in="pbRot" result="pbHot"/>'+
+    '<feColorMatrix data-pb="sat" type="saturate" values="1" in="pbRot" result="pbSat"/>'+
+    '<feColorMatrix data-pb="deep" type="matrix" values="'+PB_IDENT+'" in="pbSat" result="pbHot"/>'+
     '<feColorMatrix type="saturate" values="'+CHEST_BREAK_MARBLE.sat+'" in="SourceGraphic" result="pbCold"/>'+
-    '<feColorMatrix type="matrix" in="SourceGraphic" result="pbKey" values="'+pbKeyMatrix()+'"/>'+
+    '<feColorMatrix type="matrix" in="SourceGraphic" result="pbKey0" values="'+pbKeyMatrix()+'"/>'+
+    '<feMorphology data-pb="wide" operator="dilate" radius="0" in="pbKey0" result="pbKeyW"/>'+
+    // La dilatation travaille en carrés : sans flou derrière, une fissure
+    // élargie prend un bord en escalier. Écart-type 0 = aucun flou.
+    '<feGaussianBlur data-pb="soft" stdDeviation="0" in="pbKeyW" result="pbKey"/>'+
     '<feComposite in="pbHot" in2="pbKey" operator="in" result="pbLit"/>'+
     '<feComposite in="pbLit" in2="pbCold" operator="over"/>'+
   '</filter>';
@@ -383,13 +408,18 @@ function pbDefs(){
   return svg;
 }
 
-function pbTintTune(svg,id,rot,sat){
+function pbTintTune(svg,id,rot,sat,deep,wide){
   const f=svg.querySelector('#'+id);
   if(!f)return false;
   const r=f.querySelector('[data-pb="rot"]'),s=f.querySelector('[data-pb="sat"]');
   if(!r||!s)return false;
   r.setAttribute('values',rot);
   s.setAttribute('values',sat);
+  const d=f.querySelector('[data-pb="deep"]'),w=f.querySelector('[data-pb="wide"]');
+  if(d)d.setAttribute('values',deep?PB_DEEP:PB_IDENT);
+  if(w)w.setAttribute('radius',wide>0?wide:0);
+  const b=f.querySelector('[data-pb="soft"]');
+  if(b)b.setAttribute('stdDeviation',wide>0?(wide*0.9).toFixed(2):0);
   return true;
 }
 
@@ -406,15 +436,18 @@ function chestBreakPaint(host,chestId){
   host.style.setProperty('--pb-lum',g.lum);
   host.style.setProperty('--pb-h',g.h);
   host.style.setProperty('--pb-hs',g.hs);
+  host.style.setProperty('--pb-ld',g.ld||'0%');
 
   // Le filtre n'est branché QUE s'il est bien en place : --pb-tint absente,
   // la CSS garde son repli (la rotation globale d'autrefois, marbre teinté
   // compris) plutôt que de faire disparaître la scène.
   const svg=pbDefs();
   if(!svg)return;
-  if(pbTintTune(svg,PB_TINT,g.rot,g.sat))
+  if(pbTintTune(svg,PB_TINT,g.rot,g.sat,g.deep,g.wide))
     host.style.setProperty('--pb-tint','url(#'+PB_TINT+')');
-  if(pbTintTune(svg,PB_TINT_B,g.rot,+(g.sat*1.15).toFixed(3)))
+  // Le halo est flouté par-dessus : il a droit à des fissures un peu plus
+  // larges encore, c'est lui qui fait la lueur autour du trait.
+  if(pbTintTune(svg,PB_TINT_B,g.rot,+(g.sat*1.15).toFixed(3),g.deep,g.wide?g.wide*1.5:0))
     host.style.setProperty('--pb-tint-b','url(#'+PB_TINT_B+')');
 }
 

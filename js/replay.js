@@ -58,6 +58,16 @@ function replayArmyRecord(a){
     // La troupe de pions, seulement quand ce ne sont pas des soldats : une
     // partie d'avant les troupes n'a pas la clé, et se relit pareil.
     ...(a.pawns&&a.pawns!=='soldats'?{pw:a.pawns}:{}),
+    // Les pouvoirs éveillés de l'armée (voir armyPowerSet) : une partie
+    // d'avant ce système n'a pas la clé, et se relit avec tous ses pouvoirs,
+    // comme elle s'est jouée.
+    // Seuls comptent ceux des créatures qui peuvent se trouver sur CE plateau :
+    // l'armée elle-même, et ce qu'une Réanimation peut relever.
+    ...(Array.isArray(a.powers)?{po:a.powers.filter(pid=>{
+      const inArmy=[id(a.mon),id(a.gen)].concat((a.extras||[]).map(id)).includes(pid);
+      const revive=id(a.mon)==='matriarche'&&typeof reviveChoices==='function'&&reviveChoices().includes(pid);
+      return inArmy||revive;
+    })}:{}),
   };
 }
 function buildReplayRecord(gs){
@@ -96,7 +106,8 @@ function replayArmyFromRecord(a){
   const fp=id=>(typeof PIECES!=='undefined')?PIECES.find(p=>p.id===id):null;
   return{mon:fp(a&&a.mon),gen:fp(a&&a.gen),
          extras:((a&&a.extras)||[]).slice(),placements:(a&&a.pl)||{},
-         pawns:(a&&a.pw)||'soldats'};
+         pawns:(a&&a.pw)||'soldats',
+         ...(a&&Array.isArray(a.po)?{powers:a.po.slice()}:{})};
 }
 
 // UNE ARMÉE DONT UNE CRÉATURE A QUITTÉ LE CATALOGUE NE SE REJOUE PAS.
@@ -146,6 +157,7 @@ function replayFrames(rec){
     grandMaitreAlive:{w:false,b:false},gardePierreUsed:{w:false,b:false},
     turnCount:0,historyView:null,lastMoveHistory:[],
     clockMs:0,incrementMs:0,timeWhite:0,timeBlack:0,replay:[],
+    powers:{w:armyPowerSet(white),b:armyPowerSet(black)},
   };
   let frames;
   const wasReplaying=REPLAYING;
@@ -391,6 +403,36 @@ document.addEventListener('DOMContentLoaded',()=>{
 // vient d'arriver — c'est la première ligne qu'on vient chercher.
 const RP_RESULT={win:{k:'Victoire',c:'rp-win'},loss:{k:'Défaite',c:'rp-loss'},
                  draw:{k:'Nulle',c:'rp-draw'}};
+// LE NOM DE L'ADVERSAIRE, tel qu'on le lit. Une partie contre le laboratoire
+// enregistre l'IDENTIFIANT de l'adversaire (« cendre ») : la liste l'écrivait
+// tel quel, en minuscules, là où la galerie dit « Cendre ».
+function replayOppName(h){
+  const raw=(h&&h.opp)||'Adversaire';
+  if(typeof AI_OPPONENTS!=='undefined'){
+    const o=AI_OPPONENTS.find(x=>x.id===raw);
+    if(o)return o.name;
+  }
+  return raw;
+}
+// Une ligne d'historique se rejoue-t-elle ?
+function replayEntryPlayable(h){return !!(h&&h.replay&&h.replay.m&&h.replay.m.length);}
+// Ouvre le mode analyse sur UNE ligne d'historique. Partagé par la liste des
+// dix parties ET par les pastilles de la bande de forme : les deux désignent
+// la même partie, elles doivent ouvrir la même page.
+function replayOpenEntry(h,meta){
+  if(!replayEntryPlayable(h)){
+    if(typeof showNotif==='function')showNotif('Aucun coup enregistré pour cette partie.','err');
+    return false;
+  }
+  const res=RP_RESULT[h.result]||{k:'Partie'};
+  const opp=replayOppName(h);
+  return openReplay(h.replay,Object.assign({
+    title:res.k+' contre '+opp,
+    sub:(h.date?new Date(h.date).toLocaleDateString('fr-FR'):'')+
+        (h.ranked===false?' · partie amicale':' · '+((h.delta>0?'+':'')+(h.delta||0))+' ELO'),
+    opp,oppSub:h.aiElo?h.aiElo+' ELO':(h.opp_elo?h.opp_elo+' ELO':''),
+  },meta||{}));
+}
 function replayListHTML(history,opts){
   const o=opts||{};
   const games=(history||[]).slice(-10).reverse();
@@ -400,14 +442,14 @@ function replayListHTML(history,opts){
     games.map((h,i)=>{
       const res=RP_RESULT[h.result]||{k:'Partie',c:'rp-draw'};
       const d=(h.delta>0?'+':'')+(h.delta||0);
-      const quand=h.date?new Date(h.date).toLocaleDateString():'';
-      const rejouable=!!(h.replay&&h.replay.m&&h.replay.m.length);
+      const quand=h.date?new Date(h.date).toLocaleDateString('fr-FR'):'';
+      const rejouable=replayEntryPlayable(h);
       // L'index est celui de la liste AFFICHÉE : c'est lui qu'on redonne au
       // clic, la page d'accueil de la relecture n'a pas à retrouver la partie.
       return '<button class="rp-game '+res.c+(rejouable?'':' rp-game-off')+'" '+
-          'data-game="'+i+'"'+(rejouable?'':' disabled title="Partie enregistrée avant le mode analyse"')+'>'+
+          'data-game="'+i+'"'+(rejouable?'':' disabled title="Aucun coup enregistré pour cette partie"')+'>'+
         '<span class="rp-game-res">'+res.k+'</span>'+
-        '<span class="rp-game-opp">'+escH(h.opp||'Adversaire')+'</span>'+
+        '<span class="rp-game-opp">'+escH(replayOppName(h))+'</span>'+
         '<span class="rp-game-meta">'+(quand?escH(quand):'')+
           (h.ranked===false?' · amicale':'')+'</span>'+
         '<span class="rp-game-delta">'+(h.ranked===false?'—':d)+'</span>'+
@@ -418,22 +460,50 @@ function replayListHTML(history,opts){
 }
 // Câblage de la liste : `host` est le conteneur, `history` la même liste que
 // celle passée à replayListHTML, `meta` ce qu'il faut pour titrer la page.
+// Les pastilles de la bande de forme portent `data-hidx`, l'index de LEUR
+// partie dans `history` (la liste entière, pas les dix dernières).
 function wireReplayList(host,history,meta){
   if(!host)return;
-  const games=(history||[]).slice(-10).reverse();
+  const all=history||[];
+  const games=all.slice(-10).reverse();
   host.querySelectorAll('[data-game]').forEach(b=>{
     b.addEventListener('click',()=>{
       const h=games[parseInt(b.dataset.game,10)];
-      if(!h||!h.replay)return;
-      const res=RP_RESULT[h.result]||{k:'Partie'};
-      openReplay(h.replay,Object.assign({
-        title:res.k+' contre '+(h.opp||'Adversaire'),
-        sub:(h.date?new Date(h.date).toLocaleDateString():'')+
-            (h.ranked===false?' · partie amicale':' · '+((h.delta>0?'+':'')+(h.delta||0))+' ELO'),
-        opp:h.opp||'Adversaire',oppSub:h.aiElo?h.aiElo+' ELO':'',
-      },meta||{}));
+      if(h)replayOpenEntry(h,meta);
     });
   });
+  host.querySelectorAll('[data-hidx]').forEach(b=>{
+    b.addEventListener('click',()=>{
+      const h=all[parseInt(b.dataset.hidx,10)];
+      if(h)replayOpenEntry(h,meta);
+    });
+  });
+}
+// LA BANDE DE FORME, CLIQUABLE. Les dix pastilles sont les dix dernières
+// parties classées : c'est là que l'œil se pose d'abord, et c'est là qu'on
+// touche pour revoir « cette défaite-là ». Chacune ouvre le mode analyse de
+// sa partie (wireReplayList). Partagée par la page Comptes et le profil
+// public.
+function replayFormHTML(history){
+  const all=history||[];
+  const recent=all.filter(h=>h&&h.ranked!==false).slice(-10);
+  if(!recent.length)return '';
+  const lbl={win:'Victoire',loss:'Défaite',draw:'Nulle'};
+  return ''+
+  '<div class="acc-form">'+
+    '<div class="acc-form-k">Forme récente</div>'+
+    '<div class="acc-form-dots">'+
+      recent.map(h=>{
+        const cls=h.result==='win'?'w':h.result==='loss'?'l':'d';
+        const d=(h.delta>0?'+':'')+(h.delta||0);
+        const quand=h.date?new Date(h.date).toLocaleDateString('fr-FR'):'';
+        const t=(lbl[h.result]||'')+' contre '+replayOppName(h)+' · '+d+' ELO'+(quand?' · '+quand:'')+
+          (replayEntryPlayable(h)?' — revoir la partie':'');
+        return '<button type="button" class="acc-dot-'+cls+(replayEntryPlayable(h)?'':' acc-dot-off')+'" data-hidx="'+all.indexOf(h)+'" '+
+          'title="'+escH(t)+'" aria-label="'+escH(t)+'"></button>';
+      }).join('')+
+    '</div>'+
+  '</div>';
 }
 
 // ----------------------------------------------------------------
@@ -515,16 +585,19 @@ function profilePiecesHTML(ids){
   '</section>';
 }
 
-// LES POUVOIRS SE DÉDUISENT DES PIÈCES, ils ne sont pas une donnée de plus :
-// une créature débloquée apporte son pouvoir avec elle. On ne liste donc que
-// les créatures qui EN ONT un (le Roi, la Dame, les Primordiales n'en ont
-// pas), sous le nom du pouvoir et non celui de la pièce — c'est le nom du
-// pouvoir qu'on redoute en jouant.
-function profilePowersHTML(ids){
-  const list=profileUnlockedPieces(ids).filter(p=>p.ability);
+// LES POUVOIRS NE SE DÉDUISENT PLUS DES PIÈCES : une créature s'obtient sans
+// son pouvoir, qui s'éveille ensuite avec des débris magiques. Le serveur les
+// publie à part (`pub_powers`, voir ec_public). Un profil venu d'un serveur
+// qui ne les publie pas encore (`powers` absent) retombe sur l'ancienne
+// lecture : les pouvoirs des pièces débloquées.
+// Ne sont listées que les créatures qui EN ONT un, sous le nom du pouvoir et
+// non celui de la pièce — c'est le nom du pouvoir qu'on redoute en jouant.
+function profilePowersHTML(ids,powers){
+  const src=Array.isArray(powers)?powers.filter(id=>(ids||[]).includes(id)):ids;
+  const list=profileUnlockedPieces(src).filter(p=>p.ability);
   if(!list.length)return '';
   return '<section class="pf-sec">'+
-    '<div class="pf-sec-title">Pouvoirs débloqués'+
+    '<div class="pf-sec-title">Pouvoirs éveillés'+
       '<span class="pf-sec-n">'+list.length+'</span></div>'+
     '<div class="pf-powers">'+list.map(p=>{
       const ab=(typeof pieceSplitAbility==='function')?pieceSplitAbility(p):null;
@@ -541,6 +614,6 @@ function profilePowersHTML(ids){
 }
 
 // Les trois blocs d'un coup : c'est ce qu'appellent les deux profils.
-function profileArsenalHTML(pubArmy,pubUnlocked){
-  return profileArmyHTML(pubArmy)+profilePiecesHTML(pubUnlocked)+profilePowersHTML(pubUnlocked);
+function profileArsenalHTML(pubArmy,pubUnlocked,pubPowers){
+  return profileArmyHTML(pubArmy)+profilePiecesHTML(pubUnlocked)+profilePowersHTML(pubUnlocked,pubPowers);
 }

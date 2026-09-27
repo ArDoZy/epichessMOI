@@ -399,10 +399,29 @@ function chestSplit(total,n){
 // (chestApply), pour que ce qui est affiché soit exactement ce qui est reçu.
 // Le lot de perles suit le même chemin que les pièces : il est tiré ici,
 // affiché par la cérémonie, et crédité par chestApply().
+// L'ARÈNE DU JOUEUR : le rang de son SOMMET atteint (vvLoadPeakElo), jamais
+// celui du classement du jour — une arène ouverte ne se referme pas. En mode
+// test tout est ouvert.
+function playerArenaIdx(){
+  if(economyAdmin())return RANKS.length-1;
+  const peak=(typeof vvLoadPeakElo==='function')?vvLoadPeakElo():0;
+  return (typeof vvGetRankIdx==='function')?vvGetRankIdx(peak):0;
+}
+// Les créatures qu'un coffre peut faire DÉCOUVRIR maintenant : pas encore
+// obtenues, et dont l'arène est ouverte (PIECE_ARENA, js/data-pieces.js).
+function chestLockedPool(){
+  const arena=playerArenaIdx();
+  return PIECES.map(p=>p.id).filter(id=>isOwnablePiece(id)&&!(VV_UNLOCKED&&VV_UNLOCKED.has(id))
+    &&pieceArenaIdx(id)<=arena);
+}
 function chestRoll(chestId){
   const chest=chestById(chestId);
   const owned=invOwnedIds();
-  const locked=PIECES.map(p=>p.id).filter(id=>isOwnablePiece(id)&&!(VV_UNLOCKED&&VV_UNLOCKED.has(id)));
+  const locked=chestLockedPool();
+  // LE PLAFOND DE MALCHANCE (CHEST_PITY, js/data-pieces.js) : autant de
+  // coffres d'affilée sans créature inédite, et le suivant en a une.
+  const dry=accGet('chest_dry',0)||0;
+  const pity=typeof CHEST_PITY==='number'&&dry>=CHEST_PITY;
   const lucky=chestLuckyChance(chest);
   const lots=[];
 
@@ -422,12 +441,31 @@ function chestRoll(chestId){
   // que des exemplaires de pièces déjà possédées (voir plus bas) : sans cette
   // garantie, il ne resterait que les perles à mettre dedans. Débloquer est
   // justement ce qu'il faut faire quand il n'y a rien à renforcer.
-  if(locked.length&&(!owned.length||Math.random()<chest.newChance)){
+  if(locked.length&&(!owned.length||pity||Math.random()<chest.newChance)){
     const pick=weightedPick(locked,chest.bias);
     if(pick){
       lots.push({pieceId:pick,qty:Math.max(2,total),isNew:true});
       return lots;
     }
+  }
+  // Pas d'inédite cette fois : un cran de plus vers le plafond — sauf s'il
+  // n'y avait rien à découvrir, auquel cas la malchance ne compte pas.
+  if(locked.length&&!economyAdmin())accSet('chest_dry',dry+1);
+
+  // LES DÉBRIS MAGIQUES. Ils éveillent le pouvoir d'une créature qu'on a
+  // déjà (POWER_DEBRIS_NEEDED) : ils ne vont donc qu'à une créature
+  // POSSÉDÉE, dont le pouvoir dort encore. Un seul lot par coffre, pour une
+  // seule créature — des débris éparpillés sur quatre pièces n'en éveillent
+  // aucune.
+  const dz=chest.debris;
+  const sleepers=owned.filter(id=>pieceHasPower(id)&&!powerUnlocked(id));
+  if(dz&&sleepers.length&&Math.random()<dz.p){
+    // La créature la plus proche de son éveil a deux fois plus de chances :
+    // on finit ce qu'on a commencé plutôt que d'ouvrir un sixième chantier.
+    const w=sleepers.map(id=>1+2*Math.min(1,debrisCount(id)/POWER_DEBRIS_NEEDED));
+    let r=Math.random()*w.reduce((a,b)=>a+b,0),pick=sleepers[sleepers.length-1];
+    for(let i=0;i<sleepers.length;i++){r-=w[i];if(r<=0){pick=sleepers[i];break;}}
+    lots.push({debris:pick,qty:randInt(dz.n[0],dz.n[1])});
   }
 
   // ON NE REÇOIT PAS D'EXEMPLAIRES D'UNE PIÈCE QU'ON N'A PAS. Un lot
@@ -447,7 +485,7 @@ function chestRoll(chestId){
   // de perles n'a pas de pieceId, il traverse sans être fusionné.
   const merged=[];
   lots.forEach(l=>{
-    if(!l.pieceId){merged.push({...l});return;}
+    if(!l.pieceId){merged.push({...l});return;}   // perles, débris
     const ex=merged.find(m=>m.pieceId===l.pieceId);
     if(ex){ex.qty+=l.qty;ex.isNew=ex.isNew||l.isNew;ex.lucky=ex.lucky||l.lucky;}else merged.push({...l});
   });
@@ -459,15 +497,75 @@ function chestApply(lots){
   let pearls=0;
   (lots||[]).forEach(l=>{
     if(l.pearls){pearls+=l.pearls;return;}
+    if(l.debris){debrisAdd(l.debris,l.qty);return;}
     if(!l.pieceId)return;
     add[l.pieceId]=(add[l.pieceId]||0)+l.qty;
+    if(l.withPower)powerGrant(l.pieceId);
     if(l.isNew&&VV_UNLOCKED&&!VV_UNLOCKED.has(l.pieceId)){
       VV_UNLOCKED.add(l.pieceId);
       if(typeof vvSaveUnlocked==='function')vvSaveUnlocked(VV_UNLOCKED);
+      // La malchance repart de zéro à chaque créature découverte.
+      if(!economyAdmin())accSet('chest_dry',0);
     }
   });
   invAddMany(add);
   if(pearls)pearlAdd(pearls);
+}
+
+// ----------------------------------------------------------------
+// LES POUVOIRS ET LEURS DÉBRIS MAGIQUES
+// ----------------------------------------------------------------
+// Une créature s'obtient d'abord, son pouvoir ensuite (voir « LES POUVOIRS »,
+// js/data-pieces.js). Deux clés de compte :
+//   debris           {pieceId: n} — les débris ramassés, pouvoir par pouvoir
+//   unlocked_powers  [pieceId]    — les pouvoirs éveillés, POUR TOUJOURS : rien
+//                                   dans le jeu ne retire une entrée de cette
+//                                   liste, ni une défaite, ni un stock à zéro.
+// L'éveil n'est pas automatique : à huit débris, la fiche de la pièce propose
+// « Éveiller le pouvoir » (js/piece-card.js). C'est un geste, pas un compteur
+// qui déborde en silence.
+function powersUnlockedSet(){
+  if(economyAdmin())return new Set(PIECES.filter(p=>p.ability).map(p=>p.id));
+  return new Set(accGet('unlocked_powers',[])||[]);
+}
+function powerUnlocked(id){return !pieceHasPower(id)||powersUnlockedSet().has(id);}
+function debrisAll(){return accGet('debris',{})||{};}
+function debrisCount(id){
+  if(economyAdmin())return POWER_DEBRIS_NEEDED;
+  const n=debrisAll()[id];return typeof n==='number'?n:0;
+}
+function debrisAdd(id,n){
+  if(economyAdmin()||!n||!pieceHasPower(id)||powerUnlocked(id))return;
+  const d=debrisAll();d[id]=Math.max(0,(d[id]||0)+n);accSet('debris',d);
+}
+function powerCanAwaken(id){
+  return pieceHasPower(id)&&!powerUnlocked(id)&&debrisCount(id)>=POWER_DEBRIS_NEEDED
+    &&!!(VV_UNLOCKED&&VV_UNLOCKED.has(id));
+}
+// Éveille le pouvoir : huit débris dépensés, le pouvoir inscrit pour
+// toujours. Les débris en trop sont gardés (ils ne servent plus à rien,
+// mais les jeter serait voler le joueur).
+function powerAwaken(id){
+  if(!powerCanAwaken(id))return false;
+  const d=debrisAll();d[id]=Math.max(0,(d[id]||0)-POWER_DEBRIS_NEEDED);
+  if(!d[id])delete d[id];
+  accSet('debris',d);
+  powerGrant(id);
+  return true;
+}
+function powerGrant(id){
+  if(economyAdmin()||!pieceHasPower(id))return;
+  const s=powersUnlockedSet();if(s.has(id))return;
+  s.add(id);accSet('unlocked_powers',[...s]);
+}
+// La liste emportée par une armée au lancement d'une partie (voir
+// armyPowerSet, js/data-pieces.js).
+function playerPowerList(){return [...powersUnlockedSet()];}
+// Une armée prête à partir, avec ses pouvoirs. On ne touche pas à l'armée
+// enregistrée : c'est une copie, faite au lancement.
+function armyWithPowers(army,list){
+  if(!army)return army;
+  return{...army,powers:(list||playerPowerList()).slice()};
 }
 
 // ----------------------------------------------------------------

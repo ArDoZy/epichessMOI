@@ -102,10 +102,10 @@ function menuNextMilestoneHTML(){
   if(next.reward==='pearls'){
     visuel=(typeof pearlAmountHTML==='function')?pearlAmountHTML(next.amount,1.5):next.amount+' perles';
     nom='Perles';
-  }else if(next.reward==='copies'){
-    const p=PIECES.find(x=>x.id===next.copyId);
-    visuel=(typeof pieceIcon==='function')?pieceIcon(next.copyId,'n'):'';
-    nom=(p?p.name:'Exemplaires')+' ×'+next.qty;
+  }else if(next.reward==='chest'){
+    const ch=chestById(next.chest);
+    visuel=chestVisual(ch,'chest-xs');
+    nom=ch.name;
   }else if(next.pieceId){
     const p=PIECES.find(x=>x.id===next.pieceId);
     visuel=(typeof pieceIcon==='function')?pieceIcon(next.pieceId,'n'):'';
@@ -535,6 +535,9 @@ function renderDailyChest(){
 // peu plus. Les perles suivent la même échelle grossière.
 function chestLotValue(l){
   if(l.pearls!=null)return l.pearls*(l.lucky?1.3:1)*0.4;
+  // Les débris passent après les exemplaires : ils ne changent rien tout de
+  // suite, mais ce sont eux qui éveillent un pouvoir.
+  if(l.debris)return 1000+l.qty;
   const p=PIECES.find(x=>x.id===l.pieceId);
   const v=Math.max(1,(p&&p.value)||3);
   return v*l.qty*(l.lucky?1.3:1);
@@ -649,6 +652,21 @@ function chestRevealNext(){
       pearlIcon(4.5)+
       '<div class="loot-name">Perles</div>'+
       '<div class="loot-qty">+'+l.pearls+'</div>'+tag+
+    '</div>';
+  }else if(l.debris){
+    // DÉBRIS MAGIQUES : l'éclat de cristal posé sur la créature dont ils
+    // éveilleront le pouvoir, et la jauge telle qu'elle sera une fois le
+    // coffre refermé. Le cap des huit se signale : c'est une nouvelle.
+    const p=PIECES.find(x=>x.id===l.debris);
+    const before=(typeof debrisCount==='function')?debrisCount(l.debris):0;
+    const after=Math.min(POWER_DEBRIS_NEEDED,before+l.qty);
+    const full=after>=POWER_DEBRIS_NEEDED;
+    card='<div class="loot loot-reveal loot-debris'+(full?' loot-debris-full':'')+'">'+
+      '<span class="loot-debris-art">'+pieceIcon(l.debris,'n',3.6)+'<span class="pw-shard pw-shard-lg" aria-hidden="true"></span></span>'+
+      '<div class="loot-name">Débris magiques · '+escH(p?p.name:l.debris)+'</div>'+
+      '<div class="loot-qty">+'+l.qty+'</div>'+
+      '<div class="loot-debris-gauge"><span style="width:'+Math.round(after/POWER_DEBRIS_NEEDED*100)+'%"></span><b>'+after+' / '+POWER_DEBRIS_NEEDED+'</b></div>'+
+      (full?'<div class="loot-new-tag">Pouvoir prêt</div>':'')+
     '</div>';
   }else{
     const p=PIECES.find(x=>x.id===l.pieceId);

@@ -492,13 +492,14 @@ function ecMockPublic(p){
   const o=ecMockSelf(p);
   delete o.secret;delete o.state;
   o.history=(p.history||[]).slice(-10);
-  // DEUX CHOSES SORTENT DE `state`, ET DEUX SEULEMENT — l'armée choisie et
-  // les pièces débloquées. Elles présentent le joueur ; le reste (inventaire,
+  // TROIS CHOSES SORTENT DE `state`, ET TROIS SEULEMENT — l'armée choisie,
+  // les pièces débloquées et les pouvoirs éveillés. Elles présentent le joueur ; le reste (inventaire,
   // perles, tickets, voies, tutoriel) est sa ressource et ne regarde que lui.
   // Transcription exacte de ec_public (supabase/schema.sql) : si vous touchez
   // à l'un, touchez à l'autre.
   o.pub_army=((p.state||{}).armies)||[];
   o.pub_unlocked=((p.state||{}).unlocked_pieces)||[];
+  o.pub_powers=((p.state||{}).unlocked_powers)||[];
   o.online=ecMockOnline(p);
   return o;
 }

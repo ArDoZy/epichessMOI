@@ -140,12 +140,38 @@ function piecePowerHTML(p){
         '<div class="power-text">Aucun pouvoir magique avéré.</div>'+
       '</div></div>';
   }
-  return '<div class="power-card" style="--pw:'+accent+'">'+
+  const st=piecePowerState(p.id);
+  return '<div class="power-card power-'+st+'" style="--pw:'+accent+'">'+
     '<span class="power-icon">'+powerIconSVG(p.id)+'</span>'+
     '<div class="power-body">'+
       (ab.name?'<div class="power-name">'+escH(ab.name)+'</div>':'')+
       '<div class="power-text">'+escH(ab.text)+'</div>'+
-    '</div></div>';
+    '</div></div>'+powerAwakenHTML(p,st);
+}
+
+// L'ÉTAT DU POUVOIR, sous sa carte : ce qui manque, et le geste qui l'éveille.
+// C'est ici — et seulement ici — qu'on dépense les huit débris : l'éveil est un
+// choix, il ne se fait pas tout seul au fond d'un coffre.
+function powerAwakenHTML(p,st){
+  const owned=typeof VV_UNLOCKED!=='undefined'&&VV_UNLOCKED.has(p.id);
+  if(st==='awake')return '<div class="pw-state pw-state-awake">Pouvoir éveillé — il est à vous pour toujours.</div>';
+  if(!owned){
+    const ar=(typeof pieceArena==='function')?pieceArena(p.id):null;
+    return '<div class="pw-state">Obtenez d\'abord la créature : elle sort des coffres'+
+      (ar?' dès l\'arène <b style="color:'+ar.color+'">'+escH(ar.name)+'</b>':'')+
+      '. Son pouvoir s\'éveille ensuite avec '+POWER_DEBRIS_NEEDED+' débris magiques.</div>';
+  }
+  const n=(typeof debrisCount==='function')?debrisCount(p.id):0;
+  const pct=Math.min(100,Math.round(n/POWER_DEBRIS_NEEDED*100));
+  return '<div class="pw-state pw-state-'+st+'">'+
+    '<div class="pw-debris-row"><span class="pw-shard" aria-hidden="true"></span>'+
+      '<span class="pw-debris-lbl">Débris magiques</span>'+
+      '<span class="pw-debris-n">'+Math.min(n,POWER_DEBRIS_NEEDED)+' / '+POWER_DEBRIS_NEEDED+'</span></div>'+
+    '<div class="pw-debris-bar"><span style="width:'+pct+'%"></span></div>'+
+    (st==='ready'
+      ?'<button type="button" class="btn btn-primary pw-awaken" data-awaken="'+escH(p.id)+'">Éveiller le pouvoir</button>'
+      :'<div class="pw-debris-hint">Sans son pouvoir, la créature se joue avec son seul déplacement. Les débris sortent des coffres.</div>')+
+  '</div>';
 }
 
 // ----------------------------------------------------------------
@@ -244,10 +270,40 @@ function pieceCardFaceHTML(p,opts){
       : '')+
     '<div class="piece-card-art">'+
       pieceCardArtHTML(p)+
+      (o.locked?'':pieceCardPowerBadgeHTML(p))+
       (o.locked?'<span class="piece-card-lockbadge"><span class="lock-icon"></span></span>':'')+
       (o.locked&&o.lockLabel?'<span class="piece-card-req">'+escH(o.lockLabel)+'</span>':'')+
     '</div>'+
     '<div class="piece-card-name"><span>'+escH(p.name)+'</span></div>';
+}
+
+// ----------------------------------------------------------------
+// LE POUVOIR SUR LA CARTE : endormi, prêt, éveillé
+// ----------------------------------------------------------------
+// Une créature s'obtient AVANT son pouvoir (voir « LES POUVOIRS »,
+// js/data-pieces.js). La carte le dit d'un coin, en bas à gauche de
+// l'illustration, sans une ligne de texte de plus :
+//   · pouvoir ENDORMI : l'icône du pouvoir, éteinte, et la jauge des débris
+//     magiques (« 3/8 ») ;
+//   · prêt à ÉVEILLER : la même icône, qui pulse en or — c'est un appel ;
+//   · ÉVEILLÉ : l'icône allumée à la couleur de la classe.
+// Une créature sans pouvoir (le Roi, la Dame, les Primordiales…) n'a pas de
+// coin : il n'y a rien à dire.
+function piecePowerState(id){
+  if(typeof pieceHasPower!=='function'||!pieceHasPower(id))return 'none';
+  if(typeof powerUnlocked==='function'&&powerUnlocked(id))return 'awake';
+  if(typeof powerCanAwaken==='function'&&powerCanAwaken(id))return 'ready';
+  return 'sleep';
+}
+function pieceCardPowerBadgeHTML(p){
+  const st=piecePowerState(p.id);
+  if(st==='none')return '';
+  const n=(typeof debrisCount==='function')?Math.min(POWER_DEBRIS_NEEDED,debrisCount(p.id)):0;
+  const title=st==='awake'?'Pouvoir éveillé'
+    :st==='ready'?'Pouvoir prêt à s\'éveiller : ouvrez la fiche'
+    :'Pouvoir endormi : '+n+'/'+POWER_DEBRIS_NEEDED+' débris magiques';
+  return '<span class="pcard-pow pcard-pow-'+st+'" title="'+escH(title)+'">'+powerIconSVG(p.id)+
+    (st==='sleep'?'<span class="pcard-pow-n">'+n+'/'+POWER_DEBRIS_NEEDED+'</span>':'')+'</span>';
 }
 
 // ----------------------------------------------------------------
@@ -427,6 +483,17 @@ function pieceCardSync(el,p,opts){
     if(qty.title!==t)qty.title=t;
   }
 
+  // Le coin du pouvoir suit les débris et l'éveil.
+  const art=el.querySelector('.piece-card-art');
+  if(art&&!o.locked){
+    const want=pieceCardPowerBadgeHTML(p);
+    const cur=art.querySelector('.pcard-pow');
+    if((cur?cur.outerHTML:'')!==want){
+      if(cur)cur.remove();
+      if(want)art.insertAdjacentHTML('beforeend',want);
+    }
+  }
+
   const use=el.querySelector('.piece-card-use span');
   if(use){
     const lbl=sel?'Retirer':'Utiliser';
@@ -477,7 +544,9 @@ function openPieceSheet(pieceId){
   document.getElementById('psheet-meta').innerHTML=
     '<span class="psheet-class">'+escH(p.class)+'</span>'+
     '<span class="psheet-val">'+p.value+' pts</span>'+
-    (ownable?'<span class="psheet-stock">×'+have+' en stock</span>':'');
+    (ownable?'<span class="psheet-stock">×'+have+' en stock</span>':'')+
+    (ownable&&typeof pieceArena==='function'&&!(typeof VV_UNLOCKED!=='undefined'&&VV_UNLOCKED.has(p.id))
+      ?'<span class="psheet-arena" style="color:'+pieceArena(p.id).color+'">Coffres · arène '+escH(pieceArena(p.id).name)+'</span>':'');
   const mvt=document.getElementById('psheet-mvt');
   const canDraw=typeof pieceMoveDiagramHTML==='function'&&
     (typeof pieceHasMoveDiagram!=='function'||pieceHasMoveDiagram(p.id));
@@ -493,6 +562,22 @@ function closePieceSheet(){
   sheet.classList.remove('show');
   sheet.setAttribute('aria-hidden','true');
 }
+// L'ÉVEIL D'UN POUVOIR : huit débris dépensés, un pouvoir pour toujours. La
+// fiche se repeint sur place (la carte du pouvoir s'allume), le catalogue suit.
+document.getElementById('psheet-power')?.addEventListener('click',e=>{
+  const b=e.target.closest('[data-awaken]');if(!b)return;
+  const id=b.dataset.awaken;
+  if(typeof powerAwaken!=='function'||!powerAwaken(id)){showNotif('Il manque encore des débris magiques.','err');return;}
+  const p=PIECES.find(x=>x.id===id);
+  document.getElementById('psheet-power').innerHTML=piecePowerHTML(p);
+  const card=document.querySelector('#psheet-power .power-card');
+  if(card){card.classList.add('pw-just-awake');}
+  if(typeof playSound==='function')playSound('promo');
+  if(typeof haptic==='function')haptic('fanfare');
+  showNotif('Pouvoir éveillé : '+((pieceSplitAbility(p)||{}).name||p.name)+' !','ok');
+  if(typeof pRenderCards==='function')pRenderCards();
+  if(typeof renderReservePage==='function')try{renderReservePage();}catch(err){}
+});
 document.getElementById('psheet-close')?.addEventListener('click',closePieceSheet);
 document.getElementById('psheet-scrim')?.addEventListener('click',closePieceSheet);
 document.addEventListener('keydown',e=>{

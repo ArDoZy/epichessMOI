@@ -31,6 +31,10 @@ let combatMode='ia';
 window.launchCombat=id=>{
   const a=savedArmies.find(x=>x.id===id);if(!a)return;
   loadArmyForEdit(a);
+  // L'adversaire de la galerie reprend sa place : un repli en ligne
+  // (mpBotFallback, js/multiplayer.js) a pu en poser un autre pour UNE partie.
+  if(typeof aiChosenOpponent==='function'&&typeof selectedAILevel!=='undefined')
+    selectedAILevel=aiOpponentIndex(aiChosenOpponent().id);
   startAiBattle(a,aiArmyForOpponent());
 };
 

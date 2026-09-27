@@ -106,6 +106,7 @@ function accountSummaryFrom(p,username){
     // qui est plus frais que la copie serveur d'il y a trois secondes.
     army:(p&&p.pub_army)||[],
     unlocked:(p&&p.pub_unlocked)||[],
+    powers:(p&&p.pub_powers)||null,
     pearls:0,
     loading:!p,
   };
@@ -122,6 +123,7 @@ function accountSummary(username){
     // secondes doit apparaître tout de suite.
     if(typeof savedArmies!=='undefined')s.army=savedArmies;
     if(typeof VV_UNLOCKED!=='undefined')s.unlocked=[...VV_UNLOCKED];
+    if(typeof playerPowerList==='function')s.powers=playerPowerList();
     return s;
   }
   return accountSummaryFrom(_accOther[username]||null,username);
@@ -277,11 +279,16 @@ function accountSealHTML(s){
     '</div>'+
     accountFormHTML(s)+
     accountFavouriteHTML(s)+
+    // LES AMIS, À UN APPUI : c'est d'ici qu'on part défier quelqu'un qu'on
+    // connaît (onglet « Amis » du classement, js/leaderboard.js).
+    '<button class="btn btn-ghost acc-friends-btn" id="acc-open-friends">'+
+      'Mes amis'+((typeof friendsList==='function'&&friendsList().length)?' ('+friendsList().length+')':'')+
+      ' · défier un ami</button>'+
     // CE QU'ON ALIGNE, ET CE QU'ON A REJOUABLE. Les deux mêmes blocs que sur
     // le profil de n'importe qui d'autre (js/replay.js) : un profil doit se
     // lire pareil qu'il soit le sien ou celui d'un inconnu, sinon on ne peut
     // rien comparer avant un duel.
-    ((typeof profileArsenalHTML==='function')?profileArsenalHTML(s.army,s.unlocked):'')+
+    ((typeof profileArsenalHTML==='function')?profileArsenalHTML(s.army,s.unlocked,s.powers):'')+
     ((typeof replayListHTML==='function')?replayListHTML(s.history):'')+
     // PLUS DE « QUITTER CE COMPTE ». Il n'y a rien à quitter : le jeu n'a ni
     // mot de passe ni session, et la seule chose que le bouton faisait —
@@ -296,21 +303,10 @@ function accountSealHTML(s){
 // question qu'on se pose en ouvrant son profil, et c'est la seule à laquelle
 // une liste de chiffres ne répond pas.
 function accountFormHTML(s){
-  const recent=accountRecent(s);
-  if(!recent.length)return '';
-  const lbl={win:'Victoire',loss:'Défaite',draw:'Nulle'};
-  return ''+
-  '<div class="acc-form">'+
-    '<div class="acc-form-k">Forme récente</div>'+
-    '<div class="acc-form-dots">'+
-      recent.map(h=>{
-        const cls=h.result==='win'?'w':h.result==='loss'?'l':'d';
-        const d=(h.delta>0?'+':'')+(h.delta||0);
-        const quand=h.date?new Date(h.date).toLocaleDateString():'';
-        return '<span class="acc-dot-'+cls+'" title="'+escH((lbl[h.result]||'')+' · '+d+' ELO'+(quand?' · '+quand:''))+'"></span>';
-      }).join('')+
-    '</div>'+
-  '</div>';
+  // Les pastilles sont des boutons : chacune rouvre SA partie en mode analyse
+  // (replayFormHTML, js/replay.js).
+  if(typeof replayFormHTML==='function')return replayFormHTML(s.history);
+  return '';
 }
 
 // LA CRÉATURE FÉTICHE. Elle répond à la question que se pose un joueur devant
@@ -410,6 +406,9 @@ function wireAccountPage(){
     });
   }
 
+  host.querySelector('#acc-open-friends')?.addEventListener('click',()=>{
+    if(typeof openLeaderboardPage==='function')openLeaderboardPage('friends');
+  });
   host.querySelector('#acc-rename-open')?.addEventListener('click',()=>{
     _accRenaming=true;_accRenameDraft=null;renderAccountPage();
     const i=document.getElementById('acc-rename-input');
