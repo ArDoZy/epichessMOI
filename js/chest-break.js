@@ -127,16 +127,21 @@ function chestBreakTail(){
     // et la scène tient encore dans son ovale : c'est le dernier plan où
     // l'on voit d'où vient l'explosion. Il ne dure qu'un battement.
     //
-    // `burst` EST LA MOITIÉ MANQUANTE DE L'EXPLOSION. Cette planche arrivait
-    // à sa taille définitive d'un seul coup : sa seule variation d'échelle
-    // était le `zoom` de la secousse, qui RETOMBE à 1 par construction — le
-    // souffle finissait donc plus petit qu'au sommet de l'impact, et la
-    // planche suivante repartait d'ailleurs. Elle s'ouvre maintenant de .35
-    // à 1 en 220 ms : les morceaux sont propulsés vers l'extérieur, et le
-    // déferlement qui suit reprend au-dessus de 1, jamais en dessous.
+    // L'ÉCLATEMENT NE NAÎT JAMAIS PLUS PETIT QUE CE QU'IL REMPLACE. Il
+    // s'ouvrait de .35 à 1 : pendant ses premières images, la planche
+    // réduite laissait voir la tour ENCORE DEBOUT sous elle, juste après
+    // l'éclat des 05 — explosion, implosion, explosion. `burst` est
+    // maintenant une poussée VERS L'AVANT : la planche arrive déjà un peu
+    // plus grande que la précédente (`bs0`) et grossit encore (`bs1`), en
+    // s'ouvrant depuis le cœur de l'explosion ; la scène entière, ovale
+    // compris, grandit avec elle jusqu'à `sg`. PAS DE SECOUSSE ici : chaque
+    // secousse repart de l'échelle 1, alors que celle des éclats (05) est
+    // encore grossie à cet instant — la relancer faisait RÉTRÉCIR la scène
+    // d'un coup. Le tremblement continu et la gerbe portent l'impact.
+    // Le déferlement qui suit reprend au-dessus (pbBlastFrom).
     {src:'06-explosion.webp', hint:'', fade:90, dir:CHEST_BREAK_FORALL, hush:true,
-     shake:22, zoom:1.13, flash:.86, fdur:300, bloom:[.30,.72], bt:'.7s',
-     sparks:44, sparkR:1.6, trem:2.2, burst:220, xfade:90, hold:260,
+     flash:.86, fdur:300, bloom:[.30,.72], bt:'.7s',
+     sparks:44, sparkR:1.6, trem:2.2, burst:420, bs0:1.06, bs1:1.20, sg:1.32, xfade:90, hold:260,
      snd:{n:'blast',f:.7}},
 
     // L'EXPLOSION. Elle sort de sa boîte : plein écran, en `cover` — une
@@ -207,7 +212,10 @@ function chestBreakSeq(dir,piece){
       // deux, l'éclatement se jouait avec « Coffre Pion » toujours écrit
       // par-dessus. Or la pièce ne tient plus dès cette planche-ci — il n'y
       // a plus de coffre à nommer, il n'y a qu'une destruction à regarder.
-      {src:'05-eclats.webp',   hint:'',                  fade:120, shake:20, zoom:1.11,
+      // Et PAS DE GROSSISSEMENT D'IMPACT : il retombe à 1 pendant que la
+      // planche est à l'écran, et l'éclatement s'enchaîne sans frappe — la
+      // pièce rétrécissait juste avant d'exploser.
+      {src:'05-eclats.webp',   hint:'',                  fade:120, shake:20, zoom:1,
        flash:.80, fdur:300, bloom:[.35,.80], bt:'.9s',  sparks:34, trem:1.8,
        hush:true, hold:190, snd:{n:'choc',f:1}},
     ].concat(chestBreakTail()),
@@ -302,10 +310,14 @@ const CHEST_BREAK_GLOW={
   // lumière chaude surexposée), et un blanc tourné puis resaturé ne devient
   // jamais qu'un rose. Elle ne tourne donc plus : `deep` remplace la teinte
   // par une rampe de luminance vers le rouge sang (pbDeepMatrix), où même le
-  // blanc devient du rouge. `wide` élargit les fissures (dilatation de la
-  // clé, en pixels de la planche) et `ld` assombrit d'autant les étincelles
-  // et la gerbe dessinées en CSS, qui passaient au saumon.
-  tour:    {rot:0,    sat:1.00, lum:0.96, h:358, hs:'100%', deep:true, wide:1.4, ld:'-16%'},  // rouge sang
+  // blanc devient du rouge.
+  //
+  // LES FISSURES GARDENT LEUR TRACÉ. Une version élargissait la clé
+  // (dilatation `wide`, halo élargi de moitié en plus) : les fissures
+  // bavaient en larges coulées et l'explosion devenait une tache rouge
+  // floue, sans une arête. `wide` reste disponible dans le filtre, mais la
+  // Tour ne s'en sert plus : c'est la couleur qui change, pas le dessin.
+  tour:    {rot:0,    sat:1.00, lum:0.96, h:358, hs:'100%', deep:true, brot:-45, bsat:1.9},  // rouge sang
   dame:    {rot:-128, sat:1.80, lum:0.90, h:285, hs:'85%'},  // violet
   roi:     {rot:172,  sat:1.70, lum:0.90, h:205, hs:'92%'},  // bleu
 };
@@ -438,6 +450,11 @@ function chestBreakPaint(host,chestId){
   host.style.setProperty('--pb-h',g.h);
   host.style.setProperty('--pb-hs',g.hs);
   host.style.setProperty('--pb-ld',g.ld||'0%');
+  // La rotation du plein écran (filtre bon marché, voir .pb-scene.blast dans
+  // css/style.css). Un réglage `deep` n'a pas de rotation : sans `brot`,
+  // l'explosion de la Tour sortait orange.
+  host.style.setProperty('--pb-brot',(g.brot!==undefined?g.brot:g.rot)+'deg');
+  host.style.setProperty('--pb-bsat',g.bsat!==undefined?g.bsat:g.sat);
 
   // Le filtre n'est branché QUE s'il est bien en place : --pb-tint absente,
   // la CSS garde son repli (la rotation globale d'autrefois, marbre teinté
@@ -577,7 +594,9 @@ function pbBloomOn(){
 // fraction de l'image), posé là où était la pièce qui vient d'éclater :
 // la caméra plonge dans la pièce, elle ne recule jamais.
 function pbSeen(scene,frame){
-  const r=scene.getBoundingClientRect();
+  // La boîte de la PLANCHE, transformations comprises : elle porte l'échelle
+  // de l'éclatement (pbBurstIn) en plus de la secousse de la scène.
+  const r=(frame||scene).getBoundingClientRect();
   if(!r.width||!r.height)return null;
   const nw=(frame&&frame.naturalWidth)||1024,nh=(frame&&frame.naturalHeight)||1536,
         k=Math.max(r.width/nw,r.height/nh);
@@ -611,6 +630,20 @@ function pbBlastFrom(f,prev,st){
   f.style.setProperty('--pb-bs1',s1.toFixed(3));
   f.style.setProperty('--pb-btx',tx.toFixed(1)+'px');
   f.style.setProperty('--pb-bty',ty.toFixed(1)+'px');
+}
+
+// Une image CHARGÉE n'est pas encore une image PEINTE : le navigateur la
+// décode au moment où elle devient visible, et une planche de 1024 × 1536
+// restait ainsi transparente pendant cinq ou six images après avoir reçu
+// `on`. `decode()` fait ce travail avant — la planche est prête à s'afficher
+// dès l'image suivante. Sans `decode()` (vieux navigateur) ou s'il échoue,
+// on enchaîne quand même.
+function pbDecoded(img,cb){
+  if(!img||typeof img.decode!=='function')return cb();
+  let done=false;
+  const go=()=>{if(!done){done=true;cb();}};
+  img.decode().then(go,go);
+  setTimeout(go,400);
 }
 
 function pbRestart(el,cls){
@@ -729,7 +762,7 @@ function chestBreakMount(chestId,onDone){
     if(!st)return;
     ctl.i=i;ctl._busy=true;
 
-    pbWhenReady(pbSrc(cfg,i),()=>{
+    pbWhenReady(pbSrc(cfg,i),()=>pbDecoded(frames[i],()=>{
       if(ctl._dead)return;
 
       // LE TITRE ET LA PHRASE S'EFFACENT dès que la pièce a lâché — et non
@@ -778,13 +811,23 @@ function chestBreakMount(chestId,onDone){
       // figent sur leur dernière image (`forwards`), et une opacité figée
       // par une animation l'emporte sur celle qu'on vient de remettre à
       // zéro — la planche resterait à l'écran par-dessus la suivante.
-      const f=frames[i],cut=st.solo?0:(st.xfade||0);
+      //
+      // LE FONDU CROISÉ ATTEND QUE LA NOUVELLE PLANCHE SOIT LÀ. Les planches
+      // du dessous ne commencent à s'effacer qu'une fois celle-ci montée
+      // (`--pb-fdelay` = son propre fondu) : effacées en même temps qu'elle
+      // monte, elles laissaient pendant quelques images la planche d'encore
+      // plus bas à découvert — la pièce presque intacte, revenue juste après
+      // avoir éclaté.
+      const f=frames[i],cut=st.solo?0:(st.xfade||0),
+            wait=st.solo?0:(st.fade||240)+40;
       if(st.solo||st.xfade)frames.forEach(o=>{
         if(o===f)return;
         o.style.setProperty('--pb-fade',cut+'ms');
+        o.style.setProperty('--pb-fdelay',wait+'ms');
         o.classList.remove('on','pb-burst','pb-blast');
       });
       f.style.setProperty('--pb-fade',(st.fade||240)+'ms');
+      f.style.setProperty('--pb-fdelay','0ms');
       f.classList.add('on');
 
       // LES DEUX RAMPES D'ÉCHELLE DE L'EXPLOSION. Elles sont portées par la
@@ -794,13 +837,25 @@ function chestBreakMount(chestId,onDone){
       // Voir pbBurstIn / pbBlastIn dans css/style.css.
       f.classList.remove('pb-burst','pb-blast');
       if(bloom)bloom.classList.remove('pb-burst');
+      // LA SCÈNE GRANDIT AVEC L'ÉCLATEMENT, ovale compris. La planche seule
+      // ne suffisait pas : le masque ovale est posé sur la scène, et c'est
+      // lui qui dessine le contour de l'explosion à l'écran. La secousse le
+      // faisait retomber de 1.13 à 1 pendant que la planche grossissait
+      // dedans — le contour RÉTRÉCISSAIT, l'explosion se lisait comme une
+      // implosion. `--pb-sg` est la taille finale de la scène.
+      scene.classList.remove('pb-grow');
+      if(st.burst&&st.sg){
+        host.style.setProperty('--pb-sg',st.sg);
+        pbRestart(scene,'pb-grow');
+      }
       if(st.burst){
         host.style.setProperty('--pb-burstdur',st.burst+'ms');
+        host.style.setProperty('--pb-us0',st.bs0||1.08);
+        host.style.setProperty('--pb-us1',st.bs1||1.30);
         pbRestart(f,'pb-burst');
-        // Le halo est une copie de la planche : il s'ouvre avec elle, sans
-        // quoi il resterait grandeur nature autour d'un éclatement encore
-        // minuscule.
-        if(bloom)pbRestart(bloom,'pb-burst');
+        // Le halo NE repart PAS de zéro : relancer sa respiration le faisait
+        // retomber d'un coup à son minimum, et l'explosion perdait son aura
+        // pendant une image. Il est dans la scène, il grandit déjà avec elle.
       }
       if(st.blast){
         host.style.setProperty('--pb-blastdur',(st.bsdur||520)+'ms');
@@ -827,7 +882,11 @@ function chestBreakMount(chestId,onDone){
       // Le halo suit l'image affichée : même cadrage, mais flouté et fondu
       // en « screen », donc seules les fissures brillent.
       if(bloom){
-        bloom.style.backgroundImage='url("'+pbSrc(cfg,i)+'")';
+        // Sauf à l'éclatement : changer l'image d'un fond CSS le vide le
+        // temps de la décoder, et le halo s'éteignait une image entière
+        // au moment même où tout devait s'embraser. Celui des éclats, flou,
+        // lui va aussi bien.
+        if(!st.burst)bloom.style.backgroundImage='url("'+pbSrc(cfg,i)+'")';
         const b=st.bloom||[0,0];
         host.style.setProperty('--pb-b0',b[0]);
         host.style.setProperty('--pb-b1',b[1]);
@@ -852,6 +911,11 @@ function chestBreakMount(chestId,onDone){
       if(st.flash){
         host.style.setProperty('--pb-fmax',calm?Math.min(st.flash,.45):st.flash);
         host.style.setProperty('--pb-fdur',(st.fdur||300)+'ms');
+        // La gerbe repart de là où en était la précédente, pas de zéro :
+        // relancée au milieu de celle des éclats (05), elle éteignait d'un
+        // coup la lueur autour de la pièce, et la pièce semblait se rétracter
+        // une image avant d'éclater.
+        host.style.setProperty('--pb-f0',(+getComputedStyle(flash).opacity||0).toFixed(3));
         flash.classList.toggle('big',!!st.blast);
         pbRestart(flash,'go');
       }
@@ -871,7 +935,7 @@ function chestBreakMount(chestId,onDone){
       }else{
         ctl._timer=setTimeout(()=>{ctl._busy=false;},Math.max(160,(st.fdur||0)*.55));
       }
-    });
+    }));
   }
 
   ctl.next=function(){

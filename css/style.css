@@ -2900,7 +2900,7 @@ body.light .var-card{background:linear-gradient(180deg,rgba(255,255,255,.7),rgba
   object-fit:cover;object-position:50% 56%;
   transform-origin:center center;
   filter:brightness(var(--pb-lum,1)) var(--pb-tint,hue-rotate(var(--pb-rot,0deg)) saturate(var(--pb-sat,1)));
-  transition:opacity var(--pb-fade,240ms) ease-out}
+  transition:opacity var(--pb-fade,240ms) ease-out var(--pb-fdelay,0ms)}
 .pb-frame.on{opacity:1}
 
 /* ============================================================
@@ -2918,8 +2918,8 @@ body.light .var-card{background:linear-gradient(180deg,rgba(255,255,255,.7),rgba
    La rampe descend donc d'un cran, de la scène vers CHAQUE planche, et les
    deux morceaux s'emboîtent bout à bout :
 
-       frame 1   0.35 ────────► 1.00     (220 ms, détente rapide)
-       frame 2   1.10 ────────► 1.75     (520 ms, décélération longue)
+       frame 1   1.08 ────────► 1.30     (420 ms, poussée vers l'avant)
+       frame 2   ≥ 3 × frame 1 ──► ×1.5  (520 ms, zoom plein écran, pbBlastFrom)
 
    Le départ de la seconde est STRICTEMENT au-dessus de l'arrivée de la
    première : il ne peut plus exister d'image où le souffle est plus petit
@@ -2933,32 +2933,37 @@ body.light .var-card{background:linear-gradient(180deg,rgba(255,255,255,.7),rgba
    suit la planche : il en est la copie (voir plus bas). */
 
 /* FRAME 1 — L'ÉCLATEMENT. La pièce part en mille morceaux propulsés vers
-   l'extérieur : la planche naît petite au centre et s'ouvre jusqu'à remplir
-   sa boîte. Détente rapide, presque toute la course est faite au tiers du
-   temps — c'est ce qui donne le COUP. Seule la transformation est animée :
+   l'extérieur : la planche arrive DÉJÀ plus grande que la précédente et
+   continue de grossir. Elle naissait petite (.35) : pendant ses premières
+   images, on revoyait la pièce encore debout sous elle — l'implosion.
+   Détente rapide, presque toute la course est faite au tiers du temps. Seule la transformation est animée :
    l'opacité reste au fondu d'étape (--pb-fade), sans quoi le remplissage
    `forwards` la figerait et l'étape `solo` ne pourrait plus l'éteindre. */
 .pb-frame.pb-burst{animation:pbBurstIn var(--pb-burstdur,220ms) cubic-bezier(.15,.85,.25,1) forwards}
 @keyframes pbBurstIn{
-  0%  {transform:scale(.35)}
-  100%{transform:scale(1)}
+  0%  {transform:scale(var(--pb-us0,1.08))}
+  100%{transform:scale(var(--pb-us1,1.30))}
 }
-/* LE HALO PART AVEC ELLE. Il est une copie floutée de la planche : le laisser
-   à sa taille pendant que la planche s'ouvre reviendrait à peindre une auréole
-   grandeur nature autour d'un éclatement encore minuscule — et c'est cette
-   auréole, éclairée, qui rendait visible l'arête franche de la planche
-   réduite. Il porte donc la même rampe, en plus de sa respiration : les deux
-   animations ne touchent pas aux mêmes propriétés (transformation d'un côté,
-   opacité de l'autre), elles cohabitent sans se marcher dessus.
-   Le déferlement, lui, ne le concerne pas : la planche est alors plein écran
-   et le recouvre entièrement. */
-.pb-bloom{transform-origin:center center}
-.pb-bloom.pb-burst{animation:pbBloom var(--pb-bt,2.6s) ease-in-out infinite,
-  pbBurstIn var(--pb-burstdur,220ms) cubic-bezier(.15,.85,.25,1) forwards}
+/* LE HALO NE PORTE PAS LA RAMPE : il est dans la scène, qui grandit avec
+   l'éclatement (pbGrow), et relancer ses animations le faisait retomber à
+   son minimum au premier instant de l'explosion. */
+.pb-frame.pb-burst{transform-origin:50% 48%}
+/* La scène grandit avec l'éclatement, masque ovale compris (voir `sg`,
+   js/chest-break.js) : c'est l'ovale qui fait le contour de l'explosion.
+   L'origine est le cœur de l'explosion, à mi-largeur, un peu au-dessus du
+   milieu. */
+/* `will-change` : la scène a son calque dès la première planche. Sans lui,
+   le navigateur le créait au démarrage de pbGrow, et l'image de cette
+   bascule se peignait sans le halo — la pièce semblait se rétracter une
+   image juste avant d'éclater. */
+.pb-scene{transform-origin:50% 48%;will-change:transform}
+.pb-scene.pb-grow{animation:pbGrow var(--pb-burstdur,420ms) cubic-bezier(.15,.85,.25,1) forwards}
+@keyframes pbGrow{0%{transform:scale(1)}100%{transform:scale(var(--pb-sg,1.3))}}
 
-/* FRAME 2 — LA SUITE. Elle est DÉJÀ montée à 1.10 quand la première
-   s'efface : le souffle reprend au-dessus de là où il s'était arrêté, puis
-   décélère jusqu'à 1.75 en s'effaçant dans la lumière. La courbe est une
+/* FRAME 2 — LA SUITE. Elle démarre DÉJÀ au moins 3 fois plus grande que
+   l'éclatement tel qu'on le voyait (pbBlastFrom, js/chest-break.js) : le
+   souffle reprend au-dessus de là où il s'était arrêté, puis décélère
+   jusqu'à ×1.5 en s'effaçant dans la lumière. La courbe est une
    décélération franche (.15,.7,.3,1) : l'essentiel de la course est donné
    tout de suite, la fin ne fait plus que dériver — un souffle qui perd sa
    vitesse, pas une image qu'on agrandit. */
@@ -3032,7 +3037,7 @@ body.light .var-card{background:linear-gradient(180deg,rgba(255,255,255,.7),rgba
    une teinte qu'il ne devrait pas, mais il est de toute façon en train de
    disparaître dans le blanc. */
 .pb-scene.blast .pb-frame{
-  filter:brightness(var(--pb-lum,1)) hue-rotate(var(--pb-rot,0deg)) saturate(var(--pb-sat,1))}
+  filter:brightness(var(--pb-lum,1)) hue-rotate(var(--pb-brot,var(--pb-rot,0deg))) saturate(var(--pb-bsat,var(--pb-sat,1)))}
 
 /* LE VOILE BLANC. Il monte très vite, tient un court instant — l'écran est
    alors entièrement lumineux, il ne montre plus rien — puis redescend. Le
@@ -3100,7 +3105,7 @@ body.light .var-card{background:linear-gradient(180deg,rgba(255,255,255,.7),rgba
     transparent 72%)}
 .pb-flash.big{inset:-48%}
 .pb-flash.go{animation:pbFlash var(--pb-fdur,300ms) ease-out}
-@keyframes pbFlash{0%{opacity:0}14%{opacity:var(--pb-fmax,.5)}100%{opacity:0}}
+@keyframes pbFlash{0%{opacity:var(--pb-f0,0)}14%{opacity:var(--pb-fmax,.5)}100%{opacity:0}}
 
 /* PAS DE POUSSIÈRE AJOUTÉE. Une nuée de particules CSS a été essayée
    au-dessus de la scène, pour que l'image fixe ait moins l'air d'un arrêt
@@ -3201,7 +3206,7 @@ body.light .var-card{background:linear-gradient(180deg,rgba(255,255,255,.7),rgba
   /* Les deux rampes d'échelle de l'explosion sont coupées ici comme elles
      l'étaient quand elles vivaient sur la scène : il reste la montée de
      lumière, qui raconte la même chose sans rien déplacer. */
-  .pb-frame.pb-burst,.pb-frame.pb-blast,.pb-bloom.pb-burst{animation:none}
+  .pb-frame.pb-burst,.pb-frame.pb-blast,.pb-scene.pb-grow{animation:none}
   .pb-scene.blast{animation:none;filter:brightness(1.8)}
   .pb-white.go{animation:pbWhiteCalm var(--pb-wdur,820ms) linear}
   @keyframes pbWhiteCalm{0%{opacity:0}30%{opacity:.82}48%{opacity:.82}100%{opacity:0}}
