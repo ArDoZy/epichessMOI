@@ -513,7 +513,7 @@ function showPieceCtxMenu(e,pieceDef,opts){
   mvt.style.display=canDraw?'':'none';
   const stockRow=document.getElementById('ctx-stock-row');
   if(stockRow){
-    const own=pieceDef.id&&typeof invCount==='function'&&typeof isOwnablePiece==='function'&&isOwnablePiece(pieceDef.id);
+    const own=!(opts&&opts.inGame)&&pieceDef.id&&typeof invCount==='function'&&typeof isOwnablePiece==='function'&&isOwnablePiece(pieceDef.id);
     stockRow.style.display=own?'':'none';
     if(own){
       const n=invCount(pieceDef.id);
@@ -531,12 +531,16 @@ function showPieceCtxMenu(e,pieceDef,opts){
     pBtn.style.display='none';
   }
   // Le coin haut-gauche va au point cliqué, reculé juste ce qu'il faut pour
-  // que la fiche tienne à l'écran. Le Math.max garde le bord gauche visible :
-  // sous 338 px de large, le seul Math.min donnait une abscisse NÉGATIVE et
-  // la fiche sortait par la gauche.
-  const mx=Math.max(8,Math.min(e.clientX,window.innerWidth-330)),
-        my=Math.max(8,Math.min(e.clientY,window.innerHeight-260));
-  menu.style.left=mx+'px';menu.style.top=my+'px';menu.classList.add('show');
+  // que la fiche tienne à l'écran. On MESURE la fiche une fois remplie au lieu
+  // de supposer sa taille : l'ancienne réserve fixe (330 × 260 px) ignorait le
+  // schéma de déplacement et le pouvoir, et la fiche débordait largement par
+  // le bas, sur téléphone comme sur ordinateur. Si elle est plus haute que
+  // l'écran, sa max-height (css) la fait défiler dedans.
+  menu.style.left='8px';menu.style.top='8px';menu.classList.add('show');
+  const w=menu.offsetWidth,h=menu.offsetHeight;
+  const mx=Math.max(8,Math.min(e.clientX,window.innerWidth-w-8)),
+        my=Math.max(8,Math.min(e.clientY,window.innerHeight-h-8));
+  menu.style.left=mx+'px';menu.style.top=my+'px';
 }
 
 // ----------------------------------------------------------------

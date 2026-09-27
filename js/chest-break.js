@@ -152,8 +152,9 @@ function chestBreakTail(){
     // rejoint le voile blanc qu'à la toute fin.
     //
     // DEUX TEMPS, DEUX RAMPES. `bsdur` est le temps de la GÉOMÉTRIE : le
-    // souffle repart de 1.10 — au-dessus du 1 où l'éclatement s'est arrêté —
-    // et décélère jusqu'à 1.75 en un demi-battement. `bldur` est le temps de
+    // souffle repart d'une échelle CALCULÉE — au moins 3 fois celle où l'on
+    // voyait l'éclatement, zoomée sur la pièce (voir pbBlastFrom) — et
+    // décélère jusqu'à ×1.5 en un demi-battement. `bldur` est le temps de
     // la LUMIÈRE, deux fois plus long, calé sur le voile blanc. Les
     // confondre était l'origine du défaut : une seule durée forçait la
     // géométrie à s'étirer sur le temps de la lumière, et le raccord entre
@@ -555,6 +556,63 @@ function pbBloomOn(){
 // Relance une animation CSS déjà jouée : retirer la classe ne suffit pas, le
 // navigateur regroupe les deux changements dans la même image. Lire une
 // propriété de disposition force la césure entre les deux.
+// ----------------------------------------------------------------
+// LE DÉFERLEMENT EST UN ZOOM SUR LA PIÈCE
+// ----------------------------------------------------------------
+// L'éclatement (06) se joue dans sa boîte de 320 px : ses blocs de marbre y
+// font 40 à 60 px. La suite (07) est dessinée DE PLUS PRÈS — ce sont les
+// mêmes éclats vus au cœur du souffle — mais passée en plein écran avec une
+// échelle fixe (1.10 → 1.75 de la taille « cover »), elle n'était zoomée
+// que d'autant que l'écran était grand. Sur un téléphone en portrait, la
+// couverture ne vaut que 0,55 × l'image : les éclats de 07 finissaient PLUS
+// PETITS que ceux de 06, et le souffle se lisait explosion → implosion →
+// explosion. Aucune retouche des rampes ne pouvait le corriger : le défaut
+// était dans le rapport d'échelle entre les deux planches, que l'écran
+// décide.
+//
+// L'échelle de départ est donc CALCULÉE : 07 démarre à `blastZoom` fois
+// l'échelle à laquelle 06 était affichée (en pixels d'écran par pixel
+// d'image), et au moins à 1.10 de sa couverture. Elle grandit ensuite de
+// ×1.5. Et elle grandit AUTOUR DU CŒUR de l'explosion (`blastCore`, en
+// fraction de l'image), posé là où était la pièce qui vient d'éclater :
+// la caméra plonge dans la pièce, elle ne recule jamais.
+function pbSeen(scene,frame){
+  const r=scene.getBoundingClientRect();
+  if(!r.width||!r.height)return null;
+  const nw=(frame&&frame.naturalWidth)||1024,nh=(frame&&frame.naturalHeight)||1536,
+        k=Math.max(r.width/nw,r.height/nh);
+  // .pb-frame : object-fit cover, object-position 50% 56% (css/style.css).
+  // Le cœur de l'éclatement (06) est au centre de l'image, à 49 %.
+  const ox=(r.width-nw*k)*.5,oy=(r.height-nh*k)*.56;
+  return {k,x:r.left+ox+nw*k*.5,y:r.top+oy+nh*k*.49};
+}
+function pbBlastFrom(f,prev,st){
+  const vw=f.clientWidth||innerWidth,vh=f.clientHeight||innerHeight,
+        nw=f.naturalWidth||1024,nh=f.naturalHeight||1536,
+        c=Math.max(vw/nw,vh/nh),
+        iw=nw*c,ih=nh*c,ox=(vw-iw)/2,oy=(vh-ih)/2,   // object-position 50% 50% en plein écran
+        core=st.blastCore||[.5,.57],
+        Ox=ox+iw*core[0],Oy=oy+ih*core[1];
+  let s0=1.10;
+  if(prev)s0=Math.max(s0,prev.k*(st.blastZoom||3)/c);
+  const s1=s0*1.5;
+  // Le cœur de 07 vient se poser sur la pièce de 06 — sans jamais découvrir
+  // un bord. `object-fit` rogne l'image à la boîte de l'élément : ce qui
+  // couvre l'écran, c'est cette boîte agrandie, pas l'image entière. La
+  // translation est donc bornée par ce que la boîte gagne en grandissant.
+  let tx=0,ty=0;
+  if(prev){
+    const clamp=(v,lo,hi)=>Math.min(hi,Math.max(lo,v));
+    tx=clamp(prev.x-Ox,-(s0-1)*(vw-Ox),(s0-1)*Ox);
+    ty=clamp(prev.y-Oy,-(s0-1)*(vh-Oy),(s0-1)*Oy);
+  }
+  f.style.transformOrigin=Ox.toFixed(1)+'px '+Oy.toFixed(1)+'px';
+  f.style.setProperty('--pb-bs0',s0.toFixed(3));
+  f.style.setProperty('--pb-bs1',s1.toFixed(3));
+  f.style.setProperty('--pb-btx',tx.toFixed(1)+'px');
+  f.style.setProperty('--pb-bty',ty.toFixed(1)+'px');
+}
+
 function pbRestart(el,cls){
   if(!el)return;
   el.classList.remove(cls);
@@ -685,6 +743,10 @@ function chestBreakMount(chestId,onDone){
       // large sautent : l'image passe en position fixe sur tout l'écran. Les
       // deux textes sont déjà partis (`hush` ci-dessus), donc le passage hors
       // flux ne fait sauter aucun texte.
+      // Où et à quelle échelle la planche d'avant était VUE, mesuré avant que
+      // la scène ne quitte sa boîte : c'est ce que le déferlement doit
+      // dépasser (voir pbBlastFrom plus bas).
+      const prev=st.blast&&!host.classList.contains('pb-full')?pbSeen(scene,frames[i-1]):null;
       if(st.full){
         host.classList.add('pb-full');
         host.classList.toggle('pb-bleed',st.full==='bleed');
@@ -742,6 +804,7 @@ function chestBreakMount(chestId,onDone){
       }
       if(st.blast){
         host.style.setProperty('--pb-blastdur',(st.bsdur||520)+'ms');
+        pbBlastFrom(f,prev,st);
         pbRestart(f,'pb-blast');
       }
 

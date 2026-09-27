@@ -5,7 +5,7 @@
 // Contient : le rendu de la page « Guerre des clans » (#page-reserve), la
 // texture du plateau (suit automatiquement l'ELO, voir bestUnlockedSkin),
 // la cérémonie d'ouverture d'un coffre,
-// les coffres illimités du mode test (renderAdminChests), la fenêtre de la
+// la fenêtre de la
 // récompense journalière (renderDailyModal, js/rewards-ui.js), la
 // page « Magasin » où les coffres s'achètent
 // (renderMagasinPage/buyChestFromShop), le coffre de réapprovisionnement
@@ -237,7 +237,6 @@ function pearlAmountHTML(n,em){
 // renderMagasinPage), là où on décide de dépenser.
 function renderReservePage(){
   if(!CUR_ACC)return;
-  renderAdminChests();
 }
 
 // Ce que promet une carte de coffre, en une ligne : les deux nombres qui
@@ -265,14 +264,6 @@ function chestPromiseHTML(chest){
 function chestOpenNow(chestId,onClose){
   const chest=chestById(chestId);
   showChestCeremony(chest,chestRoll(chest.id),true,onClose||function(){});
-}
-
-// Retour à la Guerre des clans après une ouverture lancée depuis la Guerre des clans.
-function chestBackToReserve(){
-  showPage('page-reserve');
-  renderReservePage();
-  if(typeof updAll==='function')updAll();
-  if(typeof renderArmiesPage==='function')renderArmiesPage();
 }
 
 // ----------------------------------------------------------------
@@ -405,43 +396,6 @@ function renderMagasinPage(){
   grid.querySelectorAll('.shop-chest').forEach(b=>{
     const price=chestPearlPrice(b.dataset.chest);
     b.classList.toggle('shop-poor',bal!==Infinity&&bal<price);
-  });
-}
-
-// ----------------------------------------------------------------
-// COFFRES ILLIMITÉS DU MODE TEST
-// ----------------------------------------------------------------
-// Les six coffres (Pion, Cavalier, Fou, Tour, Dame, Roi) sont ouvrables
-// autant de fois qu'on veut, avec la vraie cérémonie et le vrai tirage : c'est
-// de quoi VOIR ce que donne un coffre sans jouer trente parties. Le contenu
-// n'est pas crédité — en mode test l'inventaire est déjà illimité et rien ne
-// s'écrit sur le compte (voir js/economy.js).
-// La section est masquée (et vide) hors mode test.
-let _adminChestsBuilt=false;
-function renderAdminChests(){
-  const sec=document.getElementById('rs-admin-sec');
-  const el=document.getElementById('rs-admin-chests');
-  if(!sec||!el)return;
-  const on=(typeof ADMIN_MODE!=='undefined')&&ADMIN_MODE;
-  sec.style.display=on?'':'none';
-  if(!on){if(el.firstChild)el.textContent='';_adminChestsBuilt=false;return;}
-  // Ces six coffres ne dépendent de RIEN qui change : ils sont illimités et
-  // gratuits. Les redessiner à chaque arrivée sur la face « réserve » ne
-  // pouvait que recharger six images pour un résultat identique.
-  if(_adminChestsBuilt&&el.firstElementChild)return;
-  _adminChestsBuilt=true;
-  el.innerHTML='<div class="rs-admin-note">Coffres de test, ouvrables sans limite. Le contenu est tiré au sort comme pour un coffre gagné en jouant, mais rien n\'est crédité : en mode test, tout est déjà illimité.</div>'+
-    '<div class="chest-grid">'+CHESTS.map(ch=>
-      '<div class="chest-card chest-admin" data-chest="'+ch.id+'" style="--chest-c:'+ch.color+'">'+
-        '<span class="chest-count">∞</span>'+
-        chestVisual(ch,'chest-ready')+
-        '<div class="chest-name">'+ch.name+'</div>'+
-        chestPromiseHTML(ch)+
-      '</div>').join('')+'</div>';
-  el.addEventListener('click',e=>{
-    const card=e.target.closest&&e.target.closest('.chest-card');
-    if(!card||!el.contains(card))return;
-    if(typeof ADMIN_MODE!=='undefined'&&ADMIN_MODE)chestOpenNow(card.dataset.chest,chestBackToReserve);
   });
 }
 

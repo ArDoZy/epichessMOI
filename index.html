@@ -1190,14 +1190,10 @@
            déjà écrit dans l'en-tête du MAGASIN, là où on décide de dépenser
            (voir renderMagasinPage, js/economy-ui.js). Répété ici, il ne
            faisait qu'occuper le haut de l'écran. -->
-      <!-- MODE ADMIN : les six récompenses en accès illimité. Vide (et
-           masquée) hors mode admin, remplie par renderAdminChests()
-           dans js/economy-ui.js. Le mode admin ne donne aucune pièce
-           directement : il donne des coffres, qu'il faut ouvrir. -->
-      <div class="rs-sec" id="rs-admin-sec" style="display:none">
-        <div class="rs-sec-title">Récompenses illimitées (mode admin)</div>
-        <div id="rs-admin-chests"></div>
-      </div>
+      <!-- Plus de coffres « mode admin » ici : les coffres ne se trouvent
+           qu'au MAGASIN. En mode admin, les perles y sont illimitées
+           (pearlInfinite, js/economy.js), ce qui suffit à ouvrir autant de
+           coffres qu'on veut. -->
       <!-- Il n'y a plus de section « Coffres à ouvrir » : un coffre gagné ou
            acheté s'ouvre IMMÉDIATEMENT (chestOpenNow, js/economy-ui.js).
            La file d'attente n'ajoutait qu'un aller-retour entre la fin de

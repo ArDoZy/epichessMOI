@@ -33,14 +33,16 @@ function showCtxMenu(e,r,c,gs){
   // Un pouvoir qui dort (`np`, voir « LES POUVOIRS », js/data-pieces.js) ne
   // s'offre pas : la fiche le dit, le menu ne propose rien.
   const canUsePower=pd?.hasPower&&!cell.np&&cell.color===gs.turn&&!gs.gameOver;
-  let opts=null;
+  // En partie, la fiche ne dit pas le stock : le nombre d'exemplaires
+  // possédés n'aide en rien à jouer le coup (inGame, voir showPieceCtxMenu).
+  let opts={inGame:true};
   if(canUsePower){
     // La Réanimation ne s'offre qu'à SA Matriarche, à son tour, et seulement
     // quand le Général est tombé (gs.reviveReady, js/rules-engine.js).
     const off=pd.id==='matriarche'
       ?!(gs.reviveReady&&gs.reviveReady[cell.color])||cell.color!==(gs.playerColor||'w')
       :!!gs.gardePierreUsed[cell.color];
-    opts={powerActive:true,powerLabel:pd.powerLabel||'Activer pouvoir',powerDisabled:off,powerCtx:{r,c,pieceId:pd.id,color:cell.color}};
+    opts={inGame:true,powerActive:true,powerLabel:pd.powerLabel||'Activer pouvoir',powerDisabled:off,powerCtx:{r,c,pieceId:pd.id,color:cell.color}};
   }
   // Un pion n'a pas d'entrée au catalogue : sa fiche porte le nom et la règle
   // de sa troupe (PAWN_ARMIES, js/data-pieces.js).

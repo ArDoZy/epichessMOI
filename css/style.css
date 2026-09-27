@@ -1447,8 +1447,10 @@ body:not(.main-menu) #settings-panel{display:none}
 
 .drag-ghost{position:fixed;pointer-events:none;z-index:9999;width:64px;height:64px;
   transform:translate(-50%,-50%);opacity:.9;display:none;filter:drop-shadow(0 6px 8px rgba(0,0,0,.6))}
-.ctx-menu{position:fixed;background:var(--surface2);border:1px solid var(--border2);border-radius:13px;
-  padding:16px;z-index:2000;min-width:250px;max-width:340px;box-shadow:0 16px 44px rgba(0,0,0,.7);display:none}
+.ctx-menu{position:fixed;background:var(--surface2);border:1px solid var(--border2);border-radius:12px;
+  padding:11px 13px;z-index:2000;width:max-content;min-width:200px;max-width:min(270px,calc(100vw - 16px));
+  max-height:calc(100dvh - 16px);overflow-y:auto;overscroll-behavior:contain;
+  box-shadow:0 16px 44px rgba(0,0,0,.7);display:none}
 /* La fiche est posée à des coordonnées EXACTES (showPieceCtxMenu place son
    coin haut-gauche au point cliqué). Elle empruntait `nIn`, écrite pour un
    élément centré horizontalement : celle-ci se termine sur translateX(-50%),
@@ -1459,15 +1461,15 @@ body:not(.main-menu) #settings-panel{display:none}
    settingsPanelIn plus haut, même correction). */
 .ctx-menu.show{display:block;animation:ctxIn .18s ease}
 @keyframes ctxIn{from{opacity:0;transform:translateY(-12px)}to{opacity:1;transform:translateY(0)}}
-.ctx-title{font-family:var(--f-ui);font-size:15px;font-weight:700;margin-bottom:4px;display:flex;align-items:center;gap:8px}
+.ctx-title{font-family:var(--f-ui);font-size:14px;font-weight:700;margin-bottom:2px;padding-right:16px;display:flex;align-items:center;gap:8px}
 .ctx-title .pc-icon{width:1.6em;height:1.6em}
-.ctx-class{font-size:10px;text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px;font-family:var(--f-ui)}
-.ctx-row{font-size:12px;margin-bottom:5px;line-height:1.5}.ctx-label{color:var(--muted);font-weight:600}
+.ctx-class{font-size:10px;text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px;font-family:var(--f-ui)}
+.ctx-row{font-size:11.5px;margin-bottom:4px;line-height:1.45}.ctx-label{color:var(--muted);font-weight:600}
 /* Le déplacement, sur la fiche : c'est un schéma, il lui faut de l'air et
    toute la largeur de la fiche (voir [PMV] plus bas). */
-.ctx-mvt{margin:10px 0 12px;display:flex;justify-content:center}
-.ctx-mvt .pmv-wrap{--pmv-cell:19px}
-.ctx-power-btn{margin-top:10px;width:100%}
+.ctx-mvt{margin:6px 0 8px;display:flex;justify-content:center}
+.ctx-mvt .pmv-wrap{--pmv-cell:clamp(11px,1.9vh,15px);gap:6px}
+.ctx-power-btn{margin-top:6px;width:100%}
 .ctx-close{position:absolute;top:8px;right:10px;cursor:pointer;color:var(--muted);font-size:16px;line-height:1}
 .ctx-close:hover{color:var(--danger)}
 
@@ -2570,9 +2572,6 @@ body.light .pmv-dark{background:#c3bdae}
   border:1px dashed var(--border2);border-radius:14px}
 /* Coffres du mode admin : mêmes cartes, mais marquées « ∞ » et encadrées de
    laiton pour qu'on ne les confonde jamais avec des coffres gagnés. */
-.chest-card.chest-admin{border-color:rgba(193,154,69,.45);background:linear-gradient(180deg,var(--surface),rgba(193,154,69,.06))}
-.chest-admin .chest-count{background:var(--gold);color:#1a1206;font-size:13px}
-.rs-admin-note{color:var(--muted);font-size:12.5px;font-style:italic;margin-bottom:12px;line-height:1.5}
 
 /* --- PERLES : solde et prix (js/economy-ui.js) ---
    La perle est dessinée (pearlIcon), jamais écrite en emoji : c'est une
@@ -2973,9 +2972,13 @@ body.light .var-card{background:linear-gradient(180deg,rgba(255,255,255,.7),rgba
      modeste. La brûlure est un CALQUE BLANC dont l'opacité monte (voir plus
      bas) : même montée vers le blanc, à la charge d'un compositeur au lieu
      d'un filtre. */
-  0%  {transform:scale(1.10);opacity:1}
-  82% {transform:scale(1.66);opacity:1}
-  100%{transform:scale(1.75);opacity:.9}
+  /* L'échelle et le point d'ancrage sont CALCULÉS (pbBlastFrom,
+     js/chest-break.js) : la planche part d'au moins 3 fois l'échelle à
+     laquelle l'éclatement était vu et grandit autour du cœur de
+     l'explosion. Les valeurs par défaut ne servent que sans JS. */
+  0%  {transform:translate(var(--pb-btx,0px),var(--pb-bty,0px)) scale(var(--pb-bs0,1.10));opacity:1}
+  82% {transform:translate(var(--pb-btx,0px),var(--pb-bty,0px)) scale(calc(var(--pb-bs0,1.10) + (var(--pb-bs1,1.76) - var(--pb-bs0,1.10))*.86));opacity:1}
+  100%{transform:translate(var(--pb-btx,0px),var(--pb-bty,0px)) scale(var(--pb-bs1,1.76));opacity:.9}
 }
 
 /* LA COULEUR DU RANG (variables posées par chestBreakPaint, js/chest-break.js).
