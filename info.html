@@ -18,14 +18,14 @@
      (voir #login-info-btn dans index.html).
      ============================================================ -->
 <title>Epic Chess : règles, créatures et questions fréquentes</title>
-<meta name="description" content="Tout sur Epic Chess : composition d'armée en 24 points, 19 créatures en 5 classes, coffres, voies de récompenses et réponses aux questions fréquentes."/>
+<meta name="description" content="Tout sur Epic Chess : composition d'armée en 24 points, 27 créatures en 5 classes, coffres, voies de récompenses et réponses aux questions fréquentes."/>
 <link rel="canonical" href="https://epichess.app/info"/>
 <meta name="robots" content="index,follow,max-snippet:-1,max-image-preview:large"/>
 <meta name="theme-color" content="#0e1216"/>
 
 <meta property="og:site_name" content="Epic Chess"/>
 <meta property="og:title" content="Epic Chess : règles, créatures et questions fréquentes"/>
-<meta property="og:description" content="Tout sur Epic Chess : composition d'armée en 24 points, 19 créatures en 5 classes, coffres, voies de récompenses et réponses aux questions fréquentes."/>
+<meta property="og:description" content="Tout sur Epic Chess : composition d'armée en 24 points, 27 créatures en 5 classes, coffres, voies de récompenses et réponses aux questions fréquentes."/>
 <meta property="og:type" content="article"/>
 <meta property="og:url" content="https://epichess.app/info"/>
 <meta property="og:locale" content="fr_FR"/>
@@ -40,7 +40,7 @@
 <link rel="stylesheet" href="css/style.css">
 
 <!-- FAQPage : déplacé ici depuis index.html avec le texte qu'il décrit.
-     Les faits (19 pièces, 5 classes, budget 24 points, 7 rangs, 12 adversaires, 6 raretés de
+     Les faits (27 créatures, 5 classes, budget 24 points, 7 rangs, 12 adversaires, 6 raretés de
      coffre) doivent rester synchronisés avec js/data-pieces.js. -->
 <script type="application/ld+json">
 {
@@ -87,7 +87,39 @@
           "name": "Contre qui joue-t-on à Epic Chess ?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Contre d'autres joueurs en ligne, par appariement automatique ou avec un code d'invitation, et contre les douze adversaires du laboratoire, une galerie d'IA nommées qui va de Cendre (150 ELO, qui joue presque au hasard) à l'Athanor (2300 ELO, qui n'oublie rien). Chacun a sa force de calcul, sa façon de se tromper et son style d'armée : Cinabre paralyse et repousse au lieu de prendre, Orpiment charge en ligne droite, Antimoine ne concède pas une case. Aucun n'est verrouillé et TOUS les duels sont classés : on peut donc progresser entièrement seul."
+            "text": "Contre d'autres joueurs en ligne, par appariement automatique ou en défiant directement un joueur du classement ou un ami, et contre les douze adversaires du laboratoire, une galerie d'IA nommées qui va de Cendre (150 ELO, qui joue presque au hasard) à l'Athanor (2300 ELO, qui n'oublie rien). Chacun a sa force de calcul, sa façon de se tromper et son style d'armée : Cinabre paralyse et repousse au lieu de prendre, Orpiment charge en ligne droite, Antimoine ne concède pas une case. Aucun n'est verrouillé et TOUS les duels sont classés : on peut donc progresser entièrement seul."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Comment défier un ami ou un joueur du classement ?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Ouvrez le Classement : un joueur en ligne porte une épée au bout de sa ligne, qui lui envoie un défi direct ; il a trente secondes pour l'accepter. L'onglet Amis garde sous la main les joueurs que vous avez ajoutés depuis leur profil, avec leur présence en ligne et le même bouton de défi. Un défi ne se lance qu'à quelqu'un qui est devant son écran."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Que se passe-t-il si personne n'est en ligne ?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "La recherche d'adversaire élargit d'abord l'écart de niveau accepté. Si personne n'est trouvé au bout d'une minute, un adversaire du laboratoire de votre niveau prend la place, annoncé comme tel vingt secondes avant : la partie est classée comme n'importe quel duel."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Peut-on revoir ses parties ?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Oui. Les dix dernières parties de chaque joueur, les vôtres comme celles des autres, se rejouent coup par coup en mode analyse : touchez une partie dans la liste ou une pastille de la bande de forme, sur la page Comptes ou sur un profil du classement."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Une créature a-t-elle toujours son pouvoir ?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Non. Une créature s'obtient sans son pouvoir et se joue avec son seul déplacement : une Méduse ne pétrifie pas, un Berserk s'arrête à sa première prise, une Fourmi ne se promeut pas. Huit débris magiques de cette créature, trouvés dans les coffres, éveillent son pouvoir depuis sa fiche, et il est alors acquis pour toujours. Les créatures sans pouvoir, comme la Dame ou les Primordiales, sont complètes dès qu'on les obtient."
           }
         },
         {
@@ -149,14 +181,15 @@
     <p>Avant chaque partie, vous <strong>composez votre armée</strong> dans une limite de 24 points. Le catalogue compte 27 créatures réparties en cinq classes, chacune avec son déplacement et sa capacité propres. Même les huit pions se choisissent : soldats, mercenaires, légionnaires ou barbares.</p>
 
     <ul class="lore-list">
-      <li><strong>Monarque</strong> : l'équivalent du roi, la pièce à protéger : le Roi, la Matriarche ou l'Empereur.</li>
-      <li><strong>Général</strong> : l'équivalent de la dame, la pièce maîtresse.</li>
-      <li><strong>Primordiale</strong> : les pièces classiques : Cavalier, Fou et Tour. Elles ne sortent que des coffres.</li>
-      <li><strong>Brute</strong> : les pièces ayant un déplacement puissant, mais un pouvoir faible.</li>
-      <li><strong>Sorcier</strong> : les pièces possédant des capacités spéciales avancées, mais à la mobilité réduite.</li>
+      <li><strong>Monarque</strong> : l'équivalent du roi, la pièce à protéger : le Roi, la Matriarche (qui relève une fois son Général tombé) ou l'Empereur (le Roi qui bondit aussi en cavalier).</li>
+      <li><strong>Général</strong> : l'équivalent de la dame, la pièce maîtresse : la Dame, l'Amazone, le Centaure, Nyx (qui cache les cases autour d'elle à l'adversaire) ou le Grand Maître.</li>
+      <li><strong>Primordiale</strong> : les pièces classiques : Cavalier, Fou et Tour Primordiaux.</li>
+      <li><strong>Brute</strong> : un déplacement puissant, un pouvoir simple : Fourmi, Preux Chevalier, Éléphant de guerre, Garde de Pierre, Pégase, Loup Géant, Singe (deux bonds en biais dans le même coup), Berserk (qui enchaîne les prises) et Boucher (qui mange sans bouger ce qui est collé à lui).</li>
+      <li><strong>Sorcier</strong> : des capacités avancées, une mobilité réduite : Méduse, Typhon, Banshee, Prêtre, Infecté (qui meurt en emportant qui le mange), Ombre (invisible pour l'adversaire) et Illusion (qui laisse un reflet derrière elle).</li>
     </ul>
 
     <p>Les parties se jouent <strong>en ligne contre d'autres joueurs</strong>, ou contre les <strong>douze adversaires du laboratoire</strong>, de Cendre (150 ELO) à l'Athanor (2300). Tous les duels sont classés et font évoluer votre ELO le long de la <strong>Diagonale de la Puissance</strong> : on progresse aussi bien seul qu'accompagné.</p>
+    <p>Toutes les créatures <strong>sortent des coffres</strong>, chacune à partir de son <strong>arène</strong> (le rang atteint sur la Diagonale). Une créature arrive <strong>sans son pouvoir</strong> : elle se joue aussitôt avec son déplacement, et son pouvoir s'éveille, pour toujours, avec <strong>huit débris magiques</strong> trouvés dans les coffres.</p>
     <p>Les pièces se possèdent en exemplaires : les engager, c'est les <strong>risquer</strong>. Les coffres, eux, s'ouvrent aussitôt obtenus, et ce qu'ils contiennent est écrit sur leur carte : de 1-3 exemplaires pour un Coffre Pion à 20-30 pour un Coffre Roi.</p>
     <p>La progression suit <strong>trois voies</strong>, nommées d'après les trois lignes de l'échiquier : la <strong>Diagonale de la Puissance</strong> (l'ELO, qui ouvre les arènes et donne des coffres), la <strong>Colonne des Victoires</strong> (trente paliers de coffres et de jokers, un par victoire) et la <strong>Rangée de la Richesse</strong> (vingt-cinq paliers de perles, payés avec les tickets des quêtes du jour).</p>
 
@@ -179,7 +212,27 @@
 
     <details class="lore-faq">
       <summary>Contre qui joue-t-on ?</summary>
-      <p>Contre d'autres joueurs en ligne, par appariement automatique ou avec un code d'invitation, et contre les douze adversaires du laboratoire, une galerie d'IA nommées qui va de Cendre (150 ELO, qui joue presque au hasard) à l'Athanor (2300 ELO, qui n'oublie rien). Chacun a sa force de calcul, sa façon de se tromper et son style d'armée : Cinabre paralyse et repousse au lieu de prendre, Orpiment charge en ligne droite, Antimoine ne concède pas une case. Aucun n'est verrouillé et TOUS les duels sont classés : on peut donc progresser entièrement seul.</p>
+      <p>Contre d'autres joueurs en ligne, par appariement automatique ou en défiant directement un joueur du classement ou un ami, et contre les douze adversaires du laboratoire, une galerie d'IA nommées qui va de Cendre (150 ELO, qui joue presque au hasard) à l'Athanor (2300 ELO, qui n'oublie rien). Chacun a sa force de calcul, sa façon de se tromper et son style d'armée : Cinabre paralyse et repousse au lieu de prendre, Orpiment charge en ligne droite, Antimoine ne concède pas une case. Aucun n'est verrouillé et TOUS les duels sont classés : on peut donc progresser entièrement seul.</p>
+    </details>
+
+    <details class="lore-faq">
+      <summary>Comment défier un ami ou un joueur du classement ?</summary>
+      <p>Ouvrez le Classement : un joueur en ligne porte une épée au bout de sa ligne, qui lui envoie un défi direct ; il a trente secondes pour l'accepter. L'onglet Amis garde sous la main les joueurs que vous avez ajoutés depuis leur profil, avec leur présence en ligne et le même bouton de défi. Un défi ne se lance qu'à quelqu'un qui est devant son écran.</p>
+    </details>
+
+    <details class="lore-faq">
+      <summary>Que se passe-t-il si personne n'est en ligne ?</summary>
+      <p>La recherche d'adversaire élargit d'abord l'écart de niveau accepté. Si personne n'est trouvé au bout d'une minute, un adversaire du laboratoire de votre niveau prend la place, annoncé comme tel vingt secondes avant : la partie est classée comme n'importe quel duel.</p>
+    </details>
+
+    <details class="lore-faq">
+      <summary>Peut-on revoir ses parties ?</summary>
+      <p>Oui. Les dix dernières parties de chaque joueur, les vôtres comme celles des autres, se rejouent coup par coup en mode analyse : touchez une partie dans la liste ou une pastille de la bande de forme, sur la page Comptes ou sur un profil du classement.</p>
+    </details>
+
+    <details class="lore-faq">
+      <summary>Une créature a-t-elle toujours son pouvoir ?</summary>
+      <p>Non. Une créature s'obtient sans son pouvoir et se joue avec son seul déplacement : une Méduse ne pétrifie pas, un Berserk s'arrête à sa première prise, une Fourmi ne se promeut pas. Huit débris magiques de cette créature, trouvés dans les coffres, éveillent son pouvoir depuis sa fiche, et il est alors acquis pour toujours. Les créatures sans pouvoir, comme la Dame ou les Primordiales, sont complètes dès qu'on les obtient.</p>
     </details>
 
     <details class="lore-faq">
@@ -197,7 +250,7 @@
 
     <details class="lore-faq">
       <summary>Que gagne-t-on en gagnant une partie ?</summary>
-      <p>Trois choses, sur trois voies distinctes, plus une quatrième qui ne demande rien. La <strong>Récompense Journalière</strong> donne un lot par jour — coffre, perles ou jokers — dans un cycle de trente jours qui recommence indéfiniment : il suffit de revenir, et un jour manqué ne coûte rien. La <strong>Colonne des Victoires</strong> avance d'un palier à chaque victoire : trente paliers de coffres et de jokers, une seule fois par compte, sans jamais se remettre à zéro. Un <strong>joker</strong> se transforme en la créature de votre choix : trois jokers convertis en Garde de Pierre donnent trois Gardes de Pierre. Enfin, l'ELO avance sur la <strong>Diagonale de la Puissance</strong>, dont les paliers donnent des coffres et dont chaque rang ouvre de nouvelles créatures aux coffres.</p>
+      <p>Trois choses, sur trois voies distinctes, plus une quatrième qui ne demande rien. La <strong>Récompense Journalière</strong> donne un lot par jour — coffre, perles ou jokers — dans un cycle de seize jours qui recommence indéfiniment : il suffit de revenir, et un jour manqué ne coûte rien. La <strong>Colonne des Victoires</strong> avance d'un palier à chaque victoire : trente paliers de coffres et de jokers, une seule fois par compte, sans jamais se remettre à zéro. Un <strong>joker</strong> se transforme en la créature de votre choix : trois jokers convertis en Garde de Pierre donnent trois Gardes de Pierre. Enfin, l'ELO avance sur la <strong>Diagonale de la Puissance</strong>, dont les paliers donnent des coffres et dont chaque rang ouvre de nouvelles créatures aux coffres.</p>
     </details>
 
     <details class="lore-faq">
