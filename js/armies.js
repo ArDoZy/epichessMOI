@@ -265,7 +265,9 @@ function pCatalogList(){
 let _pCardsSig=null;
 function pCardsSignature(list){
   const cnt=id=>(typeof invCount==='function'?invCount(id):0);
-  return list.map(p=>p.id+(pIsSel(p)?'*':'')+':'+cnt(p.id)).join('|');
+  // Le coin du pouvoir (endormi, prêt, éveillé) fait partie de la carte.
+  const pw=id=>(typeof piecePowerState==='function'?piecePowerState(id):'')+(typeof debrisCount==='function'?debrisCount(id):'');
+  return list.map(p=>p.id+(pIsSel(p)?'*':'')+':'+cnt(p.id)+':'+pw(p.id)).join('|');
 }
 function pRenderCards(){
   const cont=document.getElementById('ar-cards-container');if(!cont)return;

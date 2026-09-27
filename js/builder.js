@@ -137,9 +137,10 @@ const updAll=()=>{updSlots();renderCards();updStats();};
 // ----------------------------------------------------------------
 const toggle=p=>{
   if(!VV_UNLOCKED.has(p.id)){
-    const m=UNLOCK_MILESTONES.find(u=>u.pieceId===p.id);
-    if(m&&m.coffre)showNotif('Cette pièce s\'obtient dans un coffre !');
-    else showNotif('Pièce verrouillée, requis : '+(m&&m.eloRequired<999999?vvGetRank(m.eloRequired).name+' ('+m.eloRequired+' ELO)':'ELO insuffisant'));
+    // Toutes les créatures s'obtiennent dans les coffres, à partir de leur
+    // arène (PIECE_ARENA, js/data-pieces.js).
+    const ar=pieceArena(p.id);
+    showNotif('Cette créature sort des coffres dès l\'arène '+ar.name+'.');
     return;
   }
   const sel=isSel(p);
@@ -180,9 +181,8 @@ const getSorted=()=>[...PIECES].sort((a,b)=>{const d=CLASS_ORDER[a.class]-CLASS_
 // l'étiquette sur deux lignes dans un espace prévu pour une ; il est de toute
 // façon déductible de l'ELO, et la fiche de la pièce le donne en entier.
 function pieceLockLabel(p){
-  const m=UNLOCK_MILESTONES.find(u=>u.pieceId===p.id);
-  if(!m||m.coffre)return 'Coffre';
-  return m.eloRequired<999999?m.eloRequired+' ELO':'';
+  // Le nom de l'arène, pas un ELO : c'est l'arène qui ouvre les coffres.
+  return pieceArena(p.id).name;
 }
 
 const renderCards=()=>{

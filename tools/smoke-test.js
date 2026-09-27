@@ -287,7 +287,9 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
     });
     const bad=await page.evaluate(()=>{
       const out=[];
-      const dots=[...document.querySelectorAll('.acc-form-dots span')];
+      // Les pastilles sont des BOUTONS : chacune rouvre sa partie en mode
+      // analyse (replayFormHTML, js/replay.js).
+      const dots=[...document.querySelectorAll('.acc-form-dots button')];
       if(dots.length!==10)out.push('la bande de forme ne montre pas dix parties');
       // LA FRISE VA DE GAUCHE (le plus ancien) À DROITE (le plus récent). Elle
       // se lisait à l'envers : une remontée y ressemblait à une chute. Les
@@ -296,7 +298,7 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
       if(dots.length===10){
         const attendu=[];
         for(let i=2;i<12;i++)attendu.push(i%3===0?'acc-dot-l':'acc-dot-w');
-        const lu=dots.map(d=>d.className);
+        const lu=dots.map(d=>d.classList[0]);
         if(lu.join(',')!==attendu.join(','))
           out.push('la frise n\'est pas dans l\'ordre du temps :\n  '+lu.join(',')+'\nau lieu de\n  '+attendu.join(','));
       }
@@ -2756,6 +2758,148 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
   // soit une infraction — sinon le filet de sécurité de generateAIArmy, qui
   // complète le vivier quand le joueur possède moins de trois pièces
   // d'appoint, masquerait la règle au lieu de la prouver.
+  // LES POUVOIRS QUI DORMENT (voir « LES POUVOIRS », js/data-pieces.js) :
+  // une créature posée avec `np` se joue avec son seul déplacement.
+  await step('une créature dont le pouvoir dort ne s\'en sert pas',async()=>{
+    const bad=await page.evaluate(()=>{
+      const out=[];
+      const vide=()=>Array.from({length:8},()=>Array(8).fill(null));
+      const pose=(b,r,c,pieceId,color,np)=>{
+        const def=PIECES.find(p=>p.id===pieceId);
+        const type=def?(def.pieceType||'q'):(pieceId==='std-pawn'?'p':'q');
+        b[r][c]={type,color,pieceId,emoji:'',hasMoved:true,isKing:type==='k',id:pieceId+r+c};
+        if(np)b[r][c].np=true;
+        return b[r][c];
+      };
+      const etat=b=>{const gs={medusaParalyzed:new Set(),anchored:new Set(),pretreProtected:new Set(),
+        grandMaitreAlive:{w:false,b:false},enPassant:null,lastMoveHistory:[]};
+        updateMedusaParalysis(b,gs);updatePretreProtection(b,gs);updateGrandMaitre(b,gs);return gs;};
+      const coups=(b,r,c)=>generateMovesRaw(b,r,c,etat(b));
+      const pk=m=>(m.path||[]).map(q=>''+q.r+q.c).join('');
+      // Méduse
+      let b=vide();pose(b,4,4,'meduse','w',true);pose(b,3,3,'dame','b');
+      if(etat(b).medusaParalyzed.size)out.push('méduse endormie : elle pétrifie quand même');
+      b[4][4].np=false;
+      if(!etat(b).medusaParalyzed.size)out.push('méduse éveillée : elle ne pétrifie plus');
+      // Berserk
+      b=vide();pose(b,4,4,'berserk','w',true);pose(b,3,4,'dame','b');pose(b,2,4,'tour-primordiale','b');
+      if(coups(b,4,4).some(m=>pk(m)))out.push('berserk endormi : il enchaîne encore');
+      b=vide();pose(b,4,4,'berserk','w',true);pose(b,3,4,'dame','b');pose(b,2,4,'roi','b');
+      if(isInCheckSimple('b',b))out.push('berserk endormi : échec par une chaîne qu\'il ne peut pas faire');
+      // Boucher
+      b=vide();pose(b,4,4,'boucher','w',true);pose(b,3,4,'dame','b');
+      const sh=coups(b,4,4).find(m=>m.r===3&&m.c===4);
+      if(!sh||sh.shoot)out.push('boucher endormi : la prise collée est encore un couperet');
+      // Singe
+      b=vide();pose(b,4,4,'singe','w',true);pose(b,3,3,'dame','b');
+      if(coups(b,4,4).some(m=>m.via&&m.via.r===3&&m.via.c===3))out.push('singe endormi : il mange encore à son premier pas');
+      // Typhon
+      b=vide();const ty=pose(b,4,4,'typhon','w',true);pose(b,2,2,'dame','b');
+      const tm=coups(b,4,4).find(m=>m.r===3&&m.c===3);
+      const nb=applyMoveQuick(b,{r:4,c:4},tm,ty,null);
+      if(!nb[2][2])out.push('typhon endormi : son orage détruit encore');
+      // Infecté : le Monarque peut le prendre, et il ne contamine plus
+      b=vide();pose(b,4,4,'roi','w');pose(b,3,4,'infecte','b',true);
+      if(!coups(b,4,4).some(m=>m.r===3&&m.c===4))out.push('infecté endormi : le Monarque ne peut toujours pas le prendre');
+      if(infectionKills(b[4][4],b[3][4]))out.push('infecté endormi : il contamine encore');
+      // Fourmi : pas de promotion
+      const f={pieceId:'fourmi',np:true};
+      if(!(pieceCanPromote('fourmi')&&f.np))out.push('fourmi : drapeau de pouvoir non lu');
+      // Construction du plateau : np posé selon la liste de l'armée
+      const army={mon:PIECES.find(p=>p.id==='roi'),gen:PIECES.find(p=>p.id==='dame'),
+        extras:['meduse','fourmi','cavalier-primordial'],placements:{meduse:2,fourmi:1,'cavalier-primordial':0},powers:['fourmi']};
+      const bb=buildGameBoard(army,{...army,powers:undefined});
+      const w=bb[7].filter(Boolean),k=bb[0].filter(Boolean);
+      if(!w.some(x=>x.pieceId==='meduse'&&x.np))out.push('buildGameBoard : la méduse sans pouvoir n\'est pas marquée');
+      if(w.some(x=>x.pieceId==='fourmi'&&x.np))out.push('buildGameBoard : la fourmi éveillée est marquée');
+      if(w.some(x=>x.pieceId==='cavalier-primordial'&&x.np))out.push('buildGameBoard : une pièce sans pouvoir est marquée');
+      if(k.some(x=>x.np))out.push('buildGameBoard : une armée sans liste perd ses pouvoirs');
+      return out;
+    });
+    if(bad.length)throw new Error(bad.join(' · '));
+  });
+
+  await step('les créatures sortent des coffres selon l\'arène, et les débris éveillent leur pouvoir',async()=>{
+    const bad=await page.evaluate(()=>{
+      const out=[];
+      const keep={unl:[...VV_UNLOCKED],inv:JSON.stringify(accGet('inventory',{})),deb:JSON.stringify(accGet('debris',{})),
+        pow:JSON.stringify(accGet('unlocked_powers',[])),dry:accGet('chest_dry',0),vc:JSON.stringify(accGet('voie_chests',[]))};
+      try{
+        // L'ELO ne donne plus aucune créature.
+        if(UNLOCK_TABLE.some(u=>u.pieceId&&!u.starter))out.push('la Diagonale donne encore une créature');
+        if(vvCheckNewUnlocks(0,3000).length)out.push('vvCheckNewUnlocks débloque encore');
+        // Toute créature possédable a une arène.
+        PIECES.forEach(p=>{if(isOwnablePiece(p.id)&&!PIECE_ARENA[p.id])out.push(p.id+' n\'a pas d\'arène');});
+        // À l'arène du compte, le vivier ne propose rien d'une arène plus haute.
+        const arena=playerArenaIdx();
+        chestLockedPool().forEach(id=>{if(pieceArenaIdx(id)>arena)out.push(id+' sort des coffres avant son arène');});
+        // Le plafond de malchance : au CHEST_PITY-ième coffre sec, une inédite.
+        if(chestLockedPool().length){
+          accSet('chest_dry',CHEST_PITY);
+          if(!chestRoll('pion').some(l=>l.isNew))out.push('le plafond de malchance ne donne pas de créature');
+        }
+        // Débris : une créature possédée au pouvoir endormi en reçoit.
+        VV_UNLOCKED.add('meduse');invAdd('meduse',4);
+        const pw=accGet('unlocked_powers',[]).filter(x=>x!=='meduse');accSet('unlocked_powers',pw);
+        accSet('debris',{});accSet('chest_dry',0);
+        let got=0;
+        for(let i=0;i<60&&!got;i++){const lots=chestRoll('roi');lots.filter(l=>l.debris).forEach(l=>{
+          if(!pieceHasPower(l.debris)||powerUnlocked(l.debris))out.push('débris pour un pouvoir déjà éveillé : '+l.debris);got++;});}
+        if(!got)out.push('aucun débris en soixante Coffres Roi');
+        // L'éveil : huit débris, un pouvoir pour toujours.
+        accSet('debris',{meduse:7});
+        if(powerCanAwaken('meduse'))out.push('le pouvoir s\'éveille avec sept débris');
+        debrisAdd('meduse',1);
+        if(!powerAwaken('meduse'))out.push('le pouvoir ne s\'éveille pas avec huit débris');
+        if(!powerUnlocked('meduse'))out.push('le pouvoir éveillé n\'est pas retenu');
+        if(debrisCount('meduse')!==0)out.push('les débris ne sont pas dépensés');
+        if(!playerPowerList().includes('meduse'))out.push('le pouvoir éveillé ne part pas en partie');
+        // Un coffre de la Diagonale attend qu'on le touche.
+        accSet('voie_chests',[]);
+        const claimed=accGet('voie_rewards_claimed',[]);
+        const ch=UNLOCK_TABLE.find(u=>u.reward==='chest'&&!claimed.includes(u.id));
+        if(ch){
+          vvCheckRewardMilestones(ch.eloRequired-1,ch.eloRequired);
+          if(!accGet('voie_chests',[]).includes(ch.id))out.push('le coffre de la Diagonale n\'attend pas sur le chemin');
+          accSet('voie_rewards_claimed',claimed);
+        }
+      }finally{
+        VV_UNLOCKED=new Set(keep.unl);vvSaveUnlocked(VV_UNLOCKED);
+        accSet('inventory',JSON.parse(keep.inv));accSet('debris',JSON.parse(keep.deb));
+        accSet('unlocked_powers',JSON.parse(keep.pow));accSet('chest_dry',keep.dry);accSet('voie_chests',JSON.parse(keep.vc));
+      }
+      return out;
+    });
+    if(bad.length)throw new Error(bad.join(' · '));
+  });
+
+  await step('une minute sans adversaire donne un adversaire de son niveau, et les amis se gardent',async()=>{
+    const bad=await page.evaluate(()=>{
+      const out=[];
+      if(MP_BOT_AFTER_S!==60)out.push('le repli n\'arrive pas à la minute');
+      [[0,'cendre'],[500,'bruyere'],[1000,'cinabre'],[2400,'athanor']].forEach(([e,id])=>{
+        if(mpBotOpponentFor(e).id!==id)out.push(e+' ELO : '+mpBotOpponentFor(e).id+' au lieu de '+id);});
+      // Sans écran de recherche ouvert, pas de repli.
+      document.getElementById('mp-modal').classList.remove('show');
+      if(mpBotFallback())out.push('le repli part alors que personne ne cherche');
+      const avant=JSON.stringify(accGet('friends',[]));
+      try{
+        friendAdd('11111111-1111-4111-8111-111111111111','Ami de test');
+        if(!isFriend('11111111-1111-4111-8111-111111111111'))out.push('un ami ajouté n\'est pas retenu');
+        friendRemove('11111111-1111-4111-8111-111111111111');
+        if(isFriend('11111111-1111-4111-8111-111111111111'))out.push('un ami retiré reste dans la liste');
+        if(ECP&&friendAdd(ECP.id,'moi'))out.push('on peut s\'ajouter soi-même en ami');
+      }finally{accSet('friends',JSON.parse(avant));}
+      // La bande de forme ouvre ses parties.
+      const h=[{result:'win',delta:5,opp:'cendre',replay:{m:['6444']}},{result:'loss',delta:-3,opp:'x'}];
+      const html=replayFormHTML(h);
+      if((html.match(/data-hidx="/g)||[]).length!==2)out.push('les pastilles de forme ne sont pas des boutons');
+      if(!/Cendre/.test(html))out.push('le nom de l\'adversaire du laboratoire n\'est pas lisible');
+      return out;
+    });
+    if(bad.length)throw new Error(bad.join(' · '));
+  });
+
   await step('un adversaire ne compose son armée qu\'avec des pièces que le joueur possède',async()=>{
     const bad=await page.evaluate(()=>{
       const avant={unlocked:new Set(VV_UNLOCKED),inv:JSON.parse(JSON.stringify(invAll()))};
@@ -3351,7 +3495,9 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
       fxSetLevel(1);fxSetFlipped(false);
 
       // -- Les ÉVÉNEMENTS : chaque pouvoir pose quelque chose, et le retire.
-      for(const kind of ['ancre','foi','cuirasse','domination','typhon','banshee','meduse']){
+      for(const kind of ['ancre','foi','cuirasse','domination','typhon','banshee','meduse',
+        // Les signatures des nouvelles créatures (fxCreature, js/combat-fx.js).
+        'furie','bond','contagion','reflet','ombre','nuit','reanimation','ailes','griffes','couronne']){
         const avant=board.querySelectorAll('.fx-layer > *').length;
         fxPower(kind,4,4);
         if(board.querySelectorAll('.fx-layer > *').length<=avant)

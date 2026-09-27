@@ -11,8 +11,10 @@
 // ai-engine, voie, game-flow...).
 //
 // Si vous ajoutez une nouvelle pièce : l'ajouter dans PIECES, puis dans
-// UNLOCK_TABLE si elle doit être débloquée par ELO (ou marquée coffre:true
-// pour n'exister que dans les coffres).
+// PIECE_ARENA (l'arène à partir de laquelle elle sort des coffres). Si elle a
+// une ligne `ability`, son pouvoir s'éveillera avec des débris magiques, et
+// le moteur doit savoir ce qu'elle fait SANS lui (drapeau `np`,
+// js/rules-engine.js).
 // Si vous ajoutez un rang ELO : l'ajouter dans RANKS (ordre croissant, min/max
 // contigus), tout le reste (vvGetRank, badges, filtres IA) s'adapte seul.
 // ================================================================
@@ -224,13 +226,29 @@ const BOARD_SKINS=[
 // newChance : probabilité de contenir une pièce ENCORE JAMAIS DÉBLOQUÉE
 // bias      : plus il est élevé, plus les pièces chères sont probables
 const CHESTS=[
-  {id:'pion',    tier:0,name:'Coffre Pion',    rolls:2,total:[1,3],  newChance:0.010,bias:0.60,color:'#7f8b94'},
-  {id:'cavalier',tier:1,name:'Coffre Cavalier',rolls:3,total:[3,5],  newChance:0.028,bias:0.90,color:'#7d9c6a'},
-  {id:'fou',     tier:2,name:'Coffre Fou',     rolls:3,total:[5,8],  newChance:0.030,bias:1.25,color:'#5f93b8'},
-  {id:'tour',    tier:3,name:'Coffre Tour',    rolls:4,total:[8,12], newChance:0.050,bias:1.80,color:'#9a6fc4'},
-  {id:'dame',    tier:4,name:'Coffre Dame',    rolls:5,total:[12,20],newChance:0.100,bias:2.40,color:'#d0742e'},
-  {id:'roi',     tier:5,name:'Coffre Roi',     rolls:6,total:[20,30],newChance:0.250,bias:3.30,color:'#d9b64e'},
+  {id:'pion',    tier:0,name:'Coffre Pion',    rolls:2,total:[1,3],  newChance:0.06,bias:0.60,color:'#7f8b94',debris:{p:0.30,n:[1,1]}},
+  {id:'cavalier',tier:1,name:'Coffre Cavalier',rolls:3,total:[3,5],  newChance:0.10,bias:0.90,color:'#7d9c6a',debris:{p:0.45,n:[1,2]}},
+  {id:'fou',     tier:2,name:'Coffre Fou',     rolls:3,total:[5,8],  newChance:0.15,bias:1.25,color:'#5f93b8',debris:{p:0.60,n:[2,3]}},
+  {id:'tour',    tier:3,name:'Coffre Tour',    rolls:4,total:[8,12], newChance:0.22,bias:1.80,color:'#9a6fc4',debris:{p:0.75,n:[2,4]}},
+  {id:'dame',    tier:4,name:'Coffre Dame',    rolls:5,total:[12,20],newChance:0.32,bias:2.40,color:'#d0742e',debris:{p:1.00,n:[3,5]}},
+  {id:'roi',     tier:5,name:'Coffre Roi',     rolls:6,total:[20,30],newChance:0.50,bias:3.30,color:'#d9b64e',debris:{p:1.00,n:[5,8]}},
 ];
+// LE COFFRE EST DEVENU LE SEUL CHEMIN VERS UNE CRÉATURE (voir PIECE_ARENA
+// plus bas) : les probabilités de pièce inédite ont donc été relevées — 1 %
+// au Pion, c'était le taux d'un bonus quand la Diagonale donnait l'essentiel ;
+// c'est un mur quand elle ne donne plus rien. Elles restent sous la barre du
+// « toujours » : une créature inédite doit rester un événement.
+//
+// LA MALCHANCE A UN PLAFOND. Après CHEST_PITY coffres d'affilée sans créature
+// inédite — alors qu'il en restait à gagner dans l'arène — le suivant en
+// contient une à coup sûr (chestRoll, js/economy.js). Sans lui, un joueur
+// malchanceux pouvait ouvrir trente Coffres Pion sans rien voir d'autre que
+// ce qu'il avait déjà.
+const CHEST_PITY=5;
+// `debris` : la chance qu'un coffre contienne des DÉBRIS MAGIQUES, et
+// combien. Ils vont toujours à une créature POSSÉDÉE dont le pouvoir dort
+// encore (voir POWER_DEBRIS_NEEDED) ; quand il n'y en a plus, il n'en tombe
+// plus.
 function chestById(id){return CHESTS.find(c=>c.id===id)||CHESTS[0];}
 // IL N'Y A PLUS DE SÉRIE DU JOUR, DONC PLUS DE chestForStreak(). Les six
 // coffres se gagnaient en enchaînant les victoires dans la journée ; ils
@@ -539,104 +557,170 @@ const CLASS_ORDER={Monarque:1,Général:2,Primordiale:3,Brute:4,Sorcier:5};
 const CLASS_COLOR_VARS={Monarque:'var(--monarque)',Général:'var(--general)',Primordiale:'var(--primordiale)',Brute:'var(--brute)',Sorcier:'var(--sorcier)'};
 
 // ----------------------------------------------------------------
-// TABLE DE DÉBLOCAGE : pièces débloquées par palier d'ELO
+// LES ARÈNES : où chaque créature commence à sortir des coffres
 // ----------------------------------------------------------------
-// Un compte neuf ne possède que son Monarque et son Général : tout le reste
-// s'obtient en jouant. Le GARDE DE PIERRE arrive dans le premier coffre du
-// tutoriel (js/tutorial.js) ; les trois Primordiales ne s'obtiennent QUE dans
-// les coffres (il n'y a plus de « choix de la Primordiale » à la création du
-// compte : on ne choisit pas ce qu'on ne connaît pas encore).
-// `coffre:true` = la pièce n'est ni donnée au départ, ni débloquée par un
-// palier d'ELO : elle n'existe que comme contenu de coffre. `voieMilestone`
-// la fait quand même apparaître comme jalon sur la Voie (c'est le cas du
-// Garde de Pierre : offert par le tutoriel, pas par l'ELO, mais on veut le
-// VOIR sur la Voie). `starter` marque les trois jalons de départ (Roi, Dame,
-// Garde de Pierre) : tous à 0 ELO, ils sont rendus TOUT EN BAS de la Voie,
-// sous l'arène Bois, sans bandeau de rang — voir renderVoiePage (js/voie.js),
-// qui saute leur bandeau et ouvre celui de Bois juste après (aux 6 perles de
-// 25 ELO).
+// LES PIÈCES NE SE DÉBLOQUENT PLUS SUR LA DIAGONALE. Un palier d'ELO donnait
+// une créature toute faite, avec son pouvoir : le jeu avait deux robinets
+// pour la même chose, et le coffre — celui qu'on brise à coups de poing —
+// n'était que le second. Désormais une créature ne s'obtient QUE dans un
+// coffre, et l'ELO ne décide que d'une chose : À PARTIR DE QUELLE ARÈNE
+// (le rang atteint, RANKS plus haut) elle peut en sortir.
 //
-// LE TUTORIEL ENSEIGNE TROIS CRÉATURES : le Garde de Pierre, la Fourmi, puis
-// l'Éléphant de guerre. Elles montent en difficulté — une case partout, puis
-// une avance qui se promeut, puis une charge de deux cases — et chacune porte
-// un vrai pouvoir, ce qui n'était pas le cas des Gardes d'Eau et de Feu, à
-// présent retirés du jeu.
+// L'arène se lit sur le SOMMET atteint (elo_peak), comme tout ce qui se
+// débloque : une mauvaise série ne referme pas une arène.
 //
-// LA FOURMI ET L'ÉLÉPHANT RESTENT SUR LA VOIE (30 et 75 ELO) bien que le
-// tutoriel les offre : c'est leur seul chemin pour qui SAUTE le tutoriel, et
-// les retirer de la table fermerait ce chemin à un compte déjà commencé. Un
-// joueur qui a fait le tutoriel franchit simplement un jalon déjà acquis,
-// exactement comme le Garde de Pierre apparaît sur la Voie sans y être dû.
-// Jalons de RÉCOMPENSE (pas de nouvelle pièce) : ils jalonnent la Voie entre
-// deux déblocages, pour qu'il y ait toujours quelque chose à décrocher de
-// proche en proche plutôt que de longues sections vides entre deux pièces.
-// `reward:'pearls'` verse des perles (pearlAdd) ; `reward:'copies'` verse des
-// exemplaires supplémentaires d'une pièce DÉJÀ débloquée à ce palier
-// (invAdd), pour qu'ils servent tout de suite. Chaque jalon porte un `id`
-// unique et stable : vvCheckRewardMilestones (js/voie.js) l'utilise pour ne
-// verser la récompense qu'une seule fois, même si l'ELO redescend puis
-// remonte au-dessus du palier.
+// L'ordre reprend celui de l'ancienne Diagonale, arène par arène : ce qui
+// tombait à 30 ou 75 ELO sort des coffres dès le Bois, ce qui attendait 1700
+// ELO attend l'Argent. Les trois Primordiales, déjà réservées aux coffres,
+// sont du Bois.
 //
-// LES RÉCOMPENSES EN PERLES SUIVENT LA NOUVELLE ÉCHELLE (voir CHEST_PEARLS) :
-// vingt perles quand un Coffre Pion en coûte huit, c'était déjà deux coffres ;
-// à l'ancienne échelle, elles ne payaient même pas le premier.
+// Une créature absente de cette table (une nouvelle, oubliée) sort dès le
+// Bois : mieux vaut une pièce trop tôt qu'une pièce introuvable.
+const PIECE_ARENA={
+  'roi':'bois','dame':'bois',   // donnés à la création du compte
+  'cavalier-primordial':'bois','fou-primordial':'bois','tour-primordiale':'bois',
+  'garde-pierre':'bois','fourmi':'bois','preux-chevalier':'bois','dresseur-elephant':'bois','chevaucheur-rhinoceros':'bois',
+  'meduse':'pierre','amazone':'pierre','matriarche':'pierre','loup-geant':'pierre','infecte':'pierre',
+  'berserk':'bronze','singe':'bronze','ombre':'bronze',
+  'pretre':'acier','boucher':'acier','typhon':'acier','imperator':'acier','banshee':'acier',
+  'pegase':'obsidienne','nyx':'obsidienne',
+  'illusion':'argent','grand-maitre':'argent',
+};
+function pieceArenaIdx(id){
+  const a=PIECE_ARENA[id];
+  const i=a?RANKS.findIndex(r=>r.id===a):0;
+  return i<0?0:i;
+}
+function pieceArena(id){return RANKS[pieceArenaIdx(id)];}
+// Les créatures qu'une arène ajoute aux coffres (affichées sur la Diagonale,
+// à l'entrée de chaque rang, et à la fin d'une partie qui y fait entrer).
+function arenaPieceIds(rankId){
+  // Le Roi et la Dame sont donnés à la création du compte : ils ne
+  // « sortent » d'aucun coffre, l'arène ne les annonce pas.
+  return PIECES.filter(p=>PIECE_ARENA[p.id]===rankId&&p.id!=='roi'&&p.id!=='dame').map(p=>p.id);
+}
+
+// ----------------------------------------------------------------
+// LES POUVOIRS : une créature d'abord, son pouvoir ensuite
+// ----------------------------------------------------------------
+// OBTENIR UNE CRÉATURE NE DONNE PLUS SON POUVOIR. On la joue tout de suite,
+// avec son déplacement complet — mais sans ce que dit sa ligne `ability`. Le
+// pouvoir s'éveille avec HUIT DÉBRIS MAGIQUES de cette créature précise
+// (POWER_DEBRIS_NEEDED), qui sortent des coffres, eux aussi. Une fois éveillé,
+// il est acquis pour toujours (`unlocked_powers`, js/economy.js).
+//
+// Seules les créatures qui ont une ligne `ability` ONT un pouvoir : le Roi,
+// la Dame, l'Amazone, les Primordiales… sont entières dès qu'on les obtient,
+// et aucun débris ne tombe pour elles.
+//
+// CE QUE VEUT DIRE « SANS POUVOIR », créature par créature, est écrit dans le
+// moteur (js/rules-engine.js), là où chaque pouvoir s'applique : la pièce
+// posée sur le plateau porte `np:true`, et chaque pouvoir le consulte. En
+// deux mots — la Méduse ne pétrifie plus, le Typhon n'efface plus, la Fourmi
+// ne se promeut plus, le Berserk s'arrête à sa première prise, le Boucher doit
+// se déplacer pour manger, le Singe ne mange qu'au bout de ses deux pas,
+// l'Infecté ne contamine plus (et le Monarque peut le prendre), l'Ombre et
+// Nyx se voient, l'Illusion ne laisse pas de reflet, l'Éléphant ne charge plus
+// (sa case du milieu doit être libre), le Preux Chevalier n'a plus de
+// Cuirasse, la Matriarche ne relève plus son Général.
+const POWER_DEBRIS_NEEDED=8;
+function pieceHasPower(id){const p=PIECES.find(x=>x.id===id);return !!(p&&p.ability);}
+// Les pouvoirs d'une armée, tels qu'elle les emporte en partie : `powers` est
+// la liste des créatures dont le pouvoir est éveillé. UNE ARMÉE SANS CETTE
+// CLÉ A TOUS SES POUVOIRS — c'est le cas des parties d'avant ce système
+// (relectures, adversaires en ligne restés sur un ancien client) et des
+// batailles du tutoriel, qui enseignent justement les pouvoirs.
+function armyPowerSet(army){return army&&Array.isArray(army.powers)?new Set(army.powers):null;}
+function armyPieceNoPower(army,id){
+  const s=armyPowerSet(army);
+  return !!s&&pieceHasPower(id)&&!s.has(id);
+}
+// Même question, posée à une partie en cours : une pièce NÉE en cours de
+// partie (promotion, Réanimation) prend le pouvoir de son camp.
+function gsPieceNoPower(gs,color,id){
+  const s=gs&&gs.powers&&gs.powers[color];
+  return !!s&&pieceHasPower(id)&&!s.has(id);
+}
+
+// ----------------------------------------------------------------
+// LA DIAGONALE DE LA PUISSANCE : des coffres, des perles, des arènes
+// ----------------------------------------------------------------
+// Un compte neuf ne possède que son Monarque et son Général (`starter`) ; le
+// Garde de Pierre arrive dans le premier coffre du tutoriel, la Fourmi et
+// l'Éléphant de guerre dans les deux suivants (js/tutorial.js).
+//
+// LES JALONS DE CRÉATURES SONT DEVENUS DES COFFRES. Là où la Diagonale
+// donnait une pièce, elle donne maintenant un coffre (`reward:'chest'`), de la
+// rareté de l'arène où il tombe : un Coffre Cavalier au Bois, un Fou à la
+// Pierre et au Bronze, une Tour à l'Acier et à l'Obsidienne, une Dame à
+// l'Argent, le Roi à l'Or. Monter reste donc ce qui fait tomber les
+// créatures — mais par le coffre, et parmi celles que l'arène autorise.
+// Les anciens lots d'exemplaires (`copies`) sont devenus des coffres pour la
+// même raison : ils versaient des exemplaires d'une pièce que le joueur
+// n'avait peut-être plus le droit d'obtenir autrement.
+//
+// Un coffre de la Diagonale NE S'OUVRE PAS en fin de partie, par-dessus le
+// verdict : il attend sur la Diagonale, qui le fait pulser, et s'ouvre quand
+// on le touche (vvVoieChestsDue, js/voie.js).
+//
+// CHAQUE JALON PORTE UN `id` UNIQUE ET STABLE : vvCheckRewardMilestones
+// (js/voie.js) s'en sert pour ne verser la récompense qu'une fois, même si
+// l'ELO redescend puis remonte. Les anciens identifiants (`rw-100`…) sont
+// gardés alors que leur lot a changé : un compte qui a déjà franchi le palier
+// ne doit pas le recevoir une seconde fois.
 const UNLOCK_TABLE=[
   {pieceId:'roi',eloRequired:0,starter:true},{pieceId:'dame',eloRequired:0,starter:true},
   {pieceId:'garde-pierre',eloRequired:0,coffre:true,voieMilestone:true,starter:true},
-  {pieceId:'cavalier-primordial',eloRequired:0,coffre:true},
-  {pieceId:'fou-primordial',eloRequired:0,coffre:true},
-  {pieceId:'tour-primordiale',eloRequired:0,coffre:true},
-  {id:'rw-25',reward:'pearls',amount:6,eloRequired:25},
-  {pieceId:'fourmi',eloRequired:30},
-  {pieceId:'preux-chevalier',eloRequired:50},
-  {pieceId:'dresseur-elephant',eloRequired:75},
-  {id:'rw-100',reward:'copies',copyId:'preux-chevalier',qty:2,eloRequired:100},
-  {pieceId:'chevaucheur-rhinoceros',eloRequired:150},
-  {id:'rw-180',reward:'pearls',amount:8,eloRequired:180},
-  {pieceId:'meduse',eloRequired:210},{pieceId:'amazone',eloRequired:260},
-  {id:'rw-320',reward:'copies',copyId:'chevaucheur-rhinoceros',qty:2,eloRequired:320},
-  {id:'rw-400',reward:'pearls',amount:10,eloRequired:400},
-  // 480 PORTAIT L'EMPEREUR, qui n'existe plus. Laisser le palier vide aurait
-  // creusé 150 points sans rien à décrocher, entre les perles de 400 et les
-  // exemplaires de 550 : il verse donc des exemplaires de l'Amazone, la pièce
-  // débloquée juste avant (260) et la seule qu'aucun autre jalon ne réapprovisionne.
-  {id:'rw-480',reward:'copies',copyId:'amazone',qty:2,eloRequired:480},
-  {id:'rw-550',reward:'copies',copyId:'meduse',qty:2,eloRequired:550},
-  {id:'rw-700',reward:'pearls',amount:12,eloRequired:700},
-  {pieceId:'ombre',eloRequired:740},
-  {pieceId:'pretre',eloRequired:800},{pieceId:'typhon',eloRequired:1000,bigReward:true},
-  // L'ID `rw-900` NE CHANGE PAS alors que son lot change : il est la clé sous
-  // laquelle vvCheckRewardMilestones retient qu'un compte a déjà encaissé ce
-  // palier. Lui en donner un neuf reverserait le lot à tous ceux qui l'ont
-  // déjà pris. Le lot passe des exemplaires d'Empereur (supprimé) à ceux de
-  // l'Éléphant de guerre.
-  {id:'rw-900',reward:'copies',copyId:'dresseur-elephant',qty:2,eloRequired:900},
+  {id:'rw-25',  reward:'pearls',amount:6, eloRequired:25},
+  {id:'ch-30',  reward:'chest',chest:'pion',    eloRequired:30},
+  {id:'ch-50',  reward:'chest',chest:'cavalier',eloRequired:50},
+  {id:'ch-75',  reward:'chest',chest:'pion',    eloRequired:75},
+  {id:'rw-100', reward:'chest',chest:'cavalier',eloRequired:100},
+  {id:'ch-150', reward:'chest',chest:'cavalier',eloRequired:150},
+  {id:'rw-180', reward:'pearls',amount:8, eloRequired:180},
+  {id:'ch-210', reward:'chest',chest:'fou',     eloRequired:210},
+  {id:'ch-260', reward:'chest',chest:'cavalier',eloRequired:260},
+  {id:'ch-290', reward:'chest',chest:'pion',    eloRequired:290},
+  {id:'rw-320', reward:'chest',chest:'cavalier',eloRequired:320},
+  {id:'ch-360', reward:'chest',chest:'fou',     eloRequired:360},
+  {id:'rw-400', reward:'pearls',amount:10,eloRequired:400},
+  {id:'ch-450', reward:'chest',chest:'cavalier',eloRequired:450},
+  {id:'rw-480', reward:'chest',chest:'fou',     eloRequired:480},
+  {id:'ch-520', reward:'chest',chest:'fou',     eloRequired:520},
+  {id:'rw-550', reward:'chest',chest:'cavalier',eloRequired:550},
+  {id:'ch-620', reward:'chest',chest:'fou',     eloRequired:620},
+  {id:'rw-700', reward:'pearls',amount:12,eloRequired:700},
+  {id:'ch-740', reward:'chest',chest:'fou',     eloRequired:740},
+  {id:'ch-800', reward:'chest',chest:'tour',    eloRequired:800},
+  {id:'ch-860', reward:'chest',chest:'fou',     eloRequired:860},
+  {id:'rw-900', reward:'chest',chest:'fou',     eloRequired:900},
+  {id:'ch-1000',reward:'chest',chest:'dame',    eloRequired:1000,bigReward:true},
   {id:'rw-1080',reward:'pearls',amount:14,eloRequired:1080},
-  {pieceId:'banshee',eloRequired:1150},
-  {id:'rw-1300',reward:'copies',copyId:'garde-pierre',qty:2,eloRequired:1300},
+  {id:'ch-1100',reward:'chest',chest:'fou',     eloRequired:1100},
+  {id:'ch-1150',reward:'chest',chest:'tour',    eloRequired:1150},
+  {id:'ch-1250',reward:'chest',chest:'tour',    eloRequired:1250},
+  {id:'rw-1300',reward:'chest',chest:'fou',     eloRequired:1300},
+  {id:'ch-1350',reward:'chest',chest:'tour',    eloRequired:1350},
   {id:'rw-1450',reward:'pearls',amount:16,eloRequired:1450},
-  // LES QUATRE DERNIÈRES CRÉATURES comblent les trois grands creux de la Voie
-  // — 260 → 800, 1150 → 1700 — dans l'ordre de leur difficulté : le Loup
-  // Géant (un seul geste, deux cases de biais), puis le Singe, le Pégase, et
-  // l'Illusion, la seule dont le pouvoir change la géométrie du plateau.
-  {pieceId:'loup-geant',eloRequired:360},
-  {pieceId:'infecte',eloRequired:450},
-  {pieceId:'singe',eloRequired:620},
-  {pieceId:'pegase',eloRequired:1250},
-  // LES DEUX MONARQUES DE REMPLACEMENT et les deux Brutes de la Furie. La
-  // Matriarche arrive tôt (un Monarque à 3 points, le prix du Roi : c'est un
-  // autre jeu, pas un meilleur) ; l'Empereur vaut 7, il attend l'Acier.
-  {pieceId:'matriarche',eloRequired:290},
-  {pieceId:'berserk',eloRequired:520},
-  {pieceId:'boucher',eloRequired:860},
-  {pieceId:'imperator',eloRequired:1100},
-  {pieceId:'nyx',eloRequired:1350},
-  {pieceId:'illusion',eloRequired:1500},
-  {pieceId:'grand-maitre',eloRequired:1700},
-  {id:'rw-1600',reward:'copies',copyId:'pretre',qty:2,eloRequired:1600},
+  {id:'ch-1500',reward:'chest',chest:'dame',    eloRequired:1500},
+  {id:'rw-1600',reward:'chest',chest:'tour',    eloRequired:1600},
+  {id:'ch-1700',reward:'chest',chest:'dame',    eloRequired:1700},
   {id:'rw-1850',reward:'pearls',amount:18,eloRequired:1850},
-  {pieceId:null,eloRequired:2000,bigReward:true,label:'Or Légendaire atteint !'},
+  {id:'ch-2000',reward:'chest',chest:'roi',     eloRequired:2000,bigReward:true},
 ];
+
+// L'ANCIENNE TABLE, gardée pour UNE seule chose : la migration des comptes
+// d'avant (accMigratePowers, js/accounts.js). Un compte qui avait franchi
+// 1000 ELO possédait le Typhon sans l'avoir jamais écrit dans ses
+// déblocages — c'était recalculé au chargement à partir du sommet. Au passage
+// aux coffres, ces créatures sont écrites une bonne fois, avec leur pouvoir :
+// personne ne perd ce qu'il avait gagné.
+const LEGACY_ELO_UNLOCKS={
+  'fourmi':30,'preux-chevalier':50,'dresseur-elephant':75,'chevaucheur-rhinoceros':150,
+  'meduse':210,'amazone':260,'matriarche':290,'loup-geant':360,'infecte':450,'berserk':520,
+  'singe':620,'ombre':740,'pretre':800,'boucher':860,'typhon':1000,'imperator':1100,
+  'banshee':1150,'pegase':1250,'nyx':1350,'illusion':1500,'grand-maitre':1700,
+};
 
 const UNLOCK_MILESTONES=(()=>{
   const seen=new Set();

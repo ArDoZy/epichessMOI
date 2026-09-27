@@ -30,7 +30,9 @@ function showCtxMenu(e,r,c,gs){
   if(nyxFogLive(gs).has(r+','+c)||ombreHiddenLive(gs).has(r+','+c))return;
   // Un reflet n'a pas de fiche : on montre celle de l'Illusion qui l'a laissé.
   const pid=cell.pieceId==='reflet'?'illusion':cell.pieceId;const pd=PIECES.find(p=>p.id===pid)||null;
-  const canUsePower=pd?.hasPower&&cell.color===gs.turn&&!gs.gameOver;
+  // Un pouvoir qui dort (`np`, voir « LES POUVOIRS », js/data-pieces.js) ne
+  // s'offre pas : la fiche le dit, le menu ne propose rien.
+  const canUsePower=pd?.hasPower&&!cell.np&&cell.color===gs.turn&&!gs.gameOver;
   let opts=null;
   if(canUsePower){
     // La Réanimation ne s'offre qu'à SA Matriarche, à son tour, et seulement
@@ -67,6 +69,9 @@ function showCtxMenu(e,r,c,gs){
 // Rend `false` quand elle n'a rien fait, pour que l'appelant puisse le dire.
 function applyGardePierre(r,c,color,gs){
   if(!gs||gs.gameOver)return false;
+  // Un Garde dont le pouvoir dort ne s'ancre pas, d'où que vienne la demande.
+  const g=gs.board&&gs.board[r]&&gs.board[r][c];
+  if(g&&g.np)return false;
   gs.anchored=gs.anchored||new Set();gs.anchored.add(`${r},${c}`);gs.gardePierreUsed[color]=true;
   // LE SEUL POUVOIR QU'ON DÉCLENCHE À LA MAIN N'AVAIT AUCUN GESTE. Le joueur
   // choisissait « Retour à l'État Fondamental » dans un menu, la pièce prenait
@@ -870,6 +875,57 @@ function renderClocks(gs){
   // elle doit reclamer l'attention.
   hEl.classList.toggle('clock-low',hTime<30000&&!gs.gameOver);
   aEl.classList.toggle('clock-low',aTime<30000&&!gs.gameOver);
+  clockFire(hEl,hTime,gs,gs.turn===playerCol);
+  clockFire(aEl,aTime,gs,gs.turn===aiCol);
+}
+
+// ----------------------------------------------------------------
+// LE FEU AUTOUR DE LA PENDULE
+// ----------------------------------------------------------------
+// Le temps qui file ne se lisait que dans un chiffre, et le chiffre ne change
+// de couleur qu'à trente secondes : jusque-là, 0:58 et 9:58 ont la même
+// allure. La pendule s'embrase donc PROGRESSIVEMENT à mesure que son temps
+// fond — des braises à la dernière minute, des flammes qui grandissent, puis
+// un brasier et des étincelles dans les dernières secondes.
+//
+// UNE SEULE VARIABLE, `--heat`, de 0 (rien) à 1 (plus une seconde) : hauteur
+// des flammes, opacité, lueur et vitesse la lisent toutes (voir « LE FEU DE
+// LA PENDULE » dans css/style.css). Le seuil est la dernière minute — ou la
+// moitié de la cadence, si elle est plus courte : sur une partie de deux
+// minutes, brûler dès le départ ne dirait plus rien.
+//
+// La pendule QUI TOURNE brûle franchement (`fire-live`) ; celle qui attend
+// son tour garde ses braises, à mi-feu : le danger est là, mais ce n'est pas
+// maintenant qu'il consume.
+const CLOCK_FIRE_FROM=60000;
+const CLOCK_FIRE_TONGUES=9;
+function clockFire(el,ms,gs,live){
+  const from=Math.min(CLOCK_FIRE_FROM,(gs.clockMs||CLOCK_FIRE_FROM)*0.5);
+  const heat=gs.gameOver?0:Math.max(0,Math.min(1,1-ms/from));
+  let f=el.querySelector('.gp-fire');
+  if(heat<=0){
+    if(f)el.classList.remove('on-fire','fire-hot','fire-live');
+    return;
+  }
+  if(!f){
+    // Les langues sont posées une fois, le long de l'arête haute et des deux
+    // côtés ; chacune a sa phase et sa taille, sinon elles battraient toutes
+    // ensemble comme une seule flamme découpée.
+    f=document.createElement('span');f.className='gp-fire';f.setAttribute('aria-hidden','true');
+    let h='';
+    for(let i=0;i<CLOCK_FIRE_TONGUES;i++){
+      const x=Math.round(4+i*(92/(CLOCK_FIRE_TONGUES-1)));
+      h+='<i style="--x:'+x+'%;--d:'+(0.55+((i*37)%23)/40).toFixed(2)+'s;--p:'+(-((i*53)%17)/20).toFixed(2)+'s;--s:'+(0.7+((i*29)%11)/16).toFixed(2)+'"></i>';
+    }
+    h+='<b class="gp-fire-side l"></b><b class="gp-fire-side r"></b>';
+    for(let i=0;i<5;i++)h+='<em style="--x:'+(12+i*19)+'%;--d:'+(1.1+i*0.23).toFixed(2)+'s;--p:'+(-i*0.37).toFixed(2)+'s"></em>';
+    f.innerHTML=h;
+    el.appendChild(f);
+  }
+  el.style.setProperty('--heat',heat.toFixed(3));
+  el.classList.add('on-fire');
+  el.classList.toggle('fire-hot',heat>0.66);
+  el.classList.toggle('fire-live',!!live);
 }
 
 // ----------------------------------------------------------------
@@ -1011,27 +1067,34 @@ function updateCaptured(gs){
   const takenByOpp=pc==='w'?gs.capturedW:gs.capturedB;
   const val=list=>list.reduce((t,x)=>t+(pieceMaterialValue(x.id)||0),0);
   const adv=val(takenByMe)-val(takenByOpp);
-  meEl.innerHTML=drawCaptured(takenByMe)+(adv>0?'<span class="gp-adv">+'+adv+'</span>':'');
-  oppEl.innerHTML=drawCaptured(takenByOpp)+(adv<0?'<span class="gp-adv">+'+(-adv)+'</span>':'');
+  // L'AVANTAGE D'ABORD : sur un téléphone la rangée défile, et le « +N »
+  // posé au bout finissait hors de vue — c'est pourtant le seul chiffre de la
+  // rangée qui résume toutes les autres.
+  meEl.innerHTML=(adv>0?'<span class="gp-adv">+'+adv+'</span>':'')+drawCaptured(takenByMe);
+  oppEl.innerHTML=(adv<0?'<span class="gp-adv">+'+(-adv)+'</span>':'')+drawCaptured(takenByOpp);
+  // Une rangée trop longue pour son bandeau défile : son bord droit s'estompe
+  // alors, pour dire qu'il y a une suite (voir .cap-over).
+  [meEl,oppEl].forEach(el=>el.classList.toggle('cap-over',el.scrollWidth>el.clientWidth+1));
 }
 // LES PRISES SE LISENT EN UN COUP D'ŒIL, ET TIENNENT DANS LEUR PLACE.
 //
-// Elles étaient posées dans l'ordre où elles tombaient, une par une, chacune
-// prenant sa largeur. Deux conséquences, et les deux sont des pertes sèches :
+// UNE ALVÉOLE PAR CRÉATURE, UN CHIFFRE PAR ALVÉOLE. Elles ont été posées une
+// par une dans l'ordre où elles tombaient, puis rangées par valeur et
+// EMPILÉES — les exemplaires d'une même créature se chevauchaient, décalés
+// d'un tiers. Sur le papier, c'était dense ; à l'écran c'était le désordre :
+// des piles de largeurs toutes différentes (un, deux, trois dessins
+// superposés, puis « ×4 »), posées par-dessus une rangée d'alvéoles dorées
+// (assets/ui/rangee-prises.svg) répétée en fond à pas FIXE. Rien ne tombait
+// dans sa loge : une pile à cheval sur deux alvéoles, une alvéole vide entre
+// deux piles, un pion dessiné sur un bord d'or. Les prises avaient l'air
+// jetées sur le bandeau.
 //
-// · L'ORDRE NE DISAIT RIEN. La prise la plus lourde de la partie — la seule
-//   qu'on cherche des yeux — pouvait se trouver n'importe où dans la file,
-//   entre deux pions. On range donc par valeur DÉCROISSANTE : ce qui compte
-//   est à gauche, à la même place à chaque partie.
-// · HUIT PIONS PRENAIENT LA LARGEUR DE HUIT PIÈCES, pour une information qui
-//   tient en un dessin et un nombre. Sur un bandeau de téléphone, les
-//   dernières prises finissaient sous la pendule, invisibles. Les exemplaires
-//   d'une même créature se CHEVAUCHENT donc, en pile : on voit qu'il y en a
-//   plusieurs sans avoir à compter, et la pile coûte un tiers de largeur par
-//   exemplaire au lieu d'une pleine. Au-delà de trois, la pile cesse de
-//   grandir et un « ×N » prend le relais — trois formes empilées se
-//   distinguent encore, huit ne se distinguent plus.
-const CAP_STACK_MAX=3;
+// Chaque créature prise a maintenant SA loge, toujours de la même taille,
+// dessinée par la loge elle-même (plus de fond répété à aligner) : le dessin
+// au centre, et le nombre d'exemplaires dans une pastille en coin dès qu'il y
+// en a plus d'un. Huit pions tiennent dans une loge avec un « 8 » ; la rangée
+// entière est une file d'alvéoles alignées, triées de la plus lourde à la
+// plus légère — ce qui compte est à gauche, à la même place à chaque partie.
 function drawCaptured(list){
   if(!list||!list.length)return '';
   // Regroupement par créature ET par couleur : deux camps peuvent aligner la
@@ -1050,11 +1113,10 @@ function drawCaptured(list){
     return d!==0?d:(a.id<b.id?-1:a.id>b.id?1:0);
   });
   return arr.map(g=>{
-    const shown=Math.min(g.n,CAP_STACK_MAX);
-    let h='<span class="cap-stack'+(g.n>1?' cap-multi':'')+'">';
-    for(let i=0;i<shown;i++)h+=pieceIcon(g.id,g.color,1.3);
-    if(g.n>CAP_STACK_MAX)h+='<span class="cap-n">×'+g.n+'</span>';
-    return h+'</span>';
+    const pd=(typeof PIECES!=='undefined')?PIECES.find(p=>p.id===g.id):null;
+    const nom=pd?pd.name:(g.id==='std-r'?'Tour':g.id==='std-n'?'Cavalier':g.id==='std-b'?'Fou':'Pion');
+    return '<span class="cap-tok'+(g.n>1?' cap-multi':'')+'" title="'+escH(nom)+(g.n>1?' ×'+g.n:'')+'">'+
+      pieceIcon(g.id,g.color,1.3)+(g.n>1?'<span class="cap-n">'+g.n+'</span>':'')+'</span>';
   }).join('');
 }
 

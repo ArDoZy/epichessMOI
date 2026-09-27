@@ -169,8 +169,10 @@ $$;
 --   pub_army      l'armée choisie : cinq identifiants de pièces. C'est ce
 --                 que l'adversaire va aligner, et il l'aligne DÉJÀ sous
 --                 les yeux de tout le monde à chaque partie.
---   pub_unlocked  les pièces débloquées : le catalogue dont il dispose,
---                 dont se déduisent les pouvoirs qu'il connaît.
+--   pub_unlocked  les pièces débloquées : le catalogue dont il dispose.
+--   pub_powers    les pouvoirs ÉVEILLÉS. Une créature ne vient plus avec
+--                 son pouvoir : il s'éveille à part, avec des débris
+--                 magiques. Ils ne se déduisent donc plus des pièces.
 --
 -- CE QUI NE SORT PAS : l'inventaire (le nombre d'exemplaires de chaque
 -- créature), les perles, les tickets, les jokers, la progression des
@@ -194,6 +196,7 @@ language sql stable as $$
                       offset greatest(0, jsonb_array_length(p.history) - 10)) s),
     'pub_army', coalesce(p.state->'armies', '[]'::jsonb),
     'pub_unlocked', coalesce(p.state->'unlocked_pieces', '[]'::jsonb),
+    'pub_powers', coalesce(p.state->'unlocked_powers', '[]'::jsonb),
     'created_at', p.created_at, 'last_seen_at', p.last_seen_at,
     'online', p.last_seen_at > now() - ec_online_window())
 $$;

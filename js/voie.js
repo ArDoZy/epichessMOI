@@ -349,13 +349,37 @@ function vvNoEloReason(gs){
   if(gs&&gs.tuto)return VV_NO_ELO_TRAINING;
   return null;
 }
-function vvCheckNewUnlocks(oldElo,newElo){
-  const newUnlocks=[];
-  UNLOCK_MILESTONES.forEach(u=>{
-    if(!u.pieceId)return;if(u.coffre)return;
-    if(u.eloRequired>oldElo&&u.eloRequired<=newElo&&!VV_UNLOCKED.has(u.pieceId)){VV_UNLOCKED.add(u.pieceId);newUnlocks.push(u.pieceId);}
-  });
-  if(newUnlocks.length)vvSaveUnlocked(VV_UNLOCKED);return newUnlocks;
+// L'ELO NE DÉBLOQUE PLUS AUCUNE CRÉATURE : elles sortent toutes des coffres,
+// à partir de leur arène (PIECE_ARENA, js/data-pieces.js). La fonction reste
+// — le modal de fin de partie l'appelle — et rend toujours une liste vide.
+function vvCheckNewUnlocks(){return [];}
+
+// LA NOUVELLE ARÈNE. Franchir un rang ne donne plus de créature, mais il en
+// ouvre plusieurs aux coffres : c'est ce que le modal de fin de partie
+// annonce. Se lit sur le SOMMET, avant et après la partie.
+function vvArenaNews(oldPeak,newPeak){
+  if(typeof newPeak!=='number'||newPeak<=oldPeak)return null;
+  const a=vvGetRankIdx(oldPeak),b=vvGetRankIdx(newPeak);
+  if(b<=a)return null;
+  const rank=RANKS[b];
+  const ids=[];
+  for(let i=a+1;i<=b;i++)ids.push(...arenaPieceIds(RANKS[i].id));
+  return{rank,pieces:ids};
+}
+
+// LES COFFRES DE LA DIAGONALE ATTENDENT D'ÊTRE TOUCHÉS. Un coffre gagné en
+// franchissant un palier ne s'ouvre pas par-dessus le verdict de la partie :
+// il rejoint cette liste (clé `voie_chests`, des identifiants de jalon), la
+// Diagonale le fait pulser à sa place sur le chemin, et un appui l'ouvre.
+function vvVoieChestsDue(){return accGet('voie_chests',[])||[];}
+function vvVoieChestOpen(milestoneId){
+  const due=vvVoieChestsDue();
+  const i=due.indexOf(milestoneId);if(i<0)return false;
+  const m=UNLOCK_TABLE.find(u=>u.id===milestoneId);
+  due.splice(i,1);accSet('voie_chests',due);
+  if(!m||m.reward!=='chest')return false;
+  if(typeof chestOpenNow==='function')chestOpenNow(m.chest,()=>{_voieSig=null;renderVoiePage();});
+  return true;
 }
 
 // Petits jalons de récompense (perles / exemplaires) semés entre les jalons
@@ -370,6 +394,7 @@ function vvCheckRewardMilestones(oldElo,newElo){
     if(!u.reward||claimed.has(u.id))return;
     if(!(u.eloRequired>oldElo&&u.eloRequired<=newElo))return;
     if(u.reward==='pearls'&&typeof pearlAdd==='function')pearlAdd(u.amount);
+    else if(u.reward==='chest'){const due=vvVoieChestsDue();due.push(u.id);accSet('voie_chests',due);}
     else if(u.reward==='copies'&&typeof invAdd==='function')invAdd(u.copyId,u.qty);
     claimed.add(u.id);granted.push(u);
   });
@@ -439,7 +464,11 @@ function renderVoiePage(){
   const route=document.getElementById('voie-route');
   // Le chemin lui-même : sa signature est le sommet atteint, le classement du
   // moment, et l'ensemble des pièces débloquées (qui décide de `reached`).
-  const routeSig=peak+'/'+elo+'/'+[...(VV_UNLOCKED||[])].sort().join(',');
+  const dueChests=vvVoieChestsDue();
+  // Le prochain jalon à atteindre porte le repère « en cours » : c'est là que
+  // la page s'ouvre (voieAutoScroll).
+  const nextM=UNLOCK_MILESTONES.find(u=>u.eloRequired>peak)||null;
+  const routeSig=peak+'/'+elo+'/'+[...(VV_UNLOCKED||[])].sort().join(',')+'/'+dueChests.join(',');
   if(route&&routeSig===_voieSig&&route.firstElementChild){voieAutoScroll(route);return;}
   _voieSig=routeSig;
   let html='';
@@ -492,7 +521,18 @@ function renderVoiePage(){
     // (les 20 perles à 25 ELO), premier jalon non-`starter`.
     if(!milestone.starter){
       const mRank=vvGetRank(milestone.eloRequired);
-      if(mRank.id!==lastRankId){lastRankId=mRank.id;html+='<div class="vm-rank-section"><div class="vm-rank-bar">'+rankMedalHTML(mRank.id,'rm-sm')+'<span class="vm-rank-label" style="color:'+mRank.color+'">'+mRank.name+'</span><span class="vm-rank-range">'+mRank.min+'–'+(mRank.max===9999?'∞':mRank.max)+' ELO</span></div></div>';}
+      // LA PORTE DE L'ARÈNE DIT CE QU'ELLE OUVRE AUX COFFRES : les créatures
+      // qui peuvent en sortir à partir de ce rang. Obtenues : en couleur ;
+      // pas encore : en silhouette.
+      if(mRank.id!==lastRankId){
+        lastRankId=mRank.id;
+        const arena=arenaPieceIds(mRank.id);
+        const gate=arena.length
+          ?'<div class="vm-arena-pieces"><span class="vm-arena-lbl">Dans les coffres</span>'+
+            arena.map(id=>'<span class="vm-arena-p'+(VV_UNLOCKED.has(id)?' got':'')+'" title="'+escH((PIECES.find(p=>p.id===id)||{}).name||id)+'">'+pieceIcon(id,'n')+'</span>').join('')+'</div>'
+          :'';
+        html+='<div class="vm-rank-section"><div class="vm-rank-bar">'+rankMedalHTML(mRank.id,'rm-sm')+'<span class="vm-rank-label" style="color:'+mRank.color+'">'+mRank.name+'</span><span class="vm-rank-range">'+mRank.min+'–'+(mRank.max===9999?'∞':mRank.max)+' ELO</span></div>'+gate+'</div>';
+      }
     }
     // Jalon de récompense (perles / exemplaires) : ni pièce à débloquer, ni
     // texte de palier — juste un petit lot versé dès que l'ELO l'atteint
@@ -502,10 +542,21 @@ function renderVoiePage(){
       // atteint, pas sur le classement du moment. Une mauvaise série ne
       // doit pas rallumer en « verrouillé » un lot déjà encaissé.
       const reached3=peak>=milestone.eloRequired;
+      if(milestone.reward==='chest'){
+        const ch=chestById(milestone.chest);
+        const due=dueChests.includes(milestone.id);
+        const cur=milestone===nextM;
+        html+=band(milestone,'<div class="vm-card vm-chest '+(due?'vm-due':reached3?'reached':cur?'current-milestone':'locked-milestone')+'"'+
+          (due?' data-voie-chest="'+milestone.id+'" role="button" tabindex="0" aria-label="Ouvrir le '+escH(ch.name)+'"':'')+'>'+
+          chestVisual(ch,'chest-xs')+'<div class="vm-piece-name">'+escH(ch.name)+'</div>'+
+          (due?'<div class="vm-due-tag">Toucher pour ouvrir</div>':'')+'</div>',reached3,cur);
+        return;
+      }
       const body=milestone.reward==='pearls'
         ?(pearlAmountHTML?pearlAmountHTML(milestone.amount,1.6):milestone.amount+' perles')
         :'<span class="vm-piece-emoji">'+pieceIcon(milestone.copyId,'n')+'</span><div class="vm-piece-name">×'+milestone.qty+'</div>';
-      html+=band(milestone,'<div class="vm-card '+(reached3?'reached':'locked-milestone')+'">'+body+'</div>',reached3,false);
+      const cur4=milestone===nextM;
+      html+=band(milestone,'<div class="vm-card '+(reached3?'reached':cur4?'current-milestone':'locked-milestone')+'">'+body+'</div>',reached3,cur4);
       return;
     }
     if(!milestone.pieceId){
@@ -542,6 +593,16 @@ function renderVoiePage(){
 // css/style.css), plutôt qu'un « ← Retour » dans l'en-tête : la Voie peut
 // être longue (une quinzaine de jalons), il fallait la remonter en entier
 // pour sortir. Le bouton reste sous le pouce, où qu'on ait défilé.
+// Un coffre de la Diagonale se prend en le touchant (voir vvVoieChestsDue).
+document.getElementById('voie-route')?.addEventListener('click',e=>{
+  const el=e.target.closest('[data-voie-chest]');if(!el)return;
+  vvVoieChestOpen(el.dataset.voieChest);
+});
+document.getElementById('voie-route')?.addEventListener('keydown',e=>{
+  if(e.key!=='Enter'&&e.key!==' ')return;
+  const el=e.target.closest('[data-voie-chest]');if(!el)return;
+  e.preventDefault();vvVoieChestOpen(el.dataset.voieChest);
+});
 document.getElementById('voie-ok')?.addEventListener('click',()=>{
   if(typeof goToMainMenu==='function')goToMainMenu();else showPage('page-armies');
 });
@@ -588,7 +649,8 @@ function voieAutoScroll(){
     }else{
       // Pas de défilement animé ici : on veut arriver directement, pas
       // regarder un trajet qu'on a déjà vu au premier passage.
-      const cur=host.querySelector('.current-milestone');
+      // Un coffre qui attend passe avant tout : c'est lui qu'on vient prendre.
+      const cur=host.querySelector('.vm-due')||host.querySelector('.current-milestone');
       if(cur)(cur.closest('.voie-milestone')||cur).scrollIntoView({block:'center'});
     }
   });

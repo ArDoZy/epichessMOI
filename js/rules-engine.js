@@ -181,7 +181,7 @@ function pawnMoves(board,r,c,p,gs){
   const takeCols=st.take==='fwd'?[0]:[-1,1];
   for(const dc of takeCols){
     const tr=r+dir,tc=c+dc;if(!inB(tr,tc))continue;const t=board[tr][tc];
-    if(t&&t.color!==p.color&&t.pieceId!=='preux-chevalier')moves.push({r:tr,c:tc});
+    if(t&&t.color!==p.color&&(t.pieceId!=='preux-chevalier'||t.np))moves.push({r:tr,c:tc});
     // La prise en passant est une prise EN BIAIS : elle reste aux troupes
     // qui mangent en biais.
     if(dc&&gs.enPassant&&gs.enPassant.r===tr&&gs.enPassant.c===tc)moves.push({r:tr,c:tc,ep:true});
@@ -209,7 +209,7 @@ function generateMovesRaw(board,r,c,gs){
     else if(id==='imperator')mm=[...kingMoves(board,r,c,p,gs),...knightMoves(board,r,c,p)];
     else mm=kingMoves(board,r,c,p,gs);
     // Le Monarque ne mange jamais l'Infecté : la contagion l'emporterait.
-    return mm.filter(m=>{const t=board[m.r][m.c];return !(t&&t.pieceId==='infecte'&&t.color!==p.color);});
+    return mm.filter(m=>{const t=board[m.r][m.c];return !(t&&t.pieceId==='infecte'&&!t.np&&t.color!==p.color);});
   }
 
   switch(id){
@@ -243,7 +243,10 @@ function generateMovesRaw(board,r,c,gs){
       break;
     case 'dresseur-elephant':
       for(const[dr,dc] of[[1,0],[-1,0],[0,1],[0,-1]]){const nr=r+dr,nc=c+dc;if(inB(nr,nc)&&canLand(board[nr][nc],p))moves.push({r:nr,c:nc});}
-      for(const[dr,dc] of[[2,0],[-2,0],[0,2],[0,-2]]){const nr=r+dr,nc=c+dc;if(!inB(nr,nc))continue;const mr=r+dr/2,mc2=c+dc/2;const mid=board[mr][mc2];if(mid&&mid.color===p.color&&mid.pieceId!=='reflet')continue;if(!canLand(board[nr][nc],p))continue;moves.push({r:nr,c:nc,destroysPath:true,fromR:r,fromC:c});}
+      for(const[dr,dc] of[[2,0],[-2,0],[0,2],[0,-2]]){const nr=r+dr,nc=c+dc;if(!inB(nr,nc))continue;const mr=r+dr/2,mc2=c+dc/2;const mid=board[mr][mc2];if(mid&&mid.color===p.color&&mid.pieceId!=='reflet')continue;if(!canLand(board[nr][nc],p))continue;
+        // SANS SA CHARGE, l'Éléphant ne passe que par une case libre.
+        if(p.np){if(!barsPath(mid,p.color))moves.push({r:nr,c:nc});continue;}
+        moves.push({r:nr,c:nc,destroysPath:true,fromR:r,fromC:c});}
       break;
     // LE GARDE DE PIERRE : une case dans les huit directions, et son ancrage.
     // Il était le dernier de trois Gardes — l'Eau n'allait que tout droit, le
@@ -254,11 +257,11 @@ function generateMovesRaw(board,r,c,gs){
     case 'meduse':
       for(const[dr,dc] of[[1,0],[-1,0],[0,1],[0,-1]]){const nr=r+dr,nc=c+dc;if(inB(nr,nc)&&canLand(board[nr][nc],p))moves.push({r:nr,c:nc});}break;
     case 'typhon':
-      for(const[dr,dc] of[[1,1],[1,-1],[-1,1],[-1,-1]]){const nr=r+dr,nc=c+dc;if(inB(nr,nc)&&canLand(board[nr][nc],p))moves.push({r:nr,c:nc,typhon:true});}break;
+      for(const[dr,dc] of[[1,1],[1,-1],[-1,1],[-1,-1]]){const nr=r+dr,nc=c+dc;if(inB(nr,nc)&&canLand(board[nr][nc],p))moves.push(p.np?{r:nr,c:nc}:{r:nr,c:nc,typhon:true});}break;
     // Banshee : 1 OU 2 cases en diagonale (les 2 cases sans sauter).
     case 'banshee':
-      for(const[dr,dc] of[[1,1],[1,-1],[-1,1],[-1,-1]]){const nr=r+dr,nc=c+dc;if(!inB(nr,nc))continue;if(canLand(board[nr][nc],p))moves.push({r:nr,c:nc,banshee:true});}
-      for(const[dr,dc] of[[2,2],[2,-2],[-2,2],[-2,-2]]){const nr=r+dr,nc=c+dc;if(!inB(nr,nc))continue;const mr=r+dr/2,mc4=c+dc/2;if(barsPath(board[mr]?.[mc4],p.color))continue;if(canLand(board[nr][nc],p))moves.push({r:nr,c:nc,banshee:true});}break;
+      for(const[dr,dc] of[[1,1],[1,-1],[-1,1],[-1,-1]]){const nr=r+dr,nc=c+dc;if(!inB(nr,nc))continue;if(canLand(board[nr][nc],p))moves.push(p.np?{r:nr,c:nc}:{r:nr,c:nc,banshee:true});}
+      for(const[dr,dc] of[[2,2],[2,-2],[-2,2],[-2,-2]]){const nr=r+dr,nc=c+dc;if(!inB(nr,nc))continue;const mr=r+dr/2,mc4=c+dc/2;if(barsPath(board[mr]?.[mc4],p.color))continue;if(canLand(board[nr][nc],p))moves.push(p.np?{r:nr,c:nc}:{r:nr,c:nc,banshee:true});}break;
     case 'pretre':
       moves=slidingMoves(board,r,c,p,[[1,0],[-1,0],[0,1],[0,-1]],gs);
       moves=moves.filter(m=>Math.abs(m.r-r)+Math.abs(m.c-c)<=2);break;
@@ -304,7 +307,8 @@ function generateMovesRaw(board,r,c,gs){
         const r1=r+dr,c1=c+dc;if(!inB(r1,c1))continue;
         const t1=board[r1][c1];
         if(barsPath(t1,p.color)){
-          if(t1.color!==p.color)moves.push({r:r1,c:c1,shoot:true});
+          // Sans son Couperet, il mange comme tout le monde : en s'y posant.
+          if(t1.color!==p.color)moves.push(p.np?{r:r1,c:c1}:{r:r1,c:c1,shoot:true});
           continue;
         }
         moves.push({r:r1,c:c1});
@@ -367,7 +371,10 @@ function singeMoves(board,r,c,p,gs){
     const v=board[vr][vc];
     if(v&&v.color===p.color&&v.pieceId!=='reflet')continue;
     if(v&&v.color!==p.color){
-      if(v.isKing||v.type==='k'||v.pieceId==='infecte')continue;
+      // SANS SON DOUBLE BOND, le Singe fait toujours ses deux pas, mais ne
+      // mange qu'au bout : son premier pas doit tomber sur une case libre.
+      if(p.np)continue;
+      if(v.isKing||v.type==='k'||(v.pieceId==='infecte'&&!v.np))continue;
       if(gs&&gs.anchored&&gs.anchored.has(vr+','+vc))continue;
       if(gs&&gs.pretreProtected&&gs.pretreProtected.has(v.color+':'+vr+','+vc))continue;
     }
@@ -421,7 +428,8 @@ function berserkMoves(board,r,c,p,gs){
       if(!barsPath(t,p.color)){out.push(stop);continue;}   // pas dans le vide : fin
       if(t.color===p.color)continue;
       out.push(stop);                                       // il mange et s'arrête là
-      if(t.isKing||t.type==='k'||t.pieceId==='infecte'||t.pieceId==='reflet')continue;
+      if(p.np)continue;                                     // sans sa Furie, une prise et c'est tout
+      if(t.isKing||t.type==='k'||(t.pieceId==='infecte'&&!t.np)||t.pieceId==='reflet')continue;
       if(gs&&gs.anchored&&gs.anchored.has(k))continue;
       if(gs&&gs.pretreProtected&&gs.pretreProtected.has(t.color+':'+k))continue;
       eaten.add(k);path.push({r:nr,c:nc});
@@ -452,7 +460,7 @@ function sameMove(m,to){
 // permet d'éteindre celui d'une Illusion prise (refletSweep).
 function refletOwnerKey(p){return p.id||('illusion-'+p.color);}
 function applyIllusionReflet(b,from,p){
-  if(!p||p.pieceId!=='illusion')return;
+  if(!p||p.pieceId!=='illusion'||p.np)return;
   const owner=refletOwnerKey(p);
   for(let r=0;r<8;r++)for(let c=0;c<8;c++){
     const t=b[r][c];
@@ -486,7 +494,7 @@ function refletSweep(b){
 // n'est pas une pièce : le prendre ne contamine personne.
 function infectionKills(mover,victim){
   if(!mover||!victim||victim.color===mover.color||victim.pieceId==='reflet')return false;
-  return victim.pieceId==='infecte'||mover.pieceId==='infecte';
+  return (victim.pieceId==='infecte'&&!victim.np)||(mover.pieceId==='infecte'&&!mover.np);
 }
 
 // ----------------------------------------------------------------
@@ -502,7 +510,7 @@ function nyxFogFor(board,viewer){
   if(!board)return fog;
   for(let r=0;r<8;r++)for(let c=0;c<8;c++){
     const n=board[r]&&board[r][c];
-    if(!n||n.pieceId!=='nyx'||n.color===viewer)continue;
+    if(!n||n.pieceId!=='nyx'||n.np||n.color===viewer)continue;
     for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++){
       if(!dr&&!dc)continue;
       const nr=r+dr,nc=c+dc;if(!inB(nr,nc))continue;
@@ -522,7 +530,7 @@ function ombreHiddenFor(board,viewer,turnCount){
   if(!board)return hid;
   for(let r=0;r<8;r++)for(let c=0;c<8;c++){
     const t=board[r]&&board[r][c];
-    if(t&&t.pieceId==='ombre'&&t.color!==viewer&&t._seenAt!==turnCount-1)hid.add(r+','+c);
+    if(t&&t.pieceId==='ombre'&&!t.np&&t.color!==viewer&&t._seenAt!==turnCount-1)hid.add(r+','+c);
   }
   return hid;
 }
@@ -631,7 +639,7 @@ function isSquareAttackedSimple(tr,tc,defColor,board){
   // --- Éléphant de guerre : 1 ou 2 cases ortho (2 = charge, bloquée
   //     seulement par une pièce alliée à mi-chemin) ---
   for(const[dr,dc] of[[1,0],[-1,0],[0,1],[0,-1]]){const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;const p=board[r][c];if(p&&p.color===atk&&p.pieceId==='dresseur-elephant')return true;}
-  for(const[dr,dc] of[[2,0],[-2,0],[0,2],[0,-2]]){const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;const p=board[r][c];if(!(p&&p.color===atk&&p.pieceId==='dresseur-elephant'))continue;const midR=tr+dr/2,midC=tc+dc/2;if(board[midR][midC]&&board[midR][midC].color===atk&&board[midR][midC].pieceId!=='reflet')continue;return true;}
+  for(const[dr,dc] of[[2,0],[-2,0],[0,2],[0,-2]]){const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;const p=board[r][c];if(!(p&&p.color===atk&&p.pieceId==='dresseur-elephant'))continue;const midR=tr+dr/2,midC=tc+dc/2;if(board[midR][midC]&&board[midR][midC].color===atk&&board[midR][midC].pieceId!=='reflet')continue;if(p.np&&barsPath(board[midR][midC],atk))continue;return true;}
   // --- Prêtre : 1 ou 2 cases ortho (chemin libre pour 2) ---
   for(const[dr,dc] of[[1,0],[-1,0],[0,1],[0,-1]]){const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;const p=board[r][c];if(p&&p.color===atk&&p.pieceId==='pretre')return true;}
   for(const[dr,dc] of[[2,0],[-2,0],[0,2],[0,-2]]){const r=tr+dr,c=tc+dc;if(!inB(r,c))continue;const mr=tr+dr/2,mc_=tc+dc/2;if(barsPath(board[mr][mc_],atk))continue;const p=board[r][c];if(p&&p.color===atk&&p.pieceId==='pretre')return true;}
@@ -669,16 +677,18 @@ function isSquareAttackedSimple(tr,tc,defColor,board){
   // tout ce que cette pièce-là toucherait. Chaque case n'est visitée qu'une
   // fois : la chaîne ne repasse jamais par une prise déjà faite.
   {
-    const seen=new Set([tr+','+tc]);const todo=[[tr,tc]];
+    // Un Berserk SANS SA FURIE ne menace que ce qui est collé à lui : il
+    // n'est reconnu qu'au premier niveau de la remontée (qd === 0).
+    const seen=new Set([tr+','+tc]);const todo=[[tr,tc,0]];
     while(todo.length){
-      const[qr,qc]=todo.pop();
+      const[qr,qc,qd]=todo.pop();
       for(const[dr,dc] of[[1,0],[-1,0],[0,1],[0,-1]]){
         const r=qr+dr,c=qc+dc;if(!inB(r,c))continue;
         const k=r+','+c;if(seen.has(k))continue;
         const p=board[r][c];if(!p)continue;
-        if(p.color===atk){if(p.pieceId==='berserk')return true;continue;}
-        if(p.isKing||p.type==='k'||p.pieceId==='infecte'||p.pieceId==='reflet')continue;
-        seen.add(k);todo.push([r,c]);
+        if(p.color===atk){if(p.pieceId==='berserk'&&(!qd||!p.np))return true;continue;}
+        if(p.isKing||p.type==='k'||(p.pieceId==='infecte'&&!p.np)||p.pieceId==='reflet')continue;
+        seen.add(k);todo.push([r,c,qd+1]);
       }
     }
   }
@@ -689,12 +699,15 @@ function isSquareAttackedSimple(tr,tc,defColor,board){
   for(const[d1r,d1c] of[[1,1],[1,-1],[-1,1],[-1,-1]]){
     const vr=tr+d1r,vc=tc+d1c;if(!inB(vr,vc))continue;
     const v=board[vr][vc];
-    if(v&&v.color===atk&&v.pieceId==='singe')return true;
+    if(v&&v.color===atk&&v.pieceId==='singe'&&!v.np)return true;
     if(v&&v.color===atk&&v.pieceId!=='reflet')continue;
     if(v&&v.color!==atk&&(v.isKing||v.type==='k'))continue;
+    // Une pièce du camp attaqué sur la case V : seul un Singe qui a son
+    // Double Bond peut la manger en passant.
+    const vFoe=!!(v&&v.color!==atk);
     for(const[d2r,d2c] of[[1,1],[1,-1],[-1,1],[-1,-1]]){
       const mr=vr+d2r,mc=vc+d2c;if(!inB(mr,mc)||(mr===tr&&mc===tc))continue;
-      const m=board[mr][mc];if(m&&m.color===atk&&m.pieceId==='singe')return true;
+      const m=board[mr][mc];if(m&&m.color===atk&&m.pieceId==='singe'&&!(vFoe&&m.np))return true;
     }
   }
 
@@ -755,7 +768,7 @@ function updateMedusaParalysis(board,gs){
   // moitié du plateau tant qu'une Méduse tient sa diagonale.
   const before=gs.medusaParalyzed||new Set();
   gs.medusaParalyzed=new Set();
-  for(let r=0;r<8;r++)for(let c=0;c<8;c++){const p=board[r][c];if(p&&p.pieceId==='meduse'){for(const[dr,dc] of[[1,1],[1,-1],[-1,1],[-1,-1]]){const nr=r+dr,nc=c+dc;if(inB(nr,nc)&&board[nr][nc]&&board[nr][nc].color!==p.color)gs.medusaParalyzed.add(`${nr},${nc}`);}}}
+  for(let r=0;r<8;r++)for(let c=0;c<8;c++){const p=board[r][c];if(p&&p.pieceId==='meduse'&&!p.np){for(const[dr,dc] of[[1,1],[1,-1],[-1,1],[-1,-1]]){const nr=r+dr,nc=c+dc;if(inB(nr,nc)&&board[nr][nc]&&board[nr][nc].color!==p.color)gs.medusaParalyzed.add(`${nr},${nc}`);}}}
   if(typeof fxPower==='function'){
     gs.medusaParalyzed.forEach(k=>{
       if(before.has(k))return;
@@ -772,7 +785,7 @@ function updatePretreProtection(board,gs){
   gs.pretreProtected=new Set();
   for(let r=0;r<8;r++)for(let c=0;c<8;c++){
     const p=board[r][c];
-    if(!p||p.pieceId!=='pretre')continue;
+    if(!p||p.pieceId!=='pretre'||p.np)continue;
     for(const[dr,dc] of[[1,1],[1,-1],[-1,1],[-1,-1]]){
       const nr=r+dr,nc=c+dc;if(!inB(nr,nc))continue;
       const t=board[nr][nc];
@@ -784,7 +797,7 @@ function updatePretreProtection(board,gs){
 }
 function updateGrandMaitre(board,gs){
   gs.grandMaitreAlive={w:false,b:false};
-  for(let r=0;r<8;r++)for(let c=0;c<8;c++){const p=board[r][c];if(p&&p.pieceId==='grand-maitre')gs.grandMaitreAlive[p.color]=true;}
+  for(let r=0;r<8;r++)for(let c=0;c<8;c++){const p=board[r][c];if(p&&p.pieceId==='grand-maitre'&&!p.np)gs.grandMaitreAlive[p.color]=true;}
 }
 // ================================================================
 // LA RÉANIMATION DE LA MATRIARCHE
@@ -809,7 +822,7 @@ function reviveChoices(){
   return PIECES.filter(p=>p.value===2&&p.class!=='Monarque'&&p.class!=='Général').map(p=>p.id);
 }
 function matriarcheAt(board,color){
-  for(let r=0;r<8;r++)for(let c=0;c<8;c++){const t=board[r][c];if(t&&t.color===color&&t.pieceId==='matriarche')return{r,c};}
+  for(let r=0;r<8;r++)for(let c=0;c<8;c++){const t=board[r][c];if(t&&t.color===color&&t.pieceId==='matriarche'&&!t.np)return{r,c};}
   return null;
 }
 function reviveSquares(board,color){
@@ -840,8 +853,10 @@ function matriarcheSnapshot(gs){
 // La pièce relevée, telle qu'elle se pose sur le plateau.
 function reviveCell(pieceId,color,gs){
   const d=PIECES.find(p=>p.id===pieceId);
-  return{type:d.pieceType||'r',color,pieceId,emoji:d.emoji,hasMoved:true,isKing:false,
+  const cell={type:d.pieceType||'r',color,pieceId,emoji:d.emoji,hasMoved:true,isKing:false,
     id:'rv-'+color+'-'+((gs&&gs.turnCount)||0)};
+  if(gsPieceNoPower(gs,color,pieceId))cell.np=true;
+  return cell;
 }
 // Rend true si la Réanimation a eu lieu. C'est le guichet UNIQUE : le joueur
 // (js/game-render.js), l'IA (matriarcheAIRevive), l'adversaire en ligne
@@ -862,6 +877,7 @@ function applyMatriarcheRevive(gs,color,pieceId,r,c){
   updateMedusaParalysis(gs.board,gs);updatePretreProtection(gs.board,gs);updateGrandMaitre(gs.board,gs);updateMatriarche(gs.board,gs);
   if(!REPLAYING){
     if(typeof fxPromote==='function')fxPromote(r,c,pieceId);
+    if(typeof fxPower==='function')fxPower('reanimation',r,c);
     if(typeof playSound==='function')playSound('promo');
     if(typeof renderGame==='function')renderGame(gs);
     if(typeof updateStatus==='function')updateStatus(gs);
@@ -900,7 +916,7 @@ function matriarcheAIRevive(gs,color){
 }
 
 function applyTyphonEffect(toR,toC,board,p,gs){
-  if(p.pieceId!=='typhon')return;
+  if(p.pieceId!=='typhon'||p.np)return;
   for(const[dr,dc] of[[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]]){
     const nr=toR+dr,nc=toC+dc;if(!inB(nr,nc))continue;const t=board[nr][nc];
     if(t&&t.color!==p.color&&!gs.anchored?.has(`${nr},${nc}`)&&!(t.isKing||t.type==='k')){pushCaptured(gs,t);board[nr][nc]=null;}
@@ -937,7 +953,7 @@ function applyBansheePush(board,toR,toC,color){
   });
 }
 function applyBansheeEffect(toR,toC,board,p){
-  if(p.pieceId!=='banshee')return;
+  if(p.pieceId!=='banshee'||p.np)return;
   applyBansheePush(board,toR,toC,p.color);
 }
 // ----------------------------------------------------------------
@@ -982,14 +998,14 @@ function applyCollateralOnBoard(b,from,to,p,anchored,victim){
       nr+=dr;nc+=dc;
     }
   }
-  if(p.pieceId==='typhon'){
+  if(p.pieceId==='typhon'&&!p.np){
     for(const[dr,dc] of [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]]){
       const nr=to.r+dr,nc=to.c+dc;
       if(!inB(nr,nc))continue;
       if(hits(b[nr][nc],nr,nc))b[nr][nc]=null;
     }
   }
-  if(p.pieceId==='banshee')applyBansheePush(b,to.r,to.c,p.color);
+  if(p.pieceId==='banshee'&&!p.np)applyBansheePush(b,to.r,to.c,p.color);
   if(p.pieceId==='illusion')applyIllusionReflet(b,from,p);
   if(infectionKills(p,victim)&&b[to.r][to.c]&&b[to.r][to.c].color===p.color){
     b[to.r][to.c]=null;
@@ -1076,6 +1092,17 @@ function fxPromoteAt(board,to){
   fxPromote(to.r,to.c,np&&np.pieceId);
 }
 
+// LA PIÈCE NÉE D'UNE PROMOTION. Le nœud de la pièce survit (même `id`, voir
+// syncPieces) ; son pouvoir, lui, est celui de SON CAMP pour la créature
+// choisie (gs.powers, posé au lancement) — pas celui du pion ou de la Fourmi
+// dont elle a pris la place.
+function promoCell(p,opt,gs){
+  const c={...p,type:opt.type,emoji:opt.emoji,pieceId:opt.pieceId};
+  delete c.np;
+  if(gsPieceNoPower(gs,p.color,opt.pieceId))c.np=true;
+  return c;
+}
+
 // ================================================================
 // EXÉCUTION D'UN COUP : cœur du moteur, tous les effets spéciaux
 // ================================================================
@@ -1144,8 +1171,10 @@ function executeGameMove(from,to,gs){
   const fogNow=nyxFogLive(gs,b);
   const hiddenMove=p.color!==(gs.playerColor||'w')&&(fogNow.has(to.r+','+to.c)||fogNow.has(from.r+','+from.c));
   if(to.shoot&&!REPLAYING&&!hiddenMove){
-    // Le Boucher ne quitte pas sa case : pas de traînée, seulement l'impact.
+    // Le Boucher ne quitte pas sa case : pas de traînée, seulement l'impact —
+    // et le COUPERET qui tombe de sa case sur la victime (fxCleaver).
     if(captured&&typeof fxImpact==='function')fxImpact(to.r,to.c,captured.pieceId);
+    if(typeof fxCleaver==='function')fxCleaver(from,to);
   }
   else if(typeof fxPlayMove==='function'&&!REPLAYING&&!hiddenMove){
     // La prise en passant se joue sur une case que le pion N'ATTEINT PAS :
@@ -1153,8 +1182,9 @@ function executeGameMove(from,to,gs){
     // s'allume sur une case où il ne s'est rien passé.
     const capAt=to.ep?{r:to.r+(p.color==='w'?1:-1),c:to.c}:{r:to.r,c:to.c};
     const power=to.destroysPath?'charge'
+      :(p.np?null
       :(p.pieceId==='typhon'?'typhon'
-      :(p.pieceId==='banshee'?'banshee':null));
+      :(p.pieceId==='banshee'?'banshee':null)));
     let rook=null,rookPieceId=null;
     // Le roque déplace DEUX pièces : sans la seconde traînée, le coup se lit
     // comme un déplacement de roi et la tour semble s'être téléportée.
@@ -1164,12 +1194,15 @@ function executeGameMove(from,to,gs){
       from:{r:from.r,c:from.c},to:{r:to.r,c:to.c},capAt:capAt,
       pieceId:p.pieceId,captured:captured?captured.pieceId:null,
       castle:to.castle||null,rook:rook,rookPieceId:rookPieceId,power:power,
+      // De quoi dessiner la signature d'une créature (fxCreature) : le premier
+      // pas du Singe, la chaîne du Berserk, un pouvoir qui dort, la contagion.
+      via:to.via||null,path:to.path||null,np:!!p.np,contagion:!!contagion,
     });
     if(viaCaptured&&typeof fxImpact==='function')fxImpact(to.via.r,to.via.c,viaCaptured.pieceId);
     if(typeof fxImpact==='function')pathCaptured.forEach(x=>fxImpact(x.r,x.c,x.v.pieceId));
     // Les pouvoirs qui ne détruisent rien mais changent une règle : le dôme du
     // Prêtre, la Domination du Grand Maître.
-    if(!REPLAYING)fxCreatureSignature(p,to,b,gs);
+    if(!REPLAYING&&!p.np)fxCreatureSignature(p,to,b,gs);
   }
 
   gs.enPassant=null;
@@ -1183,7 +1216,8 @@ function executeGameMove(from,to,gs){
   // LE PION ET LA FOURMI se promeuvent en atteignant la dernière rangée (voir
   // PROMOTING_IDS, js/data-pieces.js). Ni l'un ni l'autre ne recule : la
   // rangée 0 est forcément celle des Blancs, la 7 celle des Noirs.
-  const isPawnPromo=!contagion&&!to.shoot&&pieceCanPromote(p.pieceId)&&(to.r===0||to.r===7);
+  // Une Fourmi sans son pouvoir ne se promeut pas : elle reste au bout.
+  const isPawnPromo=!contagion&&!to.shoot&&pieceCanPromote(p.pieceId)&&!p.np&&(to.r===0||to.r===7);
   if(isPawnPromo){
     const aiCol=gs.aiColor||'b';
     // Promotion imposée : coup reçu d'un adversaire en ligne, qui a déjà
@@ -1191,7 +1225,7 @@ function executeGameMove(from,to,gs){
     // IA, pour que les deux plateaux restent identiques.
     if(gs._forcedPromo){
       const opt=gs._forcedPromo;gs._forcedPromo=null;
-      b[to.r][to.c]={...p,type:opt.type,emoji:opt.emoji,pieceId:opt.pieceId};
+      b[to.r][to.c]=promoCell(p,opt,gs);
       playSound('promo');fxPromoteAt(b,to);recordMove(p,to,!!captured,gs,from);gs.turn=opp(gs.turn);gs.turnCount++;postMoveUpdate(gs);
     }
     else if(p.color===aiCol&&!gs.multiplayer){
@@ -1213,12 +1247,12 @@ function executeGameMove(from,to,gs){
       let bestOpt=promoOpts[0];let bestSc=-Infinity;
       for(const opt of promoOpts){
         const bc=cloneBoard(b);
-        bc[to.r][to.c]={...p,type:opt.type,emoji:opt.emoji,pieceId:opt.pieceId};
+        bc[to.r][to.c]=promoCell(p,opt,gs);
         bc[from.r][from.c]=null;
         const sc=evalBoard(bc,gs);
         if(sc>bestSc){bestSc=sc;bestOpt=opt;}
       }
-      b[to.r][to.c]={...p,type:bestOpt.type,emoji:bestOpt.emoji,pieceId:bestOpt.pieceId};
+      b[to.r][to.c]=promoCell(p,bestOpt,gs);
       playSound('promo');fxPromoteAt(b,to);recordMove(p,to,!!captured,gs,from);gs.turn=opp(gs.turn);gs.turnCount++;postMoveUpdate(gs);
     }
     else{gs.pendingPromo={from,to,p};showPromoModal(gs);return;}
@@ -1365,7 +1399,7 @@ function showPromoModal(gs){
     pieceSVG(pp.pieceId,pcol)+'<span class="promo-piece-lbl">'+pp.label+'</span></div>').join('');
   box.querySelectorAll('.promo-piece').forEach((el,i)=>{el.addEventListener('click',()=>{
     const opt=options[i];const{from,to,p}=gs.pendingPromo;
-    gs.board[to.r][to.c]={...p,type:opt.type,emoji:opt.emoji,pieceId:opt.pieceId};
+    gs.board[to.r][to.c]=promoCell(p,opt,gs);
     gs.pendingPromo=null;modal.classList.remove('active');playSound('promo');
     fxPromoteAt(gs.board,to);
     // Règle d'économie : une promotion CRÉE un exemplaire de la pièce

@@ -63,13 +63,90 @@ let _lbSearchRows=null;// résultats de recherche (null = pas de recherche)
 let _lbProfile=null;   // profil ouvert (null = liste)
 let _lbLoading=false;
 let _lbSearchTid=null;
+let _lbTab='top';      // 'top' : le classement ; 'friends' : mes amis
+
+// ----------------------------------------------------------------
+// LES AMIS
+// ----------------------------------------------------------------
+// On défiait quelqu'un en le cherchant par son nom, à chaque fois : le
+// joueur contre qui l'on veut rejouer, c'est presque toujours le même. La
+// liste d'amis le garde sous la main, avec sa pastille de présence et son
+// bouton « Défier » sur la ligne même.
+//
+// C'EST UNE LISTE DE CONTACTS, PAS UNE AMITIÉ À DEUX SIGNATURES. Ajouter
+// quelqu'un ne lui demande rien et ne lui apprend rien : il n'y a pas de
+// demande à accepter, donc pas de table serveur, pas de notification à
+// porter, pas de spam possible. Elle vit dans la fiche du compte
+// (`friends`, accGet/accSet), comme n'importe quelle préférence — et le défi,
+// lui, reste ce qu'il était : une invitation qu'on accepte ou non
+// (mpChallenge, js/multiplayer.js).
+//
+// Ce qui s'affiche d'un ami (ELO, rang, présence) est relu sur son profil
+// public à l'ouverture de l'onglet (lbFriendsRefresh), et gardé une minute.
+const LB_FRIENDS_MAX=50;
+const LB_FRIEND_TTL=60000;
+let _lbFriendCache={};  // id → {at, row}
+function friendsList(){
+  const l=(typeof accGet==='function')?accGet('friends',[]):[];
+  return Array.isArray(l)?l.filter(f=>f&&f.id):[];
+}
+function isFriend(id){return friendsList().some(f=>f.id===id);}
+function friendAdd(id,name){
+  if(!id)return false;
+  if(typeof ECP!=='undefined'&&ECP&&id===ECP.id)return false;
+  const l=friendsList();
+  if(l.some(f=>f.id===id))return true;
+  if(l.length>=LB_FRIENDS_MAX){showNotif('Votre liste d\'amis est pleine ('+LB_FRIENDS_MAX+').','err');return false;}
+  l.push({id,name:String(name||'').slice(0,40),at:Date.now()});
+  accSet('friends',l);
+  showNotif((name||'Ce joueur')+' est dans vos amis.','ok');
+  return true;
+}
+function friendRemove(id){
+  const l=friendsList().filter(f=>f.id!==id);
+  accSet('friends',l);delete _lbFriendCache[id];
+}
+// Relit le profil public de chaque ami dont la fiche a plus d'une minute. Un
+// ami renommé garde sa place : c'est son identifiant qui est retenu, et le
+// nouveau pseudo remplace l'ancien dans la liste.
+function lbFriendsRefresh(){
+  if(typeof ecProfileOf!=='function')return;
+  const now=Date.now();
+  const stale=friendsList().filter(f=>!_lbFriendCache[f.id]||now-_lbFriendCache[f.id].at>LB_FRIEND_TTL);
+  if(!stale.length)return;
+  Promise.all(stale.map(f=>ecProfileOf({id:f.id}).then(p=>{
+    if(p&&p.found){
+      _lbFriendCache[f.id]={at:Date.now(),row:p};
+      if(p.username&&p.username!==f.name){
+        const l=friendsList();const e=l.find(x=>x.id===f.id);
+        if(e){e.name=p.username;accSet('friends',l);}
+      }
+    }else _lbFriendCache[f.id]={at:Date.now(),row:null,gone:true};
+  }).catch(()=>{}))).then(()=>{if(_lbTab==='friends'&&!_lbProfile)renderLeaderboardPage();});
+}
+function lbFriendsHTML(){
+  const l=friendsList();
+  if(!l.length)
+    return '<p class="lb-empty">Aucun ami pour l\'instant. Cherchez un joueur ci-dessus ou ouvrez un profil '+
+      'du classement, puis touchez « Ajouter en ami ».</p>';
+  // En ligne d'abord : c'est eux qu'on peut défier maintenant.
+  const rows=l.map(f=>{
+    const c=_lbFriendCache[f.id];
+    return (c&&c.row)?c.row:{id:f.id,username:f.name,elo:0,elo_peak:0,ranked_games:0,_pending:!c,_gone:!!(c&&c.gone)};
+  });
+  rows.sort((a,b)=>(lbOnline(b)?1:0)-(lbOnline(a)?1:0)||(b.elo|0)-(a.elo|0));
+  return '<div class="lb-count">'+l.length+(l.length>1?' amis':' ami')+'</div>'+
+    '<div class="lb-list">'+rows.map(r=>lbRowHTML(r,false,{friend:true})).join('')+'</div>';
+}
 
 // ----------------------------------------------------------------
 // OUVERTURE / FERMETURE
 // ----------------------------------------------------------------
-function openLeaderboardPage(){
+function openLeaderboardPage(tab){
   document.getElementById('settings-panel')?.classList.remove('open');
   _lbProfile=null;
+  if(tab==='friends'||tab==='top')_lbTab=tab;
+  if(_lbTab==='friends')lbFriendsRefresh();
   renderLeaderboardPage();
   showPage(LB_PAGE);
   lbLoad();
@@ -127,11 +204,23 @@ let _lbHtml=null;
 function renderLeaderboardPage(){
   const host=document.getElementById('lb-body');
   if(!host)return;
-  const html=_lbProfile?lbProfileHTML(_lbProfile):(lbSearchHTML()+lbListHTML());
+  const html=_lbProfile?lbProfileHTML(_lbProfile):(lbTabsHTML()+lbSearchHTML()+
+    (_lbTab==='friends'&&!_lbSearchRows?lbFriendsHTML():lbListHTML()));
   if(html===_lbHtml&&host.firstElementChild)return;
   _lbHtml=html;
   host.innerHTML=html;
   lbWire();
+}
+
+// Deux onglets : le classement de tout le monde, et ses amis.
+function lbTabsHTML(){
+  const n=friendsList().length;
+  const online=friendsList().filter(f=>{const c=_lbFriendCache[f.id];return lbOnline((c&&c.row)||{id:f.id});}).length;
+  return '<div class="lb-tabs" role="tablist">'+
+    '<button class="lb-tab'+(_lbTab==='top'?' on':'')+'" data-tab="top" role="tab" aria-selected="'+(_lbTab==='top')+'">Classement</button>'+
+    '<button class="lb-tab'+(_lbTab==='friends'?' on':'')+'" data-tab="friends" role="tab" aria-selected="'+(_lbTab==='friends')+'">Amis'+
+      (n?' <span class="lb-tab-n">'+n+'</span>':'')+(online?'<span class="lb-tab-on" title="'+online+' en ligne"></span>':'')+'</button>'+
+  '</div>';
 }
 
 function lbSearchHTML(){
@@ -150,26 +239,52 @@ function lbSearchHTML(){
 // Une ligne du classement. Le numéro de place n'est pas décoratif :
 // c'est la seule information de cet écran qu'on ne peut pas déduire de
 // son propre profil.
-function lbRowHTML(r,showRank){
+// LE DÉFI SE LANCE DEPUIS LA LIGNE. Ouvrir un profil pour trouver le bouton
+// « Défier » tout en bas coûtait deux gestes et un défilement : quelqu'un
+// d'en ligne au classement porte son épée au bout de sa ligne, un défi en
+// attente la remplace par « Annuler ». La ligne elle-même ouvre toujours le
+// profil — deux boutons côte à côte, jamais l'un dans l'autre.
+function lbRowDuelHTML(r,me,online){
+  if(me||!online)return '';
+  const pending=(typeof MP!=='undefined'&&MP.duelOut);
+  if(pending&&MP.duelOut.to===r.id)
+    return '<button class="lb-row-duel is-pending" data-duel-cancel="1" title="Annuler le défi" aria-label="Annuler le défi à '+escH(r.username)+'">'+
+      '<span class="lb-row-duel-spin"></span></button>';
+  return '<button class="lb-row-duel" data-duel="'+escH(r.id)+'" data-name="'+escH(r.username)+'" '+
+    'title="Défier '+escH(r.username)+'" aria-label="Défier '+escH(r.username)+'">'+LB_SWORDS+'</button>';
+}
+const LB_SWORDS='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+
+  '<path d="M14.5 17.5 3 6V3h3l11.5 11.5"/><path d="m13 19 6-6"/><path d="m16 16 4 4"/><path d="m19 21 2-2"/>'+
+  '<path d="M9.5 17.5 21 6V3h-3L6.5 14.5"/><path d="m11 19-6-6"/><path d="m8 16-4 4"/><path d="m5 21-2-2"/></svg>';
+function lbRowHTML(r,showRank,opts){
+  const o=opts||{};
   const peak=Math.max(r.elo|0,r.elo_peak|0);
   const rank=(typeof vvGetRank==='function')?vvGetRank(peak):{name:'',color:'var(--muted)'};
   const me=(typeof ECP!=='undefined'&&ECP&&r.id===ECP.id);
   const online=lbOnline(r);
   const letter=escH((r.username||'?').trim().charAt(0).toUpperCase()||'?');
+  const friend=!me&&isFriend(r.id);
+  const sub=r._gone?'Compte supprimé'
+    :r._pending?'…'
+    :'<span style="color:'+rank.color+'">'+escH(rank.name)+'</span>'+
+      ' · '+(r.ranked_games|0)+(r.ranked_games>1?' parties':' partie');
   return ''+
-  '<button class="lb-row'+(me?' is-me':'')+'" data-player="'+escH(r.id)+'">'+
+  '<div class="lb-row-wrap'+(online&&!me?' can-duel':'')+'">'+
+  '<button class="lb-row'+(me?' is-me':'')+(friend?' is-friend':'')+'" data-player="'+escH(r.id)+'">'+
     (showRank?'<span class="lb-pos'+(r.rank<=3?' lb-pos-'+r.rank:'')+'">'+(r.rank||'')+'</span>':'')+
     '<span class="acc-medal lb-medal" style="--medal-c:'+rank.color+'">'+
       '<span class="acc-medal-letter">'+letter+'</span>'+
       '<span class="lb-dot'+(online?' on':'')+'" title="'+(online?'En ligne':'Hors ligne')+'"></span>'+
     '</span>'+
     '<span class="lb-id">'+
-      '<span class="lb-name">'+escH(r.username)+(me?' <em>(vous)</em>':'')+'</span>'+
-      '<span class="lb-sub"><span style="color:'+rank.color+'">'+escH(rank.name)+'</span>'+
-        ' · '+(r.ranked_games|0)+(r.ranked_games>1?' parties':' partie')+'</span>'+
+      '<span class="lb-name">'+escH(r.username)+(me?' <em>(vous)</em>':'')+
+        (friend&&!o.friend?' <span class="lb-friend-tag" title="Dans vos amis">ami</span>':'')+'</span>'+
+      '<span class="lb-sub">'+sub+'</span>'+
     '</span>'+
-    '<span class="lb-elo">'+(r.elo|0)+'</span>'+
-  '</button>';
+    '<span class="lb-elo">'+(r._pending||r._gone?'':(r.elo|0))+'</span>'+
+  '</button>'+
+  lbRowDuelHTML(r,me,online)+
+  '</div>';
 }
 
 function lbListHTML(){
@@ -240,12 +355,15 @@ function lbProfileHTML(p){
     // pouvoirs qui vont avec (js/replay.js). C'est la moitié de ce qu'on vient
     // chercher sur le profil de quelqu'un qu'on s'apprête à défier, et le
     // profil n'en disait pas un mot.
-    ((typeof profileArsenalHTML==='function')?profileArsenalHTML(p.pub_army,p.pub_unlocked):'')+
+    ((typeof profileArsenalHTML==='function')?profileArsenalHTML(p.pub_army,p.pub_unlocked,p.pub_powers):'')+
     // SES DIX DERNIÈRES PARTIES, REJOUABLES. La bande de forme dit « il monte
     // ou il coule » ; la liste dit ce qui s'est passé, et chaque ligne ouvre
     // le mode analyse.
     ((typeof replayListHTML==='function')?replayListHTML(p.history):'')+
     lbDuelHTML(p,me,online)+
+    (me?'':'<div class="lb-friend-row">'+(isFriend(p.id)
+      ?'<button class="btn btn-ghost" id="lb-friend-del" data-id="'+escH(p.id)+'">Retirer de mes amis</button>'
+      :'<button class="btn btn-primary" id="lb-friend-add" data-id="'+escH(p.id)+'" data-name="'+escH(p.username)+'">Ajouter en ami</button>')+'</div>')+
   '</section>';
 }
 
@@ -254,20 +372,8 @@ function lbProfileHTML(p){
 // (voir accountFormHTML, js/account-ui.js) — une frise se lit de gauche
 // à droite, comme toutes les courbes qu'on a jamais lues.
 function lbFormHTML(p){
-  const recent=(p.history||[]).filter(h=>h&&h.ranked!==false).slice(-10);
-  if(!recent.length)return '';
-  const lbl={win:'Victoire',loss:'Défaite',draw:'Nulle'};
-  return ''+
-  '<div class="acc-form">'+
-    '<div class="acc-form-k">Forme récente</div>'+
-    '<div class="acc-form-dots">'+
-      recent.map(h=>{
-        const cls=h.result==='win'?'w':h.result==='loss'?'l':'d';
-        const d=(h.delta>0?'+':'')+(h.delta||0);
-        return '<span class="acc-dot-'+cls+'" title="'+escH((lbl[h.result]||'')+' · '+d+' ELO')+'"></span>';
-      }).join('')+
-    '</div>'+
-  '</div>';
+  // Même bande, mêmes pastilles cliquables que sur son propre profil.
+  return (typeof replayFormHTML==='function')?replayFormHTML(p.history):'';
 }
 
 // La créature fétiche d'un autre joueur : c'est ce qu'on vient chercher
@@ -369,6 +475,29 @@ function lbWire(){
   host.querySelectorAll('[data-player]').forEach(b=>{
     if(b.id==='lb-duel')return;
     b.addEventListener('click',()=>openPlayerProfile(b.getAttribute('data-player')));
+  });
+  host.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>{
+    _lbTab=b.getAttribute('data-tab');
+    if(_lbTab==='friends')lbFriendsRefresh();
+    renderLeaderboardPage();
+  }));
+  host.querySelectorAll('[data-duel]').forEach(b=>b.addEventListener('click',e=>{
+    e.stopPropagation();
+    if(typeof mpChallenge==='function')mpChallenge(b.getAttribute('data-duel'),b.getAttribute('data-name'));
+  }));
+  host.querySelectorAll('[data-duel-cancel]').forEach(b=>b.addEventListener('click',e=>{
+    e.stopPropagation();
+    if(typeof mpDuelCancel==='function')mpDuelCancel();
+    showNotif('Défi annulé.','ok');
+  }));
+  host.querySelector('#lb-friend-add')?.addEventListener('click',function(){
+    if(friendAdd(this.getAttribute('data-id'),this.getAttribute('data-name'))){
+      if(_lbProfile)_lbFriendCache[_lbProfile.id]={at:Date.now(),row:_lbProfile};
+      renderLeaderboardPage();
+    }
+  });
+  host.querySelector('#lb-friend-del')?.addEventListener('click',function(){
+    friendRemove(this.getAttribute('data-id'));renderLeaderboardPage();
   });
   // Les dix dernières parties du profil ouvert : chaque ligne mène au mode
   // analyse, et « Retour » y ramène ce profil-ci — pas le classement, qui

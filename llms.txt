@@ -101,10 +101,20 @@ C'est la mécanique qui distingue le plus Epic Chess des autres variantes :
 - Une **promotion** de pion crée un exemplaire supplémentaire de la pièce
   choisie.
 - Il existe **six raretés de coffre**, du Coffre Pion au Coffre Roi. Ils
-  contiennent des exemplaires de pièces, des perles, et — rarement, avec une
-  probabilité croissante selon leur rareté (de 1 % au Coffre Pion à 25 % au
-  Coffre Roi) — une créature encore jamais débloquée. Un coffre **s'ouvre
-  aussitôt obtenu**, avec sa cérémonie.
+  contiennent des exemplaires de pièces, des perles, des **débris magiques**
+  et — avec une probabilité croissante selon leur rareté (de 6 % au Coffre
+  Pion à 50 % au Coffre Roi) — une créature encore jamais obtenue. Après cinq
+  coffres d'affilée sans créature inédite, le suivant en contient une à coup
+  sûr. Un coffre **s'ouvre aussitôt obtenu**, avec sa cérémonie.
+- **Les créatures ne s'obtiennent que dans les coffres**, et chacune a son
+  **arène** : le rang à partir duquel elle peut en sortir (Bois pour la
+  Fourmi, Pierre pour la Méduse, Acier pour le Typhon, Argent pour le Grand
+  Maître…).
+- **Une créature s'obtient sans son pouvoir.** Elle se joue tout de suite,
+  avec son déplacement complet ; son pouvoir s'éveille avec **8 débris
+  magiques** de cette créature, qui sortent eux aussi des coffres. Une fois
+  éveillé, le pouvoir est acquis pour toujours. Les trois créatures du
+  tutoriel arrivent avec le leur.
 - Ce qu'un coffre donne est écrit sur sa carte, et c'est un **total** : Pion
   1-3 exemplaires et 1-3 perles, Cavalier 3-5, Fou 5-8, Tour 8-12, Dame 12-20,
   Roi 20-30. Un coffre ne peut jamais se racheter avec ses propres perles.
@@ -163,7 +173,9 @@ C'est la mécanique qui distingue le plus Epic Chess des autres variantes :
 - La **Diagonale de la Puissance** suit l'ELO du joueur à travers **7 rangs** :
   Bois (0-199), Pierre (200-499), Bronze (500-799), Acier (800-1199),
   Obsidienne (1200-1499), Argent (1500-1999), Or Légendaire (2000+).
-- Franchir un palier de rang **débloque de nouvelles créatures** et de
+- La Diagonale ne donne plus de créature : ses paliers donnent des
+  **coffres** (de la rareté de l'arène où ils tombent) et des perles, et
+  chaque nouveau rang **ouvre de nouvelles créatures aux coffres** et de
   nouveaux **échiquiers** : bois, pierre, acier, argent puis or.
 - **Le rang est acquis, le classement est vivant.** L'ELO monte et descend, et
   une défaite coûte toujours des points. Mais le rang, lui, se lit sur le plus
@@ -189,9 +201,14 @@ C'est la mécanique qui distingue le plus Epic Chess des autres variantes :
   parties, taux de victoire, meilleure série, créature fétiche), on voit
   **s'il est en ligne**, et on peut le **défier** en duel direct. Le classement
   est calculé par le serveur : c'est lui, et non le navigateur du joueur, qui
-  décide de ce que vaut une partie.
+  décide de ce que vaut une partie. Un joueur en ligne se **défie directement
+  depuis sa ligne** du classement, et une **liste d'amis** garde sous la main
+  ceux qu'on veut retrouver, avec leur présence et leur bouton de défi.
+- En **recherche en ligne**, si personne n'est trouvé au bout d'**une
+  minute**, un adversaire du laboratoire **de son niveau** (le plus proche de
+  son ELO) prend la place, annoncé comme tel : la partie est classée.
 - Un profil montre aussi **ce que le joueur peut aligner** : son **armée
-  choisie**, ses **pièces débloquées** et les **pouvoirs** qui vont avec — de
+  choisie**, ses **pièces débloquées** et ses **pouvoirs éveillés** — de
   quoi savoir à quoi s'attendre avant de le défier. Et ses **dix dernières
   parties se rejouent coup par coup**, en mode analyse : le plateau, les deux
   armées et le journal complet, qu'il s'agisse des siennes ou de celles de

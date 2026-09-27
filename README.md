@@ -292,7 +292,7 @@ lire le titre pour savoir où l'on est.
 | Voie | Ce qui la fait avancer | Ce qu'elle donne | Où |
 |---|---|---|---|
 | **Récompense Journalière** | revenir, une fois par jour | cycle sans fin de 16 lots : coffres, perles, jokers | `DAILY_REWARDS`, `js/data-pieces.js` |
-| **Diagonale de la Puissance** | l'ELO (parties classées) | créatures, échiquiers, petits lots | `js/voie.js`, `UNLOCK_TABLE` |
+| **Diagonale de la Puissance** | l'ELO (parties classées) | coffres, perles, échiquiers — et chaque rang ouvre de nouvelles créatures aux coffres (arènes) | `js/voie.js`, `UNLOCK_TABLE`, `PIECE_ARENA` |
 | **Colonne des Victoires** | des **lauriers** : 5 par palier, 5 à 10 par victoire selon sa longueur | 30 paliers : coffres et jokers | `VICTORY_COLUMN`, `LAUREL_SCALE`, `js/rewards.js` |
 | **Rangée de la Richesse** | les tickets des quêtes du jour | 25 paliers de perles (2→6) | `WEALTH_TIERS`, `js/rewards.js` |
 
@@ -355,6 +355,70 @@ Trois règles à ne pas casser :
   prises), `updateStatus()` (échec et mat), `economyOnPromotion()` (promotion)
   et `economySettle()` (victoire). Les coups de l'ADVERSAIRE passent par les
   mêmes fonctions : le filtre sur la couleur du joueur est indispensable.
+
+### 1 bis bis. Les arènes, les débris magiques et les pouvoirs (`js/data-pieces.js`, `js/economy.js`)
+
+**L'ELO NE DONNE PLUS AUCUNE CRÉATURE.** La Diagonale donnait une créature
+toute faite, avec son pouvoir, à des paliers d'ELO : le jeu avait deux
+robinets pour la même chose, et le coffre — celui qu'on brise — n'était que le
+second. Trois règles, désormais :
+
+1. **Une créature ne sort que d'un coffre**, et seulement à partir de son
+   **arène** (`PIECE_ARENA`) : le rang, lu sur le SOMMET atteint, à partir
+   duquel elle peut tomber (`chestLockedPool`, `playerArenaIdx`). L'ordre
+   reprend celui de l'ancienne Diagonale : ce qui tombait à 30 ELO sort dès le
+   Bois, ce qui attendait 1700 attend l'Argent. Les chances de créature
+   inédite ont été relevées en conséquence (`newChance` : 6 % au Pion → 50 %
+   au Roi) et la malchance a un plafond : après `CHEST_PITY` (5) coffres secs
+   d'affilée, le suivant en contient une (`chest_dry`).
+2. **Une créature s'obtient SANS son pouvoir.** Elle se joue tout de suite
+   avec son déplacement complet ; son pouvoir s'éveille avec
+   `POWER_DEBRIS_NEEDED` (8) **débris magiques** de cette créature, qui sortent
+   des coffres (`CHESTS[].debris` : la chance et la quantité par rareté). Ils
+   ne vont qu'à une créature POSSÉDÉE dont le pouvoir dort encore, un seul lot
+   par coffre, et la plus avancée a deux fois plus de chances. L'éveil n'est
+   pas automatique : « Éveiller le pouvoir » dans la fiche de la pièce
+   (`powerAwaken`, `js/piece-card.js`). Seules les créatures qui ont une ligne
+   `ability` ont un pouvoir.
+3. **Un pouvoir éveillé l'est pour toujours** (`unlocked_powers`). Rien ne
+   retire une entrée de cette liste.
+
+Les **paliers de la Diagonale** sont devenus des **coffres** (`reward:'chest'`,
+de la rareté de l'arène où ils tombent) et des perles. Un coffre de la
+Diagonale ne s'ouvre pas par-dessus le verdict de fin de partie : il attend sur
+le chemin (`voie_chests`, `vvVoieChestsDue`), pulse, et s'ouvre quand on le
+touche. Chaque porte de rang affiche les créatures qu'elle ouvre aux coffres ;
+entrer dans une nouvelle arène s'annonce dans le modal de fin de partie
+(`vvArenaNews`).
+
+**COMMENT UN POUVOIR « DORT » SUR LE PLATEAU.** La pièce porte `np:true`,
+posé par `buildGameBoard` d'après la liste `powers` de son armée
+(`armyPieceNoPower`) — et **une armée sans liste a tous ses pouvoirs** : les
+relectures d'avant ce système, les adversaires en ligne restés sur un ancien
+client, les batailles du tutoriel. Chaque pouvoir consulte le drapeau là où il
+s'applique (`js/rules-engine.js`) : la Méduse ne pétrifie plus, le Typhon
+n'efface plus, la Banshee ne repousse plus, le Prêtre ne protège plus, le
+Grand Maître ne domine plus, le Garde de Pierre ne s'ancre plus, la Fourmi ne
+se promeut plus, le Preux Chevalier perd sa Cuirasse, l'Éléphant ne charge
+plus (sa case du milieu doit être libre), le Berserk s'arrête à sa première
+prise, le Boucher doit se déplacer pour manger, le Singe ne mange qu'au bout
+de ses deux pas, l'Infecté ne contamine plus (et le Monarque peut le prendre),
+l'Ombre et Nyx se voient, l'Illusion ne laisse pas de reflet, la Matriarche ne
+relève pas son Général. La détection d'échec suit les mêmes règles.
+
+Une pièce NÉE en cours de partie (promotion, Réanimation) prend le pouvoir de
+son camp (`promoCell`, `reviveCell`, `gs.powers`). Le joueur emporte ses
+pouvoirs éveillés (`playerPowerList`, `armyWithPowers`, dans `startGame`) ; un
+adversaire du laboratoire emporte LES MÊMES — il ne compose déjà qu'avec les
+créatures du joueur. En ligne, l'armée part avec sa liste (`mpSendArmy`,
+vérifiée par `mpArmyProblem`). La relecture garde la liste (`po`).
+
+**LA MIGRATION** (`accMigratePowers`, `js/accounts.js`, une fois par compte,
+drapeau `powers_v1`) : les créatures que l'ancienne Diagonale donnait au
+sommet atteint (`LEGACY_ELO_UNLOCKS`) sont écrites dans `unlocked_pieces`, et
+TOUTES les créatures déjà possédées reçoivent leur pouvoir. Personne ne perd
+ce qu'il avait gagné. Le tutoriel donne ses trois créatures AVEC leur pouvoir
+(`withPower` sur le lot) : il vient d'apprendre à s'en servir.
 
 ### 1 ter. La courbe d'ascension : l'ELO (`js/voie.js::vvCalcNewElo`)
 
@@ -435,8 +499,10 @@ atteindre chaque rang :
 | 35 % | 34 | 154 | 342 | 528 | 916 | — | — |
 
 Et les jalons eux-mêmes, à 50 % de victoires : 6 perles dès la **première**
-partie, le Preux Chevalier en 4, la Méduse en 21, l'Amazone en 30, le Prêtre
-en 153, le Typhon en 211, la Banshee en 268, le Grand Maître en 591.
+partie, l'arène Pierre (Méduse, Amazone…) en 18, l'Acier (Prêtre, Typhon…) en
+153, l'Obsidienne en 290, l'Argent (Illusion, Grand Maître) en 436. Ces
+chiffres datent de la Diagonale qui donnait les créatures : ils disent
+désormais quand une créature PEUT sortir d'un coffre.
 
 C'est la promesse, et elle tient en trois points : les premiers jalons tombent
 tout de suite (l'hameçon n'a pas besoin d'être payé en centaines de points) ;
@@ -639,6 +705,7 @@ plateau en 6 : les effets se glissent entre.)
 | Promotion | colonne de lumière, cercles runiques, poussière d'or qui monte | Le nœud de la pièce survit à la promotion : il n'y a rien à faire disparaître, seulement à célébrer. |
 | Échec | alarme sur la case du roi + cerne rouge | `.gc-check` dit l'**état** en permanence ; ceci dit l'**instant**. |
 | Mat | détonation sur le roi tombé, rais, plateau désaturé | Entre le coup qui mate et la cinématique d'issue, le plateau ne disait rien. |
+| Nouvelles créatures (`fxCreature`, `fxCleaver`) | Furie du Berserk : une entaille par prise de la chaîne ; Couperet du Boucher : une lame qui balaie de sa case et des gouttes ; Double Bond du Singe : le rebond sur la case du premier pas ; Contagion : un nuage vert-de-gris ; Reflet de l'Illusion : une plaque de verre ; Ombre : des volutes noires ; Nyx : un voile d'encre étoilé ; Réanimation de la Matriarche : une colonne d'âme ; Pégase : des plumes ; Loup Géant : trois griffures ; Empereur : une couronne de rayons | Un POUVOIR ne se montre que s'il est éveillé (`d.np`) ; un DÉPLACEMENT se montre toujours. Le moteur décrit le coup (`via`, `path`, `np`, `contagion`), le module choisit l'image. |
 | Victoire | le plateau **se dissout dans l'or** : un voile opaque monte pendant qu'une pluie de motes s'élève | Le seul effet du jeu autorisé à faire disparaître ce qu'il recouvre, et il ne sert qu'une fois par partie gagnée. C'est une **transition** : la cinématique d'issue se lève sur l'or au lieu de tomber sur un échiquier encore là. |
 
 **Le mat parle avant la fenêtre, et la fenêtre l'attend.** `updateStatus`
@@ -878,25 +945,33 @@ tient la position — c'est la règle de la couche des pièces, et la seule chos
 
 ### 1 sexies quater. Les prises, et la place qu'elles prennent
 
-Elles étaient posées dans l'ordre où elles tombaient, une par une, chacune
-prenant sa largeur. Deux pertes sèches :
+Elles ont été posées une par une dans l'ordre où elles tombaient, puis
+**empilées** : les exemplaires d'une même créature se chevauchaient, décalés
+d'un tiers, par-dessus une rangée d'alvéoles dorées (`rangee-prises.svg`)
+répétée en fond à pas fixe. Les piles n'ayant pas toutes la même largeur, rien
+ne tombait jamais dans sa loge — une pile à cheval sur deux alvéoles, une
+alvéole vide entre deux piles. Les prises avaient l'air jetées sur le bandeau.
 
-* **L'ordre ne disait rien.** La prise la plus lourde de la partie — la seule
-  qu'on cherche des yeux — pouvait se trouver n'importe où dans la file, entre
-  deux pions. Elles sont rangées par valeur **décroissante** : ce qui compte
-  est à gauche, à la même place à chaque partie.
-* **Huit pions prenaient la largeur de huit pièces**, pour une information qui
-  tient en un dessin et un nombre. Sur le bandeau d'un téléphone, les
-  dernières prises finissaient sous la pendule, invisibles. Les exemplaires
-  d'une même créature se **chevauchent** donc, en pile : chacun ne coûte plus
-  qu'un tiers de largeur, et on voit qu'il y en a plusieurs sans avoir à les
-  compter. Au-delà de **trois**, la pile cesse de grandir et un « ×N » prend
-  le relais — trois formes empilées se distinguent encore, huit ne se
-  distinguent plus.
+**Une loge par créature, un chiffre par loge.** Chaque créature prise a sa
+loge (`.cap-tok`), toujours de la même taille, qui porte elle-même son cadre
+d'or : le dessin au centre, et le nombre d'exemplaires dans une pastille en
+coin dès qu'il y en a plus d'un. Les loges sont rangées par valeur
+**décroissante** (ce qui compte est à gauche, à la même place à chaque partie)
+et l'**avantage matériel** « +N » passe en TÊTE de rangée : sur un téléphone la
+rangée défile, et posé au bout il sortait de l'écran. Une rangée trop longue
+estompe son bord droit (`.cap-over`) pour dire qu'il y a une suite
+(`drawCaptured` / `updateCaptured`, `js/game-render.js`).
 
-Le décalage se fait par marge **négative** et non par position absolue : la
-rangée reste une simple ligne de flex, qui se mesure toute seule
-(`drawCaptured`, `js/game-render.js` ; `.cap-stack` dans `css/style.css`).
+#### Le feu de la pendule (`clockFire`, `js/game-render.js` ; `[CLOCK-FIRE]`)
+
+Le temps qui file ne se lisait que dans un chiffre, qui ne change de couleur
+qu'à 30 s. La pendule s'embrase donc **progressivement** : une seule variable,
+`--heat`, de 0 à 1 sur la dernière minute (ou la moitié de la cadence si elle
+est plus courte), pilote la hauteur des langues de feu, leur opacité, la lueur
+et les étincelles du brasier (`.fire-hot`, au-delà de 0,66). La pendule qui
+tourne brûle franchement (`.fire-live`) ; celle qui attend garde ses braises à
+mi-feu. Le feu est DERRIÈRE la pendule (`z-index:-1` dans son propre contexte
+d'empilement) : il lèche ses bords sans jamais passer sur les chiffres.
 
 ### 1 sexies bis. La zone sous le plateau (`[GAME-PANEL]`)
 
@@ -1339,8 +1414,9 @@ traversé. L'Éléphant de guerre ajoute la portée et le prix à payer : deux c
 d'un coup, et tout ce qui se trouve entre les deux est détruit.
 
 Le Garde de Pierre porte le drapeau `starter` dans `UNLOCK_TABLE` ; la Fourmi
-et l'Éléphant de guerre **restent en plus des déblocages par l'ELO** (30 et 75),
-parce que c'est leur seul chemin pour qui saute le tutoriel. Le Garde d'Eau, le
+et l'Éléphant de guerre sont donnés par le tutoriel (et par « Passer »),
+**avec leur pouvoir** ; pour qui les perdrait de vue, ils sortent des coffres
+dès l'arène Bois. Le Garde d'Eau, le
 Garde de Feu et le Peureux, eux, ont été retirés du catalogue.
 
 Ces batailles passent par `startGame(true,false,tutoCfg)` : le troisième
@@ -1523,7 +1599,13 @@ Le nouveau tient en quatre règles :
 
 L'écran de recherche (`mpRenderSearch`) affiche le temps écoulé, le nombre de
 joueurs en attente et la fenêtre courante, et propose un adversaire du
-laboratoire au bout de 40 secondes. Le salon d'attente a changé de nom (`epichess-lobby-v2`) :
+laboratoire **de son niveau** au bout d'**une minute** (`MP_BOT_AFTER_S`,
+`mpBotFallback`) : l'adversaire le plus proche de son ELO, annoncé comme tel
+vingt secondes avant sur l'écran de recherche, pour une partie classée comme
+tout duel contre le laboratoire. Il n'est pas déguisé en humain : un joueur
+qui croirait avoir battu quelqu'un apprendrait un jour le contraire, et c'est
+le classement entier qui perdrait sa parole. Un minuteur indépendant du salon
+le déclenche aussi quand Realtime ne répond pas. Le salon d'attente a changé de nom (`epichess-lobby-v2`) :
 les anciens clients ne peuvent pas s'y tromper de protocole.
 
 ## Board Quake (`js/fok-*.js`)
@@ -2013,9 +2095,12 @@ navigation.
   celui d'un inconnu, doit se lire exactement pareil — c'est ce qui rend la
   comparaison immédiate.
 
-  **DEUX CHOSES SORTENT DE `state`, ET DEUX SEULEMENT** : `pub_army` (l'armée
-  enregistrée) et `pub_unlocked` (les pièces débloquées, dont se déduisent les
-  pouvoirs). On partait au duel sans la moindre idée de ce qu'on allait avoir
+  **TROIS CHOSES SORTENT DE `state`, ET TROIS SEULEMENT** : `pub_army`
+  (l'armée enregistrée), `pub_unlocked` (les pièces débloquées) et
+  `pub_powers` (les pouvoirs ÉVEILLÉS — ils ne se déduisent plus des pièces
+  depuis qu'une créature s'obtient sans son pouvoir ; un serveur qui ne les
+  publie pas encore retombe sur l'ancienne lecture). ⚠️ `ec_public` a changé :
+  recoller `supabase/schema.sql` (en commentant le `DROP TABLE`). On partait au duel sans la moindre idée de ce qu'on allait avoir
   en face, alors que l'armée est justement ce qui distingue deux joueurs de
   même niveau — et qu'elle se voit de toute façon au premier coup de la
   partie. Ce qui reste privé : l'inventaire (le nombre d'exemplaires), les
@@ -2032,6 +2117,19 @@ navigation.
   salon de partie (`mpStartDuel`, code tiré par le défieur et transporté par
   l'invitation). Le défieur est l'hôte, donc les Blancs. Trente secondes sans
   réponse abandonnent le défi.
+
+- **Le défi depuis la ligne.** Un joueur en ligne porte son épée au bout de
+  sa ligne du classement (`lbRowDuelHTML`) : ouvrir le profil pour trouver le
+  bouton tout en bas coûtait deux gestes. Deux boutons côte à côte, jamais
+  l'un dans l'autre.
+- **Les amis** (`friendsList`, `friendAdd`, onglet « Amis »). Une liste de
+  CONTACTS, pas une amitié à deux signatures : ajouter quelqu'un ne lui
+  demande rien, donc ni table serveur, ni notification, ni spam possible. Elle
+  vit dans la fiche du compte (`friends`), les profils des amis sont relus à
+  l'ouverture de l'onglet et gardés une minute (`lbFriendsRefresh`), les amis
+  en ligne passent en tête avec leur bouton « Défier ». Le profil porte
+  « Ajouter en ami », la page Comptes un raccourci « Mes amis », et un défi
+  reçu d'un ami le dit.
 
 **Pourquoi le défi passe par un broadcast et non par une table.** Une table de
 défis obligerait chaque client à interroger le serveur en boucle pour un
@@ -2094,6 +2192,13 @@ coups en avant et en arrière doit être instantané.
 Une partie enregistrée avant ce mode (ou dont une créature a disparu du
 catalogue) n'a pas de bloc `replay` : sa ligne reste dans la liste, désactivée
 et étiquetée, plutôt que de disparaître.
+
+**La bande de forme s'ouvre aussi.** Les dix pastilles de « Forme récente »
+(page Comptes comme profil public) sont des boutons : chacune rouvre SA
+partie (`replayFormHTML`, `replayOpenEntry`) — c'est là que l'œil se pose
+d'abord, et c'est là qu'on touche pour revoir « cette défaite-là ». Un
+adversaire du laboratoire s'y lit sous son nom (« Cendre ») et non son
+identifiant (`replayOppName`).
 
 ## Le multijoueur et la mise en veille de Supabase
 
@@ -2335,7 +2440,15 @@ mais dans une version que Playwright refuse, le script le retrouve tout seul
 | Changer la Réanimation de la Matriarche | « LA RÉANIMATION DE LA MATRIARCHE » dans `js/rules-engine.js` (règle) + « LA RÉANIMATION DE LA MATRIARCHE, côté joueur » dans `js/game-render.js` (fenêtre, cases) |
 | Changer la Furie du Berserk ou sa sélection pas à pas | `berserkMoves` + le bloc Berserk de `isSquareAttackedSimple` dans `js/rules-engine.js` ; « LE BERSERK PAS À PAS » dans `js/game-render.js` |
 | Changer ce qui se promeut en arrivant au bout | `PROMOTING_IDS` dans `js/data-pieces.js` — `showPromoModal`, l'IA et le multijoueur excluent tous les trois ces pièces de la LISTE des promotions possibles |
-| Changer le calcul d'ELO, les rangs, les paliers de déblocage | `js/voie.js` (calcul) + `js/data-pieces.js` (table `UNLOCK_TABLE`/`RANKS`) |
+| Changer le calcul d'ELO, les rangs, les paliers de la Diagonale | `js/voie.js` (calcul) + `js/data-pieces.js` (table `UNLOCK_TABLE`/`RANKS`) |
+| Changer l'arène d'une créature (à partir de quand elle sort des coffres) | `PIECE_ARENA` dans `js/data-pieces.js` |
+| Changer les débris magiques (nombre pour un pouvoir, quantité par coffre) | `POWER_DEBRIS_NEEDED` et `CHESTS[].debris` dans `js/data-pieces.js` + `chestRoll`/`powerAwaken` dans `js/economy.js` |
+| Changer ce qu'une créature fait SANS son pouvoir | le drapeau `np` là où son pouvoir s'applique, dans `js/rules-engine.js` (+ `evalPowers` dans `js/ai-engine.js`) |
+| Changer le coin du pouvoir sur la carte ou le bouton d'éveil | `pieceCardPowerBadgeHTML` / `powerAwakenHTML` dans `js/piece-card.js` + `[POWERS]` de `css/style.css` |
+| Changer le délai avant l'adversaire de repli en ligne | `MP_BOT_AFTER_S` / `mpBotFallback` dans `js/multiplayer.js` |
+| Changer la liste d'amis ou le défi depuis une ligne | « LES AMIS » et `lbRowDuelHTML` dans `js/leaderboard.js` |
+| Changer le feu de la pendule | `clockFire` / `CLOCK_FIRE_FROM` dans `js/game-render.js` + `[CLOCK-FIRE]` de `css/style.css` |
+| Changer la couleur ou la largeur des fissures d'un coffre | `CHEST_BREAK_GLOW` dans `js/chest-break.js` (`deep`, `wide`, `ld`) |
 | Ajouter / régler un adversaire (niveau, style, lore) | `js/data-pieces.js` (`AI_OPPONENTS`), puis `node tools/ai-bench.js` pour vérifier l'échelle |
 | Modifier le moteur lui-même (évaluation, recherche) | `js/ai-engine.js` (`evalBoard`, `evalPowers`, `minimax`, `aiSearchRoot`, `aiPickMove`) |
 | Changer la façon dont un style se joue | `STYLE_W` dans `js/ai-engine.js` (évaluation) + `ARMY_STYLE_CLASS` dans `js/armies.js` (composition) |
@@ -2370,7 +2483,7 @@ mais dans une version que Playwright refuse, le script le retrouve tout seul
 | Modifier le tutoriel (textes, étapes, cibles) | `js/tutorial.js` (`TUTO_STEPS`) |
 | Modifier les batailles du tutoriel (armées, couleurs, pendule) | `js/tutorial.js` (`TUTO_BATTLES`, `TUTO_EXTRA_COLS`) + `js/data-pieces.js` (`TUTO_INSTRUCTORS`) |
 | Modifier l'exercice de déplacement (nombre de repères, règles) | `js/tuto-drill.js` (`DRILL_DOTS`, `drillLayDots`) |
-| Changer les pièces d'un compte neuf | `js/data-pieces.js` (`UNLOCK_TABLE`, drapeau `coffre:true`) |
+| Changer les pièces d'un compte neuf | `js/data-pieces.js` (`UNLOCK_TABLE`, drapeau `starter`) |
 | Changer ce que lance le bouton COMBAT | `js/pages-nav.js` (`onCombat`/`onVsIa`) + `js/combat-intro.js` |
 | Modifier la galerie des adversaires (cartes, sceaux, palmarès) | `js/adversaires.js` + section `[ADVERSAIRES]` de `css/style.css` |
 | Changer le fond du menu principal | `assets/backgrounds/main-page.webp` (ou `.png`, voir `tools/opt-images.js`) + section `[LAB-BG]` de `css/style.css` |

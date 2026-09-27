@@ -406,15 +406,42 @@ function loadAccountGlobals(){
   const defs=UNLOCK_TABLE.filter(u=>u.eloRequired===0&&!u.coffre&&u.pieceId).map(u=>u.pieceId);
   const stored=accGet('unlocked_pieces',null);
   VV_UNLOCKED=new Set(stored||defs);
-  // Les déblocages suivent le SOMMET atteint, jamais le classement du
-  // moment : une mauvaise série ne doit pas retirer une créature
-  // gagnée. Et le sommet vient du serveur, donc ce calcul n'est plus
-  // une décision du navigateur mais une lecture.
+  // LES CRÉATURES NE SE DÉBLOQUENT PLUS PAR L'ELO : seuls les coffres en
+  // donnent (PIECE_ARENA, js/data-pieces.js). Ce qui était recalculé ici à
+  // chaque chargement à partir du sommet atteint est écrit une fois pour
+  // toutes par la migration — puis plus jamais recalculé.
+  accMigratePowers();
+}
+
+// ----------------------------------------------------------------
+// MIGRATION : LES CRÉATURES ET LEURS POUVOIRS, AU PASSAGE AUX COFFRES
+// ----------------------------------------------------------------
+// Avant, franchir un palier d'ELO donnait la créature ET son pouvoir, et la
+// créature n'était même pas écrite dans le compte : loadAccountGlobals la
+// recalculait à chaque chargement à partir du sommet atteint. Depuis que
+// l'ELO ne donne plus rien, ce recalcul a disparu — sans cette migration, un
+// joueur à 1200 ELO aurait perdu la moitié de son catalogue.
+//
+// Une seule fois par compte (`powers_v1`) :
+//   · les créatures que l'ancienne Diagonale donnait à son sommet sont
+//     écrites dans `unlocked_pieces` ;
+//   · TOUTES les créatures qu'il possède déjà reçoivent leur pouvoir. Il les
+//     avait avec leur pouvoir ; lui demander des débris pour ce qu'il avait
+//     serait lui reprendre ce qu'il a gagné.
+// Un compte neuf passe aussi par ici, avec son seul Roi et sa seule Dame :
+// il n'a rien à hériter, et le drapeau le fait passer au nouveau régime.
+function accMigratePowers(){
+  if(accGet('powers_v1',false))return;
   const peak=vvLoadPeakElo();
-  UNLOCK_MILESTONES.forEach(u=>{
-    if(!u.pieceId||u.coffre)return;
-    if(u.eloRequired<=peak)VV_UNLOCKED.add(u.pieceId);
-  });
+  if(typeof LEGACY_ELO_UNLOCKS!=='undefined')
+    Object.entries(LEGACY_ELO_UNLOCKS).forEach(([id,elo])=>{if(elo<=peak)VV_UNLOCKED.add(id);});
+  vvSaveUnlocked(VV_UNLOCKED);
+  const inv=accGet('inventory',{})||{};
+  const owned=new Set([...VV_UNLOCKED,...Object.keys(inv).filter(k=>inv[k]>0)]);
+  const powers=new Set(accGet('unlocked_powers',[])||[]);
+  owned.forEach(id=>{if(typeof pieceHasPower==='function'&&pieceHasPower(id))powers.add(id);});
+  accSet('unlocked_powers',[...powers]);
+  accSet('powers_v1',true);
 }
 
 function saveArmies(){accSet('armies',savedArmies);}
