@@ -492,6 +492,9 @@ function triggerEndOfGame(result){
       }
       updateCab();
       showResultModal(result,oe,ne,dl,newUnlocks,noEloReason,eloCalc,arena);
+      // Les points de guerre que la partie vient de rapporter au clan
+      // (ec_report_match → `clan`, js/clans.js). Rien sans clan.
+      if(typeof clanResultNote==='function')clanResultNote(report);
     };
     if(report||noEloReason)paint();
     else Promise.race([reportP,new Promise(r=>setTimeout(r,REPORT_WAIT))]).then(paint);

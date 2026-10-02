@@ -1183,8 +1183,14 @@
   <div class="reserve-wrap">
     <div class="reserve-inner">
       <div class="rs-hdr">
-        <div class="rs-title">La Guerre des clans</div>
+        <div class="rs-title art-banner">La Guerre des clans</div>
       </div>
+      <!-- LA PAGE ENTIÈRE EST RENDUE PAR js/clans.js (renderReservePage) : le
+           recrutement sans clan, la bannière, le front de la semaine, les
+           membres, le journal et le butin avec. Elle est restée des semaines
+           vide — un titre sur fond noir derrière un onglet de la barre
+           principale. -->
+      <div id="clan-root" class="clan-root" aria-live="polite"></div>
       <!-- LE SOLDE DE PERLES N'EST PLUS ICI. On ne dépense pas de perles dans
            la Guerre des clans : elles servent à acheter les coffres, et le solde est
            déjà écrit dans l'en-tête du MAGASIN, là où on décide de dépenser
@@ -2059,6 +2065,7 @@
 <script src="js/server.js"></script>
 <script src="js/data-pieces.js"></script>
 <script src="js/piece-art.js"></script>
+<script src="js/blason.js"></script>
 <script src="js/main.js"></script>
 <script src="js/pages-nav.js"></script>
 <script src="js/accounts.js"></script>
@@ -2083,6 +2090,7 @@
      terne. Il est posé ici parce que c'est sa place dans la lecture, à côté
      du son qu'il double. -->
 <script src="js/combat-fx.js"></script>
+<script src="js/combat-forge.js"></script>
 <script src="js/rules-engine.js"></script>
 <!-- Schémas de déplacement : interroge le moteur de règles, donc APRÈS lui. -->
 <script src="js/piece-moves.js"></script>
@@ -2094,6 +2102,7 @@
 <script src="js/voie.js"></script>
 <script src="js/chest-break.js"></script>
 <script src="js/economy-ui.js"></script>
+<script src="js/clans.js"></script>
 <script src="js/variant-analysis.js"></script>
 <script src="js/fok-rules.js"></script>
 <script src="js/fok-ai.js"></script>
@@ -2111,6 +2120,7 @@
 <script src="js/tutorial.js"></script>
 <script src="js/lore-intro.js"></script>
 <script src="js/pwa.js"></script>
+<script src="js/menu-ambience.js"></script>
 <script src="js/account-ui.js"></script>
 <script src="js/replay.js"></script>
 <script src="js/leaderboard.js"></script>

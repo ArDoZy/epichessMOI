@@ -26,15 +26,23 @@ epic-chess/
 ├── index.html              # Coquille HTML légère : tout le markup des pages
 │                            # + chargement ordonné des <script src="...">
 ├── README.md                # Ce fichier
+├── AMELIORATIONS.md         # L'audit du jeu : tout ce qui pouvait
+│                            #  s'améliorer, ce qui est fait, ce qui reste,
+│                            #  et la liste des planches à produire
 ├── robots.txt               # Autorise les crawlers, y compris ceux des IA
 ├── sitemap.xml              # Une seule URL (le jeu est une SPA)
 ├── llms.txt                 # Résumé factuel du jeu pour les moteurs IA
 ├── supabase/
-│   └── schema.sql           # LE SERVEUR. Tables, verrouillage (RLS sans
-│                            #  policy) et les onze fonctions ec_* qui sont la
-│                            #  seule porte d'entrée. À coller dans l'éditeur
-│                            #  SQL du projet Supabase. Contient le calcul
-│                            #  d'ELO qui fait autorité.
+│   ├── schema.sql           # LE SERVEUR. Tables, verrouillage (RLS sans
+│   │                        #  policy) et les fonctions ec_* qui sont la
+│   │                        #  seule porte d'entrée. À coller dans l'éditeur
+│   │                        #  SQL d'un projet Supabase NEUF (il commence
+│   │                        #  par des DROP). Contient le calcul d'ELO et
+│   │                        #  celui des points de guerre qui font autorité.
+│   └── migrations/
+│       └── 001-guerre-des-clans.sql  # La même chose que la section clans
+│                                     #  du schéma, SANS rien détruire : à
+│                                     #  passer sur une base déjà en service
 ├── site.webmanifest         # Métadonnées d'installation (icône, couleurs)
 ├── sw.js                    # Service worker : coquille hors ligne (réseau
 │                            # d'abord pour le code, cache d'abord pour les médias)
@@ -87,6 +95,8 @@ epic-chess/
 │   │                        #  le décor en silence)
 │   ├── ai-bench.js          # Autopartie entre adversaires : vérifie que
 │   │                        #  l'échelle de force tient (voir plus bas)
+│   ├── combat-fx-preview.html # Banc d'essai des effets de combat et de la
+│   │                        #  Forge : chaque effet sur commande
 │   └── smoke-test.js        # `npm test` : rejoue tout le parcours du jeu
 │                            #  dans un vrai navigateur (voir plus bas)
 ├── css/
@@ -95,6 +105,9 @@ epic-chess/
     ├── data-pieces.js       # Données pures (pièces, rangs, INSTRUCTOR,
     │                          # BOARD_SKINS, CHESTS, déblocages)
     ├── piece-art.js         # Logos de pièces dessinés en SVG (remplace les emojis)
+    ├── blason.js            # Les blasons des clans en SVG : une grammaire
+    │                          # héraldique de six numéros (forme, partition,
+    │                          # émaux, meuble), le cadre au métal du niveau
     ├── main.js               # État global partagé + helpers (showPage, showNotif...)
     ├── pages-nav.js          # Navigation principale : cinq pages alignées sur
     │                          # une rangée qu'on fait glisser (magasin, armées,
@@ -171,7 +184,13 @@ epic-chess/
     │                          # filtré, variation, ducking) + retour haptique
     ├── combat-fx.js          # Effets spéciaux du plateau : impacts de prise,
     │                          # traînées, signatures de pouvoir, échec, mat
+    ├── combat-forge.js       # LA FORGE : moteur de particules sur deux
+    │                          # canvas. La pièce prise vole en éclats, le
+    │                          # plateau encaisse, l'éclair d'échec, le mat
+    │                          # au ralenti, l'or et les cendres de l'issue
     ├── pwa.js                # Installation sur l'écran d'accueil + service worker
+    ├── menu-ambience.js      # Le menu respire : braises des braseros, et
+    │                          # parallaxe du décor sous la souris (ordinateur)
     ├── combat-music.js       # Musique de combat en boucle
     ├── cinematics.js         # Cinématiques d'entrée en combat et d'issue
     ├── game-render.js        # Rendu plateau, drag&drop, clics, historique
@@ -179,9 +198,14 @@ epic-chess/
     ├── game-flow.js          # Démarrage partie, fin de partie, résultat
     ├── voie.js                # Page "Diagonale de la Puissance" (ex-"Voie des
     │                          # Victoires") : ELO, rangs, jalons
-    ├── economy-ui.js         # Page "Guerre des clans" (échiquiers) + les six coffres
-    │                          # du menu principal + le coffre quotidien, qui
-    │                          # s'ouvre tout seul (dailyChestMaybeOpen)
+    ├── economy-ui.js         # Les six coffres du menu principal, le Magasin
+    │                          # (et le tableau de ses taux), le coffre
+    │                          # quotidien, qui s'ouvre tout seul
+    │                          # (dailyChestMaybeOpen)
+    ├── clans.js              # Page "Guerre des clans" (#page-reserve) : le
+    │                          # front de la semaine, son clan, la forge du
+    │                          # blason, le butin. N'AFFICHE que ce que le
+    │                          # serveur compte (ec_clan_*)
     ├── rewards.js            # Les deux voies qui ne dépendent pas de l'ELO :
     │                          # colonne des victoires (30 paliers, un par
     │                          # victoire), rangée de la richesse (25 paliers
@@ -648,8 +672,20 @@ Trois principes font le reste :
 
 **Ajouter un son, c'est ajouter une entrée dans `SFX_RECIPES`, rien d'autre.**
 Le reste du jeu appelle `playSound('capture')` et n'a jamais à savoir ce que
-ça produit — c'est aussi ce qui permettra de brancher de vrais échantillons
-plus tard sans réécrire une ligne ailleurs.
+ça produit — c'est aussi ce qui permet de brancher de vrais échantillons
+sans réécrire une ligne ailleurs.
+
+**Brancher un fichier son** : le déposer (par exemple `audio/sfx/check.ogg`),
+puis ajouter `sample:'audio/sfx/check.ogg'` à la recette — ou une liste,
+`sample:['audio/sfx/capture-1.ogg','audio/sfx/capture-2.ogg']`, dont une
+variante est tirée à chaque coup ; `sampleGain` corrige un fichier trop fort
+ou trop faible. Le fichier est chargé au **premier** appel de la recette, pas
+au démarrage, et tant qu'il n'est pas décodé (ou s'il manque) la recette joue
+ses couches de synthèse comme avant : le jeu n'est jamais muet. La variation
+de hauteur, l'intensité et le ducking s'appliquent au fichier comme aux
+couches. Une recette sans `sample` ne fait aucune requête : on ne le déclare
+qu'une fois le fichier déposé (liste des fichiers attendus :
+`AMELIORATIONS.md` § 8).
 
 `playSound()` **garde son nom et sa signature** : une centaine d'appels y
 mènent depuis tout le jeu, et aucun n'a eu à changer. Le second argument est
@@ -753,6 +789,58 @@ Le banc d'essai **`tools/combat-fx-preview.html`** joue chaque effet sur
 commande, sur un plateau nu, avec le vrai module et le vrai CSS : c'est là
 qu'on règle une durée ou une couleur, sans avoir à provoquer la position
 correspondante dans une partie.
+
+### 1 quinquies quater. La Forge (`js/combat-forge.js`)
+
+**`combat-fx.js` dit la FORME d'un événement, la Forge en donne la MATIÈRE.**
+Un effet DOM coûte un nœud animé : neuf éclats, c'est déjà une gerbe, et
+quatre-vingt-dix, c'est le plafond d'un téléphone. La Forge pose **deux
+canvas** dans le plateau et y fait vivre jusqu'à `FORGE_MAX` (900)
+particules pour le prix de deux éléments. Elle s'ajoute aux effets DOM, elle
+ne les remplace pas.
+
+| Couche | `z-index` | Ce qu'elle porte |
+|---|---|---|
+| `.fx-forge-under` | 1 | la comète qui suit la pièce qui joue (par-dessus, elle cacherait la pièce) |
+| `.fx-forge-over` | 5 | éclats, étincelles, fumée, éclair d'échec, fissures du mat, or et cendres |
+
+Un canvas dessine sa propre lumière (`lighter`) et ne fond rien dans le
+plateau : il n'a donc **pas** le piège de `mix-blend-mode` décrit plus haut,
+et peut porter un `z-index`.
+
+| Moment | Ce que la Forge y met | Point d'entrée |
+|---|---|---|
+| Prise | **la pièce prise vole en éclats** : son propre SVG du plateau, sérialisé en image (couleurs de thème résolues), découpé en étoile autour du point d'impact, projeté dans l'axe du coup ; étincelles dans le cône de l'attaque, éclair, fumée — tout proportionné à la valeur de la victime | `forgeShatter(node)` (appelé par `syncPieces` à la place de `.gc-dying`), `forgeImpact` |
+| Prise (suite) | **le plateau encaisse** : il recule d'un rien dans l'axe du coup, les cases voisines s'allument en anneaux depuis l'impact ; la valeur prise monte de la case (« +13 », d'or pour soi, de sang pour une perte) | `forgeRecoil`, `forgeRipple`, `forgeValue` |
+| Coup joué | une comète qui suit la pièce sur l'horloge de sa transition CSS, et sème la couleur de sa classe | `forgeComet` (depuis `fxPlayMove`) |
+| Échec | un éclair qui crépite **de la pièce qui menace jusqu'au roi** : on voit QUI donne échec | `forgeCheck(king, checkers)` ; les menaçants viennent de `checkersOf()` (`js/game-render.js`), qui ne montre jamais une pièce cachée par le brouillard ou l'Ombre |
+| Mat | le temps des particules ralentit, le roi se fend de huit rais, une onde parcourt tout le plateau | `forgeMate` |
+| Issue | victoire : poussière d'or qui monte ; défaite : cendres qui tombent | `forgeGoldRise`, `forgeAsh` |
+| Grands pouvoirs | aspiration du Typhon, cri de la Banshee, poussière de la charge, colonne de la promotion | `forgePower`, `forgeCharge` |
+| Toute la partie | quelques braises montent du bas du plateau, et s'attisent quand une pendule brûle | `forgeTouch` (à chaque `renderGame`) |
+
+**L'instant du contact est partagé.** `FX_HIT_MS` (`combat-fx.js`) et
+`FORGE_SHATTER_DELAY` valent tous deux 150 ms : l'impact, le son et les éclats
+partent quand l'attaquant **arrive**, pas quand il part. La victime reste
+visible jusque-là, puis son nœud est retiré 160 ms plus tard que d'habitude.
+
+**Le recul passe par `translate` et `scale`, pas par `transform`, et sur la
+colonne du plateau.** La secousse de `sfx.js` anime déjà le `transform` de
+`#game-board` : deux animations sur la même propriété du même élément se
+volent la place. Les propriétés individuelles, posées un cran au-dessus, se
+composent avec elle.
+
+**Ce qu'elle coûte : rien quand rien ne brûle.** La boucle s'éteint dès que la
+dernière particule meurt ; les braises d'ambiance seules tournent à
+demi-cadence. Ses interrupteurs sont **ceux de `combat-fx.js`** (`fxOn()` :
+mouvement réduit, réglage « Effets », onglet caché) : réglage éteint, plus un
+pixel. Retirer la balise `<script>` laisse le jeu entier, avec les effets DOM
+seuls (tout appel passe par `typeof …==='function'`).
+
+**Pour régler un effet sans jouer la position** : `tools/combat-fx-preview.html`
+(scènes « éclats », « éclair », « or »). Pour figer le temps (captures,
+tests) : `forgeManual(true)` puis `forgeAdvance(ms)` — `page.clock` de
+Playwright, lui, fige aussi le jeu.
 
 ### 1 quinquies bis. La notation du journal (`js/rules-engine.js`)
 
@@ -1568,6 +1656,26 @@ Le media query du voile décrit « un téléphone couché », et rien d'autre :
 (couché) et `(max-height:560px)` (un téléphone — une tablette couchée dépasse
 les 700 px de haut et garde le droit de jouer en paysage).
 
+### 7 quater. La grande salle respire (`js/menu-ambience.js`)
+
+Le menu est une planche peinte, et rien n'y bougeait. Deux gestes lui donnent
+de l'air sans toucher au contenu :
+
+- **des braises** montent des braseros, sur un canvas glissé entre le décor
+  et le menu : davantage sur les côtés, où sont les feux, presque rien au
+  milieu, où se lit le bouton COMBAT ;
+- **sur ordinateur**, le décor suit la souris d'une dizaine de pixels à
+  l'opposé du pointeur. Le JS ne pose que deux variables (`--plx-x`,
+  `--plx-y`) ; c'est la **transition CSS** qui fait l'inertie. Le téléphone
+  n'en a pas : le gyroscope demanderait une permission pour un effet de
+  décor.
+
+La boucle ne tourne que si la page « Combat » est devant, hors partie,
+onglet visible, mouvement non réduit et réglage « Effets » allumé — le même
+interrupteur que la Forge. Trente images par seconde, quarante braises au
+plus. Un battement de 1,5 s la rallume quand ces conditions reviennent, sans
+s'accrocher à la navigation.
+
 ### 8. L'appariement en ligne (`js/multiplayer.js`)
 
 L'ancien algorithme appariait **les deux plus anciens**, point final : un
@@ -1995,11 +2103,19 @@ joueurs** : c'est la remise à zéro voulue. Si on le rejoue plus tard pour
 mettre à jour les fonctions, il faut **commenter le `DROP TABLE`**, sinon on
 efface tous les comptes existants.
 
+**Pour une base déjà en service, on passe les fichiers de
+`supabase/migrations/`, pas le schéma.** Chacun ne crée que ce qui manque
+(`create table if not exists`, `create or replace function`) et ne détruit
+rien : on peut le rejouer sans risque. `001-guerre-des-clans.sql` ajoute les
+clans ; il dit **mot pour mot** la même chose que les sections
+correspondantes de `schema.sql`, et le test de fumée échoue si les deux
+divergent. Toucher à une fonction de l'un, c'est la toucher dans l'autre.
+
 ### Ce que « autorité » veut dire ici, concrètement
 
 1. **Aucun accès direct à la table.** `ec_players` a RLS activé et **aucune
    policy** : la clé publishable du jeu, qui est publique par conception, ne
-   peut ni lire ni écrire une seule ligne. On ne peut qu'appeler les onze
+   peut ni lire ni écrire une seule ligne. On ne peut qu'appeler les
    fonctions `ec_*`, déclarées `SECURITY DEFINER`, qui valident tout ce qui
    les traverse. C'est vérifiable en une ligne : `set role anon; select * from
    ec_players;` répond `permission denied`.
@@ -2071,6 +2187,86 @@ interrompre quoi que ce soit, puisque tout est réessayé.
 La pastille s'allume si **l'une ou l'autre** dit oui : un faux « hors ligne »
 coûte un défi qu'on n'ose pas lancer, un faux « en ligne » coûte trente
 secondes d'attente.
+
+## La Guerre des clans (`js/clans.js`, `js/blason.js`, `supabase/`)
+
+L'onglet « Guerre des clans » est le quatrième de la barre du bas. C'est le
+seul endroit du jeu où l'on joue **pour quelqu'un**.
+
+### La règle, vue du joueur
+
+- On **fonde** un clan (après `ec_clan_found_games()` = 3 parties classées)
+  ou on en **rejoint** un : ouvert, sur demande (le chef ou un officier
+  accepte), ou fermé, avec un ELO minimum. Trente membres au plus, un clan
+  par joueur — la clé primaire de `ec_clan_members` est le joueur.
+- Chaque **partie classée** rapporte des **points de guerre** au clan
+  (`ec_clan_war_points`) : victoire `10 + clamp(round((elo adverse − elo)/50), −4, 10)`,
+  nulle 4, défaite 1 ; ×1,5 contre un humain (`mode = 'ligne'`). Un plafond
+  quotidien de 120 par membre empêche un seul joueur de porter la semaine.
+- La **guerre** dure une semaine ISO, du lundi 00:00 UTC au lundi suivant
+  (`ec_week_key` = `IYYY-"S"IW`, et son miroir `ecWeekKey` dans
+  `js/server.js`, vérifié identique par le test de fumée). Le **front**
+  classe les clans sur les points de la semaine.
+- La semaine finie, chaque membre qui a apporté au moins 10 points
+  **réclame son butin** (`ec_clan_claim`) : un coffre selon la place finale
+  du clan — 1er : Tour, 2e–3e : Fou, 4e–10e : Cavalier, sinon Pion. Une
+  seule fois, et c'est une ligne de `ec_clan_claims` qui le garantit.
+- Les points cumulés font monter le **niveau** du clan (`ec_clan_level` :
+  0 / 500 / 1 500 / 4 000 / 10 000 / 25 000 / 60 000), qui porte les noms des
+  rangs de joueur et change **le métal du blason**.
+- Rôles : `chef`, `officier`, `membre`. Le chef édite le clan et nomme ; un
+  officier accepte les demandes et exclut les simples membres. Quand le chef
+  part, l'officier qui a le plus apporté lui succède (sinon le plus ancien) ;
+  le dernier qui part dissout le clan.
+
+### Ce que le client ne décide pas
+
+Rien de la règle ne se calcule dans le navigateur. **Les points viennent de
+`ec_report_match`**, qui appelle `ec_clan_on_match` après chaque partie
+classée et renvoie ce qu'elle a rapporté dans `clan` ; un échec des clans y
+est rattrapé (`exception when others`) : **un incident côté clans ne fait
+jamais perdre une partie classée**. `clanResultNote()` (`js/clans.js`) lit ce
+champ et l'annonce sous la fenêtre de résultat.
+
+**Aucun texte libre ne voyage** à part le nom (3–24 caractères) et le sigle
+(2–4 lettres/chiffres, unique). Le blason est six numéros (`blazonSVG`,
+`js/blason.js`), la devise un numéro parmi 16 (`CLAN_MOTTOS`), le cri de
+guerre un numéro parmi 24 (`CLAN_CRIES`, un cri toutes les 20 s au plus) :
+le serveur borne chaque numéro, et un client bricolé ne peut rien écrire
+chez les autres qui ne soit pas déjà dans le jeu. **Ces tailles de
+catalogues sont un contrat** : `BLAZON_SPEC` (`js/blason.js`),
+`EC_BLAZON_SPEC` (`js/server.js`) et `ec_clan_blazon_clean` (SQL) doivent
+dire la même chose. On ajoute en fin de liste, on ne réordonne jamais.
+
+### Les fonctions
+
+| Lecture publique | Geste (session requise) | Interne (aucun `grant`) |
+|---|---|---|
+| `ec_clan_view`, `ec_clan_list`, `ec_clan_war` | `ec_clan_create`, `_edit`, `_join`, `_answer`, `_leave`, `_kick`, `_role`, `_cry`, `_claim`, `_mine` | `ec_clan_on_match`, `_log`, `_remove`, `_mine_json`, `_claim_state`, `_brief` |
+
+Supabase donne par défaut `EXECUTE` à tout le monde sur une fonction
+nouvelle : les fonctions internes sont donc explicitement **`revoke all`**,
+sinon un client pourrait s'attribuer des points en appelant
+`ec_clan_on_match` lui-même. Le sigle et le blason réduit du clan voyagent
+aussi dans `ec_self`, `ec_public`, `ec_leaderboard` et `ec_search` (champ
+`clan` / `clan_tag`) : c'est ce qui les pose dans le menu, le rail
+d'ordinateur, le classement et le profil.
+
+**Le bac à sable `?mock` rejoue tout** (bas de `js/server.js`,
+`ecMockClanRpc`), avec les mêmes bornes, le même plafond et la même
+succession : le test de fumée fonde un clan, en fait rejoindre un second
+compte, joue, change de semaine et réclame le butin, sans serveur.
+
+### La page
+
+Une seule fonction peint (`clanPaint`) à partir d'un seul état (`_clan`) ;
+tout geste appelle le serveur, adopte sa réponse et repeint. La page se peint
+d'abord depuis ce qu'elle sait, puis se rafraîchit si ce savoir a plus de
+quinze secondes. Sans clan : l'appel, le front de la semaine et la liste
+des clans à rejoindre. Avec : la bannière (blason, devise, niveau), la
+semaine (rang, points, compte à rebours), les membres, le journal et les
+cris, le butin à réclamer. La forge du blason (`clanOpenForge`) montre
+l'écu en direct à chaque choix.
 
 ## Le classement, la recherche et les défis (`js/leaderboard.js`)
 
@@ -2303,21 +2499,21 @@ L'ordre des `<script>` est important car il n'y a pas de système de modules :
 chaque fichier suppose que les globals des fichiers précédents existent déjà.
 
 ```
-server.js → data-pieces.js → piece-art.js → main.js → pages-nav.js → accounts.js
+server.js → data-pieces.js → piece-art.js → blason.js → main.js → pages-nav.js → accounts.js
 → economy.js → ai-level-modal.js → piece-card.js → builder.js → armies.js
 → adversaires.js
 → combat-intro.js
-→ sfx.js → combat-fx.js → rules-engine.js → piece-moves.js → combat-music.js
+→ sfx.js → combat-fx.js → combat-forge.js → rules-engine.js → piece-moves.js → combat-music.js
 → cinematics.js
 → game-render.js
-→ ai-engine.js → game-flow.js → voie.js → economy-ui.js
+→ ai-engine.js → game-flow.js → voie.js → economy-ui.js → clans.js
 → variant-analysis.js
 → fok-rules.js → fok-ai.js → fok-game.js
 → mirror-rules.js → mirror-ai.js → mirror-game.js
 → troie-rules.js → troie-ai.js → troie-game.js → variantes.js
 → rewards.js → rewards-ui.js → tuto-drill.js
 → tutorial.js
-→ pwa.js → account-ui.js → replay.js → leaderboard.js → settings-admin.js
+→ pwa.js → menu-ambience.js → account-ui.js → replay.js → leaderboard.js → settings-admin.js
 → multiplayer.js → fok-mp.js → mirror-mp.js → troie-mp.js
 → (script inline) initApp()
 ```
@@ -2383,6 +2579,14 @@ verrouillage, aucune logique de jeu. Le builder (composition d'armée,
 autres pages secondaires (voie, adversaires, classement, login) restent aussi
 des overlays plein écran classiques affichés au-dessus de la rangée.
 
+`blason.js` vient juste après `piece-art.js` : ses meubles d'échecs sont les
+silhouettes du plateau (`pieceArtFor`), et le menu, le classement et la page
+des clans le lisent. `combat-forge.js` suit `combat-fx.js`, dont il lit
+`fxOn`, `fxCenter` et `fxLastMove` (à l'exécution seulement : l'un sans
+l'autre fonctionne). `clans.js` vient après `economy-ui.js`, dont il
+réutilise `chestVisual` et `chestOpenNow` pour le butin. `menu-ambience.js`
+ne dépend de rien et ne fait rien au chargement : il attend `load`.
+
 Si tu ajoutes un nouveau fichier JS, insère-le dans cette chaîne à l'endroit
 qui correspond à ses dépendances (voir l'en-tête de chaque fichier, qui liste
 explicitement ses dépendances et qui l'utilise).
@@ -2402,8 +2606,13 @@ destruction du Typhon dans la simulation de coup, rendu de la Guerre des clans e
 la Diagonale de la Puissance, cycle de la récompense journalière (ordre des
 trente lots, reprise au premier après le trentième), fourchettes de contenu des
 six coffres, colonne des victoires (ordre des trente paliers, encaissement d'un
-coffre, conversion des jokers), rangée de la richesse et quêtes du jour. Il échoue au
-premier message d'erreur de la console.
+coffre, conversion des jokers), rangée de la richesse et quêtes du jour ;
+puis la Guerre des clans de bout en bout (fonder, rejoindre, combattre,
+changer de semaine, réclamer le butin, la page avec et sans clan), la
+concordance de la migration et du schéma, la semaine de guerre identique en
+JS et en SQL, et la Forge qui fait voler une pièce en éclats et se tait
+quand l'interrupteur « Effets » est éteint. Il échoue au premier message
+d'erreur de la console.
 
 ```
 npm i -D playwright && npx playwright install chromium   # une seule fois
@@ -2514,6 +2723,8 @@ mais dans une version que Playwright refuse, le script le retrouve tout seul
 | Travailler sans réseau / faire tourner les tests | ouvrir `/?mock` (bac à sable, bas de `js/server.js`) |
 | Modifier la page Comptes (sceau, bascule, création) | `js/account-ui.js` + `[ACCOUNT-PAGE]` de `css/style.css` |
 | Ajouter ou retoucher un bruitage | `SFX_RECIPES` dans `js/sfx.js` (rien d'autre à toucher) |
+| Remplacer un bruitage par un vrai fichier son | déposer le fichier, puis `sample:'chemin'` dans sa recette de `SFX_RECIPES` (`js/sfx.js`) ; la synthèse reste le repli |
+| Changer l'étoffe derrière le blason d'un clan | `assets/ui/banniere-clan.png` (étoffe blanche à plis gris, fondue en `multiply` ; `assets/PROMPTS.md` § 10) + `.clan-hero-cloth span` dans `[CLANS]` de `css/style.css` |
 | Changer le rendu du plateau, l'animation des pièces | `syncPieces()` / `paintBoardCells()` dans `js/game-render.js` + `[BOARD-MOTION]` de `css/style.css` |
 | Changer une vibration | `HAPTIC_PATTERNS` / `SFX_FEEL` dans `js/sfx.js` |
 | Ajouter une emote ou une phrase de chat | `MP_EMOTES` / `MP_CHAT` dans `js/multiplayer.js` |
@@ -2559,6 +2770,15 @@ mais dans une version que Playwright refuse, le script le retrouve tout seul
 | Changer les règles d'appariement en ligne | `mpEloWindow` / `mpLobbyTick` dans `js/multiplayer.js` |
 | Ajouter une icône d'interface | `js/main.js` (`PEN_ICON`, `TRASH_ICON`, `svgX`), en SVG et jamais en émoji |
 | Modifier l'animation de déplacement des pièces | `animateLastMove()` dans `js/game-render.js` + `[BOARD-MOTION]` de `css/style.css` |
+| Changer une règle de la Guerre des clans (points, plafond, butin, niveaux) | `ec_clan_war_points` / `ec_clan_day_cap` / `ec_clan_war_chest` / `ec_clan_level` dans `supabase/schema.sql` **et** `supabase/migrations/001-guerre-des-clans.sql` (mot pour mot), **et** leur miroir `EC_CLAN_RULES` / `EC_CLAN_LEVELS` dans `js/server.js` ; `CLAN_RULES` (`js/clans.js`) n'est que l'affichage |
+| Ajouter une devise ou un cri de guerre | `CLAN_MOTTOS` / `CLAN_CRIES` dans `js/clans.js` (en fin de liste) **et** la borne dans `ec_clan_motto_clean` / `ec_clan_cry` (SQL, les deux fichiers) |
+| Ajouter une forme, un émail ou un meuble de blason | `BLAZON_SHAPES` / `BLAZON_TINCTURES` / `BLAZON_CHARGES` dans `js/blason.js` (en fin de liste) + `BLAZON_SPEC`, `EC_BLAZON_SPEC` (`js/server.js`) et la spec de `ec_clan_blazon_clean` (SQL) |
+| Modifier la page de la Guerre des clans | `clanPaint()` et ses `clan*HTML` dans `js/clans.js` + `#clan-root` dans `index.html` + `[CLANS]` de `css/style.css` |
+| Régler la Forge (éclats, étincelles, éclair, mat) | `js/combat-forge.js` (une section par moment) + `[FORGE]` de `css/style.css` ; banc d'essai : `tools/combat-fx-preview.html` |
+| Changer l'instant du contact d'une prise | `FX_HIT_MS` (`js/combat-fx.js`) **et** `FORGE_SHATTER_DELAY` (`js/combat-forge.js`) : les deux doivent rester égaux |
+| Régler les braises ou la parallaxe du menu | `js/menu-ambience.js` (`MENU_EMBERS_MAX`, `menuAmbienceSpawn`) + `[MENU-AMBIENCE]` de `css/style.css` |
+| Changer l'entrée en combat (le VS fendu en diagonale) | `playCombatCinematic()` dans `js/cinematics.js` + `[CINEMATIC-VS]` de `css/style.css` |
+| Changer le tableau des taux du Magasin | `magasinOddsHTML()` dans `js/economy-ui.js` (il lit `CHESTS` : rien à recopier) + `[SHOP-ODDS]` de `css/style.css` |
 | Changer le HTML d'une page (structure, nouveaux boutons) | `index.html` (cherche `<!-- PAGE ... -->`) + le module JS de la page concernée pour les listeners |
 
 ## Conventions à connaître avant d'éditer un seul fichier

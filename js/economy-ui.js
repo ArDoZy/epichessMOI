@@ -231,13 +231,10 @@ function pearlAmountHTML(n,em){
   return '<span class="pearl-amt">'+pearlIcon(em)+'<span>'+n+'</span></span>';
 }
 
-// La Guerre des clans ne montre plus le solde de perles : on n'y achète rien. Les
-// perles servent aux coffres, et leur solde est écrit sous les coffres, au
-// Magasin, sur la carte de chaque coffre et dans l'en-tête (voir
-// renderMagasinPage), là où on décide de dépenser.
-function renderReservePage(){
-  if(!CUR_ACC)return;
-}
+// LA GUERRE DES CLANS (renderReservePage) a déménagé dans js/clans.js : la
+// page n'est plus un inventaire, c'est une guerre hebdomadaire entre clans,
+// tenue par le serveur. Elle ne montre toujours pas le solde de perles : on
+// n'y achète rien.
 
 // Ce que promet une carte de coffre, en une ligne : les deux nombres qui
 // décident si on le vise ou non.
@@ -384,6 +381,10 @@ function renderMagasinPage(){
   if(!grid)return;
   if(!_shopBuilt||!grid.firstElementChild){
     grid.innerHTML=CHESTS.map(magasinChestCardHTML).join('');
+    // Le tableau des taux, sous les six coffres : posé une fois, il ne dépend
+    // que du catalogue (voir magasinOddsHTML).
+    const prev=document.getElementById('shop-odds');if(prev)prev.remove();
+    grid.insertAdjacentHTML('afterend',magasinOddsHTML());
     grid.addEventListener('click',e=>{
       const b=e.target.closest&&e.target.closest('.shop-chest');
       if(b&&grid.contains(b))buyChestFromShop(b.dataset.chest);
@@ -397,6 +398,43 @@ function renderMagasinPage(){
     const price=chestPearlPrice(b.dataset.chest);
     b.classList.toggle('shop-poor',bal!==Infinity&&bal<price);
   });
+}
+
+// CE QUE CONTIENT UN COFFRE, DIT EN CLAIR. Le Magasin vendait six coffres et
+// ne disait nulle part ce qu'il y a dedans : il fallait en ouvrir pour le
+// deviner, et la moitié basse de l'écran restait vide. Le tableau lit
+// directement le catalogue (CHESTS, CHEST_PEARLS, CHEST_PITY dans
+// js/data-pieces.js) : changer un taux là-bas le change ici, sans rien
+// recopier. Un jeu qui vend des coffres contre une monnaie doit afficher ses
+// chances — c'est une affaire d'honnêteté avant d'être une affaire d'écran.
+function magasinOddsHTML(){
+  const pct=v=>{const n=v*100;return (n<10?n.toFixed(1).replace('.',','):Math.round(n))+' %';};
+  const range=r=>r[0]===r[1]?String(r[0]):r[0]+'–'+r[1];
+  const rows=CHESTS.map(c=>{
+    const pe=(typeof chestPearlRange==='function')?chestPearlRange(c.id):[0,0];
+    const d=c.debris||{p:0,n:[0,0]};
+    return '<tr style="--chest-c:'+c.color+'">'+
+      '<th scope="row"><span class="odds-dot"></span>'+escH(c.name.replace('Coffre ',''))+'</th>'+
+      '<td>'+range(c.total||[1,1])+'</td>'+
+      '<td>'+range(pe)+'</td>'+
+      '<td class="odds-new">'+pct(c.newChance)+'</td>'+
+      '<td>'+(d.p>=1?'':pct(d.p)+' · ')+range(d.n)+'</td>'+
+    '</tr>';
+  }).join('');
+  return '<section class="shop-odds" id="shop-odds" aria-labelledby="shop-odds-t">'+
+    '<div class="rs-sec-title" id="shop-odds-t">Ce que contiennent les coffres</div>'+
+    '<div class="shop-odds-scroll"><table class="shop-odds-table">'+
+      // Des en-têtes COURTS : cinq colonnes doivent tenir sur un téléphone
+      // de 350 px sans défilement latéral, qu'on ne devine jamais sous un
+      // tableau. Le sens complet est dans le `title`.
+      '<thead><tr><th scope="col">Coffre</th><th scope="col" title="Exemplaires de créatures, tous lots confondus">Pièces</th>'+
+        '<th scope="col">Perles</th><th scope="col" title="Chance de contenir une créature jamais débloquée">Inédite</th>'+
+        '<th scope="col" title="Débris magiques (éveil des pouvoirs) : chance et quantité">Débris</th></tr></thead>'+
+      '<tbody>'+rows+'</tbody></table></div>'+
+    '<p class="shop-odds-note">Une créature ne sort qu\'à partir de son arène. '+
+      (typeof CHEST_PITY==='number'?'Après '+CHEST_PITY+' coffres sans créature inédite, le suivant en contient une. ':'')+
+      'Les débris ne vont qu\'aux créatures possédées dont le pouvoir dort.</p>'+
+  '</section>';
 }
 
 // Retour au MENU PRINCIPAL après une ouverture lancée depuis le menu (coffre

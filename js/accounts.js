@@ -589,7 +589,60 @@ function renderMenuIdentity(){
   if(!nameEl)return;
   nameEl.textContent=CUR_ACC?(CUR_ACC+(ADMIN_MODE?' · ADMIN':'')):'';
   nameEl.classList.toggle('admin-elo',!!ADMIN_MODE);
+  renderMenuClan(nameEl);
+  renderRailIdentity();
   renderMenuArena();
+}
+
+// LE CLAN SOUS LE PSEUDO. Un clan qu'on ne voit que sur sa page n'existe
+// que sur sa page : son blason et son sigle se posent sous le nom du joueur,
+// et le toucher mène à la Guerre des clans. Rien du tout sans clan — une
+// invitation permanente à en rejoindre un serait une publicité.
+function renderMenuClan(nameEl){
+  let el=document.getElementById('jouer-clan');
+  const html=(typeof clanBriefHTML==='function')?clanBriefHTML('clan-brief-menu'):'';
+  if(!html){if(el)el.remove();return;}
+  if(!el){
+    el=document.createElement('button');
+    el.type='button';el.id='jouer-clan';el.className='jouer-clan';
+    el.addEventListener('click',()=>{if(typeof goToPage==='function')goToPage('reserve');});
+    nameEl.insertAdjacentElement('afterend',el);
+  }
+  const c=ECP&&ECP.clan;
+  el.setAttribute('aria-label','Mon clan : '+(c?c.name:''));
+  el.innerHTML=html+'<span class="jouer-clan-name">'+escH(c?c.name:'')+'</span>';
+}
+
+// LA CARTE DU JOUEUR, EN HAUT DU RAIL D'ORDINATEUR. Le rail centrait ses
+// cinq onglets dans toute la hauteur de l'écran, et les trois cents pixels
+// du dessus ne portaient rien. Ils portent maintenant ce que la barre de
+// compte disait autrefois : qui joue, à quel rang, et pour quel clan. Le
+// téléphone n'en a pas : son menu le dit déjà, et la barre du bas n'a pas
+// la place (la carte n'est affichée que sous body.desk, voir [RAIL-ID]).
+function renderRailIdentity(){
+  const bar=document.getElementById('nav-tabbar');
+  if(!bar)return;
+  let el=document.getElementById('rail-id');
+  if(!CUR_ACC){if(el)el.remove();return;}
+  if(!el){
+    el=document.createElement('button');
+    el.type='button';el.id='rail-id';el.className='rail-id';
+    el.addEventListener('click',()=>{if(typeof openAccountPage==='function')openAccountPage();});
+    bar.insertBefore(el,bar.firstChild);
+  }
+  const peak=(typeof vvLoadPeakElo==='function')?vvLoadPeakElo():0;
+  const elo=(typeof vvLoadElo==='function')?vvLoadElo():0;
+  const rank=(typeof vvGetRank==='function')?vvGetRank(peak):{name:'',color:'var(--muted)'};
+  const letter=escH(String(CUR_ACC).trim().charAt(0).toUpperCase()||'?');
+  const clan=(typeof clanBriefHTML==='function')?clanBriefHTML('clan-brief-rail'):'';
+  el.setAttribute('aria-label','Mon compte : '+CUR_ACC);
+  el.innerHTML=
+    '<span class="acc-medal rail-id-medal" style="--medal-c:'+rank.color+'"><span class="acc-medal-letter">'+letter+'</span></span>'+
+    '<span class="rail-id-txt">'+
+      '<span class="rail-id-name">'+escH(CUR_ACC)+'</span>'+
+      '<span class="rail-id-rank"><span style="color:'+rank.color+'">'+escH(rank.name)+'</span> · '+elo+' ELO</span>'+
+      (clan?'<span class="rail-id-clan">'+clan+'</span>':'')+
+    '</span>';
 }
 
 // ----------------------------------------------------------------

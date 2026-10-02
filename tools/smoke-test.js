@@ -4475,6 +4475,249 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
     await page.waitForTimeout(400);
   });
 
+  // ================================================================
+  // LA GUERRE DES CLANS (supabase/migrations/001-guerre-des-clans.sql,
+  // js/server.js, js/blason.js, js/clans.js)
+  // ================================================================
+  // LA MIGRATION ET LE SCHÉMA SONT DEUX COPIES DU MÊME SQL. Une base neuve
+  // passe schema.sql, une base en service passe la migration : si une
+  // fonction diffère d'un fichier à l'autre, deux serveurs du même jeu ne
+  // comptent plus les points de guerre pareil. On compare donc, fonction par
+  // fonction, chaque corps de la migration à son jumeau du schéma.
+  await step('la migration des clans dit la même chose que le schéma',async()=>{
+    const sch=fs.readFileSync(path.join(ROOT,'supabase/schema.sql'),'utf8');
+    const mig=fs.readFileSync(path.join(ROOT,'supabase/migrations/001-guerre-des-clans.sql'),'utf8');
+    const grab=t=>{
+      const FN=/create or replace function public\.(\w+)\([\s\S]*?\$\$;/g,o={};let m;
+      while((m=FN.exec(t)))o[m[1]]=m[0].replace(/\s+/g,' ');
+      return o;
+    };
+    const a=grab(mig),b=grab(sch),bad=[];
+    const names=Object.keys(a);
+    if(names.length<30)bad.push('la migration ne porte que '+names.length+' fonctions');
+    names.forEach(n=>{
+      if(!b[n])bad.push(n+' manque au schéma');
+      else if(a[n]!==b[n])bad.push(n+' diffère du schéma');
+    });
+    // UNE MIGRATION NE DÉTRUIT RIEN : pas un DROP hors des commentaires.
+    if(/\bdrop\s+(table|function|schema)\b/i.test(mig.replace(/--.*$/gm,'')))bad.push('la migration contient un DROP');
+    // LES FONCTIONS INTERNES QUI ÉCRIVENT SONT RETIRÉES DE PUBLIC : sinon la
+    // clé publique du jeu suffirait à se donner des points de guerre.
+    for(const f of ['ec_clan_on_match','ec_clan_log','ec_clan_remove'])
+      for(const [nom,t] of [['migration',mig],['schéma',sch]])
+        if(!new RegExp('revoke all on function public\\.'+f+'\\(').test(t))bad.push(f+' reste appelable par tous ('+nom+')');
+    if(bad.length)throw new Error(bad.join(' · '));
+  });
+
+  await step('le blason, les devises et les cris tiennent dans les bornes du serveur',async()=>{
+    const sch=fs.readFileSync(path.join(ROOT,'supabase/schema.sql'),'utf8');
+    const m=sch.match(/spec jsonb := '(\{[^']*\})'/);
+    if(!m)throw new Error('borne du blason introuvable dans le schéma');
+    const sql=JSON.parse(m[1]);
+    const mottoMax=+((sch.match(/p < 0 or p > (\d+) then 0 else p/)||[])[1]);
+    const cryMax=+((sch.match(/p_cry < 0 or p_cry > (\d+)/)||[])[1]);
+    const r=await page.evaluate(()=>({
+      spec:BLAZON_SPEC,mock:EC_BLAZON_SPEC,
+      sizes:{s:BLAZON_SHAPES.length,d:BLAZON_DIVISIONS.length,c1:BLAZON_TINCTURES.length,
+             c2:BLAZON_TINCTURES.length,ch:BLAZON_CHARGES.length,cc:BLAZON_TINCTURES.length},
+      mottos:CLAN_MOTTOS.length,cries:CLAN_CRIES.length,
+      // Toutes les formes × partitions × meubles, à tous les niveaux : un
+      // blason qui dessine « undefined » ou « NaN » est un blason cassé.
+      broken:(()=>{let bad=0;
+        for(let s=0;s<BLAZON_SPEC.s;s++)for(let d=0;d<BLAZON_SPEC.d;d++)for(let ch=0;ch<BLAZON_SPEC.ch;ch++){
+          const h=blazonSVG({s,d,c1:1,c2:2,ch,cc:3},{level:ch%7});
+          if(!/^<svg/.test(h)||/undefined|NaN/.test(h))bad++;}
+        return bad;})(),
+    }));
+    const bad=[];
+    const eq=(x,y)=>JSON.stringify(Object.keys(x).sort().map(k=>[k,x[k]]))===JSON.stringify(Object.keys(y).sort().map(k=>[k,y[k]]));
+    if(!eq(r.spec,sql))bad.push('BLAZON_SPEC ('+JSON.stringify(r.spec)+') ≠ serveur ('+JSON.stringify(sql)+')');
+    if(!eq(r.mock,sql))bad.push('EC_BLAZON_SPEC du bac à sable ≠ serveur');
+    if(!eq(r.sizes,sql))bad.push('les catalogues du blason ne font pas la taille annoncée au serveur ('+JSON.stringify(r.sizes)+')');
+    if(r.mottos!==mottoMax+1)bad.push(r.mottos+' devises pour '+(mottoMax+1)+' numéros côté serveur');
+    if(r.cries!==cryMax+1)bad.push(r.cries+' cris de guerre pour '+(cryMax+1)+' numéros côté serveur');
+    if(r.broken)bad.push(r.broken+' blason(s) mal dessiné(s)');
+    if(bad.length)throw new Error(bad.join(' · '));
+  });
+
+  // LA SEMAINE DE GUERRE DU JEU EST CELLE DU SERVEUR. Les dates de référence
+  // sont celles que rend ec_week_key sur un Postgres réel — dont un
+  // 1er janvier en semaine 53, et le basculement exact du lundi 00:00 UTC.
+  await step('la semaine de guerre du jeu est celle du serveur',async()=>{
+    const r=await page.evaluate(()=>[
+      ecWeekKey(Date.UTC(2026,9,2,12)),ecWeekKey(Date.UTC(2027,0,1,8)),ecWeekKey(Date.UTC(2024,11,30,0,30)),
+      ecWeekKey(Date.UTC(2026,9,4,23,59,59)),ecWeekKey(Date.UTC(2026,9,5,0,0,0)),
+      ecWeekEnd(Date.UTC(2026,9,2,12))===Date.UTC(2026,9,5)]);
+    const want=['2026-S40','2026-S53','2025-S01','2026-S40','2026-S41',true];
+    if(JSON.stringify(r)!==JSON.stringify(want))throw new Error('obtenu '+JSON.stringify(r)+', attendu '+JSON.stringify(want));
+  });
+
+  await step('la Guerre des clans : fonder, rejoindre, combattre, réclamer son butin',async()=>{
+    const r=await page.evaluate(async()=>{
+      const out=[];
+      const R=(fn,a)=>ecMockRpc(fn,a).then(x=>x,e=>({__err:e.message}));
+      const A=await R('ec_signup',{p_username:'Recrue Alpha',p_secret:'a'.repeat(32)});
+      const a={p_id:A.id,p_secret:'a'.repeat(32)};
+      const r0=await R('ec_clan_create',{...a,p_name:'Les Testeurs',p_tag:'TST',p_blazon:{},p_motto:0,p_recruit:'open',p_min_elo:0});
+      if(!r0.__err)out.push('un compte sans partie classée a fondé un clan');
+      for(let i=0;i<3;i++)await R('ec_report_match',{...a,p_payload:{result:'win',opp_elo:300,mode:'ia'}});
+      const c=await R('ec_clan_create',{...a,p_name:'Les Testeurs',p_tag:'tst',p_blazon:{s:99,d:2},p_motto:42,p_recruit:'open',p_min_elo:0});
+      if(c.__err)return['fondation refusée : '+c.__err];
+      if(c.clan.tag!=='TST')out.push('le sigle n\'est pas mis en capitales');
+      if(c.clan.blazon.s!==0||c.clan.blazon.d!==2)out.push('le blason n\'est pas borné champ par champ');
+      if(c.clan.motto!==0)out.push('une devise hors bornes n\'est pas ramenée à zéro');
+      const B=await R('ec_signup',{p_username:'Recrue Beta',p_secret:'b'.repeat(32)});
+      const b={p_id:B.id,p_secret:'b'.repeat(32)};
+      for(let i=0;i<3;i++)await R('ec_report_match',{...b,p_payload:{result:'loss',opp_elo:300,mode:'ia'}});
+      const dup=await R('ec_clan_create',{...b,p_name:'Autre Clan',p_tag:'TST',p_blazon:{},p_motto:0,p_recruit:'open',p_min_elo:0});
+      if(!dup.__err)out.push('deux clans portent le même sigle');
+      const j=await R('ec_clan_join',{...b,p_clan:c.clan.id});
+      if(j.__err||!j.clan||j.clan.id!==c.clan.id)out.push('impossible de rejoindre un clan ouvert ('+(j.__err||'')+')');
+      // Une victoire EN LIGNE contre plus fort : 10 + exploit, ×1,5.
+      const m=await R('ec_report_match',{...b,p_payload:{result:'win',opp_elo:900,mode:'ligne'}});
+      if(!m.clan||!(m.clan.points>15))out.push('une victoire classée en ligne ne rapporte pas ses points de guerre ('+JSON.stringify(m.clan)+')');
+      const nr=await R('ec_report_match',{...b,p_payload:{result:'win',opp_elo:900,mode:'ia',ranked:false}});
+      if(nr.clan)out.push('une partie non classée rapporte des points de guerre');
+      for(let i=0;i<12;i++)await R('ec_report_match',{...b,p_payload:{result:'win',opp_elo:2000,mode:'ligne'}});
+      const mine=await R('ec_clan_mine',b);
+      if(mine.me.day_points!==120)out.push('le plafond quotidien ne tient pas ('+mine.me.day_points+' au lieu de 120)');
+      if(mine.clan.week_rank!==1)out.push('le seul clan qui a combattu n\'est pas premier du front');
+      const z=await R('ec_clan_claim',b);
+      if(!z.__err)out.push('un butin se réclame avant la fin de la guerre');
+      // La semaine se termine : on la recule d'un cran dans le bac à sable.
+      const db=ecMockLoad();const last=ecWeekKey(Date.now()-7*864e5);
+      for(const t of ['clanWeeks','clanContrib']){const n={};
+        for(const [k,v] of Object.entries(db[t])){v.week_key=last;n[k.replace(/\|\d{4}-S\d\d/,'|'+last)]=v;}db[t]=n;}
+      ecMockSave(db);
+      const w=await R('ec_clan_claim',b);
+      if(w.__err||w.chest!=='tour')out.push('le premier du front ne réclame pas son Coffre Tour ('+(w.__err||w.chest)+')');
+      const w2=await R('ec_clan_claim',b);
+      if(!w2.__err)out.push('le butin se réclame deux fois');
+      const wa=await R('ec_clan_claim',a);
+      if(!wa.__err)out.push('un membre qui n\'a pas combattu réclame un butin');
+      await R('ec_clan_leave',a);
+      const mb=await R('ec_clan_mine',b);
+      if(!mb.me||mb.me.role!=='chef')out.push('la couronne ne passe pas au membre suivant');
+      await R('ec_clan_leave',b);
+      const l=await R('ec_clan_list',{p_q:'TST'});
+      if(l.length)out.push('un clan vide n\'est pas dissous');
+      return out;
+    });
+    if(r.length)throw new Error(r.join(' · '));
+  });
+
+  await step('la page de la Guerre des clans se dessine, avec ou sans clan',async()=>{
+    const r=await page.evaluate(async()=>{
+      const out=[];
+      goToMainMenu();goToPage('reserve');
+      _clan.at=0;await clanRefresh();
+      const root=document.getElementById('clan-root');
+      if(!root||!root.querySelector('.clan-intro'))out.push('sans clan, la page ne propose ni de fonder ni de rejoindre');
+      ecMockSeed({ranked_games:5});
+      await ecClanCreate({name:'Fumée Blanche',tag:'FUM',blazon:{s:1,d:2,c1:3,c2:1,ch:0,cc:0},motto:2,recruit:'open'});
+      _clan.at=0;await clanRefresh();
+      if(!root.querySelector('.clan-hero .blz'))out.push('la bannière du clan ne porte pas de blason');
+      if(!ECP.clan||ECP.clan.tag!=='FUM')out.push('la fiche du joueur ne porte pas son clan');
+      for(const t of ['membres','journal','front']){
+        _clan.tab=t;clanPaint();
+        const panel=root.querySelector('.clan-panel');
+        if(!panel||!panel.children.length)out.push('l\'onglet « '+t+' » est vide');
+      }
+      renderMenuIdentity();
+      if(!document.getElementById('jouer-clan'))out.push('le menu ne montre pas le clan sous le pseudo');
+      await ecClanLeave();
+      renderMenuIdentity();
+      if(document.getElementById('jouer-clan'))out.push('le clan reste sous le pseudo après l\'avoir quitté');
+      goToMainMenu();
+      return out;
+    });
+    if(r.length)throw new Error(r.join(' · '));
+  });
+
+  // ================================================================
+  // LA FORGE (js/combat-forge.js)
+  // ================================================================
+  // Le plateau du jeu est masqué hors partie (largeur nulle) : le test pose
+  // un plateau temporaire de 400 px, le temps de briser une Dame, puis rend
+  // son identifiant au vrai.
+  await step('la Forge fait voler la pièce prise en éclats, et l\'interrupteur la coupe',async()=>{
+    const r=await page.evaluate(async()=>{
+      const out=[];
+      if(typeof forgeShatter!=='function')return['js/combat-forge.js n\'est pas chargé'];
+      const real=document.getElementById('game-board');
+      if(real)real.id='game-board-hors-test';
+      const board=document.createElement('div');
+      board.id='game-board';board.className='game-board';
+      board.style.cssText='position:fixed;left:0;top:0;width:400px;height:400px;z-index:99999';
+      document.body.appendChild(board);
+      try{
+        fxSetLevel(1);fxSetFlipped(false);forgeManual(true);
+        const mk=()=>{const n=document.createElement('div');n.className='gc-piece';n.dataset.r=3;n.dataset.c=3;n._pid='dame';
+          n.innerHTML='<span class="gc-art">'+pieceSVG('dame','b')+'</span>';board.appendChild(n);return n;};
+        const n=mk();
+        if(!forgeShatter(n))out.push('la Forge refuse une pièce qui meurt');
+        await new Promise(res=>setTimeout(res,FORGE_SHATTER_DELAY+120));
+        const s=forgeStats();
+        if(!(s.shard>2))out.push('la pièce prise ne vole pas en éclats ('+JSON.stringify(s)+')');
+        if(!s.spark)out.push('l\'impact ne projette aucune étincelle');
+        if(!s.text)out.push('la valeur prise ne monte pas de la case');
+        if(n.style.visibility!=='hidden')out.push('la pièce brisée reste visible sous ses propres éclats');
+        const cvs=[...board.querySelectorAll('canvas.fx-forge')];
+        if(cvs.length!==2)out.push('la Forge n\'a pas ses deux étages ('+cvs.length+')');
+        cvs.forEach(cv=>{if(getComputedStyle(cv).pointerEvents!=='none')out.push('un canvas de la Forge reçoit les clics');});
+        const zs=cvs.map(cv=>getComputedStyle(cv).zIndex).sort().join(',');
+        if(zs!=='1,5')out.push('les étages de la Forge ne sont pas sous et devant les pièces ('+zs+')');
+        forgeAdvance(3000);
+        if(Object.keys(forgeStats()).some(k=>k!=='amb'))out.push('des particules survivent à leur durée de vie');
+        forgeCheck({r:7,c:4},[{r:3,c:4}]);
+        if(!forgeStats().bolt)out.push('l\'échec ne lance pas d\'éclair');
+        forgeAdvance(2000);
+        fxSetLevel(0);
+        const n2=mk();
+        if(forgeShatter(n2))out.push('le réglage « Effets » éteint laisse la Forge briser une pièce');
+        forgeCheck({r:7,c:4},[{r:3,c:4}]);forgeMate(0,4,true);
+        if(Object.keys(forgeStats()).some(k=>k!=='amb'))out.push('le réglage « Effets » éteint laisse passer des particules');
+      }finally{
+        fxSetLevel(1);forgeManual(false);
+        board.remove();
+        if(real)real.id='game-board';
+      }
+      return out;
+    });
+    if(r.length)throw new Error(r.join(' · '));
+  });
+
+  // UN BRUITAGE PEUT PORTER UN VRAI FICHIER (`sample`, js/sfx.js). Le
+  // fichier est chargé au premier appel, la synthèse joue en attendant, un
+  // fichier illisible est marqué en échec et ne casse rien. Le WAV est
+  // fabriqué sur place : aucun son à verser au dépôt pour le vérifier.
+  await step('un bruitage joue son fichier quand il en a un, sa synthèse sinon',async()=>{
+    const r=await page.evaluate(async()=>{
+      const n=2205,buf=new ArrayBuffer(44+n*2),v=new DataView(buf);
+      const w=(o,t)=>{for(let i=0;i<t.length;i++)v.setUint8(o+i,t.charCodeAt(i));};
+      w(0,'RIFF');v.setUint32(4,36+n*2,true);w(8,'WAVE');w(12,'fmt ');v.setUint32(16,16,true);
+      v.setUint16(20,1,true);v.setUint16(22,1,true);v.setUint32(24,22050,true);v.setUint32(28,44100,true);
+      v.setUint16(32,2,true);v.setUint16(34,16,true);w(36,'data');v.setUint32(40,n*2,true);
+      for(let i=0;i<n;i++)v.setInt16(44+i*2,Math.round(Math.sin(i/8)*6000),true);
+      const ok=URL.createObjectURL(new Blob([buf],{type:'audio/wav'}));
+      const bad=URL.createObjectURL(new Blob(['pas du son'],{type:'audio/wav'}));
+      const out=[],rec=SFX_RECIPES.tap,keep=rec.sample,snd=_soundEnabled;
+      _soundEnabled=true;rec.sample=[ok,bad];
+      try{
+        sfxPlay('tap');
+        if(!_sfxSamples[ok]||!_sfxSamples[bad])out.push('le premier appel ne charge pas les fichiers de la recette');
+        for(let i=0;i<60&&(_sfxSamples[ok]==='loading'||_sfxSamples[bad]==='loading');i++)await new Promise(z=>setTimeout(z,50));
+        if(!(_sfxSamples[ok]&&typeof _sfxSamples[ok]==='object'))out.push('le fichier valide n\'est pas décodé ('+_sfxSamples[ok]+')');
+        if(_sfxSamples[bad]!=='failed')out.push('un fichier illisible n\'est pas marqué en échec ('+_sfxSamples[bad]+')');
+        sfxPlay('tap');
+      }catch(e){out.push('exception : '+e.message);}
+      finally{if(keep===undefined)delete rec.sample;else rec.sample=keep;_soundEnabled=snd;}
+      if(Object.keys(_sfxSamples).some(k=>k.indexOf('blob:')!==0))out.push('une recette du jeu charge un fichier sans qu\'on le lui ait demandé');
+      return out;
+    });
+    if(r.length)throw new Error(r.join(' · '));
+  });
+
   await browser.close();
   server.close();
 

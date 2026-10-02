@@ -72,24 +72,66 @@ function playCombatCinematic(playerArmy,oppArmy,oppName,playerColor,onDone){
   const pc=playerColor==='b'?'b':'w';
   const oc=pc==='w'?'b':'w';
   const row=(pieces,color,side)=>'<div class="cine-row cine-'+side+'">'+
-    pieces.map((p,i)=>'<span class="pc-icon" style="animation-delay:'+(0.12+i*0.09)+'s">'+
+    pieces.map((p,i)=>'<span class="pc-icon" style="animation-delay:'+(0.32+i*0.08)+'s">'+
       pieceSVG(p.id,color)+'</span>').join('')+'</div>';
 
+  // LES DEUX BLASONS. L'entrée en combat montrait deux rangées de pièces et
+  // deux noms : on ne voyait pas QUI s'affrontait. Le joueur porte le
+  // médaillon de son rang (et le blason de son clan s'il en a un) ; en face,
+  // le portrait de l'adversaire du laboratoire — son sceau si la planche
+  // manque — ou, en ligne, l'initiale de l'adversaire humain.
+  const online=(typeof GS!=='undefined'&&GS&&GS.multiplayer);
+  const peak=(typeof vvLoadPeakElo==='function')?vvLoadPeakElo():0;
+  const elo=(typeof vvLoadElo==='function')?vvLoadElo():0;
+  const rank=(typeof vvGetRank==='function')?vvGetRank(peak):{name:'',color:'var(--gold2)'};
+  const letter=s=>escH(String(s||'?').trim().charAt(0).toUpperCase()||'?');
+  const clan=(typeof ECP!=='undefined'&&ECP&&ECP.clan&&typeof blazonSVG==='function')
+    ?'<span class="cine-clan">'+blazonSVG(ECP.clan.blazon,{level:ECP.clan.level,plain:true})+'</span>':'';
+  const myCrest='<div class="cine-crest">'+
+    '<span class="acc-medal cine-medal" style="--medal-c:'+rank.color+'"><span class="acc-medal-letter">'+letter(CUR_ACC)+'</span></span>'+clan+'</div>';
+  let oppCrest,oppSub;
+  const foe=(!online&&typeof aiCurrentOpponent==='function')?aiCurrentOpponent():null;
+  if(foe&&typeof advPortrait==='function'){
+    oppCrest='<div class="cine-crest">'+advPortrait(foe,'cine-portrait')+'</div>';
+    oppSub=(foe.elo|0)+' ELO';
+  }else{
+    oppCrest='<div class="cine-crest"><span class="acc-medal cine-medal" style="--medal-c:var(--ember)"><span class="acc-medal-letter">'+letter(oppName)+'</span></span></div>';
+    oppSub=online?'En ligne':'';
+  }
+  const mySub='<span style="color:'+rank.color+'">'+escH(rank.name)+'</span> · '+elo+' ELO'+
+    ((typeof ECP!=='undefined'&&ECP&&ECP.clan)?' · <span class="clan-tag">'+escH(ECP.clan.tag)+'</span>':'');
+
+  // La gerbe du choc : seize étincelles en étoile, chacune avec sa direction.
+  let sparks='<div class="cine-sparks" aria-hidden="true">';
+  for(let i=0;i<18;i++){
+    const a=(i/18)*Math.PI*2+(Math.random()-0.5)*0.3,d=22+Math.random()*30;
+    sparks+='<span style="--dx:'+(Math.cos(a)*d).toFixed(1)+'vmin;--dy:'+(Math.sin(a)*d).toFixed(1)+'vmin;--del:'+(Math.random()*90|0)+'ms"></span>';
+  }
+  sparks+='</div>';
+
+  // LES DEUX MOITIÉS DE L'ÉCRAN se referment en DIAGONALE, chacune aux
+  // couleurs de son camp — le vert-de-gris du joueur, la braise d'en face —
+  // et se rejoignent sur une couture de lumière qui claque au moment du VS.
+  // Les deux volets d'ardoise (haut et bas) restent : ils encadrent la scène.
   const html=
     '<div class="cine-shutter top"></div><div class="cine-shutter bot"></div>'+
-    '<div class="cine-shock"></div>'+
+    '<div class="cine-split cine-split-l"></div><div class="cine-split cine-split-r"></div>'+
+    '<div class="cine-seam"></div><div class="cine-seam cine-seam-core"></div>'+
+    '<div class="cine-shock"></div>'+sparks+
     '<div class="cine-body">'+
       '<div class="cine-vs">'+
-        '<div class="cine-side">'+
-          '<div class="cine-side-lbl">Votre armée</div>'+
-          row(cineArmyPieces(playerArmy),pc,'left')+
+        '<div class="cine-side cine-side-me">'+
+          myCrest+
           '<div class="cine-side-name">'+escH(CUR_ACC||'Vous')+'</div>'+
+          '<div class="cine-side-sub">'+mySub+'</div>'+
+          row(cineArmyPieces(playerArmy),pc,'left')+
         '</div>'+
         '<div class="cine-clash">VS</div>'+
-        '<div class="cine-side">'+
-          '<div class="cine-side-lbl">Adversaire</div>'+
-          row(cineArmyPieces(oppArmy),oc,'right')+
+        '<div class="cine-side cine-side-opp">'+
+          oppCrest+
           '<div class="cine-side-name">'+escH(oppName||'L\'Instructeur')+'</div>'+
+          '<div class="cine-side-sub">'+escH(oppSub)+'</div>'+
+          row(cineArmyPieces(oppArmy),oc,'right')+
         '</div>'+
       '</div>'+
     '</div>';
@@ -97,7 +139,7 @@ function playCombatCinematic(playerArmy,oppArmy,oppName,playerColor,onDone){
   cineMount(html,2600,onDone);
   // Le son suit l'animation : le choc visuel est calé à 0,78 s (voir
   // .cine-clash/.cine-shock dans css [CINEMATIC]).
-  setTimeout(()=>{if(_cineActive&&typeof playSound==='function')playSound('capture');},780);
+  setTimeout(()=>{if(_cineActive&&typeof playSound==='function')playSound('capture',{force:1});},780);
 }
 
 // ----------------------------------------------------------------

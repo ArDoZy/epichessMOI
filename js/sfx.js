@@ -48,7 +48,8 @@
 // justement ce qui permettra de les brancher sans rien réécrire ailleurs :
 // tout le jeu appelle playSound('capture'), et c'est SFX_RECIPES qui décide
 // de ce que ça produit. Le jour où un fichier existe, la recette porte un
-// `sample` et le reste du jeu ne bouge pas d'une ligne.
+// `sample` et le reste du jeu ne bouge pas d'une ligne (voir « LES
+// ÉCHANTILLONS », juste au-dessus de sfxPlay).
 //
 // Dépendances : rules-engine.js (getAudioCtx, _soundEnabled, _sfxVol — le
 // volume vient du curseur des réglages), combat-music.js (window._musicGain,
@@ -298,6 +299,19 @@ const SFX_RECIPES={
     {type:'tone',wave:'sine',freq:1568,gain:0.10,attack:0.004,decay:0.2,delay:0.05},
   ]},
 
+  // LE COR DE GUERRE : un cri de clan, une fondation, un butin réclamé. Deux
+  // cuivres à la quinte (dent de scie filtrée bas, attaque LENTE — c'est
+  // l'attaque lente qui fait le souffle d'un cor, une attaque sèche ferait
+  // une trompette de jouet), un souffle de bruit dessous, et la seconde note
+  // qui monte d'un ton sur la fin. Il ne sert que dans la Guerre des clans :
+  // c'est sa signature, il ne doit jamais se banaliser ailleurs.
+  warhorn:{vary:0.02,duck:0.55,layers:[
+    {type:'tone',wave:'sawtooth',freq:147,gain:0.16,attack:0.09,hold:0.32,decay:0.45,filter:{type:'lowpass',freq:900,q:0.8}},
+    {type:'tone',wave:'sawtooth',freq:220,freq2:247,gain:0.12,attack:0.12,hold:0.28,decay:0.5,bend:0.6,delay:0.05,filter:{type:'lowpass',freq:1100,q:0.7}},
+    {type:'tone',wave:'sine',freq:73,gain:0.14,attack:0.08,hold:0.3,decay:0.5},
+    {type:'noise',rate:0.6,gain:0.05,attack:0.1,hold:0.2,decay:0.4,filter:{type:'bandpass',freq:700,q:0.7}},
+  ]},
+
   // Montée de rang / palier franchi : la seule fanfare de l'interface.
   rank:{vary:0.01,duck:0.65,layers:[
     {type:'tone',wave:'triangle',freq:523,gain:0.16,attack:0.006,hold:0.04,decay:0.2},
@@ -329,6 +343,49 @@ function sfxDuck(amount,ms){
 }
 
 // ----------------------------------------------------------------
+// LES ÉCHANTILLONS
+// ----------------------------------------------------------------
+// Une recette peut porter `sample` : un chemin
+// ('audio/sfx/check.ogg') ou une liste de variantes, tirées au hasard à
+// chaque coup — et `sampleGain` si le fichier n'est pas au niveau des
+// autres. Le fichier est chargé au PREMIER appel, pas au démarrage : tant
+// qu'il n'est pas décodé (ou s'il manque), la recette joue ses couches de
+// synthèse comme avant. On ne déclare donc un `sample` qu'une fois le
+// fichier déposé : une recette sans `sample` ne fait aucune requête.
+// La variation de hauteur, l'intensité et le ducking s'appliquent au
+// fichier comme aux couches : un échantillon joué deux fois n'est jamais
+// deux fois le même son.
+const _sfxSamples={};   // chemin → AudioBuffer | 'loading' | 'failed'
+function sfxSampleBuffer(ctx,path){
+  const s=_sfxSamples[path];
+  if(s&&s!=='loading'&&s!=='failed')return s;
+  if(!s&&typeof fetch==='function'){
+    _sfxSamples[path]='loading';
+    const fail=()=>{_sfxSamples[path]='failed';};
+    fetch(path).then(r=>{if(!r.ok)throw new Error(r.status);return r.arrayBuffer();})
+      .then(ab=>{
+        const pr=ctx.decodeAudioData(ab,b=>{_sfxSamples[path]=b;},fail);
+        if(pr&&typeof pr.catch==='function')pr.catch(fail);
+      }).catch(fail);
+  }
+  return null;
+}
+function sfxPlaySample(ctx,bus,recipe,t0,pitchMul,volMul){
+  const list=Array.isArray(recipe.sample)?recipe.sample:[recipe.sample];
+  list.forEach(p=>sfxSampleBuffer(ctx,p));            // toutes les variantes se chargent
+  const ready=list.map(p=>_sfxSamples[p]).filter(b=>b&&typeof b==='object');
+  if(!ready.length)return false;
+  try{
+    const src=ctx.createBufferSource(),g=ctx.createGain();
+    src.buffer=ready[Math.random()*ready.length|0];
+    src.playbackRate.value=pitchMul;
+    g.gain.value=volMul*(typeof recipe.sampleGain==='number'?recipe.sampleGain:1);
+    src.connect(g);g.connect(bus);src.start(t0);
+    return true;
+  }catch(e){return false;}
+}
+
+// ----------------------------------------------------------------
 // JOUER UN SON
 // ----------------------------------------------------------------
 // opts : {force} 0..1, l'intensité de l'événement. 0.5 est le neutre.
@@ -354,7 +411,8 @@ function sfxPlay(name,opts){
   const volMul=master*(0.72+0.56*force)*(1+(Math.random()*2-1)*0.06);
 
   const t0=ctx.currentTime;
-  recipe.layers.forEach(L=>{try{sfxLayer(ctx,bus,L,t0,force,pitchMul,volMul);}catch(e){}});
+  if(!(recipe.sample&&sfxPlaySample(ctx,bus,recipe,t0,pitchMul,volMul)))
+    (recipe.layers||[]).forEach(L=>{try{sfxLayer(ctx,bus,L,t0,force,pitchMul,volMul);}catch(e){}});
   if(recipe.duck)sfxDuck(recipe.duck*(0.6+0.4*force),220);
 }
 
