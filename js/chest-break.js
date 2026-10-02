@@ -18,7 +18,6 @@
 //               à mesure que la pièce se fend
 //   tremblement à partir de la troisième fissure, la pièce vibre en continu
 //               entre deux frappes : elle annonce qu'elle va lâcher
-//   éclats      des étincelles projetées depuis le centre
 //   teinte      la couleur du rang. Les planches sont rendues en lumière
 //               chaude et le navigateur fait tourner cette teinte : blanche
 //               pour le Pion, jaune pour le Cavalier, orange pour le Fou,
@@ -63,7 +62,6 @@
 //   bloom   [repos, sommet] : opacité du halo qui respire
 //   bt      période de cette respiration — elle raccourcit, la pièce panique
 //   trem    amplitude (px) du tremblement continu entre deux frappes
-//   sparks  nombre d'étincelles projetées
 //   burst   durée (ms) de la rampe d'échelle de l'ÉCLATEMENT : la planche
 //           naît petite au centre (.35) et s'ouvre jusqu'à remplir sa boîte
 //   blast   l'image DÉFERLE : elle grandit et sa luminosité s'emballe
@@ -141,7 +139,7 @@ function chestBreakTail(){
     // Le déferlement qui suit reprend au-dessus (pbBlastFrom).
     {src:'06-explosion.webp', hint:'', fade:90, dir:CHEST_BREAK_FORALL, hush:true,
      flash:.86, fdur:300, bloom:[.30,.72], bt:'.7s',
-     sparks:44, sparkR:1.6, trem:2.2, burst:420, bs0:1.06, bs1:1.20, sg:1.32, xfade:90, hold:260,
+     trem:2.2, burst:420, bs0:1.06, bs1:1.20, sg:1.32, xfade:90, hold:260,
      snd:{n:'blast',f:.7}},
 
     // L'EXPLOSION. Elle sort de sa boîte : plein écran, en `cover` — une
@@ -172,7 +170,7 @@ function chestBreakTail(){
     {src:'07-explosion-suite.webp', hint:'', fade:60, dir:CHEST_BREAK_FORALL, hush:true,
      full:'bleed', blast:true, bsdur:520, bldur:1150, xfade:60,
      white:1500, flash:.9, fdur:520,
-     sparks:54, sparkR:3.2, hold:1050,
+     hold:1050,
      snd:{n:'blast',f:1}},
 
     // LE SOCLE VIDE. En `boxed` : ici le cadrage compte, le socle doit
@@ -197,13 +195,13 @@ function chestBreakSeq(dir,piece){
       {src:'01-intact.webp',   hint:'Frappez '+piece+' pour '+(/^la /.test(piece)?'la':'le')+' briser', fade:260},
 
       {src:'02-fissure.webp',  hint:'Encore',            fade:210, shake:7,  zoom:1.045,
-       flash:.42, fdur:280, bloom:[.10,.26], bt:'3.2s', sparks:8,  snd:{n:'choc',f:.42}},
+       flash:.42, fdur:280, bloom:[.10,.26], bt:'3.2s', snd:{n:'choc',f:.42}},
 
       {src:'03-fissures.webp', hint:'Encore',            fade:190, shake:10, zoom:1.06,
-       flash:.55, fdur:300, bloom:[.16,.40], bt:'2.3s', sparks:14, trem:.4, snd:{n:'choc',f:.62}},
+       flash:.55, fdur:300, bloom:[.16,.40], bt:'2.3s', trem:.4, snd:{n:'choc',f:.62}},
 
       {src:'04-brisures.webp', hint:'Il ne tient plus…', fade:170, shake:14, zoom:1.075,
-       flash:.68, fdur:320, bloom:[.24,.62], bt:'1.4s', sparks:22, trem:1,  snd:{n:'choc',f:.82}},
+       flash:.68, fdur:320, bloom:[.24,.62], bt:'1.4s', trem:1,  snd:{n:'choc',f:.82}},
 
       // À partir d'ici la pièce ne tient plus : plus une seule frappe à
       // donner, la destruction s'enchaîne d'elle-même jusqu'au socle vide.
@@ -216,7 +214,7 @@ function chestBreakSeq(dir,piece){
       // planche est à l'écran, et l'éclatement s'enchaîne sans frappe — la
       // pièce rétrécissait juste avant d'exploser.
       {src:'05-eclats.webp',   hint:'',                  fade:120, shake:20, zoom:1,
-       flash:.80, fdur:300, bloom:[.35,.80], bt:'.9s',  sparks:34, trem:1.8,
+       flash:.80, fdur:300, bloom:[.35,.80], bt:'.9s',  trem:1.8,
        hush:true, hold:190, snd:{n:'choc',f:1}},
     ].concat(chestBreakTail()),
     // Format des planches (largeur/hauteur). Il donne à la scène `boxed` les
@@ -295,7 +293,7 @@ function chestBreakFor(chestId){
 //        aucune teinte : les assombrir d'un cheveu les fait redescendre
 //        du plafond, où la couleur peut enfin se poser. 1 = intact.
 //   h    teinte (deg) de ce qui est DESSINÉ en CSS par-dessus les planches :
-//        la gerbe de lumière, les étincelles, le voile blanc du flash.
+//        la gerbe de lumière et le voile blanc du flash.
 //   hs   saturation de ces mêmes dessins. 0 % = du blanc pur (le Pion).
 //
 // Les valeurs ont été calées en simulant les primitives de filtre CSS sur
@@ -437,8 +435,8 @@ function pbTintTune(svg,id,rot,sat,deep,wide){
 }
 
 // Pose les variables sur la scène et accorde les deux filtres. Tout le reste
-// est en CSS : les images et le halo lisent lum et --pb-tint, la gerbe, les
-// étincelles et le voile lisent h/hs. Repeindre en cours de séquence est
+// est en CSS : les images et le halo lisent lum et --pb-tint, la gerbe et
+// le voile lisent h/hs. Repeindre en cours de séquence est
 // donc gratuit — le banc d'essai s'en sert pour comparer deux couleurs sans
 // rejouer.
 function chestBreakPaint(host,chestId){
@@ -701,7 +699,7 @@ function chestBreakMount(chestId,onDone){
       cfg.stages.map((s,i)=>'<img class="pb-frame" alt="" draggable="false" decoding="async" src="'+pbSrc(cfg,i)+'">').join('')+
       (pbBloomOn()?'<div class="pb-bloom"></div>':'')+
     '</div></div></div>'+
-    '<div class="pb-flash"></div><div class="pb-sparks"></div>'+
+    '<div class="pb-flash"></div>'+
     '<div class="pb-white"></div>';
   host.className='pbreak';
   // La couleur du rang, posée avant la première image : les fissures du
@@ -716,7 +714,6 @@ function chestBreakMount(chestId,onDone){
         bloom=host.querySelector('.pb-bloom'),
         flash=host.querySelector('.pb-flash'),
         white=host.querySelector('.pb-white'),
-        sparkBox=host.querySelector('.pb-sparks'),
         frames=[].slice.call(host.querySelectorAll('.pb-frame'));
 
   const ctl={i:-1,_busy:true,_timer:null,_dead:false};
@@ -736,25 +733,6 @@ function chestBreakMount(chestId,onDone){
     scene.style.height=h+'px';
   }
   window.addEventListener('resize',fitBox);
-
-  // Les étincelles sont créées à la volée puis se retirent elles-mêmes : une
-  // explosion en projette une cinquantaine, les garder dans le document
-  // alourdirait la scène pour rien.
-  function sparks(n,radius){
-    if(calm||!n)return;
-    for(let k=0;k<n;k++){
-      const a=Math.random()*Math.PI*2,
-            d=(40+Math.random()*150)*(radius||1),
-            sp=document.createElement('span');
-      sp.className='pb-spark';
-      sp.style.setProperty('--dx',(Math.cos(a)*d).toFixed(1)+'px');
-      sp.style.setProperty('--dy',(Math.sin(a)*d).toFixed(1)+'px');
-      sp.style.setProperty('--s',(2+Math.random()*4).toFixed(1)+'px');
-      sp.style.setProperty('--d',(420+Math.random()*520).toFixed(0)+'ms');
-      sp.addEventListener('animationend',()=>sp.remove());
-      sparkBox.appendChild(sp);
-    }
-  }
 
   function go(i){
     if(ctl._dead)return;
@@ -919,7 +897,6 @@ function chestBreakMount(chestId,onDone){
         flash.classList.toggle('big',!!st.blast);
         pbRestart(flash,'go');
       }
-      sparks(st.sparks,st.sparkR);
       pbSound(st.snd);
 
       const hint=document.getElementById('chest-hint');

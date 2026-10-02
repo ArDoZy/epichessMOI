@@ -114,6 +114,13 @@ let _clanSearchTid=null;
 // ----------------------------------------------------------------
 function renderReservePage(){
   if(!CUR_ACC)return;
+  // UNE ARRIVÉE, UNE SEULE ENTRÉE. pages-nav.js appelle cette fonction deux
+  // fois par visite : au départ du glissement, page encore hors du cadre, et
+  // à l'arrivée, page devenue `is-front`. Seul le premier appel est une
+  // arrivée : c'est lui qui rejoue l'entrée des cartes. Le second retombe
+  // sur un rendu identique et ne touche à rien (voir clanPaint).
+  const pg=clanHost()&&clanHost().closest('.nav-page');
+  if(pg&&!pg.classList.contains('is-front'))_clanEnter=true;
   clanPaint();
   if(Date.now()-_clan.at>15000&&!_clan.loading)clanRefresh();
 }
@@ -179,16 +186,46 @@ function clanPaintBusy(){
 // ----------------------------------------------------------------
 function clanHost(){return document.getElementById('clan-root');}
 
+// LE RENDU EST IDEMPOTENT, ET L'ENTRÉE NE SE JOUE QU'UNE FOIS. Réécrire la
+// page à chaque appel recréait toutes les cartes, et chaque carte recréée
+// rejouait son entrée (clanRowIn, clanBlzIn…) : la page sursautait deux
+// fois par visite, puis une troisième quand le serveur répondait. Désormais :
+//   - un rendu identique au précédent ne touche pas au document ;
+//   - un rendu qui change de nature (squelette → clan, clan → recrutement)
+//     ou une arrivée sur la page jouent l'entrée ;
+//   - tout autre rendu (le serveur a répondu, un geste a abouti) remplace
+//     le contenu sans rien rejouer : `is-settled` coupe les entrées
+//     (css/style.css). Un changement d'onglet ne fait entrer que le panneau.
+let _clanEnter=false,_clanPainted='',_clanKind='',_clanTabShown='';
 function clanPaint(){
   const host=clanHost();if(!host)return;
   const m=_clan.mine;
-  let html;
-  if(!m&&_clan.err)html=clanErrorHTML(_clan.err);
-  else if(!m)html=clanSkeletonHTML();
-  else if(m.clan)html=clanMineHTML(m);
-  else html=clanLobbyHTML(m);
-  host.innerHTML=html;
+  let html,kind;
+  if(!m&&_clan.err){html=clanErrorHTML(_clan.err);kind='err';}
+  else if(!m){html=clanSkeletonHTML();kind='skel';}
+  else if(m.clan){html=clanMineHTML(m);kind='mine';}
+  else{html=clanLobbyHTML(m);kind='lobby';}
   host.classList.toggle('is-busy',!!_clan.busy);
+  const enter=_clanEnter||kind!==_clanKind;
+  _clanEnter=false;
+  // Chaque blason porte des identifiants neufs (blz12c, blz12g… voir
+  // blazonSVG, js/blason.js) : deux rendus du même clan ne diffèrent que
+  // par eux. On les ignore pour comparer.
+  const sig=html.replace(/blz\d+/g,'blz');
+  if(sig===_clanPainted&&host.firstChild){
+    // Même contenu, mais une arrivée : on rejoue l'entrée sur les cartes en
+    // place. Couper puis rendre les animations les fait repartir de zéro.
+    if(enter){
+      host.classList.add('is-settled');
+      void host.offsetWidth;
+      host.classList.remove('is-settled','is-tabbing');
+    }
+    return;
+  }
+  host.classList.toggle('is-settled',!enter);
+  host.classList.toggle('is-tabbing',!enter&&_clan.tab!==_clanTabShown);
+  host.innerHTML=html;
+  _clanPainted=sig;_clanKind=kind;_clanTabShown=_clan.tab;
   clanWire(host);
   clanTickCountdowns();
 }
