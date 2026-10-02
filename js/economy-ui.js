@@ -231,13 +231,10 @@ function pearlAmountHTML(n,em){
   return '<span class="pearl-amt">'+pearlIcon(em)+'<span>'+n+'</span></span>';
 }
 
-// La Guerre des clans ne montre plus le solde de perles : on n'y achète rien. Les
-// perles servent aux coffres, et leur solde est écrit sous les coffres, au
-// Magasin, sur la carte de chaque coffre et dans l'en-tête (voir
-// renderMagasinPage), là où on décide de dépenser.
-function renderReservePage(){
-  if(!CUR_ACC)return;
-}
+// LA GUERRE DES CLANS (renderReservePage) a déménagé dans js/clans.js : la
+// page n'est plus un inventaire, c'est une guerre hebdomadaire entre clans,
+// tenue par le serveur. Elle ne montre toujours pas le solde de perles : on
+// n'y achète rien.
 
 // Ce que promet une carte de coffre, en une ligne : les deux nombres qui
 // décident si on le vise ou non.

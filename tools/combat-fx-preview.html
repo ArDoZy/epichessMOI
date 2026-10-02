@@ -107,6 +107,9 @@ position correspondante dans une partie.</p>
     <h2>Les moments</h2>
     <button data-fx="promo"><b>Promotion</b><small>colonne de lumière et cercles runiques</small></button>
     <button data-fx="check"><b>Échec</b><small>alarme sur le roi + cerne rouge</small></button>
+    <button data-fx="shatter"><b>Éclats (Forge)</b><small>la Dame prise vole en éclats dans l'axe du coup</small></button>
+    <button data-fx="bolt"><b>Éclair d'échec (Forge)</b><small>de chaque pièce qui menace jusqu'au roi</small></button>
+    <button data-fx="gold"><b>Poussière d'or (Forge)</b><small>l'essaim de la victoire</small></button>
     <button data-fx="mate-win"><b>Mat — victoire</b><small>rais dorés, plateau figé</small></button>
     <button data-fx="mate-loss"><b>Mat — défaite</b><small>rais d'ardeur, plateau assombri</small></button>
   </div>
@@ -137,7 +140,9 @@ function sfxCaptureForce(pieceId){
   return Math.max(0.28,Math.min(1,0.28+(v-1)/12*0.72));
 }
 </script>
+<script src="../js/piece-art.js"></script>
 <script src="../js/combat-fx.js"></script>
+<script src="../js/combat-forge.js"></script>
 <script>
 const board=document.getElementById('game-board');
 for(let r=0;r<8;r++)for(let c=0;c<8;c++){
@@ -147,12 +152,15 @@ for(let r=0;r<8;r++)for(let c=0;c<8;c++){
 }
 // Quelques pièces posées en dur : un effet doit se juger sur ce qu'il couvre
 // et sur ce qu'il laisse voir, pas sur un plateau vide.
-const DECOR=[[4,4,'#f6f1e6'],[3,3,'#141a1f'],[7,4,'#f6f1e6'],[0,4,'#141a1f'],[3,5,'#141a1f'],[5,2,'#f6f1e6']];
-for(const[r,c,col] of DECOR){
+// Ce sont les VRAIS dessins du plateau (piece-art.js) : la Forge découpe le
+// dessin de la pièce prise en éclats, un disque ne lui apprendrait rien.
+const DECOR=[[4,4,'w','dame'],[3,3,'b','dame'],[7,4,'w','roi'],[0,4,'b','roi'],[3,5,'b','typhon'],[5,2,'w','banshee']];
+for(const[r,c,col,id] of DECOR){
   const el=document.createElement('div');
   el.className='fake-piece';
+  el.dataset.r=r;el.dataset.c=c;el._pid=id;
   el.style.transform='translate3d('+(c*100)+'%,'+(r*100)+'%,0)';
-  el.innerHTML='<i style="background:'+col+'"></i>';
+  el.innerHTML='<span class="gc-art" style="width:86%;height:86%;display:flex">'+pieceSVG(id,col)+'</span>';
   board.appendChild(el);
 }
 
@@ -191,6 +199,15 @@ const SCENES={
   'charge':()=>fxPlayMove({from:{r:6,c:4},to:{r:4,c:4},pieceId:'dresseur-elephant',power:'charge'}),
   'promo':()=>fxPromote(0,4,'dame'),
   'check':()=>fxCheck(7,4),
+  // LA FORGE (js/combat-forge.js) : la Dame noire en d5 vole en éclats sous
+  // la Dame blanche, puis se recompose pour le prochain essai.
+  'shatter':()=>{
+    const n=document.querySelector('.fake-piece[data-r="3"][data-c="3"]');
+    fxPlayMove({from:{r:6,c:3},to:{r:3,c:3},capAt:{r:3,c:3},pieceId:'dame',captured:'dame'});
+    if(n&&forgeShatter(n))setTimeout(()=>{n.style.visibility='';},1600);
+  },
+  'bolt':()=>{forgeCheck({r:7,c:4},[{r:3,c:3},{r:3,c:5}]);fxCheck(7,4);},
+  'gold':()=>forgeGoldRise(0),
   'mate-win':()=>fxMate(0,4,true),
   'mate-loss':()=>fxMate(7,4,false),
 };
