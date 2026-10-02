@@ -4687,6 +4687,37 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
     if(r.length)throw new Error(r.join(' · '));
   });
 
+  // UN BRUITAGE PEUT PORTER UN VRAI FICHIER (`sample`, js/sfx.js). Le
+  // fichier est chargé au premier appel, la synthèse joue en attendant, un
+  // fichier illisible est marqué en échec et ne casse rien. Le WAV est
+  // fabriqué sur place : aucun son à verser au dépôt pour le vérifier.
+  await step('un bruitage joue son fichier quand il en a un, sa synthèse sinon',async()=>{
+    const r=await page.evaluate(async()=>{
+      const n=2205,buf=new ArrayBuffer(44+n*2),v=new DataView(buf);
+      const w=(o,t)=>{for(let i=0;i<t.length;i++)v.setUint8(o+i,t.charCodeAt(i));};
+      w(0,'RIFF');v.setUint32(4,36+n*2,true);w(8,'WAVE');w(12,'fmt ');v.setUint32(16,16,true);
+      v.setUint16(20,1,true);v.setUint16(22,1,true);v.setUint32(24,22050,true);v.setUint32(28,44100,true);
+      v.setUint16(32,2,true);v.setUint16(34,16,true);w(36,'data');v.setUint32(40,n*2,true);
+      for(let i=0;i<n;i++)v.setInt16(44+i*2,Math.round(Math.sin(i/8)*6000),true);
+      const ok=URL.createObjectURL(new Blob([buf],{type:'audio/wav'}));
+      const bad=URL.createObjectURL(new Blob(['pas du son'],{type:'audio/wav'}));
+      const out=[],rec=SFX_RECIPES.tap,keep=rec.sample,snd=_soundEnabled;
+      _soundEnabled=true;rec.sample=[ok,bad];
+      try{
+        sfxPlay('tap');
+        if(!_sfxSamples[ok]||!_sfxSamples[bad])out.push('le premier appel ne charge pas les fichiers de la recette');
+        for(let i=0;i<60&&(_sfxSamples[ok]==='loading'||_sfxSamples[bad]==='loading');i++)await new Promise(z=>setTimeout(z,50));
+        if(!(_sfxSamples[ok]&&typeof _sfxSamples[ok]==='object'))out.push('le fichier valide n\'est pas décodé ('+_sfxSamples[ok]+')');
+        if(_sfxSamples[bad]!=='failed')out.push('un fichier illisible n\'est pas marqué en échec ('+_sfxSamples[bad]+')');
+        sfxPlay('tap');
+      }catch(e){out.push('exception : '+e.message);}
+      finally{if(keep===undefined)delete rec.sample;else rec.sample=keep;_soundEnabled=snd;}
+      if(Object.keys(_sfxSamples).some(k=>k.indexOf('blob:')!==0))out.push('une recette du jeu charge un fichier sans qu\'on le lui ait demandé');
+      return out;
+    });
+    if(r.length)throw new Error(r.join(' · '));
+  });
+
   await browser.close();
   server.close();
 

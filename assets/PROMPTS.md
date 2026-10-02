@@ -83,6 +83,8 @@ Les trois règles techniques qui reviennent partout :
 | ★ | Toile de démarrage | `backgrounds/chargement.png` | Écran de chargement (sinon : la tempête de `duel-wait`) |
 | ★ | Ornement de coin, socle | `ui/ornement-coin.png`, `ui/socle.png` | Fenêtres de résultat, promotion |
 | ★ | Deux textures de métal | `ui/laiton.png`, `ui/vert-de-gris.png` | Grain des boutons dorés et verts |
+| ★★★ | La salle de guerre des clans | `backgrounds/guerre-clans.png` | Fond de l'onglet Guerre des clans (§ 10) |
+| ★★ | L'étoffe des bannières de clan | `ui/banniere-clan.png` | Derrière le blason de chaque clan (§ 10) |
 
 ---
 
@@ -316,3 +318,58 @@ plus, et `assets/chests/README.md` explique pourquoi.
 lueur de chaque classe et le sujet de chaque créature sont dans
 `assets/pieces/README.md`. Portrait 1024 × 1536 ; `npm run opt:images` les
 ramène à 640 × 960.
+
+---
+
+## § 10. La Guerre des clans — `backgrounds/guerre-clans.png`, `ui/banniere-clan.png`
+
+Les deux planches de l'onglet « Guerre des clans ». Le **blason** de chaque
+clan, lui, n'est pas une image : il est dessiné par le jeu à partir des choix
+du chef (`js/blason.js`), et n'a rien à attendre d'ici.
+
+### La salle de guerre — `assets/backgrounds/guerre-clans.png`
+
+Paysage **1536 × 1024**, opaque. Affichée comme les autres fonds (26 à 44 %,
+centre éteint au masque radial) : le centre doit rester **calme et sombre**,
+c'est là que se posent le front et les cartes de clans ; la richesse va sur
+les bords. En attendant, la page prend `armurerie.webp`.
+
+```
+Format paysage 3:2. L'intérieur d'une salle de guerre gothique, le soir.
+Au premier plan, une longue table de chêne couverte d'un grand échiquier de
+marbre usé, où des pièces de laiton sont rangées en deux armées face à face,
+quelques-unes renversées. Le long des murs et sous les voûtes, une dizaine de
+grandes bannières de tissu pendent, chacune de couleurs différentes (rouge
+sang, azur, vert sombre, pourpre, or, noir), aux motifs héraldiques simples
+et SANS AUCUNE lettre. Deux braseros de fer forgé de part et d'autre jettent
+une lumière orange qui accroche le laiton ; des braises flottent dans l'air.
+Le centre de l'image est plus sombre et moins chargé que les bords.
+Aucun personnage, aucun texte, aucun logo.
+```
+
+### L'étoffe des bannières — `assets/ui/banniere-clan.png`
+
+Portrait **1024 × 1536**, **en niveaux de gris uniquement**, **bord à bord**
+(l'étoffe remplit tout le cadre : le jeu la découpe en gonfanon à trois
+pointes et pose lui-même la hampe). Le jeu la fond en `multiply` sur les deux
+couleurs du clan : **le blanc ne change rien, les gris creusent les plis**.
+Une seule planche sert donc à tous les clans — à condition qu'elle ne porte
+**aucune couleur** et qu'elle reste **claire** : une étoffe blanche dont
+seuls les plis et la broderie sont gris. Trop sombre, toutes les bannières
+noircissent.
+
+```
+Format portrait 2:3. Une texture d'étoffe lourde vue de face, à plat, qui
+remplit TOUT le cadre bord à bord : velours ou laine épaisse BLANC, en
+NIVEAUX DE GRIS UNIQUEMENT, sans aucune couleur. Le tissu est blanc cassé
+presque partout ; seules les ombres des plis sont grises. De longs plis
+verticaux doux qui descendent du haut, plus marqués vers le bas ; un galon
+brodé en relief, gris clair, le long des deux bords verticaux et en haut.
+Éclairage doux et uniforme venant du haut, pas de vignettage, pas de fond,
+pas de hampe, pas de motif central, aucun texte.
+```
+
+Vérifier avant de déposer : passée en noir et blanc, l'image ne doit pas
+changer (si elle change, elle portait de la couleur) ; et elle doit paraître
+**blanche avec des ombres**, pas grise.
+

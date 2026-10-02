@@ -6,7 +6,8 @@ lui-même — règles, pièces, pouvoirs, économie de base — n'est pas touch�
 tout ce qui suit porte sur ce qui l'entoure.
 
 Légende : ✅ fait dans cette passe · 🟡 fait en partie · ⬜ reste à faire
-(avec la raison).
+(avec la raison) · ➖ relevé à l'audit, puis écarté à la vérification (la
+raison est donnée : on ne corrige pas ce qui n'est pas cassé).
 
 ---
 
@@ -16,8 +17,8 @@ Légende : ✅ fait dans cette passe · 🟡 fait en partie · ⬜ reste à fair
 |---|---|---|---|
 | 1.1 | **La page « Guerre des clans » est vide.** C'est un des cinq onglets de la barre principale, et `renderReservePage()` ne fait rien : on y arrive sur un titre et un fond noir. Le plus gros trou du jeu. | `js/economy-ui.js`, `#page-reserve` | ✅ page complète (§ 2) |
 | 1.2 | Le tutoriel décrit encore la récompense de **série** (« une victoire : un Coffre Pion, deux d'affilée : un Coffre Cavalier… ») supprimée depuis longtemps, et pointe `#rs-pearls`, qui n'existe plus. | `js/tutorial.js` | ✅ réécrit pour la Guerre des clans |
-| 1.3 | L'interrupteur « Effets » fait 48 × 28 px : sous le seuil tactile de 36 px. | `[SETTINGS]` | ✅ |
-| 1.4 | En analyse du Cheval de Troie, le titre et la croix du panneau recouvrent les boutons « Historique » et « La règle » ; la croix fait 34 px. | `[GAME-PANEL]`, `[TROIE]` | ✅ |
+| 1.3 | L'interrupteur « Effets » fait 48 × 28 px : sous le seuil tactile de 36 px. | `[SETTINGS]` | ➖ sa zone de toucher est déjà agrandie à 56 × 46 par un `::after` invisible (`.sp-switch::after`) |
+| 1.4 | En analyse du Cheval de Troie, le titre et la croix du panneau recouvrent les boutons « Historique » et « La règle » ; la croix fait 34 px. | `[GAME-PANEL]`, `[TROIE]` | ➖ voulu : un panneau ouvert couvre la rangée de boutons qui l'a ouvert (README, « La zone sous le plateau ») ; la croix touche sur 46 × 46 (`.gpanel-close::after`) |
 | 1.5 | Sur ordinateur, le **haut du rail de navigation est vide** (300 px de rien au-dessus des onglets). | `[DESKTOP]` | ✅ carte d'identité du joueur |
 | 1.6 | Le Magasin laisse les deux tiers de l'écran vides sous les coffres, et ne dit nulle part ce qu'un coffre contient vraiment. | `renderMagasinPage` | ✅ tableau des taux de butin |
 | 1.7 | Le texte « Coffre Dame » / « Coffre Roi » : seuls coffres encore dessinés en CSS (planches manquantes). | `assets/chests/` | ⬜ assets (§ 8) |
@@ -48,11 +49,11 @@ Légende : ✅ fait dans cette passe · 🟡 fait en partie · ⬜ reste à fair
 | 3.1 | **Un moteur de particules sur canvas** (« la Forge ») posé dans le plateau, en plus des effets DOM : des centaines de particules additives pour le coût d'un seul élément, endormi quand rien ne brûle. | ✅ |
 | 3.2 | **La pièce prise VOLE EN ÉCLATS** : son propre dessin est découpé en fragments qui s'envolent, tournent et retombent — au lieu de se ratatiner. | ✅ |
 | 3.3 | **L'onde traverse les cases** : sur une prise lourde, les cases s'allument en anneaux depuis l'impact. | ✅ |
-| 3.4 | **Le plateau encaisse** : recul dans l'axe de l'attaque et micro-arrêt (« hit-stop ») proportionnels à la valeur prise. | ✅ |
+| 3.4 | **Le plateau encaisse** : recul dans l'axe de l'attaque, proportionnel à la valeur prise ; sur une prise très lourde, le temps des particules ralentit un instant. | ✅ |
 | 3.5 | **La valeur prise s'affiche** et monte de la case (« +13 » en or pour vous, en rouge pour l'adversaire). | ✅ |
 | 3.6 | **L'échec a son éclair** : un arc électrique crépite de la pièce qui donne échec jusqu'au roi — on voit QUI menace. | ✅ |
-| 3.7 | **Le mat au ralenti** : le roi tombé explose en éclats, onde géante sur tout le plateau. | ✅ |
-| 3.8 | **La victoire en poussière d'or** : la dissolution dorée passe de 46 nœuds DOM à un essaim de particules turbulentes. | ✅ |
+| 3.7 | **Le mat au ralenti** : le temps des particules ralentit, le roi tombé se fend de huit rais de lumière, gerbe d'étincelles et onde sur tout le plateau. | ✅ |
+| 3.8 | **La victoire en poussière d'or, la défaite en cendres** : la dissolution dorée (DOM) reçoit un essaim de particules de la Forge ; une défaite par mat fait tomber des cendres. | ✅ |
 | 3.9 | **Comète de déplacement** : une tête lumineuse suit la pièce, sa traînée d'étincelles teintées de sa classe. | ✅ |
 | 3.10 | Étincelles de canvas sur les grands pouvoirs (Typhon qui aspire, Banshee, charge de l'Éléphant, promotion). | ✅ |
 | 3.11 | **Braises d'ambiance** qui montent lentement du plateau pendant la partie, et s'attisent quand la pendule brûle. | ✅ |
@@ -63,19 +64,19 @@ Légende : ✅ fait dans cette passe · 🟡 fait en partie · ⬜ reste à fair
 | | Amélioration | Statut |
 |---|---|---|
 | 4.1 | **Entrée en combat** : écran fendu en diagonale, deux blasons/sceaux face à face, lame de lumière qui traverse le VS, gerbe d'étincelles au choc. | ✅ |
-| 4.2 | **Issue** : les braises de la cinématique passent au canvas, et la case « Points de guerre » rejoint le décompte. | ✅ |
+| 4.2 | **Issue** : l'or ou les cendres de la Forge montent sous la cinématique d'issue — après un mat seulement (un abandon ou une pendule à zéro n'ont pas de case d'où partir). Les points de guerre, eux, sont dans la fenêtre de verdict (2.7), pas dans la cinématique. | 🟡 |
 | 4.3 | Cinématique d'arrivée dans un nouveau rang (aujourd'hui une ligne dans le modal). | ⬜ |
 
 ## 5. Interface, design, fluidité
 
 | | Amélioration | Statut |
 |---|---|---|
-| 5.1 | Menu principal : **braises qui montent des torches** et lueur qui vacille, sur canvas, éteintes en mouvement réduit et onglet caché. | ✅ |
+| 5.1 | Menu principal : **braises qui montent des braseros** en vacillant, sur canvas, éteintes en mouvement réduit, onglet caché ou réglage « Effets » coupé. | ✅ |
 | 5.2 | Menu principal (ordinateur) : **parallaxe** légère du décor qui suit la souris. | ✅ |
 | 5.3 | Rail d'ordinateur : **carte du joueur** (sceau, pseudo, sigle de clan, rang, ELO). | ✅ |
 | 5.4 | Magasin : **taux de butin** des six coffres (exemplaires, chance de créature inédite, débris). | ✅ |
-| 5.5 | Retour tactile **au toucher** de tous les boutons (enfoncement de 3 %), là où certains ne réagissaient qu'au survol. | ✅ |
-| 5.6 | Cibles tactiles sous 36 px (interrupteur Effets, croix du panneau). | ✅ |
+| 5.5 | Retour tactile **au toucher** de tous les boutons (enfoncement de 3 %), là où certains ne réagissaient qu'au survol. | ⬜ pas fait dans cette passe : demande de passer bouton par bouton (certains portent déjà un `transform` animé) |
+| 5.6 | Cibles tactiles sous 36 px (interrupteur Effets, croix du panneau). | ➖ voir 1.3 et 1.4 |
 | 5.7 | Écran de partie sur grand téléphone : la zone vide entre « Historique » et « Abandonner » pourrait porter les prises et l'avantage matériel en grand. | ⬜ à décider (le vide y est voulu par le README) |
 | 5.8 | Thème clair : il existe en CSS (`body.light`) mais plus aucun réglage ne l'allume. | ⬜ à décider : le retirer ou le rendre |
 
@@ -83,16 +84,16 @@ Légende : ✅ fait dans cette passe · 🟡 fait en partie · ⬜ reste à fair
 
 | | Amélioration | Statut |
 |---|---|---|
-| 6.1 | Bruitages des clans (cri de guerre, butin réclamé). | ✅ (recettes de synthèse) |
-| 6.2 | Vrais échantillons enregistrés pour prise, échec, mat (le moteur `sfx.js` est prêt à les recevoir). | ⬜ assets (§ 8) |
-| 6.3 | Musique du menu (seule la musique de combat existe). | ⬜ asset (§ 8) |
+| 6.1 | Bruitages des clans : le **cor de guerre** (`warhorn`, synthèse), joué à la fondation, au cri de guerre et au butin réclamé. | ✅ |
+| 6.2 | Vrais échantillons enregistrés pour prise, échec, issue. Le moteur les accepte désormais : une recette de `SFX_RECIPES` peut porter `sample` (un chemin ou des variantes), chargé au premier appel, avec repli sur la synthèse tant que le fichier manque. | 🟡 le moteur est fait, restent les fichiers (§ 8) |
+| 6.3 | Musique du menu (seule la musique de combat existe). | ⬜ le fichier **et** son branchement (fondu menu ↔ combat dans `combat-music.js`) |
 
 ## 7. Technique
 
 | | Amélioration | Statut |
 |---|---|---|
 | 7.1 | Le test de fumée couvre les clans (création, sigle unique, adhésion, points de guerre sur une partie classée, butin unique par semaine) et la Forge. | ✅ |
-| 7.2 | `README.md`, `llms.txt` : sections Guerre des clans et Forge. | ✅ |
+| 7.2 | `README.md` (Guerre des clans, Forge, menu, ordre de chargement, « Où éditer »), `llms.txt`, `assets/PROMPTS.md` § 10. | ✅ |
 | 7.3 | `sw.js` : monter `CACHE_VERSION` (nouveaux scripts). | ✅ |
 
 ---
@@ -121,18 +122,30 @@ même fichier.
 
 ### Nouveaux emplacements (cette passe)
 
+Deux seulement, et tous deux câblés (prompts : `assets/PROMPTS.md` § 10).
+
 | Priorité | Fichier | Format | Où ça se voit |
 |---|---|---|---|
-| ★★★ | `backgrounds/guerre-clans.png` | 1536 × 1024, opaque | Fond de la page Guerre des clans (aujourd'hui : `armurerie.webp`) |
-| ★★ | `ui/banniere-clan.png` | 1024 × 1536, fond transparent | Hampe et étoffe derrière le blason du clan |
-| ★★ | `chests/guerre.png` | 1024 × 1024, fond noir pur | Le butin de guerre hebdomadaire |
-| ★ | `fx/eclair.png` | 1024 × 1024, fond noir pur | Texture de l'éclair d'échec (repli : tracé procédural) |
+| ★★★ | `backgrounds/guerre-clans.png` | 1536 × 1024, opaque | Fond de la page Guerre des clans (aujourd'hui : `armurerie.webp`, en repli) |
+| ★★ | `ui/banniere-clan.png` | 1024 × 1536, étoffe **blanche à plis gris**, bord à bord | Les plis et la broderie du gonfanon derrière le blason, fondus en `multiply` sur les deux émaux du clan : une seule planche sert à tous les clans |
+
+Deux idées de l'audit ont été écartées en chemin : une planche de « coffre de
+guerre » (le butin EST un coffre Tour, Fou, Cavalier ou Pion, déjà illustré
+— une planche de plus le ferait passer pour un septième coffre) et une
+texture d'éclair (l'éclair d'échec est retracé à chaque image pour crépiter :
+une image fixe le figerait). Le blason des clans, lui, n'a besoin d'aucune
+image : il est dessiné (`js/blason.js`).
 
 ### Son
 
-| Fichier | Rôle |
-|---|---|
-| `audio/menu-music.mp3` | Boucle d'ambiance du menu (2 à 3 min, −18 LUFS) |
-| `audio/sfx/capture-*.ogg` (3 variantes) | Prise : bois qui éclate + métal |
-| `audio/sfx/check.ogg`, `mate.ogg` | Échec (gong court), mat (impact grave + chœur) |
-| `audio/sfx/war-horn.ogg` | Cor de guerre (cri de clan, début de semaine) |
+Aucun n'est obligatoire. Pour brancher un bruitage, déposer le fichier puis
+ajouter `sample:'audio/sfx/<nom>.ogg'` (ou une liste de variantes) à sa
+recette dans `SFX_RECIPES` (`js/sfx.js`) — rien d'autre à toucher.
+
+| Fichier | Recette | Rôle |
+|---|---|---|
+| `audio/sfx/capture-1.ogg` … `capture-3.ogg` | `capture` | Prise : bois qui éclate + métal (trois variantes, tirées au hasard) |
+| `audio/sfx/check.ogg` | `check` | Échec : gong court |
+| `audio/sfx/win.ogg`, `loss.ogg` | `win`, `loss` | Issue : impact grave + chœur pour la victoire, glas pour la défaite |
+| `audio/sfx/war-horn.ogg` | `warhorn` | Cor de guerre (fondation, cri de clan, butin) |
+| `audio/menu-music.mp3` | — | Boucle d'ambiance du menu (2 à 3 min, −18 LUFS) : demande aussi un branchement (6.3) |

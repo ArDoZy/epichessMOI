@@ -121,9 +121,6 @@ C'est la mécanique qui distingue le plus Epic Chess des autres variantes :
 - Les coffres s'obtiennent de trois façons : la **Récompense Journalière**
   (un lot par jour), la **Colonne des Victoires** (un palier par victoire) et
   l'achat en **perles** au **Magasin**, où les six sont exposés avec leur prix.
-- La **Guerre des clans** rassemble ce que le joueur possède : ses exemplaires de
-  pièces, le coffre de réapprovisionnement quotidien et le choix de
-  l'échiquier.
 - Un **coffre de réapprovisionnement quotidien** rend 2 exemplaires de chaque
   pièce possédée **dont le stock est bas** : il est donc impossible de rester
   définitivement bloqué sans armée jouable, sans pour autant que les stocks
@@ -230,6 +227,31 @@ C'est la mécanique qui distingue le plus Epic Chess des autres variantes :
   gagnés en accomplissant les **trois quêtes du jour** (mater avec telle
   créature, donner échec trois fois, la déplacer cinq fois, promouvoir un
   pion en telle créature, gagner en l'alignant…).
+
+## La Guerre des clans
+
+- Un joueur peut **fonder un clan** (après trois parties classées) ou en
+  **rejoindre** un : ouvert, sur demande, ou fermé, avec un ELO minimum.
+  Trente membres au plus ; un chef, des officiers, des membres.
+- Un clan a un **nom**, un **sigle** de deux à quatre lettres (affiché à côté
+  des pseudos, au classement et sur les profils), une **devise** et un
+  **blason** héraldique composé à la main : forme de l'écu, partition,
+  émaux, meuble (dont la tour, le cavalier, le roi et la dame du jeu).
+- Chaque **partie classée** d'un membre rapporte des **points de guerre** à
+  son clan : 10 pour une victoire (plus contre plus fort), 4 pour une nulle,
+  1 pour une défaite, une fois et demie plus contre un joueur humain, avec
+  un plafond quotidien par membre.
+- La **guerre dure une semaine**, du lundi au lundi (00:00 UTC). Le **front**
+  classe les clans sur leurs points de la semaine. À la fin, chaque membre
+  qui a combattu **réclame un coffre** selon la place de son clan : Tour pour
+  le premier, Fou pour le deuxième et le troisième, Cavalier jusqu'au
+  dixième, Pion au-delà.
+- Les points cumulés font monter le **niveau** du clan, du Bois à l'Or
+  Légendaire, et changent le métal de son blason.
+- Les membres se parlent par **cris de guerre** choisis dans une liste : il
+  n'y a pas de texte libre, comme dans le reste du jeu.
+- Tout est compté par le serveur du jeu : le navigateur ne peut ni
+  s'attribuer des points ni réclamer deux fois le même butin.
 
 ## Variantes
 
@@ -344,6 +366,11 @@ créer d'autres, depuis la page Comptes.
 Oui, par six emotes envoyées d'un tap pendant la partie (salut, bien joué,
 oups, je réfléchis, merci, plus vite). Il n'y a pas de messagerie écrite, et
 une sourdine permet de ne plus recevoir celles de l'adversaire.
+
+**Peut-on jouer en équipe ?**
+Oui, par les clans. Chaque partie classée d'un membre rapporte des points
+de guerre à son clan, les clans s'affrontent au classement de la semaine,
+et chaque membre qui a combattu reçoit un coffre selon la place finale.
 
 **Le jeu s'installe-t-il sur le téléphone ?**
 Oui. Il propose de s'ajouter à l'écran d'accueil après quelques victoires, et

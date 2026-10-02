@@ -9025,6 +9025,18 @@ body.light .jouer-track{background:radial-gradient(circle closest-side at 50% 50
   clip-path:polygon(0 0,100% 0,100% 86%,75% 100%,50% 86%,25% 100%,0 86%);
   background:linear-gradient(90deg,rgba(0,0,0,.42),transparent 26%,rgba(255,255,255,.14) 48%,transparent 66%,rgba(0,0,0,.42)),
     linear-gradient(180deg,var(--clan-c) 0 60%,var(--clan-c2) 60% 68%,var(--clan-c) 68%)}
+/* La planche d'étoffe (assets/ui/banniere-clan.png, PROMPTS.md § 10) : une
+   étoffe BLANCHE dont seuls les plis et la broderie sont gris, fondue en
+   `multiply` sur les deux émaux — le blanc ne change rien, les gris
+   creusent. C'est ce qui permet à UNE planche de servir à tous les clans.
+   Pas `overlay` : il garde intacts les émaux très clairs ou très sombres
+   (argent, sable), et l'étoffe y redevenait plate. Absente : l'étoffe garde
+   son dégradé. Le fondu reste dans l'élément (background-blend-mode), il ne
+   traverse rien. */
+.clan-hero-cloth span{background-image:url('../assets/ui/banniere-clan.png'),
+    linear-gradient(90deg,rgba(0,0,0,.42),transparent 26%,rgba(255,255,255,.14) 48%,transparent 66%,rgba(0,0,0,.42)),
+    linear-gradient(180deg,var(--clan-c) 0 60%,var(--clan-c2) 60% 68%,var(--clan-c) 68%);
+  background-size:100% 100%,auto,auto;background-blend-mode:multiply,normal,normal}
 @keyframes clanCloth{0%,100%{transform:skewX(0) scaleY(1)}50%{transform:skewX(-2.6deg) scaleY(1.025)}}
 .clan-hero-blz{position:relative;width:108px;margin-top:6px}
 .clan-hero-blz .blz{animation:clanBlzIn .8s cubic-bezier(.2,1.5,.35,1) both}
