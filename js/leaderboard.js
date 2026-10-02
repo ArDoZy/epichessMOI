@@ -217,7 +217,7 @@ function lbTabsHTML(){
   const n=friendsList().length;
   const online=friendsList().filter(f=>{const c=_lbFriendCache[f.id];return lbOnline((c&&c.row)||{id:f.id});}).length;
   return '<div class="lb-tabs" role="tablist">'+
-    '<button class="lb-tab'+(_lbTab==='top'?' on':'')+'" data-tab="top" role="tab" aria-selected="'+(_lbTab==='top')+'">Classement</button>'+
+    '<button class="lb-tab'+(_lbTab==='top'?' on':'')+'" data-tab="top" role="tab" aria-selected="'+(_lbTab==='top')+'">Mondial</button>'+
     '<button class="lb-tab'+(_lbTab==='friends'?' on':'')+'" data-tab="friends" role="tab" aria-selected="'+(_lbTab==='friends')+'">Amis'+
       (n?' <span class="lb-tab-n">'+n+'</span>':'')+(online?'<span class="lb-tab-on" title="'+online+' en ligne"></span>':'')+'</button>'+
   '</div>';

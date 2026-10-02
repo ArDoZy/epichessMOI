@@ -116,6 +116,9 @@
       // sous-arbre : c'est ce que `pointer-events:none` ne sait pas faire.
       if('inert' in p) p.inert = p.dataset.page!==front;
     });
+    // La page de devant vient de changer : les braises du menu se rallument
+    // si c'est lui (js/menu-ambience.js). Elles s'éteignent seules sinon.
+    if(typeof menuAmbienceWake==='function')menuAmbienceWake();
   }
 
   function isBrowsing(){

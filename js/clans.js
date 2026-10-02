@@ -464,7 +464,15 @@ function clanFrontHTML(war,mineId,withTitle){
   const top=rows.length?Math.max(1,rows[0].points|0):1;
   let h='<section class="clan-sec">';
   if(withTitle)h+='<div class="rs-sec-title">Le front de la semaine</div>';
-  if(!rows.length)h+='<p class="lb-empty">Aucun clan n\'a encore marqué de point cette semaine. Une victoire classée suffit à ouvrir le front.</p>';
+  // Le front vide n'est plus une phrase seule au milieu de la page : une
+  // carte, qui dit ce qui l'ouvre et y mène d'un geste.
+  if(!rows.length)h+='<div class="clan-front-empty">'+
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+
+        '<path d="M14.5 17.5 3 6V3h3l11.5 11.5"/><path d="m13 19 6-6"/><path d="m16 16 4 4"/><path d="m19 21 2-2"/>'+
+        '<path d="M14.5 6.5 18 3h3v3l-3.5 3.5"/><path d="m5 14 4 4"/><path d="m7 17-3 3"/><path d="m3 19 2 2"/></svg>'+
+      '<b>Le front est calme</b>'+
+      '<p>Aucun clan n\'a encore marqué de point cette semaine. Une victoire classée suffit à l\'ouvrir.</p>'+
+      '<button class="btn btn-gold" data-clan="fight">Au combat</button></div>';
   else h+='<div class="clan-front">'+rows.map(r=>{
     const pct=Math.max(3,Math.round((r.points|0)/top*100));
     return '<button class="clan-front-row'+(r.id===mineId?' is-mine':'')+(r.rank<=3?' top'+r.rank:'')+'" data-clan="view" data-id="'+escH(r.id)+'" style="--clan-c:'+clanColor(r.blazon)+'">'+
@@ -606,6 +614,7 @@ function clanOnAction(act,el,ev){
   const id=el.getAttribute('data-id');
   switch(act){
     case 'retry':clanRefreshSoon();break;
+    case 'fight':if(typeof goToPage==='function')goToPage('jouer');break;
     case 'tab':_clan.tab=el.getAttribute('data-tab');clanPaint();break;
     case 'found':{
       if(el.getAttribute('aria-disabled')==='true'){

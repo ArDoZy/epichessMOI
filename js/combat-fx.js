@@ -87,6 +87,8 @@ function fxSetFlipped(f){_fxFlipped=!!f;}
 let _fxLevel=1;
 function fxSetLevel(v){
   _fxLevel=Math.max(0,Math.min(1,typeof v==='number'?v:1));
+  // Les braises du menu suivent le même interrupteur (js/menu-ambience.js).
+  if(typeof menuAmbienceWake==='function')menuAmbienceWake();
 }
 function fxGetLevel(){return _fxLevel;}
 

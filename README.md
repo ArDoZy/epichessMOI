@@ -2418,9 +2418,11 @@ règlent que la taille et l'encre.
 
 **Aucun écran du jeu n'en porte actuellement.** Le dernier emplacement était le
 menu principal (`menu-emblem`, au-dessus du pseudo) ; il est parti, parce qu'un
-sceau de 52 px demandait de connaître le jeu pour le reconnaître. Le menu écrit
-maintenant **« Epic Chess »** en toutes lettres (`.menu-title`), et c'est sa
-hauteur — `--menu-title-h` — dont dépend le retrait de `.jouer-menu`.
+sceau de 52 px demandait de connaître le jeu pour le reconnaître. Le titre
+**« Epic Chess »** et son cartouche d'or qui l'avaient remplacé sont partis à
+leur tour : la salle peinte dit déjà où l'on est. Le nom reste dans le
+document pour les lecteurs d'écran (`<h1 class="sr-only">`), et
+`--menu-title-h` (le retrait du haut de `.jouer-menu`) vaut zéro.
 
 `EMBLEM_SVG` reste malgré tout la référence du tracé : `favicon.svg` en reprend
 exactement les chemins, et c'est lui qu'on voit dans l'onglet et sur l'écran

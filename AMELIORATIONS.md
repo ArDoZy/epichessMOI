@@ -157,28 +157,33 @@ téléphone (390 × 844) et en ordinateur (1440 × 900) dans le bac à sable
 | 9.3 | **Double sursaut** à l'arrivée sur la Guerre des clans. `renderReservePage` est appelée deux fois par visite (départ et fin du glissement, `js/pages-nav.js`) et `clanPaint` réécrivait toute la page à chaque appel : chaque carte recréée rejouait son entrée. Même chose une troisième fois quand le serveur répondait. | ✅ le rendu est idempotent (un rendu identique ne touche pas au document), l'entrée ne se joue qu'à l'arrivée, et une mise à jour ultérieure remplace le contenu sans rien rejouer (`.clan-root.is-settled`) |
 | 9.4 | Les **points rouges qui montent** derrière les chiffres de la guerre de la semaine (`.clan-war::before`). | ✅ retirés |
 
-### Fluidité — reste à faire
+### Fluidité
 
-| | Constat | Où | Piste |
-|---|---|---|---|
-| 9.5 | **La fenêtre de recherche d'adversaire tourne en permanence.** `#mp-modal` est caché par `visibility:hidden`, pas `display:none` : ses 15 animations infinies (braises, dérive du fond, radar, barre de chasse) tournent du démarrage à la fermeture de l'onglet, partie comprise. | `#mp-modal` (css/style.css) | `#mp-modal:not(.show) *{animation-play-state:paused}` |
-| 9.6 | **Les pages hors cadre gardent leurs animations infinies** : l'étoffe et le reflet de la bannière de clan, les rayons et la lévitation du butin, les drapeaux du recrutement tournent pendant qu'on est au menu ou en partie. La rangée pose déjà `inert` sur ces pages. | `js/pages-nav.js` (`markFront`) | `.nav-page:not(.is-front) *{animation-play-state:paused}` |
-| 9.7 | **Le menu principal est l'écran le plus chargé**, et celui où l'on revient le plus : canvas de braises à 30 i/s, parallaxe, et ~21 animations CSS — dont deux systèmes de particules qui montent (le canvas et `.ambient-bubbles`) et 7 `jtfOrbit` qui animent `stroke-dashoffset`, une propriété qui repeint à chaque image (rien n'est confié au compositeur). | `js/menu-ambience.js`, `.ambient-bubbles`, `jtfOrbit` | garder un seul système de particules ; orbites en `transform: rotate` |
-| 9.8 | `menu-ambience.js` garde un `setInterval` de 1,5 s pour toujours (re-câbler la parallaxe, réveiller la boucle), même en partie. | `js/menu-ambience.js` | réveiller depuis `markFront` (js/pages-nav.js) et la fin de partie plutôt que par un battement |
-| 9.9 | Après chaque lecture du serveur, `clanPaintRail` réécrit la carte du rail et le clan du menu (blasons SVG neufs) même quand rien n'a changé. | `js/clans.js`, `renderRailIdentity` | même garde que `clanPaint` |
+Mesuré avec `document.getAnimations()` : au menu, de ~40 animations en cours
+à 8 ; en partie, plus aucune hors du plateau.
 
-### Interface — reste à faire
-
-| | Constat | Où |
+| | Constat | Statut |
 |---|---|---|
-| 9.10 | **Ordinateur : bande vide de 11 px à droite de tout le jeu.** `html{scrollbar-gutter:stable}` réserve la place d'une barre de défilement alors que la page racine ne défile jamais (900/900) : le décor du menu, le plateau et chaque page s'arrêtent avant le bord. | `[THEME]` |
-| 9.11 | **Bannière de clan : la hampe dépasse.** Le trait de métal du gonfanon (`.clan-hero-cloth::before`) sort au-dessus de la carte et se fait couper par son bord arrondi : un trait brun mal coupé en haut à gauche, téléphone et ordinateur. | `[CLANS]` |
-| 9.12 | **Barre d'onglets du téléphone** : « Guerre des clans » passe sur deux lignes, les quatre autres sur une, et le socle de l'onglet actif déborde au-dessus de la barre. Un libellé court (« Clans ») réglerait les deux. | `.nav-tabbar` |
-| 9.13 | **Couleurs de titre** : « Les Adversaires », « Ce que contiennent les coffres » et l'onglet actif du Classement sont en vert d'eau, Magasin, Guerre des clans et Classement en or. Un seul accent pour les titres. | `.adv-page-title`, `.rs-sec-title`, onglets du Classement |
-| 9.14 | **Adversaires** : pour un nouveau joueur, 10 cartes sur 12 disent « Très au-dessus de vous » en rouge, et la page entière se lit comme une alerte. Le ruban « Conseillé » mord le coin de sa carte et la mention « Jamais affronté » ; « ← Retour » passe sur deux lignes au téléphone. | `js/adversaires.js` |
-| 9.15 | **Classement** : le titre « Classement » et, juste dessous, l'onglet « Classement ». Le bouton OK du bas porte des coins décoratifs qui se lisent comme un cadre de focus. | `#page-classement` |
-| 9.16 | **Partie, téléphone** : un grand vide entre « Historique » et « Abandonner », et « Annuler coup » en pleine largeur, plus visible que tout le reste du panneau. **Ordinateur** : la colonne de droite reste vide aux deux tiers ; les lettres de colonnes posées sur les cases claires (b, d, f, h) et les chiffres de rangées sont presque illisibles. | `[GAME-PANEL]`, coordonnées du plateau |
-| 9.17 | **Cinématique d'entrée** : « VS » tombe exactement sur la couture lumineuse, et la gerbe d'étincelles passe dessus : il se lit mal au moment où il devrait claquer. | `js/cinematics.js`, `.cine-split` |
-| 9.18 | **Ordinateur, Magasin** : chaque carte de coffre s'étire sur 380 px autour d'une illustration de 130 px, et le tableau des taux s'étale sur 1 180 px — les colonnes sont trop loin pour suivre une ligne. Une largeur maximale (~760 px) pour le tableau. | `.shop-chest`, `[SHOP-ODDS]` |
-| 9.19 | **Ordinateur, Guerre des clans** : la barre Front / Membres / Journal fait toute la largeur, et le front vide n'est qu'une phrase au milieu de 300 px de rien. Dans le rail, 200 px de vide séparent la carte du joueur des onglets. | `[CLANS]`, `[RAIL-ID]` |
-| 9.20 | **Composition d'armées, téléphone** : le titre est posé sur un rectangle sombre plus étroit que son cadre doré, et les deux cases vides Monarque / Général occupent la moitié de l'écran avant la collection. | `[ARMIES]` |
+| 9.5 | **La fenêtre de recherche d'adversaire tournait en permanence.** `#mp-modal` est caché par `visibility:hidden`, qui n'arrête pas une animation : ses 15 animations infinies (braises, dérive du fond, radar, barre de chasse) tournaient du démarrage à la fermeture de l'onglet, partie comprise. | ✅ en pause tant qu'elle est fermée (pseudo-éléments compris) |
+| 9.6 | **Les pages hors cadre gardaient leurs animations infinies** (étoffe et reflet de la bannière de clan, rayons du butin, drapeaux du recrutement…), au menu comme en partie. | ✅ `#nav-track:not(.is-sliding) .nav-page:not(.is-front)` : en pause hors glissement ; pendant le glissement tout vit, la page qui arrive entre déjà animée |
+| 9.7 | **Le menu principal, l'écran le plus chargé** : deux systèmes de particules qui montent (le canvas de braises et six bulles CSS `.ambient-bubbles`), et une orbite de lumière autour du coffre quotidien qui animait le `stroke-dashoffset` de sept ellipses floutées — une propriété de dessin, repeinte à chaque image. | ✅ les bulles sont retirées (les braises restent) ; l'orbite est un calque HTML qui tourne en `transform`, sur le compositeur, sans repeindre son flou |
+| 9.8 | `menu-ambience.js` gardait un `setInterval` de 1,5 s pour toujours, partie comprise. | ✅ retiré : les braises se réveillent depuis `markFront` (js/pages-nav.js, qui dit aussi l'entrée et la sortie de partie) et `fxSetLevel` (l'interrupteur « Effets ») |
+| 9.9 | Après chaque lecture du serveur, la carte du rail et le clan du menu étaient réécrits (blasons SVG neufs) même quand rien n'avait changé. | ✅ `identitySet` (js/accounts.js) : contenu réécrit seulement s'il change |
+| 9.9 bis | Le **rail d'ordinateur** portait un `backdrop-filter:blur(18px)` : un flou toujours à l'écran, recalculé à chaque image où la rangée glisse dessous — la raison exacte pour laquelle la barre du téléphone l'avait déjà perdu. | ✅ fond opaque, sans flou |
+
+### Interface
+
+| | Constat | Statut |
+|---|---|---|
+| 9.10 | **Ordinateur : bande vide de 11 px à droite de tout le jeu** (`html{scrollbar-gutter:stable}` alors que la page racine ne défile jamais). | ✅ gouttière retirée |
+| 9.11 | **Bannière de clan : la hampe dépassait** au-dessus de la carte et se faisait couper par l'arrondi. | ✅ rentrée dans la carte |
+| 9.12 | **Barre d'onglets du téléphone** : « Guerre des clans » sur deux lignes quand les autres tiennent sur une ; le socle de l'onglet actif, levé de 2 px, mordait le haut de la barre. | ✅ l'onglet s'appelle « Clans » (le nom complet reste en `title` et `aria-label`) ; l'onglet actif ne se lève plus |
+| 9.13 | **Couleurs de titre** : « Les Adversaires », « Composition d'armées », « Ce que contiennent les coffres » et l'onglet actif du Classement en vert d'eau, le reste en or. | ✅ tout en or (`.glow-text`, `.rs-sec-title`, `.lb-tab.on`) |
+| 9.14 | **Adversaires** : dix cartes sur douze en rouge « Très au-dessus de vous » pour un nouveau joueur ; ruban « Conseillé » sur le coin et sur « Jamais affronté » ; « ← Retour » sur deux lignes. | ✅ « Très au-dessus » en cuivre ; ruban posé à cheval sur le bord haut ; « ← Retour » sur une ligne |
+| 9.15 | **Classement** : titre « Classement » et onglet « Classement » l'un sous l'autre ; coins de plaque qui dépassaient du bouton OK. | ✅ l'onglet s'appelle « Mondial » ; la plaque suit l'arrondi du bouton |
+| 9.16 | **Partie** : « Annuler coup » en pleine largeur, plus voyant que tout le panneau ; coordonnées du plateau presque illisibles sur les cases claires. Le vide entre « Historique » et « Abandonner » (et la colonne de droite sur ordinateur) est voulu : c'est la place où s'ouvrent le journal et la discussion. | ✅ « Annuler coup » centré à la taille de son libellé (cible de 44 px gardée) ; coordonnées pleine encre, un cran plus grosses, d'une teinte plus contrastée ; ➖ le vide reste |
+| 9.17 | **Cinématique d'entrée** : « VS » coupé par la couture lumineuse, et la gerbe d'étincelles passait dessus. | ✅ disque d'ombre derrière le « VS », gerbe passée sous le texte |
+| 9.18 | **Ordinateur, Magasin** : cartes étirées à 380 px, tableau des taux sur 1 180 px. | ✅ cartes à la largeur de leur image (six sur une rangée dès 1 320 px), tableau limité à 760 px |
+| 9.19 | **Ordinateur, Guerre des clans** : onglets Front / Membres / Journal sur toute la largeur ; front vide réduit à une phrase ; 200 px de vide entre la carte du joueur et les onglets du rail. | ✅ onglets limités à 560 px ; le front vide est une carte qui mène au combat (« Le front est calme », bouton « Au combat », téléphone compris) ; les onglets du rail suivent la carte du joueur |
+| 9.20 | **Composition d'armées, téléphone** : titre sur un rectangle plus sombre que son cadre ; cases vides Monarque / Général sur la moitié de l'écran. | ✅ le cartouche est teint jusqu'au milieu (`fill` du `border-image`) ; les deux cartes majeures prennent 76 % de leur demi-largeur (≈ 55 px rendus au catalogue, toujours plus grandes que celles du bas) |
+| 9.21 | **Le titre « Epic Chess » et son cartouche d'or** en haut du menu principal. | ✅ retirés à la demande ; le nom reste pour les lecteurs d'écran (`<h1 class="sr-only">`) et `--menu-title-h` vaut zéro |

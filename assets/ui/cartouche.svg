@@ -20,9 +20,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 80" width="160" height="80" color="#c9a84c">
   <title>Epic Chess, cartouche de titre</title>
   <!-- LE CORPS : un aplat bleu nuit très légèrement plus clair que la page,
-       pour que le cartouche se DÉTACHE sans faire une boîte. Il n'occupe que
-       les bords (le centre est laissé transparent par border-image) mais il
-       est peint en plein : c'est la région centrale, jetée au découpage. -->
+       pour que le cartouche se DÉTACHE sans faire une boîte. Il est peint
+       en plein, et le `fill` du border-image (css/style.css) garde la
+       région centrale : bords et milieu ont la même teinte. -->
   <rect x="4" y="4" width="152" height="72" rx="7" fill="#16203a" fill-opacity=".55"/>
   <rect x="4" y="4" width="152" height="72" rx="7" fill="none" stroke="#c9a84c" stroke-width="2.2"/>
   <rect x="7.4" y="7.4" width="145.2" height="65.2" rx="5" fill="none" stroke="#e6cd86" stroke-width=".85" opacity=".45"/>

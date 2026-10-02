@@ -154,30 +154,18 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
     if(list.length!==1||list[0]!==acc)throw new Error('la liste des comptes ne contient pas le compte créé');
   });
 
-  // LE JEU DIT SON NOM SUR L'ÉCRAN QU'ON OUVRE À CHAQUE PARTIE. C'est la
-  // panne qu'aucun test ne rattrape : rien n'est cassé, il n'y a simplement
-  // plus rien qui dise où l'on est. L'emblème a tenu ce rôle — un sceau de
-  // 52 px qu'il fallait déjà connaître pour le reconnaître —, le titre l'a
-  // remplacé. On vérifie donc qu'il est là, en toutes lettres, tout en haut,
-  // et que le sceau n'y est plus.
-  await step('le menu principal porte le titre du jeu, en haut et en grand',async()=>{
+  // LE MENU NE PORTE NI TITRE NI SCEAU À L'ÉCRAN. Le nom du jeu reste dans
+  // le document, pour les lecteurs d'écran (un h1 .sr-only), mais il
+  // n'occupe rien : la salle peinte dit déjà où l'on est, et le titre
+  // poussait tout le menu vers le bas.
+  await step('le menu principal garde son nom pour les lecteurs d\'écran, sans titre affiché',async()=>{
     const bad=await page.evaluate(()=>{
       const out=[];
-      const t=document.querySelector('.menu-title');
-      if(!t){out.push('aucun titre sur le menu principal');return out;}
-      if(t.textContent.trim()!=='Epic Chess')out.push('titre inattendu : '+t.textContent);
-      if(document.querySelector('.jouer-player .game-emblem'))
-        out.push('le logo est encore sur le menu principal');
-      const st=getComputedStyle(t);
-      if(parseFloat(st.fontSize)<26)out.push('le titre ne fait que '+st.fontSize);
-      if(!/Cinzel/.test(st.fontFamily))out.push('le titre n\'est pas dans la police de titre : '+st.fontFamily);
-      // Tout en haut : au-dessus du pseudo, qui est lui-même au-dessus de
-      // COMBAT.
-      const pseudo=document.getElementById('jouer-name');
-      const combat=document.getElementById('combat-btn');
-      const tb=t.getBoundingClientRect();
-      if(pseudo&&tb.bottom>pseudo.getBoundingClientRect().top+1)out.push('le titre n\'est pas au-dessus du pseudo');
-      if(combat&&tb.bottom>=combat.getBoundingClientRect().top)out.push('le titre n\'est pas au-dessus de COMBAT');
+      const h=document.querySelector('.jouer-player h1');
+      if(!h||h.textContent.trim()!=='Epic Chess')out.push('le menu n\'a plus de h1 « Epic Chess »');
+      else if(h.getBoundingClientRect().width>1)out.push('le titre du menu est encore affiché');
+      if(document.querySelector('.menu-title'))out.push('le titre décoré est encore dans le menu');
+      if(document.querySelector('.jouer-player .game-emblem'))out.push('le logo est encore sur le menu principal');
       return out;
     });
     if(bad.length)throw new Error(bad.join(' · '));
@@ -1213,14 +1201,12 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
       return{
         rail:!!document.getElementById('jouer-chests'),
         perles:/perles/i.test(col.textContent),
-        titre:(document.querySelector('.menu-title')||{}).textContent||'',
         emblem:!!document.querySelector('.jouer-player .game-emblem'),
         boutons:['jouer-daily','jouer-colonne','jouer-rangee'].filter(id=>!document.getElementById(id)),
       };
     });
     if(menu.rail)throw new Error('le rail de coffres est encore sur le menu principal');
     if(menu.perles)throw new Error('le solde de perles est encore dans la colonne du menu');
-    if(menu.titre.trim()!=='Epic Chess')throw new Error('le titre du menu n\'est pas « Epic Chess » : '+menu.titre);
     if(menu.emblem)throw new Error('le logo est encore sur le menu principal');
     if(menu.boutons.length)throw new Error('boutons absents du menu : '+menu.boutons.join(', '));
 
