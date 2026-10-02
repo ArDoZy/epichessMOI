@@ -351,23 +351,37 @@ const TUTO_STEPS=[
     at:'.nav-tab[data-page="reserve"]',click:'.nav-tab[data-page="reserve"]',wait:560,
   },
   {
-    text:'La Guerre des clans. Tout ce que vous possédez, vous le possédez en '+
-         '<strong>exemplaires comptés</strong> — le petit nombre en haut de chaque '+
-         'carte, dans la composition d\'armée.<br>'+
+    // LA PAGE A CHANGÉ DE MÉTIER. Elle a été l'inventaire, puis rien du tout
+    // (un titre sur fond noir) : c'est maintenant la guerre hebdomadaire des
+    // clans (js/clans.js). Le savant la présente pour ce qu'elle est.
+    text:'La <strong>Guerre des clans</strong>. Ici, on ne joue plus seul&nbsp;: '+
+         'chaque partie classée rapporte des <strong>points de guerre</strong> à votre '+
+         'clan. Le lundi, les clans sont classés, et chaque combattant réclame son '+
+         '<strong>butin</strong> — un coffre, selon la place de son clan.<br>'+
+         'Fonder un clan demande trois parties classées. Le rejoindre, une seule envie.',
+    at:'#clan-root',
+  },
+  {
+    text:'Un mot encore, le plus important. Tout ce que vous possédez, vous le '+
+         'possédez en <strong>exemplaires comptés</strong> — le petit nombre en haut de '+
+         'chaque carte, dans la composition d\'armée.<br>'+
          'Engager une créature dans une partie, c\'est la <strong>risquer</strong>. '+
          'Vous perdez&nbsp;? Toute l\'armée engagée y reste. Vous gagnez&nbsp;? '+
          'Vous ne perdez que ce qui a été mangé.',
   },
   {
-    text:'Et voici la récompense. Une victoire&nbsp;: un Coffre Pion. Deux d\'affilée&nbsp;: '+
-         'un Coffre Cavalier. Puis Fou, Tour, Dame, et <strong>Roi</strong> à partir de six.<br>'+
-         'Il s\'ouvre <strong>tout de suite</strong>, sitôt la partie finie. Une seule '+
-         'défaite et la série repart de zéro. C\'est cruel, je sais. C\'est le but.',
+    // La récompense de SÉRIE (un coffre par victoire, de plus en plus beau,
+    // remis à zéro à la première défaite) n'existe plus : une victoire fait
+    // avancer la Colonne des Victoires, en lauriers (js/rewards.js).
+    text:'Et voici la récompense. Chaque victoire vous rapporte des <strong>lauriers</strong>'+
+         '&nbsp;: plus elle est rapide, plus elle en donne. Ils font monter la '+
+         '<strong>Colonne des Victoires</strong>, et chaque palier ouvre un coffre ou des jokers.<br>'+
+         'Les coffres s\'ouvrent sous vos doigts&nbsp;: on les <strong>brise</strong>.',
   },
   {
-    text:'Les <strong>perles</strong> tombent de tous les coffres, et rachètent le coffre '+
-         'de votre choix. Une mauvaise ouverture vous rapproche quand même du Coffre Roi.',
-    at:'#rs-pearls',
+    text:'Les <strong>perles</strong> tombent de tous les coffres, et achètent celui de '+
+         'votre choix au <strong>Magasin</strong>, tout à gauche de la rangée. Une mauvaise '+
+         'ouverture vous rapproche quand même du Coffre Roi.',
   },
   {
     text:'Les plateaux aussi se méritent&nbsp;: bois, puis pierre, acier, argent, et or '+

@@ -129,7 +129,13 @@ function clanRefresh(){
     _clan.mine=mine;_clan.war=war;_clan.at=Date.now();
     if(!mine.clan)return ecClanList(_clan.q).then(l=>{_clan.list=l;}).catch(()=>{_clan.list=[];});
   }).catch(e=>{
-    _clan.err=(e&&e.message)||'La guerre des clans est injoignable.';
+    // LE SERVEUR N'A PAS ENCORE LES CLANS : PostgREST répond 404 « Could not
+    // find the function ». C'est une installation à faire (migration 001),
+    // pas une panne — on le dit tel quel plutôt qu'un « injoignable » qui
+    // ferait chercher du côté du réseau.
+    const missing=e&&(e.status===404||e.code==='PGRST202'||/Could not find the function/i.test(e.message||''));
+    _clan.err=missing?'La Guerre des clans n\'est pas encore ouverte sur ce serveur. Elle le sera dès l\'installation de sa mise à jour (supabase/migrations/001-guerre-des-clans.sql).'
+      :((e&&e.message)||'La guerre des clans est injoignable.');
   }).then(()=>{
     _clan.loading=false;
     clanPaint();
@@ -156,6 +162,7 @@ function clanAct(promise,okMsg,after){
   }).then(r=>{
     _clan.busy=false;
     clanRefreshSoon();
+    clanPaintRail();
     return r;
   });
 }
@@ -888,6 +895,11 @@ function clanCelebrate(c){
 // Le sigle et le blason se lisent dans la fiche du joueur (ECP.clan) : le
 // rail d'ordinateur, le menu et le verdict de fin de partie le montrent
 // sans appel de plus.
+// Le clan a changé (fondé, rejoint, quitté) : le menu et le rail le disent
+// tout de suite, sans attendre la prochaine visite du menu.
+function clanPaintRail(){
+  if(typeof renderMenuIdentity==='function')renderMenuIdentity();
+}
 function clanBriefHTML(cls){
   const c=(typeof ECP!=='undefined'&&ECP)?ECP.clan:null;
   if(!c)return '';

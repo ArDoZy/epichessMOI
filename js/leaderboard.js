@@ -277,7 +277,11 @@ function lbRowHTML(r,showRank,opts){
       '<span class="lb-dot'+(online?' on':'')+'" title="'+(online?'En ligne':'Hors ligne')+'"></span>'+
     '</span>'+
     '<span class="lb-id">'+
-      '<span class="lb-name">'+escH(r.username)+(me?' <em>(vous)</em>':'')+
+      '<span class="lb-name">'+escH(r.username)+
+        // Le sigle du clan (ec_leaderboard / ec_search → clan_tag) : c'est
+        // ce qui fait exister les clans hors de leur page.
+        (r.clan_tag?' <span class="clan-tag lb-clan-tag">'+escH(r.clan_tag)+'</span>':'')+
+        (me?' <em>(vous)</em>':'')+
         (friend&&!o.friend?' <span class="lb-friend-tag" title="Dans vos amis">ami</span>':'')+'</span>'+
       '<span class="lb-sub">'+sub+'</span>'+
     '</span>'+
@@ -338,6 +342,12 @@ function lbProfileHTML(p){
       '</span>'+
       '<div class="acc-seal-id">'+
         '<div class="acc-name-line"><h2 class="acc-name">'+escH(p.username)+'</h2></div>'+
+        // SON CLAN, s'il en a un : le blason, le sigle et le nom, qui ouvrent
+        // la fiche du clan (js/clans.js). ec_public le publie (ec_clan_brief).
+        ((p.clan&&typeof blazonSVG==='function')
+          ?'<button class="lb-clan" data-clan-view="'+escH(p.clan.id)+'"><span class="lb-clan-blz">'+
+            blazonSVG(p.clan.blazon,{level:p.clan.level,plain:true})+'</span>'+
+            '<span class="clan-tag">'+escH(p.clan.tag)+'</span><span class="lb-clan-name">'+escH(p.clan.name)+'</span></button>':'')+
         '<div class="acc-rank-line">'+
           '<span class="acc-rank" style="color:'+rank.color+'">'+escH(rank.name)+'</span>'+
           '<span class="acc-dot"></span>'+
@@ -509,6 +519,9 @@ function lbWire(){
       back:()=>{_lbProfile=prof;renderLeaderboardPage();showPage(LB_PAGE);},
     });
   }
+  host.querySelectorAll('[data-clan-view]').forEach(b=>b.addEventListener('click',()=>{
+    if(typeof clanOpenView==='function')clanOpenView(b.getAttribute('data-clan-view'));
+  }));
   host.querySelector('#lb-duel')?.addEventListener('click',function(){
     if(typeof mpChallenge==='function')
       mpChallenge(this.getAttribute('data-player'),this.getAttribute('data-name'));
