@@ -9335,26 +9335,6 @@ body.desk .clan-hero-stats{grid-column:auto;grid-template-columns:1fr;min-width:
 body.desk .clan-war-n{font-size:56px}
 @media (min-width:760px){.clan-ov-forge .forge-fields{margin-right:44px}}
 
-/* [FORGE] =========================================================
-   LA FORGE (js/combat-forge.js) : deux canvas posés dans le plateau, aux
-   deux étages des effets — sous les pièces (la comète, la fumée) et devant
-   (les éclats, les étincelles, l'éclair d'échec). Un canvas dessine sa
-   propre lumière : il n'a aucun fondu à préserver, il peut donc porter son
-   z-index, contrairement aux couches DOM de [COMBAT-FX]. */
-.fx-forge{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;display:block}
-.fx-forge-under{z-index:1}
-.fx-forge-over{z-index:5}
-/* L'ONDE DANS LE BOIS : une case qui s'allume, puis s'éteint, décalée selon
-   sa distance à l'impact (--rip-d) et d'autant moins vive qu'elle est loin
-   (--rip-a). Un `filter` et rien d'autre : les cases portent déjà leurs
-   repères sur ::before / ::after et leurs états en box-shadow. */
-.gc.gc-ripple{animation:gcRipple .44s ease-out var(--rip-d,0ms) both}
-@keyframes gcRipple{
-  0%{filter:none}
-  32%{filter:brightness(calc(1 + var(--rip-a,.4))) saturate(1.3)}
-  100%{filter:none}
-}
-
 /* [RAIL-ID] =======================================================
    LA CARTE DU JOUEUR EN HAUT DU RAIL D'ORDINATEUR (renderRailIdentity,
    js/accounts.js), et le clan sous le pseudo du menu (renderMenuClan).

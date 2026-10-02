@@ -95,8 +95,8 @@ epic-chess/
 │   │                        #  le décor en silence)
 │   ├── ai-bench.js          # Autopartie entre adversaires : vérifie que
 │   │                        #  l'échelle de force tient (voir plus bas)
-│   ├── combat-fx-preview.html # Banc d'essai des effets de combat et de la
-│   │                        #  Forge : chaque effet sur commande
+│   ├── combat-fx-preview.html # Banc d'essai des effets de combat : chaque
+│   │                        #  effet sur commande
 │   └── smoke-test.js        # `npm test` : rejoue tout le parcours du jeu
 │                            #  dans un vrai navigateur (voir plus bas)
 ├── css/
@@ -184,10 +184,6 @@ epic-chess/
     │                          # filtré, variation, ducking) + retour haptique
     ├── combat-fx.js          # Effets spéciaux du plateau : impacts de prise,
     │                          # traînées, signatures de pouvoir, échec, mat
-    ├── combat-forge.js       # LA FORGE : moteur de particules sur deux
-    │                          # canvas. La pièce prise vole en éclats, le
-    │                          # plateau encaisse, l'éclair d'échec, le mat
-    │                          # au ralenti, l'or et les cendres de l'issue
     ├── pwa.js                # Installation sur l'écran d'accueil + service worker
     ├── menu-ambience.js      # Le menu respire : braises des braseros, et
     │                          # parallaxe du décor sous la souris (ordinateur)
@@ -789,58 +785,6 @@ Le banc d'essai **`tools/combat-fx-preview.html`** joue chaque effet sur
 commande, sur un plateau nu, avec le vrai module et le vrai CSS : c'est là
 qu'on règle une durée ou une couleur, sans avoir à provoquer la position
 correspondante dans une partie.
-
-### 1 quinquies quater. La Forge (`js/combat-forge.js`)
-
-**`combat-fx.js` dit la FORME d'un événement, la Forge en donne la MATIÈRE.**
-Un effet DOM coûte un nœud animé : neuf éclats, c'est déjà une gerbe, et
-quatre-vingt-dix, c'est le plafond d'un téléphone. La Forge pose **deux
-canvas** dans le plateau et y fait vivre jusqu'à `FORGE_MAX` (900)
-particules pour le prix de deux éléments. Elle s'ajoute aux effets DOM, elle
-ne les remplace pas.
-
-| Couche | `z-index` | Ce qu'elle porte |
-|---|---|---|
-| `.fx-forge-under` | 1 | la comète qui suit la pièce qui joue (par-dessus, elle cacherait la pièce) |
-| `.fx-forge-over` | 5 | éclats, étincelles, fumée, éclair d'échec, fissures du mat, or et cendres |
-
-Un canvas dessine sa propre lumière (`lighter`) et ne fond rien dans le
-plateau : il n'a donc **pas** le piège de `mix-blend-mode` décrit plus haut,
-et peut porter un `z-index`.
-
-| Moment | Ce que la Forge y met | Point d'entrée |
-|---|---|---|
-| Prise | **la pièce prise vole en éclats** : son propre SVG du plateau, sérialisé en image (couleurs de thème résolues), découpé en étoile autour du point d'impact, projeté dans l'axe du coup ; étincelles dans le cône de l'attaque, éclair, fumée — tout proportionné à la valeur de la victime | `forgeShatter(node)` (appelé par `syncPieces` à la place de `.gc-dying`), `forgeImpact` |
-| Prise (suite) | **le plateau encaisse** : il recule d'un rien dans l'axe du coup, les cases voisines s'allument en anneaux depuis l'impact ; la valeur prise monte de la case (« +13 », d'or pour soi, de sang pour une perte) | `forgeRecoil`, `forgeRipple`, `forgeValue` |
-| Coup joué | une comète qui suit la pièce sur l'horloge de sa transition CSS, et sème la couleur de sa classe | `forgeComet` (depuis `fxPlayMove`) |
-| Échec | un éclair qui crépite **de la pièce qui menace jusqu'au roi** : on voit QUI donne échec | `forgeCheck(king, checkers)` ; les menaçants viennent de `checkersOf()` (`js/game-render.js`), qui ne montre jamais une pièce cachée par le brouillard ou l'Ombre |
-| Mat | le temps des particules ralentit, le roi se fend de huit rais, une onde parcourt tout le plateau | `forgeMate` |
-| Issue | victoire : poussière d'or qui monte ; défaite : cendres qui tombent | `forgeGoldRise`, `forgeAsh` |
-| Grands pouvoirs | aspiration du Typhon, cri de la Banshee, poussière de la charge, colonne de la promotion | `forgePower`, `forgeCharge` |
-| Toute la partie | quelques braises montent du bas du plateau, et s'attisent quand une pendule brûle | `forgeTouch` (à chaque `renderGame`) |
-
-**L'instant du contact est partagé.** `FX_HIT_MS` (`combat-fx.js`) et
-`FORGE_SHATTER_DELAY` valent tous deux 150 ms : l'impact, le son et les éclats
-partent quand l'attaquant **arrive**, pas quand il part. La victime reste
-visible jusque-là, puis son nœud est retiré 160 ms plus tard que d'habitude.
-
-**Le recul passe par `translate` et `scale`, pas par `transform`, et sur la
-colonne du plateau.** La secousse de `sfx.js` anime déjà le `transform` de
-`#game-board` : deux animations sur la même propriété du même élément se
-volent la place. Les propriétés individuelles, posées un cran au-dessus, se
-composent avec elle.
-
-**Ce qu'elle coûte : rien quand rien ne brûle.** La boucle s'éteint dès que la
-dernière particule meurt ; les braises d'ambiance seules tournent à
-demi-cadence. Ses interrupteurs sont **ceux de `combat-fx.js`** (`fxOn()` :
-mouvement réduit, réglage « Effets », onglet caché) : réglage éteint, plus un
-pixel. Retirer la balise `<script>` laisse le jeu entier, avec les effets DOM
-seuls (tout appel passe par `typeof …==='function'`).
-
-**Pour régler un effet sans jouer la position** : `tools/combat-fx-preview.html`
-(scènes « éclats », « éclair », « or »). Pour figer le temps (captures,
-tests) : `forgeManual(true)` puis `forgeAdvance(ms)` — `page.clock` de
-Playwright, lui, fige aussi le jeu.
 
 ### 1 quinquies bis. La notation du journal (`js/rules-engine.js`)
 
@@ -1672,7 +1616,7 @@ de l'air sans toucher au contenu :
 
 La boucle ne tourne que si la page « Combat » est devant, hors partie,
 onglet visible, mouvement non réduit et réglage « Effets » allumé — le même
-interrupteur que la Forge. Trente images par seconde, quarante braises au
+interrupteur que les effets de combat. Trente images par seconde, quarante braises au
 plus. Un battement de 1,5 s la rallume quand ces conditions reviennent, sans
 s'accrocher à la navigation.
 
@@ -2503,7 +2447,7 @@ server.js → data-pieces.js → piece-art.js → blason.js → main.js → page
 → economy.js → ai-level-modal.js → piece-card.js → builder.js → armies.js
 → adversaires.js
 → combat-intro.js
-→ sfx.js → combat-fx.js → combat-forge.js → rules-engine.js → piece-moves.js → combat-music.js
+→ sfx.js → combat-fx.js → rules-engine.js → piece-moves.js → combat-music.js
 → cinematics.js
 → game-render.js
 → ai-engine.js → game-flow.js → voie.js → economy-ui.js → clans.js
@@ -2581,9 +2525,7 @@ des overlays plein écran classiques affichés au-dessus de la rangée.
 
 `blason.js` vient juste après `piece-art.js` : ses meubles d'échecs sont les
 silhouettes du plateau (`pieceArtFor`), et le menu, le classement et la page
-des clans le lisent. `combat-forge.js` suit `combat-fx.js`, dont il lit
-`fxOn`, `fxCenter` et `fxLastMove` (à l'exécution seulement : l'un sans
-l'autre fonctionne). `clans.js` vient après `economy-ui.js`, dont il
+des clans le lisent. `clans.js` vient après `economy-ui.js`, dont il
 réutilise `chestVisual` et `chestOpenNow` pour le butin. `menu-ambience.js`
 ne dépend de rien et ne fait rien au chargement : il attend `load`.
 
@@ -2610,8 +2552,7 @@ coffre, conversion des jokers), rangée de la richesse et quêtes du jour ;
 puis la Guerre des clans de bout en bout (fonder, rejoindre, combattre,
 changer de semaine, réclamer le butin, la page avec et sans clan), la
 concordance de la migration et du schéma, la semaine de guerre identique en
-JS et en SQL, et la Forge qui fait voler une pièce en éclats et se tait
-quand l'interrupteur « Effets » est éteint. Il échoue au premier message
+JS et en SQL, et le chargement des bruitages enregistrés (`sample`). Il échoue au premier message
 d'erreur de la console.
 
 ```
@@ -2774,8 +2715,6 @@ mais dans une version que Playwright refuse, le script le retrouve tout seul
 | Ajouter une devise ou un cri de guerre | `CLAN_MOTTOS` / `CLAN_CRIES` dans `js/clans.js` (en fin de liste) **et** la borne dans `ec_clan_motto_clean` / `ec_clan_cry` (SQL, les deux fichiers) |
 | Ajouter une forme, un émail ou un meuble de blason | `BLAZON_SHAPES` / `BLAZON_TINCTURES` / `BLAZON_CHARGES` dans `js/blason.js` (en fin de liste) + `BLAZON_SPEC`, `EC_BLAZON_SPEC` (`js/server.js`) et la spec de `ec_clan_blazon_clean` (SQL) |
 | Modifier la page de la Guerre des clans | `clanPaint()` et ses `clan*HTML` dans `js/clans.js` + `#clan-root` dans `index.html` + `[CLANS]` de `css/style.css` |
-| Régler la Forge (éclats, étincelles, éclair, mat) | `js/combat-forge.js` (une section par moment) + `[FORGE]` de `css/style.css` ; banc d'essai : `tools/combat-fx-preview.html` |
-| Changer l'instant du contact d'une prise | `FX_HIT_MS` (`js/combat-fx.js`) **et** `FORGE_SHATTER_DELAY` (`js/combat-forge.js`) : les deux doivent rester égaux |
 | Régler les braises ou la parallaxe du menu | `js/menu-ambience.js` (`MENU_EMBERS_MAX`, `menuAmbienceSpawn`) + `[MENU-AMBIENCE]` de `css/style.css` |
 | Changer l'entrée en combat (le VS fendu en diagonale) | `playCombatCinematic()` dans `js/cinematics.js` + `[CINEMATIC-VS]` de `css/style.css` |
 | Changer le tableau des taux du Magasin | `magasinOddsHTML()` dans `js/economy-ui.js` (il lit `CHESTS` : rien à recopier) + `[SHOP-ODDS]` de `css/style.css` |

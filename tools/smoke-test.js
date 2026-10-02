@@ -4634,59 +4634,6 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
     if(r.length)throw new Error(r.join(' · '));
   });
 
-  // ================================================================
-  // LA FORGE (js/combat-forge.js)
-  // ================================================================
-  // Le plateau du jeu est masqué hors partie (largeur nulle) : le test pose
-  // un plateau temporaire de 400 px, le temps de briser une Dame, puis rend
-  // son identifiant au vrai.
-  await step('la Forge fait voler la pièce prise en éclats, et l\'interrupteur la coupe',async()=>{
-    const r=await page.evaluate(async()=>{
-      const out=[];
-      if(typeof forgeShatter!=='function')return['js/combat-forge.js n\'est pas chargé'];
-      const real=document.getElementById('game-board');
-      if(real)real.id='game-board-hors-test';
-      const board=document.createElement('div');
-      board.id='game-board';board.className='game-board';
-      board.style.cssText='position:fixed;left:0;top:0;width:400px;height:400px;z-index:99999';
-      document.body.appendChild(board);
-      try{
-        fxSetLevel(1);fxSetFlipped(false);forgeManual(true);
-        const mk=()=>{const n=document.createElement('div');n.className='gc-piece';n.dataset.r=3;n.dataset.c=3;n._pid='dame';
-          n.innerHTML='<span class="gc-art">'+pieceSVG('dame','b')+'</span>';board.appendChild(n);return n;};
-        const n=mk();
-        if(!forgeShatter(n))out.push('la Forge refuse une pièce qui meurt');
-        await new Promise(res=>setTimeout(res,FORGE_SHATTER_DELAY+120));
-        const s=forgeStats();
-        if(!(s.shard>2))out.push('la pièce prise ne vole pas en éclats ('+JSON.stringify(s)+')');
-        if(!s.spark)out.push('l\'impact ne projette aucune étincelle');
-        if(!s.text)out.push('la valeur prise ne monte pas de la case');
-        if(n.style.visibility!=='hidden')out.push('la pièce brisée reste visible sous ses propres éclats');
-        const cvs=[...board.querySelectorAll('canvas.fx-forge')];
-        if(cvs.length!==2)out.push('la Forge n\'a pas ses deux étages ('+cvs.length+')');
-        cvs.forEach(cv=>{if(getComputedStyle(cv).pointerEvents!=='none')out.push('un canvas de la Forge reçoit les clics');});
-        const zs=cvs.map(cv=>getComputedStyle(cv).zIndex).sort().join(',');
-        if(zs!=='1,5')out.push('les étages de la Forge ne sont pas sous et devant les pièces ('+zs+')');
-        forgeAdvance(3000);
-        if(Object.keys(forgeStats()).some(k=>k!=='amb'))out.push('des particules survivent à leur durée de vie');
-        forgeCheck({r:7,c:4},[{r:3,c:4}]);
-        if(!forgeStats().bolt)out.push('l\'échec ne lance pas d\'éclair');
-        forgeAdvance(2000);
-        fxSetLevel(0);
-        const n2=mk();
-        if(forgeShatter(n2))out.push('le réglage « Effets » éteint laisse la Forge briser une pièce');
-        forgeCheck({r:7,c:4},[{r:3,c:4}]);forgeMate(0,4,true);
-        if(Object.keys(forgeStats()).some(k=>k!=='amb'))out.push('le réglage « Effets » éteint laisse passer des particules');
-      }finally{
-        fxSetLevel(1);forgeManual(false);
-        board.remove();
-        if(real)real.id='game-board';
-      }
-      return out;
-    });
-    if(r.length)throw new Error(r.join(' · '));
-  });
-
   // UN BRUITAGE PEUT PORTER UN VRAI FICHIER (`sample`, js/sfx.js). Le
   // fichier est chargé au premier appel, la synthèse joue en attendant, un
   // fichier illisible est marqué en échec et ne casse rien. Le WAV est

@@ -6,7 +6,7 @@ lui-même — règles, pièces, pouvoirs, économie de base — n'est pas touch�
 tout ce qui suit porte sur ce qui l'entoure.
 
 Légende : ✅ fait dans cette passe · 🟡 fait en partie · ⬜ reste à faire
-(avec la raison) · ➖ relevé à l'audit, puis écarté à la vérification (la
+(avec la raison) · ↩️ essayé puis retiré · ➖ relevé à l'audit, puis écarté à la vérification (la
 raison est donnée : on ne corrige pas ce qui n'est pas cassé).
 
 ---
@@ -46,25 +46,14 @@ raison est donnée : on ne corrige pas ce qui n'est pas cassé).
 
 | | Amélioration | Statut |
 |---|---|---|
-| 3.1 | **Un moteur de particules sur canvas** (« la Forge ») posé dans le plateau, en plus des effets DOM : des centaines de particules additives pour le coût d'un seul élément, endormi quand rien ne brûle. | ✅ |
-| 3.2 | **La pièce prise VOLE EN ÉCLATS** : son propre dessin est découpé en fragments qui s'envolent, tournent et retombent — au lieu de se ratatiner. | ✅ |
-| 3.3 | **L'onde traverse les cases** : sur une prise lourde, les cases s'allument en anneaux depuis l'impact. | ✅ |
-| 3.4 | **Le plateau encaisse** : recul dans l'axe de l'attaque, proportionnel à la valeur prise ; sur une prise très lourde, le temps des particules ralentit un instant. | ✅ |
-| 3.5 | **La valeur prise s'affiche** et monte de la case (« +13 » en or pour vous, en rouge pour l'adversaire). | ✅ |
-| 3.6 | **L'échec a son éclair** : un arc électrique crépite de la pièce qui donne échec jusqu'au roi — on voit QUI menace. | ✅ |
-| 3.7 | **Le mat au ralenti** : le temps des particules ralentit, le roi tombé se fend de huit rais de lumière, gerbe d'étincelles et onde sur tout le plateau. | ✅ |
-| 3.8 | **La victoire en poussière d'or, la défaite en cendres** : la dissolution dorée (DOM) reçoit un essaim de particules de la Forge ; une défaite par mat fait tomber des cendres. | ✅ |
-| 3.9 | **Comète de déplacement** : une tête lumineuse suit la pièce, sa traînée d'étincelles teintées de sa classe. | ✅ |
-| 3.10 | Étincelles de canvas sur les grands pouvoirs (Typhon qui aspire, Banshee, charge de l'Éléphant, promotion). | ✅ |
-| 3.11 | **Braises d'ambiance** qui montent lentement du plateau pendant la partie, et s'attisent quand la pendule brûle. | ✅ |
-| 3.12 | Banc d'essai `tools/combat-fx-preview.html` : les nouveaux effets y sont jouables à la main. | ✅ |
+| 3.1 | Un moteur de particules sur canvas (« la Forge ») : pièce prise en éclats, recul du plateau, comète, éclair d'échec, mat au ralenti, or et cendres, braises d'ambiance. | ↩️ essayé puis **retiré à la demande** : trop chargé et trop lourd en partie. Les effets de combat d'origine (`js/combat-fx.js`) sont revenus tels quels. |
 
 ## 4. Cinématiques
 
 | | Amélioration | Statut |
 |---|---|---|
 | 4.1 | **Entrée en combat** : écran fendu en diagonale, deux blasons/sceaux face à face, lame de lumière qui traverse le VS, gerbe d'étincelles au choc. | ✅ |
-| 4.2 | **Issue** : l'or ou les cendres de la Forge montent sous la cinématique d'issue — après un mat seulement (un abandon ou une pendule à zéro n'ont pas de case d'où partir). Les points de guerre, eux, sont dans la fenêtre de verdict (2.7), pas dans la cinématique. | 🟡 |
+| 4.2 | **Issue** : les points de guerre gagnés sont dans la fenêtre de verdict (2.7), pas dans la cinématique d'issue. | 🟡 |
 | 4.3 | Cinématique d'arrivée dans un nouveau rang (aujourd'hui une ligne dans le modal). | ⬜ |
 
 ## 5. Interface, design, fluidité
@@ -92,8 +81,8 @@ raison est donnée : on ne corrige pas ce qui n'est pas cassé).
 
 | | Amélioration | Statut |
 |---|---|---|
-| 7.1 | Le test de fumée couvre les clans (création, sigle unique, adhésion, points de guerre sur une partie classée, butin unique par semaine) et la Forge. | ✅ |
-| 7.2 | `README.md` (Guerre des clans, Forge, menu, ordre de chargement, « Où éditer »), `llms.txt`, `assets/PROMPTS.md` § 10. | ✅ |
+| 7.1 | Le test de fumée couvre les clans (création, sigle unique, adhésion, points de guerre sur une partie classée, butin unique par semaine) et le chargement des bruitages enregistrés. | ✅ |
+| 7.2 | `README.md` (Guerre des clans, menu, ordre de chargement, « Où éditer »), `llms.txt`, `assets/PROMPTS.md` § 10. | ✅ |
 | 7.3 | `sw.js` : monter `CACHE_VERSION` (nouveaux scripts). | ✅ |
 
 ---

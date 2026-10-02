@@ -16,7 +16,7 @@
 // CE QUE ÇA COÛTE : rien quand on ne regarde pas le menu. La boucle ne
 // tourne que si la page « Combat » est la page de devant, hors partie,
 // onglet visible, mouvement non réduit et réglage « Effets » allumé — le
-// même interrupteur que la Forge. Trente images par seconde, quarante
+// même interrupteur que les effets de combat. Trente images par seconde, quarante
 // braises au plus.
 //
 // Dépendances : aucune obligatoire (fxGetLevel, combat-fx.js, facultatif).
