@@ -60,8 +60,7 @@
 //      une partie rapide ne doit pas laisser trois cents éléments animés à
 //      l'écran : au-delà, les effets suivants sont simplement sautés.
 //
-// Dépendances : data-pieces.js (PIECES, pour la classe et donc la couleur) ;
-// combat-forge.js, facultatif (la Forge : particules, éclats, éclair).
+// Dépendances : data-pieces.js (PIECES, pour la classe et donc la couleur).
 // Aucune autre — et toutes les fonctions sont appelées ailleurs derrière un
 // `typeof …==='function'`, pour que l'ordre de chargement n'ait pas d'importance.
 // Câblage visuel : [COMBAT-FX] dans css/style.css.
@@ -88,6 +87,8 @@ function fxSetFlipped(f){_fxFlipped=!!f;}
 let _fxLevel=1;
 function fxSetLevel(v){
   _fxLevel=Math.max(0,Math.min(1,typeof v==='number'?v:1));
+  // Les braises du menu suivent le même interrupteur (js/menu-ambience.js).
+  if(typeof menuAmbienceWake==='function')menuAmbienceWake();
 }
 function fxGetLevel(){return _fxLevel;}
 
@@ -504,7 +505,6 @@ function fxPower(kind,r,c,opts){
       suck.innerHTML=sh;
       fxMount('under',suck,700);
       fxShockwave(r,c,'fx-shock-typhon');
-      if(typeof forgePower==='function')forgePower('typhon',r,c);
       break;
     }
     // LE HURLEMENT : trois ondes concentriques qui partent de la Banshee.
@@ -513,7 +513,6 @@ function fxPower(kind,r,c,opts){
       const node=fxCellNode(r,c,'fx-scream');
       node.innerHTML='<span class="fx-cry"></span><span class="fx-cry fx-cry2"></span><span class="fx-cry fx-cry3"></span>';
       fxMount('over',node,900);
-      if(typeof forgePower==='function')forgePower('banshee',r,c);
       break;
     }
     // LA PÉTRIFICATION : un éclat froid sur la pièce qui vient d'être changée
@@ -639,7 +638,6 @@ function fxCharge(from,to,pieceId){
   }
   // L'onde de choc tombe à l'ARRIVÉE : c'est là que la masse s'arrête.
   fxShockwave(to.r,to.c,'fx-shock-charge');
-  if(typeof forgeCharge==='function')forgeCharge(from,to);
 }
 
 // L'onde de choc : le seul effet qui va chercher une planche dessinée
@@ -685,7 +683,6 @@ function fxPromote(r,c,pieceId){
   }
   motes.innerHTML=html;
   fxMount('over',motes,1400);
-  if(typeof forgePower==='function')forgePower('promo',r,c);
 }
 
 // ----------------------------------------------------------------
@@ -784,9 +781,6 @@ function fxMate(r,c,playerWins){
 
   if(playerWins)fxGoldDissolve();
   else fxWash('fx-wash-ash',1100);
-  // La Forge : le temps ralentit, le roi se fend, l'onde fait le tour du
-  // plateau, puis l'or monte ou la cendre tombe (js/combat-forge.js).
-  if(typeof forgeMate==='function')forgeMate(r,c,playerWins);
 
   _fxMateAt=Date.now();
   _fxMateMs=playerWins?FX_WIN_MS:FX_LOSS_MS;
@@ -851,35 +845,18 @@ function fxGoldDissolve(){
 //    power:'typhon'|'banshee'|'charge'|null}
 // `capAt` est la case de la VICTIME, qui n'est pas toujours celle d'arrivée :
 // une prise en passant se joue une rangée derrière.
-// L'INSTANT DU CONTACT. La pièce qui prend met BOARD_MOVE_MS (200 ms,
-// js/game-render.js) à rejoindre sa victime : l'impact tombait au DÉPART,
-// pendant qu'elle était encore à l'autre bout du plateau, et la prise se
-// lisait comme une explosion à distance. Il tombe maintenant aux trois
-// quarts de la course — c'est aussi l'instant où la Forge fait voler la
-// victime en éclats (FORGE_SHATTER_DELAY, js/combat-forge.js).
-const FX_HIT_MS=150;
-
-// LE DERNIER COUP, retenu un instant pour la Forge : quand une pièce meurt
-// sur la case d'arrivée, ses éclats partent dans l'axe de l'attaque. Le
-// module ne garde rien d'autre de la partie, et rien de plus d'une seconde.
-let _fxLastMove=null;
-function fxLastMove(){return _fxLastMove;}
-
 function fxPlayMove(d){
   if(!fxOn()||!d)return;
-  _fxLastMove={from:d.from,to:d.to,capAt:d.capAt||d.to,pieceId:d.pieceId,at:Date.now()};
   const heavy=!!d.captured||d.power==='charge';
   fxTrail(d.from,d.to,d.pieceId,heavy);
   fxDust(d.from,d.to,d.pieceId);
-  if(typeof forgeComet==='function')forgeComet(d.from,d.to,d.pieceId,heavy);
   if(d.rook){
     fxTrail(d.rook.from,d.rook.to,d.rookPieceId||d.pieceId,false);
     fxDust(d.rook.from,d.rook.to,d.rookPieceId||d.pieceId);
-    if(typeof forgeComet==='function')forgeComet(d.rook.from,d.rook.to,d.rookPieceId||d.pieceId,false);
   }
   if(d.captured){
     const at=d.capAt||d.to;
-    setTimeout(()=>fxImpact(at.r,at.c,d.captured),FX_HIT_MS);
+    fxImpact(at.r,at.c,d.captured);
   }
   // LA CHARGE EST LE SEUL POUVOIR QUI A BESOIN DU TRAJET. Tous les autres
   // s'appliquent autour de la case d'arrivée et se contentent donc de
@@ -960,9 +937,6 @@ function fxCreature(d){
 // lame qui balaie de sa case vers la victime, et le coup qui tombe.
 function fxCleaver(from,to){
   if(!fxOn())return;
-  // Le Boucher ne bouge pas, mais sa victime vole quand même en éclats DANS
-  // L'AXE DU COUPERET : la Forge lit ce coup comme un dernier coup joué.
-  _fxLastMove={from,to,capAt:to,pieceId:'boucher',at:Date.now()};
   const a=fxCenter(from.r,from.c),b=fxCenter(to.r,to.c);
   const node=fxCellNode(to.r,to.c,'fx-chop');
   node.style.setProperty('--rot',(Math.atan2(b.y-a.y,b.x-a.x)*180/Math.PI).toFixed(1)+'deg');

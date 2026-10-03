@@ -403,7 +403,7 @@ function renderMagasinPage(){
 // CE QUE CONTIENT UN COFFRE, DIT EN CLAIR. Le Magasin vendait six coffres et
 // ne disait nulle part ce qu'il y a dedans : il fallait en ouvrir pour le
 // deviner, et la moitié basse de l'écran restait vide. Le tableau lit
-// directement le catalogue (CHESTS, CHEST_PEARLS, CHEST_PITY dans
+// directement le catalogue (CHESTS, CHEST_PEARLS dans
 // js/data-pieces.js) : changer un taux là-bas le change ici, sans rien
 // recopier. Un jeu qui vend des coffres contre une monnaie doit afficher ses
 // chances — c'est une affaire d'honnêteté avant d'être une affaire d'écran.
@@ -431,9 +431,6 @@ function magasinOddsHTML(){
         '<th scope="col">Perles</th><th scope="col" title="Chance de contenir une créature jamais débloquée">Inédite</th>'+
         '<th scope="col" title="Débris magiques (éveil des pouvoirs) : chance et quantité">Débris</th></tr></thead>'+
       '<tbody>'+rows+'</tbody></table></div>'+
-    '<p class="shop-odds-note">Une créature ne sort qu\'à partir de son arène. '+
-      (typeof CHEST_PITY==='number'?'Après '+CHEST_PITY+' coffres sans créature inédite, le suivant en contient une. ':'')+
-      'Les débris ne vont qu\'aux créatures possédées dont le pouvoir dort.</p>'+
   '</section>';
 }
 

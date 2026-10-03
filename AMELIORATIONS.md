@@ -6,7 +6,7 @@ lui-même — règles, pièces, pouvoirs, économie de base — n'est pas touch�
 tout ce qui suit porte sur ce qui l'entoure.
 
 Légende : ✅ fait dans cette passe · 🟡 fait en partie · ⬜ reste à faire
-(avec la raison) · ➖ relevé à l'audit, puis écarté à la vérification (la
+(avec la raison) · ↩️ essayé puis retiré · ➖ relevé à l'audit, puis écarté à la vérification (la
 raison est donnée : on ne corrige pas ce qui n'est pas cassé).
 
 ---
@@ -46,25 +46,14 @@ raison est donnée : on ne corrige pas ce qui n'est pas cassé).
 
 | | Amélioration | Statut |
 |---|---|---|
-| 3.1 | **Un moteur de particules sur canvas** (« la Forge ») posé dans le plateau, en plus des effets DOM : des centaines de particules additives pour le coût d'un seul élément, endormi quand rien ne brûle. | ✅ |
-| 3.2 | **La pièce prise VOLE EN ÉCLATS** : son propre dessin est découpé en fragments qui s'envolent, tournent et retombent — au lieu de se ratatiner. | ✅ |
-| 3.3 | **L'onde traverse les cases** : sur une prise lourde, les cases s'allument en anneaux depuis l'impact. | ✅ |
-| 3.4 | **Le plateau encaisse** : recul dans l'axe de l'attaque, proportionnel à la valeur prise ; sur une prise très lourde, le temps des particules ralentit un instant. | ✅ |
-| 3.5 | **La valeur prise s'affiche** et monte de la case (« +13 » en or pour vous, en rouge pour l'adversaire). | ✅ |
-| 3.6 | **L'échec a son éclair** : un arc électrique crépite de la pièce qui donne échec jusqu'au roi — on voit QUI menace. | ✅ |
-| 3.7 | **Le mat au ralenti** : le temps des particules ralentit, le roi tombé se fend de huit rais de lumière, gerbe d'étincelles et onde sur tout le plateau. | ✅ |
-| 3.8 | **La victoire en poussière d'or, la défaite en cendres** : la dissolution dorée (DOM) reçoit un essaim de particules de la Forge ; une défaite par mat fait tomber des cendres. | ✅ |
-| 3.9 | **Comète de déplacement** : une tête lumineuse suit la pièce, sa traînée d'étincelles teintées de sa classe. | ✅ |
-| 3.10 | Étincelles de canvas sur les grands pouvoirs (Typhon qui aspire, Banshee, charge de l'Éléphant, promotion). | ✅ |
-| 3.11 | **Braises d'ambiance** qui montent lentement du plateau pendant la partie, et s'attisent quand la pendule brûle. | ✅ |
-| 3.12 | Banc d'essai `tools/combat-fx-preview.html` : les nouveaux effets y sont jouables à la main. | ✅ |
+| 3.1 | Un moteur de particules sur canvas (« la Forge ») : pièce prise en éclats, recul du plateau, comète, éclair d'échec, mat au ralenti, or et cendres, braises d'ambiance. | ↩️ essayé puis **retiré à la demande** : trop chargé et trop lourd en partie. Les effets de combat d'origine (`js/combat-fx.js`) sont revenus tels quels. |
 
 ## 4. Cinématiques
 
 | | Amélioration | Statut |
 |---|---|---|
 | 4.1 | **Entrée en combat** : écran fendu en diagonale, deux blasons/sceaux face à face, lame de lumière qui traverse le VS, gerbe d'étincelles au choc. | ✅ |
-| 4.2 | **Issue** : l'or ou les cendres de la Forge montent sous la cinématique d'issue — après un mat seulement (un abandon ou une pendule à zéro n'ont pas de case d'où partir). Les points de guerre, eux, sont dans la fenêtre de verdict (2.7), pas dans la cinématique. | 🟡 |
+| 4.2 | **Issue** : les points de guerre gagnés sont dans la fenêtre de verdict (2.7), pas dans la cinématique d'issue. | 🟡 |
 | 4.3 | Cinématique d'arrivée dans un nouveau rang (aujourd'hui une ligne dans le modal). | ⬜ |
 
 ## 5. Interface, design, fluidité
@@ -92,8 +81,8 @@ raison est donnée : on ne corrige pas ce qui n'est pas cassé).
 
 | | Amélioration | Statut |
 |---|---|---|
-| 7.1 | Le test de fumée couvre les clans (création, sigle unique, adhésion, points de guerre sur une partie classée, butin unique par semaine) et la Forge. | ✅ |
-| 7.2 | `README.md` (Guerre des clans, Forge, menu, ordre de chargement, « Où éditer »), `llms.txt`, `assets/PROMPTS.md` § 10. | ✅ |
+| 7.1 | Le test de fumée couvre les clans (création, sigle unique, adhésion, points de guerre sur une partie classée, butin unique par semaine) et le chargement des bruitages enregistrés. | ✅ |
+| 7.2 | `README.md` (Guerre des clans, menu, ordre de chargement, « Où éditer »), `llms.txt`, `assets/PROMPTS.md` § 10. | ✅ |
 | 7.3 | `sw.js` : monter `CACHE_VERSION` (nouveaux scripts). | ✅ |
 
 ---
@@ -149,3 +138,52 @@ recette dans `SFX_RECIPES` (`js/sfx.js`) — rien d'autre à toucher.
 | `audio/sfx/win.ogg`, `loss.ogg` | `win`, `loss` | Issue : impact grave + chœur pour la victoire, glas pour la défaite |
 | `audio/sfx/war-horn.ogg` | `warhorn` | Cor de guerre (fondation, cri de clan, butin) |
 | `audio/menu-music.mp3` | — | Boucle d'ambiance du menu (2 à 3 min, −18 LUFS) : demande aussi un branchement (6.3) |
+
+---
+
+## 9. Second regard : ce qui pâtit encore à l'œil ou à la fluidité
+
+Relevé après les retours sur ArDoZy/epichessMOI#114 : chaque page capturée en
+téléphone (390 × 844) et en ordinateur (1440 × 900) dans le bac à sable
+`?mock`, et les animations encore actives comptées avec
+`document.getAnimations()`.
+
+### Corrigé dans cette passe
+
+| | Retour | Statut |
+|---|---|---|
+| 9.1 | Les **étincelles** projetées quand on brise un coffre (`.pb-spark`). | ✅ retirées : restent les fissures, la gerbe de lumière, le halo et le voile blanc |
+| 9.2 | La note sous le tableau des taux du Magasin (« Une créature ne sort qu'à partir de son arène… dont le pouvoir dort »). | ✅ retirée |
+| 9.3 | **Double sursaut** à l'arrivée sur la Guerre des clans. `renderReservePage` est appelée deux fois par visite (départ et fin du glissement, `js/pages-nav.js`) et `clanPaint` réécrivait toute la page à chaque appel : chaque carte recréée rejouait son entrée. Même chose une troisième fois quand le serveur répondait. | ✅ le rendu est idempotent (un rendu identique ne touche pas au document), l'entrée ne se joue qu'à l'arrivée, et une mise à jour ultérieure remplace le contenu sans rien rejouer (`.clan-root.is-settled`) |
+| 9.4 | Les **points rouges qui montent** derrière les chiffres de la guerre de la semaine (`.clan-war::before`). | ✅ retirés |
+
+### Fluidité
+
+Mesuré avec `document.getAnimations()` : au menu, de ~40 animations en cours
+à 8 ; en partie, plus aucune hors du plateau.
+
+| | Constat | Statut |
+|---|---|---|
+| 9.5 | **La fenêtre de recherche d'adversaire tournait en permanence.** `#mp-modal` est caché par `visibility:hidden`, qui n'arrête pas une animation : ses 15 animations infinies (braises, dérive du fond, radar, barre de chasse) tournaient du démarrage à la fermeture de l'onglet, partie comprise. | ✅ en pause tant qu'elle est fermée (pseudo-éléments compris) |
+| 9.6 | **Les pages hors cadre gardaient leurs animations infinies** (étoffe et reflet de la bannière de clan, rayons du butin, drapeaux du recrutement…), au menu comme en partie. | ✅ `#nav-track:not(.is-sliding) .nav-page:not(.is-front)` : en pause hors glissement ; pendant le glissement tout vit, la page qui arrive entre déjà animée |
+| 9.7 | **Le menu principal, l'écran le plus chargé** : deux systèmes de particules qui montent (le canvas de braises et six bulles CSS `.ambient-bubbles`), et une orbite de lumière autour du coffre quotidien qui animait le `stroke-dashoffset` de sept ellipses floutées — une propriété de dessin, repeinte à chaque image. | ✅ les bulles sont retirées (les braises restent) ; l'orbite est un calque HTML qui tourne en `transform`, sur le compositeur, sans repeindre son flou |
+| 9.8 | `menu-ambience.js` gardait un `setInterval` de 1,5 s pour toujours, partie comprise. | ✅ retiré : les braises se réveillent depuis `markFront` (js/pages-nav.js, qui dit aussi l'entrée et la sortie de partie) et `fxSetLevel` (l'interrupteur « Effets ») |
+| 9.9 | Après chaque lecture du serveur, la carte du rail et le clan du menu étaient réécrits (blasons SVG neufs) même quand rien n'avait changé. | ✅ `identitySet` (js/accounts.js) : contenu réécrit seulement s'il change |
+| 9.9 bis | Le **rail d'ordinateur** portait un `backdrop-filter:blur(18px)` : un flou toujours à l'écran, recalculé à chaque image où la rangée glisse dessous — la raison exacte pour laquelle la barre du téléphone l'avait déjà perdu. | ✅ fond opaque, sans flou |
+
+### Interface
+
+| | Constat | Statut |
+|---|---|---|
+| 9.10 | **Ordinateur : bande vide de 11 px à droite de tout le jeu** (`html{scrollbar-gutter:stable}` alors que la page racine ne défile jamais). | ✅ gouttière retirée |
+| 9.11 | **Bannière de clan : la hampe dépassait** au-dessus de la carte et se faisait couper par l'arrondi. | ✅ rentrée dans la carte |
+| 9.12 | **Barre d'onglets du téléphone** : « Guerre des clans » sur deux lignes quand les autres tiennent sur une ; le socle de l'onglet actif, levé de 2 px, mordait le haut de la barre. | ✅ l'onglet s'appelle « Clans » (le nom complet reste en `title` et `aria-label`) ; l'onglet actif ne se lève plus |
+| 9.13 | **Couleurs de titre** : « Les Adversaires », « Composition d'armées », « Ce que contiennent les coffres » et l'onglet actif du Classement en vert d'eau, le reste en or. | ✅ tout en or (`.glow-text`, `.rs-sec-title`, `.lb-tab.on`) |
+| 9.14 | **Adversaires** : dix cartes sur douze en rouge « Très au-dessus de vous » pour un nouveau joueur ; ruban « Conseillé » sur le coin et sur « Jamais affronté » ; « ← Retour » sur deux lignes. | ✅ « Très au-dessus » en cuivre ; ruban posé à cheval sur le bord haut ; « ← Retour » sur une ligne |
+| 9.15 | **Classement** : titre « Classement » et onglet « Classement » l'un sous l'autre ; coins de plaque qui dépassaient du bouton OK. | ✅ l'onglet s'appelle « Mondial » ; la plaque suit l'arrondi du bouton |
+| 9.16 | **Partie** : « Annuler coup » en pleine largeur, plus voyant que tout le panneau ; coordonnées du plateau presque illisibles sur les cases claires. Le vide entre « Historique » et « Abandonner » (et la colonne de droite sur ordinateur) est voulu : c'est la place où s'ouvrent le journal et la discussion. | ✅ « Annuler coup » centré à la taille de son libellé (cible de 44 px gardée) ; coordonnées pleine encre, un cran plus grosses, d'une teinte plus contrastée ; ➖ le vide reste |
+| 9.17 | **Cinématique d'entrée** : « VS » coupé par la couture lumineuse, et la gerbe d'étincelles passait dessus. | ✅ disque d'ombre derrière le « VS », gerbe passée sous le texte |
+| 9.18 | **Ordinateur, Magasin** : cartes étirées à 380 px, tableau des taux sur 1 180 px. | ✅ cartes à la largeur de leur image (six sur une rangée dès 1 320 px), tableau limité à 760 px |
+| 9.19 | **Ordinateur, Guerre des clans** : onglets Front / Membres / Journal sur toute la largeur ; front vide réduit à une phrase ; 200 px de vide entre la carte du joueur et les onglets du rail. | ✅ onglets limités à 560 px ; le front vide est une carte qui mène au combat (« Le front est calme », bouton « Au combat », téléphone compris) ; les onglets du rail suivent la carte du joueur |
+| 9.20 | **Composition d'armées, téléphone** : titre sur un rectangle plus sombre que son cadre ; cases vides Monarque / Général sur la moitié de l'écran. | ✅ le cartouche est teint jusqu'au milieu (`fill` du `border-image`) ; les deux cartes majeures prennent 76 % de leur demi-largeur (≈ 55 px rendus au catalogue, toujours plus grandes que celles du bas) |
+| 9.21 | **Le titre « Epic Chess » et son cartouche d'or** en haut du menu principal. | ✅ retirés à la demande ; le nom reste pour les lecteurs d'écran (`<h1 class="sr-only">`) et `--menu-title-h` vaut zéro |

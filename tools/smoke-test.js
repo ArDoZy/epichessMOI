@@ -154,30 +154,18 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
     if(list.length!==1||list[0]!==acc)throw new Error('la liste des comptes ne contient pas le compte créé');
   });
 
-  // LE JEU DIT SON NOM SUR L'ÉCRAN QU'ON OUVRE À CHAQUE PARTIE. C'est la
-  // panne qu'aucun test ne rattrape : rien n'est cassé, il n'y a simplement
-  // plus rien qui dise où l'on est. L'emblème a tenu ce rôle — un sceau de
-  // 52 px qu'il fallait déjà connaître pour le reconnaître —, le titre l'a
-  // remplacé. On vérifie donc qu'il est là, en toutes lettres, tout en haut,
-  // et que le sceau n'y est plus.
-  await step('le menu principal porte le titre du jeu, en haut et en grand',async()=>{
+  // LE MENU NE PORTE NI TITRE NI SCEAU À L'ÉCRAN. Le nom du jeu reste dans
+  // le document, pour les lecteurs d'écran (un h1 .sr-only), mais il
+  // n'occupe rien : la salle peinte dit déjà où l'on est, et le titre
+  // poussait tout le menu vers le bas.
+  await step('le menu principal garde son nom pour les lecteurs d\'écran, sans titre affiché',async()=>{
     const bad=await page.evaluate(()=>{
       const out=[];
-      const t=document.querySelector('.menu-title');
-      if(!t){out.push('aucun titre sur le menu principal');return out;}
-      if(t.textContent.trim()!=='Epic Chess')out.push('titre inattendu : '+t.textContent);
-      if(document.querySelector('.jouer-player .game-emblem'))
-        out.push('le logo est encore sur le menu principal');
-      const st=getComputedStyle(t);
-      if(parseFloat(st.fontSize)<26)out.push('le titre ne fait que '+st.fontSize);
-      if(!/Cinzel/.test(st.fontFamily))out.push('le titre n\'est pas dans la police de titre : '+st.fontFamily);
-      // Tout en haut : au-dessus du pseudo, qui est lui-même au-dessus de
-      // COMBAT.
-      const pseudo=document.getElementById('jouer-name');
-      const combat=document.getElementById('combat-btn');
-      const tb=t.getBoundingClientRect();
-      if(pseudo&&tb.bottom>pseudo.getBoundingClientRect().top+1)out.push('le titre n\'est pas au-dessus du pseudo');
-      if(combat&&tb.bottom>=combat.getBoundingClientRect().top)out.push('le titre n\'est pas au-dessus de COMBAT');
+      const h=document.querySelector('.jouer-player h1');
+      if(!h||h.textContent.trim()!=='Epic Chess')out.push('le menu n\'a plus de h1 « Epic Chess »');
+      else if(h.getBoundingClientRect().width>1)out.push('le titre du menu est encore affiché');
+      if(document.querySelector('.menu-title'))out.push('le titre décoré est encore dans le menu');
+      if(document.querySelector('.jouer-player .game-emblem'))out.push('le logo est encore sur le menu principal');
       return out;
     });
     if(bad.length)throw new Error(bad.join(' · '));
@@ -1213,14 +1201,12 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
       return{
         rail:!!document.getElementById('jouer-chests'),
         perles:/perles/i.test(col.textContent),
-        titre:(document.querySelector('.menu-title')||{}).textContent||'',
         emblem:!!document.querySelector('.jouer-player .game-emblem'),
         boutons:['jouer-daily','jouer-colonne','jouer-rangee'].filter(id=>!document.getElementById(id)),
       };
     });
     if(menu.rail)throw new Error('le rail de coffres est encore sur le menu principal');
     if(menu.perles)throw new Error('le solde de perles est encore dans la colonne du menu');
-    if(menu.titre.trim()!=='Epic Chess')throw new Error('le titre du menu n\'est pas « Epic Chess » : '+menu.titre);
     if(menu.emblem)throw new Error('le logo est encore sur le menu principal');
     if(menu.boutons.length)throw new Error('boutons absents du menu : '+menu.boutons.join(', '));
 
@@ -4629,59 +4615,6 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
       renderMenuIdentity();
       if(document.getElementById('jouer-clan'))out.push('le clan reste sous le pseudo après l\'avoir quitté');
       goToMainMenu();
-      return out;
-    });
-    if(r.length)throw new Error(r.join(' · '));
-  });
-
-  // ================================================================
-  // LA FORGE (js/combat-forge.js)
-  // ================================================================
-  // Le plateau du jeu est masqué hors partie (largeur nulle) : le test pose
-  // un plateau temporaire de 400 px, le temps de briser une Dame, puis rend
-  // son identifiant au vrai.
-  await step('la Forge fait voler la pièce prise en éclats, et l\'interrupteur la coupe',async()=>{
-    const r=await page.evaluate(async()=>{
-      const out=[];
-      if(typeof forgeShatter!=='function')return['js/combat-forge.js n\'est pas chargé'];
-      const real=document.getElementById('game-board');
-      if(real)real.id='game-board-hors-test';
-      const board=document.createElement('div');
-      board.id='game-board';board.className='game-board';
-      board.style.cssText='position:fixed;left:0;top:0;width:400px;height:400px;z-index:99999';
-      document.body.appendChild(board);
-      try{
-        fxSetLevel(1);fxSetFlipped(false);forgeManual(true);
-        const mk=()=>{const n=document.createElement('div');n.className='gc-piece';n.dataset.r=3;n.dataset.c=3;n._pid='dame';
-          n.innerHTML='<span class="gc-art">'+pieceSVG('dame','b')+'</span>';board.appendChild(n);return n;};
-        const n=mk();
-        if(!forgeShatter(n))out.push('la Forge refuse une pièce qui meurt');
-        await new Promise(res=>setTimeout(res,FORGE_SHATTER_DELAY+120));
-        const s=forgeStats();
-        if(!(s.shard>2))out.push('la pièce prise ne vole pas en éclats ('+JSON.stringify(s)+')');
-        if(!s.spark)out.push('l\'impact ne projette aucune étincelle');
-        if(!s.text)out.push('la valeur prise ne monte pas de la case');
-        if(n.style.visibility!=='hidden')out.push('la pièce brisée reste visible sous ses propres éclats');
-        const cvs=[...board.querySelectorAll('canvas.fx-forge')];
-        if(cvs.length!==2)out.push('la Forge n\'a pas ses deux étages ('+cvs.length+')');
-        cvs.forEach(cv=>{if(getComputedStyle(cv).pointerEvents!=='none')out.push('un canvas de la Forge reçoit les clics');});
-        const zs=cvs.map(cv=>getComputedStyle(cv).zIndex).sort().join(',');
-        if(zs!=='1,5')out.push('les étages de la Forge ne sont pas sous et devant les pièces ('+zs+')');
-        forgeAdvance(3000);
-        if(Object.keys(forgeStats()).some(k=>k!=='amb'))out.push('des particules survivent à leur durée de vie');
-        forgeCheck({r:7,c:4},[{r:3,c:4}]);
-        if(!forgeStats().bolt)out.push('l\'échec ne lance pas d\'éclair');
-        forgeAdvance(2000);
-        fxSetLevel(0);
-        const n2=mk();
-        if(forgeShatter(n2))out.push('le réglage « Effets » éteint laisse la Forge briser une pièce');
-        forgeCheck({r:7,c:4},[{r:3,c:4}]);forgeMate(0,4,true);
-        if(Object.keys(forgeStats()).some(k=>k!=='amb'))out.push('le réglage « Effets » éteint laisse passer des particules');
-      }finally{
-        fxSetLevel(1);forgeManual(false);
-        board.remove();
-        if(real)real.id='game-board';
-      }
       return out;
     });
     if(r.length)throw new Error(r.join(' · '));

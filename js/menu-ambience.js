@@ -16,7 +16,7 @@
 // CE QUE ÇA COÛTE : rien quand on ne regarde pas le menu. La boucle ne
 // tourne que si la page « Combat » est la page de devant, hors partie,
 // onglet visible, mouvement non réduit et réglage « Effets » allumé — le
-// même interrupteur que la Forge. Trente images par seconde, quarante
+// même interrupteur que les effets de combat. Trente images par seconde, quarante
 // braises au plus.
 //
 // Dépendances : aucune obligatoire (fxGetLevel, combat-fx.js, facultatif).
@@ -143,11 +143,13 @@ function menuParallaxWire(){
   });
 }
 
-// La page de devant change, l'onglet revient, la partie se termine : on
-// regarde s'il faut rallumer. Un battement lent suffit à rattraper tous les
-// cas sans s'accrocher à la navigation (js/pages-nav.js) ni à la partie.
+// On regarde s'il faut rallumer quand la page de devant change (markFront,
+// js/pages-nav.js — c'est aussi elle qui dit l'entrée et la sortie d'une
+// partie), quand l'interrupteur « Effets » bouge (fxSetLevel,
+// js/combat-fx.js) et quand l'onglet revient. Il y avait ici un battement
+// de 1,5 s qui tournait pour toujours, partie comprise, pour rattraper ces
+// trois cas à l'aveugle.
 if(typeof window!=='undefined'){
   document.addEventListener('visibilitychange',menuAmbienceWake);
   window.addEventListener('load',()=>{menuParallaxWire();menuAmbienceWake();});
-  setInterval(()=>{menuParallaxWire();menuAmbienceWake();},1500);
 }

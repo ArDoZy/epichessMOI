@@ -263,9 +263,8 @@ function watchDeskMode(){
 // (`login-emblem`…) ne règlent que la taille et l'encre. Ajouter un
 // emplacement = poser une div `game-emblem`, rien de plus.
 // AUCUN ÉCRAN N'EN PORTE ACTUELLEMENT. Le menu principal, qui était le
-// dernier, dit maintenant le nom du jeu en toutes lettres (« Epic Chess »,
-// .menu-title dans index.html) : un sceau de 52 px ne pouvait pas le faire
-// pour qui ne le connaissait pas déjà. Le tracé reste ici, et reste la source
+// dernier, ne porte plus ni sceau ni titre : la salle peinte suffit. Le
+// tracé reste ici, et reste la source
 // de favicon.svg, qui le montre dans l'onglet — et mountEmblems reste le
 // chemin pour le reposer quelque part le jour où on le voudra.
 function mountEmblems(){

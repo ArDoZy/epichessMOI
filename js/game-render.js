@@ -588,10 +588,6 @@ function syncPieces(gs,boardEl,flipped,board){
       layer.appendChild(node);
       _pieceNodes.set(id,node);
       setTimeout(()=>node.classList.remove('gc-born'),BOARD_MOVE_MS);
-      // La Forge « chauffe » le dessin de la pièce dès sa naissance : le jour
-      // où elle sera prise, ses éclats ne devront rien attendre
-      // (forgeWarm, js/combat-forge.js).
-      if(typeof forgeWarm==='function')forgeWarm(node);
     }else{
       if(node._art!==art){
         // Promotion : même pièce (même id), autre créature. Le nœud reste,
@@ -684,19 +680,14 @@ function syncPieces(gs,boardEl,flipped,board){
     // Une pièce morte sous le voile s'efface sans poussière : la poussière
     // dirait qu'il y avait quelqu'un.
     if(node.classList.contains('gc-fogged')){node.remove();return;}
-    // LA PIÈCE PRISE VOLE EN ÉCLATS quand la Forge est là (js/combat-forge.js) :
-    // elle prend la mort à sa charge — son propre dessin, découpé, part dans
-    // l'axe du coup à l'instant du contact. Sans la Forge, ou effets coupés,
-    // l'agonie d'avant (.gc-dying) reprend la main.
-    const shattered=(typeof forgeShatter==='function')&&forgeShatter(node);
-    if(!shattered)node.classList.add('gc-dying');
+    node.classList.add('gc-dying');
     // LA POUSSIÈRE EST POSÉE ICI, ET C'EST CE QUI LA REND UNIVERSELLE. Ce
     // point de passage voit TOUTE pièce qui quitte le plateau, sans savoir
     // pourquoi : la prise ordinaire, les victimes collatérales du Typhon, la
     // case effacée par l'Éléphant de guerre, et tout pouvoir qui viendra. Le module
     // d'effets n'a donc pas un seul pouvoir à connaître (js/combat-fx.js).
     if(typeof fxPuff==='function')fxPuff(+node.dataset.r,+node.dataset.c,node._pid);
-    setTimeout(()=>{if(node.parentNode)node.parentNode.removeChild(node);},shattered?BOARD_DEATH_MS+160:BOARD_DEATH_MS);
+    setTimeout(()=>{if(node.parentNode)node.parentNode.removeChild(node);},BOARD_DEATH_MS);
   });
 
   _pieceAt=at;
@@ -816,28 +807,6 @@ function markMoveStyle(node,fromR,fromC,toR,toC,pieceId,flipped){
   },BOARD_MOVE_MS+320);
 }
 
-// QUI DONNE ÉCHEC. Chaque pièce adverse est interrogée sur ses coups bruts
-// (generateMovesRaw, le générateur du moteur) : celles dont un coup tombe
-// sur la case du roi le menacent. Seize pièces au plus, une fois par échec —
-// c'est gratuit, et ça ne connaît aucune créature : la règle de chacune est
-// déjà dans le moteur. Les pièces cachées (voile de Nyx, Ombre invisible) ne
-// sont pas nommées : l'éclair trahirait leur case.
-function checkersOf(gs,kc,kingColor){
-  const out=[];
-  if(typeof generateMovesRaw!=='function'||!gs||!gs.board)return out;
-  const hidden=new Set();
-  try{nyxFogLive(gs).forEach(k=>hidden.add(k));}catch(e){}
-  try{if(typeof ombreHiddenLive==='function')ombreHiddenLive(gs,gs.board).forEach(k=>hidden.add(k));}catch(e){}
-  for(let r=0;r<8;r++)for(let c=0;c<8;c++){
-    const p=gs.board[r][c];
-    if(!p||p.color===kingColor||hidden.has(r+','+c))continue;
-    let mv=[];
-    try{mv=generateMovesRaw(gs.board,r,c,gs)||[];}catch(e){mv=[];}
-    if(mv.some(m=>m.r===kc.r&&m.c===kc.c))out.push({r,c});
-  }
-  return out;
-}
-
 function renderGame(gs){
   syncGameButtons(gs);
   if(gs.historyView!==null){updateHistoryNav();return;}
@@ -849,8 +818,6 @@ function renderGame(gs){
   // Les effets ne DEVINENT pas l'orientation, ils la reçoivent : un joueur
   // des noirs verrait sinon ses éclats sur la case symétrique de la prise.
   if(typeof fxSetFlipped==='function')fxSetFlipped(flipped);
-  // La Forge : ses deux canvas, et les braises d'ambiance (js/combat-forge.js).
-  if(typeof forgeTouch==='function')forgeTouch();
   paintBoardCells(gs);
   syncPieces(gs,boardEl,flipped,stepViewBoard(gs));
   if(typeof applyBoardSkin==='function')applyBoardSkin();
@@ -1987,13 +1954,7 @@ function updateStatus(gs){
         const kc=fxKingCell(gs.board,t);
         // Un roi caché par le voile de Nyx est en échec, mais on ne montre
         // pas OÙ : la barre de statut le dit, le plateau se tait.
-        if(kc&&!nyxFogLive(gs).has(kc.r+','+kc.c)){
-          fxCheck(kc.r,kc.c);
-          // L'ÉCLAIR D'ÉCHEC (js/combat-forge.js) : il part de chaque pièce
-          // qui menace le roi. Une menace cachée (voile de Nyx, Ombre) ne
-          // lance pas d'éclair — il dirait où elle se tient.
-          if(typeof forgeCheck==='function')forgeCheck(kc,checkersOf(gs,kc,t));
-        }
+        if(kc&&!nyxFogLive(gs).has(kc.r+','+kc.c))fxCheck(kc.r,kc.c);
       }
     }
   }

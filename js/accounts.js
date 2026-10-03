@@ -610,7 +610,17 @@ function renderMenuClan(nameEl){
   }
   const c=ECP&&ECP.clan;
   el.setAttribute('aria-label','Mon clan : '+(c?c.name:''));
-  el.innerHTML=html+'<span class="jouer-clan-name">'+escH(c?c.name:'')+'</span>';
+  identitySet(el,html+'<span class="jouer-clan-name">'+escH(c?c.name:'')+'</span>');
+}
+
+// Le menu et le rail se redessinent après chaque lecture du serveur (voir
+// clanPaintRail, js/clans.js), le plus souvent pour rien : on ne réécrit le
+// contenu que s'il a changé. Les blasons portent des identifiants neufs à
+// chaque appel (blazonSVG, js/blason.js), qu'on ignore pour comparer.
+function identitySet(el,html){
+  const sig=html.replace(/blz\d+/g,'blz');
+  if(el._sig===sig)return;
+  el._sig=sig;el.innerHTML=html;
 }
 
 // LA CARTE DU JOUEUR, EN HAUT DU RAIL D'ORDINATEUR. Le rail centrait ses
@@ -636,13 +646,13 @@ function renderRailIdentity(){
   const letter=escH(String(CUR_ACC).trim().charAt(0).toUpperCase()||'?');
   const clan=(typeof clanBriefHTML==='function')?clanBriefHTML('clan-brief-rail'):'';
   el.setAttribute('aria-label','Mon compte : '+CUR_ACC);
-  el.innerHTML=
+  identitySet(el,
     '<span class="acc-medal rail-id-medal" style="--medal-c:'+rank.color+'"><span class="acc-medal-letter">'+letter+'</span></span>'+
     '<span class="rail-id-txt">'+
       '<span class="rail-id-name">'+escH(CUR_ACC)+'</span>'+
       '<span class="rail-id-rank"><span style="color:'+rank.color+'">'+escH(rank.name)+'</span> · '+elo+' ELO</span>'+
       (clan?'<span class="rail-id-clan">'+clan+'</span>':'')+
-    '</span>';
+    '</span>');
 }
 
 // ----------------------------------------------------------------

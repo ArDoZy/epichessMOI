@@ -114,6 +114,13 @@ let _clanSearchTid=null;
 // ----------------------------------------------------------------
 function renderReservePage(){
   if(!CUR_ACC)return;
+  // UNE ARRIVÉE, UNE SEULE ENTRÉE. pages-nav.js appelle cette fonction deux
+  // fois par visite : au départ du glissement, page encore hors du cadre, et
+  // à l'arrivée, page devenue `is-front`. Seul le premier appel est une
+  // arrivée : c'est lui qui rejoue l'entrée des cartes. Le second retombe
+  // sur un rendu identique et ne touche à rien (voir clanPaint).
+  const pg=clanHost()&&clanHost().closest('.nav-page');
+  if(pg&&!pg.classList.contains('is-front'))_clanEnter=true;
   clanPaint();
   if(Date.now()-_clan.at>15000&&!_clan.loading)clanRefresh();
 }
@@ -179,16 +186,46 @@ function clanPaintBusy(){
 // ----------------------------------------------------------------
 function clanHost(){return document.getElementById('clan-root');}
 
+// LE RENDU EST IDEMPOTENT, ET L'ENTRÉE NE SE JOUE QU'UNE FOIS. Réécrire la
+// page à chaque appel recréait toutes les cartes, et chaque carte recréée
+// rejouait son entrée (clanRowIn, clanBlzIn…) : la page sursautait deux
+// fois par visite, puis une troisième quand le serveur répondait. Désormais :
+//   - un rendu identique au précédent ne touche pas au document ;
+//   - un rendu qui change de nature (squelette → clan, clan → recrutement)
+//     ou une arrivée sur la page jouent l'entrée ;
+//   - tout autre rendu (le serveur a répondu, un geste a abouti) remplace
+//     le contenu sans rien rejouer : `is-settled` coupe les entrées
+//     (css/style.css). Un changement d'onglet ne fait entrer que le panneau.
+let _clanEnter=false,_clanPainted='',_clanKind='',_clanTabShown='';
 function clanPaint(){
   const host=clanHost();if(!host)return;
   const m=_clan.mine;
-  let html;
-  if(!m&&_clan.err)html=clanErrorHTML(_clan.err);
-  else if(!m)html=clanSkeletonHTML();
-  else if(m.clan)html=clanMineHTML(m);
-  else html=clanLobbyHTML(m);
-  host.innerHTML=html;
+  let html,kind;
+  if(!m&&_clan.err){html=clanErrorHTML(_clan.err);kind='err';}
+  else if(!m){html=clanSkeletonHTML();kind='skel';}
+  else if(m.clan){html=clanMineHTML(m);kind='mine';}
+  else{html=clanLobbyHTML(m);kind='lobby';}
   host.classList.toggle('is-busy',!!_clan.busy);
+  const enter=_clanEnter||kind!==_clanKind;
+  _clanEnter=false;
+  // Chaque blason porte des identifiants neufs (blz12c, blz12g… voir
+  // blazonSVG, js/blason.js) : deux rendus du même clan ne diffèrent que
+  // par eux. On les ignore pour comparer.
+  const sig=html.replace(/blz\d+/g,'blz');
+  if(sig===_clanPainted&&host.firstChild){
+    // Même contenu, mais une arrivée : on rejoue l'entrée sur les cartes en
+    // place. Couper puis rendre les animations les fait repartir de zéro.
+    if(enter){
+      host.classList.add('is-settled');
+      void host.offsetWidth;
+      host.classList.remove('is-settled','is-tabbing');
+    }
+    return;
+  }
+  host.classList.toggle('is-settled',!enter);
+  host.classList.toggle('is-tabbing',!enter&&_clan.tab!==_clanTabShown);
+  host.innerHTML=html;
+  _clanPainted=sig;_clanKind=kind;_clanTabShown=_clan.tab;
   clanWire(host);
   clanTickCountdowns();
 }
@@ -427,7 +464,15 @@ function clanFrontHTML(war,mineId,withTitle){
   const top=rows.length?Math.max(1,rows[0].points|0):1;
   let h='<section class="clan-sec">';
   if(withTitle)h+='<div class="rs-sec-title">Le front de la semaine</div>';
-  if(!rows.length)h+='<p class="lb-empty">Aucun clan n\'a encore marqué de point cette semaine. Une victoire classée suffit à ouvrir le front.</p>';
+  // Le front vide n'est plus une phrase seule au milieu de la page : une
+  // carte, qui dit ce qui l'ouvre et y mène d'un geste.
+  if(!rows.length)h+='<div class="clan-front-empty">'+
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+
+        '<path d="M14.5 17.5 3 6V3h3l11.5 11.5"/><path d="m13 19 6-6"/><path d="m16 16 4 4"/><path d="m19 21 2-2"/>'+
+        '<path d="M14.5 6.5 18 3h3v3l-3.5 3.5"/><path d="m5 14 4 4"/><path d="m7 17-3 3"/><path d="m3 19 2 2"/></svg>'+
+      '<b>Le front est calme</b>'+
+      '<p>Aucun clan n\'a encore marqué de point cette semaine. Une victoire classée suffit à l\'ouvrir.</p>'+
+      '<button class="btn btn-gold" data-clan="fight">Au combat</button></div>';
   else h+='<div class="clan-front">'+rows.map(r=>{
     const pct=Math.max(3,Math.round((r.points|0)/top*100));
     return '<button class="clan-front-row'+(r.id===mineId?' is-mine':'')+(r.rank<=3?' top'+r.rank:'')+'" data-clan="view" data-id="'+escH(r.id)+'" style="--clan-c:'+clanColor(r.blazon)+'">'+
@@ -569,6 +614,7 @@ function clanOnAction(act,el,ev){
   const id=el.getAttribute('data-id');
   switch(act){
     case 'retry':clanRefreshSoon();break;
+    case 'fight':if(typeof goToPage==='function')goToPage('jouer');break;
     case 'tab':_clan.tab=el.getAttribute('data-tab');clanPaint();break;
     case 'found':{
       if(el.getAttribute('aria-disabled')==='true'){
