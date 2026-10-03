@@ -11,27 +11,28 @@
        Le tracé est écrit dans un carré de 100 (mis à l'échelle 0.64 ci-dessous)
        et REPRIS À L'IDENTIQUE par EMBLEM_SVG (js/main.js) : une seule
        géométrie, deux fichiers, l'onglet et le jeu montrent la même chose.
-       Couleurs reprises des variables de css/style.css : fond ardoise #0e1216,
-       laiton #c19a45, reflets #e6c576, potion vert-de-gris #2fb197. -->
-  <rect width="64" height="64" rx="14" fill="#0e1216"/>
+       Couleurs reprises de css/style.css (direction « Nuit et Or ») : fond de
+       nuit #0b1018, or #c9a24f, reflets #ecca82, potion au cyan d'arcane de
+       l'Alchimiste #4fc1cc. -->
+  <rect width="64" height="64" rx="14" fill="#0b1018"/>
   <g transform="scale(.64)">
     <!-- LE SCEAU : anneau extérieur (le seul trait épais, celui qui survit à
          16 px), filet intérieur, et couronne de 24 graduations obtenue par un
          cercle pointillé — circonférence 2π×35,3 ≈ 221,8, pas de 9,24. -->
-    <circle cx="50" cy="52" r="38" fill="none" stroke="#c19a45" stroke-width="3"/>
-    <circle cx="50" cy="52" r="32.5" fill="none" stroke="#c19a45" stroke-width="1.2" opacity=".5"/>
-    <circle cx="50" cy="52" r="35.3" fill="none" stroke="#c19a45" stroke-width="2.4"
+    <circle cx="50" cy="52" r="38" fill="none" stroke="#c9a24f" stroke-width="3"/>
+    <circle cx="50" cy="52" r="32.5" fill="none" stroke="#c9a24f" stroke-width="1.2" opacity=".5"/>
+    <circle cx="50" cy="52" r="35.3" fill="none" stroke="#c9a24f" stroke-width="2.4"
             stroke-dasharray="1 8.24" opacity=".45"/>
     <!-- LE BOUILLON : segment circulaire sous la corde y=66 (demi-largeur
          √(32,5²−14²) ≈ 29,33), et le trait clair qui lui donne son niveau. -->
-    <path d="M20.67 66A32.5 32.5 0 0 0 79.33 66Z" fill="#2fb197" opacity=".92"/>
-    <path d="M20.67 66h58.66" fill="none" stroke="#8ff0dc" stroke-width="1.1" opacity=".5" stroke-linecap="round"/>
-    <circle cx="28.5" cy="72" r="2.3" fill="#eafffb" opacity=".5"/>
-    <circle cx="70" cy="69" r="1.6" fill="#eafffb" opacity=".42"/>
+    <path d="M20.67 66A32.5 32.5 0 0 0 79.33 66Z" fill="#4fc1cc" opacity=".92"/>
+    <path d="M20.67 66h58.66" fill="none" stroke="#b4f2f6" stroke-width="1.1" opacity=".5" stroke-linecap="round"/>
+    <circle cx="28.5" cy="72" r="2.3" fill="#effdff" opacity=".5"/>
+    <circle cx="70" cy="69" r="1.6" fill="#effdff" opacity=".42"/>
     <!-- LE MONARQUE, d'une seule pièce et d'une seule couleur : couronne à
          trois pointes, collerette, robe évasée, plinthe, socle. Le socle
          plonge de 1,8 px sous la surface : la pièce SORT du liquide. -->
-    <g fill="#e6c576">
+    <g fill="#ecca82">
       <path d="M39.6 34.2 37.6 24.6l6 4.4L50 22.4l6.4 6.6 6-4.4-2 9.6Z"/>
       <rect x="39.9" y="33.6" width="20.2" height="4.6" rx="2.2"/>
       <path d="M44 38.2c-.4 6.4-2.6 12.6-6.2 18.4h24.4c-3.6-5.8-5.8-12-6.2-18.4Z"/>
@@ -39,8 +40,8 @@
       <rect x="32.6" y="61.4" width="34.8" height="6.4" rx="2.6"/>
     </g>
     <!-- Gemme au sommet et clous aux flancs : un objet forgé, pas un cercle. -->
-    <path d="M50 8.6 54.4 14 50 19.4 45.6 14Z" fill="#e6c576"/>
-    <circle cx="12" cy="52" r="2.6" fill="#e6c576"/>
-    <circle cx="88" cy="52" r="2.6" fill="#e6c576"/>
+    <path d="M50 8.6 54.4 14 50 19.4 45.6 14Z" fill="#ecca82"/>
+    <circle cx="12" cy="52" r="2.6" fill="#ecca82"/>
+    <circle cx="88" cy="52" r="2.6" fill="#ecca82"/>
   </g>
 </svg>
