@@ -537,7 +537,12 @@ function openPieceSheet(pieceId){
   pcardCloseAll();
   const accent=CLASS_COLOR_VARS[p.class]||'var(--accent2)';
   sheet.style.setProperty('--pcls',accent);
-  document.getElementById('psheet-logo').innerHTML=pieceIcon(p.id,'n');
+  // L'EN-TÊTE PORTE LE PORTRAIT DE LA CRÉATURE, et non plus sa silhouette de
+  // plateau : la fiche est l'endroit où l'on fait connaissance avec elle. Le
+  // repli sur le dessin vectoriel est celui de la carte (pieceCardArtHTML).
+  const logo=document.getElementById('psheet-logo');
+  logo.className='psheet-logo '+pieceRarityClass(p);
+  logo.innerHTML=pieceCardArtHTML(p);
   document.getElementById('psheet-name').textContent=p.name;
   const ownable=(typeof isOwnablePiece==='function')&&isOwnablePiece(p.id);
   const have=(ownable&&typeof invCount==='function')?invCount(p.id):0;

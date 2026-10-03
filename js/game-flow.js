@@ -208,6 +208,11 @@ function startGame(colorAlreadyChosen,multiplayer,tutoCfg){
   // l'adversaire n'est peut-être plus le même.
   if(typeof gamePanelClose==='function')gamePanelClose();
   if(typeof mpChatReset==='function')mpChatReset();
+  // SUR ORDINATEUR, LE JOURNAL EST TOUJOURS LÀ. La colonne de droite a la
+  // place de le montrer en permanence (comme sur tous les sites d'échecs) :
+  // un bouton à cliquer pour lire les coups, sur 900 px de haut presque
+  // vides, était un geste de téléphone posé sur un grand écran.
+  if(document.body.classList.contains('desk')&&typeof gamePanelOpen==='function')gamePanelOpen('history');
   updateGamePlayerBars();
   renderGame(GS);updateStatus(GS);updateHistoryNav();
   setTimeout(()=>{buildGameLabels(GS);renderGame(GS);},80);

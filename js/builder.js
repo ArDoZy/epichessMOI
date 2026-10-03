@@ -124,10 +124,10 @@ function wireSlotDragSwap(g){
 const updStats=()=>{
   const v=getVal(),over=v>24;
   document.getElementById('s-val').textContent=v+' / 24';
-  // Le dépassement se lit sur le nombre lui-même, qui vire à la couleur de
-  // tension : la jauge qui doublait cette information a été retirée.
+  // La jauge sous le nombre (--bd-pct, voir .bd-budget) dit ce qu'il reste à
+  // dépenser ; au-delà de 24, le nombre et la jauge virent à la braise.
   const box=document.getElementById('army-box');
-  if(box)box.classList.toggle('bd-over',over);
+  if(box){box.classList.toggle('bd-over',over);box.style.setProperty('--bd-pct',(v/24).toFixed(3));}
   document.getElementById('b-validate').disabled=!armyValid()||over;
 };
 const updAll=()=>{updSlots();renderCards();updStats();};
