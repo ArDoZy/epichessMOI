@@ -3147,7 +3147,16 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
       else{
         if(/élargit|niveau/i.test(note.textContent))
           out.push('la note explique encore la fenêtre d\'appariement : « '+note.textContent.trim()+' »');
-        if(!note.textContent.trim())out.push('la note de recherche est vide');
+        // Elle se tait au début (« Recherche d'adversaire en cours » répétait
+        // le titre) mais garde sa ligne, et parle avant le repli sur le
+        // laboratoire.
+        if(note.textContent!=='\u00a0'&&note.textContent.trim())
+          out.push('la note répète le titre dès le départ : « '+note.textContent.trim()+' »');
+        if(!note.textContent.length)out.push('la note de recherche a perdu sa ligne : le radar sautera quand elle parlera');
+        mpRenderSearch(MP_BOT_AFTER_S-10,0,0);
+        if(!/laboratoire/.test(note.textContent))
+          out.push('la note n\'annonce pas l\'adversaire du laboratoire : « '+note.textContent.trim()+' »');
+        mpRenderSearch(0,0,0);
         // Et ce qu'elle dit au premier instant est déjà ce que mpRenderSearch
         // écrira : pas de phrase intermédiaire à voir passer.
         const avant=note.textContent.trim();
