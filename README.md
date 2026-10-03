@@ -1,9 +1,9 @@
 # Epic Chess : Architecture du projet
 
 Ce projet est un jeu d'échecs variant ("Epic Chess") en HTML/CSS/JS pur,
-**sans build step, sans modules ES, sans dépendance externe** (hors polices
-Google Fonts). Il s'ouvre en double-cliquant sur `index.html`, aucun serveur
-n'est nécessaire.
+**sans build step, sans modules ES, sans dépendance externe** — les polices
+elles-mêmes sont servies par le jeu (`assets/fonts/`). Il s'ouvre en
+double-cliquant sur `index.html`, aucun serveur n'est nécessaire.
 
 ## Pourquoi cette architecture
 
@@ -58,13 +58,16 @@ epic-chess/
 │   ├── PROMPTS.md           # Les ~60 planches du décor et leurs prompts
 │   ├── adversaires/         # <id>.png, un portrait par adversaire.
 │   │                        #  Absent = sceau SVG procédural.
+│   ├── fonts/               # Cinzel (titres), Inter (interface), Crimson
+│   │                        #  Pro (prose), en woff2 variables, licence OFL.
+│   │                        #  Plus aucune requête vers Google Fonts.
 │   ├── backgrounds/         # Un fond par écran (menu, pages de la rangée,
-│   │                        #  Lore, table sous le plateau). Affichés à
-│   │                        #  26–44 %, centre éteint au masque radial.
+│   │                        #  Lore, table sous le plateau), sous un voile
+│   │                        #  de nuit en dégradé (--page-scrim).
 │   ├── banners/             # Bandeaux de titre de page (le texte reste du
 │   │                        #  texte : la planche ne porte aucun mot)
-│   ├── ui/                  # Cadre du plateau, ornement d'angle, socle, et
-│   │                        #  les deux textures de métal des boutons
+│   ├── ui/                  # Emblèmes peints de la barre d'onglets, cadre
+│   │                        #  de l'arène, plaque COMBAT, cadre du plateau
 │   ├── fx/                  # Halos, ondes, braises, éclats — TOUS sur fond
 │   │                        #  noir, fondus en `screen` (transparence
 │   │                        #  gratuite, cf. le halo des coffres)
@@ -221,21 +224,29 @@ epic-chess/
 Deux choses tiennent l'apparence du jeu, et elles sont chacune à UN seul
 endroit de `css/style.css`.
 
-**La palette, dans `[THEME]`.** Trois rôles étanches, et c'est ce qui rend
-l'interface lisible d'un coup d'œil : des SURFACES froides et neutres
-(ardoise) qui ne réclament aucune attention, une COULEUR VIVE unique
-(`--accent2`, un vert-de-gris de cuivre oxydé) réservée à l'action en
-cours, et un LAITON (`--gold`) réservé à ce qui se mérite. Ces trois rôles
-ne se mélangent jamais.
+**La palette, dans `[THEME]` : « Nuit et Or ».** Le menu, les coffres, les
+médaillons et les cartes de créatures sont peints dans une seule lumière — de
+l'or martelé sur une nuit bleu-noir —, et toute l'interface en reprend la
+matière. Quatre rôles, qui ne se mélangent pas :
 
-La v3 avait raison sur les rôles et tort d'un cran sur la LUMIÈRE : le fond
-descendait à `#0e1216`, à trois points du noir, et l'écart avec les
-surfaces — neuf points — ne se voyait plus dès qu'un téléphone baissait sa
-luminosité. Tout est remonté d'un cran, **sans changer un seul rôle** :
-l'atelier passe de la nuit noire au soir éclairé à la lampe. C'est aussi ce
-qui rend les images possibles — une illustration posée sur `#0e1216` doit
-être éteinte à 30 % d'opacité pour ne pas trouer l'écran, autant ne pas la
-dessiner.
+- des SURFACES de laque nocturne (`--panel-bg`) qui se détachent du fond par
+  leur LISERÉ D'OR en dégradé (`--panel-edge`), et non par un gris plus
+  clair. Un panneau s'écrit toujours `border:1px solid transparent;
+  background:var(--panel-bg) padding-box,var(--panel-edge) border-box` :
+  c'est la seule façon d'avoir un liseré en dégradé qui suive l'arrondi ;
+- un OR unique (`--gold`, `--gold2`, `--metal-gold` pour le métal des
+  boutons), pour ce qui se mérite ET pour l'action principale — c'est la
+  couleur du bouton COMBAT ; la sélection et le survol se disent aussi en or ;
+- un IVOIRE chaud pour le texte (`--text`), jamais un blanc bleuté ;
+- un CYAN d'arcane (`--accent2`), rare, réservé à la magie de l'Alchimiste :
+  son tutoriel, le liquide de son sceau, la recherche d'adversaire en ligne.
+
+Les composants communs sont à un seul endroit de `[COMMON]` : les quatre
+boutons (`.btn-primary`/`.btn-gold`, `.btn-ghost`, `.btn-danger`,
+`.btn-text`), l'intertitre `.ec-sec` (losange, capitales, filet d'or) et le
+titre de page `.ec-page-title` (capitales gravées en or). Les fenêtres
+partagent `--modal-bg`, `--modal-shadow` et le voile `--scrim`. Il n'y a
+plus de thème clair (aucun réglage ne l'allumait).
 
 **Les planches, dans `[ART]`.** Une soixantaine d'emplacements d'images
 sont câblés — fonds d'écran, bannières de titre, cadre du plateau,
@@ -325,8 +336,10 @@ de fumée — les renommer ne changerait rien à l'écran.
 deux onglets en tête, qui faisaient passer de la colonne à la rangée : une
 barre de navigation permanente sur un écran où l'on vient faire UNE chose, et
 que le menu principal — un bouton par voie — ouvrait déjà sur la bonne. Il ne
-reste qu'un titre (`#rw-title`, posé par `rewardsSetVoie`), et « OK » ramène au
-menu : c'est le seul chemin de l'une à l'autre.
+reste qu'un titre (`#rw-title`, posé par `rewardsSetVoie`), et le jeton de
+retour (`.ec-back`, à gauche du titre) ramène au menu : c'est le seul chemin de
+l'une à l'autre. Toutes les pages secondaires se quittent par ce même jeton,
+dans un en-tête collé en haut de la zone qui défile (`.voie-hdr`).
 
 Le bandeau « Récupérer » posé au-dessus des deux voies est parti avec eux : une
 rangée entière d'écran pour une action dont la cible — le palier qui pulse, à

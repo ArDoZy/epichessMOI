@@ -587,9 +587,16 @@ function updateCab(){
 function renderMenuIdentity(){
   const nameEl=document.getElementById('jouer-name');
   if(!nameEl)return;
-  nameEl.textContent=CUR_ACC?(CUR_ACC+(ADMIN_MODE?' · ADMIN':'')):'';
-  nameEl.classList.toggle('admin-elo',!!ADMIN_MODE);
-  renderMenuClan(nameEl);
+  nameEl.innerHTML=CUR_ACC?(escH(CUR_ACC)+(ADMIN_MODE?' <span class="jouer-admin">Admin</span>':'')):'';
+  const av=document.getElementById('jouer-av');
+  if(av)av.textContent=CUR_ACC?String(CUR_ACC).trim().charAt(0).toUpperCase():'';
+  const idBtn=document.getElementById('jouer-id');
+  if(idBtn){
+    idBtn.style.visibility=CUR_ACC?'':'hidden';
+    if(!idBtn._wired){idBtn._wired=1;
+      idBtn.addEventListener('click',()=>{if(typeof openAccountPage==='function')openAccountPage();});}
+  }
+  renderMenuClan(idBtn||nameEl);
   renderRailIdentity();
   renderMenuArena();
 }
@@ -643,14 +650,18 @@ function renderRailIdentity(){
   const peak=(typeof vvLoadPeakElo==='function')?vvLoadPeakElo():0;
   const elo=(typeof vvLoadElo==='function')?vvLoadElo():0;
   const rank=(typeof vvGetRank==='function')?vvGetRank(peak):{name:'',color:'var(--muted)'};
-  const letter=escH(String(CUR_ACC).trim().charAt(0).toUpperCase()||'?');
   const clan=(typeof clanBriefHTML==='function')?clanBriefHTML('clan-brief-rail'):'';
   el.setAttribute('aria-label','Mon compte : '+CUR_ACC);
+  // Le MÉDAILLON DU RANG, et non plus une initiale dans un cercle : c'est la
+  // même pièce d'orfèvrerie que celle de l'arène du menu. Le rang et l'ELO
+  // tiennent chacun leur ligne — sur une seule, « Or Légendaire · 10 000 ELO »
+  // se coupait en « Or Légendaire · 1… » dans les 200 px du rail.
   identitySet(el,
-    '<span class="acc-medal rail-id-medal" style="--medal-c:'+rank.color+'"><span class="acc-medal-letter">'+letter+'</span></span>'+
+    '<span class="rail-id-medal">'+((typeof rankMedalHTML==='function')?rankMedalHTML(rank.id,''):'')+'</span>'+
     '<span class="rail-id-txt">'+
       '<span class="rail-id-name">'+escH(CUR_ACC)+'</span>'+
-      '<span class="rail-id-rank"><span style="color:'+rank.color+'">'+escH(rank.name)+'</span> · '+elo+' ELO</span>'+
+      '<span class="rail-id-rank" style="color:'+rank.color+'">'+escH(rank.name)+'</span>'+
+      '<span class="rail-id-elo">'+fmtInt(elo)+' ELO</span>'+
       (clan?'<span class="rail-id-clan">'+clan+'</span>':'')+
     '</span>');
 }
@@ -702,7 +713,7 @@ function renderMenuArena(){
   medal.innerHTML=(typeof rankMedalHTML==='function')?rankMedalHTML(rank.id,'rm-lg'):'';
   name.textContent=rank.name;
   name.style.color=rank.color;
-  eloEl.textContent=elo+' ELO';
+  eloEl.textContent=fmtInt(elo)+' ELO';
   fill.style.width=pct+'%';
   fill.style.background='linear-gradient(90deg,'+rank.color+',var(--gold))';
   // L'arène RESPIRE quand le rang suivant est à portée : c'est le seul moment

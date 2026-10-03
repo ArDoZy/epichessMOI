@@ -106,8 +106,7 @@ même fichier.
 | ★★ | `voie/biome-<rang>.png` (bois → or) | 7 | 1024 × 1024, raccord haut/bas |
 | ★★ | `banners/magasin.png`, `adversaires.png`, `voie.png`, `recompenses.png` | 4 | 1536 × 1024, fond noir |
 | ★ | `backgrounds/chargement.png` | 1 | 1024 × 1536 |
-| ★ | `ui/ornement-coin.png`, `ui/socle.png` | 2 | transparent |
-| ★ | `ui/laiton.png`, `ui/vert-de-gris.png` | 2 | 1024², tuilable |
+| ★ | `ui/socle.png` | 1 | transparent |
 
 ### Nouveaux emplacements (cette passe)
 
@@ -187,3 +186,109 @@ Mesuré avec `document.getAnimations()` : au menu, de ~40 animations en cours
 | 9.19 | **Ordinateur, Guerre des clans** : onglets Front / Membres / Journal sur toute la largeur ; front vide réduit à une phrase ; 200 px de vide entre la carte du joueur et les onglets du rail. | ✅ onglets limités à 560 px ; le front vide est une carte qui mène au combat (« Le front est calme », bouton « Au combat », téléphone compris) ; les onglets du rail suivent la carte du joueur |
 | 9.20 | **Composition d'armées, téléphone** : titre sur un rectangle plus sombre que son cadre ; cases vides Monarque / Général sur la moitié de l'écran. | ✅ le cartouche est teint jusqu'au milieu (`fill` du `border-image`) ; les deux cartes majeures prennent 76 % de leur demi-largeur (≈ 55 px rendus au catalogue, toujours plus grandes que celles du bas) |
 | 9.21 | **Le titre « Epic Chess » et son cartouche d'or** en haut du menu principal. | ✅ retirés à la demande ; le nom reste pour les lecteurs d'écran (`<h1 class="sr-only">`) et `--menu-title-h` vaut zéro |
+
+---
+
+## 10. Troisième regard : la refonte « Nuit et Or »
+
+Relevé du 3 octobre 2026 : chaque écran capturé en 350 × 640, 390 × 844,
+768 × 1024 et 1440 × 900 (menu, cinq pages de la rangée, sept pages
+secondaires, partie, douze fenêtres, tutoriel, Lore, variantes), puis chaque
+choix graphique remis en question — y compris ceux que les passes précédentes
+avaient justifiés. **L'âme du jeu n'est pas touchée** : débloquer des
+créatures et des pouvoirs, composer son armée, affronter une autre armée.
+
+### 10.1 Le défaut de fond : deux mondes
+
+Le menu, les coffres, les médaillons et les cartes étaient peints dans une
+seule lumière — de l'or martelé sur une nuit bleu-noir. Toutes les autres
+pages étaient restées en ardoise grise (`#26313a`) bordée de gris, avec un
+vert d'eau vif pour l'action : un tableau de bord sombre posé à côté de
+toiles de fantasy. Chaque changement d'onglet changeait de monde.
+
+| | Défaut | Statut |
+|---|---|---|
+| 10.1.1 | Palette ardoise / vert d'eau / laiton, sans rapport avec les planches peintes | ✅ direction « Nuit et Or » (`[THEME]`) : laque de nuit, liseré d'or en dégradé, or martelé, ivoire ; le cyan n'est plus que la magie de l'Alchimiste |
+| 10.1.2 | 109 usages du vert d'eau : sélection, survol, focus, statut, interrupteurs, troupe choisie, marques du plateau | ✅ passés à l'or ; restent en cyan le tutoriel, le sceau, la recherche en ligne, les marques des variantes et le lot « chanceux » (qui doit rester distinct de l'inédit, en or) |
+| 10.1.3 | Polices chargées chez Google (requête tierce à chaque ouverture, RGPD, rien hors ligne, saut de mise en page) ; Grenze Gotisch téléchargée sans être utilisée ; Cinzel Decorative en plus de Cinzel | ✅ trois fichiers servis par le jeu (`assets/fonts/`, OFL), préchargés |
+| 10.1.4 | Thème clair : 65 règles qu'aucun réglage n'allumait | ✅ supprimé |
+| 10.1.5 | Cinq dessins d'intertitre (gris, or, vert d'eau, avec ou sans filet) | ✅ un seul, `.ec-sec` (losange, capitales, filet d'or) |
+| 10.1.6 | Trois dessins de titre de page | ✅ un seul, `.ec-page-title` (capitales gravées en or) |
+| 10.1.7 | Boutons : une plaque vectorielle argentée à quatre losanges posée par-dessus chacun ; « primaire » en aplat | ✅ or martelé (primaire), laque cerclée d'or (secondaire), sang de bœuf (danger) |
+| 10.1.8 | Les salles peintes de chaque page à 26–30 %, désaturées et **trouées au centre** : on n'en voyait que les bords, les pages paraissaient vides | ✅ une recette unique : la salle visible sous un voile de nuit en dégradé (`--page-scrim`) ; les Variantes et le Classement ont reçu la leur |
+| 10.1.9 | Fenêtres en ardoise avec une barre de couleur en tête (le dessin d'une carte de tableau de bord) ; un ornement d'angle **manquant** écrasait leur fond | ✅ une matière commune (`--modal-bg`, liseré d'or, voile flouté `--scrim`) |
+| 10.1.10 | Des gris ardoise codés en dur (clans, cinématiques, arène) | ✅ ramenés à la nuit |
+
+### 10.2 Navigation et menu
+
+| | Défaut | Statut |
+|---|---|---|
+| 10.2.1 | L'onglet actif était un pavé d'or plein, plus lourd que le bouton COMBAT, et éteignait l'emblème peint qu'il portait | ✅ emblème allumé et soulevé, nom en or, trait de lumière ; les autres onglets dans la pénombre |
+| 10.2.2 | « Variantes », seul onglet sans emblème peint : un carré géométrique noir | ✅ cavalier doré dessiné, en attendant `ui/logo-variantes.png` |
+| 10.2.3 | Rail d'ordinateur : « Or Légendaire · 1… » tronqué, initiale dans un cercle | ✅ médaillon de rang peint, rang et ELO sur deux lignes |
+| 10.2.4 | « 10000 ELO » | ✅ « 10 000 ELO » (`fmtInt`, espace fine insécable) |
+| 10.2.5 | Trois médaillons muets : un livre, des lauriers, un éclair — il fallait les toucher pour savoir ce qu'ils ouvraient | ✅ « Quotidien », « Victoires », « Richesse » sous chacun |
+| 10.2.6 | Le pseudo flottait au milieu du ciel en capitales espacées, suivi de « · ADMIN » | ✅ pastille de profil en haut à gauche (initiale frappée, pseudo, étiquette Admin), qui ouvre le compte |
+| 10.2.7 | « Adversaires › » et « Classement › » : deux mots gris perdus dans les reflets du dallage | ✅ deux pastilles de laque |
+| 10.2.8 | Le rang « Bois » s'écrivait en lilas sous un médaillon de bois brun ; l'Obsidienne (`#5a3f8a`) disparaissait sur la nuit | ✅ couleurs de matière (`RANKS`, js/data-pieces.js) |
+
+### 10.3 Mes armées
+
+| | Défaut | Statut |
+|---|---|---|
+| 10.3.1 | Emplacements Monarque et Général : deux aplats, l'un bleu, l'autre brun, la moitié de l'écran | ✅ alvéoles creusées dans la laque, blason fantôme (couronne, épée) et nom |
+| 10.3.2 | Coût en bulle d'élixir violette (le dessin de Clash Royale), la seule tache magenta du jeu | ✅ gemme hexagonale sertie d'or |
+| 10.3.3 | « ×999 » débordait de la bulle ronde du stock | ✅ pastille discrète dans le coin |
+| 10.3.4 | Bandeaux de nom pleins dans la couleur de rareté : le catalogue était un nuancier (vert pomme, orange, violet…) | ✅ plaque sombre, nom en ivoire ; la rareté sur le filet et la gemme |
+| 10.3.5 | Une carte déjà dans l'armée était seulement transparente : choisie, désactivée, ou en chargement ? | ✅ illustration éteinte et sceau d'or |
+| 10.3.6 | Cartouche plat autour du titre ; valeur sans jauge | ✅ titre gravé, jauge d'or (braise au-delà de 24) |
+| 10.3.7 | Sur ordinateur, la formation prenait toute la largeur et la collection commençait sous la ligne de flottaison | ✅ deux colonnes : pupitre collé à gauche, collection à droite (et l'éditeur des armées de l'IA de même) |
+| 10.3.8 | Sur tablette, les cinq alvéoles remplissaient le premier écran | ✅ formation bornée à 460 px |
+| 10.3.9 | « Armées de l'IA » : titre en dégradé vert → violet écrit en style en ligne | ✅ le titre commun |
+
+### 10.4 La partie
+
+| | Défaut | Statut |
+|---|---|---|
+| 10.4.1 | Bandeaux joueur dans un cadre vectoriel plat ; le trait se disait en vert d'eau | ✅ laque ; le bandeau qui a le trait s'allume d'or |
+| 10.4.2 | Pendule active cerclée de vert d'eau | ✅ chiffres ivoire sur un cadran d'or ; braise quand le temps manque |
+| 10.4.3 | Le statut était une pastille bordée, aussi grosse qu'un bouton | ✅ une phrase entre deux filets d'or ; sa couleur dit qui joue |
+| 10.4.4 | « Annuler coup » flottait seul au centre, « Historique » dessous, calé à gauche | ✅ une rangée : outils à gauche, annulation à droite |
+| 10.4.5 | « Abandonner » : une barre rouge sur toute la largeur, l'objet le plus voyant pour l'action la moins voulue | ✅ un bouton à la taille de son mot (téléphone) |
+| 10.4.6 | Marques du plateau en vert d'eau ; cases jouables qui pulsaient toutes ensemble | ✅ cercle, perles et lavis d'or ; perles immobiles |
+| 10.4.7 | Ordinateur : les deux bandeaux empilés en haut de la colonne, le journal derrière un bouton sur 900 px de vide | ✅ l'ordre d'un échiquier réel (adversaire en haut, vous en bas), journal ouvert d'office, rangée d'outils visible au-dessus de lui ; il se referme si la fenêtre redevient étroite |
+| 10.4.8 | Journal vide : un rectangle noir sous quatre flèches éteintes | ✅ « Aucun coup joué pour l'instant. » |
+| 10.4.9 | Cinématique d'entrée : le joueur en vert d'eau | ✅ en azur, la couleur de son écusson |
+
+### 10.5 Magasin, Variantes, Clans
+
+| | Défaut | Statut |
+|---|---|---|
+| 10.5.1 | Coffres Dame et Roi : deux malles de dessin animé (orange, moutarde) à côté de quatre statuettes de marbre — les deux coffres les plus précieux, les deux seuls objets plats | ✅ statuette dessinée (pièce en marbre, rai de lumière, socle), au Magasin, dans les récompenses et à l'ouverture, en attendant leurs planches |
+| 10.5.2 | « Coffre Cavalier » sur deux lignes décalait son prix sous ceux de ses voisins | ✅ « Cavalier » (on sait qu'on regarde des coffres) |
+| 10.5.3 | Le prix ne se lisait pas comme une action | ✅ pastille d'or |
+| 10.5.4 | Variantes sur ordinateur : trois bandeaux de 1 200 px, texte au tiers gauche | ✅ trois cartes côte à côte, boutons alignés |
+| 10.5.5 | « Jouer » en Cinzel 12 px ; l'étiquette « Libre » en or plein, plus voyante que lui | ✅ bouton d'or ; étiquette discrète |
+| 10.5.6 | Clans : onglets translucides sur la salle peinte, recherche de 1 600 px sur ordinateur, officier en vert d'eau | ✅ piste de laque, colonne de 880 px, officier en argent |
+
+### 10.6 Pages secondaires et fenêtres
+
+| | Défaut | Statut |
+|---|---|---|
+| 10.6.1 | Trois façons de sortir : une pastille « OK » en bas, **par-dessus le contenu** (Diagonale, Comptes, Classement, Récompenses), et « ← Retour » en haut à droite ailleurs | ✅ un jeton de retour à gauche du titre, dans un en-tête collé en haut de la zone qui défile |
+| 10.6.2 | Titres de page à 6 px du haut de l'écran | ✅ 16 px |
+| 10.6.3 | Diagonale : « vous êtes ici » et coches en vert, sur une page d'or | ✅ or |
+| 10.6.4 | Fin de partie : croix et boutons stylés en ligne ; « Rejouer » en or à côté de « Continuer » (deux primaires) ; « Revanche » en vert d'eau | ✅ un seul primaire, deux secondaires, une croix commune (`.modal-x`) |
+| 10.6.5 | Fiche de créature : la silhouette de plateau en guise de portrait | ✅ l'illustration de la carte |
+| 10.6.6 | Promotion : trois choix puis un seul sur une deuxième ligne | ✅ une rangée |
+| 10.6.7 | Recherche d'adversaire : le sous-titre répétait mot pour mot le titre | ✅ il ne parle que dans les vingt dernières secondes |
+| 10.6.8 | Exercice de déplacement : un damier en deux aplats | ✅ le chêne de l'échiquier de partie |
+| 10.6.9 | Icône, `theme-color` et manifeste dans l'ancienne palette | ✅ mis à jour (`favicon.svg?v=3`) |
+
+### 10.7 Reste à faire
+
+| | Quoi | Pourquoi pas ici |
+|---|---|---|
+| 10.7.1 | Les planches qui manquent encore (§ 8), et une nouvelle : `ui/logo-variantes.png` (prompt : `assets/PROMPTS.md` § 5 ter) | assets |
+| 10.7.2 | Les quatre bannières de titre (`banners/*.png`) : à refaire dans la nouvelle lumière si on les produit | assets |
+| 10.7.3 | Une cinématique d'arrivée dans un nouveau rang (4.3) | décision de game design |

@@ -78,6 +78,10 @@ function setAppPath(url){
 // UTILITAIRES PARTAGÉS
 // ----------------------------------------------------------------
 function escH(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+// LES NOMBRES S'ÉCRIVENT À LA FRANÇAISE : « 10 000 ELO » et non « 10000 ELO ».
+// L'espace fine insécable des milliers (que pose `fr-FR`) empêche aussi un
+// classement de se couper en deux au bout d'une ligne.
+function fmtInt(n){return (Math.round(+n)||0).toLocaleString('fr-FR');}
 
 // ----------------------------------------------------------------
 // EMBLÈME DU JEU

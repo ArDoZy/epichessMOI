@@ -1,16 +1,15 @@
 # Le mobilier de l'interface, et les sept logos
 
-Le cadre de l'échiquier, l'ornement d'angle des cartes, le socle des
-créatures, les deux textures de métal qui grainent les boutons — et les
-**sept emblèmes de navigation** (`logo-*.png`) : les quatre onglets du cube
-(Combat, Magasin, Mes armées, Guerre des clans) et les trois boutons de
-voies du menu principal (colonne des victoires, rangée de la richesse,
-récompense journalière).
+Le cadre de l'échiquier, le socle des créatures — et les **emblèmes de
+navigation** (`logo-*.png`) : les onglets de la barre (Magasin, Mes armées,
+Combat, Clans, et bientôt Variantes, § 5 ter de `assets/PROMPTS.md`) et les
+trois boutons de voies du menu principal (colonne des victoires, rangée de la
+richesse, récompense journalière).
 
-Trois de ces planches ont besoin d'une **vraie transparence** (PNG à canal
-alpha) : `cadre-plateau.png`, `ornement-coin.png` et `socle.png` — elles
-masquent ce qu'il y a dessous au lieu de s'y ajouter. Les deux textures
-(`laiton.png`, `vert-de-gris.png`) doivent être **tuilables**.
+`cadre-plateau.png` et `socle.png` ont besoin d'une **vraie transparence**
+(PNG à canal alpha). L'ornement d'angle et les deux textures de métal ne sont
+plus attendus : fenêtres et boutons portent leur propre matière (direction
+« Nuit et Or », `[THEME]` de `css/style.css`).
 
 **Les sept logos sont posés** (`logo-*.webp`, 256 px, canal alpha, 11 à
 28 Ko pièce). Ils sont détourés au plus près puis recentrés dans un carré :
@@ -29,7 +28,7 @@ double feu, et resterait allumée pour toujours.
 Le mobilier, lui, reste à faire. Dossier facultatif fichier par fichier :
 sans image, l'interface garde ses aplats, ses bordures et ses pictogrammes
 dessinés en SVG. Chemins, dimensions et prompts : **`assets/PROMPTS.md`,
-§ 5 et § 5 bis**. Câblage : `[ART]` dans `css/style.css`.
+§ 5 et § 5 ter**. Câblage : `[ART]` dans `css/style.css`.
 
 ## Les cinq planches du menu principal, et les trois emblèmes repeints
 
@@ -60,8 +59,11 @@ une récompense attend. Une lueur cuite dans la planche resterait allumée pour
 toujours, et ferait double feu quand l'autre s'allume.
 
 Ces cinq planches remplacent trois des dessins SVG de `[ORFEVRERIE]` sur le
-seul menu : `cartouche.svg` (qui sert toujours les autres titres),
-`anneau.svg` et `plaque.svg`. Câblage : `[GRANDE-SALLE]` en fin de
+seul menu : `cartouche.svg`, `anneau.svg` et `plaque.svg`. Ailleurs, les
+plaques vectorielles plates (`plaque.svg` sur les boutons, `cartouche.svg` et
+`panneau-elo.svg` autour des titres et compteurs, `cadre-carte.svg` sur les
+cartes, `barre-nav.svg`, `bandeau-joueur.svg`) ne sont plus posées : leur or
+plat jurait avec l'or peint des planches. Les fichiers restent dans le dépôt. Câblage : `[GRANDE-SALLE]` en fin de
 `css/style.css`. Sources et reconversion : `assets/sources/menu/` et
 `tools/prep-menu-art.py`.
 

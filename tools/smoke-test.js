@@ -793,13 +793,15 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
     if(await page.evaluate(()=>GS.movePairs.length)<1)throw new Error('journal des coups vide');
   });
 
-  // LE JOURNAL EST DERRIÈRE UN BOUTON. Il vivait dans une feuille toujours
-  // présente en bas d'écran ; il s'ouvre maintenant en panneau sur la zone
-  // sous le plateau ([GAME-PANEL]). Les quatre commandes de relecture sont
-  // dedans : le contrôle ouvre donc le panneau, exactement comme un joueur.
+  // LE JOURNAL EST UN PANNEAU ([GAME-PANEL]) qui s'ouvre et se ferme par son
+  // bouton. SUR ORDINATEUR, IL EST OUVERT D'OFFICE : la colonne de droite a
+  // la place de le montrer en permanence (startGame, js/game-flow.js). On le
+  // referme, puis on le rouvre par son bouton, exactement comme un joueur.
   await step('le journal s\'ouvre et se ferme par son bouton',async()=>{
-    if(await page.locator('#panel-history').isVisible())
-      throw new Error('le journal est ouvert alors que personne ne l a demandé');
+    if(!await page.locator('#panel-history').isVisible())
+      throw new Error('sur ordinateur, le journal n est pas ouvert d office');
+    await page.click('#panel-history [data-close-panel]');
+    await page.waitForSelector('#panel-history',{state:'hidden',timeout:4000});
     await page.click('#btn-history');
     await page.waitForSelector('#panel-history',{state:'visible',timeout:4000});
     // LA PROMESSE CENTRALE : le plateau reste jouable panneau ouvert. On
@@ -822,6 +824,10 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
       return it?parseFloat(getComputedStyle(it).fontSize):0;
     });
     if(taille&&taille<18)throw new Error('les coups du journal sont écrits en '+taille+'px');
+    // Sur ordinateur, la rangée d'outils reste visible au-dessus du journal
+    // ouvert : on peut le refermer par son propre bouton.
+    if(!await page.locator('#btn-history').isVisible())
+      throw new Error('le bouton « Historique » est caché par le journal ouvert');
     await page.click('#panel-history [data-close-panel]');
     await page.waitForSelector('#panel-history',{state:'hidden',timeout:4000});
     if(!await page.locator('#btn-history').isVisible())
@@ -905,7 +911,8 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
   });
 
   await step('la pendule tourne pendant la relecture d\'historique',async()=>{
-    await page.click('#btn-history');
+    // De retour sur ordinateur, le journal s'est rouvert de lui-même.
+    if(!await page.locator('#panel-history').isVisible())await page.click('#btn-history');
     await page.waitForSelector('#panel-history',{state:'visible',timeout:4000});
     const before=await page.evaluate(()=>GS.timeWhite+GS.timeBlack);
     await page.click('#hist-prev');
@@ -1473,8 +1480,9 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
   // journalière, la colonne et le mode test, et la statuette au Magasin — deux
   // objets pour le même Coffre Pion, plus un troisième en l'ouvrant. Les
   // quatre coffres équipés de planches (Pion, Cavalier, Fou, Tour) montrent
-  // partout leur statuette ; la Dame et le Roi gardent le couvercle, faute de
-  // planches. Le cycle journalier ne contient que les quatre premiers ; la
+  // partout leur statuette ; la Dame et le Roi, faute de planches, montrent
+  // une statuette DESSINÉE (la silhouette de leur pièce sous un rai de
+  // lumière, chestStatueHTML) et non plus une malle de dessin animé. Le cycle journalier ne contient que les quatre premiers ; la
   // Dame et le Roi se lisent dans la colonne des victoires, où ils sont les
   // paliers 22 et 30.
   await step('les coffres montrent partout la statuette du Magasin',async()=>{
@@ -1484,6 +1492,7 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
         const el=document.querySelector(sel);
         if(!el)return 'absent';
         if(el.querySelector('.chest-pawn img'))return 'statuette';
+        if(el.querySelector('.chest-statue .pc-svg'))return 'statuette dessinée';
         if(el.querySelector('.chest-lid'))return 'couvercle';
         return 'rien';
       };
@@ -1517,8 +1526,8 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
         throw new Error('récompense journalière : le Coffre '+id+' montre « '+r.serie[id]+' » au lieu de sa statuette');
     });
     ['dame','roi'].forEach(id=>{
-      if(r.serie[id]!=='couvercle')
-        throw new Error('colonne : le Coffre '+id+' n\'a pas de planches, il devrait garder le couvercle ('+r.serie[id]+')');
+      if(r.serie[id]!=='statuette dessinée')
+        throw new Error('colonne : le Coffre '+id+' n\'a pas de planches, il devrait montrer sa statuette dessinée ('+r.serie[id]+')');
     });
     if(r.colonne!=='statuette')throw new Error('colonne des victoires : « '+r.colonne+' » au lieu de la statuette');
     if(!/01-intact\.webp$/.test(r.source||''))throw new Error('la colonne ne pointe pas la planche intacte : '+r.source);
@@ -1934,78 +1943,48 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
     await page.waitForSelector('#chest-modal.show',{state:'hidden',timeout:8000});
   });
 
-  // Le bouton OK de la Voie doit rester à l'écran quel que soit le
-  // défilement : il ne peut pas être en position:fixed (l'animation d'entrée
-  // de .page.active laisse un transform qui en ferait le bloc conteneur), il
-  // est donc en position:absolute dans #page-voie, lui-même en fixed.
-  // Et c'est une PASTILLE CENTRÉE, plus une barre pleine largeur : cette
-  // barre-là, haute de 60 px et large de tout l'écran, était plus imposante
-  // que le gros bouton COMBAT du menu pour un mot de deux lettres qui ne fait
-  // que refermer la page. Elle prend maintenant environ un tiers de la
-  // largeur, la Voie passe de chaque côté, et sa taille est relative à
-  // l'écran (pourcentage, `em`, `vh`) et non en pixels.
-  await step('le bouton OK de la Voie est une pastille centrée en bas de l\'écran',async()=>{
+  // ON QUITTE LA VOIE PAR LE JETON DE RETOUR, EN HAUT À GAUCHE (.ec-back).
+  // Il a remplacé la pastille « OK » posée en bas de l'écran, par-dessus les
+  // derniers jalons. Il doit rester à l'écran quel que soit le défilement :
+  // l'en-tête qui le porte est collé (`position:sticky`) en haut de la zone
+  // qui défile. Et il reste une vraie cible de pouce.
+  await step('le jeton de retour de la Voie reste en haut à gauche, à l\'écran',async()=>{
     await page.evaluate(()=>{renderVoiePage();showPage('page-voie');});
     await page.waitForSelector('#page-voie.active',{timeout:8000});
     await page.waitForTimeout(500);
     const r=await page.evaluate(()=>{
       const host=document.getElementById('voie-scroll');
       const btn=document.getElementById('voie-ok');
-      const vh=innerHeight;
       const mesure=()=>{const b=btn.getBoundingClientRect();
-        return{top:b.top,bottom:b.bottom,w:b.width,h:b.height,centre:b.left+b.width/2};};
+        return{top:b.top,left:b.left,w:b.width,h:b.height};};
       host.scrollTop=0;
       const haut=mesure();
       host.scrollTop=host.scrollHeight;              // tout en bas
       const bas=mesure();
-      // La Voie passe-t-elle DE CHAQUE CÔTÉ de la pastille ? Le point au ras
-      // du bord gauche, à hauteur du bouton, ne doit PAS être le bouton.
       const b=btn.getBoundingClientRect();
-      const cote=document.elementFromPoint(8,b.top+b.height/2);
-      return{haut,bas,vh,
-        // Largeur de RÉFÉRENCE : celle de la page, et non innerWidth — sur un
-        // écran d'ordinateur, la barre de défilement en retire une dizaine de
-        // pixels.
-        pw:document.getElementById('page-voie').clientWidth,
+      const dessus=document.elementFromPoint(b.left+b.width/2,b.top+b.height/2);
+      const titre=document.querySelector('#page-voie .voie-title').getBoundingClientRect();
+      host.scrollTop=0;
+      return{haut,bas,aGaucheDuTitre:b.right<=titre.left+1,
         scrollable:host.scrollHeight>host.clientHeight+40,
-        retourVisible:!!document.getElementById('voie-back'),
-        // La pastille reste une PASTILLE : quatre coins ronds. Ils ont été
-        // équerrés en bas pour « épouser le bord de l'écran », ce qui en
-        // faisait un onglet mal coupé — descendre le bouton ne veut pas dire
-        // le déformer.
-        coins:getComputedStyle(btn).borderRadius,
-        toucheLeBord:cote===btn||btn.contains(cote)};
+        atteignable:dessus===btn||btn.contains(dessus),
+        ancienOk:!!document.querySelector('#page-voie .voie-ok-bar')};
     });
     if(!r.scrollable)throw new Error('la Voie ne défile pas, le test ne prouve rien');
-    if(r.retourVisible)throw new Error('le bouton « Retour » est encore là');
-    // Immobile d'un bout à l'autre du défilement.
+    if(r.ancienOk)throw new Error('la pastille « OK » est encore là');
     if(Math.abs(r.haut.top-r.bas.top)>1)
-      throw new Error('le bouton OK bouge avec le défilement ('+r.haut.top+' → '+r.bas.top+')');
-    // COLLÉ AU BAS DE L'ÉCRAN : il ne flotte plus au-dessus du bord, il
-    // l'épouse. Seule la zone sûre du matériel (var(--safe-b)) peut l'en
-    // écarter, et elle vaut 0 sur un écran d'ordinateur.
-    const marge=r.vh-r.haut.bottom;
-    if(marge>2)
-      throw new Error('le bouton OK n\'est pas collé au bas de l\'écran (bas à '+
-        Math.round(r.haut.bottom)+' pour une hauteur de '+r.vh+')');
-    // MODESTE : il ne prend plus toute la largeur, et il reste centré.
-    if(r.haut.w>r.pw*0.45)
-      throw new Error('le bouton OK prend encore '+Math.round(r.haut.w/r.pw*100)+' % de la largeur');
-    if(Math.abs(r.haut.centre-r.pw/2)>2)
-      throw new Error('le bouton OK n\'est pas centré (centre à '+Math.round(r.haut.centre)+
-        ' pour une page de '+r.pw+' px)');
-    // Mais toujours une vraie cible de pouce.
-    if(r.haut.h<34)
-      throw new Error('le bouton OK n\'est haut que de '+Math.round(r.haut.h)+' px');
-    if(r.toucheLeBord)
-      throw new Error('le bouton OK s\'étend encore jusqu\'au bord de l\'écran');
-    // Une seule valeur de rayon = quatre coins identiques. Deux valeurs ou
-    // plus, et l'un des coins a été équerré.
-    if(r.coins.trim().split(/[\s/]+/).filter(Boolean).length!==1)
-      throw new Error('le bouton OK n\'est plus une pastille : border-radius « '+r.coins+' »');
+      throw new Error('le jeton de retour part avec le défilement ('+r.haut.top+' → '+r.bas.top+')');
+    // En haut de l'écran, et à gauche du titre — sur ordinateur, la colonne
+    // de la Voie est centrée : le jeton n'est pas au bord de l'écran, il est
+    // au bord de la page.
+    if(r.haut.top>90||!r.aGaucheDuTitre)
+      throw new Error('le jeton de retour n\'est pas en haut, à gauche du titre ('+Math.round(r.haut.left)+', '+Math.round(r.haut.top)+')');
+    if(r.haut.h<40||r.haut.w<40)
+      throw new Error('le jeton de retour ne fait que '+Math.round(r.haut.w)+'×'+Math.round(r.haut.h)+' px');
+    if(!r.atteignable)throw new Error('le jeton de retour est recouvert, tout en bas de la Voie');
     await page.click('#voie-ok');
     await page.waitForTimeout(400);
-    if(await page.isVisible('#page-voie.active'))throw new Error('le bouton OK ne referme pas la Voie');
+    if(await page.isVisible('#page-voie.active'))throw new Error('le jeton de retour ne referme pas la Voie');
   });
 
   // LE BOUTON DE RÉGLAGES ARRIVE AVEC LE MENU, PAS APRÈS LE GLISSEMENT.
@@ -2054,22 +2033,23 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
     await page.waitForTimeout(200);
   });
 
-  // LE LOGO DE LA FICHE EST CENTRÉ DANS SON CADRE. Le 76 % s'appliquait deux
-  // fois — à la boîte de l'icône ET au SVG imbriqué —, et comme la boîte est
-  // un inline-block, le dessin se collait à sa gauche : cinq pixels de décalage
-  // dans un carré de 58, visibles au premier coup d'œil.
-  await step('le logo de la fiche de pièce est centré dans son cadre',async()=>{
+  // LE PORTRAIT DE LA FICHE EST CENTRÉ DANS SON CADRE. L'en-tête de la fiche
+  // porte l'illustration de la créature (ou, faute de planche, son dessin
+  // vectoriel) : on mesure celui des deux qui est réellement affiché. Le
+  // dessin s'est déjà collé à gauche de son cadre — un pourcentage appliqué
+  // deux fois à un inline-block.
+  await step('le portrait de la fiche de pièce est centré dans son cadre',async()=>{
     const r=await page.evaluate(()=>{
       openPieceSheet('dame');
       const logo=document.getElementById('psheet-logo');
-      const svg=logo.querySelector('svg');
+      const svg=logo.querySelector('.piece-card-img')||logo.querySelector('svg');
       if(!svg)return null;
       const lb=logo.getBoundingClientRect(),sb=svg.getBoundingClientRect();
       closePieceSheet();
       return{dx:(sb.left+sb.width/2)-(lb.left+lb.width/2),
              dy:(sb.top+sb.height/2)-(lb.top+lb.height/2),cadre:lb.width,dessin:sb.width};
     });
-    if(!r)throw new Error('aucun logo dans la fiche de pièce');
+    if(!r)throw new Error('aucun portrait dans la fiche de pièce');
     if(Math.abs(r.dx)>1)throw new Error('logo décalé de '+r.dx.toFixed(1)+' px horizontalement');
     if(Math.abs(r.dy)>1)throw new Error('logo décalé de '+r.dy.toFixed(1)+' px verticalement');
     // Et il remplit bien son cadre : un dessin deux fois trop petit serait le
@@ -3167,7 +3147,16 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
       else{
         if(/élargit|niveau/i.test(note.textContent))
           out.push('la note explique encore la fenêtre d\'appariement : « '+note.textContent.trim()+' »');
-        if(!note.textContent.trim())out.push('la note de recherche est vide');
+        // Elle se tait au début (« Recherche d'adversaire en cours » répétait
+        // le titre) mais garde sa ligne, et parle avant le repli sur le
+        // laboratoire.
+        if(note.textContent!=='\u00a0'&&note.textContent.trim())
+          out.push('la note répète le titre dès le départ : « '+note.textContent.trim()+' »');
+        if(!note.textContent.length)out.push('la note de recherche a perdu sa ligne : le radar sautera quand elle parlera');
+        mpRenderSearch(MP_BOT_AFTER_S-10,0,0);
+        if(!/laboratoire/.test(note.textContent))
+          out.push('la note n\'annonce pas l\'adversaire du laboratoire : « '+note.textContent.trim()+' »');
+        mpRenderSearch(0,0,0);
         // Et ce qu'elle dit au premier instant est déjà ce que mpRenderSearch
         // écrira : pas de phrase intermédiaire à voir passer.
         const avant=note.textContent.trim();
@@ -3608,11 +3597,11 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
     if(r.colonnes!==4)throw new Error(r.colonnes+' colonnes déclarées dans la grille au lieu de 4');
   });
 
-  // L'ANATOMIE DE LA CARTE, empruntée à Clash Royale : l'illustration en haut
-  // sur 76 % de la hauteur, le bandeau du nom en bas dans la couleur de
-  // rareté, et deux pastilles rondes qui DÉBORDENT des coins du haut. Le
-  // débordement n'est pas un accident de mise en page : une pastille inscrite
-  // dans la carte mange l'illustration.
+  // L'ANATOMIE DE LA CARTE : l'illustration en haut sur 78 % de la hauteur,
+  // la plaque sombre du nom en bas sous un filet de la couleur de rareté, le
+  // COÛT en gemme hexagonale sertie d'or qui DÉBORDE du coin haut gauche, et
+  // le STOCK en pastille discrète DANS le coin haut droit (« ×999 » ne tenait
+  // pas dans l'ancienne bulle ronde).
   await step('une carte de pièce a le format unique : illustration, bandeau, pastilles',async()=>{
     // Le repli de l'illustration coûte deux allers-retours réseau (.webp puis
     // .png) : on les laisse se solder avant de regarder la carte, sinon on
@@ -3633,22 +3622,22 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
       return{
         rarete:(ks.getPropertyValue('--rarity')||'').trim(),
         classeRarete:[...card.classList].some(c=>c.indexOf('rarity-')===0),
-        // La pastille : un rond de 30 px, cerné de blanc, à cheval sur le coin.
+        // La gemme : un hexagone de 27 × 30, serti d'or, à cheval sur le coin.
         taille:[Math.round(rc.width),Math.round(rc.height)],
-        rond:cs.borderRadius,
-        cerne:cs.borderTopColor+' '+cs.borderTopWidth,
+        hexagone:/polygon/.test(cs.clipPath),
         gras:cs.fontWeight,
         ombreTexte:cs.textShadow!=='none',
-        ombrePortee:cs.boxShadow!=='none',
+        ombrePortee:/drop-shadow/.test(cs.filter),
         degrade:/gradient/.test(cs.backgroundImage),
         debordeGauche:rc.left<cb.left-2,debordeHaut:rc.top<cb.top-2,
-        debordeDroite:rq?rq.right>cb.right+2:null,
+        stockDedans:rq?(rq.right<=cb.right+1&&rq.top>=cb.top-1):null,
         // L'illustration occupe 76 % de la hauteur, le bandeau le reste.
         // La mesure se fait sur la boîte de CONTENU (clientHeight) : la
         // bordure de 2 px de la carte n'appartient ni à l'une ni à l'autre.
         partArt:ra.height/card.clientHeight,
-        bandeauEnBas:Math.abs(rn.bottom-(cb.bottom-2))<2&&rn.top>=ra.bottom-1,
+        bandeauEnBas:Math.abs(rn.bottom-(cb.bottom-2))<2&&rn.top>=ra.bottom-2,
         bandeauPlein:!/rgba\(0,\s*0,\s*0,\s*0\)/.test(ns.backgroundColor)||/gradient/.test(ns.backgroundImage),
+        filetRarete:parseFloat(ns.borderTopWidth)>=1&&!/rgba\(0,\s*0,\s*0,\s*0\)/.test(ns.borderTopColor),
         // Le repli : sans illustration dans assets/pieces/, l'<img> se
         // retire et le SVG monochrome prend sa place. Depuis que la carte
         // demande le .webp PUIS le .png (pieceCardArtHTML), il faut DEUX
@@ -3662,19 +3651,18 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
     if(r.err)throw new Error(r.err);
     if(!r.classeRarete)throw new Error('la carte ne porte pas de modificateur .rarity-*');
     if(!r.rarete)throw new Error('la variable --rarity n\'est pas définie sur la carte');
-    if(r.taille[0]!==30||r.taille[1]!==30)throw new Error('la pastille de coût fait '+r.taille.join('×')+' au lieu de 30×30');
-    if(!/50%|15px/.test(r.rond))throw new Error('la pastille de coût n\'est pas un cercle : '+r.rond);
-    if(!/rgb\(255,\s*255,\s*255\)/.test(r.cerne)||!/2px/.test(r.cerne))
-      throw new Error('la pastille de coût n\'a pas sa bordure blanche de 2 px : '+r.cerne);
-    if(!r.degrade)throw new Error('la pastille de coût n\'a pas de dégradé radial');
-    if(!r.ombrePortee)throw new Error('la pastille de coût n\'a pas d\'ombre portée');
-    if(!r.ombreTexte)throw new Error('le chiffre de la pastille n\'a pas d\'ombre de texte');
-    if(parseInt(r.gras,10)<700)throw new Error('le chiffre de la pastille n\'est pas en gras : '+r.gras);
-    if(!r.debordeGauche||!r.debordeHaut)throw new Error('la pastille de coût ne déborde pas du coin haut gauche');
-    if(r.debordeDroite===false)throw new Error('le badge de quantité ne déborde pas du coin haut droit');
-    if(Math.abs(r.partArt-0.76)>0.03)throw new Error('l\'illustration prend '+Math.round(r.partArt*100)+' % de la hauteur au lieu de 76');
-    if(!r.bandeauEnBas)throw new Error('le bandeau du nom n\'est pas tout en bas, sous l\'illustration');
-    if(!r.bandeauPlein)throw new Error('le bandeau du nom n\'est pas coloré');
+    if(r.taille[0]!==27||r.taille[1]!==30)throw new Error('la gemme de coût fait '+r.taille.join('×')+' au lieu de 27×30');
+    if(!r.hexagone)throw new Error('la gemme de coût n\'est pas un hexagone');
+    if(!r.degrade)throw new Error('la gemme de coût n\'a pas son sertissage en dégradé');
+    if(!r.ombrePortee)throw new Error('la gemme de coût n\'a pas d\'ombre portée');
+    if(!r.ombreTexte)throw new Error('le chiffre de la gemme n\'a pas d\'ombre de texte');
+    if(parseInt(r.gras,10)<700)throw new Error('le chiffre de la gemme n\'est pas en gras : '+r.gras);
+    if(!r.debordeGauche||!r.debordeHaut)throw new Error('la gemme de coût ne déborde pas du coin haut gauche');
+    if(r.stockDedans===false)throw new Error('la pastille de stock déborde de la carte');
+    if(Math.abs(r.partArt-0.78)>0.03)throw new Error('l\'illustration prend '+Math.round(r.partArt*100)+' % de la hauteur au lieu de 78');
+    if(!r.bandeauEnBas)throw new Error('la plaque du nom n\'est pas tout en bas, sous l\'illustration');
+    if(!r.bandeauPlein)throw new Error('la plaque du nom n\'a pas de fond');
+    if(!r.filetRarete)throw new Error('la plaque du nom n\'a pas son filet de rareté');
     if(!r.svg)throw new Error('le repli SVG n\'est pas dans la carte');
     // LES DEUX ÉTATS SONT LÉGITIMES, ET UN SEUL À LA FOIS. Le dossier
     // assets/pieces/ se remplit au fil des planches produites : exiger que

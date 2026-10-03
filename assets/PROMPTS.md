@@ -43,11 +43,11 @@ STYLE COMMUN À TOUTES LES IMAGES :
 - peinture numérique de fantasy épique, rendu « key art » de jeu vidéo
   premium, textures riches (pierre, laiton, cuir, marbre), lumière
   dramatique ;
-- l'atmosphère est un SOIR ÉCLAIRÉ À LA LAMPE, pas une nuit noire : fonds
-  ardoise bleu-gris (#1c242b à #31404a), lumière chaude de torches et de
-  braises ;
-- palette limitée : ardoise froide, laiton / or patiné (#d0a950, #f0d189),
-  une touche de vert-de-gris (cuivre oxydé, #3fd0b2) réservée à la magie ;
+- direction « NUIT ET OR » : une nuit bleu-noir profonde (#090c11 à
+  #1a2533), éclairée par de l'OR martelé (#d8b26a, #f3da9c) et la lumière
+  chaude de torches et de braises ; l'ivoire (#f0e8d8) pour les marbres ;
+- palette limitée : nuit, or, ivoire, et une touche de CYAN d'arcane
+  (#5ccad3) réservée à la magie de l'Alchimiste ;
 - architecture gothique, marbre en damier, ornements d'orfèvrerie ;
 - AUCUN texte, AUCUN logo, AUCUNE signature, aucun cadre ajouté autour de
   l'image, pas de style cartoon, pas de rendu 3D plastique.
@@ -74,15 +74,15 @@ Les trois règles techniques qui reviennent partout :
 | Priorité | Planche(s) | Chemin | Où ça se voit |
 |---|---|---|---|
 | ★★★ | La salle de la partie | `backgrounds/partie.png` | **L'écran de jeu**, derrière et autour du plateau, à chaque partie |
-| ★★★ | Coffres Dame et Roi (2 × 5 planches) | `chests/dame/`, `chests/roi/` | Magasin, récompenses : ce sont les deux seuls coffres encore dessinés en CSS |
+| ★★★ | Coffres Dame et Roi (2 × 5 planches) | `chests/dame/`, `chests/roi/` | Magasin, récompenses : ce sont les deux seuls coffres sans planche (une statuette DESSINÉE les remplace en attendant) |
+| ★★★ | L'emblème des Variantes | `ui/logo-variantes.png` | Barre d'onglets et rail : le seul onglet sans emblème peint (un cavalier doré DESSINÉ le remplace en attendant) — § 5 ter |
 | ★★★ | Douze portraits d'adversaires | `adversaires/<id>.png` | Galerie, intro de combat, bandeau adverse de chaque partie |
 | ★★ | Trois planches de variantes | `variantes/<id>.png` | Cartes de la page Variantes |
 | ★★ | Médaillon de rang Acier | `ranks/acier.png` | Le seul des sept rangs sans médaillon (800–1199 ELO) |
 | ★★ | Sept paysages de la Diagonale | `voie/biome-<rang>.png` | Page de progression ELO |
 | ★★ | Quatre bannières de titre | `banners/<page>.png` | Titres du Magasin, des Adversaires, de la Diagonale, des Récompenses |
 | ★ | Toile de démarrage | `backgrounds/chargement.png` | Écran de chargement (sinon : la tempête de `duel-wait`) |
-| ★ | Ornement de coin, socle | `ui/ornement-coin.png`, `ui/socle.png` | Fenêtres de résultat, promotion |
-| ★ | Deux textures de métal | `ui/laiton.png`, `ui/vert-de-gris.png` | Grain des boutons dorés et verts |
+| ★ | Socle | `ui/socle.png` | Sous les créatures (promotion, déblocage) |
 | ★★★ | La salle de guerre des clans | `backgrounds/guerre-clans.png` | Fond de l'onglet Guerre des clans (§ 10) |
 | ★★ | L'étoffe des bannières de clan | `ui/banniere-clan.png` | Derrière le blason de chaque clan (§ 10) |
 
@@ -212,19 +212,30 @@ entièrement noirs. MOTIF : <voir ci-dessous>
 
 | Fichier | Format | Prompt |
 |---|---|---|
-| `ornement-coin.png` | carré 512 | *« Un ornement d'angle d'orfèvrerie en laiton ciselé, en forme de L avec volutes et une palmette, qui occupe le coin HAUT GAUCHE d'un carré ; le reste de l'image vide. Fond transparent, détouré. »* Le jeu le retourne pour les trois autres coins. |
 | `socle.png` | paysage 3:1 (1536 × 512) | *« Un socle ovale de pierre gravée vu de trois quarts, bord cerclé de laiton, runes discrètes sur la tranche, sans rien dessus. Fond transparent. »* Posé sous les créatures (promotion, déblocage). |
 
-### § 5 bis. Les deux textures de métal (tuilables)
+### § 5 bis. Plus d'ornement de coin ni de textures de métal
 
-Carré **1024 × 1024**, **sans raccord** dans les deux sens, **sans ombre
-directionnelle** (elles sont fondues en `overlay` par-dessus la couleur du
-bouton : seul le grain compte).
+`ornement-coin.png`, `laiton.png` et `vert-de-gris.png` ne sont plus attendus :
+les fenêtres et les boutons portent leur propre matière (laque de nuit, liseré
+d'or en dégradé, or martelé dessiné en CSS). Les poser n'allumerait plus rien.
 
-| Fichier | Prompt |
-|---|---|
-| `laiton.png` | *« Texture de laiton brossé légèrement patiné, micro-rayures fines, reflets doux, sans raccord, vue à plat, éclairage uniforme. »* |
-| `vert-de-gris.png` | *« Texture de cuivre oxydé vert-de-gris, taches de patine turquoise sur fond cuivre, sans raccord, vue à plat, éclairage uniforme. »* |
+### § 5 ter. L'emblème des Variantes — `assets/ui/logo-variantes.png`
+
+Carré **1024 × 1024**, **PNG à fond transparent**, détouré. Il rejoint les
+quatre emblèmes peints de la barre d'onglets (`logo-magasin`, `logo-armees`,
+`logo-combat`, `logo-clans`) : même famille d'objets d'orfèvrerie, même
+lumière, vus de face, sans aucun effet lumineux peint (le jeu allume lui-même
+l'onglet actif).
+
+*« Un emblème d'orfèvrerie de fantasy, vu de face, centré : une tête de
+cavalier d'échecs en or martelé, ciselée, posée sur un petit damier incliné
+dont une rangée de cases est décalée d'un cran, avec deux minuscules étincelles
+dorées. Rendu peint premium, matière métallique riche, reflets chauds. Fond
+transparent, sujet détouré, aucune lueur ni halo autour, aucun texte. »*
+
+Puis `npm run opt:images` : la conversion produit `logo-variantes.webp`, déjà
+attendu par la barre d'onglets.
 
 ---
 

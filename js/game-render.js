@@ -975,19 +975,21 @@ function gameUnderContentH(under){
   if(!under)return 0;
   return Math.max(GAME_PANEL_MIN_H,gameUnderFlowH(under));
 }
+// La hauteur OCCUPÉE est l'étendue verticale des enfants dans le flux, de
+// leur haut le plus haut à leur bas le plus bas : la zone est une grille
+// (voir [GAME-PANEL]) où les outils et « Annuler coup » partagent une rangée,
+// et additionner leurs deux hauteurs compterait cette rangée deux fois.
 function gameUnderFlowH(under){
-  const cs=getComputedStyle(under);
-  const gap=parseFloat(cs.rowGap||cs.gap)||0;
-  let h=0,n=0;
+  let top=Infinity,bot=-Infinity;
   for(const el of under.children){
     if(el.hidden)continue;
     const st=getComputedStyle(el);
     if(st.position==='absolute'||st.position==='fixed'||st.display==='none')continue;
     const r=el.getBoundingClientRect();
     if(r.height<=0)continue;
-    h+=r.height;n++;
+    top=Math.min(top,r.top);bot=Math.max(bot,r.bottom);
   }
-  return n?h+gap*(n-1):0;
+  return bot>top?bot-top:0;
 }
 
 function gameSyncChrome(){
@@ -2042,4 +2044,18 @@ function gameScrollLogToEnd(){
   });
   // Échap ferme, comme partout ailleurs dans le jeu.
   document.addEventListener('keydown',e=>{if(e.key==='Escape')gamePanelClose();});
+  // LE JOURNAL SUIT LA DISPOSITION. Ouvert d'office sur ordinateur (voir
+  // startGame, js/game-flow.js), il se referme quand la fenêtre redevient
+  // étroite — sur téléphone, un panneau ouvert couvre la rangée de boutons qui
+  // l'a ouvert — et se rouvre quand elle s'élargit de nouveau.
+  if(window.matchMedia&&typeof DESK_QUERY!=='undefined'){
+    const mq=window.matchMedia(DESK_QUERY);
+    const suivre=()=>{
+      const page=document.getElementById('page-game');
+      if(!page||!page.classList.contains('active'))return;
+      if(mq.matches){if(!_openPanel)gamePanelOpen('history');}
+      else if(_openPanel==='history')gamePanelClose();
+    };
+    if(mq.addEventListener)mq.addEventListener('change',suivre);else if(mq.addListener)mq.addListener(suivre);
+  }
 })();

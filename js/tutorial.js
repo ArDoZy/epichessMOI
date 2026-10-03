@@ -422,11 +422,11 @@ const TUTO_STEPS=[
     at:'.jouer-actions',
   },
   {
-    text:'Votre nom, votre rang et votre classement sont là-haut. La pastille de rang '+
+    text:'Votre rang et votre classement sont là, au cœur de la salle. Ce cartouche '+
          'ouvre la <strong>Diagonale de la Puissance</strong>&nbsp;: chaque partie classée '+
          'fait bouger ce chiffre, et chaque palier franchi <strong>libère une nouvelle '+
          'créature</strong> de mes bocaux.',
-    at:'.jouer-player',
+    at:'#jouer-arena',
   },
   {
     text:'<strong>Récompense journalière</strong>&nbsp;: un lot par jour, et rien à '+

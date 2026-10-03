@@ -589,10 +589,10 @@ function renderVoiePage(){
 // (js/pages-nav.js). D'où le bouton de sortie explicite ci-dessous : une page
 // en surimpression n'a pas d'onglet pour en sortir.
 //
-// UN SEUL BOUTON « OK », épinglé en bas de l'écran (voir .voie-ok-bar dans
-// css/style.css), plutôt qu'un « ← Retour » dans l'en-tête : la Voie peut
-// être longue (une quinzaine de jalons), il fallait la remonter en entier
-// pour sortir. Le bouton reste sous le pouce, où qu'on ait défilé.
+// LE JETON DE RETOUR, en haut à gauche, dans un en-tête qui reste collé en
+// haut de l'écran (voir .ec-back et .voie-hdr dans css/style.css) : la Voie
+// peut être longue (une quinzaine de jalons), et on la quitte d'un geste où
+// qu'on ait défilé — sans pastille posée par-dessus ses derniers jalons.
 // Un coffre de la Diagonale se prend en le touchant (voir vvVoieChestsDue).
 document.getElementById('voie-route')?.addEventListener('click',e=>{
   const el=e.target.closest('[data-voie-chest]');if(!el)return;

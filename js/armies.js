@@ -322,7 +322,8 @@ function pRenderCards(){
 function pUpdStats(){
   const v=pGetVal(),over=v>24;
   const val=document.getElementById('ar-s-val');if(val)val.textContent=v+' / 24';
-  const box=document.getElementById('ar-army-box');if(box)box.classList.toggle('bd-over',over);
+  const box=document.getElementById('ar-army-box');
+  if(box){box.classList.toggle('bd-over',over);box.style.setProperty('--bd-pct',(v/24).toFixed(3));}
 }
 function pUpdateAll(){
   pUpdSlots();pRenderTroop();pRenderCards();pUpdStats();

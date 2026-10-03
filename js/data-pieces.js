@@ -22,12 +22,17 @@
 // ----------------------------------------------------------------
 // RANGS ELO
 // ----------------------------------------------------------------
+// LA COULEUR D'UN RANG EST CELLE DE SA MATIÈRE. Le Bois était gris-mauve et
+// l'Obsidienne un violet si sombre (#5a3f8a) qu'il disparaissait sur la nuit
+// de l'interface : « Bois » s'écrivait en lilas sous un médaillon de bois
+// brun. Le bois est brun, l'obsidienne garde son reflet violet, mais assez
+// clair pour se lire.
 const RANKS=[
-  {id:'bois',     name:'Bois',       color:'#7a7590',min:0,   max:199},
+  {id:'bois',     name:'Bois',       color:'#b48a5a',min:0,   max:199},
   {id:'pierre',   name:'Pierre',     color:'#9a8c7a',min:200, max:499},
   {id:'bronze',   name:'Bronze',     color:'#cd7f32',min:500, max:799},
   {id:'acier',    name:'Acier',      color:'#8fa8b8',min:800, max:1199},
-  {id:'obsidienne',name:'Obsidienne',color:'#5a3f8a',min:1200,max:1499},
+  {id:'obsidienne',name:'Obsidienne',color:'#9d82d8',min:1200,max:1499},
   {id:'argent',   name:'Argent',     color:'#c0c0c0',min:1500,max:1999},
   {id:'or',       name:'Or Légendaire',color:'#c9a84c',min:2000,max:9999},
 ];

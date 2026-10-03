@@ -197,8 +197,27 @@ function chestVisual(chest,extraCls){
     return '<div class="chest chest-pawn '+(extraCls||'')+'" style="--chest-c:'+chest.color+'">'+
       '<img src="'+poster+'" alt="" draggable="false" decoding="async" loading="lazy">'+
     '</div>';
+  if(chestHasStatue(chest))
+    return '<div class="chest chest-statue '+(extraCls||'')+'" style="--chest-c:'+chest.color+'">'+chestStatueHTML(chest)+'</div>';
   return '<div class="chest '+(extraCls||'')+'" style="--chest-c:'+chest.color+'">'+
     '<div class="chest-lid"></div><div class="chest-body"></div><div class="chest-lock"></div></div>';
+}
+
+// LA STATUETTE DE REPLI. Quatre coffres sur six sont des pièces d'échecs de
+// marbre sous un rai de lumière (assets/chests/<id>/01-intact.webp) ; les
+// coffres Dame et Roi, faute de planches, étaient des malles de dessin animé
+// — orange et moutarde —, les deux seuls objets plats du Magasin, et
+// justement les deux plus précieux. Ils prennent en attendant la même mise en
+// scène, dessinée : la silhouette de leur pièce (js/piece-art.js) en ivoire,
+// un rai de lumière, un socle. Dès que la planche existera, chestBreakPoster
+// la donnera, et ce repli ne servira plus.
+function chestHasStatue(chest){
+  return !!(chest&&chest.id&&typeof PIECE_ART!=='undefined'&&PIECE_ART[chest.id]);
+}
+function chestStatueHTML(chest){
+  return '<span class="chest-statue-beam"></span>'+
+    '<span class="chest-statue-fig">'+pieceSVG(chest.id,'w')+'</span>'+
+    '<span class="chest-statue-plinth"></span>';
 }
 
 // ----------------------------------------------------------------
@@ -352,7 +371,10 @@ function magasinChestCardHTML(chest){
     ' aria-label="'+escH(chest.name)+', '+(CHEST_TIER_NAMES[tier]||'')+', '+price+' perles">'+
     '<span class="shop-chest-tier">'+(CHEST_TIER_NAMES[tier]||'')+'</span>'+
     '<span class="shop-chest-stage">'+chestVisual(chest,'chest-lg')+'</span>'+
-    '<div class="shop-chest-name">'+escH(chest.name)+'</div>'+
+    // « Pion », et non « Coffre Pion » : sur trois colonnes de téléphone,
+    // « Coffre Cavalier » passait sur deux lignes et décalait son prix d'un
+    // cran sous ceux de ses voisins. On sait qu'on est devant des coffres.
+    '<div class="shop-chest-name">'+escH(chest.name.replace(/^Coffre\s+/,''))+'</div>'+
     '<div class="shop-chest-price">'+pearlAmountHTML(price,1.15)+'</div>'+
   '</button>';
 }
@@ -574,6 +596,12 @@ function showChestCeremony(chest,lots,applyOnClose,onClose){
   // sur le couvercle, et la cérémonie se joue comme avant.
   const canBreak=typeof chestBreakReady==='function'&&chestBreakReady(chest.id);
   visual.style.display=canBreak?'none':'';
+  // Sans planches à briser, un coffre qui a sa pièce (Dame, Roi) se montre en
+  // statuette, comme dans le Magasin ; seul le coffre du jour garde la malle.
+  const statue=!canBreak&&chestHasStatue(chest);
+  visual.className='chest chest-lg'+(statue?' chest-statue':'');
+  visual.innerHTML=statue?chestStatueHTML(chest)
+    :'<div class="chest-lid"></div><div class="chest-body"></div><div class="chest-lock"></div>';
   // Un coffre qu'on brise se joue sur FOND NOIR PLEIN, et non par-dessus
   // l'écran de fin de partie qu'on devinerait derrière : les planches ont
   // un fond noir, la scène doit continuer jusqu'aux bords de l'écran.

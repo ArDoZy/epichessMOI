@@ -30,7 +30,7 @@
 <link rel="manifest" href="/site.webmanifest"/>
 <meta name="robots" content="index,follow,max-snippet:-1,max-image-preview:large,max-video-preview:-1"/>
 <meta name="author" content="Epic Chess"/>
-<meta name="theme-color" content="#0e1216"/>
+<meta name="theme-color" content="#090c11"/>
 
 <!-- Open Graph / Twitter : aperçus de partage (Discord, X, WhatsApp, iMessage).
      SANS IMAGE : og-image.png et apple-touch-icon.png étaient deux rendus
@@ -57,14 +57,13 @@
      avaient déjà ouvert le jeu. Changer l'ADRESSE est le seul moyen sûr de la
      faire abandonner : incrémentez ce numéro (ici et dans site.webmanifest,
      qui doit pointer la même) à chaque fois que le tracé change. -->
-<link rel="icon" href="/favicon.svg?v=2" type="image/svg+xml"/>
+<link rel="icon" href="/favicon.svg?v=3" type="image/svg+xml"/>
 
 <!-- preconnect : les polices viennent d'un autre domaine ; ouvrir la
      connexion en avance évite ~100-300ms de latence au premier rendu
      (le LCP compte dans le classement Google). -->
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Cinzel+Decorative:wght@400;700;900&family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Grenze+Gotisch:wght@500;700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="preload" href="assets/fonts/cinzel.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="assets/fonts/inter.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="css/style.css">
 
 <!-- Données structurées Schema.org. Les faits (19 pièces, 5 classes,
@@ -310,7 +309,7 @@
          seul en ligne pendant qu'on attend n'aide en rien), puis « On cherche
          d'abord un adversaire de votre niveau, puis on élargit » — une règle
          d'appariement que le joueur n'a pas à connaître pour attendre. -->
-    <div class="ec-load-sub" id="mp-search-note">Recherche d'adversaire en cours</div>
+    <div class="ec-load-sub" id="mp-search-note">&nbsp;</div>
   </div>
 
   <div class="ec-load-foot">
@@ -532,6 +531,11 @@
       <feMergeNode in="t"/><feMergeNode in="t"/><feMergeNode in="SourceGraphic"/>
     </feMerge>
   </filter>
+  <!-- Le marbre des statuettes de coffre (chestStatueHTML, js/economy-ui.js). -->
+  <linearGradient id="ecMarble" x1="0" y1="0" x2=".35" y2="1">
+    <stop offset="0" stop-color="#fffdf8"/><stop offset=".45" stop-color="#e6e0d5"/>
+    <stop offset=".7" stop-color="#cfc7b9"/><stop offset="1" stop-color="#a69d8e"/>
+  </linearGradient>
   <filter id="jtfGlowT" x="-70%" y="-70%" width="240%" height="240%" color-interpolation-filters="sRGB">
     <feGaussianBlur stdDeviation="1.15" result="b"/>
     <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
@@ -571,7 +575,17 @@
           <div class="jouer-col">
           <div class="jouer-player">
             <h1 class="sr-only">Epic Chess</h1>
-            <div class="jouer-name" id="jouer-name"></div>
+            <!-- LA PASTILLE DU PROFIL, en haut à gauche, en face du jeton de
+                 réglages : la disposition de tous les jeux qu'on ouvre au
+                 pouce. Le pseudo flottait au milieu du haut de la salle, en
+                 capitales espacées, sans rien pour l'ancrer ; il est
+                 maintenant un objet qu'on touche, et qui mène au compte.
+                 Rempli par renderMenuIdentity() (js/accounts.js). Sur
+                 ordinateur, c'est la carte du rail qui le dit. -->
+            <button type="button" class="jouer-id" id="jouer-id" aria-label="Mon compte">
+              <span class="jouer-av" id="jouer-av" aria-hidden="true"></span>
+              <span class="jouer-name" id="jouer-name"></span>
+            </button>
             <!-- PLUS DE BOURSE ICI. Trois pastilles de solde (perles,
                  lauriers, tickets) tenaient cette ligne : trois compteurs
                  posés en permanence sous le pseudo, pour des nombres qu'on ne
@@ -707,6 +721,7 @@
             </svg></span>
           </span>
         </span>
+                <span class="jt-label">Quotidien</span>
                 <span class="jouer-badge" id="jouer-daily-badge" style="display:none">1</span>
               </button>
               <button class="jouer-track" id="jouer-colonne" aria-label="Colonne des victoires" title="Colonne des victoires">
@@ -761,6 +776,7 @@
             </g>
           </svg>
         </span>
+                <span class="jt-label">Victoires</span>
                 <span class="jouer-badge" id="jouer-colonne-badge" style="display:none">0</span>
               </button>
               <button class="jouer-track" id="jouer-rangee" aria-label="Rangée de la richesse" title="Rangée de la richesse">
@@ -807,6 +823,7 @@
             </g>
           </svg>
         </span>
+                <span class="jt-label">Richesse</span>
                 <span class="jouer-badge" id="jouer-rangee-badge" style="display:none">0</span>
               </button>
             </div>
@@ -1032,9 +1049,18 @@
            Les cases claires sont de vrais trous (fill-rule:evenodd), donc le
            damier se lit aussi bien en négatif sur le laiton de l'onglet actif
            que sur le fond sombre des autres. -->
-      <svg viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd" aria-hidden="true">
-        <path d="M2.4 2.4h14.2v14.2H2.4Zm3.55 3.55v3.55H9.5V5.95Zm7.1 0h-3.55v3.55h3.55Zm-7.1 7.1h3.55V9.5H5.95Zm7.1 0V9.5H9.5v3.55Z"/>
-        <path d="M14.15 18.35 18.35 14.15l5.05 5.05-4.2 4.2Zm4.2-1.4-1.4 1.4 2.25 2.25 1.4-1.4Z"/>
+      <svg class="nav-tab-gold" viewBox="0 0 24 24" aria-hidden="true">
+        <defs>
+          <linearGradient id="tabVarG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fbeab4"/><stop offset=".45" stop-color="#d9ac55"/><stop offset="1" stop-color="#7d5822"/></linearGradient>
+          <linearGradient id="tabVarS" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff6d6"/><stop offset="1" stop-color="#e2b45c"/></linearGradient>
+        </defs>
+        <g fill="url(#tabVarG)" stroke="#3a2708" stroke-width=".7" stroke-linejoin="round">
+          <path d="M7.2 20.2c.2-2.6 1.3-4.6 3.3-6.2l-1.3-1.6-2.6 1.2c-.7.3-1.5 0-1.8-.7l-.5-1c-.3-.6-.1-1.2.4-1.6l4.6-4.3.2-1.8 1.6 1.2c3.3-.6 6.2 1.3 7.1 4.6.7 2.7.2 6-1 10.2z"/>
+          <path d="M5.6 20h12.8c.5 0 .9.4.9.9v.6c0 .3-.2.5-.5.5H5.2c-.3 0-.5-.2-.5-.5v-.6c0-.5.4-.9.9-.9z"/>
+        </g>
+        <circle cx="11.6" cy="8.6" r=".75" fill="#3a2708"/>
+        <path d="M3.6 2.2l.55 1.6 1.6.55-1.6.55-.55 1.6-.55-1.6-1.6-.55 1.6-.55z" fill="url(#tabVarS)"/>
+        <path d="M20.2 2.9l.4 1.1 1.1.4-1.1.4-.4 1.1-.4-1.1-1.1-.4 1.1-.4z" fill="url(#tabVarS)" opacity=".85"/>
       </svg>
       <img class="nav-tab-art" src="assets/ui/logo-variantes.webp" alt="" aria-hidden="true" onerror="this.remove()">
       <span class="nav-tab-label">Variantes</span>
@@ -1119,6 +1145,7 @@
          js/data-pieces.js). Rendue par pRenderTroop (js/armies.js). -->
     <div class="troop-pick" id="ar-troop" role="radiogroup" aria-label="Troupe de pions"></div>
   </div>
+  <div class="ec-sec ar-coll-title">Votre collection</div>
   <div id="ar-cards-container"></div>
 </div>
 </div>
@@ -1130,11 +1157,11 @@
 <div id="page-adversaires" class="page">
 <div class="adv-inner">
   <div class="adv-hdr">
-    <div>
-      <div class="adv-page-title art-banner cinzel glow-text">Les Adversaires</div>
+    <button type="button" class="ec-back" id="adv-back" aria-label="Retour au menu" title="Retour au menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 5, 8 12, 15 19"/></svg></button>
+    <div class="adv-hdr-txt">
+      <div class="adv-page-title art-banner">Les Adversaires</div>
       <div class="adv-page-sub" id="adv-sub"></div>
     </div>
-    <button class="btn btn-ghost" id="adv-back">← Retour</button>
   </div>
   <div class="adv-grid" id="adv-grid"></div>
 </div>
@@ -1152,7 +1179,7 @@
 <div id="page-replay" class="page">
 <div class="rp-inner">
   <div class="rp-hdr">
-    <button class="btn btn-ghost rp-back" id="rp-back">← Retour</button>
+    <button type="button" class="ec-back rp-back" id="rp-back" aria-label="Retour" title="Retour"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 5, 8 12, 15 19"/></svg></button>
     <div class="rp-hdr-id">
       <div class="rp-title" id="rp-title"></div>
       <div class="rp-sub" id="rp-sub"></div>
@@ -1166,8 +1193,8 @@
 <div id="page-ai-armies" class="page">
 <div class="armies-inner">
   <div class="armies-hdr">
-    <div class="armies-title cinzel" style="background:linear-gradient(135deg,var(--accent2),var(--sorcier));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">Armées de l'IA</div>
-    <button class="btn btn-ghost" id="ai-ar-back">← Retour</button>
+    <button type="button" class="ec-back" id="ai-ar-back" aria-label="Retour" title="Retour"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 5, 8 12, 15 19"/></svg></button>
+    <div class="armies-title">Armées de l'IA</div>
     <button class="btn btn-primary" id="ai-ar-new">+ Nouvelle armée IA</button>
   </div>
   <div class="armies-grid" id="ai-armies-grid"></div>
@@ -1248,25 +1275,19 @@
      et `page-voie` : ce sont les clés sur lesquelles sont accrochés le CSS,
      le tutoriel et le test de fumée, et les renommer ne changerait rien à
      l'écran. -->
-<!-- LE BOUTON « OK » EST UNE PASTILLE CENTRÉE EN BAS DE L'ÉCRAN.
-     Il a été une barre pleine largeur et haute de 60 px, plus imposante que
-     le gros bouton COMBAT du menu pour un mot de deux lettres qui ne fait que
-     refermer la page. Il n'en prend plus qu'un tiers de la largeur — assez
-     large pour le pouce, assez discret pour ne pas voler la vedette à la
-     Voie (voir .voie-ok-bar dans css/style.css, où toutes ses dimensions sont
-     relatives : pourcentage de largeur, `em` et `vh`).
-     Elle est posée PAR-DESSUS la Voie, en position:absolute dans #page-voie.
-     Elle ne peut pas être en position:fixed : `.page.active` porte une
-     animation d'entrée dont la dernière image laisse un `transform` posé en
-     permanence (animation-fill-mode:both), ce qui fait de la page le bloc
-     conteneur de tout descendant en position:fixed — il se retrouverait
-     collé au bas du CONTENU, des milliers de pixels plus bas. En absolu,
-     c'est #page-voie lui-même (position:fixed;inset:0) qui sert de
-     référence : le bouton reste sous les yeux quel que soit le défilement. -->
+<!-- ON SORT PAR LE HAUT À GAUCHE, PARTOUT. Les pages secondaires se
+     fermaient de trois façons : une pastille « OK » posée en bas, par-dessus
+     le contenu (la Diagonale, les Comptes, le Classement, les Récompenses),
+     et un « ← Retour » en haut à droite (les Adversaires, l'Analyse, les
+     Armées de l'IA). C'est maintenant un seul objet, le jeton de retour
+     (.ec-back), à gauche du titre, dans un en-tête qui reste collé en haut
+     de l'écran pendant le défilement : la page la plus longue se quitte
+     d'un geste, où qu'on soit, et plus rien ne recouvre ses derniers
+     jalons. Les identifiants des boutons n'ont pas changé. -->
 <div id="page-voie" class="page">
 <div class="voie-scroll" id="voie-scroll">
   <div class="voie-inner">
-    <div class="voie-hdr"><div class="voie-title art-banner">Diagonale de la Puissance</div></div>
+    <div class="voie-hdr"><button type="button" class="ec-back" id="voie-ok" aria-label="Retour au menu" title="Retour au menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 5, 8 12, 15 19"/></svg></button><div class="voie-title art-banner">Diagonale de la Puissance</div></div>
     <div class="voie-elo-banner" id="voie-elo-banner"></div>
     <div class="voie-route" id="voie-route"></div>
     <!-- 44 px de haut, comme toute cible tactile du jeu : à 11 px de police et
@@ -1274,23 +1295,22 @@
     <div style="text-align:left;margin-top:16px;padding-bottom:20px"><button class="btn btn-ghost" id="voie-scroll-top" style="font-size:12px;min-height:44px">↓ Retour au début</button></div>
   </div>
 </div>
-<button class="btn btn-gold voie-ok-bar" id="voie-ok">OK</button>
 </div>
 
 <!-- PAGE COMPTES : l'identité du joueur (js/account-ui.js).
-     Ouverte par la ligne « Compte » du panneau de réglages. Elle reprend la
-     mise en page de la Voie (zone défilante + pastille « OK » en bas) pour
-     que toutes les pages secondaires se ferment du même geste.
+     Ouverte par la pastille du profil du menu et par la ligne « Compte » du
+     panneau de réglages. Elle reprend la mise en page de la Voie (zone
+     défilante, en-tête collé avec son jeton de retour) : toutes les pages
+     secondaires se ferment du même geste.
      Le corps (#account-body) est entièrement produit par
      renderAccountPage() : rien de son contenu ne vit ici. -->
 <div id="page-account" class="page">
 <div class="voie-scroll" id="account-scroll">
   <div class="voie-inner acc-inner">
-    <div class="voie-hdr"><div class="voie-title">Comptes</div></div>
+    <div class="voie-hdr"><button type="button" class="ec-back" id="acc-close" aria-label="Retour au menu" title="Retour au menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 5, 8 12, 15 19"/></svg></button><div class="voie-title">Comptes</div></div>
     <div id="account-body"></div>
   </div>
 </div>
-<button class="btn btn-gold voie-ok-bar" id="acc-close">OK</button>
 </div>
 
 <!-- PAGE CLASSEMENT : le tableau général, la recherche, et le profil d'un
@@ -1301,11 +1321,10 @@
 <div id="page-classement" class="page">
 <div class="voie-scroll" id="lb-scroll">
   <div class="voie-inner acc-inner">
-    <div class="voie-hdr"><div class="voie-title">Classement</div></div>
+    <div class="voie-hdr"><button type="button" class="ec-back" id="lb-close" aria-label="Retour au menu" title="Retour au menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 5, 8 12, 15 19"/></svg></button><div class="voie-title">Classement</div></div>
     <div id="lb-body"></div>
   </div>
 </div>
-<button class="btn btn-gold voie-ok-bar" id="lb-close">OK</button>
 </div>
 
 <!-- PAGE RÉCOMPENSES : les deux voies qui ne dépendent pas de l'ELO.
@@ -1320,18 +1339,19 @@
      menu principal a maintenant un bouton par voie et ouvre directement
      dessus ; la page ne porte plus qu'un titre, celui de la voie qu'on
      regarde, posé par openRewardsPage() (js/rewards-ui.js). On revient au
-     menu par « OK » — et c'est le seul chemin de l'une à l'autre. -->
+     menu par le jeton de retour — et c'est le seul chemin de l'une à
+     l'autre. -->
 <div id="page-rewards" class="page">
 <div class="voie-scroll rw-scroll" id="rw-scroll">
   <div class="voie-inner rw-inner">
-    <div class="rw-hdr">
+    <div class="rw-hdr voie-hdr">
+      <button type="button" class="ec-back" id="rw-ok" aria-label="Retour au menu" title="Retour au menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 5, 8 12, 15 19"/></svg></button>
       <div class="voie-title art-banner" id="rw-title">Colonne des Victoires</div>
     </div>
     <section class="rw-pane" id="rw-pane-colonne" role="region" aria-labelledby="rw-title"></section>
     <section class="rw-pane" id="rw-pane-rangee" role="region" aria-labelledby="rw-title" hidden></section>
   </div>
 </div>
-<button class="btn btn-gold voie-ok-bar" id="rw-ok">OK</button>
 </div>
 
 <!-- LA PAGE D'ENGAGEMENT A ÉTÉ SUPPRIMÉE. Elle s'intercalait entre « Combat »
@@ -1859,7 +1879,7 @@
 <div class="promo-modal" id="promo-modal"><div class="promo-box"><div class="promo-title">Choisir la promotion</div><div class="promo-pieces-row" id="promo-box"></div></div></div>
 <!-- Le badge « Admin » flottant a disparu : le mode admin est désormais
      l'adresse /test, ouverte depuis les réglages (js/settings-admin.js). -->
-<div class="result-modal" id="result-modal"><div class="result-box" id="result-box"><button id="result-close-btn" style="position:absolute;top:12px;right:14px;background:transparent;border:none;cursor:pointer;color:var(--muted);font-size:22px;line-height:1;font-family:inherit;transition:color .15s;z-index:1" title="Fermer et analyser la partie">✕</button><span class="result-icon" id="result-icon"></span><div class="result-title" id="result-title"></div><div class="result-foe" id="result-foe" style="display:none"></div><div class="result-elo-row"><span class="result-elo-before" id="result-elo-before"></span><span class="result-elo-arrow">→</span><span class="result-elo-after" id="result-elo-after"></span><span class="result-elo-delta" id="result-elo-delta"></span></div><div class="result-elo-note" id="result-elo-note" style="display:none"></div><div class="unlock-section" id="unlock-section" style="display:none"><div class="unlock-title">Nouvelle pièce débloquée !</div><span class="unlock-piece-emoji" id="unlock-piece-emoji"></span><div class="unlock-piece-name" id="unlock-piece-name"></div><div class="unlock-piece-class" id="unlock-piece-class"></div><div class="unlock-piece-ability" id="unlock-piece-ability"></div></div><div style="display:flex;flex-direction:column;gap:8px;margin-top:20px"><button class="btn btn-gold" style="width:100%" id="result-continue">Continuer</button><div style="display:flex;gap:8px"><button class="btn btn-primary" style="flex:1" id="result-rejouer">↺ Rejouer</button><button class="btn btn-ghost" style="flex:1;border-color:var(--accent2);color:var(--accent2)" id="result-revanche">Revanche</button></div></div></div></div>
+<div class="result-modal" id="result-modal"><div class="result-box" id="result-box"><button class="modal-x" id="result-close-btn" title="Fermer et analyser la partie" aria-label="Fermer et analyser la partie"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button><span class="result-icon" id="result-icon"></span><div class="result-title" id="result-title"></div><div class="result-foe" id="result-foe" style="display:none"></div><div class="result-elo-row"><span class="result-elo-before" id="result-elo-before"></span><span class="result-elo-arrow">→</span><span class="result-elo-after" id="result-elo-after"></span><span class="result-elo-delta" id="result-elo-delta"></span></div><div class="result-elo-note" id="result-elo-note" style="display:none"></div><div class="unlock-section" id="unlock-section" style="display:none"><div class="unlock-title">Nouvelle pièce débloquée !</div><span class="unlock-piece-emoji" id="unlock-piece-emoji"></span><div class="unlock-piece-name" id="unlock-piece-name"></div><div class="unlock-piece-class" id="unlock-piece-class"></div><div class="unlock-piece-ability" id="unlock-piece-ability"></div></div><div class="result-actions"><button class="btn btn-primary" id="result-continue">Continuer</button><div class="result-actions-row"><button class="btn btn-ghost" id="result-rejouer">↺ Rejouer</button><button class="btn btn-ghost" id="result-revanche">Revanche</button></div></div></div></div>
 <!-- CÉRÉMONIE D'OUVERTURE DE COFFRE (js/economy-ui.js) -->
 <div class="chest-modal" id="chest-modal">
   <div class="chest-stage">

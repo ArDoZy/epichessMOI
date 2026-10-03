@@ -41,6 +41,11 @@
 //     v5 marque les médaillons de rang ramenés de 1254 à 288 px (ils ne
 //     s'affichent jamais au-delà de 88 px : 2,3 Mo devenus 210 Ko) et la
 //     table recomprimée, eux aussi SOUS LE MÊME NOM.
+//     v8 marque la refonte « Nuit et Or » : les polices quittent Google Fonts
+//     pour assets/fonts/ (des .woff2, donc servis cache d'abord), le favicon
+//     est redessiné, et les plaques vectorielles d'orfèvrerie ne sont plus
+//     posées. Monter le numéro purge ces planches orphelines des caches déjà
+//     remplis au lieu de les y laisser dormir.
 //
 // -- METTRE À JOUR -------------------------------------------------------
 // Monter CACHE_VERSION suffit : l'ancien cache est effacé à l'activation, et
@@ -48,7 +53,7 @@
 // immédiatement plutôt qu'au prochain lancement.
 // ================================================================
 
-const CACHE_VERSION = 'epicchess-v7';
+const CACHE_VERSION = 'epicchess-v8';
 const CACHE_MEDIA   = CACHE_VERSION + '-media';
 const CACHE_SHELL   = CACHE_VERSION + '-shell';
 
@@ -60,7 +65,7 @@ const SHELL = [
   '/',
   '/index.html',
   '/css/style.css',
-  '/favicon.svg?v=2',
+  '/favicon.svg?v=3',
   '/site.webmanifest',
 ];
 

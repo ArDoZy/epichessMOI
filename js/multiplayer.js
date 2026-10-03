@@ -1558,9 +1558,12 @@ function mpRenderSearch(waitS,peerCount,win){
   // note annonce ce qui va se passer : un adversaire qui surgit sans prévenir
   // passerait pour un humain, et ce n'en est pas un.
   const left=MP_BOT_AFTER_S-waitS;
+  // Le reste du temps, elle se tait : « Recherche d'adversaire en cours »
+  // répétait mot pour mot le titre posé juste au-dessus. Une espace
+  // insécable lui garde sa hauteur, pour que rien ne saute quand elle parle.
   if(note)note.textContent=left<=20&&left>0
     ?'Personne en vue : un adversaire du laboratoire de votre niveau arrive dans '+left+' s'
-    :'Recherche d\'adversaire en cours';
+    :'\u00a0';
   // LE CHRONOMÈTRE PREND LA PLACE DU POURCENTAGE. L'écran de démarrage
   // affiche une barre qui monte vers une fin connue ; ici on attend
   // quelqu'un, et il n'y a rien à annoncer d'autre que la durée écoulée —
