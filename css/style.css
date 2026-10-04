@@ -2582,12 +2582,13 @@ body.in-game .nav-page[data-page="game"]{display:block}
 .pc-svg .l{fill:none;stroke:var(--pc-line);stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
 .pc-svg .t{fill:none;stroke:var(--pc-line);stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;opacity:.8}
 .pc-svg .k{fill:var(--pc-line)}
+.pc-svg .v{fill:var(--pc-void)}
 .pc-w,.pc-n{--pc-fill:url(#pcg-w) var(--pc-w-fill);--pc-line:var(--pc-w-line);
   --pc-gold:url(#pcg-gold) #e2b453;--pc-gem:url(#pcg-gem-w) #3c8be0;
-  --pc-shade:rgba(96,62,22,.2);--pc-hi:rgba(255,255,255,.78)}
+  --pc-shade:rgba(96,62,22,.2);--pc-hi:rgba(255,255,255,.78);--pc-void:#24170c}
 .pc-b{--pc-fill:url(#pcg-b) var(--pc-b-fill);--pc-line:var(--pc-b-line);
   --pc-gold:url(#pcg-gold-b) #c9973c;--pc-gem:url(#pcg-gem-b) #d0283c;
-  --pc-shade:rgba(0,0,0,.42);--pc-hi:rgba(206,192,255,.3)}
+  --pc-shade:rgba(0,0,0,.42);--pc-hi:rgba(206,192,255,.3);--pc-void:#040307}
 /* Variante neutre : hors partie (cartes, inventaire, coffres), une pièce
    n'appartient à aucun camp. Elle prend la matière des blancs — l'ivoire
    se lit sur tous les fonds du jeu, qui sont sombres. */
@@ -2695,6 +2696,8 @@ body.in-game .nav-page[data-page="game"]{display:block}
 .chest-statue-fig .pc-svg .b{fill:url(#ecMarble);stroke:#3b342b;stroke-width:2.2}
 .chest-statue-fig .pc-svg .l{stroke:#5a5145;stroke-width:2.2}
 .chest-statue-fig .pc-svg .k{fill:#4a4237}
+.chest-statue-fig .pc-svg .v{fill:#2b2620}
+.chest-statue-fig .pc-svg .t{stroke:#5a5145}
 .chest-statue-plinth{position:absolute;left:50%;bottom:3%;width:86%;height:16%;transform:translateX(-50%);border-radius:50%;
   background:radial-gradient(ellipse at 50% 35%,#3a3e44,#121418 60%,#060708);
   box-shadow:0 4px 10px rgba(0,0,0,.7),inset 0 1px 0 rgba(255,255,255,.12)}
@@ -8823,6 +8826,14 @@ body.has-acc #page-mirror{min-height:0}
 .blz-charge .b{fill:var(--pc-fill);stroke:var(--pc-line);stroke-width:3.4;stroke-linejoin:round;stroke-linecap:round}
 .blz-charge .l{fill:none;stroke:var(--pc-line);stroke-width:3.4;stroke-linecap:round;stroke-linejoin:round}
 .blz-charge .k{fill:var(--pc-line)}
+/* Les pièces du plateau portent aussi de l'or, des gemmes, des ombres et des
+   reflets (classes .g .e .s .h .t .v, js/piece-art.js). Sur un écu, tout se
+   ramène à DEUX émaux, comme le veut l'héraldique : l'or prend l'émail du
+   meuble, gemmes et vides prennent le cerne, ombres et reflets s'effacent. */
+.blz-charge .g{fill:var(--pc-fill);stroke:var(--pc-line);stroke-width:2.6;stroke-linejoin:round}
+.blz-charge .e,.blz-charge .v{fill:var(--pc-line)}
+.blz-charge .t{fill:none;stroke:var(--pc-line);stroke-width:1.7;stroke-linecap:round}
+.blz-charge .s,.blz-charge .h{display:none}
 
 /* --- LE CHARGEMENT ------------------------------------------------ */
 .clan-skel>div{border-radius:16px;margin-bottom:10px;
