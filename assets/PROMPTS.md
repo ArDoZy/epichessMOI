@@ -40,15 +40,20 @@ coffres Dame et Roi, § 9).
 Tu vas me produire une série d'illustrations pour « Epic Chess », un jeu
 d'échecs de fantasy où des alchimistes ont donné vie aux pièces.
 STYLE COMMUN À TOUTES LES IMAGES :
-- peinture numérique de fantasy épique, rendu « key art » de jeu vidéo
-  premium, textures riches (pierre, laiton, cuir, marbre), lumière
-  dramatique ;
-- direction « NUIT ET OR » : une nuit bleu-noir profonde (#090c11 à
-  #1a2533), éclairée par de l'OR martelé (#d8b26a, #f3da9c) et la lumière
-  chaude de torches et de braises ; l'ivoire (#f0e8d8) pour les marbres ;
-- palette limitée : nuit, or, ivoire, et une touche de CYAN d'arcane
-  (#5ccad3) réservée à la magie de l'Alchimiste ;
-- architecture gothique, marbre en damier, ornements d'orfèvrerie ;
+- peinture numérique de HAUTE FANTASY, rendu « key art » de jeu vidéo
+  premium (l'univers d'un grand jeu de cartes à collectionner), textures
+  riches (pierre sculptée, or ciselé, cuir, marbre, ivoire, obsidienne),
+  lumière dramatique et un peu de magie dans l'air (poussière d'or,
+  braises, lueurs d'arcane) ;
+- direction « NUIT ET OR, FANTASY » : une nuit bleu-noir profonde (#090c11
+  à #1a2533), éclairée par de l'OR martelé (#d8b26a, #f3da9c) et la lumière
+  chaude de torches et de braises ; l'IVOIRE (#f3e9d2) et l'OBSIDIENNE
+  violacée (#221c33) sont les deux matières des pièces, rehaussées d'or et
+  serties de SAPHIRS (blancs) et de RUBIS (noirs) ;
+- palette limitée : nuit, or, ivoire, obsidienne, et une touche de CYAN
+  d'arcane (#5ccad3) réservée à la magie ;
+- architecture de citadelle gothique, salles de trône, marbre en damier,
+  orfèvrerie en filigrane, héraldique ;
 - AUCUN texte, AUCUN logo, AUCUNE signature, aucun cadre ajouté autour de
   l'image, pas de style cartoon, pas de rendu 3D plastique.
 Je te donnerai ensuite chaque image séparément, avec son format.
