@@ -26,19 +26,121 @@
 // automatiquement sur un jeton neutre, le jeu reste jouable.
 // ================================================================
 
-// Socle commun à toutes les pièces : c'est lui qui fait qu'un Typhon et une
-// Méduse se lisent comme deux pièces du même jeu et non comme deux icônes
-// sans rapport.
-const PIECE_BASE='<path class="b" d="M30 80h40l6 11H24z"/><path class="b" d="M19 91h62a3 3 0 0 1 0 7H19a3 3 0 0 1 0-7z"/>';
+// ----------------------------------------------------------------
+// LA MATIÈRE (direction « Fantasy », v5)
+// ----------------------------------------------------------------
+// Les pièces ne sont plus deux aplats. Chaque camp a sa MATIÈRE, peinte par
+// des dégradés communs à tout le document (pieceArtDefs, plus bas) :
+//   · les blancs sont d'IVOIRE, éclairé en haut à gauche, rehaussé d'OR
+//     et serti de SAPHIRS ;
+//   · les noirs sont d'OBSIDIENNE violacée, rehaussée du même or, sertie
+//     de RUBIS, et cernée d'un trait d'or pâle — sans lui, une pièce noire
+//     disparaîtrait sur une case sombre.
+// L'or est commun aux deux camps : c'est la couleur du jeu, et c'est la
+// matière qui fait d'une silhouette une PIÈCE D'APPARAT. Ce qui sépare les
+// camps au premier coup d'œil reste le corps (clair / sombre) ; la gemme
+// (bleue / rouge) le confirme à grande taille.
+//
+// Les classes d'un dessin (toutes dans le repère 100 × 100) :
+//   .b  le CORPS : matière du camp, cerné (--pc-line)
+//   .g  l'OR : couronnes, colliers, lames, ferrures — cerné comme le corps
+//   .e  une GEMME ou un œil qui luit : saphir (blancs) / rubis (noirs)
+//   .s  une OMBRE propre, sans trait, posée PAR-DESSUS une forme pleine et
+//       contenue dans son contour : c'est elle qui donne le volume
+//   .h  un REFLET, sans trait, même règle : le coup de lumière
+//   .l  un trait de détail (crinière, plis, veines)
+//   .t  un trait FIN, pour le détail qui ne compte qu'à grande taille
+//   .k  un aplat de contraste (orbites, fentes, creux d'ombre) en --pc-line
+// Une pièce doit se lire à QUARANTE PIXELS : la silhouette d'abord, l'or
+// ensuite, le reste est du bonus pour la fiche et les cartes.
+//
+// Le dégradé du corps est en `userSpaceOnUse` dans le repère 100 × 100 :
+// toutes les formes d'une pièce partagent donc la MÊME lumière, au lieu que
+// chaque morceau ait son propre petit dégradé (ce qui ferait un patchwork).
+
+// Socle commun à toutes les pièces : un piédestal d'apparat à deux degrés,
+// ceint d'un jonc d'or. C'est lui qui fait qu'un Typhon et une Méduse se
+// lisent comme deux pièces du même jeu, et non comme deux icônes sans
+// rapport. Les dessins se posent sur sa face haute, à y = 80.
+const PIECE_BASE=
+  '<path class="b" d="M29 80h42l5 8H24z"/>'+
+  '<path class="g" d="M22 87.5h56c2 0 3.5 1.5 3.5 3.2H18.5c0-1.7 1.5-3.2 3.5-3.2z"/>'+
+  '<path class="b" d="M17 90.5h66a3 3 0 0 1 3 3V95a3 3 0 0 1-3 3H17a3 3 0 0 1-3-3v-1.5a3 3 0 0 1 3-3z"/>'+
+  '<path class="s" d="M60 91.5h23a2 2 0 0 1 2 2V95a2 2 0 0 1-2 2H60z"/>'+
+  '<path class="h" d="M19 92h22v1.6H19z"/>';
+
+// Les dégradés et filtres partagés. Injectés UNE fois dans le document, dans
+// un <svg> de taille nulle (et non `display:none` : Firefox ne peint pas un
+// dégradé défini sous un élément non rendu). La CSS les appelle par leur id
+// (`fill:url(#pcg-w)`), avec une couleur de secours si l'id manquait.
+function pieceArtDefs(){
+  return '<svg id="pc-defs" aria-hidden="true" focusable="false" '+
+    'style="position:absolute;width:0;height:0;overflow:hidden;pointer-events:none">'+
+    '<defs>'+
+      // IVOIRE : la lumière vient d'en haut à gauche.
+      '<linearGradient id="pcg-w" gradientUnits="userSpaceOnUse" x1="22" y1="4" x2="78" y2="100">'+
+        '<stop offset="0" stop-color="#fffef8"/><stop offset=".42" stop-color="#f3e9d2"/>'+
+        '<stop offset=".78" stop-color="#d9c6a0"/><stop offset="1" stop-color="#b59a6c"/>'+
+      '</linearGradient>'+
+      // OBSIDIENNE : un reflet d'améthyste en haut, la nuit pleine en bas.
+      '<linearGradient id="pcg-b" gradientUnits="userSpaceOnUse" x1="22" y1="4" x2="78" y2="100">'+
+        '<stop offset="0" stop-color="#6b6188"/><stop offset=".3" stop-color="#383052"/>'+
+        '<stop offset=".7" stop-color="#1b1729"/><stop offset="1" stop-color="#0a0810"/>'+
+      '</linearGradient>'+
+      // L'OR : un or martelé, chaque forme a sa propre lumière (une couronne
+      // brille de haut en bas, quelle que soit sa place dans la pièce).
+      '<linearGradient id="pcg-gold" x1="0" y1="0" x2="0" y2="1">'+
+        '<stop offset="0" stop-color="#fff4c4"/><stop offset=".32" stop-color="#f2c962"/>'+
+        '<stop offset=".68" stop-color="#c58d2c"/><stop offset="1" stop-color="#8a5a16"/>'+
+      '</linearGradient>'+
+      // L'or des noirs : plus chaud et un peu plus sombre, pour qu'il ne
+      // crie pas sur l'obsidienne.
+      '<linearGradient id="pcg-gold-b" x1="0" y1="0" x2="0" y2="1">'+
+        '<stop offset="0" stop-color="#ffe7a8"/><stop offset=".35" stop-color="#e0ad4a"/>'+
+        '<stop offset=".7" stop-color="#a8701f"/><stop offset="1" stop-color="#6a420e"/>'+
+      '</linearGradient>'+
+      // LES GEMMES : un point de lumière décentré, un cœur saturé, un bord
+      // presque noir — c'est ce bord qui fait lire une gemme et non un rond.
+      '<radialGradient id="pcg-gem-w" cx=".36" cy=".3" r=".75">'+
+        '<stop offset="0" stop-color="#f2fcff"/><stop offset=".28" stop-color="#7fd6ff"/>'+
+        '<stop offset=".66" stop-color="#2369c9"/><stop offset="1" stop-color="#0d2a66"/>'+
+      '</radialGradient>'+
+      '<radialGradient id="pcg-gem-b" cx=".36" cy=".3" r=".75">'+
+        '<stop offset="0" stop-color="#fff0ea"/><stop offset=".28" stop-color="#ff7a62"/>'+
+        '<stop offset=".66" stop-color="#c0162e"/><stop offset="1" stop-color="#4f0612"/>'+
+      '</radialGradient>'+
+    '</defs></svg>';
+}
+(function injectPieceArtDefs(){
+  if(typeof document==='undefined')return;
+  const put=()=>{
+    if(document.getElementById('pc-defs')||!document.body)return;
+    document.body.insertAdjacentHTML('afterbegin',pieceArtDefs());
+  };
+  if(document.body)put();else document.addEventListener('DOMContentLoaded',put);
+})();
 
 const PIECE_ART={
 
   // ---- Monarques -------------------------------------------------
+  // LE ROI : la couronne d'or à cinq fleurons sertis, la croix gemmée au
+  // sommet, le col d'or et l'ourlet brodé de la robe. La croix reste sa
+  // signature à quarante pixels : c'est elle qui le sépare de la Dame.
   'roi':
-    '<path class="b" d="M45 3h10v9h9v9h-9v11H45V21h-9v-9h9z"/>'+
-    '<path class="b" d="M26 49 21 23l15 11 14-17 14 17 15-11-5 26z"/>'+
-    '<path class="b" d="M27 51h46l-4 15c8 6 12 10 12 16H19c0-6 4-10 12-16z"/>'+
-    '<path class="l" d="M31 63h38"/>',
+    '<path class="b" d="M31 46h38l-4 12c9 5 14 12 15 22H20c1-10 6-17 15-22z"/>'+
+    '<path class="s" d="M57 47h10l-3.5 10.5c8 5 12.5 11.5 13.5 20.5H62c0-12-2-22-5-31z"/>'+
+    '<path class="h" d="M35.5 61c-5 4-8 9-9.5 15h3.6c1.2-5.6 3.6-9.6 7.6-12.6zM35 48h3.6l-2.4 7.6h-3.2z"/>'+
+    '<path class="g" d="M21.2 75h57.6l1.2 5H20z"/>'+
+    '<path class="g" d="M33.6 56h32.8l-1.3 4.8H34.9z"/>'+
+    '<path class="g" d="M28 41 25 22l9 7 6-11 5 8 5-11 5 11 5-8 6 11 9-7-3 19z"/>'+
+    '<path class="h" d="M30 38.5 28.4 28l4 3.2z"/>'+
+    '<path class="g" d="M26.5 39h47v7.5h-47z"/>'+
+    '<ellipse class="e" cx="50" cy="42.7" rx="4.2" ry="3.1"/>'+
+    '<circle class="e" cx="36.5" cy="42.7" r="2"/><circle class="e" cx="63.5" cy="42.7" r="2"/>'+
+    '<circle class="e" cx="25" cy="22" r="2.3"/><circle class="e" cx="75" cy="22" r="2.3"/>'+
+    '<circle class="e" cx="40" cy="18" r="2.1"/><circle class="e" cx="60" cy="18" r="2.1"/>'+
+    '<path class="g" d="M46.8 1.5h6.4v4.8h4.6v6.2h-4.6V17h-6.4v-4.5h-4.6V6.3h4.6z"/>'+
+    '<circle class="e" cx="50" cy="9.4" r="2.2"/>',
 
   // LA MATRIARCHE : un diadème bas et un voile qui tombe sur les épaules ;
   // le visage est le creux d'ombre sous le voile, comme le Grand Maître.
@@ -275,10 +377,16 @@ const PIECE_ART_ALIAS={
   'dame-promo':'dame','tour-promo':'tour-primordiale','fou-promo':'fou-primordial','cav-promo':'cavalier-primordial',
 };
 
+// LE PION : la silhouette d'échecs que tout le monde connaît — c'est ce qui
+// le fait lire avant tout le reste —, la tête polie et le col d'or.
 PIECE_ART.__pawn=
-  '<circle class="b" cx="50" cy="25" r="13"/>'+
-  '<path class="b" d="M40 36h20l2 7H38z"/>'+
-  '<path class="b" d="M38 43h24c0 16 4 27 10 37H28c6-10 10-21 10-37z"/>';
+  '<path class="b" d="M38 41.5h24c0 15 4 27 11 38.5H27c7-11.5 11-23.5 11-38.5z"/>'+
+  '<path class="s" d="M54.5 43h6.3c.6 14 4.2 25.4 10.4 36H60.8c-1-13.2-3-25-6.3-36z"/>'+
+  '<path class="h" d="M39.6 49c-.5 9.5-3 18.6-7.4 27h3.2c3.6-8.2 5.6-16.6 6.1-27z"/>'+
+  '<path class="g" d="M37.5 35.5h25l2.6 6H34.9z"/>'+
+  '<circle class="b" cx="50" cy="23.5" r="12.5"/>'+
+  '<path class="s" d="M58.6 15a12.5 12.5 0 0 1-12 20.7 11 11 0 0 0 12-20.7z"/>'+
+  '<path class="h" d="M42.4 18.6a9 9 0 0 1 6.6-5.2c-3.2 2.2-4.8 4.4-5.4 7.4z"/>';
 
 // LES QUATRE TROUPES (PAWN_ARMIES, js/data-pieces.js) gardent la silhouette
 // du pion — ce sont des pions — et se distinguent par la coiffe : le

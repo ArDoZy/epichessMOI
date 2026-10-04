@@ -17,6 +17,12 @@
 //   node tools/ui-shots.js            → toutes les tailles, tous les écrans
 //   node tools/ui-shots.js 390x844    → une seule taille
 //
+// Trois réglages d'environnement, pour que plusieurs captures puissent
+// tourner en même temps (chacune dans son dossier, sur son port) :
+//   UI_OUT=/tmp/ui-x       le dossier des captures (/tmp/ui par défaut)
+//   UI_PORT=8123           le port du serveur (choisi par le système sinon)
+//   UI_ONLY=12-partie,05-armees   ne capturer que ces écrans
+//
 // Dépendance : playwright (déjà nécessaire pour npm test).
 // ================================================================
 
@@ -24,8 +30,8 @@ const {chromium}=require('playwright');
 const http=require('http'),fs=require('fs'),path=require('path');
 
 const ROOT=path.resolve(__dirname,'..');
-const OUT='/tmp/ui';
-const PORT=8097;
+const OUT=process.env.UI_OUT||'/tmp/ui';
+const ONLY_SCREENS=(process.env.UI_ONLY||'').split(',').filter(Boolean);
 const MIME={'.html':'text/html','.js':'text/javascript','.css':'text/css','.svg':'image/svg+xml',
   '.json':'application/json','.mp3':'audio/mpeg','.png':'image/png','.webp':'image/webp',
   '.jpg':'image/jpeg','.txt':'text/plain','.webmanifest':'application/manifest+json'};
@@ -222,7 +228,8 @@ const SCREENS=[
   fs.mkdirSync(OUT,{recursive:true});
 
   const server=serve();
-  await new Promise(r=>server.listen(PORT,r));
+  await new Promise(r=>server.listen(+process.env.UI_PORT||0,r));
+  const PORT=server.address().port;
   const exe=findChromium();
   const browser=await chromium.launch(exe?{executablePath:exe}:{});
   const problemes=[];
@@ -264,6 +271,7 @@ const SCREENS=[
     }
 
     for(const sc of SCREENS){
+      if(ONLY_SCREENS.length&&!ONLY_SCREENS.includes(sc.name))continue;
       try{
         await sc.go(page);
         await page.screenshot({path:path.join(OUT,size.name+'_'+sc.name+'.png')});
