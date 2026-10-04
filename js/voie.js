@@ -252,12 +252,15 @@ function vvCalcNewElo(playerElo,aiElo,result,games){
   // calcul brut : une victoire contre bien plus faible que soi donne un raw
   // minuscule mais positif, elle doit être majorée comme une victoire.
   //
-  // UNE VICTOIRE RAPPORTE TOUJOURS AU MOINS 1 POINT, UNE DÉFAITE EN COÛTE
-  // TOUJOURS AU MOINS 1. Sans ces deux bornes, l'arrondi produit des « +0 »
-  // et des « -0 » : gagner sans rien gagner décourage, et perdre sans rien
-  // perdre transforme le classement en distributeur à essais gratuits.
+  // UNE DÉFAITE COÛTE TOUJOURS AU MOINS 1 POINT : perdre sans rien perdre
+  // transformerait le classement en distributeur à essais gratuits.
+  //
+  // UNE VICTOIRE, ELLE, PEUT NE RIEN RAPPORTER. Elle rapportait toujours au
+  // moins 1 : battre en boucle l'adversaire le plus faible du laboratoire
+  // finissait par mener n'importe où, un point à la fois. Contre bien plus
+  // faible que soi, l'arrondi donne 0, et c'est la vérité du classement.
   let delta;
-  if(result==='win')delta=Math.max(1,Math.round(raw*cf.gain));
+  if(result==='win')delta=Math.max(0,Math.round(raw*cf.gain));
   else if(result==='loss')delta=Math.min(-1,Math.round(raw*cf.loss));
   else delta=Math.round(raw*(raw>=0?cf.gain:cf.loss));
 
