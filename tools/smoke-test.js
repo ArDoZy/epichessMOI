@@ -1060,10 +1060,15 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
         // pas. <title> est l'exception : il n'est pas peint, il NOMME.
         if(/<text[\s>]|<tspan[\s>]/.test(t))out.push(n+'.svg contient du texte peint');
       }
-      // Les cinq plateaux ont leur nappe de veines.
+      // Les cinq plateaux sont TAILLÉS (tools/gen-boards.js) : chacun a le
+      // dessin de sa matière (un bruit feTurbulence), le biseau de ses cases
+      // (#bv) et son sceau gravé (#sg). Un plateau sans eux est retombé au
+      // simple damier teinté.
       for(const b of ['bois','pierre','acier','argent','or']){
         const t=await (await fetch('assets/boards/'+b+'.svg')).text();
-        if(!/id="mb"/.test(t))out.push('le plateau '+b+' n\'a pas son grain de marbre');
+        if(!/<feTurbulence/.test(t))out.push('le plateau '+b+' n\'a pas le dessin de sa matière');
+        if(!/id="bv"/.test(t))out.push('le plateau '+b+' n\'a pas le biseau de ses cases');
+        if(!/id="sg"/.test(t))out.push('le plateau '+b+' n\'a pas son sceau');
       }
       // LES DEUX COPIES DU SPRITE. On compare les <symbol>, pas le fichier :
       // l'enveloppe <svg> diffère forcément (l'une est un document, l'autre un

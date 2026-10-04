@@ -91,6 +91,10 @@ const n=v=>(+v.toFixed(2)).toString();
 // sceau : le sceau d'arcane central (forme, couleurs, opacité).
 // ombre : la teinte des bords assombris ; eclat : le reflet du haut à
 //   gauche ; reflets : l'intensité des bandes de reflet (métaux).
+// teinte : [clair, sombre], la couleur de ces bandes, prise dans le métal.
+// LISIBILITÉ, mesurée et non estimée : la luminance moyenne d'une case
+//   claire reste sous 0,5 (l'ivoire s'en détache à plus de 1,6 pour 1), celle
+//   d'une case sombre au-dessus de 0,07 (l'obsidienne à près de 2 pour 1).
 // Une table de transfert de `len` zéros portant quelques pics [indice,
 // valeur] : plus la table est longue, plus le pic est étroit, donc plus la
 // veine est fine.

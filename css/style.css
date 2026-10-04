@@ -2478,7 +2478,7 @@ body.in-game .nav-page[data-page="game"]{display:block}
   /* Le cadre reprend le filet de LAITON qui sépare les cases du plateau, posé
      sur un listel de noyer sombre : la bordure est de la même famille que
      ce qu'elle entoure, au lieu d'un liseré d'interface. */
-  background:#683b1b url('../assets/boards/bois.svg') center/100% 100% no-repeat;
+  background:#734320 url('../assets/boards/bois.svg') center/100% 100% no-repeat;
   border:1px solid rgba(214,168,82,.8);border-radius:6px;overflow:hidden;
   box-shadow:0 0 0 4px #1c0f05,0 0 0 5px rgba(201,154,66,.5),0 18px 50px rgba(0,0,0,.6)}
 .drill-cell{position:relative;display:flex;align-items:center;justify-content:center;
