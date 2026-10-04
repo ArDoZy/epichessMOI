@@ -855,6 +855,14 @@ body.has-acc .builder-inner{padding-top:var(--page-top)}
   margin-top:-14px;
   background:linear-gradient(180deg,transparent 0,var(--bg) 14px,var(--bg) 100%)}
 .bd-action .btn{height:52px;border-radius:12px;font-size:16px;font-weight:650}
+/* « Valider » TANT QUE L'ARMÉE EST INCOMPLÈTE : un lingot d'or éteint à 38 %
+   devenait une plaque boueuse, brun sur brun, dont le libellé se lisait mal.
+   Il devient une plaque de nuit sertie d'un filet d'or, libellé en or pâle :
+   on lit encore ce qu'il fera, et on voit qu'il n'est pas encore à prendre. */
+.bd-action .btn-primary:disabled{opacity:1;filter:none;color:rgba(216,178,106,.62);text-shadow:none;
+  background:linear-gradient(180deg,rgba(20,28,40,.96),rgba(10,14,21,.96)) padding-box,
+    linear-gradient(180deg,rgba(216,178,106,.45),rgba(166,124,55,.18)) border-box;
+  border-color:transparent;box-shadow:inset 0 1px 0 rgba(255,240,210,.05),0 8px 20px -10px rgba(0,0,0,.95)}
 
 /* --- LES CINQ EMPLACEMENTS, EN DEUX RANGÉES ---------------------------
    UN SEUL FORMAT, POUR LES CINQ — le même ratio portrait 2/3 que les cartes du
@@ -1185,8 +1193,8 @@ body:not(.main-menu) #settings-panel{display:none}
    son fleuron (::after, voir [COMMON]) forment l'axe de la niche du Monarque
    et de celle du Général, et ne touchent plus aucun coin. */
 .armies-title{flex:1;padding:6px 0 4px}
-#ar-army-box .bd-top{justify-content:center;padding:10px 18px 0}
-#ar-army-box .armies-title{text-align:center}
+#ar-army-box .bd-top{justify-content:center;padding:10px 4px 0}
+#ar-army-box .armies-title{text-align:center;font-size:clamp(20px,6vw,30px)}
 #ar-army-box .armies-title::after{margin:4px auto 0}
 .armies-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:16px}
 .army-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;transition:all .22s;position:relative;overflow:hidden}
@@ -6513,6 +6521,16 @@ body.nav-active:not(.nav-overlay) .notif-host{bottom:92px}
 .piece-card-qty-out{color:#ffd9d2;
   background:linear-gradient(180deg,#4a0f0b,#7a1a14) padding-box,
     linear-gradient(180deg,#9a3326,#ff8c78 70%,#b5402f) border-box}
+/* LES PETITES CARTES (moins de 116 px : catalogue de l'éditeur IA sur
+   ordinateur, places libres sur téléphone). L'onglet « ×999 » venait buter
+   contre la gemme de coût, et la gemme de rareté mordait la première ligne
+   d'un nom sur deux (« Cavalier / Primordial ») : l'onglet se resserre et se
+   pousse au coin, la plaque du nom descend d'un pixel sous sa gemme. */
+@container (max-width:115px){
+  .piece-card-qty{right:5px;height:17px;padding:1px 4px 0;font-size:9.5px}
+  .piece-card-name{padding-top:5px}
+  .piece-card-name::before{width:6px;height:6px;top:-4px}
+}
 
 /* Déjà engagée dans l'armée : la carte reste lisible (on doit pouvoir la
    retrouver pour la retirer), mais se met en retrait. */
@@ -7155,7 +7173,7 @@ html #page-game,html #page-fok,html #page-mirror,html #page-troie{
   .bd-budget-num{font-size:17px}
   .bd-back{font-size:14px}
   .bd-action .btn{height:50px;font-size:15px}
-  .class-sec{padding:3vw 2.5vw 3.5vw;margin-bottom:3.5vw}
+  .class-sec{padding:3vw 2.5vw 18px;margin-bottom:3.5vw}
   .class-hdr{margin-bottom:2.5vw}
   .class-hdr-name{font-size:clamp(11px,3.4vw,15px)}
 
@@ -7233,7 +7251,7 @@ html #page-game,html #page-fok,html #page-mirror,html #page-troie{
 /* Très petits écrans : on gagne encore une colonne de cartes en réduisant
    les marges des sections plutôt que la taille des cartes. */
 @media(max-width:380px){
-  .class-sec{padding:2.5vw 2vw 3vw;border-left-width:3px}
+  .class-sec{padding:2.5vw 2vw 16px;border-left-width:3px}
   #page-builder{padding:0 2.5vw}
 }
 
