@@ -529,9 +529,15 @@ function triggerEndOfGame(result){
 // (mat/pat/nulle) doit permettre à triggerEndOfGame() de s'exécuter à
 // nouveau si la partie reprend et se termine une seconde fois.
 document.getElementById('game-undo').addEventListener('click',()=>{
-  if(!GS||GS.history.length<1)return;
+  if(!GS||GS.history.length<1||GS.gameOver)return;
   // En ligne, annuler unilatéralement désynchroniserait les deux plateaux.
   if(GS.multiplayer){showNotif('Impossible d\'annuler un coup en partie en ligne.','err');return;}
+  // UNE PARTIE CLASSÉE NE SE REJOUE PAS. L'annulation était offerte sans
+  // limite contre l'adversaire du laboratoire, partie classée comprise :
+  // chaque gaffe se reprenait, et l'ELO comme les points de guerre du clan
+  // se gagnaient à coups de retours en arrière. Elle reste là où rien ne se
+  // compte : le tutoriel et le mode test (vvNoEloReason, js/voie.js).
+  if(!gameUndoAllowed(GS)){showNotif('Pas d\'annulation en partie classée.','err');return;}
   GS.historyView=null;
   // Un prémouvement inscrit désignait deux cases de la position qu'on vient
   // d'effacer : il partirait sur un plateau qui n'est plus celui qu'on
@@ -566,6 +572,10 @@ document.getElementById('game-undo').addEventListener('click',()=>{
 // ----------------------------------------------------------------
 // BOUTON "ABANDONNER / QUITTER"
 // ----------------------------------------------------------------
+document.getElementById('game-draw')?.addEventListener('click',()=>{
+  if(typeof mpOfferDraw==='function')mpOfferDraw();
+});
+
 document.getElementById('game-quit').addEventListener('click',()=>{
   // En ligne : prévenir l'adversaire de l'abandon avant de fermer le salon.
   if(GS&&GS.multiplayer){

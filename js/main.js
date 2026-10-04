@@ -64,7 +64,14 @@ function pathHasAdmin(){
   if(/^\/test\/?$/.test(location.pathname))return true;
   try{return new URLSearchParams(location.search).has(ADMIN_QUERY);}catch(e){return false;}
 }
-let ADMIN_MODE=pathHasAdmin();
+// LE MODE TEST NE S'OUVRE PLUS PAR L'ADRESSE SEULE. Taper `/?test` suffisait
+// à tout débloquer et à s'afficher à 10 000 ELO — y compris devant un
+// adversaire en ligne. Il ne s'allume maintenant que pour un compte que le
+// SERVEUR dit administrateur (is_admin, voir enterAccount dans
+// js/accounts.js), ou dans le bac à sable local `?mock`, qui n'écrit sur
+// aucun serveur. L'adresse n'est plus qu'une demande.
+const ADMIN_URL_ASKED=pathHasAdmin();
+let ADMIN_MODE=false;
 // Adresse complète (chemin + paramètre admin s'il y a lieu).
 function appPath(path){return (path||'/')+(ADMIN_MODE?'?'+ADMIN_QUERY:'');}
 function appHomePath(){return appPath('/');}

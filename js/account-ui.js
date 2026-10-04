@@ -224,6 +224,7 @@ function renderAccountPage(){
 
   host.innerHTML=
     accountSealHTML(me)+
+    accountRecoveryHTML()+
     accountSwitchHTML(others)+
     accountCreateHTML(full);
 
@@ -365,6 +366,34 @@ function accountSwitchHTML(others){
   '</section>';
 }
 
+// --- 1 bis. LE CODE DE SECOURS ---
+// Le compte ne vit que dans ce navigateur : sans ce code, un cache vidé ou un
+// téléphone changé le perd pour toujours (voir ecRecoveryCode, js/server.js).
+let _accShowCode=false;
+function accountRecoveryHTML(){
+  const code=_accShowCode&&typeof ecRecoveryCode==='function'?ecRecoveryCode():'';
+  return ''+
+  '<section class="acc-sec">'+
+    '<h3 class="acc-sec-title">Code de secours</h3>'+
+    '<p class="acc-empty">Ce compte n\'a pas de mot de passe : il tient dans ce navigateur. '+
+      'Notez ce code en lieu sûr : il rouvre le compte sur un autre appareil, ou après un cache vidé. '+
+      'Ne le donnez à personne, il vaut le compte.</p>'+
+    (code
+      ?'<div class="acc-create-row">'+
+          '<input class="acc-input" id="acc-code-out" type="text" readonly value="'+escH(code)+'" aria-label="Code de secours">'+
+          '<button class="btn btn-primary acc-mini-btn" id="acc-code-copy">Copier</button>'+
+        '</div>'+
+        '<div class="acc-create-row"><button class="btn btn-ghost acc-mini-btn" id="acc-code-rotate">Changer de code</button>'+
+          '<button class="btn btn-ghost acc-mini-btn" id="acc-code-hide">Masquer</button></div>'
+      :'<div class="acc-create-row"><button class="btn btn-ghost acc-mini-btn" id="acc-code-show">Afficher le code</button></div>')+
+    '<div class="acc-create-row">'+
+      '<input class="acc-input" id="acc-code-in" type="text" placeholder="Coller un code de secours" '+
+        'autocomplete="off" spellcheck="false" aria-label="Code de secours à restaurer">'+
+      '<button class="btn btn-ghost acc-mini-btn" id="acc-code-restore">Restaurer</button>'+
+    '</div>'+
+  '</section>';
+}
+
 // --- 3. NOUVEAU COMPTE ---
 function accountCreateHTML(full){
   if(full){
@@ -442,6 +471,31 @@ function wireAccountPage(){
   host.querySelector('#acc-rename-input')?.addEventListener('keydown',e=>{
     if(e.key==='Enter')doRename();
     if(e.key==='Escape'){_accRenaming=false;_accRenameDraft=null;renderAccountPage();}
+  });
+
+  host.querySelector('#acc-code-show')?.addEventListener('click',()=>{_accShowCode=true;renderAccountPage();});
+  host.querySelector('#acc-code-hide')?.addEventListener('click',()=>{_accShowCode=false;renderAccountPage();});
+  host.querySelector('#acc-code-copy')?.addEventListener('click',()=>{
+    const i=document.getElementById('acc-code-out');if(!i)return;
+    const done=()=>showNotif('Code copié. Gardez-le en lieu sûr.','ok');
+    if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(i.value).then(done,()=>{i.select();});
+    else{i.select();try{document.execCommand('copy');done();}catch(e){}}
+  });
+  host.querySelector('#acc-code-rotate')?.addEventListener('click',()=>{
+    showConfirmModal('Changer le code de secours ? L\'ancien ne marchera plus, ni sur les autres appareils où ce compte est ouvert.',()=>{
+      ecRotateSecret().then(()=>{showNotif('Nouveau code créé : notez-le.','ok');renderAccountPage();})
+        .catch(e=>showNotif((e&&e.message)||'Changement impossible.','err'));
+    },{okLabel:'Changer',okClass:'btn-danger'});
+  });
+  host.querySelector('#acc-code-restore')?.addEventListener('click',()=>{
+    const v=document.getElementById('acc-code-in')?.value||'';
+    if(accountBusy())return;
+    if(typeof ecSessions==='function'&&ecSessions().length>=ACC_MAX&&!ecParseRecoveryCode(v)){
+      showNotif('Ce code de secours n\'est pas valide.','err');return;
+    }
+    ecFlushNow();
+    ecRestoreFromCode(v).then(()=>location.reload())
+      .catch(e=>showNotif((e&&e.message)||'Restauration impossible.','err'));
   });
 
   host.querySelector('#acc-open-lb')?.addEventListener('click',()=>{

@@ -1811,6 +1811,11 @@ document.addEventListener('keydown',e=>{
 // fonction est donc l'état d'AVANT — le mat tombait, et « Annuler coup »
 // restait offert pendant toute l'analyse, faute d'un rendu ultérieur pour le
 // corriger. renderGame, lui, passe après.
+// L'annulation n'existe que dans une partie qui ne compte pas.
+function gameUndoAllowed(gs){
+  if(!gs||gs.multiplayer)return false;
+  return typeof vvNoEloReason==='function'&&!!vvNoEloReason(gs);
+}
 function syncGameButtons(gs){
   const qBtn=document.getElementById('game-quit');
   // ON ÉCRIT DANS LE <span>, PAS DANS LE BOUTON. Le bouton porte maintenant le
@@ -1824,7 +1829,12 @@ function syncGameButtons(gs){
     if(t)t.textContent=lbl;else qBtn.textContent=lbl;
   }
   const uBtn=document.getElementById('game-undo');
-  if(uBtn)uBtn.style.display=(gs.gameOver||gs.multiplayer)?'none':'';
+  if(uBtn)uBtn.style.display=(gs.gameOver||!gameUndoAllowed(gs))?'none':'';
+  const dBtn=document.getElementById('game-draw');
+  if(dBtn){
+    dBtn.style.display=(gs.multiplayer&&!gs.gameOver)?'':'none';
+    dBtn.disabled=!(typeof mpCanOfferDraw==='function'&&mpCanOfferDraw());
+  }
 }
 
 // ----------------------------------------------------------------
@@ -1841,7 +1851,9 @@ function updateStatus(gs){
   const t=gs.turn;
 
   // Règle des 50 coups
-  if(gs.halfmoveClock>=100){
+  // Le mat donné au centième demi-coup l'emporte sur la règle (elle ne
+  // s'applique qu'à une position où la partie continue).
+  if(gs.halfmoveClock>=100&&!(isInCheckSimple(t,gs.board)&&!hasLegalMovesForColor(t,gs.board,gs)&&!reviveCouldSave(t,gs))){
     bar.textContent='Nulle : règle des 50 coups';bar.className='status-bar';
     gs.gameOver=true;if(!_endGameTriggered)triggerEndOfGame('draw');return;
   }
@@ -1854,13 +1866,7 @@ function updateStatus(gs){
 
   // Répétition de position (3× la même position)
   if(gs.history.length>=8){
-    const curFEN=boardFEN(gs.board);
-    let count=1;
-    for(let i=gs.history.length-2;i>=0;i-=2){
-      if(boardFEN(gs.history[i].board)===curFEN)count++;
-      if(count>=3)break;
-    }
-    if(count>=3){
+    if(repetitionCount(gs)>=3){
       bar.textContent='Nulle : répétition de position (3×)';bar.className='status-bar';
       gs.gameOver=true;if(!_endGameTriggered)triggerEndOfGame('draw');return;
     }

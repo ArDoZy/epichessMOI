@@ -956,7 +956,7 @@ function troLobbyRender(msg){
       '<button class="fok-lob-card" data-online="quick"><b>Partie rapide</b><span>On vous trouve un adversaire qui attend la même chose.</span></button>'+
       '<button class="fok-lob-card" data-online="host"><b>Créer une partie privée</b><span>Vous recevez un code à quatre lettres à transmettre.</span></button>'+
       '</div>'+
-      '<div class="fok-lob-join"><input id="tro-code" maxlength="4" placeholder="CODE" autocomplete="off" spellcheck="false">'+
+      '<div class="fok-lob-join"><input id="tro-code" maxlength="6" placeholder="CODE" autocomplete="off" spellcheck="false">'+
       '<button class="btn btn-gold" data-online="join">Rejoindre</button></div>'+
       '<div class="fok-lob-note">Votre espion ne quitte jamais cet appareil : l’adversaire ne l’apprendra que si vous le jouez.</div>')
       :'<div class="fok-lob-note">Le jeu en ligne n’est pas disponible ici (bibliothèque réseau bloquée ou hors connexion). L’IA, elle, fonctionne toujours.</div>';

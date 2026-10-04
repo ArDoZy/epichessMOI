@@ -238,6 +238,50 @@ function ecDeleteAccount(id,secret){
 }
 
 // ----------------------------------------------------------------
+// LE CODE DE SECOURS : un compte qui survit à son appareil
+// ----------------------------------------------------------------
+// La clé d'appareil ne quittait jamais le navigateur : un cache vidé, un
+// téléphone changé, ou Safari qui efface le stockage d'un site au bout de
+// sept jours sans visite, et le compte était perdu pour toujours — ELO, clan,
+// créatures. Le code de secours est cette même clé, écrite pour être
+// recopiée : l'identifiant du compte et sa clé, rien d'autre. Qui le possède
+// possède le compte, et la page Comptes le dit.
+const EC_RECOVERY_PREFIX='ECR1';
+function ecRecoveryCode(){
+  const s=ecCurrentSession();
+  return s?EC_RECOVERY_PREFIX+'.'+s.id+'.'+s.secret:'';
+}
+function ecParseRecoveryCode(code){
+  const m=String(code||'').trim().match(/^ECR1\.([0-9a-f-]{36})\.([0-9a-f]{16,128})$/i);
+  return m?{id:m[1].toLowerCase(),secret:m[2].toLowerCase()}:null;
+}
+// Ouvre sur cet appareil le compte que désigne un code de secours. Le serveur
+// vérifie la clé ; en cas de succès le compte rejoint la liste de l'appareil
+// et devient le compte courant.
+function ecRestoreFromCode(code){
+  const c=ecParseRecoveryCode(code);
+  if(!c)return Promise.reject(new Error('Ce code de secours n\'est pas valide.'));
+  return ecRpc('ec_login',{p_id:c.id,p_secret:c.secret}).then(p=>{
+    ecRememberSession({id:p.id,secret:c.secret,username:p.username});
+    return p;
+  }).catch(e=>{
+    if(e&&e.code==='28000')throw new Error('Aucun compte ne répond à ce code.');
+    throw e;
+  });
+}
+// Change la clé du compte courant : l'ancien code de secours, et tout appareil
+// qui le connaissait encore, perdent l'accès. À faire si le code a fuité.
+function ecRotateSecret(){
+  const s=ecCurrentSession();
+  if(!s)return Promise.reject(new Error('Aucun compte connecté.'));
+  const fresh=ecNewSecret();
+  return ecRpc('ec_rotate_secret',{p_id:s.id,p_secret:s.secret,p_new_secret:fresh}).then(r=>{
+    ecRememberSession({id:s.id,secret:fresh,username:s.username});
+    return r;
+  });
+}
+
+// ----------------------------------------------------------------
 // ÉCRITURES DE PROGRESSION : GROUPÉES, ET JAMAIS PERDUES
 // ----------------------------------------------------------------
 // accSet() est appelé des dizaines de fois d'affilée (fin de partie,

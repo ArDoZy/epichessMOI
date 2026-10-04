@@ -157,17 +157,50 @@ function accountsSessionFor(username){
 // un pseudo libre ici peut avoir été pris à l'autre bout du monde une
 // seconde plus tôt. Renvoie null si tout va bien, sinon la phrase à
 // montrer.
+// CE QU'UN PSEUDO A LE DROIT DE CONTENIR. Les mêmes règles que le serveur
+// (ec_name_error, supabase/schema.sql), qui reste seul juge : on les
+// applique ici pour prévenir avant l'envoi.
+//
+// Seuls les caractères de contrôle étaient refusés. Passaient donc les
+// espaces de largeur nulle, l'inversion du sens d'écriture, et les lettres
+// cyrilliques ou grecques qui ressemblent trait pour trait à des lettres
+// latines (« Аdmin » avec un А cyrillique) : de quoi porter le nom d'un autre
+// joueur à l'œil près. Un pseudo s'écrit désormais en lettres latines
+// (accents compris), chiffres, espaces et  ' - _ .  — et commence par une
+// lettre ou un chiffre.
+const ACC_NAME_RE=/^[A-Za-z0-9\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u00FF\u0152\u0153]([A-Za-z0-9\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u00FF\u0152\u0153 '._-]*)$/;
+// Mots refusés : les insultes les plus courantes, et ce qui ferait passer un
+// joueur pour l'équipe du jeu. Les mots courts ne sont refusés qu'entiers
+// (« fdp »), les longs aussi au milieu d'un mot.
+const ACC_NAME_BANNED=['admin','administrateur','moderateur','modo','staff','support','officiel','epic chess','epicchess',
+  'connard','connasse','salope','pute','putain','encule','enculer','nazi','hitler','negre','nigger','nigga',
+  'fuck','shit','bitch','batard','bite','couille','merde','fdp','ntm','pd','tg'];
+function accountsNameFold(u){
+  return String(u||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase()
+    .replace(/0/g,'o').replace(/1/g,'i').replace(/3/g,'e').replace(/4/g,'a').replace(/5/g,'s').replace(/7/g,'t').replace(/@/g,'a');
+}
+function accountsNameBanned(u){
+  const f=accountsNameFold(u);
+  const words=f.split(/[^a-z]+/).filter(Boolean);
+  const squashed=f.replace(/[^a-z]/g,'');
+  return ACC_NAME_BANNED.some(w=>{
+    const k=w.replace(/ /g,'');
+    return k.length<=3?words.includes(k):squashed.includes(k);
+  });
+}
+function accountsNameShapeError(u){
+  if(/\s{2,}/.test(u))return 'Un seul espace entre deux mots.';
+  if(!ACC_NAME_RE.test(u))return 'Lettres, chiffres, espaces et \' - _ . seulement, en commençant par une lettre ou un chiffre.';
+  if(accountsNameBanned(u))return 'Ce pseudo n\'est pas autorisé.';
+  return null;
+}
+
 function accountsNameError(raw,{allowCurrent}={}){
   const u=String(raw||'').trim();
   if(u.length<ACC_NAME_MIN||u.length>ACC_NAME_MAX)
     return 'Le pseudo doit faire entre '+ACC_NAME_MIN+' et '+ACC_NAME_MAX+' caractères.';
-  // Seuls les caractères de contrôle sont écartés : ils ne s'affichent
-  // pas, et deux pseudos n'en différant que par eux seraient
-  // visuellement identiques.
-  for(let i=0;i<u.length;i++){
-    const c=u.charCodeAt(i);
-    if(c<32||c===127)return 'Ce pseudo contient des caractères invisibles.';
-  }
+  const bad=accountsNameShapeError(u);
+  if(bad)return bad;
   const sameAsCurrent=allowCurrent&&!!CUR_ACC&&u.toLowerCase()===CUR_ACC.toLowerCase();
   if(accountsExists(u)&&!sameAsCurrent)return 'Un compte porte déjà ce pseudo sur cet appareil.';
   return null;
@@ -273,7 +306,15 @@ function enterAccount(username,isNewAccount){
   // UN COMPTE ADMIN EST UN BAC À SABLE. Il joue avec tout débloqué et
   // n'est jamais classé (voir ec_report_match et ec_leaderboard) : le
   // mode test du jeu est exactement cet état, on l'allume donc.
-  if(ECP&&ECP.is_admin&&typeof ADMIN_MODE!=='undefined')ADMIN_MODE=true;
+  if(typeof ADMIN_MODE!=='undefined'){
+    const mockSandbox=typeof EC_MOCK!=='undefined'&&EC_MOCK&&
+      typeof ADMIN_URL_ASKED!=='undefined'&&ADMIN_URL_ASKED;
+    ADMIN_MODE=!!(ECP&&ECP.is_admin)||mockSandbox;
+  }
+  // LE NAVIGATEUR PEUT EFFACER SEUL LA CLÉ DU COMPTE (Safari vide le stockage
+  // d'un site non installé après sept jours sans visite). On demande qu'il la
+  // garde ; le code de secours de la page Comptes reste le vrai filet.
+  try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist().catch(()=>{});}catch(e){}
   loadAccountGlobals();
   // Économie (js/economy.js) : dotation de départ pour les pièces
   // débloquées qui n'ont pas encore de stock, et restitution des pièces

@@ -47,10 +47,43 @@
 // déclaration ici ferait deux endroits à corriger le jour d'un changement
 // de projet — et, `const` étant global, planterait le chargement.
 
+function mpRandHex(n){
+  const a=new Uint8Array(n);
+  (self.crypto||window.crypto).getRandomValues(a);
+  return Array.from(a,b=>b.toString(16).padStart(2,'0')).join('');
+}
+
+// ----------------------------------------------------------------
+// LE SALON SECRET : un échange de clés Diffie-Hellman
+// ----------------------------------------------------------------
+// Le salon d'une partie rapide s'appelait 'q-' + l'identifiant de l'hôte, et
+// celui d'un duel était tiré par Math.random puis annoncé sur le canal de
+// présence. Les deux se lisaient donc dans des canaux publics : n'importe qui
+// pouvait entrer dans le salon et y annoncer « abandon » ou « je pars » à la
+// place d'un joueur. Chaque camp publie maintenant une clé publique ECDH
+// (P-256) dans sa proposition ; le nom du salon est l'empreinte du secret
+// partagé, que seuls les deux joueurs savent calculer.
+async function mpEcdhNew(){
+  const kp=await crypto.subtle.generateKey({name:'ECDH',namedCurve:'P-256'},false,['deriveBits']);
+  const raw=new Uint8Array(await crypto.subtle.exportKey('raw',kp.publicKey));
+  let bin='';raw.forEach(b=>{bin+=String.fromCharCode(b);});
+  return{priv:kp.privateKey,pub:btoa(bin)};
+}
+async function mpEcdhRoom(prefix,mine,theirPubB64){
+  const bin=atob(String(theirPubB64||''));
+  const raw=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)raw[i]=bin.charCodeAt(i);
+  const pub=await crypto.subtle.importKey('raw',raw,{name:'ECDH',namedCurve:'P-256'},false,[]);
+  const bits=await crypto.subtle.deriveBits({name:'ECDH',public:pub},mine.priv,256);
+  const h=new Uint8Array(await crypto.subtle.digest('SHA-256',bits));
+  return prefix+Array.from(h.slice(0,16),b=>b.toString(16).padStart(2,'0')).join('');
+}
+
 const MP={
   client:null,
   channel:null,
-  myId:Math.random().toString(36).slice(2),
+  // Tiré au générateur cryptographique : il nomme le salon d'une partie
+  // rapide, il ne doit pas se deviner.
+  myId:mpRandHex(16),
   isHost:false,
   myColor:'w',
   myArmy:null,
@@ -218,7 +251,8 @@ function mpConnect(code,asHost){
   MP.myArmy=currentArmyData;MP.oppArmy=null;MP.started=false;
   MP.oppName=null;MP.oppElo=null;MP.oppId=null;
   MP.rematchMine=false;MP.rematchTheirs=false;MP.gameSeq=0;
-  MP.log=[];MP.leaving=false;MP.rejoinTries=0;MP.lastRxAt=0;
+  MP.log=[];MP.leaving=false;MP.rejoinTries=0;MP.lastRxAt=0;MP.clockCredit=0;
+  MP.flagClaimAt=0;MP.flagSentAt=0;MP.flagRefutes=0;MP.drawOfferedAt=-99;MP.drawPending=false;
   _mpGoodbyeSent=false;   // nouvelle partie : l'adieu de la précédente est oublié
   mpClearOppGone();
 
@@ -321,9 +355,18 @@ async function mpJoinRoom(isRejoin){
 }
 
 function mpBindRoomHandlers(channel){
+  // UN SEUL INTERLOCUTEUR. Le premier camp qui envoie son armée devient
+  // l'adversaire (MP.oppId) ; tout message d'un autre expéditeur est ignoré,
+  // nos propres échos compris.
+  const on=(event,fn)=>channel.on('broadcast',{event},msg=>{
+    const p=msg&&msg.payload;
+    if(!p||p.senderId===MP.myId)return;
+    if(MP.oppId&&p.senderId!==MP.oppId)return;
+    fn(msg);
+  });
   // Réception de l'armée adverse. On répond avec la nôtre pour couvrir le
   // cas où notre premier envoi est parti avant que l'autre camp n'écoute.
-  channel.on('broadcast',{event:'army'},({payload})=>{
+  on('army',({payload})=>{
     if(payload.senderId===MP.myId||MP.started)return;
     // ON NE JOUE PAS CONTRE UNE ARMÉE QUI N'EN EST PAS UNE. Voir
     // mpArmyProblem plus haut : mieux vaut refuser la partie que la jouer
@@ -347,14 +390,14 @@ function mpBindRoomHandlers(channel){
   // Emotes : le seul message du canal qui ne change rien à la partie. Il n'a
   // donc pas de numéro d'ordre et n'entre pas au journal — une emote perdue
   // est une emote perdue, et c'est sans conséquence.
-  channel.on('broadcast',{event:'emote'},({payload})=>{
+  on('emote',({payload})=>{
     if(payload.senderId===MP.myId)return;
     mpReceiveEmote(payload&&payload.id);
   });
   // Les phrases suivent exactement le même chemin, et ne transportent qu'un
   // IDENTIFIANT : c'est ce qui garantit qu'aucun texte venu du réseau ne
   // s'affiche jamais (voir MP_CHAT plus bas).
-  channel.on('broadcast',{event:'chat'},({payload})=>{
+  on('chat',({payload})=>{
     if(payload.senderId===MP.myId)return;
     mpReceiveChat(payload&&payload.id);
   });
@@ -362,7 +405,7 @@ function mpBindRoomHandlers(channel){
   // Revanche : chacun annonce son souhait, la partie repart quand les deux
   // l'ont fait. Les couleurs s'inversent, sinon le même camp commencerait
   // toutes les parties de la soirée.
-  channel.on('broadcast',{event:'rematch'},({payload})=>{
+  on('rematch',({payload})=>{
     if(payload.senderId===MP.myId)return;
     MP.rematchTheirs=true;
     mpUpdateRematchUI();
@@ -372,7 +415,7 @@ function mpBindRoomHandlers(channel){
   // Un coup porte son NUMÉRO D'ORDRE dans la partie : c'est ce qui permet de
   // reconnaître un coup déjà appliqué (doublon) d'un coup qui en suppose un
   // autre qu'on n'a jamais reçu (trou → on réclame le journal).
-  channel.on('broadcast',{event:'move'},({payload})=>{
+  on('move',({payload})=>{
     if(payload.senderId===MP.myId)return;
     if(!mpSeqOk(payload))return;
     mpNoteOppAlive();
@@ -383,7 +426,7 @@ function mpBindRoomHandlers(channel){
     mpApplyRemoteMove(payload.from,payload.to,payload.promo,payload.via,payload.path);
   });
 
-  channel.on('broadcast',{event:'power'},({payload})=>{
+  on('power',({payload})=>{
     if(payload.senderId===MP.myId)return;
     if(!mpSeqOk(payload))return;
     mpNoteOppAlive();
@@ -397,7 +440,7 @@ function mpBindRoomHandlers(channel){
   // BATTEMENT DE CŒUR : chaque camp annonce régulièrement combien de coups il
   // a enregistrés. Deux longueurs différentes = un message perdu, et celui qui
   // est en avance renvoie ce qui manque sans qu'on ait à le lui demander.
-  channel.on('broadcast',{event:'ping'},({payload})=>{
+  on('ping',({payload})=>{
     if(payload.senderId===MP.myId||!mpSeqOk(payload))return;
     mpNoteOppAlive();
     if(typeof payload.len!=='number')return;
@@ -410,7 +453,7 @@ function mpBindRoomHandlers(channel){
   // demande est aussi une DÉCLARATION : celui qui revient peut très bien être
   // en avance sur nous — c'est le cas s'il a joué juste avant de perdre la
   // connexion. On lui réclame donc à notre tour ce qui nous manque.
-  channel.on('broadcast',{event:'sync-req'},({payload})=>{
+  on('sync-req',({payload})=>{
     if(payload.senderId===MP.myId||!mpSeqOk(payload))return;
     mpNoteOppAlive();
     const theirLen=(typeof payload.len==='number')?payload.len:0;
@@ -419,7 +462,7 @@ function mpBindRoomHandlers(channel){
   });
 
   // Réponse : les coups manquants, dans l'ordre.
-  channel.on('broadcast',{event:'sync-log'},({payload})=>{
+  on('sync-log',({payload})=>{
     if(payload.senderId===MP.myId||!mpSeqOk(payload))return;
     mpNoteOppAlive();
     mpApplySyncEntries(payload.entries);
@@ -428,7 +471,7 @@ function mpBindRoomHandlers(channel){
   // « Je ferme l'onglet » : c'est un abandon, annoncé sans détour. Sans ce
   // message, le joueur resté en ligne attendait un coup qui ne viendrait
   // jamais, sans savoir que l'autre était parti.
-  channel.on('broadcast',{event:'bye'},({payload})=>{
+  on('bye',({payload})=>{
     if(payload.senderId===MP.myId||!GS||!GS.multiplayer||GS.gameOver)return;
     if(!MP.started)return;
     mpClearOppGone();mpStopHeartbeat();mpStopResumeWatch();
@@ -437,7 +480,19 @@ function mpBindRoomHandlers(channel){
     if(!_endGameTriggered)triggerEndOfGame('win');
   });
 
-  channel.on('broadcast',{event:'resign'},({payload})=>{
+  on('flag',()=>{mpNoteOppAlive();mpOnFlag();});
+  on('flag-ok',()=>{mpNoteOppAlive();if(GS&&GS.multiplayer&&!GS.gameOver)mpFlagEnd(true);});
+  on('flag-no',({payload})=>{mpNoteOppAlive();mpOnFlagNo(payload.clock);});
+  on('draw-offer',()=>{mpNoteOppAlive();mpOnDrawOffer();});
+  on('draw-ok',()=>{if(MP.drawPending)mpDrawEnd();});
+  on('draw-no',()=>{
+    if(!MP.drawPending)return;
+    MP.drawPending=false;
+    showNotif('Votre adversaire refuse la nulle.','err');
+    if(typeof syncGameButtons==='function')syncGameButtons(GS);
+  });
+
+  on('resign',({payload})=>{
     if(payload.senderId===MP.myId||!GS||!GS.multiplayer||GS.gameOver)return;
     mpGameMessage('Votre adversaire a abandonné : vous gagnez !','mate');
     GS.gameOver=true;stopClockTick(GS);
@@ -697,10 +752,21 @@ function mpMyClock(){
   if(!GS||!GS.clockMs)return null;
   return MP.myColor==='w'?GS.timeWhite:GS.timeBlack;
 }
+// L'ADVERSAIRE NE S'ACCORDE PAS DE TEMPS. Sa pendule était adoptée telle
+// quelle : un client bricolé n'avait qu'à annoncer dix minutes de plus à
+// chaque battement. Une baisse s'adopte toujours (il dit avoir moins de temps
+// que nous ne le pensions) ; une hausse n'est que la latence qu'on lui a
+// décomptée en trop, et elle est bornée par un crédit d'une seconde par coup
+// reçu de lui (MP.clockCredit, voir mpApplyRemoteMove).
 function mpAdoptOppClock(ms){
   if(typeof ms!=='number'||!GS||!GS.clockMs||GS.gameOver)return;
   const key=mpOppColor()==='w'?'timeWhite':'timeBlack';
   if(Math.abs(GS[key]-ms)<1500)return;      // simple gigue réseau : on n'y touche pas
+  if(ms>GS[key]){
+    const up=Math.min(ms-GS[key],MP.clockCredit||0);
+    if(up<=0)return;
+    MP.clockCredit-=up;ms=GS[key]+up;
+  }
   GS[key]=Math.max(0,ms);
   if(typeof renderClocks==='function')renderClocks(GS);
 }
@@ -1311,6 +1377,8 @@ function mpApplyRemoteMove(from,to,promo,via,path){
   // Le coup adverse entre au journal EXACTEMENT comme chez lui : les deux
   // journaux gardent la même longueur, qui sert de repère au rattrapage.
   mpLogPush({i:MP.log.length,kind:'move',from:{r:from.r,c:from.c},to:{r:to.r,c:to.c},promo:safePromo,via:okVia,path:okPath});
+  MP.clockCredit=Math.min(10000,(MP.clockCredit||0)+1000);
+  MP.flagClaimAt=0;
   return true;
 }
 
@@ -1370,6 +1438,91 @@ executeGameMove=function(from,to,gs){
 };
 
 // Prévient l'adversaire quand on quitte la partie (bouton Abandonner).
+// ----------------------------------------------------------------
+// LA CHUTE DU DRAPEAU, CONSTATÉE PAR CELUI QUI LA SUBIT
+// ----------------------------------------------------------------
+// Quand la pendule ADVERSE tombe à zéro chez nous, on le lui signale
+// ('flag'). S'il constate lui aussi qu'il n'a plus de temps, il le confirme
+// ('flag-ok') et la partie s'arrête des deux côtés sur la même issue. S'il en
+// a encore (la latence nous l'a décompté en trop), il répond ('flag-no') avec
+// sa pendule — deux fois au plus par partie, après quoi le constat est
+// définitif. Sans aucune réponse en dix secondes, il est parti : il perd.
+const MP_FLAG_WAIT_MS=10000;
+const MP_FLAG_REFUTES=2;
+function mpFlagClaim(){
+  if(!GS||!GS.multiplayer||GS.gameOver)return;
+  const now=Date.now();
+  if(!MP.flagClaimAt)MP.flagClaimAt=now;
+  if(now-(MP.flagSentAt||0)>2000){MP.flagSentAt=now;mpSend('flag',{});}
+  if(now-MP.flagClaimAt>MP_FLAG_WAIT_MS)mpFlagEnd(true);
+}
+// Notre propre temps est tombé chez nous : on le dit tout de suite.
+function mpFlagConcede(){mpSend('flag-ok',{});}
+function mpFlagEnd(oppFlagged){
+  if(!GS||GS.gameOver)return;
+  GS.gameOver=true;stopClockTick(GS);mpStopHeartbeat();
+  const me=MP.myColor,opp=mpOppColor();
+  const key=(oppFlagged?opp:me)==='w'?'timeWhite':'timeBlack';
+  GS[key]=0;if(typeof renderClocks==='function')renderClocks(GS);
+  // Le camp qui garde du temps ne gagne que s'il peut encore mater.
+  const winnerCol=oppFlagged?me:opp;
+  const drawn=typeof canStillMate==='function'&&!canStillMate(GS.board,winnerCol);
+  const result=drawn?'draw':(oppFlagged?'win':'loss');
+  mpGameMessage('Temps écoulé ! '+(drawn?'Nulle : plus de quoi mater.':oppFlagged?'Vous gagnez.':'Votre adversaire gagne.'),'mate');
+  if(!_endGameTriggered)triggerEndOfGame(result);
+}
+function mpOnFlag(){
+  if(!GS||!GS.multiplayer||GS.gameOver)return;
+  const mine=mpMyClock();
+  if(mine===null)return;
+  if(mine<=2000||(MP.flagRefutes||0)>=MP_FLAG_REFUTES){mpSend('flag-ok',{});mpFlagEnd(false);return;}
+  MP.flagRefutes=(MP.flagRefutes||0)+1;
+  mpSend('flag-no',{clock:mine});
+}
+function mpOnFlagNo(ms){
+  if(!GS||GS.gameOver||typeof ms!=='number')return;
+  MP.flagClaimAt=0;
+  // Sa réfutation n'ajoute que ce qu'elle annonce, plafonné : elle sert à
+  // rattraper la latence, pas à arrêter la pendule.
+  const key=mpOppColor()==='w'?'timeWhite':'timeBlack';
+  GS[key]=Math.max(0,Math.min(ms,GS[key]+5000));
+  if(typeof renderClocks==='function')renderClocks(GS);
+}
+
+// ----------------------------------------------------------------
+// PROPOSER LA NULLE
+// ----------------------------------------------------------------
+// En ligne, la seule façon de finir une partie égale était d'attendre une
+// règle (répétition, cinquante coups) ou d'abandonner. Une proposition par
+// joueur au plus tous les dix demi-coups, pour qu'elle ne serve pas à harceler.
+const MP_DRAW_EVERY=10;
+function mpCanOfferDraw(){
+  return !!(GS&&GS.multiplayer&&MP.started&&!GS.gameOver&&!MP.drawPending&&
+    MP.log.length-(MP.drawOfferedAt??-99)>=MP_DRAW_EVERY);
+}
+function mpOfferDraw(){
+  if(!mpCanOfferDraw()){showNotif('Vous avez déjà proposé la nulle il y a peu.','err');return;}
+  MP.drawPending=true;MP.drawOfferedAt=MP.log.length;
+  mpSend('draw-offer',{});
+  showNotif('Nulle proposée à votre adversaire.','ok');
+  if(typeof syncGameButtons==='function')syncGameButtons(GS);
+}
+function mpDrawEnd(){
+  if(!GS||GS.gameOver)return;
+  GS.gameOver=true;stopClockTick(GS);mpStopHeartbeat();
+  MP.drawPending=false;
+  mpGameMessage('Nulle d\'un commun accord.','');
+  if(!_endGameTriggered)triggerEndOfGame('draw');
+}
+function mpOnDrawOffer(){
+  if(!GS||!GS.multiplayer||GS.gameOver)return;
+  showConfirmModal('Votre adversaire propose la nulle. L\'acceptez-vous ?',()=>{
+    if(!GS||GS.gameOver)return;
+    mpSend('draw-ok',{});mpDrawEnd();
+  },{okLabel:'Accepter la nulle',cancelLabel:'Refuser',okClass:'btn-primary',
+     onNo:()=>mpSend('draw-no',{})});
+}
+
 function mpNotifyResign(){
   if(!MP.channel||!GS||!GS.multiplayer)return;
   mpSend('resign',{});
@@ -1490,14 +1643,14 @@ function mpClearProposal(){
 }
 
 // Entrée effective dans le salon de partie, une fois la poignée de main faite.
-function mpEnterPair(hostId){
+function mpEnterPair(room,asHost){
   if(MP.matched||MP.started)return;
   MP.matched=true;
   mpStopLobbyTick();
   mpStatus('Adversaire trouvé, préparation de la partie','wait');
-  // Le nom du salon dérive de l'id de l'hôte : les deux camps le calculent
-  // à l'identique.
-  mpConnect('q-'+hostId.slice(0,12),MP.myId===hostId);
+  // Le nom du salon est l'empreinte du secret ECDH (mpEcdhRoom) : les deux
+  // camps le calculent à l'identique, et eux seuls.
+  mpConnect(room,asHost);
 }
 
 // ----------------------------------------------------------------
@@ -1604,7 +1757,8 @@ function mpLobbyTick(){
 
   const guest=candidates[0].p;
   MP.pairPending=guest.id;
-  MP.lobby.send({type:'broadcast',event:'pair',payload:{host:MP.myId,guest:guest.id}});
+  if(!MP.ecdh)return;
+  MP.lobby.send({type:'broadcast',event:'pair',payload:{host:MP.myId,guest:guest.id,pk:MP.ecdh.pub}});
   // Sans confirmation, on remet le candidat dans la file et on recommence.
   MP.pairTimerId=setTimeout(()=>{
     MP.pairTimerId=null;
@@ -1666,26 +1820,28 @@ function mpQuickPlay(){
   const client=mpInitClient();if(!client)return;
   mpLeaveLobby();
   const card=mpMyCard();
+  MP.ecdh=null;
+  mpEcdhNew().then(k=>{MP.ecdh=k;}).catch(e=>console.warn('[MP] ECDH indisponible :',e));
   MP.lobby=client.channel(MP_LOBBY,{config:{presence:{key:MP.myId}}});
 
   // PROPOSITION reçue d'un chercheur : on confirme puis on entre. La
   // confirmation est ce qui permet au chercheur de savoir que sa proposition
   // a trouvé preneur, et donc de ne pas se retrouver seul dans un salon.
   MP.lobby.on('broadcast',{event:'pair'},({payload})=>{
-    if(!payload||MP.matched||MP.started)return;
-    if(payload.guest!==MP.myId)return;
-    MP.lobby.send({type:'broadcast',event:'pair-ok',payload:{host:payload.host,guest:MP.myId}});
+    if(!payload||MP.matched||MP.started||!MP.ecdh)return;
+    if(payload.guest!==MP.myId||!payload.pk)return;
+    MP.lobby.send({type:'broadcast',event:'pair-ok',payload:{host:payload.host,guest:MP.myId,pk:MP.ecdh.pub}});
     try{MP.lobby.track({id:MP.myId,joinedAt,elo:card.elo,busy:true});}catch(e){}
-    mpEnterPair(payload.host);
+    mpEcdhRoom('q-',MP.ecdh,payload.pk).then(room=>mpEnterPair(room,false)).catch(e=>console.warn('[MP] clé adverse :',e));
   });
 
   // CONFIRMATION reçue par le chercheur : la paire est scellée des deux côtés.
   MP.lobby.on('broadcast',{event:'pair-ok'},({payload})=>{
     if(!payload||MP.matched||MP.started)return;
-    if(payload.host!==MP.myId||payload.guest!==MP.pairPending)return;
+    if(payload.host!==MP.myId||payload.guest!==MP.pairPending||!payload.pk||!MP.ecdh)return;
     mpClearProposal();
     try{MP.lobby.track({id:MP.myId,joinedAt,elo:card.elo,busy:true});}catch(e){}
-    mpEnterPair(MP.myId);
+    mpEcdhRoom('q-',MP.ecdh,payload.pk).then(room=>mpEnterPair(room,true)).catch(e=>console.warn('[MP] clé adverse :',e));
   });
 
   // Une arrivée ou un départ relance le calcul tout de suite plutôt que
@@ -1845,9 +2001,8 @@ function mpIsOnline(playerId){
 // Le code du salon est tiré ici et voyage avec le défi : les deux camps
 // se retrouvent donc dans la même pièce sans que le serveur ait à
 // arbitrer quoi que ce soit.
-function mpDuelCode(){
-  return 'd-'+Math.random().toString(36).slice(2,10);
-}
+// LE CODE N'EST PLUS TIRÉ ICI : il naît de l'échange de clés (mpEcdhRoom),
+// le défi ne transporte que la clé publique du défieur.
 
 function mpChallenge(playerId,playerName){
   if(!playerId)return;
@@ -1865,15 +2020,19 @@ function mpChallenge(playerId,playerName){
   // que de lancer un défi, de le faire accepter, et de découvrir alors
   // qu'on n'a pas d'armée à aligner.
   if(!mpDuelArmyReady())return;
-  const code=mpDuelCode();
   const card=mpMyCard();
-  MP.duelOut={to:playerId,name:playerName,code,timerId:setTimeout(()=>{
+  const nonce=mpRandHex(8);
+  MP.duelOut={to:playerId,name:playerName,code:nonce,keys:null,timerId:setTimeout(()=>{
     mpDuelCancel();
     showNotif(playerName+' n\'a pas répondu.','err');
   },MP_DUEL_TIMEOUT)};
-  MP.presence.send({type:'broadcast',event:'duel',payload:{
-    to:playerId,code,from:card.pid,name:card.name,elo:card.elo,
-  }});
+  mpEcdhNew().then(k=>{
+    if(!MP.duelOut||MP.duelOut.code!==nonce)return;
+    MP.duelOut.keys=k;
+    MP.presence.send({type:'broadcast',event:'duel',payload:{
+      to:playerId,code:nonce,pk:k.pub,from:card.pid,name:card.name,elo:card.elo,
+    }});
+  }).catch(()=>{mpDuelCancel();showNotif('Votre navigateur ne sait pas sceller un duel.','err');});
   showNotif('Défi envoyé à '+playerName+'…','ok');
   if(typeof lbPaintDuel==='function')lbPaintDuel();
 }
@@ -1913,8 +2072,9 @@ function mpDuelReceive(payload){
   const card=mpMyCard();
   if(!payload||payload.to!==card.pid)return;
   if(MP.started||MP.duelIn||MP.duelOut)return;   // déjà occupé : silence
+  if(!payload.pk)return;
   MP.duelIn={from:payload.from,name:payload.name||'Un joueur',
-             elo:payload.elo||0,code:payload.code};
+             elo:payload.elo||0,code:payload.code,pk:payload.pk};
   mpDuelPaintInvite();
 }
 
@@ -1930,23 +2090,26 @@ function mpDuelAccept(){
   if(!mpDuelArmyReady())return;
   MP.duelIn=null;
   document.getElementById('mp-duel-invite')?.classList.remove('show');
-  MP.presence?.send({type:'broadcast',event:'duel-ok',payload:{to:d.from,code:d.code}});
   // Le DÉFIÉ est l'invité (les Noirs) : le défieur est l'hôte, comme
   // dans une invitation ordinaire.
-  mpStartDuel(d.code,false);
+  mpEcdhNew().then(k=>mpEcdhRoom('d-',k,d.pk).then(room=>{
+    MP.presence?.send({type:'broadcast',event:'duel-ok',payload:{to:d.from,code:d.code,pk:k.pub}});
+    mpStartDuel(room,false);
+  })).catch(()=>showNotif('Impossible de sceller ce duel.','err'));
 }
 
 // Le défié a dit oui : l'hôte entre dans le salon.
 function mpDuelAccepted(payload){
   const card=mpMyCard();
   if(!payload||payload.to!==card.pid||!MP.duelOut)return;
-  if(payload.code!==MP.duelOut.code)return;
+  if(payload.code!==MP.duelOut.code||!MP.duelOut.keys||!payload.pk)return;
   clearTimeout(MP.duelOut.timerId);
-  const name=MP.duelOut.name;const code=MP.duelOut.code;
+  const name=MP.duelOut.name;const keys=MP.duelOut.keys;
   MP.duelOut=null;
   if(typeof lbPaintDuel==='function')lbPaintDuel();
   showNotif(name+' accepte le duel !','ok');
-  mpStartDuel(code,true);
+  mpEcdhRoom('d-',keys,payload.pk).then(room=>mpStartDuel(room,true))
+    .catch(()=>showNotif('Impossible de sceller ce duel.','err'));
 }
 
 function mpDuelDeclined(payload){
