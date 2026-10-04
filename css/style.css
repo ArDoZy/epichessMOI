@@ -769,9 +769,15 @@ body.has-acc .builder-inner{padding-top:var(--page-top)}
 .army-box{position:relative;z-index:20;
   border:1px solid transparent;border-radius:var(--r-lg);
   background:var(--orn-frame),var(--panel-bg) padding-box,var(--panel-edge) border-box;
-  padding:10px 16px 16px;margin-bottom:22px;box-shadow:var(--shadow-2)}
-/* Rangée du haut : le retour à gauche, le menu d'appoint à droite. */
-.bd-top{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:40px}
+  padding:10px 16px 18px;margin-bottom:22px;box-shadow:var(--shadow-2);
+  /* DES COINS À LA TAILLE DU PUPITRE. À 30 px, le fleuron du haut gauche
+     mordait sur la première lettre du titre (« Composition d'armées ») et
+     sur la flèche de retour, et ceux du bas sur les niches libres. */
+  --orn-sz:24px}
+/* Rangée du haut : le retour à gauche, le menu d'appoint à droite. Elle
+   s'écarte des deux coins d'or plutôt que de s'y coller. */
+.bd-top{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:40px;
+  padding:4px 6px 0 12px}
 .bd-back{display:inline-flex;align-items:center;gap:6px;height:40px;padding:0 10px 0 4px;
   border:none;background:none;cursor:pointer;color:var(--muted);
   font-family:var(--f-ui);font-size:15px;font-weight:600;border-radius:10px;
@@ -889,43 +895,83 @@ body.has-acc .builder-inner{padding-top:var(--page-top)}
   .comp-grid{max-width:460px;margin-left:auto;margin-right:auto}
   .troop-pick{max-width:460px;margin-left:auto;margin-right:auto;width:100%}
 }
-/* L'EMPLACEMENT VIDE EST UNE ALVÉOLE, PAS UN RECTANGLE DE COULEUR. Le
-   Monarque et le Général étaient deux aplats, l'un bleu, l'autre brun, avec
-   leur nom en capitales grises au milieu : la moitié de l'écran peinte de deux
-   couleurs qui ne disaient rien. C'est maintenant un creux dans la laque —
-   ombre portée vers l'intérieur, filet de la couleur de classe — où flotte en
-   filigrane le blason de ce qu'on attend (couronne, épée), et son nom
-   dessous. Les trois places libres ont le même creux, en pointillés : elles
-   acceptent n'importe qui. */
+/* L'EMPLACEMENT VIDE EST UNE NICHE HÉRALDIQUE, PAS UNE BOÎTE EN POINTILLÉS.
+   Les cinq places étaient des rectangles tracés au trait, le genre de cadre
+   qu'on dessine pour dire « déposez un fichier ici ». Ce sont maintenant des
+   alcôves taillées dans la pierre de nuit :
+     · un ARC en plein cintre en haut (rayon horizontal 50 %, vertical 17 %)
+       — la forme d'une niche de chapelle, qui se lit « on y pose une
+       statue » avant même d'en lire le nom ;
+     · un CADRE DE MÉTAL gravé (dégradé en `border-box`, éclairé aux deux
+       angles qui prennent la lumière) doublé d'un filet intérieur (::after),
+       la double moulure de toute pièce d'orfèvrerie ;
+     · au fond, le SCEAU de ce qu'on attend (couronne, épée), en masque pour
+       prendre la couleur de classe, sur un HALO qui respire (.cs-ph) ;
+     · le nom gravé sur une petite PLAQUE au pied de la niche.
+   LE MONARQUE EST BLEU, LE GÉNÉRAL AMBRE : leur métal, leur halo et leur
+   plaque prennent la couleur de classe (--slot-c). LES TROIS PLACES LIBRES
+   sont la même niche en bronze doré, avec un SERTI vide — un anneau gravé et
+   un « + » — qui invite à y poser n'importe quelle pièce.
+   Tout est posé sous `:not(.piece-card)` : une place REMPLIE est une carte
+   (voir [PIECE-CARD]) et ne doit rien hériter de la niche. */
 .comp-slot{position:relative;aspect-ratio:2/3;min-width:0;min-height:0;
-  --slot-c:var(--border2);
-  background:radial-gradient(ellipse at 50% 38%,color-mix(in srgb,var(--slot-c) 14%,transparent),transparent 70%),
-    linear-gradient(180deg,rgba(3,5,8,.7),rgba(10,14,20,.55));
-  border:1px dashed color-mix(in srgb,var(--slot-c) 55%,transparent);border-radius:var(--r-md);
-  box-shadow:inset 0 3px 10px rgba(0,0,0,.75),inset 0 0 0 1px rgba(255,255,255,.02);
-  padding:8% 6%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6%;
-  transition:border-color .2s ease,background .2s ease}
-.comp-slot.piece-card{padding:0;align-items:stretch;justify-content:flex-start;gap:0;box-shadow:none}
-.comp-slot.cs-req{border-style:solid}
+  --slot-c:#d3ac62;
+  padding:8% 6%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7%;
+  transition:filter .2s ease}
+.comp-slot:not(.piece-card){
+  border:1.5px solid transparent;
+  border-radius:50% 50% var(--r-md) var(--r-md) / 17% 17% var(--r-md) var(--r-md);
+  background:
+    radial-gradient(ellipse 62% 34% at 50% 40%,color-mix(in srgb,var(--slot-c) 16%,transparent),transparent 72%) padding-box,
+    linear-gradient(180deg,#04070b 0%,#0a1018 46%,#111925 100%) padding-box,
+    linear-gradient(165deg,color-mix(in srgb,var(--slot-c) 62%,#fff) 0%,color-mix(in srgb,var(--slot-c) 58%,#000) 30%,
+      color-mix(in srgb,var(--slot-c) 26%,#000) 64%,color-mix(in srgb,var(--slot-c) 70%,#fff) 100%) border-box;
+  box-shadow:inset 0 14px 22px -10px rgba(0,0,0,.95),inset 0 -10px 18px -14px color-mix(in srgb,var(--slot-c) 40%,transparent),
+    0 1px 0 rgba(255,240,200,.07),0 10px 18px -12px rgba(0,0,0,.95)}
+.comp-slot.piece-card{padding:0;align-items:stretch;justify-content:flex-start;gap:0}
 .comp-slot.cs-req.Monarque{--slot-c:var(--monarque)}
 .comp-slot.cs-req.Général{--slot-c:var(--general)}
-.comp-slot.cs-req .cs-label{color:color-mix(in srgb,var(--slot-c) 85%,#fff)}
-.comp-slot.cs-free{border-style:dashed}
-/* Le filigrane : un blason par place. Il est dessiné en masque pour prendre
-   la couleur de la classe sans une planche de plus. */
-.comp-slot:not(.piece-card)::before{content:'';width:42%;aspect-ratio:1;flex:none;
-  background:color-mix(in srgb,var(--slot-c) 70%,#fff);opacity:.32;
+/* La seconde moulure, gravée À L'INTÉRIEUR du cadre et qui en suit l'arc. */
+.comp-slot:not(.piece-card)::after{content:'';position:absolute;inset:4px;pointer-events:none;
+  border-radius:50% 50% calc(var(--r-md) - 4px) calc(var(--r-md) - 4px) / 17% 17% calc(var(--r-md) - 4px) calc(var(--r-md) - 4px);
+  border:1px solid color-mix(in srgb,var(--slot-c) 30%,transparent);
+  box-shadow:inset 0 1px 0 rgba(0,0,0,.6)}
+/* LE SCEAU. Il est dessiné en masque pour prendre la couleur de la classe
+   sans une planche de plus — et c'est aussi pourquoi son éclat vient du halo
+   posé derrière lui, et non d'un `drop-shadow` : le masque rognerait l'ombre. */
+.comp-slot:not(.piece-card)::before{content:'';position:relative;z-index:1;width:44%;aspect-ratio:1;flex:none;
+  background:linear-gradient(180deg,color-mix(in srgb,var(--slot-c) 35%,#fff),var(--slot-c) 55%,color-mix(in srgb,var(--slot-c) 70%,#000));
+  opacity:.9;
   -webkit-mask:var(--slot-glyph) center/contain no-repeat;mask:var(--slot-glyph) center/contain no-repeat;
-  --slot-glyph:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M11 4h2v6h6v2h-6v6h-2v-6H5v-2h6z'/></svg>")}
-.comp-slot.cs-req.Monarque::before{--slot-glyph:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M3 8l4.5 3.5L12 4l4.5 7.5L21 8l-2 10H5z'/><path d='M5 19.5h14V21H5z'/></svg>")}
-.comp-slot.cs-req.Général::before{--slot-glyph:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><g transform='rotate(40 12 12)'><path d='M12 1.2l1.3 3.4v10.6h-2.6V4.6z'/><path d='M7 15.2h10v1.9H7z'/><path d='M11.05 17.1h1.9v3.1h-1.9z'/><circle cx='12' cy='21.5' r='1.4'/></g></svg>")}
-.cs-ph{display:none}
+  /* Le serti vide des places libres : un anneau gravé, double, et la croix. */
+  --slot-glyph:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><circle cx='12' cy='12' r='10.6' fill='none' stroke='black' stroke-width='1.3'/><circle cx='12' cy='12' r='8.2' fill='none' stroke='black' stroke-width='.6' stroke-dasharray='1.2 1.6'/><path d='M11.05 6.6h1.9v4.45h4.45v1.9h-4.45v4.45h-1.9v-4.45H6.6v-1.9h4.45z'/></svg>")}
+.comp-slot.cs-free::before{width:34%;opacity:.62}
+.comp-slot.cs-req.Monarque::before{--slot-glyph:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><circle cx='2.8' cy='6.6' r='1.5'/><circle cx='12' cy='2.6' r='1.6'/><circle cx='21.2' cy='6.6' r='1.5'/><path d='M3.2 8.4l4.6 4.1L12 4.6l4.2 7.9 4.6-4.1-1.7 9.6H4.9z'/><path d='M4.9 19.3h14.2v2.3H4.9z'/></svg>")}
+.comp-slot.cs-req.Général::before{--slot-glyph:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><g transform='rotate(40 12 12)'><path d='M12 .8l1.5 3.4v11h-3V4.2z'/><path d='M6.6 15.2h10.8v2.1H6.6z'/><path d='M11 17.3h2v3.2h-2z'/><circle cx='12' cy='21.7' r='1.5'/></g></svg>")}
+/* LE HALO qui fait luire le sceau. .cs-ph ne portait plus rien (un « + »
+   masqué) : il devient la lueur, en position absolue derrière le sceau, et
+   elle respire — opacité seule, donc sur le compositeur. */
+.cs-ph{position:absolute;inset:0;z-index:0;pointer-events:none;font-size:0;color:transparent;border-radius:inherit;
+  background:radial-gradient(circle at 50% 41%,color-mix(in srgb,var(--slot-c) 42%,transparent) 0,
+    color-mix(in srgb,var(--slot-c) 12%,transparent) 26%,transparent 46%);
+  animation:slotGlow 3.6s ease-in-out infinite}
+.comp-slot.cs-free .cs-ph{opacity:.55;animation:none}
+@keyframes slotGlow{0%,100%{opacity:.55}50%{opacity:1}}
+@media(prefers-reduced-motion:reduce){.cs-ph{animation:none;opacity:.8}}
 .comp-slot.draggable-slot{cursor:grab}
 .comp-slot.draggable-slot:active{cursor:grabbing}
 .comp-slot.slot-dragging{opacity:.4}
 .comp-slot.slot-over{outline:2px dashed var(--gold);outline-offset:2px}
-.comp-slot .cs-label{font-family:var(--f-ui);font-size:clamp(9px,2.5vw,11.5px);font-weight:650;color:var(--muted);
-  text-transform:uppercase;letter-spacing:.12em;line-height:1.2;text-align:center}
+/* LA PLAQUE GRAVÉE au pied de la niche : le nom de ce qu'on y attend. */
+.comp-slot .cs-label{position:relative;z-index:1;max-width:100%;
+  font-family:var(--f-ui);font-size:clamp(9px,2.5vw,11.5px);font-weight:700;
+  color:color-mix(in srgb,var(--slot-c) 70%,#fff);text-shadow:0 1px 1px #000;
+  text-transform:uppercase;letter-spacing:.12em;line-height:1.2;text-align:center;
+  padding:3px 8px;border-radius:3px;
+  background:linear-gradient(180deg,rgba(2,4,7,.85),rgba(14,20,29,.85)) padding-box,
+    linear-gradient(180deg,color-mix(in srgb,var(--slot-c) 55%,transparent),color-mix(in srgb,var(--slot-c) 18%,transparent)) border-box;
+  border:1px solid transparent;box-shadow:inset 0 1px 2px rgba(0,0,0,.8)}
+.comp-slot.cs-free .cs-label{color:color-mix(in srgb,var(--slot-c) 60%,var(--muted))}
 /* La croix de retrait (page-builder seulement : sur « Mes armées », c'est la
    carte entière qui retire la pièce). Elle est passée du coin HAUT DROIT au
    coin BAS DROIT : le haut de la carte appartient maintenant aux deux
@@ -961,11 +1007,18 @@ body.has-acc .builder-inner{padding-top:var(--page-top)}
    ramené à 6 %, et un trait de 2 px devant le libellé. */
 .class-sec{margin-bottom:18px;border-radius:var(--r-lg);scroll-margin-top:calc(var(--chrome-h) + var(--safe-t) + 210px);
   padding:12px 14px 16px;border:1px solid transparent;
-  background:var(--orn-frame),var(--panel-bg) padding-box,var(--panel-edge) border-box;box-shadow:var(--shadow-1)}
-.class-hdr{display:flex;align-items:center;gap:10px;margin-bottom:12px}
-.class-hdr::before{content:'';flex:0 0 auto;width:7px;height:7px;transform:rotate(45deg);
-  background:currentColor;box-shadow:0 0 8px currentColor}
-.class-hdr::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,color-mix(in srgb,currentColor 45%,transparent),transparent)}
+  background:var(--orn-frame),var(--panel-bg) padding-box,var(--panel-edge) border-box;box-shadow:var(--shadow-1);
+  --orn-sz:24px}
+/* L'EN-TÊTE DE CLASSE, UNE BANNIÈRE ET NON UNE ÉTIQUETTE. Le losange de
+   classe se posait SUR le fleuron du coin haut gauche : l'en-tête s'en écarte
+   (rembourrage de gauche) et le losange devient une gemme sertie — un cœur de
+   la couleur de classe dans un chaton d'or —, le filet s'éteint vers le coin
+   opposé au lieu de le heurter. */
+.class-hdr{display:flex;align-items:center;gap:10px;margin-bottom:12px;padding:3px 22px 0 18px}
+.class-hdr::before{content:'';flex:0 0 auto;width:9px;height:9px;transform:rotate(45deg);
+  background:radial-gradient(circle at 35% 30%,color-mix(in srgb,currentColor 40%,#fff),currentColor 60%,color-mix(in srgb,currentColor 60%,#000));
+  border:1.5px solid #e2b45a;box-shadow:0 0 0 1px rgba(40,26,8,.8),0 0 10px currentColor}
+.class-hdr::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,color-mix(in srgb,currentColor 45%,transparent),rgba(216,178,106,.25) 60%,transparent)}
 .class-hdr-name{font-family:var(--f-ui);font-size:11px;font-weight:700;
   letter-spacing:.16em;text-transform:uppercase;color:currentColor}
 .class-hdr.Monarque{color:var(--monarque)}.class-hdr.Général{color:var(--general)}
@@ -1127,7 +1180,14 @@ body:not(.main-menu) #settings-panel{display:none}
 #page-armies{padding:clamp(16px,3vw,32px) clamp(12px,3vw,20px);min-height:100vh;background:var(--bg)}
 .armies-inner{max-width:980px;margin:0 auto}
 .armies-hdr{display:flex;align-items:center;gap:12px;margin-bottom:18px;flex-wrap:wrap}
+/* L'ENSEIGNE EST CENTRÉE SOUS SON FRONTON. Collée à gauche, la capitale
+   « C » tombait dans le fleuron du coin haut gauche ; au centre, le titre et
+   son fleuron (::after, voir [COMMON]) forment l'axe de la niche du Monarque
+   et de celle du Général, et ne touchent plus aucun coin. */
 .armies-title{flex:1;padding:6px 0 4px}
+#ar-army-box .bd-top{justify-content:center;padding:10px 18px 0}
+#ar-army-box .armies-title{text-align:center}
+#ar-army-box .armies-title::after{margin:4px auto 0}
 .armies-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:16px}
 .army-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;transition:all .22s;position:relative;overflow:hidden}
 /* Le filet laiton décoratif de 2 px ne codait AUCUNE information : c'était un
@@ -6299,11 +6359,22 @@ body.nav-active:not(.nav-overlay) .notif-host{bottom:92px}
      éclaircie aux deux angles qui accrochent la lumière et assombrie au
      milieu. Il remplace le filet plat de 2 px et la planche d'or
      (cadre-carte.svg) qu'on posait par-dessus. */
-  border:1.5px solid transparent;
+  /* CARTE DE COLLECTION : UN CADRE D'OR, TEINTÉ PAR LA RARETÉ. Le cadre
+     n'était qu'un filet de la couleur de classe : la carte se lisait comme
+     une vignette d'interface. Elle a maintenant le cadre d'une carte qu'on
+     collectionne — un or martelé (2 px), qu'un tiers de couleur de classe
+     vire au bleu, à l'ambre ou au vert, éclairé aux deux angles qui prennent
+     la lumière —, et un filet intérieur de la couleur pure (::after), qui dit
+     la rareté au ras de l'illustration. */
+  border:2px solid transparent;
   background:linear-gradient(180deg,#1a2434,#0d131c) padding-box,
-    linear-gradient(165deg,color-mix(in srgb,var(--rarity) 65%,#fff) 0%,color-mix(in srgb,var(--rarity) 80%,#000) 32%,
-      color-mix(in srgb,var(--rarity) 42%,#000) 66%,color-mix(in srgb,var(--rarity) 72%,#fff) 100%) border-box;
-  box-shadow:0 10px 18px -10px rgba(0,0,0,.95),0 0 0 1px rgba(0,0,0,.5);
+    linear-gradient(160deg,
+      color-mix(in srgb,var(--rarity) 22%,#fff3cf) 0%,
+      color-mix(in srgb,var(--rarity) 30%,#c99744) 26%,
+      color-mix(in srgb,var(--rarity) 34%,#5a3d14) 52%,
+      color-mix(in srgb,var(--rarity) 28%,#b98b3d) 78%,
+      color-mix(in srgb,var(--rarity) 22%,#f8e6ae) 100%) border-box;
+  box-shadow:0 10px 18px -10px rgba(0,0,0,.95),0 0 0 1px rgba(0,0,0,.6);
   cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent;
   transition:transform .16s ease,box-shadow .2s ease,filter .2s ease}
 /* Le repli, pour une carte à qui personne n'a donné de rareté. Il est posé
@@ -6314,6 +6385,15 @@ body.nav-active:not(.nav-overlay) .notif-host{bottom:92px}
 .piece-card:hover{transform:translateY(-3px);
   box-shadow:0 16px 26px -12px rgba(0,0,0,.95),0 0 0 1px rgba(0,0,0,.5),0 0 18px -4px color-mix(in srgb,var(--rarity) 55%,transparent)}
 .piece-card:focus-visible{outline:2px solid var(--gold2);outline-offset:3px}
+/* Le filet de rareté, au ras de l'illustration, sous le cadre d'or : la
+   seconde moulure d'une carte de collection. Une lueur intérieure de la même
+   couleur monte des quatre bords, à peine — l'illustration reste intacte.
+   Il passe SOUS les pastilles (z-index 4) et au-dessus de l'art (z-index 3). */
+.piece-card::after{content:'';position:absolute;inset:0;z-index:3;pointer-events:none;
+  border-radius:calc(var(--r-md) - 2px);
+  box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--rarity) 75%,transparent),
+    inset 0 0 0 2px rgba(0,0,0,.55),
+    inset 0 0 14px -4px color-mix(in srgb,var(--rarity) 55%,transparent)}
 
 /* 1. L'ILLUSTRATION — 72 % DE LA HAUTEUR, et pas un pourcentage de plus :
       c'est ce qui reste au bandeau du nom qui décide de sa lisibilité, et un
@@ -6322,7 +6402,7 @@ body.nav-active:not(.nav-overlay) .notif-host{bottom:92px}
       taille naturelle au conteneur flex et fait déborder la carte. */
 .piece-card-art{position:relative;flex:0 0 78%;height:78%;min-height:0;width:100%;
   display:flex;align-items:center;justify-content:center;
-  overflow:hidden;border-radius:calc(var(--r-md) - 1.5px) calc(var(--r-md) - 1.5px) 0 0;line-height:0;font-size:0;
+  overflow:hidden;border-radius:calc(var(--r-md) - 2px) calc(var(--r-md) - 2px) 0 0;line-height:0;font-size:0;
   background:radial-gradient(ellipse at 50% 40%,
     color-mix(in srgb,var(--rarity) 28%,transparent) 0%,transparent 72%)}
 /* Le bas de l'illustration se fond dans la plaque du nom. */
@@ -6356,19 +6436,27 @@ body.nav-active:not(.nav-overlay) .notif-host{bottom:92px}
       jurait avec tout le reste. La rareté se dit sur le filet qui sépare
       l'illustration de la plaque, et sur la gemme posée dessus ; le nom, lui,
       est en ivoire, et se lit sur toutes les cartes de la même façon. */
+/* LA PLAQUE DU NOM est gravée : un filet d'or teinté de rareté la sépare de
+   l'illustration, un second filet plus fin, qui s'éteint aux deux bouts,
+   court juste dessous — le double trait des cartouches de toute la page —, et
+   le nom est en ivoire avec une ombre de gravure. */
 .piece-card-name{position:relative;flex:1 1 auto;min-height:0;width:100%;overflow:visible;
   display:flex;align-items:center;justify-content:center;text-align:center;
-  padding:2px 6%;border-radius:0 0 calc(var(--r-md) - 1.5px) calc(var(--r-md) - 1.5px);
-  background:linear-gradient(180deg,#131b27,#080c12);
-  border-top:1px solid color-mix(in srgb,var(--rarity) 70%,transparent);
-  color:var(--text);
-  font-family:var(--f-ui);font-weight:650;line-height:1.08;letter-spacing:.01em;
+  padding:3px 6% 2px;border-radius:0 0 calc(var(--r-md) - 2px) calc(var(--r-md) - 2px);
+  background:linear-gradient(90deg,transparent 8%,rgba(226,180,90,.3) 50%,transparent 92%) center 3px/100% 1px no-repeat,
+    radial-gradient(ellipse 80% 90% at 50% 0,color-mix(in srgb,var(--rarity) 14%,transparent),transparent 70%),
+    linear-gradient(180deg,#151e2b,#080c12);
+  border-top:1px solid color-mix(in srgb,var(--rarity) 50%,#e2b45a);
+  color:#f6eedc;text-shadow:0 1px 1px rgba(0,0,0,.9);
+  font-family:var(--f-ui);font-weight:650;line-height:1.08;letter-spacing:.015em;
   font-size:clamp(8.5px,2.6vw,12px);
   font-size:min(12.5px,13.5cqw)}
-.piece-card-name::before{content:'';position:absolute;left:50%;top:-4px;width:7px;height:7px;z-index:2;
+/* La gemme de rareté, sertie dans un chaton d'or, à cheval sur le filet. */
+.piece-card-name::before{content:'';position:absolute;left:50%;top:-5px;width:7px;height:7px;z-index:2;
   transform:translateX(-50%) rotate(45deg);
-  background:linear-gradient(135deg,color-mix(in srgb,var(--rarity) 45%,#fff),var(--rarity));
-  box-shadow:0 0 6px var(--rarity)}
+  background:radial-gradient(circle at 35% 30%,color-mix(in srgb,var(--rarity) 35%,#fff),var(--rarity) 55%,color-mix(in srgb,var(--rarity) 55%,#000));
+  border:1px solid #e9c375;
+  box-shadow:0 0 0 1px rgba(40,26,8,.85),0 0 7px color-mix(in srgb,var(--rarity) 80%,transparent)}
 /* Le nom est dans un <span> à lui, et non posé à même le bandeau : le
    bandeau CENTRE (flex) et le span TRONQUE à deux lignes (-webkit-box). Les
    deux `display` sont incompatibles sur un seul élément — le second annulait
@@ -6390,29 +6478,41 @@ body.nav-active:not(.nav-overlay) .notif-host{bottom:92px}
       d'élixir violette (le dessin de Clash Royale) — la seule tache magenta
       du jeu, sur chaque carte. La valeur d'une pièce est une mesure d'échecs,
       pas une potion : elle prend la matière des récompenses, l'or.
-      LE STOCK est une pastille discrète DANS le coin haut droit, « ×12 ».
+      LE STOCK est un onglet accroché au bord haut, à droite, « ×12 ».
       Il était une seconde bulle ronde de 30 px, à cheval elle aussi, où
       « ×999 » ne tenait pas : le chiffre débordait du cercle. */
 .piece-card-cost{position:absolute;top:-7px;left:-7px;z-index:4;isolation:isolate;
   width:27px;height:30px;display:flex;align-items:center;justify-content:center;
   clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);
-  background:linear-gradient(160deg,#fbe7ae,#c28f3c 45%,#6f4f1b);
+  background:linear-gradient(160deg,#fff1c4,#d9a94e 40%,#7a561d 78%,#c99744);
   font-family:var(--f-ui);font-weight:800;font-variant-numeric:tabular-nums;
   font-size:13px;line-height:1;color:#fff6df;text-shadow:0 1px 2px #000;
   filter:drop-shadow(0 2px 3px rgba(0,0,0,.7))}
+/* La GEMME elle-même, taillée : une table claire en haut à gauche, deux
+   facettes plus sombres en bas, sur la nuit. Elle se lit comme une pierre
+   sertie et non comme une pastille plate. */
 .piece-card-cost::before{content:'';position:absolute;inset:2px;z-index:-1;clip-path:inherit;
-  background:radial-gradient(circle at 40% 30%,#2c3d55,#0c131e 75%)}
-.piece-card-qty{position:absolute;top:6px;right:6px;z-index:4;
-  height:18px;min-width:18px;padding:0 6px;border-radius:9px;
+  background:linear-gradient(150deg,rgba(160,200,255,.22) 0 30%,transparent 30%),
+    linear-gradient(210deg,transparent 62%,rgba(0,0,0,.35) 62%),
+    radial-gradient(circle at 40% 30%,#34496a,#0c131e 75%)}
+/* LE STOCK EST UN ONGLET, accroché au bord haut de la carte comme le signet
+   d'un grimoire : il descend du cadre d'or (même métal, bord haut ouvert) au
+   lieu de flotter sur l'illustration. « ×999 » y tient en entier. */
+.piece-card-qty{position:absolute;top:-2px;right:8px;z-index:4;
+  height:19px;min-width:20px;padding:1px 6px 0;border-radius:0 0 6px 6px;
   display:flex;align-items:center;justify-content:center;
-  background:rgba(6,9,13,.8);border:1px solid rgba(240,206,140,.32);
+  border:1px solid transparent;border-top:0;
+  background:linear-gradient(180deg,#0b1018,#161f2c) padding-box,
+    linear-gradient(180deg,#8a6526,#f0d08a 70%,#b98b3d) border-box;
+  box-shadow:0 3px 6px -2px rgba(0,0,0,.85);
   font-family:var(--f-ui);font-weight:700;font-variant-numeric:tabular-nums;
-  font-size:10.5px;line-height:1;color:var(--text);
-  -webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
-.piece-card-qty::before{content:'×';font-size:.85em;opacity:.6;margin-right:1px}
-/* Stock insuffisant pour aligner la pièce : la pastille vire à la braise.
+  font-size:10.5px;line-height:1;color:#f6eedc}
+.piece-card-qty::before{content:'×';font-size:.85em;color:var(--gold);margin-right:1px}
+/* Stock insuffisant pour aligner la pièce : l'onglet vire à la braise.
    C'est le seul cas où le nombre est un problème et non un état. */
-.piece-card-qty-out{background:rgba(120,24,18,.88);border-color:rgba(255,140,120,.6);color:#ffd9d2}
+.piece-card-qty-out{color:#ffd9d2;
+  background:linear-gradient(180deg,#4a0f0b,#7a1a14) padding-box,
+    linear-gradient(180deg,#9a3326,#ff8c78 70%,#b5402f) border-box}
 
 /* Déjà engagée dans l'armée : la carte reste lisible (on doit pouvoir la
    retrouver pour la retirer), mais se met en retrait. */
@@ -7041,15 +7141,17 @@ html #page-game,html #page-fok,html #page-mirror,html #page-troie{
   .comp-slot{padding:5% 4%;border-radius:9px}
   /* Les emplacements vides ne sont plus au cinquième de la largeur d'écran :
      leur libellé a la place de se lire. */
-  .comp-slot .cs-label{font-size:clamp(9px,2.6vw,13px);letter-spacing:.02em;
-    padding:0 6%;line-height:1.2}
+  /* La plaque garde son rembourrage : sans lui, le nom touche les bords
+     de son cartouche gravé. */
+  .comp-slot .cs-label{font-size:clamp(9px,2.6vw,12px);letter-spacing:.06em;
+    padding:3px 7px;line-height:1.2}
   .comp-slot .cs-rm{width:16px;height:16px;bottom:2px;right:2px}
   .comp-slot .cs-rm svg{width:8px;height:8px}
   /* Les pastilles de coin ne rétrécissent pas avec l'écran (30 px partout,
      voir [PIECE-CARD]) : c'est ce qui garde le chiffre lisible sur des
      cartes d'un cinquième de largeur d'écran. Elles se rapprochent
      seulement du coin, l'écart de la grille étant plus serré ici. */
-  .army-box{padding:6px 3vw 3vw;border-radius:12px}
+  .army-box{padding:6px 3vw 18px;border-radius:12px}
   .bd-budget-num{font-size:17px}
   .bd-back{font-size:14px}
   .bd-action .btn{height:50px;font-size:15px}
@@ -7332,7 +7434,7 @@ body.desk .cards-grid .piece-card{max-width:170px}
    l'appui, et composer une armée passe de deux clics par pièce à un seul.
    Le clic continue de fonctionner exactement comme avant (il pose
    `.piece-card-open`) : rien n'est retiré, on ajoute un raccourci. */
-body.desk .piece-card:hover{z-index:31;border-color:var(--rarity)}
+body.desk .piece-card:hover{z-index:31}
 body.desk .piece-card:hover .piece-card-actions{display:flex}
 /* LE BLOC DE BOUTONS VIENT TOUCHER LA CARTE (top:100% au lieu de 100% + 5px).
    Ces 5 px de vide n'appartiennent à aucun élément : en descendant vers
