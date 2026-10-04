@@ -36,7 +36,7 @@ raison est donnée : on ne corrige pas ce qui n'est pas cassé).
 | 2.5 | **Le niveau du clan** (Bois → Or Légendaire, sur les points cumulés) : il change le métal du cadre du blason. | ✅ |
 | 2.6 | Le **sigle du clan** à côté des pseudos : classement, recherche, profil public, menu. | ✅ |
 | 2.7 | Les points de guerre gagnés s'affichent dans le **verdict de fin de partie**. | ✅ |
-| 2.8 | Migration idempotente **sans `DROP`** (`supabase/migrations/001-guerre-des-clans.sql`) + miroir exact dans le bac à sable `?mock`. Le test de fumée vérifie que migration et schéma disent la même chose. | ✅ |
+| 2.8 | Migration idempotente **sans `DROP`** + miroir exact dans le bac à sable `?mock`. | ✅ puis remplacée (§ 11) : `schema.sql` lui-même ne détruit plus rien et tient lieu de migration ; la remise à zéro vit dans `supabase/reset.sql` |
 | 2.9 | Notifications push (défi reçu, fin de guerre) : demande VAPID + Edge Function. | ⬜ hors de portée sans clés |
 | 2.10 | Saisons classées (remise à zéro douce de l'ELO, récompenses de fin de saison). | ⬜ décision de game design |
 | 2.11 | Spectateur en direct des parties en ligne. | ⬜ demande un relais Realtime dédié |
@@ -292,3 +292,129 @@ toiles de fantasy. Chaque changement d'onglet changeait de monde.
 | 10.7.1 | Les planches qui manquent encore (§ 8), et une nouvelle : `ui/logo-variantes.png` (prompt : `assets/PROMPTS.md` § 5 ter) | assets |
 | 10.7.2 | Les quatre bannières de titre (`banners/*.png`) : à refaire dans la nouvelle lumière si on les produit | assets |
 | 10.7.3 | Une cinématique d'arrivée dans un nouveau rang (4.3) | décision de game design |
+
+---
+
+## 11. Quatrième regard : les défauts de fond
+
+Relevé du 4 octobre 2026, cette fois sous la peau du jeu : triche, comptes,
+règles, serveur, technique. Les adversaires du laboratoire seront retirés
+avant la sortie : ce qui ne touche qu'eux est noté pour mémoire.
+
+### 11.1 Triche et sécurité
+
+| | Défaut | Statut |
+|---|---|---|
+| 11.1.1 | `ec_report_match` croyait le client : « victoire contre 4 000 ELO » en un appel | ✅ billets de partie (`ec_match_begin` / `ec_report_match`) : ELO et nom adverses lus en base, armée vérifiée, victoire classée de moins de 20 s non comptée |
+| 11.1.2 | Une défaite se déclarait « non classée » | ✅ c'est le serveur qui décide, à l'ouverture |
+| 11.1.3 | Toute l'économie s'écrivait depuis le navigateur (coffres par `Math.random`) | ✅ économie au serveur (`ec_eco`, `ec_chest_open`…), `ec_save_state` refuse ces clés, `accSet` aussi |
+| 11.1.4 | Recharger la page effaçait une défaite contre l'IA | ✅ un billet resté ouvert est un abandon, donc une défaite |
+| 11.1.5 | Fermer l'onglet en ligne ne coûtait rien | ✅ abandon constaté (`ec_match_gone`), l'adversaire gagne |
+| 11.1.6 | Annulations illimitées en partie classée | ✅ seulement en tutoriel et mode test (`gameUndoAllowed`) |
+| 11.1.7 | `?test` donnait tout à n'importe qui, en ligne compris | ✅ réservé aux comptes admin (et au bac à sable `?mock`) ; une partie contre un admin n'est classée pour personne |
+| 11.1.8 | Armée adverse non vérifiée (pièces non possédées, pouvoirs inventés) | ✅ armée vérifiée au billet ; l'armée vue en face est comparée à celle-là, le tricheur perd |
+| 11.1.9 | Nom et ELO de l'adversaire déclaratifs | ✅ lus en base par le serveur |
+| 11.1.10 | Texte libre dans le journal de clan (`opp_name`) | ✅ le nom vient de la base |
+| 11.1.11 | Salon public, expéditeur usurpable, codes de 4 caractères | ✅ salon nommé par échange ECDH, expéditeur verrouillé ; variantes : codes de 6 caractères cryptographiques |
+| 11.1.12 | L'adversaire s'accordait du temps | ✅ hausse bornée par un crédit d'une seconde par coup |
+| 11.1.13 | Le voile de Nyx (et l'Ombre) se lit dans le navigateur adverse | ⬜ impossible en pair-à-pair : chaque navigateur doit connaître la position pour valider les coups. Il faudrait un serveur de partie qui tienne la position et ne transmette que ce qui est visible |
+| 11.1.14 | Une défaite en attente se supprimait du `localStorage` | ✅ sans déclaration, le billet est un abandon |
+| 11.1.15 | Comptes à la chaîne | ✅ 20 par heure et par IP (`ec_rate_hit`) ; les multicomptes restent possibles à la main (aucun jeu sans inscription vérifiée ne l'empêche) |
+| 11.1.16 | Tailles non bornées (`state`, `replay`, statistiques) | ✅ 64 Ko, 32 Ko, identifiants vérifiés |
+| 11.1.17 | SDK Supabase sur CDN `@2`, sans CSP ni en-têtes | ✅ `js/vendor/`, CSP `script-src 'self'` et en-têtes dans `vercel.json`, plus aucun `on*=` dans le HTML |
+| 11.1.18 | Fonctions internes appelables par tous | ✅ tout fermé, puis la liste ouverte |
+
+### 11.2 Comptes
+
+| | Défaut | Statut |
+|---|---|---|
+| 11.2.1 | Aucune récupération de compte | ✅ code de secours (afficher, copier, restaurer, changer) |
+| 11.2.2 | Safari efface le stockage au bout de 7 jours | 🟡 `navigator.storage.persist()` + code de secours ; seul un vrai identifiant (courriel, OAuth) supprimerait le risque |
+| 11.2.3 | `schema.sql` effaçait tout | ✅ non destructif ; `supabase/reset.sql` à part |
+| 11.2.4 | SHA-256 sans sel | ✅ bcrypt, anciennes empreintes mises à niveau à la connexion |
+| 11.2.5 | Pseudos invisibles, sosies, insultes | ✅ lettres latines, liste de mots refusés (client et serveur) |
+
+### 11.3 Règles
+
+| | Défaut | Statut |
+|---|---|---|
+| 11.3.1 | Répétition confondant les pièces de même initiale, ignorant trait, roque, ancrage… | ✅ `positionKey` |
+| 11.3.2 | Matériel insuffisant pris sur le déplacement de base | ✅ seuls les vrais cavaliers et fous |
+| 11.3.3 | Drapeau = victoire même sans matériel pour mater | ✅ nulle (`canStillMate`) |
+| 11.3.4 | Drapeau jugé différemment sur chaque écran | ✅ constaté par celui qui le subit |
+| 11.3.5 | Pas de proposition de nulle | ✅ |
+| 11.3.6 | Délais de reconnexion incohérents (45 s / 20 s) | ✅ 45 s partout |
+| 11.3.7 | Mat au centième demi-coup déclaré nul | ✅ le mat l'emporte |
+
+### 11.4 Game design
+
+| | Défaut | Statut |
+|---|---|---|
+| 11.4.1 | +1 garanti par victoire : on montait à l'infini en battant le plus faible | ✅ une victoire peut rapporter 0 |
+| 11.4.2 | Parties contre l'IA au classement des humains | ➖ les adversaires du laboratoire seront retirés avant la sortie |
+| 11.4.3 | Le rang ne descend jamais | ➖ choix de conception assumé (README, « un rang atteint ne se reperd pas ») |
+| 11.4.4 | Pas de saisons | ⬜ décision de game design (2.10) |
+| 11.4.5 | Guerre des clans gagnée à coups de faux rapports | ✅ les points viennent des parties réglées |
+| 11.4.6 | Statistiques par créature non fiables | ✅ calculées au règlement, sur l'armée vérifiée |
+
+### 11.5 IA (retirée avant la sortie)
+
+| | Défaut | Statut |
+|---|---|---|
+| 11.5.1 | L'IA voit à travers le voile de Nyx | ➖ |
+| 11.5.2 | Worker généré par conversion de fonctions en texte | ➖ |
+
+### 11.6 Serveur
+
+| | Défaut | Statut |
+|---|---|---|
+| 11.6.1 | Supabase gratuit qui s'endort | ⬜ hors code : plan payant, ou le workflow de réveil (à réactiver après 60 jours sans commit) |
+| 11.6.2 | Une écriture à chaque appel | ✅ `last_seen_at` réécrit au plus toutes les 20 s |
+| 11.6.3 | Recherche sans index, `_` non échappé | ✅ index trigramme, `_` échappé |
+| 11.6.4 | Courses sur l'effectif des clans | ✅ ligne du clan verrouillée |
+| 11.6.5 | Classement recompté sur toute la table | ✅ index partiel |
+
+### 11.7 Technique
+
+| | Défaut | Statut |
+|---|---|---|
+| 11.7.1 | 57 scripts globaux, 444 `typeof` défensifs | ⬜ refonte en modules : à mener à part, elle touche chaque fichier |
+| 11.7.2 | Logique en double (ELO, bac à sable, migration, `*-mp.js`) | 🟡 migration supprimée ; catalogue généré depuis une seule source (`ecoBuildCatalogue`) ; ELO et règles du bac à sable restent en deux exemplaires, testés des deux côtés |
+| 11.7.3 | Lignes géantes, ni linter ni formateur | ⬜ |
+| 11.7.4 | `style.css` de 9 000 lignes, README de 2 800 | ⬜ |
+| 11.7.5 | Pas de tests unitaires | ✅ `tools/tests/` (règles, serveur contre Postgres) |
+| 11.7.6 | Aucune CI | ✅ `.github/workflows/tests.yml` |
+| 11.7.7 | Cache des médias à vider à la main | ✅ revalidation en arrière-plan |
+| 11.7.8 | 1,7 Mo de JS non minifié | ⬜ demande une étape de build, que le projet refuse à dessein |
+| 11.7.9 | Musique de 1,2 Mo | ⬜ |
+
+### 11.8 Interface et contenu
+
+| | Défaut | Statut |
+|---|---|---|
+| 11.8.1 | Français seulement | ⬜ |
+| 11.8.2 | Le multijoueur tombait si jsDelivr était bloqué | ✅ SDK servi par le jeu |
+| 11.8.3 | Retour tactile au toucher, cinématique de rang, planches, sons | ⬜ voir 5.5, 4.3, § 8 |
+
+### 11.9 Ce qui change pour le joueur
+
+- **Quitter ou recharger une partie en cours, c'est la perdre** (ELO et
+  pièces engagées). Avant, une partie interrompue rendait ses pièces.
+- **Plus d'annulation de coup en partie classée.**
+- **Le jour du jeu est celui de Paris** : récompense journalière, coffre de
+  réapprovisionnement et quêtes basculent à minuit, heure de Paris.
+- **En ligne, le résultat attend la déclaration de l'adversaire** (quelques
+  secondes) ; deux déclarations contradictoires donnent à chacun la moins
+  favorable.
+- **Les quêtes avancent à l'écran pendant la partie**, et les tickets
+  tombent à son règlement.
+
+### 11.10 Mise en service
+
+1. Coller `supabase/schema.sql` dans l'éditeur SQL du projet (il ne détruit
+   rien ; les extensions `pgcrypto` et `pg_trgm` sont créées s'il le faut).
+2. Déployer. La CSP de `vercel.json` n'autorise que le projet Supabase
+   `qwtlmaacjfxlbvrvooim` : un changement de projet demande de l'y modifier
+   aussi.
+3. Les parties envoyées par un ancien client (sans billet) sont refusées :
+   le service worker (`epicchess-v9`) remplace le code au premier passage.
