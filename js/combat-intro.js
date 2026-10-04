@@ -89,8 +89,15 @@ function startAiBattle(playerArmy,aiArmy){
   aiArmyData=aiArmy||aiArmyForOpponent();
   if(!combatStockOk())return false;
   if(typeof vvSetOpponentElo==='function')vvSetOpponentElo(null);
-  _playerColor=Math.random()<0.5?'w':'b';
-  startGame(true);
+  // Le serveur ouvre la partie (matchOpen, js/game-flow.js) : sans son
+  // billet, elle ne commence pas.
+  const foe=(typeof aiCurrentOpponent==='function')?aiCurrentOpponent():null;
+  const army=armyWithPowers(currentArmyData,playerPowerList());
+  matchOpen({mode:'ia',ai:foe&&foe.id,army}).then(t=>{
+    _matchOpened=t;
+    _playerColor=Math.random()<0.5?'w':'b';
+    startGame(true);
+  }).catch(e=>showNotif((e&&e.message)||'La partie ne peut pas commencer.','err'));
   return true;
 }
 window.startAiBattle=startAiBattle;

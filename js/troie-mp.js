@@ -66,7 +66,7 @@ const TMP={
   lobbyTickId:null,
   code:null,
   isHost:false,
-  myId:Math.random().toString(36).slice(2),
+  myId:mpRandHex(16),
   oppId:null,
   oppName:null,
   oppHost:null,       // rôle ANNONCÉ par l'adversaire (voir troMpColor)
@@ -105,7 +105,10 @@ function troMpName(){
 function troMpCode(){
   const chars='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let out='';
-  for(let i=0;i<4;i++)out+=chars[Math.floor(Math.random()*chars.length)];
+  // Six caractères tirés au générateur cryptographique : quatre se
+  // devinaient en quelques milliers d'essais.
+  const rnd=new Uint8Array(6);(self.crypto||window.crypto).getRandomValues(rnd);
+  for(let i=0;i<6;i++)out+=chars[rnd[i]%chars.length];
   return out;
 }
 
@@ -125,8 +128,8 @@ function troMpStart(kind,code){
     return;
   }
   if(kind==='join'){
-    if(!code||code.length!==4){
-      if(typeof showNotif==='function')showNotif('Entrez le code à quatre caractères.','err');
+    if(!code||code.length!==6){
+      if(typeof showNotif==='function')showNotif('Entrez le code à six caractères.','err');
       return;
     }
     troLobbyWait('Connexion au salon '+code+'…');
@@ -241,7 +244,7 @@ function troMpConnect(code,asHost){
   // pas à la même seconde, et un message émis avant que l'autre n'écoute est
   // perdu sans erreur. On réémet donc jusqu'au démarrage.
   ch.on('broadcast',{event:'hello'},({payload})=>{
-    if(!payload||payload.id===TMP.myId)return;
+    if(!payload||payload.id===TMP.myId||(TMP.oppId&&payload.id!==TMP.oppId))return;
     TMP.oppId=payload.id;TMP.oppName=payload.name||'Adversaire';
     // `host` peut manquer (client plus ancien) : on le prend alors pour
     // l'inverse du nôtre, ce qui revient à l'ancien comportement.
@@ -251,7 +254,7 @@ function troMpConnect(code,asHost){
   });
 
   ch.on('broadcast',{event:'move'},({payload})=>{
-    if(!payload||payload.id===TMP.myId||!TMP.started)return;
+    if(!payload||payload.id===TMP.myId||(TMP.oppId&&payload.id!==TMP.oppId)||!TMP.started)return;
     troMpReceiveMove(payload);
   });
 
@@ -260,7 +263,7 @@ function troMpConnect(code,asHost){
   // réémis tant que l'autre n'a pas répondu, comme la présentation — un
   // message perdu ici bloquerait la partie avant son premier coup.
   ch.on('broadcast',{event:'ready'},({payload})=>{
-    if(!payload||payload.id===TMP.myId)return;
+    if(!payload||payload.id===TMP.myId||(TMP.oppId&&payload.id!==TMP.oppId))return;
     // L'EMPREINTE DE SON CHEVAL VOYAGE ICI, et elle ne dit rien : c'est un
     // SHA-256 sur un aléa de 256 bits qu'il garde. On la garde telle quelle —
     // c'est elle qu'on comparera quand il prouvera quelque chose.
@@ -274,12 +277,12 @@ function troMpConnect(code,asHost){
 
   // LE VERDICT DE L'ADVERSAIRE SUR NOTRE COUP (voir l'en-tête, point 3).
   ch.on('broadcast',{event:'state'},({payload})=>{
-    if(!payload||payload.id===TMP.myId||!TMP.started)return;
+    if(!payload||payload.id===TMP.myId||(TMP.oppId&&payload.id!==TMP.oppId)||!TMP.started)return;
     if(typeof troApplyVerdict==='function')troApplyVerdict(payload.v||{});
   });
 
   ch.on('broadcast',{event:'sync-req'},({payload})=>{
-    if(!payload||payload.id===TMP.myId)return;
+    if(!payload||payload.id===TMP.myId||(TMP.oppId&&payload.id!==TMP.oppId))return;
     // Le rattrapage renvoie aussi notre dernier verdict et notre état de
     // choix : un `state` perdu laisserait sinon l'autre camp à attendre un
     // coup dans une partie déjà finie.
@@ -288,7 +291,7 @@ function troMpConnect(code,asHost){
   });
 
   ch.on('broadcast',{event:'sync'},({payload})=>{
-    if(!payload||payload.id===TMP.myId||!TMP.started)return;
+    if(!payload||payload.id===TMP.myId||(TMP.oppId&&payload.id!==TMP.oppId)||!TMP.started)return;
     if(payload.ready&&!TMP.oppReady){
       TMP.oppReady=true;
       if(typeof troOppReady==='function')troOppReady();
@@ -298,7 +301,7 @@ function troMpConnect(code,asHost){
   });
 
   ch.on('broadcast',{event:'end'},({payload})=>{
-    if(!payload||payload.id===TMP.myId||!TMP.started)return;
+    if(!payload||payload.id===TMP.myId||(TMP.oppId&&payload.id!==TMP.oppId)||!TMP.started)return;
     if(typeof troDeclare==='function')
       troDeclare(TRO.myColor,payload.kind==='resign'?'abandon de l’adversaire':'départ de l’adversaire');
   });
@@ -312,7 +315,7 @@ function troMpConnect(code,asHost){
       const back=troMpPresent(TMP.oppId);
       if(!back&&TRO.st&&!TRO.st.gameOver)
         troDeclare(TRO.myColor,'départ de l’adversaire');
-    },20000);
+    },45000);   // même délai de grâce que la partie principale (MP_GRACE_MS)
   });
 
   ch.subscribe(async status=>{

@@ -7,10 +7,14 @@
     "dev": "npx --yes serve -l 8080 .",
     "start": "npx --yes serve -l 8080 .",
     "test": "node tools/smoke-test.js",
+    "test:rules": "node --test tools/tests/rules.test.js",
+    "test:sql": "node --test tools/tests/sql.test.js",
+    "test:all": "node tools/gen-catalogue.js --check && node --test tools/tests/rules.test.js && node --test tools/tests/sql.test.js && node tools/smoke-test.js",
+    "catalogue": "node tools/gen-catalogue.js",
     "opt:images": "node tools/opt-images.js"
   },
   "engines": {
-    "node": ">=16"
+    "node": ">=18"
   },
   "comment": "Aucune dependance de production : le jeu s'ouvre en double-cliquant sur index.html. Playwright n'est necessaire QUE pour `npm test` (voir tools/smoke-test.js) : npm i -D playwright && npx playwright install chromium.",
   "devDependencies": {

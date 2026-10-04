@@ -1,0 +1,60 @@
+# ================================================================
+# LES TESTS, À CHAQUE POUSSÉE ET CHAQUE PULL REQUEST
+# ================================================================
+# Le dépôt avait un test de fumée de plusieurs milliers de lignes que rien ne
+# lançait : il ne tournait que si quelqu'un pensait à taper `npm test`. Ce
+# workflow le lance, avec les trois autres vérifications :
+#
+#   1. le catalogue de supabase/schema.sql est celui du jeu
+#      (tools/gen-catalogue.js --check) ;
+#   2. les règles de fin de partie (tools/tests/rules.test.js) ;
+#   3. le serveur, contre un vrai Postgres 16 : schéma chargé deux fois (il
+#      doit se rejouer sans rien détruire), économie, parties, droits
+#      (tools/tests/sql.test.js) ;
+#   4. le test de fumée, dans Chromium, en mode ?mock (tools/smoke-test.js).
+# ================================================================
+name: Tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: ec
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: localhost
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: ec
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Catalogue du serveur à jour
+        run: node tools/gen-catalogue.js --check
+      - name: Règles
+        run: node --test tools/tests/rules.test.js
+      - name: Client Postgres
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - name: Serveur (Postgres)
+        run: node --test tools/tests/sql.test.js
+      - name: Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Test de fumée
+        run: npm test

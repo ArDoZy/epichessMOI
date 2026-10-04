@@ -622,14 +622,22 @@ function tutoRunReward(reward){
   // d'apprendre au joueur à s'en servir, le lui retirer au sortir de la
   // leçon ferait mentir la leçon. Partout ailleurs, le pouvoir s'éveille avec
   // des débris magiques (voir POWER_DEBRIS_NEEDED, js/data-pieces.js).
-  const lots=[{pieceId:reward.piece,qty:reward.qty||TUTO_SKIP_QTY,isNew:true,withPower:true}];
+  // Le serveur la crédite (ec_eco 'tuto', une fois par créature) ; la
+  // cérémonie montre ce qu'il a versé.
   const after=()=>{
     if(typeof updAll==='function')updAll();
     if(typeof renderReservePage==='function'&&CUR_ACC)renderReservePage();
     tutoNext();
   };
-  if(chest&&typeof showChestCeremony==='function')showChestCeremony(chest,lots,true,after);
-  else{if(typeof chestApply==='function')chestApply(lots);after();}
+  ecEco('tuto',{piece:reward.piece}).then(r=>{
+    const lots=(r&&r.lots&&r.lots.length)?r.lots
+      :[{pieceId:reward.piece,qty:reward.qty||TUTO_SKIP_QTY,isNew:true,withPower:true}];
+    if(chest&&typeof showChestCeremony==='function')showChestCeremony(chest,lots,false,after);
+    else after();
+  }).catch(e=>{
+    if(typeof showNotif==='function')showNotif((e&&e.message)||'Le serveur ne répond pas.','err');
+    after();
+  });
 }
 
 function tutoRunDrill(pieceId){
@@ -708,27 +716,27 @@ function tutoBuildRandomArmy(){
 }
 
 function tutoSkip(){
-  // Les créatures passent par chestApply : c'est le même chemin que les
-  // coffres du tutoriel, donc le déblocage et les exemplaires sont crédités
-  // exactement pareil. Une créature déjà débloquée n'est pas re-marquée.
-  const lots=TUTO_SKIP_PIECES
-    .filter(id=>typeof VV_UNLOCKED==='undefined'||!VV_UNLOCKED.has(id))
-    .map(id=>({pieceId:id,qty:TUTO_SKIP_QTY,isNew:true,withPower:true}));
-  if(lots.length&&typeof chestApply==='function')chestApply(lots);
-
-  // Une seule armée suffit : si le joueur en a déjà une (tutoriel repris
-  // après coup), on ne lui en ajoute pas une seconde dont il n'a rien à faire.
-  if(typeof savedArmies!=='undefined'&&!savedArmies.length){
-    const ad=tutoBuildRandomArmy();
-    if(ad){savedArmies.push(ad);if(typeof saveArmies==='function')saveArmies();}
-  }
-
+  // Les trois créatures du tutoriel sont créditées par le serveur
+  // (ec_eco 'tuto'), comme les coffres du tutoriel ; une créature déjà
+  // débloquée n'est pas re-créditée. L'armée de départ se compose une fois
+  // qu'il a répondu : elle a besoin de ces créatures.
+  const finish=()=>{
+    // Une seule armée suffit : si le joueur en a déjà une (tutoriel repris
+    // après coup), on ne lui en ajoute pas une seconde dont il n'a rien à faire.
+    if(typeof savedArmies!=='undefined'&&!savedArmies.length){
+      const ad=tutoBuildRandomArmy();
+      if(ad){savedArmies.push(ad);if(typeof saveArmies==='function')saveArmies();}
+    }
+    if(typeof updAll==='function')updAll();
+    if(typeof renderArmiesPage==='function')renderArmiesPage();
+    if(typeof renderReservePage==='function'&&CUR_ACC)renderReservePage();
+    if(typeof renderMenuChests==='function')renderMenuChests();
+  };
+  const missing=TUTO_SKIP_PIECES.some(id=>typeof VV_UNLOCKED==='undefined'||!VV_UNLOCKED.has(id));
+  if(missing&&typeof ecEco==='function')ecEco('tuto').then(finish,finish);
+  else finish();
   tutoFinish();
   if(typeof goToMainMenu==='function')goToMainMenu();
-  if(typeof updAll==='function')updAll();
-  if(typeof renderArmiesPage==='function')renderArmiesPage();
-  if(typeof renderReservePage==='function'&&CUR_ACC)renderReservePage();
-  if(typeof renderMenuChests==='function')renderMenuChests();
 }
 
 // ----------------------------------------------------------------

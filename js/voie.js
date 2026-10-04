@@ -252,12 +252,15 @@ function vvCalcNewElo(playerElo,aiElo,result,games){
   // calcul brut : une victoire contre bien plus faible que soi donne un raw
   // minuscule mais positif, elle doit être majorée comme une victoire.
   //
-  // UNE VICTOIRE RAPPORTE TOUJOURS AU MOINS 1 POINT, UNE DÉFAITE EN COÛTE
-  // TOUJOURS AU MOINS 1. Sans ces deux bornes, l'arrondi produit des « +0 »
-  // et des « -0 » : gagner sans rien gagner décourage, et perdre sans rien
-  // perdre transforme le classement en distributeur à essais gratuits.
+  // UNE DÉFAITE COÛTE TOUJOURS AU MOINS 1 POINT : perdre sans rien perdre
+  // transformerait le classement en distributeur à essais gratuits.
+  //
+  // UNE VICTOIRE, ELLE, PEUT NE RIEN RAPPORTER. Elle rapportait toujours au
+  // moins 1 : battre en boucle l'adversaire le plus faible du laboratoire
+  // finissait par mener n'importe où, un point à la fois. Contre bien plus
+  // faible que soi, l'arrondi donne 0, et c'est la vérité du classement.
   let delta;
-  if(result==='win')delta=Math.max(1,Math.round(raw*cf.gain));
+  if(result==='win')delta=Math.max(0,Math.round(raw*cf.gain));
   else if(result==='loss')delta=Math.min(-1,Math.round(raw*cf.loss));
   else delta=Math.round(raw*(raw>=0?cf.gain:cf.loss));
 
@@ -375,10 +378,9 @@ function vvVoieChestsDue(){return accGet('voie_chests',[])||[];}
 function vvVoieChestOpen(milestoneId){
   const due=vvVoieChestsDue();
   const i=due.indexOf(milestoneId);if(i<0)return false;
-  const m=UNLOCK_TABLE.find(u=>u.id===milestoneId);
-  due.splice(i,1);accSet('voie_chests',due);
-  if(!m||m.reward!=='chest')return false;
-  if(typeof chestOpenNow==='function')chestOpenNow(m.chest,()=>{_voieSig=null;renderVoiePage();});
+  // Le serveur retire le coffre de la liste et le tire (ec_eco 'voie').
+  if(typeof chestFromServer==='function')
+    chestFromServer('voie',{milestone:milestoneId},()=>{_voieSig=null;renderVoiePage();}).catch(()=>{});
   return true;
 }
 
@@ -387,20 +389,11 @@ function vvVoieChestOpen(milestoneId){
 // chacun (accGet/accSet 'voie_rewards_claimed', par id de jalon) : sans ce
 // suivi, un ELO qui redescend puis remonte au-dessus d'un palier déjà
 // franchi verserait la récompense une seconde fois.
-function vvCheckRewardMilestones(oldElo,newElo){
-  const claimed=new Set(accGet('voie_rewards_claimed',[]));
-  const granted=[];
-  UNLOCK_MILESTONES.forEach(u=>{
-    if(!u.reward||claimed.has(u.id))return;
-    if(!(u.eloRequired>oldElo&&u.eloRequired<=newElo))return;
-    if(u.reward==='pearls'&&typeof pearlAdd==='function')pearlAdd(u.amount);
-    else if(u.reward==='chest'){const due=vvVoieChestsDue();due.push(u.id);accSet('voie_chests',due);}
-    else if(u.reward==='copies'&&typeof invAdd==='function')invAdd(u.copyId,u.qty);
-    claimed.add(u.id);granted.push(u);
-  });
-  if(granted.length)accSet('voie_rewards_claimed',[...claimed]);
-  return granted;
-}
+// LES JALONS SONT VERSÉS PAR LE SERVEUR, au règlement de la partie qui les
+// franchit (ec_milestones, supabase/schema.sql) : perles créditées, coffres
+// mis de côté dans `voie_chests`. La fonction reste pour ses appelants et ne
+// fait plus rien.
+function vvCheckRewardMilestones(){return [];}
 
 // ----------------------------------------------------------------
 // RENDU DE LA PAGE VOIE

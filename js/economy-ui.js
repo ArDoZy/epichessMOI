@@ -277,9 +277,25 @@ function chestPromiseHTML(chest){
 // admin, il passe directement par ici. Le contenu est tiré MAINTENANT, donc
 // fermer la fenêtre en cours de route ne permet pas de relancer le tirage
 // jusqu'à obtenir mieux.
-function chestOpenNow(chestId,onClose){
-  const chest=chestById(chestId);
-  showChestCeremony(chest,chestRoll(chest.id),true,onClose||function(){});
+// LE CONTENU VIENT DU SERVEUR, DÉJÀ CRÉDITÉ (ec_eco, ec_clan_claim) : le jeu
+// ne fait plus que la cérémonie. Fermer la fenêtre ne change donc rien à ce
+// qui a été reçu, et il n'y a plus de tirage à relancer.
+function chestShowLots(chestId,lots,onClose){
+  showChestCeremony(chestById(chestId),lots||[],false,onClose||function(){});
+}
+// Demande un coffre au serveur (une action d'ec_eco) puis en joue la
+// cérémonie. Une erreur (perles insuffisantes, lot déjà pris) est dite au
+// joueur. Rend la promesse de la réponse.
+function chestFromServer(action,arg,onClose){
+  return ecEco(action,arg).then(r=>{
+    if(r&&r.chest&&r.lots)chestShowLots(r.chest,r.lots,onClose);
+    else if(onClose)onClose();
+    if(typeof updAll==='function')updAll();
+    return r;
+  }).catch(e=>{
+    if(typeof showNotif==='function')showNotif((e&&e.message)||'Le serveur ne répond pas.','err');
+    throw e;
+  });
 }
 
 // ----------------------------------------------------------------
@@ -339,12 +355,19 @@ function buyChestFromShop(chestId){
     return;
   }
   showConfirmModal('Acheter un '+chest.name+' pour '+price+' perles ?',()=>{
-    if(!pearlBuyChest(chest.id))return;
-    // Un achat n'est pas une promotion de pion : c'est un coffre qui arrive.
-    if(typeof playSound==='function')playSound('loot');
-    // Cérémonie d'ouverture normale : un Coffre Pion acheté ici se BRISE
-    // exactement comme un Coffre Pion gagné (js/chest-break.js).
-    chestOpenNow(chest.id,renderMagasinPage);
+    // Le serveur débite et tire (ec_eco 'shop'). Cérémonie d'ouverture
+    // normale : un Coffre Pion acheté ici se BRISE exactement comme un Coffre
+    // Pion gagné (js/chest-break.js).
+    // En mode test, la bourse est sans fond et rien ne s'écrit : le coffre se
+    // tire pour voir, sur une copie de la fiche (ecoChestOpen, js/eco-rules.js).
+    if(economyAdmin()){
+      const st=JSON.parse(JSON.stringify((ECP&&ECP.state)||{}));
+      chestShowLots(chest.id,ecoChestOpen(st,RANKS[RANKS.length-1].min,chest.id),renderMagasinPage);
+      return;
+    }
+    chestFromServer('shop',{chest:chest.id},renderMagasinPage).then(()=>{
+      if(typeof playSound==='function')playSound('loot');
+    }).catch(()=>{});
   },{okLabel:'Acheter',cancelLabel:'Annuler',okClass:'btn-gold'});
 }
 
@@ -514,20 +537,21 @@ function dailyChestBusy(){
 // Appelée à la connexion et à chaque retour au menu principal. Sans effet si
 // le coffre a déjà été pris aujourd'hui : c'est dailyChestAvailable() qui
 // décide, exactement comme avant.
+let _dailyChestAsking=false;
 function dailyChestMaybeOpen(){
   if(!CUR_ACC)return false;
   if(typeof dailyChestAvailable!=='function'||!dailyChestAvailable())return false;
-  if(dailyChestBusy())return false;
-  const gains=claimDailyChest();
-  if(!gains)return false;
-  const lots=Object.entries(gains).map(([pieceId,qty])=>({pieceId,qty,isNew:false}));
-  // Un joueur sans une seule pièce en stock ne reçoit rien : inutile de lui
-  // ouvrir un coffre vide (le cas ne se produit qu'en toute fin de partie de
-  // dépouillement, mais il se produit).
-  if(!lots.length)return false;
-  // Réutilise la cérémonie des coffres, mais le gain est DÉJÀ appliqué :
-  // applyOnClose reste à false pour ne pas créditer deux fois.
-  showChestCeremony({name:DAILY_CHEST.name,color:'#c19a45'},lots,false,chestBackToMenu);
+  if(dailyChestBusy()||_dailyChestAsking)return false;
+  // Le serveur verse (ec_eco 'restock') ; la cérémonie montre ce qu'il a
+  // versé. Un joueur sans une seule pièce en stock ne reçoit rien : inutile
+  // de lui ouvrir un coffre vide.
+  _dailyChestAsking=true;
+  claimDailyChest().then(gains=>{
+    _dailyChestAsking=false;
+    const lots=Object.entries(gains||{}).map(([pieceId,qty])=>({pieceId,qty,isNew:false}));
+    if(!lots.length||dailyChestBusy())return;
+    showChestCeremony({name:DAILY_CHEST.name,color:'#c19a45'},lots,false,chestBackToMenu);
+  }).catch(()=>{_dailyChestAsking=false;});
   return true;
 }
 
@@ -710,7 +734,6 @@ function chestCeremonyClose(){
   const st=_chestState;if(!st)return;
   _chestState=null;
   if(st.seq)st.seq.destroy();
-  if(st.applyOnClose)chestApply(st.lots);
   document.getElementById('chest-modal').classList.remove('show','opening','pb-cinema','pb-loot');
   document.body.style.overflow='';
   document.documentElement.style.scrollbarGutter='';

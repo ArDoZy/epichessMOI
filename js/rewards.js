@@ -101,15 +101,11 @@ function dailyRewardAvailable(){
 // PAS versé ici : c'est l'interface qui ouvre le coffre, verse les perles ou
 // ouvre la fenêtre des jokers, pour que ce qui est montré soit exactement ce
 // qui est reçu.
+// Encaisse le lot du jour : c'est le SERVEUR qui avance le cycle et verse le
+// lot (ec_eco 'daily'). La promesse rend {idx, chest|pearls|jokers, lots}.
 function dailyRewardClaim(){
-  if(!dailyRewardAvailable())return null;
-  const idx=dailyRewardCursor();
-  const step=dailyRewardStep(idx);
-  if(!step)return null;
-  const day=(typeof todayKey==='function')?todayKey():'';
-  rwSet('dr_day',day);
-  rwSet('dr_idx',dailyRewardIdx()+1);
-  return{idx,...step};
+  if(!dailyRewardAvailable())return Promise.resolve(null);
+  return ecEco('daily').then(r=>r&&r.step?Object.assign({},r.step,{lots:r.lots||null}):null);
 }
 
 // ----------------------------------------------------------------
@@ -223,56 +219,26 @@ function colNextIdx(){const w=colSteps();return w>=colTotal()?-1:w;}
 // Renvoie ce que la victoire a rapporté — {gain, laurels, steps, opened} —
 // pour que la cérémonie de fin de partie puisse l'annoncer : une récompense
 // qu'on ne voit pas arriver n'en est pas une.
+// APERÇU des lauriers qu'une victoire rapporte (le serveur les verse au
+// règlement de la partie, ec_match_apply). Ne modifie rien.
 function colNoteWin(gs){
   const gain=laurelsForMoves(laurelsMoveCount(gs));
   const before=colLaurels(),stepsBefore=colSteps();
   if(rewardsAdmin()||before>=colLaurelMax())
     return{gain:0,laurels:before,steps:stepsBefore,opened:0,moves:laurelsMoveCount(gs)};
   const after=Math.min(colLaurelMax(),before+gain);
-  rwSet('col_laurels',after);
   const steps=Math.min(colTotal(),Math.floor(after/LAURELS_PER_STEP));
   return{gain:after-before,laurels:after,steps,opened:steps-stepsBefore,
          moves:laurelsMoveCount(gs)};
 }
 
-// Encaisse le prochain palier dû et renvoie sa description ({chest} ou
-// {jokers}), ou null s'il n'y a rien à prendre. Le lot lui-même n'est PAS
-// versé ici : c'est l'interface qui ouvre le coffre ou la fenêtre des jokers
-// (voir js/rewards-ui.js), pour que ce qui est affiché soit exactement ce qui
-// est reçu — même règle que les coffres de série.
+// Encaisse le palier suivant (ec_eco 'column') : promesse de {idx, chest|jokers, lots}.
 function colClaimNext(){
-  if(!colPending())return null;
-  const idx=colClaimed();
-  const step=VICTORY_COLUMN[idx];
-  if(!step)return null;
-  rwSet('col_claimed',idx+1);
-  return{idx,...step};
+  if(!colPending())return Promise.resolve(null);
+  return ecEco('column').then(r=>r&&r.step?Object.assign({},r.step,{lots:r.lots||null}):null);
 }
 
-// ----------------------------------------------------------------
-// LES JOKERS : une récompense que le joueur choisit lui-même
-// ----------------------------------------------------------------
-// Un joker vaut UN EXEMPLAIRE de la créature de son choix. Trois jokers
-// convertis en Garde de Pierre donnent trois Gardes de Pierre.
-//
-// ON NE CHOISIT QUE PARMI CE QU'ON POSSÈDE (invOwnedIds) : recevoir des
-// exemplaires d'une créature encore verrouillée remplirait un stock injouable,
-// et c'est exactement ce que les coffres se refusent déjà à faire (voir
-// chestRoll, js/economy.js). Le joker choisit à quoi on RENFORCE son armée, il
-// ne débloque pas.
-//
-// Les jokers non convertis restent en réserve : fermer la fenêtre sans choisir
-// ne perd rien, la conversion est reproposée à la prochaine visite.
 function jokerBalance(){const n=rwGet('jokers',0);return Math.max(0,typeof n==='number'?n:0);}
-function jokerAdd(n){
-  if(!n)return jokerBalance();
-  const v=Math.max(0,jokerBalance()+n);
-  rwSet('jokers',v);
-  return v;
-}
-// Créatures proposées à la conversion : celles qu'on possède, hors Monarque
-// (il n'y en a jamais qu'un sur le plateau, un second exemplaire ne se joue
-// pas). Triées comme le reste du jeu : par classe puis par valeur.
 function jokerChoices(){
   const owned=(typeof invOwnedIds==='function')?invOwnedIds():[];
   return owned.map(id=>PIECES.find(p=>p.id===id)).filter(p=>p&&p.class!=='Monarque')
@@ -280,13 +246,12 @@ function jokerChoices(){
 }
 // Convertit TOUTE la réserve en exemplaires de `pieceId`. Renvoie le nombre
 // d'exemplaires versés (0 si le choix est invalide ou la réserve vide).
+// Convertit TOUS les jokers en la créature choisie (ec_eco 'joker').
+// Promesse du nombre d'exemplaires reçus.
 function jokerConvert(pieceId){
-  const n=jokerBalance();
-  if(!n)return 0;
-  if(!jokerChoices().some(p=>p.id===pieceId))return 0;
-  rwSet('jokers',0);
-  if(typeof invAdd==='function')invAdd(pieceId,n);
-  return n;
+  if(!jokerBalance())return Promise.resolve(0);
+  if(!jokerChoices().some(p=>p.id===pieceId))return Promise.resolve(0);
+  return ecEco('joker',{piece:pieceId}).then(r=>(r&&r.qty)|0);
 }
 
 // ----------------------------------------------------------------
@@ -327,26 +292,18 @@ function richDone(){return richClaimed()>=richTotal();}
 function richNextIdx(){return richDone()?-1:richClaimed();}
 function richNextStep(){const i=richNextIdx();return i<0?null:WEALTH_ROW[i];}
 function ticketBalance(){const n=rwGet('tickets',0);return Math.max(0,typeof n==='number'?n:0);}
-function ticketAdd(n){
-  if(!n)return ticketBalance();
-  const v=Math.max(0,ticketBalance()+n);
-  rwSet('tickets',v);
-  return v;
-}
 function richCanClaim(){
   const step=richNextStep();
   return !!step&&ticketBalance()>=step.cost;
 }
 // Encaisse le palier suivant : les tickets sont dépensés, les perles versées.
 // Renvoie {idx, pearls, cost} ou null si les tickets manquent.
+// Encaisse le palier suivant de la rangée (ec_eco 'wealth') : promesse de
+// {idx, pearls, cost}.
 function richClaimNext(){
   const step=richNextStep();
-  if(!step||ticketBalance()<step.cost)return null;
-  const idx=richClaimed();
-  ticketAdd(-step.cost);
-  rwSet('rich_claimed',idx+1);
-  if(typeof pearlAdd==='function')pearlAdd(step.pearls);
-  return{idx,pearls:step.pearls,cost:step.cost};
+  if(!step||ticketBalance()<step.cost)return Promise.resolve(null);
+  return ecEco('wealth');
 }
 
 // ----------------------------------------------------------------
@@ -436,100 +393,81 @@ function questRoll(){
 // Les quêtes du jour, régénérées au changement de date locale — même horloge
 // que la série du jour et le coffre de réapprovisionnement (todayKey,
 // js/economy.js), pour que tout le quotidien du jeu bascule au même moment.
-function questsToday(){
+// LES QUÊTES DU JOUR sont tirées par le serveur (ec_quests_roll) et y
+// avancent au règlement de chaque partie (ec_quests_note) : la partie déclare
+// ses événements (GS.questEvents, voir questNote), le serveur les borne et
+// les compte. Ce que l'écran montre pendant une partie est une PROJECTION :
+// la progression du serveur, plus ce que la partie en cours a déjà fait.
+function questsServer(){
   if(typeof CUR_ACC!=='undefined'&&!CUR_ACC)return [];
-  const day=(typeof todayKey==='function')?todayKey():'';
-  if(rwGet('quests_day',null)!==day||!Array.isArray(rwGet('quests',null))){
-    const fresh=questRoll();
-    rwSet('quests_day',day);
-    rwSet('quests',fresh);
-    return fresh;
-  }
-  // Une quête enregistrée sous un identifiant disparu (pool modifié entre deux
-  // versions) est ignorée plutôt que d'afficher une ligne vide.
-  return rwGet('quests',[]).filter(q=>questTpl(q.id));
+  return (rwGet('quests',[])||[]).filter(q=>questTpl(q.id));
 }
-function questsSave(list){rwSet('quests',list);}
-function questsAllDone(){const qs=questsToday();return qs.length>0&&qs.every(q=>q.done);}
-
-// ----------------------------------------------------------------
-// CE QUI FAIT AVANCER UNE QUÊTE
-// ----------------------------------------------------------------
-// Un seul point d'entrée pour tous les faits de jeu. Les appelants sont
-// volontairement peu nombreux :
-//   recordMove   (js/rules-engine.js) → 'move' et 'capture'
-//   updateStatus (js/game-render.js)  → 'check' et 'mate'
-//   economyOnPromotion (js/economy.js)→ 'promo'
-//   economySettle      (js/economy.js)→ 'win' et 'winwith'
-//
-// Les tickets sont crédités DÈS que la quête est remplie, sans bouton à
-// presser : il n'y a rien à décider, et une quête accomplie qu'il faut aller
-// chercher est une corvée (même raisonnement que le coffre quotidien, voir
-// dailyChestMaybeOpen dans js/economy-ui.js). Le palier de la rangée, lui, se
-// prend à la main : là, il y a un choix — encaisser ou accumuler.
-function questNote(event,pieceId,n){
-  if(rewardsAdmin())return;
-  if(typeof CUR_ACC!=='undefined'&&!CUR_ACC)return;
-  const qs=questsToday();
-  if(!qs.length)return;
-  let changed=false,earned=0;
+function questLiveEvents(){
+  const g=(typeof GS!=='undefined')?GS:null;
+  if(!g||g.tuto||!g.ticket||g._reported)return null;
+  const ev=JSON.parse(JSON.stringify(g.questEvents||{}));
+  if(g._questPlay)ev.play=Object.assign({},g._questPlay);
+  return ev;
+}
+function questsToday(){
+  const qs=questsServer().map(q=>Object.assign({},q));
+  const ev=questLiveEvents();
+  if(!ev)return qs;
   qs.forEach(q=>{
     if(q.done)return;
     const tpl=questTpl(q.id);
-    if(!tpl||tpl.event!==event)return;
-    if(tpl.piece&&q.pieceId!==pieceId)return;
-    q.prog=Math.min(tpl.target,(q.prog||0)+(n||1));
-    changed=true;
-    if(q.prog>=tpl.target){q.done=true;earned+=tpl.tickets;}
+    const bag=ev[tpl.event]||{};
+    const n=tpl.piece?(bag[q.pieceId]|0):Object.values(bag).reduce((a,b)=>a+(b|0),0);
+    if(n<=0)return;
+    q.prog=tpl.event==='play'?Math.max(q.prog|0,Math.min(tpl.target,n)):Math.min(tpl.target,(q.prog|0)+n);
+    if(q.prog>=tpl.target)q.done=true;
   });
-  if(!changed)return;
-  questsSave(qs);
-  if(earned){
-    ticketAdd(earned);
-    rwNotif('Quête accomplie · +'+earned+' ticket'+(earned>1?'s':''),'ok');
+  return qs;
+}
+function questsAllDone(){const qs=questsToday();return qs.length>0&&qs.every(q=>q.done);}
+
+// Un événement de partie (déplacement, prise, échec, mat, promotion). Il est
+// noté sur la partie en cours ; le serveur le comptera au règlement. Le
+// joueur est prévenu dès que la projection accomplit une quête.
+function questNote(event,pieceId,n,gs){
+  if(rewardsAdmin())return;
+  if(typeof CUR_ACC!=='undefined'&&!CUR_ACC)return;
+  const g=gs||((typeof GS!=='undefined')?GS:null);
+  if(!g||g.tuto||!g.ticket||g.gameOver&&event!=='promo')return;
+  const before=questsToday().filter(q=>q.done).length;
+  g.questEvents=g.questEvents||{};
+  const bag=g.questEvents[event]||(g.questEvents[event]={});
+  const k=pieceId||'*';
+  bag[k]=(bag[k]|0)+(n||1);
+  questAnnounce(before);
+}
+function questAnnounce(before){
+  const qs=questsToday();
+  const done=qs.filter(q=>q.done);
+  if(done.length>before){
+    const t=done.slice(before).reduce((a,q)=>a+questTickets(q),0)||questTickets(done[done.length-1]);
+    rwNotif('Quête accomplie · +'+t+' ticket'+(t>1?'s':''),'ok');
     if(typeof playSound==='function')playSound('loot');
   }
   if(typeof rewardsRefreshUI==='function')rewardsRefreshUI();
 }
 
-// « Engager telle créature et la jouer 3 fois DANS UNE MÊME BATAILLE » : le
-// compte est tenu sur la partie en cours (gs._questPlay), donc il repart de
-// zéro à chaque nouvelle partie sans que personne ait à le réinitialiser — GS
-// est reconstruit à chaque lancement (startGame, js/game-flow.js).
+// « Jouer une créature 3 fois dans une même bataille » : le compte est celui
+// de la bataille, pas un cumul.
 function questNotePlay(gs,pieceId){
-  if(!gs||rewardsAdmin())return;
+  if(!gs||rewardsAdmin()||gs.tuto||!gs.ticket)return;
+  const before=questsToday().filter(q=>q.done).length;
   gs._questPlay=gs._questPlay||{};
   gs._questPlay[pieceId]=(gs._questPlay[pieceId]||0)+1;
-  const qs=questsToday();
-  const q=qs.find(x=>!x.done&&x.id==='play'&&x.pieceId===pieceId);
-  if(!q)return;
-  const tpl=questTpl('play');
-  const seen=Math.min(tpl.target,gs._questPlay[pieceId]);
-  if(seen<=(q.prog||0))return;
-  q.prog=seen;
-  if(q.prog>=tpl.target){
-    q.done=true;
-    questsSave(qs);
-    ticketAdd(tpl.tickets);
-    rwNotif('Quête accomplie · +'+tpl.tickets+' tickets','ok');
-    if(typeof playSound==='function')playSound('loot');
-  }else questsSave(qs);
-  if(typeof rewardsRefreshUI==='function')rewardsRefreshUI();
+  questAnnounce(before);
 }
 
-// Un coup joué par le JOUEUR (jamais par l'adversaire : le filtre est chez
-// l'appelant, qui seul sait de quelle couleur est le joueur).
 function questNoteMove(gs,pieceId,isCapture){
-  questNote('move',pieceId,1);
+  questNote('move',pieceId,1,gs);
   questNotePlay(gs,pieceId);
-  if(isCapture)questNote('capture',pieceId,1);
+  if(isCapture)questNote('capture',pieceId,1,gs);
 }
 
-// Échec / mat : la créature créditée est celle qui ATTAQUE le roi adverse, et
-// pas seulement celle qui vient de bouger — un échec à la découverte est donné
-// par la pièce démasquée. On cherche donc, parmi les pièces du joueur, celles
-// qui atteignent la case du roi adverse ; la pièce qui vient de jouer est
-// examinée en premier pour rester la réponse dans le cas ordinaire.
 function questCheckers(gs,defColor){
   const b=gs&&gs.board;
   if(!b||!b.length)return [];
@@ -555,8 +493,8 @@ function questNoteCheck(gs,defColor,isMate){
   const ids=questCheckers(gs,defColor);
   if(!ids.length)return;
   ids.forEach(id=>{
-    questNote('check',id,1);
-    if(isMate)questNote('mate',id,1);
+    questNote('check',id,1,gs);
+    if(isMate)questNote('mate',id,1,gs);
   });
 }
 

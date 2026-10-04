@@ -328,7 +328,14 @@ qu'une progression ne disparaisse plus avec un cache vidé. Y sont stockés le
 pseudo, le classement, les créatures débloquées et l'avancement du jeu — et
 rien d'autre. **Aucune adresse e-mail n'est demandée, aucun mot de passe**,
 et le jeu ne contient ni publicité ni traqueur. Le navigateur ne garde qu'une
-clé tirée au sort, qui sert à prouver que le compte est le sien.
+clé tirée au sort, qui sert à prouver que le compte est le sien. La page
+Comptes l'affiche sous forme de **code de secours**, qui rouvre le compte sur
+un autre appareil ou après un cache vidé.
+
+**Le serveur tient tout ce qui compte** : le classement, les parties (ouvertes
+et réglées par lui), les créatures, les coffres et leurs tirages, les perles.
+Quitter une partie en cours la fait perdre ; en ligne, les deux joueurs
+déclarent l'issue et le serveur les confronte.
 
 **Il n'y a aucun écran d'inscription** : la première ouverture crée elle-même
 un compte au nom d'Alchimiste tiré au sort et entre directement dans le jeu.

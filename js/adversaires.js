@@ -146,7 +146,7 @@ function advPortrait(opp,cls){
   const safe=seal.replace(/"/g,'&quot;');
   return '<span class="adv-portrait '+(cls||'')+'" style="--accent:'+opp.accent+'">'+
     '<img src="'+advPortraitPath(opp.id)+'" alt="" loading="lazy" '+
-    'onerror="this.parentNode.innerHTML=this.dataset.seal;" data-seal="'+safe+'">'+
+    'data-onerr="seal" data-seal="'+safe+'">'+
     '</span>';
 }
 

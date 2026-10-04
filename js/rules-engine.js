@@ -96,12 +96,25 @@ function tickClock(gs){
   gs[key]=Math.max(0,gs[key]-elapsed);
   if(typeof renderClocks==='function')renderClocks(gs);
   if(gs[key]<=0){
-    stopClockTick(gs);gs.gameOver=true;
     const playerCol=gs.playerColor||'w';
-    const result=gs.turn===playerCol?'loss':'win';
+    // EN LIGNE, LE DRAPEAU ADVERSE SE FAIT CONFIRMER. Chaque écran tenait sa
+    // propre pendule : avec la latence, l'un voyait le drapeau tomber pendant
+    // que l'autre avait encore du temps, et les deux déclaraient des issues
+    // différentes. C'est le camp dont le temps tombe qui le constate chez lui
+    // (mpFlagClaim, js/multiplayer.js) ; sans réponse, il est parti.
+    if(gs.multiplayer&&gs.turn!==playerCol&&typeof mpFlagClaim==='function'){
+      mpFlagClaim();
+      return;
+    }
+    stopClockTick(gs);gs.gameOver=true;
+    if(gs.multiplayer&&typeof mpFlagConcede==='function')mpFlagConcede();
+    const other=gs.turn==='w'?'b':'w';
+    // Le temps tombe, mais l'adversaire ne pourrait plus mater : c'est nulle.
+    const drawn=(typeof canStillMate==='function')&&!canStillMate(gs.board,other);
+    const result=drawn?'draw':(gs.turn===playerCol?'loss':'win');
     const bar=document.getElementById('game-status');
-    if(bar){bar.textContent='Temps écoulé ! '+(result==='win'?'Vous gagnez !':'Votre adversaire gagne !');bar.className='status-bar mate';}
-    if(typeof playSound==='function')playSound(result==='win'?'win':'loss');
+    if(bar){bar.textContent='Temps écoulé ! '+(drawn?'Nulle : plus de quoi mater.':result==='win'?'Vous gagnez !':'Votre adversaire gagne !');bar.className='status-bar mate';}
+    if(typeof playSound==='function')playSound(result==='win'?'win':result==='draw'?'draw':'loss');
     if(!_endGameTriggered)triggerEndOfGame(result);
   }
 }
@@ -1615,40 +1628,98 @@ function renderMoveLog(gs){
 // ================================================================
 // FIN DE PARTIE : nulle par matériel insuffisant / répétition / 50 coups
 // ================================================================
-function boardFEN(board){
-  // Représentation simplifiée pour la détection de répétition
-  let s='';
+// LA CLÉ D'UNE POSITION, pour la répétition. Elle ne retenait que la PREMIÈRE
+// LETTRE de chaque pièce : « fourmi » et « fou-primordial », « prêtre », « preux »
+// et « pégase », « berserk » et « boucher » se confondaient, et deux positions
+// différentes passaient pour la même — une nulle déclarée à tort. Elle ignorait
+// aussi tout ce qui, sans se voir sur le plateau, change les coups possibles :
+// le trait, la prise en passant, le droit de roquer, l'ancrage du Garde de
+// Pierre, le pouvoir endormi d'une créature, la réanimation déjà consommée de
+// la Matriarche. Deux positions ne se répètent que si TOUT cela est identique.
+function positionKey(board,turn,enPassant,anchored,matriarche){
+  let s=(turn||'w')+'|';
+  for(let r=0;r<8;r++)for(let c=0;c<8;c++){
+    const p=board[r]&&board[r][c];
+    if(!p){s+='.,';continue;}
+    s+=p.color+p.pieceId;
+    // Le roque ne dépend que du Roi et des Tours qui n'ont pas bougé.
+    if((p.type==='k'||p.type==='r')&&!p.hasMoved)s+='*';
+    if(p.np)s+='~';
+    s+=',';
+  }
+  if(enPassant)s+='|ep'+enPassant.r+enPassant.c;
+  if(anchored&&anchored.size)s+='|a'+[...anchored].sort().join(';');
+  const mu=matriarche&&matriarche.used;
+  if(mu&&(mu.w||mu.b))s+='|m'+(mu.w?1:0)+(mu.b?1:0);
+  return s;
+}
+function gsPositionKey(gs){
+  return positionKey(gs.board,gs.turn,gs.enPassant,gs.anchored,
+    (typeof matriarcheSnapshot==='function')?matriarcheSnapshot(gs):null);
+}
+// Combien de fois la position courante est déjà apparue (elle comprise).
+// Les instantanés de gs.history sont pris AVANT chaque coup : ceux de même
+// trait que la position courante sont un sur deux, en remontant depuis
+// l'avant-dernier.
+function repetitionCount(gs){
+  const cur=gsPositionKey(gs);
+  let count=1;
+  for(let i=gs.history.length-2;i>=0;i-=2){
+    const h=gs.history[i];
+    if(positionKey(h.board,h.turn,h.enPassant,h.anchored,h.matriarche)===cur)count++;
+    if(count>=3)break;
+  }
+  return count;
+}
+
+// LES SEULES PIÈCES MINEURES sont celles qui se déplacent EXACTEMENT comme un
+// cavalier ou un fou. Le test lisait `type`, c'est-à-dire le déplacement de
+// BASE d'une créature : le Typhon, la Banshee, le Singe, le Loup Géant (base
+// fou), le Pégase et l'Infecté (base cavalier) passaient pour un fou ou un
+// cavalier ordinaire, et la partie était déclarée nulle alors qu'ils matent
+// très bien.
+const MINOR_KNIGHT_IDS=new Set(['std-n','cavalier-primordial']);
+const MINOR_BISHOP_IDS=new Set(['std-b','fou-primordial']);
+function minorKind(p){
+  if(MINOR_KNIGHT_IDS.has(p.pieceId))return 'n';
+  if(MINOR_BISHOP_IDS.has(p.pieceId))return 'b';
+  return null;
+}
+function materialOf(board){
+  const out={w:[],b:[]};
   for(let r=0;r<8;r++)for(let c=0;c<8;c++){
     const p=board[r][c];
-    s+=p?(p.color[0]+p.pieceId[0]):'.';
+    if(!p||p.isKing||p.type==='k'||p.pieceId==='reflet')continue;
+    out[p.color].push({p,r,c});
   }
-  return s;
+  return out;
 }
 
 function isInsufficientMaterial(board){
-  // Mat impossible si seulement rois + (cavaliers ou fous de même couleur)
-  const pieces=[];
-  for(let r=0;r<8;r++)for(let c=0;c<8;c++){
-    const p=board[r][c];if(p&&!(p.isKing||p.type==='k')&&p.pieceId!=='reflet')pieces.push(p);
-  }
-  if(pieces.length===0)return true; // Roi vs Roi
-  if(pieces.length===1){
-    const p=pieces[0];
-    // Roi + cavalier ou fou vs Roi seul
-    if(p.type==='n'||p.pieceId==='cavalier-primordial')return true;
-    if(p.type==='b'||p.pieceId==='fou-primordial')return true;
-  }
-  if(pieces.length===2){
-    const [a,b]=pieces;
-    // Deux fous de même couleur de case vs Roi
-    if((a.type==='b'||a.pieceId==='fou-primordial')&&(b.type==='b'||b.pieceId==='fou-primordial')){
-      // Même couleur de case ?
-      let aR=-1,aC=-1,bR=-1,bC=-1;
-      for(let r=0;r<8;r++)for(let c=0;c<8;c++){const p=board[r][c];if(p===a){aR=r;aC=c;}if(p===b){bR=r;bC=c;}}
-      if((aR+aC)%2===(bR+bC)%2)return true;
-    }
+  // Mat impossible des deux côtés : rois seuls, ou un roi et UNE pièce mineure
+  // contre un roi seul, ou des fous qui vivent tous sur la même couleur de case.
+  const m=materialOf(board);
+  const all=m.w.concat(m.b);
+  if(all.length===0)return true;
+  if(all.some(x=>!minorKind(x.p)))return false;
+  if(all.length===1)return true;
+  if(all.every(x=>minorKind(x.p)==='b')){
+    const sq=all.map(x=>(x.r+x.c)%2);
+    return sq.every(v=>v===sq[0]);
   }
   return false;
+}
+
+// LE CAMP `color` PEUT-IL ENCORE MATER ? Sert à la chute du drapeau : selon la
+// règle, celui dont le temps tombe ne perd que si l'adversaire peut encore le
+// mater ; sinon la partie est nulle. Il ne le peut pas avec un roi seul, ni
+// avec une seule pièce mineure contre un roi seul.
+function canStillMate(board,color){
+  const m=materialOf(board);
+  const mine=m[color],theirs=m[color==='w'?'b':'w'];
+  if(!mine.length)return false;
+  if(mine.length===1&&minorKind(mine[0].p)&&!theirs.length)return false;
+  return true;
 }
 
 // updateStatus et triggerEndOfGame vivent dans game-render.js et

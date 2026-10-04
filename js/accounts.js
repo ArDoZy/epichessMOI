@@ -124,6 +124,12 @@ function accGet(k,fb){
 
 function accSet(k,v){
   if(ACC_SERVER_KEYS[k])return;   // propriété du serveur, voir plus haut
+  // L'ÉCONOMIE AUSSI EST AU SERVEUR (EC_ECO_KEYS, js/server.js) : perles,
+  // inventaire, quêtes… ne changent que par ses fonctions, qui renvoient le
+  // `state` à jour. Une écriture d'ici serait refusée par ec_save_state ;
+  // on ne la fait même pas, pour que l'écran ne montre jamais ce que le
+  // serveur n'a pas accordé.
+  if(EC_ECO_KEYS.indexOf(k)>=0)return;
   if(!ECP)return;
   if(!ECP.state)ECP.state={};
   // Symétrique de accGet : on range une COPIE. L'appelant garde souvent la
@@ -157,17 +163,50 @@ function accountsSessionFor(username){
 // un pseudo libre ici peut avoir été pris à l'autre bout du monde une
 // seconde plus tôt. Renvoie null si tout va bien, sinon la phrase à
 // montrer.
+// CE QU'UN PSEUDO A LE DROIT DE CONTENIR. Les mêmes règles que le serveur
+// (ec_name_error, supabase/schema.sql), qui reste seul juge : on les
+// applique ici pour prévenir avant l'envoi.
+//
+// Seuls les caractères de contrôle étaient refusés. Passaient donc les
+// espaces de largeur nulle, l'inversion du sens d'écriture, et les lettres
+// cyrilliques ou grecques qui ressemblent trait pour trait à des lettres
+// latines (« Аdmin » avec un А cyrillique) : de quoi porter le nom d'un autre
+// joueur à l'œil près. Un pseudo s'écrit désormais en lettres latines
+// (accents compris), chiffres, espaces et  ' - _ .  — et commence par une
+// lettre ou un chiffre.
+const ACC_NAME_RE=/^[A-Za-z0-9\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u00FF\u0152\u0153]([A-Za-z0-9\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u00FF\u0152\u0153 '._-]*)$/;
+// Mots refusés : les insultes les plus courantes, et ce qui ferait passer un
+// joueur pour l'équipe du jeu. Les mots courts ne sont refusés qu'entiers
+// (« fdp »), les longs aussi au milieu d'un mot.
+const ACC_NAME_BANNED=['admin','administrateur','moderateur','modo','staff','support','officiel','epic chess','epicchess',
+  'connard','connasse','salope','pute','putain','encule','enculer','nazi','hitler','negre','nigger','nigga',
+  'fuck','shit','bitch','batard','bite','couille','merde','fdp','ntm','pd','tg'];
+function accountsNameFold(u){
+  return String(u||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase()
+    .replace(/0/g,'o').replace(/1/g,'i').replace(/3/g,'e').replace(/4/g,'a').replace(/5/g,'s').replace(/7/g,'t').replace(/@/g,'a');
+}
+function accountsNameBanned(u){
+  const f=accountsNameFold(u);
+  const words=f.split(/[^a-z]+/).filter(Boolean);
+  const squashed=f.replace(/[^a-z]/g,'');
+  return ACC_NAME_BANNED.some(w=>{
+    const k=w.replace(/ /g,'');
+    return k.length<=3?words.includes(k):squashed.includes(k);
+  });
+}
+function accountsNameShapeError(u){
+  if(/\s{2,}/.test(u))return 'Un seul espace entre deux mots.';
+  if(!ACC_NAME_RE.test(u))return 'Lettres, chiffres, espaces et \' - _ . seulement, en commençant par une lettre ou un chiffre.';
+  if(accountsNameBanned(u))return 'Ce pseudo n\'est pas autorisé.';
+  return null;
+}
+
 function accountsNameError(raw,{allowCurrent}={}){
   const u=String(raw||'').trim();
   if(u.length<ACC_NAME_MIN||u.length>ACC_NAME_MAX)
     return 'Le pseudo doit faire entre '+ACC_NAME_MIN+' et '+ACC_NAME_MAX+' caractères.';
-  // Seuls les caractères de contrôle sont écartés : ils ne s'affichent
-  // pas, et deux pseudos n'en différant que par eux seraient
-  // visuellement identiques.
-  for(let i=0;i<u.length;i++){
-    const c=u.charCodeAt(i);
-    if(c<32||c===127)return 'Ce pseudo contient des caractères invisibles.';
-  }
+  const bad=accountsNameShapeError(u);
+  if(bad)return bad;
   const sameAsCurrent=allowCurrent&&!!CUR_ACC&&u.toLowerCase()===CUR_ACC.toLowerCase();
   if(accountsExists(u)&&!sameAsCurrent)return 'Un compte porte déjà ce pseudo sur cet appareil.';
   return null;
@@ -222,7 +261,7 @@ function accountsBoot(){
   accountsBootVeil('Connexion au serveur…');
   const fresh=accountsConsumeFreshFlag();
   const sess=ecCurrentSession();
-  const step=sess?ecLogin().catch(e=>{
+  const step=sess?ecFlushPendingMatches().catch(()=>{}).then(()=>ecLogin()).catch(e=>{
     // Le compte n'existe plus côté serveur (supprimé ailleurs, base
     // remise à zéro) : on oublie cette session et on repart sur un
     // compte neuf plutôt que de bloquer le joueur devant une erreur
@@ -237,7 +276,7 @@ function accountsBoot(){
     // déblocages calculés à l'entrée (loadAccountGlobals) se lisent sur le
     // sommet atteint — le lire avant que ces parties soient enregistrées
     // ferait clignoter une créature déjà gagnée.
-    return ecFlushPendingMatches().then(()=>{
+    return Promise.resolve().then(()=>{
       accountsBootDone();
       ecStartHeartbeat();
       enterAccount(ECP.username,fresh||profile._isNew===true);
@@ -273,14 +312,18 @@ function enterAccount(username,isNewAccount){
   // UN COMPTE ADMIN EST UN BAC À SABLE. Il joue avec tout débloqué et
   // n'est jamais classé (voir ec_report_match et ec_leaderboard) : le
   // mode test du jeu est exactement cet état, on l'allume donc.
-  if(ECP&&ECP.is_admin&&typeof ADMIN_MODE!=='undefined')ADMIN_MODE=true;
+  if(typeof ADMIN_MODE!=='undefined'){
+    const mockSandbox=typeof EC_MOCK!=='undefined'&&EC_MOCK&&
+      typeof ADMIN_URL_ASKED!=='undefined'&&ADMIN_URL_ASKED;
+    ADMIN_MODE=!!(ECP&&ECP.is_admin)||mockSandbox;
+  }
+  // LE NAVIGATEUR PEUT EFFACER SEUL LA CLÉ DU COMPTE (Safari vide le stockage
+  // d'un site non installé après sept jours sans visite). On demande qu'il la
+  // garde ; le code de secours de la page Comptes reste le vrai filet.
+  try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist().catch(()=>{});}catch(e){}
   loadAccountGlobals();
-  // Économie (js/economy.js) : dotation de départ pour les pièces
-  // débloquées qui n'ont pas encore de stock, et restitution des pièces
-  // d'une partie interrompue (onglet fermé en cours de jeu). Une
-  // interruption n'est pas une défaite.
-  if(typeof invEnsureStarter==='function')invEnsureStarter();
-  if(typeof economyRecoverOrphanEngagement==='function')economyRecoverOrphanEngagement();
+  // La dotation de départ et le sort d'une partie interrompue sont réglés
+  // par le serveur à la connexion (ec_login : ec_eco_init, ec_match_sweep).
   if(typeof aiLoadOpponent==='function')aiLoadOpponent();
   updateCab();
   document.body.classList.add('has-acc');
@@ -406,43 +449,21 @@ function loadAccountGlobals(){
   const defs=UNLOCK_TABLE.filter(u=>u.eloRequired===0&&!u.coffre&&u.pieceId).map(u=>u.pieceId);
   const stored=accGet('unlocked_pieces',null);
   VV_UNLOCKED=new Set(stored||defs);
-  // LES CRÉATURES NE SE DÉBLOQUENT PLUS PAR L'ELO : seuls les coffres en
-  // donnent (PIECE_ARENA, js/data-pieces.js). Ce qui était recalculé ici à
-  // chaque chargement à partir du sommet atteint est écrit une fois pour
-  // toutes par la migration — puis plus jamais recalculé.
-  accMigratePowers();
+  // La migration des pouvoirs (accMigratePowers) est faite par le serveur, à
+  // la connexion (ec_eco_init) : c'est lui qui écrit les déblocages.
 }
 
-// ----------------------------------------------------------------
-// MIGRATION : LES CRÉATURES ET LEURS POUVOIRS, AU PASSAGE AUX COFFRES
-// ----------------------------------------------------------------
-// Avant, franchir un palier d'ELO donnait la créature ET son pouvoir, et la
-// créature n'était même pas écrite dans le compte : loadAccountGlobals la
-// recalculait à chaque chargement à partir du sommet atteint. Depuis que
-// l'ELO ne donne plus rien, ce recalcul a disparu — sans cette migration, un
-// joueur à 1200 ELO aurait perdu la moitié de son catalogue.
-//
-// Une seule fois par compte (`powers_v1`) :
-//   · les créatures que l'ancienne Diagonale donnait à son sommet sont
-//     écrites dans `unlocked_pieces` ;
-//   · TOUTES les créatures qu'il possède déjà reçoivent leur pouvoir. Il les
-//     avait avec leur pouvoir ; lui demander des débris pour ce qu'il avait
-//     serait lui reprendre ce qu'il a gagné.
-// Un compte neuf passe aussi par ici, avec son seul Roi et sa seule Dame :
-// il n'a rien à hériter, et le drapeau le fait passer au nouveau régime.
-function accMigratePowers(){
-  if(accGet('powers_v1',false))return;
-  const peak=vvLoadPeakElo();
-  if(typeof LEGACY_ELO_UNLOCKS!=='undefined')
-    Object.entries(LEGACY_ELO_UNLOCKS).forEach(([id,elo])=>{if(elo<=peak)VV_UNLOCKED.add(id);});
-  vvSaveUnlocked(VV_UNLOCKED);
-  const inv=accGet('inventory',{})||{};
-  const owned=new Set([...VV_UNLOCKED,...Object.keys(inv).filter(k=>inv[k]>0)]);
-  const powers=new Set(accGet('unlocked_powers',[])||[]);
-  owned.forEach(id=>{if(typeof pieceHasPower==='function'&&pieceHasPower(id))powers.add(id);});
-  accSet('unlocked_powers',[...powers]);
-  accSet('powers_v1',true);
+// LE SERVEUR VIENT DE RENDRE UN `state` (ecAdoptState / ecAdoptProfile,
+// js/server.js) : les déblocages se relisent, l'écran se remet à jour.
+function ecOnStateAdopted(){
+  if(!CUR_ACC||(typeof ADMIN_MODE!=='undefined'&&ADMIN_MODE))return;
+  const ul=accGet('unlocked_pieces',null);
+  if(Array.isArray(ul))VV_UNLOCKED=new Set(ul);
 }
+
+// La MIGRATION DES CRÉATURES ET DE LEURS POUVOIRS au passage aux coffres
+// (anciennement accMigratePowers) vit au serveur : ec_eco_init,
+// supabase/schema.sql, une fois par compte (`powers_v1`).
 
 function saveArmies(){accSet('armies',savedArmies);}
 function saveAiArmies(){accSet('ai_armies',savedAiArmies);}

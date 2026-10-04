@@ -46,7 +46,7 @@ const MMP={
   code:null,
   isHost:false,
   oppHost:null,       // rôle ANNONCÉ par l'adversaire (voir mirMpColor)
-  myId:Math.random().toString(36).slice(2),
+  myId:mpRandHex(16),
   oppId:null,
   oppName:null,
   started:false,
@@ -72,7 +72,10 @@ function mirMpName(){
 function mirMpCode(){
   const chars='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let out='';
-  for(let i=0;i<4;i++)out+=chars[Math.floor(Math.random()*chars.length)];
+  // Six caractères tirés au générateur cryptographique : quatre se
+  // devinaient en quelques milliers d'essais.
+  const rnd=new Uint8Array(6);(self.crypto||window.crypto).getRandomValues(rnd);
+  for(let i=0;i<6;i++)out+=chars[rnd[i]%chars.length];
   return out;
 }
 
@@ -92,8 +95,8 @@ function mirMpStart(kind,code){
     return;
   }
   if(kind==='join'){
-    if(!code||code.length!==4){
-      if(typeof showNotif==='function')showNotif('Entrez le code à quatre caractères.','err');
+    if(!code||code.length!==6){
+      if(typeof showNotif==='function')showNotif('Entrez le code à six caractères.','err');
       return;
     }
     mirLobbyWait('Connexion au salon '+code+'…');
@@ -204,7 +207,7 @@ function mirMpConnect(code,asHost){
   // pas à la même seconde, et un message émis avant que l'autre n'écoute est
   // perdu sans erreur. On réémet donc jusqu'au démarrage.
   ch.on('broadcast',{event:'hello'},({payload})=>{
-    if(!payload||payload.id===MMP.myId)return;
+    if(!payload||payload.id===MMP.myId||(MMP.oppId&&payload.id!==MMP.oppId))return;
     MMP.oppId=payload.id;MMP.oppName=payload.name||'Adversaire';
     // `host` peut manquer (client plus ancien) : on le prend alors pour
     // l'inverse du nôtre, ce qui revient à l'ancien comportement.
@@ -214,22 +217,22 @@ function mirMpConnect(code,asHost){
   });
 
   ch.on('broadcast',{event:'move'},({payload})=>{
-    if(!payload||payload.id===MMP.myId||!MMP.started)return;
+    if(!payload||payload.id===MMP.myId||(MMP.oppId&&payload.id!==MMP.oppId)||!MMP.started)return;
     mirMpReceiveMove(payload);
   });
 
   ch.on('broadcast',{event:'sync-req'},({payload})=>{
-    if(!payload||payload.id===MMP.myId)return;
+    if(!payload||payload.id===MMP.myId||(MMP.oppId&&payload.id!==MMP.oppId))return;
     ch.send({type:'broadcast',event:'sync',payload:{id:MMP.myId,log:MMP.log}});
   });
 
   ch.on('broadcast',{event:'sync'},({payload})=>{
-    if(!payload||payload.id===MMP.myId||!MMP.started)return;
+    if(!payload||payload.id===MMP.myId||(MMP.oppId&&payload.id!==MMP.oppId)||!MMP.started)return;
     mirMpApplyLog(payload.log||[]);
   });
 
   ch.on('broadcast',{event:'end'},({payload})=>{
-    if(!payload||payload.id===MMP.myId||!MMP.started)return;
+    if(!payload||payload.id===MMP.myId||(MMP.oppId&&payload.id!==MMP.oppId)||!MMP.started)return;
     if(typeof mirDeclare==='function')
       mirDeclare(MIR.myColor,payload.kind==='resign'?'abandon de l’adversaire':'départ de l’adversaire');
   });
@@ -243,7 +246,7 @@ function mirMpConnect(code,asHost){
       const back=mirMpPresent(MMP.oppId);
       if(!back&&MIR.st&&!MIR.st.gameOver)
         mirDeclare(MIR.myColor,'départ de l’adversaire');
-    },20000);
+    },45000);   // même délai de grâce que la partie principale (MP_GRACE_MS)
   });
 
   ch.subscribe(async status=>{

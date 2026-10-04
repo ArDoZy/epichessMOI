@@ -52,6 +52,15 @@ const SUPABASE_PUBLISHABLE_KEY='sb_publishable_8PgQoH4YhF6oitNVRh3JBQ_T9fcNwwQ';
 //    best_streak, cur_streak, piece_stats, history, state}
 let ECP=null;
 
+// LES CLÉS DE `state` QUI APPARTIENNENT AU SERVEUR : toute l'économie. Le
+// navigateur les lit (accGet) mais ne les écrit jamais (accSet les ignore) :
+// elles changent par les fonctions du serveur, qui renvoient le `state` à
+// jour (ecAdoptState). Même liste que ec_eco_keys (supabase/schema.sql).
+const EC_ECO_KEYS=['inventory','pearls','debris','unlocked_pieces','unlocked_powers','powers_v1','chest_dry',
+  'engaged_now','win_streak','daily_last','col_laurels','col_wins','col_claimed','jokers',
+  'tickets','rich_claimed','quests_day','quests','dr_idx','dr_day','voie_rewards_claimed',
+  'voie_chests','tuto_rewards'];
+
 // ----------------------------------------------------------------
 // LES SESSIONS DE CET APPAREIL
 // ----------------------------------------------------------------
@@ -194,8 +203,18 @@ function ecRpcAuth(fn,args,opts){
 // ----------------------------------------------------------------
 // COMPTE : CRÉER, SE CONNECTER, RENOMMER, SUPPRIMER
 // ----------------------------------------------------------------
+// ADOPTER LE `state` QUE LE SERVEUR VIENT DE RENDRE. Les clés que le
+// navigateur pilote et qui n'ont pas encore été envoyées (_ecPatch) gardent
+// leur valeur locale : elles sont plus récentes que celles du serveur.
+function ecAdoptState(st){
+  if(!ECP||!st||typeof st!=='object')return;
+  ECP.state=Object.assign({},st,_ecPatch);
+  if(typeof ecOnStateAdopted==='function')ecOnStateAdopted();
+}
 function ecAdoptProfile(p){
+  if(p&&p.state&&typeof _ecPatch!=='undefined')p.state=Object.assign({},p.state,_ecPatch);
   ECP=p;
+  if(p&&typeof ecOnStateAdopted==='function')ecOnStateAdopted();
   if(p&&p.id){
     const s=ecCurrentSession();
     if(s&&s.id===p.id&&s.username!==p.username){
@@ -233,6 +252,50 @@ function ecNameFree(username){
 function ecDeleteAccount(id,secret){
   return ecRpc('ec_delete',{p_id:id,p_secret:secret}).then(r=>{
     ecForgetSession(id);
+    return r;
+  });
+}
+
+// ----------------------------------------------------------------
+// LE CODE DE SECOURS : un compte qui survit à son appareil
+// ----------------------------------------------------------------
+// La clé d'appareil ne quittait jamais le navigateur : un cache vidé, un
+// téléphone changé, ou Safari qui efface le stockage d'un site au bout de
+// sept jours sans visite, et le compte était perdu pour toujours — ELO, clan,
+// créatures. Le code de secours est cette même clé, écrite pour être
+// recopiée : l'identifiant du compte et sa clé, rien d'autre. Qui le possède
+// possède le compte, et la page Comptes le dit.
+const EC_RECOVERY_PREFIX='ECR1';
+function ecRecoveryCode(){
+  const s=ecCurrentSession();
+  return s?EC_RECOVERY_PREFIX+'.'+s.id+'.'+s.secret:'';
+}
+function ecParseRecoveryCode(code){
+  const m=String(code||'').trim().match(/^ECR1\.([0-9a-f-]{36})\.([0-9a-f]{16,128})$/i);
+  return m?{id:m[1].toLowerCase(),secret:m[2].toLowerCase()}:null;
+}
+// Ouvre sur cet appareil le compte que désigne un code de secours. Le serveur
+// vérifie la clé ; en cas de succès le compte rejoint la liste de l'appareil
+// et devient le compte courant.
+function ecRestoreFromCode(code){
+  const c=ecParseRecoveryCode(code);
+  if(!c)return Promise.reject(new Error('Ce code de secours n\'est pas valide.'));
+  return ecRpc('ec_login',{p_id:c.id,p_secret:c.secret}).then(p=>{
+    ecRememberSession({id:p.id,secret:c.secret,username:p.username});
+    return p;
+  }).catch(e=>{
+    if(e&&e.code==='28000')throw new Error('Aucun compte ne répond à ce code.');
+    throw e;
+  });
+}
+// Change la clé du compte courant : l'ancien code de secours, et tout appareil
+// qui le connaissait encore, perdent l'accès. À faire si le code a fuité.
+function ecRotateSecret(){
+  const s=ecCurrentSession();
+  if(!s)return Promise.reject(new Error('Aucun compte connecté.'));
+  const fresh=ecNewSecret();
+  return ecRpc('ec_rotate_secret',{p_id:s.id,p_secret:s.secret,p_new_secret:fresh}).then(r=>{
+    ecRememberSession({id:s.id,secret:fresh,username:s.username});
     return r;
   });
 }
@@ -326,38 +389,79 @@ function ecPushPendingMatch(id,payload){
   const a=ecPendingMatches();a.push({id,payload});ecSavePendingMatches(a);
 }
 
+// OUVRIR UNE PARTIE (ec_match_begin). Le serveur rend le billet, l'ELO et le
+// nom de l'adversaire, l'armée vérifiée et le `state` (les pièces engagées
+// en sont déjà sorties).
+function ecMatchBegin(payload){
+  return ecRpcAuth('ec_match_begin',{p_payload:payload}).then(r=>{
+    if(r&&r.state)ecAdoptState(r.state);
+    ecServerNoteOk();
+    return r;
+  });
+}
+
+// DÉCLARER L'ISSUE (ec_report_match). `payload.ticket` est le billet rendu
+// par ecMatchBegin ; sans lui, le serveur ne retient rien.
 function ecReportMatch(payload){
   const s=ecCurrentSession();
   if(!s)return Promise.reject(new Error('Aucun compte connecté.'));
   return ecRpc('ec_report_match',{p_id:s.id,p_secret:s.secret,p_payload:payload})
     .then(r=>{
-      ecAdoptProfile(r.profile);
+      if(r&&r.profile)ecAdoptProfile(r.profile);
       ecServerNoteOk();
       return r;
     })
     .catch(e=>{
       // Réseau : on garde la partie pour plus tard. Refus du serveur
-      // (résultat invalide, compte inconnu) : inutile de la rejouer.
+      // (billet inconnu, résultat invalide) : inutile de la rejouer.
       if(e&&e.offline)ecPushPendingMatch(s.id,payload);
       ecServerNoteFail(e);
       throw e;
     });
 }
 
-// Rejoue les parties restées en rade, au démarrage. En série et non en
-// parallèle : l'ELO de chacune dépend de celui que laisse la précédente.
+// Où en est une partie déclarée ? En ligne, le gagnant attend la parole de
+// l'autre camp : le jeu redemande quelques fois avant de laisser le
+// battement de présence (ec_touch) prendre le relais.
+function ecMatchStatus(ticket){
+  return ecRpcAuth('ec_match_status',{p_ticket:ticket}).then(r=>{
+    if(r&&r.status==='settled'&&r.profile)ecAdoptProfile(r.profile);
+    return r;
+  });
+}
+
+// LES GESTES DE L'ÉCONOMIE (ec_eco) : coffre du Magasin, récompense du jour,
+// réapprovisionnement, palier de colonne, jokers, rangée, coffre de jalon,
+// éveil d'un pouvoir, créatures du tutoriel. Le serveur décide et tire ;
+// le jeu adopte le `state` rendu et montre ce qu'il dit.
+function ecEco(action,arg){
+  // Le mode test ne touche jamais à la progression (le serveur refuse aussi
+  // pour un compte admin) : on ne lui demande même pas.
+  if(typeof ADMIN_MODE!=='undefined'&&ADMIN_MODE&&action!=='sync')
+    return Promise.reject(new Error('Le mode test ne touche pas à la progression.'));
+  return ecRpcAuth('ec_eco',{p_action:action,p_arg:arg||{}}).then(r=>{
+    if(r&&r.state)ecAdoptState(r.state);
+    ecServerNoteOk();
+    return r;
+  }).catch(e=>{ecServerNoteFail(e);throw e;});
+}
+
+// Rejoue les parties restées en rade, au démarrage — AVANT la connexion :
+// ec_login traite en abandon un billet resté sans déclaration, et la
+// déclaration en attente dit justement comment la partie a fini. En série
+// et non en parallèle : l'ELO de chacune dépend de celui que laisse la
+// précédente.
 function ecFlushPendingMatches(){
   const s=ecCurrentSession();
   if(!s)return Promise.resolve();
   const all=ecPendingMatches();
-  const mine=all.filter(m=>m.id===s.id);
+  const mine=all.filter(m=>m.id===s.id&&m.payload&&m.payload.ticket);
   if(!mine.length)return Promise.resolve();
   ecSavePendingMatches(all.filter(m=>m.id!==s.id));
   let chain=Promise.resolve();
   mine.forEach(m=>{
     chain=chain.then(()=>ecRpc('ec_report_match',
       {p_id:s.id,p_secret:s.secret,p_payload:m.payload})
-      .then(r=>{ecAdoptProfile(r.profile);})
       .catch(e=>{if(e&&e.offline)ecPushPendingMatch(s.id,m.payload);}));
   });
   return chain;
@@ -380,6 +484,9 @@ function ecHeartbeat(){
   if(typeof document!=='undefined'&&document.visibilityState==='hidden')return;
   ecRpcAuth('ec_touch',{},{timeout:8000}).then(r=>{
     if(r&&typeof r.online==='number')EC_ONLINE_COUNT=r.online;
+    // Le battement a réglé une partie qui attendait, ou changé de jour : la
+    // fiche à jour vient avec lui.
+    if(r&&r.profile){ecAdoptProfile(r.profile);if(typeof updateCab==='function')updateCab();}
     ecServerNoteOk();
   }).catch(e=>ecServerNoteFail(e));
 }
@@ -408,7 +515,7 @@ function ecProfileOf(opts){
 }
 
 // ----------------------------------------------------------------
-// LA GUERRE DES CLANS (supabase/migrations/001-guerre-des-clans.sql)
+// LA GUERRE DES CLANS (supabase/schema.sql)
 // ----------------------------------------------------------------
 // Les quatorze portes des clans. Toutes renvoient ce que la page a besoin
 // d'afficher ensuite (la plupart : la fiche complète « mon clan »), pour
@@ -534,6 +641,7 @@ function ecMockLoad(){
   let d;
   try{d=JSON.parse(localStorage.getItem(EC_MOCK_DB)||'{}');}catch(e){d=null;}
   if(!d||typeof d!=='object'||!d.players)d={players:{}};
+  if(!d.matches||typeof d.matches!=='object')d.matches={};
   // Les tables des clans, une par table du serveur. Un bac à sable d'avant
   // les clans les reçoit vides au premier chargement.
   ['clans','clanMembers','clanWeeks','clanContrib','clanEvents','clanRequests','clanClaims']
@@ -547,9 +655,18 @@ function ecMockFail(msg,code){const e=new Error(msg);e.code=code||'P0001';return
 function ecMockNameError(n){
   const t=String(n||'').trim();
   if(t.length<2||t.length>20)return 'Le pseudo doit faire entre 2 et 20 caractères.';
-  for(let i=0;i<t.length;i++){const c=t.charCodeAt(i);if(c<32||c===127)
-    return 'Ce pseudo contient des caractères invisibles.';}
-  return null;
+  // Les mêmes règles que ec_name_error (lettres latines, mots refusés) :
+  // accountsNameShapeError (js/accounts.js) en est la transcription.
+  return (typeof accountsNameShapeError==='function')?accountsNameShapeError(t):null;
+}
+// Ce que les règles de parties (js/eco-rules.js) demandent au bac à sable :
+// la formule d'ELO (vvCalcNewElo, js/voie.js, dont ec_elo_calc est la
+// transcription) et les points de guerre du clan.
+function ecMockHooks(db){
+  return{
+    elo:(old,opp,res,games)=>(typeof vvCalcNewElo==='function')?vvCalcNewElo(old,opp,res,games):{newElo:old,delta:0},
+    clan:(p,res,elo,opp,mode,oppName)=>ecMockClanOnMatch(db,p,res,elo,opp,mode,oppName),
+  };
 }
 function ecMockOnline(p){return (Date.now()-(p.last_seen_at||0))<75000;}
 // `db` est facultatif : quand il est fourni, la fiche porte le clan du
@@ -884,8 +1001,16 @@ function ecMockClanRpc(db,fn,a,p){
       if(st.claimed)return fail('Ce butin a déjà été réclamé.','23505');
       if(!st.available)return fail('Aucun butin à réclamer cette semaine.','22023');
       db.clanClaims[p.id+'|'+st.week]={player_id:p.id,week_key:st.week,chest:st.chest,rank:st.rank,claimed_at:Date.now()};
+      // Le coffre s'ouvre au serveur (ec_clan_claim) : le jeu n'en montre
+      // que la cérémonie.
+      let lots=[];
+      if(!p.is_admin){
+        const s2=ecoInit(JSON.parse(JSON.stringify(p.state||{})),p.elo_peak|0);
+        lots=ecoChestOpen(s2,p.elo_peak|0,st.chest);p.state=s2;
+      }
       ecMockSave(db);
-      return Promise.resolve(Object.assign({},st,{ok:true,claimed:true,available:false}));
+      return Promise.resolve(Object.assign({},st,{ok:true,claimed:true,available:false,lots,
+        state:JSON.parse(JSON.stringify(p.state||{}))}));
     }
   }
   return null;
@@ -912,7 +1037,7 @@ function ecMockRpc(fn,args){
         :'mock-'+Math.random().toString(36).slice(2)+'-'+Date.now().toString(36);
       p={id,username:String(a.p_username).trim(),username_key:ecMockKey(a.p_username),
          secret:a.p_secret,is_admin:false,elo:0,elo_peak:0,ranked_games:0,ranked_wins:0,
-         ranked_draws:0,best_streak:0,cur_streak:0,piece_stats:{},history:[],state:{},
+         ranked_draws:0,best_streak:0,cur_streak:0,piece_stats:{},history:[],state:ecoInit({},0),
          created_at:Date.now(),last_seen_at:Date.now()};
       db.players[id]=p;ecMockSave(db);
       return Promise.resolve(ecMockSelf(p,db));
@@ -920,13 +1045,21 @@ function ecMockRpc(fn,args){
     case 'ec_login':
       p=auth();
       if(!p)return ecMockFail('Compte inconnu ou clé invalide.','28000');
+      ecoMatchSweep(db,ecMockHooks(db),p.id,true);
+      p.state=ecoInit(p.state,p.elo_peak|0);
       ecMockSave(db);return Promise.resolve(ecMockSelf(p,db));
-    case 'ec_touch':
+    case 'ec_touch':{
       p=auth();
       if(!p)return ecMockFail('Compte inconnu ou clé invalide.','28000');
+      const before=JSON.stringify([p.state,p.elo,p.history]);
+      ecoMatchSweep(db,ecMockHooks(db),p.id,false);
+      p.state=ecoInit(p.state,p.elo_peak|0);
+      const changed=JSON.stringify([p.state,p.elo,p.history])!==before;
       ecMockSave(db);
-      return Promise.resolve({ok:true,
-        online:Object.values(db.players).filter(x=>!x.is_admin&&ecMockOnline(x)).length});
+      return Promise.resolve(Object.assign({ok:true,
+        online:Object.values(db.players).filter(x=>!x.is_admin&&ecMockOnline(x)).length},
+        changed?{profile:ecMockSelf(p,db)}:{}));
+    }
     case 'ec_rename':{
       p=auth();
       if(!p)return ecMockFail('Compte inconnu ou clé invalide.','28000');
@@ -952,46 +1085,50 @@ function ecMockRpc(fn,args){
       if(!p)return ecMockFail('Compte inconnu ou clé invalide.','28000');
       const patch=Object.assign({},a.p_patch||{});
       ['elo','elo_peak','ranked_games','ranked_wins','best_streak',
-       'piece_stats','match_history','rank_max'].forEach(k=>{delete patch[k];});
+       'piece_stats','match_history','rank_max'].concat(EC_ECO_KEYS).forEach(k=>{delete patch[k];});
       p.state=Object.assign(p.state||{},patch);
       ecMockSave(db);return Promise.resolve({ok:true});
+    }
+    // -- Les parties et l'économie : js/eco-rules.js, transcription du serveur.
+    case 'ec_match_begin':{
+      p=auth();
+      if(!p)return ecMockFail('Compte inconnu ou clé invalide.','28000');
+      try{
+        const r=ecoMatchBegin(db,ecMockHooks(db),p,a.p_payload);
+        ecMockSave(db);return Promise.resolve(r);
+      }catch(e){return ecMockFail(e.message,e.code);}
     }
     case 'ec_report_match':{
       p=auth();
       if(!p)return ecMockFail('Compte inconnu ou clé invalide.','28000');
-      const pay=a.p_payload||{};
-      const res=pay.result;
-      if(['win','loss','draw'].indexOf(res)<0)return ecMockFail('Résultat inconnu.','22023');
-      const ranked=(pay.ranked!==false)&&!p.is_admin;
-      const oppElo=Math.max(0,Math.min(4000,pay.opp_elo|0));
-      const old=p.elo|0;let delta=0;
-      if(ranked){
-        // La MÊME formule que le serveur : vvCalcNewElo est l'original dont
-        // ec_elo_calc (supabase/schema.sql) est la transcription.
-        const c=(typeof vvCalcNewElo==='function')
-          ?vvCalcNewElo(old,oppElo,res,p.ranked_games|0):{newElo:old,delta:0};
-        p.elo=c.newElo;delta=c.delta;
-        p.elo_peak=Math.max(p.elo_peak|0,p.elo);
-        p.ranked_games=(p.ranked_games|0)+1;
-        if(res==='win')p.ranked_wins=(p.ranked_wins|0)+1;
-        if(res==='draw')p.ranked_draws=(p.ranked_draws|0)+1;
-        p.cur_streak=(res==='win')?(p.cur_streak|0)+1:0;
-        p.best_streak=Math.max(p.best_streak|0,p.cur_streak);
-        new Set((pay.army||[]).filter(Boolean)).forEach(id=>{
-          const e=p.piece_stats[id]||{g:0,w:0};
-          e.g++;if(res==='win')e.w++;
-          p.piece_stats[id]=e;
-        });
-      }
-      p.history=(p.history||[]).concat([{result:res,oldElo:old,newElo:p.elo,delta,
-        date:Date.now(),aiElo:oppElo,ranked,opp:pay.opp_name||null,
-        army:pay.army||[],replay:pay.replay||null,mode:pay.mode||'ia'}]).slice(-30);
-      // La guerre des clans, étanche comme côté serveur : une panne ici ne
-      // coûte jamais le rapport de partie.
-      let clan=null;
-      if(ranked){try{clan=ecMockClanOnMatch(db,p,res,old,oppElo,pay.mode||'ia',pay.opp_name||null);}catch(e){clan=null;}}
+      try{ecoMatchReport(db,ecMockHooks(db),p,a.p_payload||{});}
+      catch(e){return ecMockFail(e.message,e.code);}
       ecMockSave(db);
-      return Promise.resolve({profile:ecMockSelf(p,db),delta,old_elo:old,new_elo:p.elo,ranked,clan});
+      return Promise.resolve(ecoMatchView(db,(a.p_payload||{}).ticket,ecMockSelf(p,db)));
+    }
+    case 'ec_match_status':{
+      p=auth();
+      if(!p)return ecMockFail('Compte inconnu ou clé invalide.','28000');
+      const t=db.matches[a.p_ticket];
+      if(!t||t.player_id!==p.id)return ecMockFail('EC_TICKET: partie inconnue.','P0002');
+      ecoMatchTry(db,ecMockHooks(db),t.id,false);
+      ecMockSave(db);
+      return Promise.resolve(ecoMatchView(db,t.id,ecMockSelf(p,db)));
+    }
+    case 'ec_eco':{
+      p=auth();
+      if(!p)return ecMockFail('Compte inconnu ou clé invalide.','28000');
+      try{
+        const r=ecoAction(p,a.p_action,a.p_arg);
+        ecMockSave(db);return Promise.resolve(r);
+      }catch(e){return ecMockFail(e.message,e.code);}
+    }
+    case 'ec_rotate_secret':{
+      p=auth();
+      if(!p)return ecMockFail('Compte inconnu ou clé invalide.','28000');
+      if(!a.p_new_secret||String(a.p_new_secret).length<16)return ecMockFail('EC_SECRET: clé d\'appareil invalide','22023');
+      p.secret=a.p_new_secret;ecMockSave(db);
+      return Promise.resolve({ok:true});
     }
     case 'ec_leaderboard':{
       const all=ecMockRanked(db);
@@ -1050,6 +1187,42 @@ function ecMockRpc(fn,args){
     if(r)return r;
   }
   return ecMockFail('Fonction inconnue : '+fn);
+}
+
+// ÉCRIRE DANS LA PROGRESSION TENUE PAR LE SERVEUR, EN MODE `?mock`
+// UNIQUEMENT. Perles, inventaire, quêtes… ne s'écrivent plus depuis le
+// navigateur (accSet les refuse) : le test de fumée doit pourtant pouvoir
+// poser un compte dans un état donné. Comme ecMockSeed plus bas, cette
+// porte n'existe que dans le bac à sable.
+function ecMockState(k,v){
+  if(!EC_MOCK||!ECP)return false;
+  const patch=(typeof k==='object')?k:{[k]:v};
+  const db=ecMockLoad();
+  const p=db.players[ECP.id];
+  if(!p)return false;
+  p.state=Object.assign(p.state||{},JSON.parse(JSON.stringify(patch)));
+  ecMockSave(db);
+  if(typeof ecAdoptState==='function')ecAdoptState(p.state);
+  else ECP.state=Object.assign(ECP.state||{},patch);
+  return true;
+}
+
+// JOUER UNE PARTIE ENTIÈRE AU SERVEUR DU BAC À SABLE, en mode `?mock`
+// uniquement : billet (ec_match_begin), déclaration (ec_report_match),
+// règlement. Le billet est antidaté d'une minute, sans quoi une victoire
+// éclair ne compterait pas (partie trop courte). `o` : {ai, army,
+// survivors, moves, events, promos, age}.
+function ecMockMatch(result,o){
+  if(!EC_MOCK)return Promise.reject(new Error('Bac à sable seulement.'));
+  o=o||{};
+  const army=o.army||((typeof savedArmies!=='undefined'&&savedArmies[0])?
+    armyWithPowers(savedArmies[0],playerPowerList()):null);
+  return ecMatchBegin({mode:'ia',ai:o.ai||'instructeur',army}).then(t=>{
+    const db=ecMockLoad();
+    if(db.matches[t.ticket]){db.matches[t.ticket].created_at-=(o.age==null?60000:o.age);ecMockSave(db);}
+    return ecReportMatch({ticket:t.ticket,result,survivors:o.survivors||{},moves:o.moves==null?30:o.moves,
+      events:o.events||{},promos:o.promos||[],replay:o.replay||null});
+  });
 }
 
 // SEMER UNE FICHE, EN MODE `?mock` UNIQUEMENT. Le test de fumée

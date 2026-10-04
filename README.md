@@ -35,14 +35,12 @@ epic-chess/
 ├── supabase/
 │   ├── schema.sql           # LE SERVEUR. Tables, verrouillage (RLS sans
 │   │                        #  policy) et les fonctions ec_* qui sont la
-│   │                        #  seule porte d'entrée. À coller dans l'éditeur
-│   │                        #  SQL d'un projet Supabase NEUF (il commence
-│   │                        #  par des DROP). Contient le calcul d'ELO et
-│   │                        #  celui des points de guerre qui font autorité.
-│   └── migrations/
-│       └── 001-guerre-des-clans.sql  # La même chose que la section clans
-│                                     #  du schéma, SANS rien détruire : à
-│                                     #  passer sur une base déjà en service
+│   │                        #  seule porte d'entrée : ELO, parties (billets),
+│   │                        #  économie entière, clans. NE DÉTRUIT RIEN et
+│   │                        #  se rejoue : c'est aussi la migration.
+│   └── reset.sql            # La remise à zéro (DROP de toutes les tables),
+│                            #  à part, pour qu'elle ne se fasse jamais par
+│                            #  mégarde
 ├── site.webmanifest         # Métadonnées d'installation (icône, couleurs)
 ├── sw.js                    # Service worker : coquille hors ligne (réseau
 │                            # d'abord pour le code, cache d'abord pour les médias)
@@ -100,6 +98,11 @@ epic-chess/
 │   │                        #  l'échelle de force tient (voir plus bas)
 │   ├── combat-fx-preview.html # Banc d'essai des effets de combat : chaque
 │   │                        #  effet sur commande
+│   ├── gen-catalogue.js     # Recopie le catalogue du jeu (pièces, coffres,
+│   │                        #  paliers, quêtes) dans supabase/schema.sql
+│   ├── tests/               # `npm run test:rules` (règles, Node) et
+│   │                        #  `npm run test:sql` (le serveur contre un
+│   │                        #  vrai Postgres)
 │   └── smoke-test.js        # `npm test` : rejoue tout le parcours du jeu
 │                            #  dans un vrai navigateur (voir plus bas)
 ├── css/
@@ -170,7 +173,11 @@ epic-chess/
     ├── leaderboard.js        # Page "Classement" (#page-classement) : tableau
     │                          # général, recherche de joueurs, profil public,
     │                          # bouton "Défier"
-    ├── economy.js            # Possession des pièces, mise en jeu, coffres
+    ├── economy.js            # Lecture de l'inventaire et des perles, aperçu
+    │                          # du règlement (c'est le serveur qui écrit)
+    ├── eco-rules.js          # Le serveur transcrit en JS : économie et
+    │                          # parties du bac à sable ?mock, et source du
+    │                          # catalogue (tools/gen-catalogue.js)
     ├── ai-level-modal.js     # Réduit à selectedAILevel/selectedTimeControl
     ├── piece-card.js         # LA carte de pièce (format portrait : logo, nom,
     │                          # valeur, stock) + sa fiche en bottom sheet
@@ -213,8 +220,10 @@ epic-chess/
     │                          # et la fenêtre de conversion des jokers
     ├── tuto-drill.js         # Exercice de déplacement d'une créature débloquée
     ├── tutorial.js           # Tutoriel : 4 batailles scriptées + visite guidée
-    ├── settings-admin.js     # Panneau réglages + mode test (/?test)
-    └── multiplayer.js        # Parties en ligne (Supabase Realtime)
+    ├── settings-admin.js     # Panneau réglages (volumes, effets)
+    ├── multiplayer.js        # Parties en ligne (Supabase Realtime)
+    ├── app-init.js           # Le démarrage (initApp), dernier script chargé
+    └── vendor/               # Le SDK Supabase, servi par le jeu (voir son README)
 ```
 
 ## Les systèmes à comprendre avant d'éditer
@@ -281,21 +290,44 @@ prompt à donner à un générateur d'images — est dans
 **`assets/PROMPTS.md`**. `tools/opt-images.js` les convertit ensuite en
 `.webp` et repointe les `url()` du CSS dessus.
 
-### 1. L'économie des pièces (`js/economy.js`)
+### 1. L'économie des pièces (`supabase/schema.sql`, `js/economy.js`)
 
 C'est la mécanique centrale et celle qui a le plus de ramifications. Une
 pièce se **possède en exemplaires** ; l'engager dans une partie la
-**retire de l'inventaire au lancement** (`economyCommit`), et la fin de
-partie décide de ce qui revient (`economySettle`) : rien en cas de défaite,
-les survivants en cas de victoire ou de nulle. Les pions et pièces standard
-qui complètent le plateau (`FREE_PIECE_IDS`) ne se possèdent pas, sinon une
-défaite coûterait huit pions et le jeu deviendrait injouable.
+**retire de l'inventaire au lancement**, et la fin de partie décide de ce qui
+revient : rien en cas de défaite, les survivants en cas de victoire ou de
+nulle. Les pions et pièces standard qui complètent le plateau
+(`FREE_PIECE_IDS`) ne se possèdent pas, sinon une défaite coûterait huit
+pions et le jeu deviendrait injouable.
 
-Toute nouvelle façon de démarrer une partie DOIT appeler `economyCommit()`,
-et toute nouvelle façon de la terminer DOIT appeler `economySettle()`, sinon
-les exemplaires engagés restent hors inventaire. Le garde-fou est
-`economyRecoverOrphanEngagement()`, appelé à la connexion : il rend les
-pièces d'une partie interrompue.
+**TOUT CELA EST DÉCIDÉ PAR LE SERVEUR.** L'économie vivait dans le
+navigateur (coffres tirés par `Math.random`, perles écrites par `accSet`) :
+une ligne de console suffisait à se donner le catalogue entier. Maintenant :
+
+- une partie s'**ouvre** au serveur (`ec_match_begin`, appelé par
+  `matchOpen`, `js/game-flow.js`) : il vérifie l'armée (pièces possédées,
+  pouvoirs éveillés, budget) et retire les exemplaires engagés ;
+- elle se **déclare** à la fin (`ec_report_match`) : survivantes, coups,
+  faits de quêtes, promotions — le serveur borne tout cela par ce qui a été
+  engagé, puis rend les survivantes, verse les lauriers et les tickets ;
+- une partie **laissée ouverte** (onglet fermé, page rechargée, autre partie
+  lancée) est un **abandon**, donc une défaite : recharger la page n'efface
+  plus une défaite qui s'annonçait ;
+- les coffres, le Magasin, la récompense du jour, le réapprovisionnement, la
+  colonne, les jokers, la rangée, les jalons de la Diagonale, l'éveil d'un
+  pouvoir, les créatures du tutoriel et le butin de clan passent par
+  **`ec_eco`** (et `ec_clan_claim`) : le serveur tire, crédite, et rend le
+  `state` à jour ; le jeu n'en joue que la cérémonie (`chestShowLots`,
+  `js/economy-ui.js`).
+
+`accSet` ignore les clés de l'économie (`EC_ECO_KEYS`, `js/server.js`),
+et `ec_save_state` les refuse. `js/economy.js` ne fait plus que **lire**
+(`invCount`, `pearlBalance`…) et **apercevoir** le règlement
+(`economySettle`) pour la cinématique de fin, qui passe avant la réponse du
+serveur. Le catalogue que le serveur utilise (pièces, coffres, paliers,
+quêtes) est recopié des fichiers du jeu par `node tools/gen-catalogue.js` :
+après avoir touché à une table, on relance le script et on recolle le
+schéma. La CI échoue si le catalogue n'est pas à jour.
 
 **Le robinet et la fuite.** Une pièce ne se perd qu'à la défaite, et une par
 une ; tout ce qui en distribue doit donc rester petit, sinon les stocks
@@ -305,7 +337,7 @@ ils se lisent ensemble :
 
 | Constante | Valeur | Rôle |
 |---|---|---|
-| `CHESTS[].total` (`data-pieces.js`) | Pion 1-3 → Roi 20-30 | ce qu'un coffre donne **en tout**, tous lots confondus. `chestRoll` tire ce total puis le découpe en lots (`chestSplit`) : le nombre de lots ne fait plus que rythmer la cérémonie. |
+| `CHESTS[].total` (`data-pieces.js`) | Pion 1-3 → Roi 20-30 | ce qu'un coffre donne **en tout**, tous lots confondus. le serveur (`ec_chest_open`) tire ce total puis le découpe en lots (`ec_split`) : le nombre de lots ne fait plus que rythmer la cérémonie. |
 | `STARTER_STOCK` (`economy.js`) | 6 | la dotation d'un jalon de départ |
 | `DAILY_CHEST` (`data-pieces.js`) | `perPiece:2`, `cap:10` | le coffre de réapprovisionnement ne remplit **que ce qui est vide** : au-dessus de `cap`, il ne verse rien. Sans ce seuil il versait 2 exemplaires par pièce et par jour indéfiniment, ce qui faisait de lui — et non des coffres — la première source de pièces du jeu. |
 
@@ -591,10 +623,18 @@ vidées d'urgence quand l'onglet se ferme (`pagehide`, `fetch` avec
 **Sept clés sont en LECTURE SEULE, et `accSet` les ignore silencieusement** :
 `elo`, `elo_peak`, `ranked_games`, `ranked_wins`, `best_streak`,
 `piece_stats`, `match_history` (plus `rank_max`, déduit du sommet). Elles ne
-bougent que par le **rapport de fin de partie** (`ecReportMatch` →
-`ec_report_match`), où c'est le serveur qui recalcule l'ELO. Voir la section
-« Le serveur fait autorité » plus bas : c'est là qu'est expliqué pourquoi ce
-silence est un garde-fou et non une négligence.
+bougent que par le **règlement d'une partie** (`ec_report_match`), où c'est
+le serveur qui recalcule l'ELO. **Toute l'économie l'est aussi**
+(`EC_ECO_KEYS`) : elle change par `ec_eco` et le règlement des parties, qui
+renvoient le `state` à jour (`ecAdoptState`). Voir la section « Le serveur
+fait autorité » plus bas.
+
+**Le code de secours.** Le compte n'a pas de mot de passe : il tient dans la
+clé d'appareil gardée par le navigateur. La page Comptes l'affiche sous forme
+de **code de secours** (`ECR1.<id>.<clé>`, `ecRecoveryCode`), qui rouvre le
+compte sur un autre appareil ou après un cache vidé (`ecRestoreFromCode`), et
+peut être changé si le code a fuité (`ec_rotate_secret`). Le jeu demande
+aussi au navigateur de ne pas effacer son stockage (`navigator.storage.persist`).
 
 **Il n'y a toujours aucun écran avant le jeu.** La première ouverture crée
 elle-même un compte au nom d'Alchimiste tiré au sort (`accountsGuestName`) et
@@ -1035,7 +1075,8 @@ Ce qui vit maintenant entre le bandeau du joueur (donc sous sa pendule) et
 | Élément | Où | Pourquoi là |
 |---|---|---|
 | Barre de statut | **au-dessus** de la zone, et non dedans | Elle ne dit plus qu'**une** chose à la fois : « Échec ! », ou à qui de jouer. Elle a porté « Échec ! Au tour de votre adversaire » — la plus urgente des deux informations diluée dans la plus banale. Elle a aussi vécu DANS la zone, donc **sous** les panneaux : « À votre tour », « Au tour de votre adversaire », « Reconnecté à la partie » disparaissaient au moment précis où l'on ouvre le journal ou la discussion — c'est-à-dire pendant qu'on attend, quand ces phrases sont les seules à dire ce qui se passe. Elle est maintenant sœur de la zone, jamais recouverte. |
-| « Annuler coup » | dessous | Masqué **en ligne** (l'annulation serait unilatérale) et **partie finie** (il n'y a plus rien à reprendre : le résultat est enregistré, l'ELO compté). Les deux conditions sont décidées au même endroit, `updateStatus` — elles ont vécu à deux endroits, et la seconde effaçait la première à chaque coup. |
+| « Annuler coup » | dessous | N'existe que dans une partie **qui ne compte pas** (tutoriel, mode test : `gameUndoAllowed`, `js/game-render.js`). Masqué **en ligne** (l'annulation serait unilatérale), **en partie classée** (chaque gaffe se reprenait, l'ELO et les points de guerre se gagnaient à coups de retours en arrière) et **partie finie** ; le gestionnaire du clic refuse aussi ces cas, pas seulement l'affichage. |
+| « Proposer la nulle » | en bas | En ligne seulement, une fois tous les dix demi-coups (`mpOfferDraw`, `js/multiplayer.js`). |
 | « Historique » à gauche, « Chat » à droite | juste au-dessus d'« Abandonner » | Deux natures d'action opposées — se relire, parler —, deux cibles qu'on ne doit jamais confondre au pouce en pleine partie. |
 | « Abandonner » / « Quitter » | **collé au bas de l'écran**, seul sur sa ligne | C'est la place d'une sortie. Sur un téléphone haut — où c'est la LARGEUR qui borne le plateau — la colonne s'arrêtait au bas de son contenu et le bouton flottait au milieu de l'écran, avec du vide en dessous. La colonne fait maintenant au moins `100dvh` et le bouton porte `margin-top:auto` : le vide se range **au-dessus** de lui. |
 
@@ -1200,7 +1241,7 @@ qui est le seul vrai danger de cette technique :
 | Ce qui est demandé | Stratégie | Pourquoi |
 |---|---|---|
 | html, js, css, json | **Réseau d'abord**, cache en secours | Une correction poussée ce matin arrive ce matin, comme sans service worker. |
-| assets/, audio/, polices | **Cache d'abord** | 8 Mo qui ne changent presque jamais. Un changement demande de monter `CACHE_VERSION` — c'est le prix, il est assumé. |
+| assets/, audio/, polices | **Cache d'abord, revalidé en arrière-plan** | 8 Mo qui ne changent presque jamais : la copie est servie tout de suite, et un fichier retouché sous le même nom arrive à la visite suivante. |
 | Tout autre domaine | **On ne s'en mêle pas** | Mettre en cache une réponse de temps réel Supabase n'aurait aucun sens. |
 
 Il ne fait **pas** de notifications : elles demandent un serveur (VAPID, un
@@ -1662,6 +1703,31 @@ Le nouveau tient en quatre règles :
    que lorsque quelqu'un entre ou sort, alors que la fenêtre, elle, s'élargit
    avec le temps.
 
+**Le salon est secret.** Son nom se lisait dans les canaux publics (`q-` +
+l'identifiant de l'hôte, ou un code de duel annoncé sur la présence) : un
+tiers pouvait y entrer et annoncer « abandon » à la place d'un joueur.
+Chaque camp joint maintenant une clé publique ECDH (P-256) à sa proposition
+(`pair` / `pair-ok`, `duel` / `duel-ok`) ; le salon porte l'empreinte du
+secret partagé (`mpEcdhRoom`), que seuls les deux joueurs savent calculer. Dans
+le salon, seul l'expéditeur de la première armée est écouté (`MP.oppId`).
+
+**Le serveur ouvre la partie des deux côtés** (`mpOpenTicket` →
+`ec_match_begin`, avec le compte adverse lu dans sa carte et le salon) : c'est
+lui qui donne le vrai nom et le vrai ELO de l'adversaire, et qui confronte les
+deux déclarations à la fin (voir « Le serveur fait autorité »).
+
+**La pendule et le drapeau.** Chaque camp fait autorité sur SA pendule, mais
+l'adversaire ne peut plus s'accorder de temps : une hausse annoncée n'est
+adoptée que dans la limite d'un crédit d'une seconde par coup reçu
+(`mpAdoptOppClock`). Quand la pendule adverse tombe chez nous, on le lui
+signale (`flag`) ; c'est lui qui constate (`flag-ok`) ou réfute avec sa
+pendule (`flag-no`, deux fois au plus). Sans réponse en dix secondes, il est
+parti. Une chute du drapeau ne fait gagner que celui qui peut encore mater
+(`canStillMate`), sinon la partie est nulle.
+
+**La nulle se propose** (`mpOfferDraw`, bouton « Proposer la nulle »), une
+fois tous les dix demi-coups au plus.
+
 L'écran de recherche (`mpRenderSearch`) affiche le temps écoulé, le nombre de
 joueurs en attente et la fenêtre courante, et propose un adversaire du
 laboratoire **de son niveau** au bout d'**une minute** (`MP_BOT_AFTER_S`,
@@ -2055,18 +2121,17 @@ grande.
 
 **Le fichier à connaître, c'est `supabase/schema.sql`.** On le colle en entier
 dans l'éditeur SQL du projet Supabase (Dashboard → SQL Editor → New query →
-Run). Il est idempotent, et sa **première instruction efface la table des
-joueurs** : c'est la remise à zéro voulue. Si on le rejoue plus tard pour
-mettre à jour les fonctions, il faut **commenter le `DROP TABLE`**, sinon on
-efface tous les comptes existants.
+Run). **Il ne détruit rien et se rejoue à volonté** : il ne crée que ce qui
+manque (`create table if not exists`, `create index if not exists`) et
+remplace les fonctions. C'est donc aussi **la migration** d'une base en
+service : on le recolle, rien d'autre. Il commençait par effacer toutes les
+tables — le rejouer pour une seule fonction supprimait tous les comptes. La
+remise à zéro est maintenant à part, dans `supabase/reset.sql`, à passer
+AVANT le schéma, et seulement si c'est voulu.
 
-**Pour une base déjà en service, on passe les fichiers de
-`supabase/migrations/`, pas le schéma.** Chacun ne crée que ce qui manque
-(`create table if not exists`, `create or replace function`) et ne détruit
-rien : on peut le rejouer sans risque. `001-guerre-des-clans.sql` ajoute les
-clans ; il dit **mot pour mot** la même chose que les sections
-correspondantes de `schema.sql`, et le test de fumée échoue si les deux
-divergent. Toucher à une fonction de l'un, c'est la toucher dans l'autre.
+`tools/tests/sql.test.js` (`npm run test:sql`) charge le schéma deux fois dans
+un vrai Postgres et joue l'économie, les parties et les droits ; la CI le
+lance à chaque poussée.
 
 ### Ce que « autorité » veut dire ici, concrètement
 
@@ -2077,25 +2142,51 @@ divergent. Toucher à une fonction de l'un, c'est la toucher dans l'autre.
    les traverse. C'est vérifiable en une ligne : `set role anon; select * from
    ec_players;` répond `permission denied`.
 
-2. **Le client ne choisit pas son classement.** Le navigateur ne peut écrire
-   ni `elo`, ni `elo_peak`, ni les compteurs, ni les statistiques, ni
-   l'historique : `ec_save_state` retire ces clés du patch qu'on lui envoie.
-   Le jeu **déclare une partie** (`ec_report_match` : résultat, ELO de
-   l'adversaire, armée alignée, mode) et le serveur recalcule tout —
-   nouvel ELO, sommet, parties, victoires, série, statistiques par créature,
-   ligne d'historique — puis renvoie la fiche à jour, que le client adopte
-   telle quelle. Trafiquer son `localStorage` ne rapporte donc rien.
+2. **Le client ne choisit ni son classement ni ses richesses.** Le jeu
+   déclarait « j'ai gagné, contre 4 000 ELO, partie classée » et le serveur
+   le croyait : un appel suffisait à monter au classement. Maintenant :
+   - **une partie s'ouvre avant le premier coup** (`ec_match_begin`) : le
+     serveur lit lui-même l'ELO et le nom de l'adversaire (en base, ou au
+     catalogue du laboratoire), décide si elle est classée, vérifie l'armée
+     et engage les pièces ;
+   - **elle se déclare à la fin** (`ec_report_match`, avec son billet). Une
+     victoire classée en moins de vingt secondes ne compte pas ;
+   - **en ligne, les deux déclarations sont confrontées** : chacun reçoit la
+     PIRE des deux versions pour lui-même (`ec_worst`). Deux joueurs qui se
+     disent vainqueurs perdent tous les deux ; mentir ne rapporte jamais rien
+     au menteur. Si l'armée qu'un joueur a vue en face n'est pas celle que
+     l'adversaire a fait vérifier, l'adversaire perd et la partie ne coûte
+     rien à l'autre ;
+   - **un billet resté ouvert est un abandon** : au rechargement du jeu
+     (`ec_login`), à l'ouverture d'une autre partie, ou quand l'adversaire a
+     disparu depuis 90 s (`ec_match_gone`). Quitter coûte la partie ;
+   - un adversaire en ligne **sans billet réciproque** (inventé, ou qui n'a
+     jamais ouvert la partie) : rien ne se classe (`unmatched`).
+   Le règlement (`ec_match_apply`) fait le reste : ELO, sommet, série,
+   statistiques, historique, points de guerre, pièces, lauriers, quêtes,
+   jalons.
 
 3. **Les pseudos sont uniques pour tout le monde**, par contrainte de base et
    non par convention de client.
 
 4. **Les comptes admin ne sont jamais comptabilisés.** `is_admin = true` : ni
    au classement, ni dans la recherche, et leurs parties ne déplacent rien
-   (le drapeau force `ranked = false` dans `ec_report_match`). Ils jouent avec
+   (`ec_match_begin` ouvre leurs parties non classées, et une partie contre
+   un admin ne l'est pour personne). Ils jouent avec
    tout débloqué et 10 000 ELO — les compter reviendrait à mettre le patron du
    jeu en tête de son propre tableau. Pour promouvoir un compte :
    `update ec_players set is_admin = true where username_key = 'mon pseudo';`
-   Le jeu s'en aperçoit à la connexion et allume le mode test pour lui.
+   Le jeu s'en aperçoit à la connexion et allume le mode test pour lui. **Le
+   mode test ne s'allume plus par l'adresse seule** : `?test` n'est qu'une
+   demande, accordée aux comptes admin et au bac à sable `?mock`.
+
+5. **Tout le reste est fermé.** Les droits commencent par
+   `revoke execute on all functions` puis n'ouvrent que la liste des portes ;
+   une fonction ajoutée plus tard reste fermée tant qu'on ne l'y ajoute pas.
+   Les pseudos s'écrivent en lettres latines, sans caractère invisible ni mot
+   interdit (`ec_name_error`) ; vingt comptes par heure et par adresse IP au
+   plus (`ec_rate_hit`) ; la clé d'appareil est hachée avec bcrypt ; `state`
+   est borné à 64 Ko.
 
 ### La formule d'ELO existe en deux exemplaires, et c'est assumé
 
@@ -2253,7 +2344,7 @@ navigation.
   `pub_powers` (les pouvoirs ÉVEILLÉS — ils ne se déduisent plus des pièces
   depuis qu'une créature s'obtient sans son pouvoir ; un serveur qui ne les
   publie pas encore retombe sur l'ancienne lecture). ⚠️ `ec_public` a changé :
-  recoller `supabase/schema.sql` (en commentant le `DROP TABLE`). On partait au duel sans la moindre idée de ce qu'on allait avoir
+  recoller `supabase/schema.sql`. On partait au duel sans la moindre idée de ce qu'on allait avoir
   en face, alors que l'armée est justement ce qui distingue deux joueurs de
   même niveau — et qu'elle se voit de toute façon au premier coup de la
   partie. Ce qui reste privé : l'inventaire (le nombre d'exemplaires), les
@@ -2470,11 +2561,11 @@ server.js → data-pieces.js → piece-art.js → blason.js → main.js → page
 → fok-rules.js → fok-ai.js → fok-game.js
 → mirror-rules.js → mirror-ai.js → mirror-game.js
 → troie-rules.js → troie-ai.js → troie-game.js → variantes.js
-→ rewards.js → rewards-ui.js → tuto-drill.js
+→ rewards.js → eco-rules.js → rewards-ui.js → tuto-drill.js
 → tutorial.js
 → pwa.js → menu-ambience.js → account-ui.js → replay.js → leaderboard.js → settings-admin.js
-→ multiplayer.js → fok-mp.js → mirror-mp.js → troie-mp.js
-→ (script inline) initApp()
+→ vendor/supabase-2.117.2.js → multiplayer.js → fok-mp.js → mirror-mp.js → troie-mp.js
+→ app-init.js (initApp)
 ```
 
 `server.js` vient **en premier** : il porte l'adresse du serveur, la fiche du
@@ -2566,14 +2657,23 @@ six coffres, colonne des victoires (ordre des trente paliers, encaissement d'un
 coffre, conversion des jokers), rangée de la richesse et quêtes du jour ;
 puis la Guerre des clans de bout en bout (fonder, rejoindre, combattre,
 changer de semaine, réclamer le butin, la page avec et sans clan), la
-concordance de la migration et du schéma, la semaine de guerre identique en
+une partie de bout en bout (billet, victoire réglée, abandon payé), le
+schéma non destructif, la semaine de guerre identique en
 JS et en SQL, et le chargement des bruitages enregistrés (`sample`). Il échoue au premier message
 d'erreur de la console.
 
 ```
 npm i -D playwright && npx playwright install chromium   # une seule fois
-npm test
+npm test            # le test de fumée
+npm run test:rules  # les règles de fin de partie (Node, sans navigateur)
+npm run test:sql    # le serveur, contre un Postgres joignable (variables PG*)
+npm run test:all    # tout, dans l'ordre de la CI
 ```
+
+**La CI les lance tous** à chaque poussée (`.github/workflows/tests.yml`,
+avec un service Postgres 16). Le test de fumée sert les en-têtes de sécurité
+de `vercel.json` : une violation de la politique de sécurité (un `onclick=`
+écrit dans un gabarit, par exemple) le fait échouer.
 
 **Il tourne hors ligne**, sur le bac à sable `/?mock` (voir « Les comptes,
 tenus par le serveur ») : il n'a pas de projet Supabase, et n'en veut pas.
@@ -2607,7 +2707,7 @@ mais dans une version que Playwright refuse, le script le retrouve tout seul
 | Changer ce qui se promeut en arrivant au bout | `PROMOTING_IDS` dans `js/data-pieces.js` — `showPromoModal`, l'IA et le multijoueur excluent tous les trois ces pièces de la LISTE des promotions possibles |
 | Changer le calcul d'ELO, les rangs, les paliers de la Diagonale | `js/voie.js` (calcul) + `js/data-pieces.js` (table `UNLOCK_TABLE`/`RANKS`) |
 | Changer l'arène d'une créature (à partir de quand elle sort des coffres) | `PIECE_ARENA` dans `js/data-pieces.js` |
-| Changer les débris magiques (nombre pour un pouvoir, quantité par coffre) | `POWER_DEBRIS_NEEDED` et `CHESTS[].debris` dans `js/data-pieces.js` + `chestRoll`/`powerAwaken` dans `js/economy.js` |
+| Changer les débris magiques (nombre pour un pouvoir, quantité par coffre) | `POWER_DEBRIS_NEEDED` et `CHESTS[].debris` dans `js/data-pieces.js` puis `node tools/gen-catalogue.js` ; le tirage est `ec_chest_open` (SQL) / `ecoChestOpen` (`js/eco-rules.js`) |
 | Changer ce qu'une créature fait SANS son pouvoir | le drapeau `np` là où son pouvoir s'applique, dans `js/rules-engine.js` (+ `evalPowers` dans `js/ai-engine.js`) |
 | Changer le coin du pouvoir sur la carte ou le bouton d'éveil | `pieceCardPowerBadgeHTML` / `powerAwakenHTML` dans `js/piece-card.js` + `[POWERS]` de `css/style.css` |
 | Changer le délai avant l'adversaire de repli en ligne | `MP_BOT_AFTER_S` / `mpBotFallback` dans `js/multiplayer.js` |
@@ -2621,11 +2721,11 @@ mais dans une version que Playwright refuse, le script le retrouve tout seul
 | Ajouter une image de décor (fond, bannière, effet, médaillon de rang) | déposer le fichier au chemin que donne `assets/PROMPTS.md` — rien à déclarer. L'emplacement est déjà câblé dans la section `[ART]` de `css/style.css` |
 | Câbler un NOUVEL emplacement d'image | section `[ART]` de `css/style.css`, en `background-image` (jamais en `<img>` : une image manquante y afficherait l'icône de fichier cassé), puis décrire la planche dans `assets/PROMPTS.md` |
 | Éclaircir ou assombrir tout le jeu | le bloc `:root` de `[THEME]` dans `css/style.css` — les trois rôles (surface / accent / laiton) ne doivent pas s'y mélanger |
-| Changer le contenu ou la rareté des coffres | `js/data-pieces.js` (`CHESTS`, `DAILY_CHEST`) + `js/economy.js` (`chestRoll`) |
+| Changer le contenu ou la rareté des coffres | `js/data-pieces.js` (`CHESTS`, `DAILY_CHEST`), puis `node tools/gen-catalogue.js` et recoller `supabase/schema.sql` ; le tirage est `ec_chest_open` (SQL) et `ecoChestOpen` (`js/eco-rules.js`) |
 | Changer à quoi ressemble un coffre (partout : journalière, colonne, Magasin) | `chestVisual()` dans `js/economy-ui.js` — il rend la **statuette** (première planche de la séquence de bris) dès qu'un coffre en a une, sinon le coffre à couvercle dessiné en CSS |
-| Changer les perles (gains en coffre, prix d'achat) | `js/data-pieces.js` (`CHEST_PEARLS`) + `js/economy.js` (`chestRoll`, `pearlBuyChest`) + `renderMenuChests()` dans `js/economy-ui.js` |
+| Changer les perles (gains en coffre, prix d'achat) | `js/data-pieces.js` (`CHEST_PEARLS`), puis `node tools/gen-catalogue.js` ; l'achat est `ec_eco` (`shop`) |
 | Changer la cadence des parties (temps, incrément) | `js/ai-level-modal.js` (`selectedTimeControl`, `selectedTimeIncrement`) ; l'incrément est crédité par `recordMove()` dans `js/rules-engine.js` |
-| Changer ce qu'une partie fait risquer ou rapporter | `js/economy.js` (`economyCommit` / `economySettle`) |
+| Changer ce qu'une partie fait risquer ou rapporter | `ec_match_begin` / `ec_match_apply` dans `supabase/schema.sql` (et `js/eco-rules.js`) ; `economySettle` (`js/economy.js`) n'en est que l'aperçu |
 | Ajouter un échiquier | `tools/gen-boards.js` (relancer `node tools/gen-boards.js`) + `BOARD_SKINS` dans `js/data-pieces.js` |
 | Modifier le dessin d'une pièce | `js/piece-art.js` (`PIECE_ART`) |
 | Modifier la carte d'une pièce (ce qui s'y affiche, les deux boutons) | `pieceCardHTML()` / `wirePieceCards()` dans `js/piece-card.js` + section `[PCARD]` de `css/style.css` |
@@ -2671,7 +2771,7 @@ mais dans une version que Playwright refuse, le script le retrouve tout seul
 | Modifier le mode analyse des variantes | `js/variant-analysis.js` + le bloc `.van-nav` des trois panneaux « Historique » (`index.html`) + `[VAN]` de `css/style.css` |
 | Modifier le système de comptes/sauvegarde | `js/accounts.js` (copie de travail) + `js/server.js` (échanges) |
 | Ajouter un champ stocké par compte | `accGet`/`accSet` comme avant — rien à toucher ailleurs, le serveur stocke `state` sans l'interpréter |
-| Changer une règle du serveur (ELO, unicité, classement) | `supabase/schema.sql`, puis le recoller dans l'éditeur SQL Supabase (en **commentant le `DROP TABLE`**) |
+| Changer une règle du serveur (ELO, unicité, classement, économie) | `supabase/schema.sql`, puis le recoller dans l'éditeur SQL Supabase (il ne détruit rien) ; son miroir du bac à sable est `js/eco-rules.js` |
 | Changer la formule d'ELO | `vvCalcNewElo` (`js/voie.js`) **et** `ec_elo_calc` (`supabase/schema.sql`) — les deux, sinon le serveur et l'écran ne disent plus la même chose |
 | Rendre un compte admin (hors classement) | `update ec_players set is_admin = true where username_key = '<pseudo en minuscules>';` |
 | Modifier le classement / la recherche / le profil public | `js/leaderboard.js` + `ec_leaderboard`/`ec_search`/`ec_profile` dans `supabase/schema.sql` + `[LEADERBOARD]` de `css/style.css` |
@@ -2686,7 +2786,7 @@ mais dans une version que Playwright refuse, le script le retrouve tout seul
 | Ajouter une emote ou une phrase de chat | `MP_EMOTES` / `MP_CHAT` dans `js/multiplayer.js` |
 | Toucher au journal, au chat ou à leurs boutons | `.game-under` dans `index.html` + `[GAME-PANEL]` de `css/style.css` + le contrôleur de panneaux dans `js/game-render.js` |
 | Ajouter une statistique au profil | `accountSummary()` / `accountSealHTML()` dans `js/account-ui.js` |
-| Changer la stratégie de cache hors ligne | `sw.js` (et monter `CACHE_VERSION`) |
+| Changer la stratégie de cache hors ligne | `sw.js` (et monter `CACHE_VERSION` quand des scripts apparaissent ou disparaissent) |
 | Vérifier l'UI à toutes les tailles d'écran | `node tools/ui-shots.js` |
 | Changer la vitesse de montée en ELO | `VV_CLIMB_*`, `VV_K_*` et `VV_MAX_SWING` dans `js/voie.js` (relire « La courbe d'ascension », et refaire la simulation) |
 | Changer la largeur de la fenêtre d'appariement | `MP_ELO_*` dans `js/multiplayer.js` |
@@ -2694,7 +2794,7 @@ mais dans une version que Playwright refuse, le script le retrouve tout seul
 | Changer ce que dit la barre de statut d'une partie | `updateStatus()` dans `js/game-render.js` (+ `.status-bar` dans `css/style.css`) |
 | Modifier la présentation ou la FAQ publiques | `info.html` (texte visible **et** JSON-LD `FAQPage`) |
 | Changer les modes qui rapportent de l'ELO | `js/voie.js` (`vvNoEloReason`) |
-| Changer ce que contient un coffre | `CHESTS` (`total`) et `CHEST_PEARLS` dans `js/data-pieces.js` + `chestRoll` dans `js/economy.js` |
+| Changer ce que contient un coffre | `CHESTS` (`total`) et `CHEST_PEARLS` dans `js/data-pieces.js`, puis `node tools/gen-catalogue.js` |
 | Changer le cycle des lots journaliers | `DAILY_REWARDS` dans `js/data-pieces.js` (l'affichage suit tout seul) |
 | Changer les récompenses de la colonne des victoires | `VICTORY_COLUMN` dans `js/rewards.js` (l'affichage suit tout seul) |
 | Changer les paliers ou le prix en tickets de la rangée | `WEALTH_TIERS` dans `js/rewards.js` |
@@ -2708,8 +2808,8 @@ mais dans une version que Playwright refuse, le script le retrouve tout seul
 | Changer ce que donne le mode test | `economyAdmin`/`invAll`/`pearlBalance` dans `js/economy.js` + `vvLoadElo`/`loadAccountGlobals` dans `js/accounts.js` |
 | Ajouter un tips d'attente en ligne | `MP_TIPS` dans `js/multiplayer.js` (une ligne de plus dans le tableau) |
 | Ajouter une adresse au jeu (comme `/combat`) | `vercel.json` (`rewrites`) + `appPath`/`setAppPath`/`appHomePath` dans `js/main.js` |
-| Changer l'adresse du mode test | `ADMIN_QUERY` + `pathHasAdmin()` dans `js/main.js` (paramètre `?test`, pas un chemin : un chemin inexistant dépend d'une réécriture d'hébergeur et répondait 404) |
-| Changer ce que contient un coffre | `CHESTS`/`CHEST_PEARLS` dans `js/data-pieces.js` + `chestRoll`/`chestLuckyChance` dans `js/economy.js` |
+| Changer l'adresse du mode test | `ADMIN_QUERY` + `pathHasAdmin()` dans `js/main.js` (paramètre `?test`, pas un chemin) ; il ne s'allume que pour un compte admin ou en `?mock` (`enterAccount`, `js/accounts.js`) |
+| Changer les taux affichés au Magasin | `chestLuckyChance` dans `js/economy.js` (le tirage lui-même est au serveur) |
 | Changer le fond de l'écran de partie (et des trois variantes) | déposer `assets/backgrounds/partie.png` (prompt : `assets/PROMPTS.md` § 1) ; le voile et le repli sur `combat-intro.webp` sont dans « LA SALLE DE LA PARTIE », `[ART]` de `css/style.css` |
 | Changer le cadre doré du plateau | `assets/ui/cadre-plateau.svg` (bande pleine, découpée en neuf) + `.game-board-col::after` dans `[ART]` — **pas** sur `.game-board`, qui rogne ce qui déborde |
 | Changer la gerbe de perles (gain de perles) | `rewardPearlBurst()` dans `js/rewards-ui.js` + `.rw-burst*` dans `css/style.css` |
@@ -2726,7 +2826,7 @@ mais dans une version que Playwright refuse, le script le retrouve tout seul
 | Changer les règles d'appariement en ligne | `mpEloWindow` / `mpLobbyTick` dans `js/multiplayer.js` |
 | Ajouter une icône d'interface | `js/main.js` (`PEN_ICON`, `TRASH_ICON`, `svgX`), en SVG et jamais en émoji |
 | Modifier l'animation de déplacement des pièces | `animateLastMove()` dans `js/game-render.js` + `[BOARD-MOTION]` de `css/style.css` |
-| Changer une règle de la Guerre des clans (points, plafond, butin, niveaux) | `ec_clan_war_points` / `ec_clan_day_cap` / `ec_clan_war_chest` / `ec_clan_level` dans `supabase/schema.sql` **et** `supabase/migrations/001-guerre-des-clans.sql` (mot pour mot), **et** leur miroir `EC_CLAN_RULES` / `EC_CLAN_LEVELS` dans `js/server.js` ; `CLAN_RULES` (`js/clans.js`) n'est que l'affichage |
+| Changer une règle de la Guerre des clans (points, plafond, butin, niveaux) | `ec_clan_war_points` / `ec_clan_day_cap` / `ec_clan_war_chest` / `ec_clan_level` dans `supabase/schema.sql`, **et** leur miroir `EC_CLAN_RULES` / `EC_CLAN_LEVELS` dans `js/server.js` ; `CLAN_RULES` (`js/clans.js`) n'est que l'affichage |
 | Ajouter une devise ou un cri de guerre | `CLAN_MOTTOS` / `CLAN_CRIES` dans `js/clans.js` (en fin de liste) **et** la borne dans `ec_clan_motto_clean` / `ec_clan_cry` (SQL, les deux fichiers) |
 | Ajouter une forme, un émail ou un meuble de blason | `BLAZON_SHAPES` / `BLAZON_TINCTURES` / `BLAZON_CHARGES` dans `js/blason.js` (en fin de liste) + `BLAZON_SPEC`, `EC_BLAZON_SPEC` (`js/server.js`) et la spec de `ec_clan_blazon_clean` (SQL) |
 | Modifier la page de la Guerre des clans | `clanPaint()` et ses `clan*HTML` dans `js/clans.js` + `#clan-root` dans `index.html` + `[CLANS]` de `css/style.css` |

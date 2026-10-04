@@ -205,24 +205,36 @@ function closeDailyModal(){
 // Prendre le lot du jour. Un coffre s'ouvre avec SA cérémonie (la même qu'un
 // coffre de la colonne ou acheté au Magasin, bris compris) ; des perles se
 // versent sur-le-champ ; des jokers ouvrent la fenêtre de conversion.
+// C'est le serveur qui verse (ec_eco 'daily') : le jeu montre ce qu'il a
+// versé.
+let _dailyClaiming=false;
 function dailyClaim(){
-  const step=dailyRewardClaim();
+  if(_dailyClaiming)return;
+  _dailyClaiming=true;
+  dailyRewardClaim().then(step=>{
+    _dailyClaiming=false;
+    dailyShowStep(step);
+  }).catch(e=>{
+    _dailyClaiming=false;
+    if(typeof showNotif==='function')showNotif((e&&e.message)||'Le serveur ne répond pas.','err');
+    renderDailyModal();
+  });
+}
+function dailyShowStep(step){
   if(!step){renderDailyModal();return;}
   closeDailyModal();
   if(step.chest){
-    if(typeof chestOpenNow==='function')chestOpenNow(step.chest,dailyAfterClaim);
+    if(typeof chestShowLots==='function')chestShowLots(step.chest,step.lots,dailyAfterClaim);
     else dailyAfterClaim();
     return;
   }
   if(step.pearls){
-    if(typeof pearlAdd==='function')pearlAdd(step.pearls);
     if(typeof playSound==='function')playSound('rank');
     if(typeof showNotif==='function')showNotif('+'+step.pearls+' perles','ok');
     rewardPearlBurst(step.pearls);
     dailyAfterClaim();
     return;
   }
-  jokerAdd(step.jokers);
   openJokerModal();
 }
 // ----------------------------------------------------------------
@@ -509,16 +521,24 @@ function rwColScrollToLive(strip){
 // Encaisser le palier suivant. Un coffre s'ouvre avec SA cérémonie (la même
 // qu'un coffre journalier ou acheté au Magasin, bris compris) ; des jokers
 // ouvrent la fenêtre de conversion.
+let _colClaiming=false;
 function rewardsClaimColumn(){
-  const step=colClaimNext();
-  if(!step){renderRewardsColonne();return;}
-  if(step.chest){
-    if(typeof chestOpenNow==='function')chestOpenNow(step.chest,rewardsBackToPage);
-    else rewardsBackToPage();
-    return;
-  }
-  jokerAdd(step.jokers);
-  openJokerModal();
+  if(_colClaiming)return;
+  _colClaiming=true;
+  colClaimNext().then(step=>{
+    _colClaiming=false;
+    if(!step){renderRewardsColonne();return;}
+    if(step.chest){
+      if(typeof chestShowLots==='function')chestShowLots(step.chest,step.lots,rewardsBackToPage);
+      else rewardsBackToPage();
+      return;
+    }
+    openJokerModal();
+  }).catch(e=>{
+    _colClaiming=false;
+    if(typeof showNotif==='function')showNotif((e&&e.message)||'Le serveur ne répond pas.','err');
+    renderRewardsColonne();
+  });
 }
 // Retour sur la page après une fenêtre passée par-dessus (cérémonie de coffre,
 // exercice de déplacement d'une créature inédite). La page est peut-être
@@ -677,8 +697,17 @@ function rwWireSwipe(el){
     rwRowGo(dx<0?1:-1);
   },{passive:true});
 }
+let _richClaiming=false;
 function rewardsClaimRich(){
-  const got=richClaimNext();
+  if(_richClaiming)return;
+  _richClaiming=true;
+  richClaimNext().then(got=>{_richClaiming=false;rewardsRichShow(got);}).catch(e=>{
+    _richClaiming=false;
+    if(typeof showNotif==='function')showNotif((e&&e.message)||'Le serveur ne répond pas.','err');
+    renderRewardsRangee();
+  });
+}
+function rewardsRichShow(got){
   if(!got){renderRewardsRangee();return;}
   // Un palier franchi : la fanfare de l'interface, la seule. Et on avance sur
   // le palier suivant, qui est ce que le joueur veut voir ensuite.
@@ -736,14 +765,15 @@ function jokerPick(pieceId){
   if(!p)return;
   const n=jokerBalance();
   showConfirmModal('Convertir '+n+' joker'+(n>1?'s':'')+' en '+n+' '+p.name+' ?',()=>{
-    const got=jokerConvert(pieceId);
-    if(!got)return;
-    // Un joker devient une créature : c'est bien une naissance, 'promo' est
-    // ici le bon son et non un emprunt.
-    if(typeof playSound==='function')playSound('promo');
-    if(typeof showNotif==='function')showNotif('+'+got+' '+p.name,'ok');
-    closeJokerModal();
-    if(typeof updAll==='function')updAll();
+    jokerConvert(pieceId).then(got=>{
+      if(!got)return;
+      // Un joker devient une créature : c'est bien une naissance, 'promo' est
+      // ici le bon son et non un emprunt.
+      if(typeof playSound==='function')playSound('promo');
+      if(typeof showNotif==='function')showNotif('+'+got+' '+p.name,'ok');
+      closeJokerModal();
+      if(typeof updAll==='function')updAll();
+    }).catch(e=>{if(typeof showNotif==='function')showNotif((e&&e.message)||'Conversion impossible.','err');});
   },{okLabel:'Convertir',cancelLabel:'Annuler',okClass:'btn-gold'});
 }
 

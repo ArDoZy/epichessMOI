@@ -495,12 +495,12 @@ const loadArmyForEdit=ad=>{
 let _renamingArmyId=null;
 const buildNameBlock=(a,isAi)=>{
   if(_renamingArmyId===a.id){
-    return '<div class="ac-name-edit-row"><input type="text" class="ac-name-input" id="ac-name-input-'+a.id+'" value="'+escH(a.name||'')+'" maxlength="30" placeholder="Nom de l\'armée" onkeydown="if(event.key===\'Enter\')confirmRenameArmy(\''+a.id+'\','+(!!isAi)+')"><button class="btn btn-gold" style="font-size:11px;padding:6px 10px" onclick="confirmRenameArmy(\''+a.id+'\','+(!!isAi)+')">Valider</button></div>';
+    return '<div class="ac-name-edit-row"><input type="text" class="ac-name-input" id="ac-name-input-'+a.id+'" value="'+escH(a.name||'')+'" maxlength="30" placeholder="Nom de l\'armée" data-enter="confirmRenameArmy" data-args=\''+escH(JSON.stringify([a.id,!!isAi]))+'\'><button class="btn btn-gold" style="font-size:11px;padding:6px 10px" data-act="confirmRenameArmy" data-args=\''+escH(JSON.stringify([a.id,!!isAi]))+'\'>Valider</button></div>';
   }
   if(a.name){
-    return '<div class="ac-name-row"><span class="ac-name">'+escH(a.name)+'</span><button class="ac-name-edit-btn" title="Renommer" onclick="startRenameArmy(\''+a.id+'\','+(!!isAi)+')">'+PEN_ICON+'</button></div>';
+    return '<div class="ac-name-row"><span class="ac-name">'+escH(a.name)+'</span><button class="ac-name-edit-btn" title="Renommer" data-act="startRenameArmy" data-args=\''+escH(JSON.stringify([a.id,!!isAi]))+'\'>'+PEN_ICON+'</button></div>';
   }
-  return '<button class="btn btn-ghost ac-name-btn" onclick="startRenameArmy(\''+a.id+'\','+(!!isAi)+')">Nommer l\'armée</button>';
+  return '<button class="btn btn-ghost ac-name-btn" data-act="startRenameArmy" data-args=\''+escH(JSON.stringify([a.id,!!isAi]))+'\'>Nommer l\'armée</button>';
 };
 window.startRenameArmy=(id,isAi)=>{
   _renamingArmyId=id;
@@ -528,7 +528,7 @@ const renderAiArmiesPage=()=>{
     const mon=PIECES.find(p=>p.id===a.mon.id);const gen=PIECES.find(p=>p.id===a.gen.id);
     const extras=a.extras.map(id=>PIECES.find(p=>p.id===id)).filter(Boolean);
     const all=[mon,gen,...extras].filter(Boolean);
-    return '<div class="army-card" style="border-top-color:var(--accent2)">'+buildNameBlock(a,true)+'<div class="ac-pieces">'+all.map(p=>'<span>'+p.emoji+'</span>').join('')+'</div><div class="ac-names">'+(mon?.name||'?')+' · '+(gen?.name||'?')+'<br>'+extras.map(p=>p.name).join(' · ')+'</div><div class="ac-val">'+a.totalValue+' pts</div><div class="ac-btns"><button class="btn btn-ghost" style="font-size:11px;padding:6px 12px" onclick="editAiArmy(\''+a.id+'\')">Modifier</button><button class="btn btn-primary" style="font-size:11px;padding:6px 12px" onclick="selectAiArmy(\''+a.id+'\')">Choisir</button><button class="btn btn-danger" style="font-size:14px;padding:6px 10px" title="Supprimer cette armée" onclick="deleteAiArmy(\''+a.id+'\')">'+TRASH_ICON+'</button></div></div>';
+    return '<div class="army-card" style="border-top-color:var(--accent2)">'+buildNameBlock(a,true)+'<div class="ac-pieces">'+all.map(p=>'<span>'+p.emoji+'</span>').join('')+'</div><div class="ac-names">'+(mon?.name||'?')+' · '+(gen?.name||'?')+'<br>'+extras.map(p=>p.name).join(' · ')+'</div><div class="ac-val">'+a.totalValue+' pts</div><div class="ac-btns"><button class="btn btn-ghost" style="font-size:11px;padding:6px 12px" data-act="editAiArmy" data-args=\''+escH(JSON.stringify([a.id]))+'\'>Modifier</button><button class="btn btn-primary" style="font-size:11px;padding:6px 12px" data-act="selectAiArmy" data-args=\''+escH(JSON.stringify([a.id]))+'\'>Choisir</button><button class="btn btn-danger" style="font-size:14px;padding:6px 10px" title="Supprimer cette armée" data-act="deleteAiArmy" data-args=\''+escH(JSON.stringify([a.id]))+'\'>'+TRASH_ICON+'</button></div></div>';
   }).join('');
 };
 window.editAiArmy=id=>{const a=savedAiArmies.find(x=>x.id===id);if(!a)return;builderMode='ai';updateBuilderBanner();loadArmyForEdit(a);showPage('page-builder');updAll();};

@@ -40,6 +40,15 @@ const MIME={'.html':'text/html','.js':'text/javascript','.css':'text/css','.svg'
   '.png':'image/png','.webp':'image/webp','.mp3':'audio/mpeg','.json':'application/json','.txt':'text/plain',
   '.webmanifest':'application/manifest+json','.xml':'application/xml'};
 
+// LES EN-TÊTES DE SÉCURITÉ DU SITE (vercel.json), servis tels quels : une
+// politique de sécurité (CSP) qui bloquerait un script, une image ou un appel
+// au serveur se lit dans la console, et le test échoue.
+const SITE_HEADERS=(()=>{
+  const v=JSON.parse(fs.readFileSync(path.join(ROOT,'vercel.json'),'utf8'));
+  const all=(v.headers||[]).find(h=>h.source==='/(.*)');
+  return Object.fromEntries(((all&&all.headers)||[]).map(h=>[h.key.toLowerCase(),h.value]));
+})();
+
 // Serveur statique minimal, qui rejoue les réécritures de vercel.json
 // (cleanUrls + /combat + /test) pour tester les mêmes adresses qu'en ligne.
 function serve(){
@@ -49,7 +58,7 @@ function serve(){
     else if(p==='/info')p='/info.html';
     const f=path.join(ROOT,p);
     if(!f.startsWith(ROOT)||!fs.existsSync(f)||fs.statSync(f).isDirectory()){res.writeHead(404);res.end('404');return;}
-    res.writeHead(200,{'content-type':MIME[path.extname(f)]||'application/octet-stream'});
+    res.writeHead(200,Object.assign({'content-type':MIME[path.extname(f)]||'application/octet-stream'},SITE_HEADERS));
     res.end(fs.readFileSync(f));
   });
 }
@@ -319,8 +328,12 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
       accSet('elo',9999);
       if(vvLoadElo()!==eloAvant)out.push('le client a pu écrire son propre ELO');
       // 2. Une partie déclarée, et c'est le serveur qui tranche.
-      const r=await ecReportMatch({result:'win',ranked:true,opp_elo:eloAvant,
-        mode:'ia',army:['garde-pierre','garde-pierre','fourmi']});
+      // Une partie s'ouvre au serveur (billet) avant de se déclarer : un
+      // rapport sans billet n'est pas retenu.
+      let refus=false;
+      try{await ecReportMatch({result:'win',ranked:true,opp_elo:4000,mode:'ia'});}catch(e){refus=true;}
+      if(!refus)out.push('un rapport sans billet a été accepté');
+      const r=await ecMockMatch('win');
       if(!r||typeof r.delta!=='number')out.push('le serveur n\'a pas répondu au rapport de partie');
       else{
         if(r.delta<=0)out.push('une victoire ne rapporte rien : '+r.delta);
@@ -1191,7 +1204,7 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
   // de suite.
   await step('la fenêtre journalière montre le cycle des trente lots',async()=>{
     await page.evaluate(()=>{
-      accSet('dr_idx',2);accSet('dr_day',null);accSet('pearls',300);
+      ecMockState('dr_idx',2);ecMockState('dr_day',null);ecMockState('pearls',300);
       showPage('page-jouer');renderMenuChests();
     });
     // La COLONNE du menu (`.jouer-col` : titre, identité, COMBAT, Adversaires)
@@ -1251,15 +1264,15 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
   // Le cycle est SANS FIN : le dix-septième jour revient au premier lot,
   // sans remettre quoi que ce soit à zéro. C'est la promesse de la journalière.
   await step('le cycle journalier repart au premier lot après le seizième',async()=>{
-    const bad=await page.evaluate(()=>{
+    const bad=await page.evaluate(async()=>{
       const out=[];
       const t=dailyRewardTotal();
       if(t!==16)out.push('le cycle fait '+t+' lots au lieu de 16');
-      accSet('dr_idx',t);accSet('dr_day',null);
+      ecMockState('dr_idx',t);ecMockState('dr_day',null);
       if(dailyRewardCursor()!==0)out.push('le cycle ne revient pas à son premier lot : '+dailyRewardCursor());
       if(dailyRewardCycle()!==2)out.push('le numéro de cycle ne s\'incrémente pas : '+dailyRewardCycle());
       if(!dailyRewardAvailable())out.push('le lot du jour n\'est pas disponible');
-      const pris=dailyRewardClaim();
+      const pris=await dailyRewardClaim();
       if(!pris||pris.chest!=='pion')out.push('le premier lot du cycle n\'est pas un Coffre Pion');
       if(dailyRewardAvailable())out.push('un deuxième lot est encaissable le même jour');
       if(dailyRewardIdx()!==t+1)out.push('le compteur du cycle n\'a pas avancé');
@@ -1405,10 +1418,14 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
   // que la fiche de compte affiche sous « Meilleure série ». Une victoire ne
   // donne plus AUCUN coffre au règlement : elle fait avancer la colonne.
   await step('la série compte les victoires d\'affilée, sans coffre ni verrou',async()=>{
+    // economySettle n'est plus qu'un APERÇU (c'est le serveur qui règle) :
+    // chaque appel part de la série enregistrée.
     const r=await page.evaluate(()=>{
-      accSet('win_streak',3);
+      ecMockState('win_streak',3);
       const perdu=economySettle('loss',{board:[],promoGains:{}});
+      ecMockState('win_streak',0);
       const gagne=economySettle('win',{board:[],promoGains:{}});
+      ecMockState('win_streak',1);
       const encore=economySettle('win',{board:[],promoGains:{}});
       return{apresDefaite:perdu.streak,apres1:gagne.streak,apres2:encore.streak,
              coffre:gagne.chest||null};
@@ -1416,7 +1433,7 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
     if(r.apresDefaite!==0)throw new Error('série non remise à zéro par la défaite : '+r.apresDefaite);
     if(r.apres1!==1||r.apres2!==2)throw new Error('la série ne compte pas les victoires : '+r.apres1+', '+r.apres2);
     if(r.coffre)throw new Error('une victoire donne encore un coffre au règlement');
-    await page.evaluate(()=>{accSet('win_streak',0);});
+    await page.evaluate(()=>{ecMockState('win_streak',0);});
   });
 
   // LES DEUX BOUTONS DU MENU OUVRENT CHACUN SA VOIE, ET « OK » EN SORT. Le
@@ -1501,7 +1518,7 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
         serie[id]=lire('#daily-scroll .streak-row[data-chest="'+id+'"]');
       });
       closeDailyModal();
-      accSet('col_laurels',15);accSet('col_claimed',0);
+      ecMockState('col_laurels',15);ecMockState('col_claimed',0);
       openRewardsPage('colonne');
       serie.dame=lire('#rw-col-strip .cv-row[data-idx="21"]');          // Coffre Dame
       serie.roi=lire('#rw-col-strip .cv-row[data-idx="29"]');           // Coffre Roi
@@ -1546,7 +1563,7 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
   // le dit.
   await step('un palier se prend en le touchant, sans bandeau au-dessus',async()=>{
     const r=await page.evaluate(()=>{
-      accSet('col_laurels',25);accSet('col_claimed',4);accSet('tickets',0);accSet('rich_claimed',1);
+      ecMockState('col_laurels',25);ecMockState('col_claimed',4);ecMockState('tickets',0);ecMockState('rich_claimed',1);
       openRewardsPage('colonne');
       const colonne=document.getElementById('rw-pane-colonne');
       const du=colonne.querySelector('.cv-row.cv-due');
@@ -1562,12 +1579,14 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
         dus:colonne.querySelectorAll('.cv-row.cv-due,.cv-row.cv-queued').length,
         avant:colClaimed(),
       };
-      // Le clic sur le palier dû l'encaisse : ici c'est un coffre, donc la
-      // cérémonie s'ouvre — on la referme aussitôt, le test porte sur le geste.
+      // Le clic sur le palier dû l'encaisse (au serveur) : ici c'est un
+      // coffre, donc la cérémonie s'ouvre — on la déroule, le test porte sur
+      // le geste.
       if(du)du.click();
-      out.apres=colClaimed();
       return out;
     });
+    if(r.du)await page.waitForFunction(n=>colClaimed()===n+1,r.avant,{timeout:8000}).catch(()=>{});
+    r.apres=await page.evaluate(()=>colClaimed());
     if(r.bandeau)throw new Error('le bandeau « Récupérer » est encore au-dessus de la voie');
     if(r.bouton)throw new Error('le bouton « Récupérer » est encore là');
     if(r.jauge)throw new Error('la jauge de progression est encore au-dessus de la colonne');
@@ -1596,7 +1615,7 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
   // lisait, et vingt-et-une hors champ.
   await step('la rangée se parcourt palier par palier',async()=>{
     const r=await page.evaluate(()=>{
-      accSet('rich_claimed',3);accSet('tickets',0);
+      ecMockState('rich_claimed',3);ecMockState('tickets',0);
       openRewardsPage('rangee');
       // Le panneau est REDESSINÉ à chaque pas : toute référence gardée d'un
       // clic à l'autre pointerait un nœud détaché. On réinterroge le document.
@@ -1648,18 +1667,20 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
   // longue vaut donc exactement un palier, une victoire éclair en vaut deux.
   // Rien n'y recule jamais : une défaite ne retire pas un laurier.
   await step('la colonne des victoires se paie en lauriers',async()=>{
-    const r=await page.evaluate(()=>{
-      accSet('col_laurels',0);accSet('col_claimed',0);accSet('win_streak',0);
-      // Quatre victoires longues (aucun journal de coups → longueur maximale
-      // supposée) : cinq lauriers chacune, donc quatre paliers tout rond.
-      for(let i=0;i<4;i++)economySettle('win',{board:[],promoGains:{}});
+    // Les lauriers sont versés par le serveur, au règlement de vraies parties
+    // (billet ouvert, issue déclarée) : on en joue six au bac à sable.
+    const r=await page.evaluate(async()=>{
+      ecMockState('col_laurels',0);ecMockState('col_claimed',0);ecMockState('win_streak',0);
+      ecMockState('inventory',Object.assign({},accGet('inventory',{}),{'garde-pierre':60,fourmi:60,'dresseur-elephant':60,roi:60,dame:60}));
+      // Quatre victoires longues (plus de cinquante coups) : cinq lauriers
+      // chacune, donc quatre paliers tout rond.
+      for(let i=0;i<4;i++)await ecMockMatch('win',{moves:80});
       const avantDefaite=colSteps();
-      economySettle('loss',{board:[],promoGains:{}});
+      await ecMockMatch('loss');
       const apresDefaite=colSteps();
-      // Une victoire ÉCLAIR : dix coups au journal, donc dix lauriers, donc
-      // deux paliers d'un coup.
-      const court=Array.from({length:10},()=>['a','b']);
-      economySettle('win',{board:[],promoGains:{},movePairs:court});
+      // Une victoire ÉCLAIR : dix coups, donc dix lauriers, donc deux
+      // paliers d'un coup.
+      await ecMockMatch('win',{moves:10});
       return{avantDefaite,apresDefaite,apresEclair:colSteps(),
              lauriers:colLaurels(),dus:colPending(),
              bareme:[8,10,12,15,18,20,25,30,40,50,51,90].map(n=>laurelsForMoves(n))};
@@ -1690,11 +1711,11 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
   // VRAIE cérémonie — la même qu'un coffre journalier ou acheté au Magasin.
   await step('un palier de coffre s\'encaisse et ouvre sa cérémonie',async()=>{
     await page.evaluate(()=>{
-      accSet('col_laurels',10);accSet('col_claimed',0);accSet('jokers',0);
+      ecMockState('col_laurels',10);ecMockState('col_claimed',0);ecMockState('jokers',0);
       // Chaque voie a SA pastille : celle de la colonne ne compte que ses
       // paliers dus. On neutralise quand même la rangée et les jokers, dont
       // la pastille voisine se lit dans le même coup d'œil.
-      accSet('tickets',0);accSet('rich_claimed',0);
+      ecMockState('tickets',0);ecMockState('rich_claimed',0);
       openRewardsPage('colonne');
     });
     await page.waitForSelector('#page-rewards.active',{timeout:8000});
@@ -1729,13 +1750,14 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
   // exemplaires de CETTE créature — et rien ne se perd si l'on ferme la
   // fenêtre sans choisir.
   await step('un palier de jokers se convertit en exemplaires de son choix',async()=>{
-    const r=await page.evaluate(()=>{
+    await page.evaluate(()=>{
       // Le troisième palier de la colonne, c'est 3 jokers.
-      accSet('col_laurels',15);accSet('col_claimed',2);accSet('jokers',0);
+      ecMockState('col_laurels',15);ecMockState('col_claimed',2);ecMockState('jokers',0);
       openRewardsPage('colonne');
       rewardsClaimColumn();
-      return{jokers:jokerBalance(),ouverte:document.getElementById('joker-modal').classList.contains('show')};
     });
+    await page.waitForSelector('#joker-modal.show',{timeout:8000}).catch(()=>{});
+    const r=await page.evaluate(()=>({jokers:jokerBalance(),ouverte:document.getElementById('joker-modal').classList.contains('show')}));
     if(r.jokers!==3)throw new Error(r.jokers+' jokers en réserve au lieu de 3');
     if(!r.ouverte)throw new Error('la fenêtre de conversion ne s\'est pas ouverte');
     const conv=await page.evaluate(()=>{
@@ -1750,7 +1772,7 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
     if(monarque)throw new Error('un Monarque est proposé à la conversion');
     await page.click('.joker-choice[data-piece="'+conv.id+'"]');
     await page.click('#confirm-ok');
-    await page.waitForTimeout(300);
+    await page.waitForFunction(()=>jokerBalance()===0,null,{timeout:8000}).catch(()=>{});
     const apres=await page.evaluate(()=>({
       jokers:jokerBalance(),
       stock:invCount(document.body.dataset.jokTest||''),
@@ -1769,11 +1791,11 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
       Array(5).fill('5/6'),Array(5).fill('6/8'));
     if(table.join(',')!==attendu.join(','))
       throw new Error('rangée : '+table.join(',')+'\nau lieu de\n'+attendu.join(','));
-    const r=await page.evaluate(()=>{
-      accSet('rich_claimed',0);accSet('tickets',2);accSet('pearls',100);
-      const refus=richClaimNext();
-      accSet('tickets',5);
-      const ok=richClaimNext();
+    const r=await page.evaluate(async()=>{
+      ecMockState('rich_claimed',0);ecMockState('tickets',2);ecMockState('pearls',100);
+      const refus=await richClaimNext();
+      ecMockState('tickets',5);
+      const ok=await richClaimNext();
       return{refus,ok,tickets:ticketBalance(),perles:pearlBalance(),paliers:richClaimed()};
     });
     if(r.refus)throw new Error('un palier a été encaissé sans les tickets nécessaires');
@@ -1787,8 +1809,10 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
   // différentes. Une quête infaisable (une créature qu'on n'a pas) serait un
   // ticket perdu d'avance.
   await step('les trois quêtes du jour sont faisables et distinctes',async()=>{
-    const r=await page.evaluate(()=>{
-      accSet('quests_day',null);accSet('quests',null);accSet('tickets',0);
+    // Les quêtes sont tirées par le serveur, au premier passage du jour.
+    const r=await page.evaluate(async()=>{
+      ecMockState('quests_day',null);ecMockState('quests',null);ecMockState('tickets',0);
+      await ecEco('sync');
       const qs=questsToday();
       const owned=invOwnedIds();
       return{
@@ -1810,18 +1834,27 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
   // LES QUÊTES SE REMPLISSENT PAR DE VRAIS FAITS DE JEU, et le ticket tombe
   // dès qu'elles sont remplies : rien à aller chercher.
   await step('une quête accomplie verse ses tickets',async()=>{
-    const r=await page.evaluate(()=>{
-      accSet('quests_day',todayKey());accSet('tickets',0);
-      // Une quête connue, posée à la main : « déplacer 5 fois » la première
-      // créature possédée.
-      const cible=invOwnedIds().find(id=>(PIECES.find(p=>p.id===id)||{}).class!=='Monarque');
-      accSet('quests',[{id:'move',pieceId:cible,prog:0,done:false}]);
+    // Pendant la partie, l'écran PROJETTE la progression (les faits de la
+    // partie en cours) ; le serveur verse les tickets au règlement.
+    const r=await page.evaluate(async()=>{
+      ecMockState('quests_day',todayKey());ecMockState('tickets',0);
+      // Une quête connue, posée à la main : « déplacer 5 fois » une créature
+      // de l'armée.
+      const cible=savedArmies[0].extras.map(e=>e&&e.id?e.id:e)[0];
+      ecMockState('quests',[{id:'move',pieceId:cible,prog:0,done:false}]);
+      const garde=GS;
+      GS={ticket:'essai',tuto:null,gameOver:false,questEvents:{}};
       for(let i=0;i<4;i++)questNote('move',cible,1);
       const mi=questsToday()[0];
       questNote('move',cible,1);
       const fin=questsToday()[0];
-      return{mi:mi.prog,miDone:mi.done,fin:fin.prog,finDone:fin.done,tickets:ticketBalance()};
+      const events=GS.questEvents;
+      GS=garde;
+      const avantReglement=ticketBalance();
+      await ecMockMatch('loss',{events});
+      return{mi:mi.prog,miDone:mi.done,fin:fin.prog,finDone:fin.done,avantReglement,tickets:ticketBalance()};
     });
+    if(r.avantReglement!==0)throw new Error('des tickets ont été versés avant le règlement de la partie');
     if(r.mi!==4||r.miDone)throw new Error('quête à mi-parcours : '+r.mi+'/5, done='+r.miDone);
     if(!r.finDone)throw new Error('quête non accomplie après le 5e déplacement');
     if(r.tickets!==2)throw new Error('tickets versés : '+r.tickets+' au lieu de 2');
@@ -1833,9 +1866,10 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
   await step('seuls les coups du joueur font avancer une quête',async()=>{
     const r=await page.evaluate(()=>{
       const cible=invOwnedIds().find(id=>(PIECES.find(p=>p.id===id)||{}).class!=='Monarque');
-      accSet('quests_day',todayKey());accSet('tickets',0);
-      accSet('quests',[{id:'move',pieceId:cible,prog:0,done:false}]);
-      const gs={playerColor:'w',movePairs:[],board:[],history:[]};
+      ecMockState('quests_day',todayKey());ecMockState('tickets',0);
+      ecMockState('quests',[{id:'move',pieceId:cible,prog:0,done:false}]);
+      const gs={playerColor:'w',movePairs:[],board:[],history:[],ticket:'essai'};
+      const garde=GS;GS=gs;
       // Coup du joueur, puis coup de l'adversaire.
       recordMove({color:'w',pieceId:cible},{r:4,c:4},false,gs,{r:6,c:4});
       const apresJoueur=questsToday()[0].prog;
@@ -1843,7 +1877,9 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
       const apresAdversaire=questsToday()[0].prog;
       // Bataille du tutoriel : rien ne compte non plus.
       recordMove({color:'w',pieceId:cible},{r:4,c:5},false,{...gs,tuto:{}},{r:6,c:5});
-      return{apresJoueur,apresAdversaire,apresTuto:questsToday()[0].prog};
+      const apresTuto=questsToday()[0].prog;
+      GS=garde;
+      return{apresJoueur,apresAdversaire,apresTuto};
     });
     if(r.apresJoueur!==1)throw new Error('le coup du joueur n\'a pas compté');
     if(r.apresAdversaire!==1)throw new Error('un coup de l\'adversaire a fait avancer la quête');
@@ -1874,13 +1910,16 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
     const url=page.url();
     await page.goto('http://localhost:'+PORT+'/test',{waitUntil:'domcontentloaded'});
     await page.waitForTimeout(1200);
-    const r=await page.evaluate(()=>{
+    // Le mode test n'ouvre pas de billet de partie (matchOpen) : il n'a donc
+    // rien à déclarer, et ni la colonne ni les quêtes n'avancent.
+    const r=await page.evaluate(async()=>{
       const avantCol=colSteps(),avantTik=ticketBalance();
       colNoteWin();
       questNote('win',null,1);
-      ticketAdd(50);
-      return{avantCol,apresCol:colSteps(),avantTik,apresTik:ticketBalance()};
+      const billet=await matchOpen({mode:'ia',ai:'cendre',army:savedArmies[0]});
+      return{avantCol,apresCol:colSteps(),avantTik,apresTik:ticketBalance(),billet};
     });
+    if(r.billet)throw new Error('le mode test ouvre un billet de partie');
     if(r.apresCol!==r.avantCol)throw new Error('le mode test a fait avancer la colonne');
     if(r.apresTik!==r.avantTik)throw new Error('le mode test a crédité des tickets');
     await page.goto(url,{waitUntil:'domcontentloaded'});
@@ -1892,7 +1931,7 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
   });
 
   await step('le Magasin vend les six coffres, le Pion sous sa statuette et sans fiche technique',async()=>{
-    await page.evaluate(()=>{accSet('pearls',5000);showPage('page-jouer');});
+    await page.evaluate(()=>{ecMockState('pearls',5000);showPage('page-jouer');});
     // Navigue réellement sur la page « Magasin » (et non un simple appel de
     // renderMagasinPage() en coulisses) : sans le glissement, la page
     // jouer resterait devant et intercepterait les clics.
@@ -2085,7 +2124,9 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
       CHESTS.forEach(ch=>{
         const t=ch.total,pr=chestPearlRange(ch.id);
         for(let i=0;i<200;i++){
-          const lots=chestRoll(ch.id);
+          // Le tirage est celui du serveur (ec_chest_open), transcrit pour le
+          // bac à sable : on l'éprouve sur une copie de la fiche.
+          const lots=ecoChestOpen(JSON.parse(JSON.stringify(ECP.state)),vvLoadPeakElo(),ch.id);
           const perles=lots.filter(l=>l.pearls>0);
           const total=perles.reduce((a,l)=>a+l.pearls,0);
           const pieces=lots.filter(l=>l.pieceId);
@@ -2362,7 +2403,7 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
   // Gardes en stock, déblocages et statistiques — et on vérifie qu'il retombe
   // sur ses pieds SANS erreur de console (le test échouerait de lui-même).
   await step('un compte d\'avant le retrait se recharge sans rien perdre d\'autre',async()=>{
-    const bad=await page.evaluate(()=>{
+    const bad=await page.evaluate(async()=>{
       const out=[];
       const memoire={armies:JSON.parse(JSON.stringify(savedArmies)),
                      inv:JSON.parse(JSON.stringify(invAll())),
@@ -2375,10 +2416,13 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
         accSet('ai_armies',[{id:'legacy-ia',mon:{id:'empereur'},gen:{id:'amazone'},
           extras:['garde-feu','meduse','fourmi'],
           placements:{'garde-feu':1,'meduse':2,'fourmi':0},totalValue:21}]);
-        accSet('inventory',{'garde-eau':6,'garde-feu':6,'fourmi':4,'garde-pierre':6});
-        accSet('unlocked_pieces',['roi','dame','empereur','garde-eau','garde-feu','garde-pierre','fourmi']);
+        ecMockState('inventory',{'garde-eau':6,'garde-feu':6,'fourmi':4,'garde-pierre':6});
+        ecMockState('unlocked_pieces',['roi','dame','empereur','garde-eau','garde-feu','garde-pierre','fourmi']);
         accSet('piece_stats',{'garde-eau':{g:9,w:5},fourmi:{g:2,w:1}});
 
+        // L'inventaire et les déblocages sont nettoyés par le SERVEUR, à la
+        // connexion (ec_eco_init) ; les armées, par le jeu.
+        await ecEco('sync');
         loadAccountGlobals();
 
         const a=savedArmies[0];
@@ -2426,8 +2470,8 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
       }finally{
         accSet('armies',memoire.armies);savedArmies=memoire.armies;
         accSet('ai_armies',[]);savedAiArmies=[];
-        invSaveAll(memoire.inv);
-        VV_UNLOCKED=new Set(memoire.unlocked);vvSaveUnlocked(VV_UNLOCKED);
+        ecMockState('inventory',memoire.inv);
+        ecMockState('unlocked_pieces',memoire.unlocked);VV_UNLOCKED=new Set(memoire.unlocked);
         accSet('piece_stats',{});
         pLoaded=false;renderArmiesPage();
       }
@@ -2786,10 +2830,15 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
   });
 
   await step('les créatures sortent des coffres selon l\'arène, et les débris éveillent leur pouvoir',async()=>{
-    const bad=await page.evaluate(()=>{
+    // Les coffres sont tirés par le serveur ; ecoChestOpen (js/eco-rules.js)
+    // en est la transcription pour le bac à sable, éprouvée ici sur des
+    // copies de la fiche.
+    const bad=await page.evaluate(async()=>{
       const out=[];
       const keep={unl:[...VV_UNLOCKED],inv:JSON.stringify(accGet('inventory',{})),deb:JSON.stringify(accGet('debris',{})),
         pow:JSON.stringify(accGet('unlocked_powers',[])),dry:accGet('chest_dry',0),vc:JSON.stringify(accGet('voie_chests',[]))};
+      const copie=()=>JSON.parse(JSON.stringify(ECP.state));
+      const peak=vvLoadPeakElo();
       try{
         // L'ELO ne donne plus aucune créature.
         if(UNLOCK_TABLE.some(u=>u.pieceId&&!u.starter))out.push('la Diagonale donne encore une créature');
@@ -2799,40 +2848,44 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
         // À l'arène du compte, le vivier ne propose rien d'une arène plus haute.
         const arena=playerArenaIdx();
         chestLockedPool().forEach(id=>{if(pieceArenaIdx(id)>arena)out.push(id+' sort des coffres avant son arène');});
+        for(let i=0;i<40;i++){
+          ecoChestOpen(copie(),peak,'roi').filter(l=>l.isNew).forEach(l=>{
+            if(pieceArenaIdx(l.pieceId)>arena)out.push(l.pieceId+' est sorti d\'un coffre avant son arène');});
+        }
         // Le plafond de malchance : au CHEST_PITY-ième coffre sec, une inédite.
         if(chestLockedPool().length){
-          accSet('chest_dry',CHEST_PITY);
-          if(!chestRoll('pion').some(l=>l.isNew))out.push('le plafond de malchance ne donne pas de créature');
+          const st=copie();st.chest_dry=CHEST_PITY;
+          if(!ecoChestOpen(st,peak,'pion').some(l=>l.isNew))out.push('le plafond de malchance ne donne pas de créature');
         }
         // Débris : une créature possédée au pouvoir endormi en reçoit.
-        VV_UNLOCKED.add('meduse');invAdd('meduse',4);
-        const pw=accGet('unlocked_powers',[]).filter(x=>x!=='meduse');accSet('unlocked_powers',pw);
-        accSet('debris',{});accSet('chest_dry',0);
+        ecMockState('unlocked_pieces',[...new Set([...VV_UNLOCKED,'meduse'])]);
+        ecMockState('inventory',Object.assign({},accGet('inventory',{}),{meduse:4}));
+        const pw=accGet('unlocked_powers',[]).filter(x=>x!=='meduse');ecMockState('unlocked_powers',pw);
+        ecMockState('debris',{});ecMockState('chest_dry',0);
         let got=0;
-        for(let i=0;i<60&&!got;i++){const lots=chestRoll('roi');lots.filter(l=>l.debris).forEach(l=>{
-          if(!pieceHasPower(l.debris)||powerUnlocked(l.debris))out.push('débris pour un pouvoir déjà éveillé : '+l.debris);got++;});}
+        for(let i=0;i<60&&!got;i++){const st=copie();ecoChestOpen(st,peak,'roi').filter(l=>l.debris).forEach(l=>{
+          if(!pieceHasPower(l.debris)||(st.unlocked_powers||[]).includes(l.debris))out.push('débris pour un pouvoir déjà éveillé : '+l.debris);got++;});}
         if(!got)out.push('aucun débris en soixante Coffres Roi');
         // L'éveil : huit débris, un pouvoir pour toujours.
-        accSet('debris',{meduse:7});
+        ecMockState('debris',{meduse:7});
         if(powerCanAwaken('meduse'))out.push('le pouvoir s\'éveille avec sept débris');
-        debrisAdd('meduse',1);
-        if(!powerAwaken('meduse'))out.push('le pouvoir ne s\'éveille pas avec huit débris');
+        ecMockState('debris',{meduse:8});
+        if(!await powerAwaken('meduse'))out.push('le pouvoir ne s\'éveille pas avec huit débris');
         if(!powerUnlocked('meduse'))out.push('le pouvoir éveillé n\'est pas retenu');
         if(debrisCount('meduse')!==0)out.push('les débris ne sont pas dépensés');
         if(!playerPowerList().includes('meduse'))out.push('le pouvoir éveillé ne part pas en partie');
         // Un coffre de la Diagonale attend qu'on le touche.
-        accSet('voie_chests',[]);
         const claimed=accGet('voie_rewards_claimed',[]);
         const ch=UNLOCK_TABLE.find(u=>u.reward==='chest'&&!claimed.includes(u.id));
         if(ch){
-          vvCheckRewardMilestones(ch.eloRequired-1,ch.eloRequired);
-          if(!accGet('voie_chests',[]).includes(ch.id))out.push('le coffre de la Diagonale n\'attend pas sur le chemin');
-          accSet('voie_rewards_claimed',claimed);
+          const st=copie();st.voie_chests=[];
+          ecoMilestones(st,ch.eloRequired-1,ch.eloRequired);
+          if(!st.voie_chests.includes(ch.id))out.push('le coffre de la Diagonale n\'attend pas sur le chemin');
         }
       }finally{
-        VV_UNLOCKED=new Set(keep.unl);vvSaveUnlocked(VV_UNLOCKED);
-        accSet('inventory',JSON.parse(keep.inv));accSet('debris',JSON.parse(keep.deb));
-        accSet('unlocked_powers',JSON.parse(keep.pow));accSet('chest_dry',keep.dry);accSet('voie_chests',JSON.parse(keep.vc));
+        ecMockState('unlocked_pieces',keep.unl);VV_UNLOCKED=new Set(keep.unl);
+        ecMockState('inventory',JSON.parse(keep.inv));ecMockState('debris',JSON.parse(keep.deb));
+        ecMockState('unlocked_powers',JSON.parse(keep.pow));ecMockState('chest_dry',keep.dry);ecMockState('voie_chests',JSON.parse(keep.vc));
       }
       return out;
     });
@@ -2872,8 +2925,8 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
       const permis=['roi','dame','cavalier-primordial','garde-pierre','meduse'];
       const out=[];
       try{
+        ecMockState('inventory',{});           // rien en stock : seul le déblocage compte
         VV_UNLOCKED=new Set(permis);
-        invSaveAll({});                        // rien en stock : seul le déblocage compte
         const ok=new Set(permis);
         AI_OPPONENTS.forEach(o=>{
           for(let i=0;i<15;i++){
@@ -2892,7 +2945,7 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
           out.push('un compte neuf ne produit plus d\'armée adverse complète');
       }finally{
         VV_UNLOCKED=avant.unlocked;
-        invSaveAll(avant.inv);
+        ecMockState('inventory',avant.inv);
       }
       return [...new Set(out)];
     });
@@ -2920,7 +2973,6 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
       const vides=PIECES.filter(p=>isOwnablePiece(p.id)&&invCount(p.id)<pieceDeployCount(p.id)).map(p=>p.id);
       if(vides.length)out.push('sans stock : '+vides.join(','));
       if(!pearlInfinite())out.push('perles non illimitees');
-      if(!pearlSpend(chestPearlPrice('roi')))out.push('achat de coffre refuse');
       // Rien ne doit avoir été écrit sur le compte. L'inventaire vit
       // maintenant dans la fiche du serveur (ECP.state) : on l'y lit.
       const inv=(ECP&&ECP.state&&ECP.state.inventory)||null;
@@ -3776,13 +3828,14 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
     const seed=await page.evaluate(async()=>{
       const ids=['roi','dame','amazone','garde-pierre','meduse','fourmi',
                  'preux-chevalier','banshee','pretre','typhon'];
-      VV_UNLOCKED=new Set(ids);vvSaveUnlocked(VV_UNLOCKED);
+      ecMockState('unlocked_pieces',ids);VV_UNLOCKED=new Set(ids);
+      ecMockState('inventory',Object.assign({},accGet('inventory',{}),Object.fromEntries(ids.map(id=>[id,10]))));
       pArmy={mon:PIECES.find(p=>p.id==='roi'),gen:PIECES.find(p=>p.id==='amazone'),
              extras:['meduse','preux-chevalier','fourmi'].map(id=>PIECES.find(p=>p.id===id))};
       pEditId=null;pAutosave();
       const rec=buildReplayRecord(GS);
-      await ecReportMatch({result:'win',ranked:true,opp_elo:900,opp_name:'Cinabre',
-                           mode:'ia',army:['meduse'],replay:rec});
+      // Une vraie partie, ouverte et déclarée au serveur du bac à sable.
+      await ecMockMatch('win',{ai:'cinabre',replay:rec});
       return{rec:!!rec};
     });
     if(!seed.rec)throw new Error('aucune partie rejouable à déclarer');
@@ -4450,7 +4503,7 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
   });
 
   // ================================================================
-  // LA GUERRE DES CLANS (supabase/migrations/001-guerre-des-clans.sql,
+  // LA GUERRE DES CLANS (supabase/schema.sql,
   // js/server.js, js/blason.js, js/clans.js)
   // ================================================================
   // LA MIGRATION ET LE SCHÉMA SONT DEUX COPIES DU MÊME SQL. Une base neuve
@@ -4458,28 +4511,100 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
   // fonction diffère d'un fichier à l'autre, deux serveurs du même jeu ne
   // comptent plus les points de guerre pareil. On compare donc, fonction par
   // fonction, chaque corps de la migration à son jumeau du schéma.
-  await step('la migration des clans dit la même chose que le schéma',async()=>{
-    const sch=fs.readFileSync(path.join(ROOT,'supabase/schema.sql'),'utf8');
-    const mig=fs.readFileSync(path.join(ROOT,'supabase/migrations/001-guerre-des-clans.sql'),'utf8');
-    const grab=t=>{
-      const FN=/create or replace function public\.(\w+)\([\s\S]*?\$\$;/g,o={};let m;
-      while((m=FN.exec(t)))o[m[1]]=m[0].replace(/\s+/g,' ');
-      return o;
-    };
-    const a=grab(mig),b=grab(sch),bad=[];
-    const names=Object.keys(a);
-    if(names.length<30)bad.push('la migration ne porte que '+names.length+' fonctions');
-    names.forEach(n=>{
-      if(!b[n])bad.push(n+' manque au schéma');
-      else if(a[n]!==b[n])bad.push(n+' diffère du schéma');
+  // UNE PARTIE DE BOUT EN BOUT : le bouton lance, le serveur ouvre le billet
+  // et retire les pièces engagées, la fin de partie déclare, le serveur
+  // règle. Un rechargement en pleine partie est une défaite.
+  await step('une partie s\'ouvre au serveur, se déclare, et un abandon se paie',async()=>{
+    const r=await page.evaluate(async()=>{
+      const out=[];
+      goToMainMenu();
+      const army=savedArmies[0];
+      if(!army)return['aucune armée pour jouer'];
+      const need=armyRequirements(army);
+      const id=Object.keys(need)[0];
+      ecMockState('inventory',Object.assign({},accGet('inventory',{}),Object.fromEntries(Object.keys(need).map(k=>[k,20]))));
+      const avant=invCount(id),parties=(ECP.history||[]).length;
+      startAiBattle(army);
+      for(let i=0;i<40&&!(GS&&GS.ticket);i++)await new Promise(z=>setTimeout(z,100));
+      if(!GS||!GS.ticket)return['la partie n\'a pas reçu de billet du serveur'];
+      if(invCount(id)!==avant-need[id])out.push('les pièces engagées n\'ont pas quitté l\'inventaire ('+avant+' → '+invCount(id)+')');
+      if(typeof gameUndoAllowed==='function'&&gameUndoAllowed(GS))out.push('l\'annulation est offerte en partie classée');
+      // Une minute de partie, puis la victoire.
+      const db=ecMockLoad();db.matches[GS.ticket].created_at-=60000;ecMockSave(db);
+      GS.gameOver=true;triggerEndOfGame('win');
+      for(let i=0;i<60&&(ECP.history||[]).length===parties;i++)await new Promise(z=>setTimeout(z,100));
+      const h=(ECP.history||[]).slice(-1)[0];
+      if(!h||h.result!=='win'||!h.ranked)out.push('la victoire n\'a pas été réglée par le serveur : '+JSON.stringify(h));
+      document.getElementById('result-modal')?.classList.remove('active');
+      for(let i=0;i<40&&document.getElementById('chest-modal')?.classList.contains('show');i++)
+        document.getElementById('chest-modal').click();
+      // Une deuxième partie, laissée ouverte : au retour, c'est une défaite.
+      goToMainMenu();
+      startAiBattle(army);
+      for(let i=0;i<40&&!(GS&&GS.ticket&&!GS.gameOver);i++)await new Promise(z=>setTimeout(z,100));
+      const t2=GS&&GS.ticket;
+      if(!t2)return out.concat(['la seconde partie n\'a pas de billet']);
+      await ecLogin();
+      const m=ecMockLoad().matches[t2];
+      if(!m||m.result!=='loss'||m.settle_reason!=='abandon')out.push('une partie quittée n\'est pas comptée comme une défaite : '+JSON.stringify(m&&{r:m.result,why:m.settle_reason}));
+      GS.gameOver=true;_endGameTriggered=true;stopClockTick(GS);
+      goToMainMenu();
+      return out;
     });
-    // UNE MIGRATION NE DÉTRUIT RIEN : pas un DROP hors des commentaires.
-    if(/\bdrop\s+(table|function|schema)\b/i.test(mig.replace(/--.*$/gm,'')))bad.push('la migration contient un DROP');
-    // LES FONCTIONS INTERNES QUI ÉCRIVENT SONT RETIRÉES DE PUBLIC : sinon la
-    // clé publique du jeu suffirait à se donner des points de guerre.
-    for(const f of ['ec_clan_on_match','ec_clan_log','ec_clan_remove'])
-      for(const [nom,t] of [['migration',mig],['schéma',sch]])
-        if(!new RegExp('revoke all on function public\\.'+f+'\\(').test(t))bad.push(f+' reste appelable par tous ('+nom+')');
+    if(r.length)throw new Error(r.join(' · '));
+  });
+
+  // EN LIGNE : les deux camps calculent le même salon secret à partir de leurs
+  // clés ECDH, et le serveur ouvre la partie contre le compte adverse, dont il
+  // donne lui-même le nom et l'ELO.
+  await step('en ligne : salon secret partagé, et billet ouvert contre le vrai compte adverse',async()=>{
+    const r=await page.evaluate(async()=>{
+      const out=[];
+      const a=await mpEcdhNew(),b=await mpEcdhNew(),c=await mpEcdhNew();
+      const ra=await mpEcdhRoom('q-',a,b.pub),rb=await mpEcdhRoom('q-',b,a.pub),rc=await mpEcdhRoom('q-',c,a.pub);
+      if(ra!==rb)out.push('les deux camps ne calculent pas le même salon');
+      if(ra===rc)out.push('un tiers calcule le même salon');
+      if(!/^q-[0-9a-f]{32}$/.test(ra))out.push('nom de salon inattendu : '+ra);
+      if(MP.myId.length<32)out.push('identifiant de salon trop court : '+MP.myId);
+      // Un adversaire réel, dans le bac à sable.
+      const sec='y'.repeat(32);
+      const y=await ecMockRpc('ec_signup',{p_username:'Rival Omega',p_secret:sec});
+      const db=ecMockLoad();db.players[y.id].elo=640;ecMockSave(db);
+      const garde={oppPid:MP.oppPid,roomCode:MP.roomCode,gameSeq:MP.gameSeq,myArmy:MP.myArmy};
+      try{
+        MP.oppPid=y.id;MP.roomCode=ra;MP.gameSeq=0;MP.myArmy=savedArmies[0];
+        MP.oppName='Usurpateur';MP.oppElo=4000;
+        ecMockState('inventory',Object.assign({},accGet('inventory',{}),Object.fromEntries(Object.keys(armyRequirements(savedArmies[0])).map(k=>[k,20]))));
+        const t=await mpOpenTicket();
+        if(!t||!t.ticket)out.push('aucun billet ouvert pour la partie en ligne');
+        else{
+          if(MP.oppName!=='Rival Omega')out.push('le nom affiché n\'est pas celui du serveur : '+MP.oppName);
+          if(MP.oppElo!==640)out.push('l\'ELO adverse n\'est pas celui du serveur : '+MP.oppElo);
+          const m=ecMockLoad().matches[t.ticket];
+          if(!m||m.room!==ra+':0'||m.opp_player!==y.id)out.push('le billet ne porte pas le salon et le compte adverses');
+        }
+        // On referme la partie ouverte : au prochain passage, c'est un abandon.
+        await ecLogin();
+      }finally{Object.assign(MP,garde);}
+      return out;
+    });
+    if(r.length)throw new Error(r.join(' · '));
+  });
+
+  // LE SCHÉMA EST AUSSI LA MIGRATION : il se rejoue sur une base en service
+  // sans rien détruire (la remise à zéro vit à part, dans supabase/reset.sql).
+  // Ses fonctions sont éprouvées contre un vrai Postgres par
+  // tools/tests/sql.test.js ; ici on vérifie ce qui se lit dans le texte.
+  await step('le schéma se rejoue sans rien détruire, et ferme ses fonctions internes',async()=>{
+    const sch=fs.readFileSync(path.join(ROOT,'supabase/schema.sql'),'utf8');
+    const bad=[];
+    if(/\bdrop\s+(table|function|schema)\b/i.test(sch.replace(/--.*$/gm,'')))bad.push('le schéma contient un DROP');
+    if(/create table public\./i.test(sch))bad.push('une table est créée sans « if not exists »');
+    if(!fs.existsSync(path.join(ROOT,'supabase/reset.sql')))bad.push('supabase/reset.sql manque');
+    if(!/revoke execute on all functions in schema public from public, anon, authenticated/.test(sch))
+      bad.push('les fonctions ne sont pas toutes fermées avant d\'ouvrir la liste');
+    for(const f of ['ec_clan_on_match','ec_clan_log','ec_clan_remove','ec_match_apply'])
+      if(!new RegExp('revoke all on function public\\.'+f+'\\(').test(sch))bad.push(f+' reste appelable par tous');
     if(bad.length)throw new Error(bad.join(' · '));
   });
 
@@ -4530,29 +4655,63 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
     const r=await page.evaluate(async()=>{
       const out=[];
       const R=(fn,a)=>ecMockRpc(fn,a).then(x=>x,e=>({__err:e.message}));
-      const A=await R('ec_signup',{p_username:'Recrue Alpha',p_secret:'a'.repeat(32)});
-      const a={p_id:A.id,p_secret:'a'.repeat(32)};
+      // Les parties s'ouvrent au serveur (billet) et s'y déclarent ; en ligne,
+      // les deux camps déclarent, et c'est leur accord qui compte.
+      // L'armée part avec ses pouvoirs éveillés, comme dans le jeu
+      // (armyWithPowers) : c'est sous cette forme que l'adversaire la voit.
+      const ARMY={mon:'roi',gen:'dame',extras:['garde-pierre','fourmi','dresseur-elephant'],
+                  powers:['garde-pierre','fourmi','dresseur-elephant']};
+      const patch=(acc,f)=>{const db=ecMockLoad();f(db.players[acc.p_id]);ecMockSave(db);};
+      const mk=async(name,ch,elo)=>{
+        const sec=ch.repeat(32);
+        const P=await R('ec_signup',{p_username:name,p_secret:sec});
+        const acc={p_id:P.id,p_secret:sec};
+        await R('ec_eco',{...acc,p_action:'tuto',p_arg:{}});
+        patch(acc,p=>{p.state.inventory=Object.fromEntries(['roi','dame','garde-pierre','fourmi','dresseur-elephant'].map(k=>[k,999]));
+          if(elo){p.elo=elo;p.elo_peak=elo;}});
+        return acc;
+      };
+      const age=t=>{const db=ecMockLoad();if(db.matches[t])db.matches[t].created_at-=60000;ecMockSave(db);};
+      const iaGame=async(acc,res)=>{
+        const t=await R('ec_match_begin',{...acc,p_payload:{mode:'ia',ai:'suie',army:ARMY}});
+        if(t.__err)return t;age(t.ticket);
+        return R('ec_report_match',{...acc,p_payload:{ticket:t.ticket,result:res,survivors:{}}});
+      };
+      let salle=0;
+      const online=async(acc,opp,res)=>{
+        const room='q-essai-'+(++salle)+'-'+Date.now();
+        const ta=await R('ec_match_begin',{...acc,p_payload:{mode:'ligne',opp:opp.p_id,room,army:ARMY}});
+        const tb=await R('ec_match_begin',{...opp,p_payload:{mode:'ligne',opp:acc.p_id,room,army:ARMY}});
+        if(ta.__err||tb.__err)return ta.__err?ta:tb;
+        await R('ec_report_match',{...opp,p_payload:{ticket:tb.ticket,result:res==='win'?'loss':res==='loss'?'win':'draw',opp_army:ARMY}});
+        return R('ec_report_match',{...acc,p_payload:{ticket:ta.ticket,result:res,opp_army:ARMY}});
+      };
+      const a=await mk('Recrue Alpha','a');
       const r0=await R('ec_clan_create',{...a,p_name:'Les Testeurs',p_tag:'TST',p_blazon:{},p_motto:0,p_recruit:'open',p_min_elo:0});
       if(!r0.__err)out.push('un compte sans partie classée a fondé un clan');
-      for(let i=0;i<3;i++)await R('ec_report_match',{...a,p_payload:{result:'win',opp_elo:300,mode:'ia'}});
+      for(let i=0;i<3;i++)await iaGame(a,'win');
       const c=await R('ec_clan_create',{...a,p_name:'Les Testeurs',p_tag:'tst',p_blazon:{s:99,d:2},p_motto:42,p_recruit:'open',p_min_elo:0});
       if(c.__err)return['fondation refusée : '+c.__err];
       if(c.clan.tag!=='TST')out.push('le sigle n\'est pas mis en capitales');
       if(c.clan.blazon.s!==0||c.clan.blazon.d!==2)out.push('le blason n\'est pas borné champ par champ');
       if(c.clan.motto!==0)out.push('une devise hors bornes n\'est pas ramenée à zéro');
-      const B=await R('ec_signup',{p_username:'Recrue Beta',p_secret:'b'.repeat(32)});
-      const b={p_id:B.id,p_secret:'b'.repeat(32)};
-      for(let i=0;i<3;i++)await R('ec_report_match',{...b,p_payload:{result:'loss',opp_elo:300,mode:'ia'}});
+      const b=await mk('Recrue Beta','b');
+      for(let i=0;i<3;i++)await iaGame(b,'loss');
       const dup=await R('ec_clan_create',{...b,p_name:'Autre Clan',p_tag:'TST',p_blazon:{},p_motto:0,p_recruit:'open',p_min_elo:0});
       if(!dup.__err)out.push('deux clans portent le même sigle');
       const j=await R('ec_clan_join',{...b,p_clan:c.clan.id});
       if(j.__err||!j.clan||j.clan.id!==c.clan.id)out.push('impossible de rejoindre un clan ouvert ('+(j.__err||'')+')');
       // Une victoire EN LIGNE contre plus fort : 10 + exploit, ×1,5.
-      const m=await R('ec_report_match',{...b,p_payload:{result:'win',opp_elo:900,mode:'ligne'}});
-      if(!m.clan||!(m.clan.points>15))out.push('une victoire classée en ligne ne rapporte pas ses points de guerre ('+JSON.stringify(m.clan)+')');
-      const nr=await R('ec_report_match',{...b,p_payload:{result:'win',opp_elo:900,mode:'ia',ranked:false}});
-      if(nr.clan)out.push('une partie non classée rapporte des points de guerre');
-      for(let i=0;i<12;i++)await R('ec_report_match',{...b,p_payload:{result:'win',opp_elo:2000,mode:'ligne'}});
+      const fort=await mk('Recrue Gamma','g',900);
+      const m=await online(b,fort,'win');
+      if(!m.clan||!(m.clan.points>15))out.push('une victoire classée en ligne ne rapporte pas ses points de guerre ('+JSON.stringify(m.clan||m.__err)+')');
+      // Contre un compte admin, rien ne se classe, pour personne.
+      const adm=await mk('Recrue Delta','d',900);
+      patch(adm,p=>{p.is_admin=true;});
+      const nr=await online(b,adm,'win');
+      if(nr.clan||nr.ranked)out.push('une partie non classée rapporte des points de guerre');
+      const titan=await mk('Recrue Epsilon','e',2000);
+      for(let i=0;i<12;i++){patch(titan,p=>{p.elo=2000;});await online(b,titan,'win');}
       const mine=await R('ec_clan_mine',b);
       if(mine.me.day_points!==120)out.push('le plafond quotidien ne tient pas ('+mine.me.day_points+' au lieu de 120)');
       if(mine.clan.week_rank!==1)out.push('le seul clan qui a combattu n\'est pas premier du front');
