@@ -35,7 +35,9 @@ catch(e){
 }
 
 const ROOT=path.resolve(__dirname,'..');
-const PORT=8123;
+// Le port se règle par SMOKE_PORT : plusieurs essais peuvent ainsi tourner
+// en même temps (un par copie de travail) sans se disputer le 8123.
+const PORT=+process.env.SMOKE_PORT||8123;
 const MIME={'.html':'text/html','.js':'text/javascript','.css':'text/css','.svg':'image/svg+xml',
   '.png':'image/png','.webp':'image/webp','.mp3':'audio/mpeg','.json':'application/json','.txt':'text/plain',
   '.webmanifest':'application/manifest+json','.xml':'application/xml'};
