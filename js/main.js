@@ -320,6 +320,51 @@ const fmtDate=ts=>{const d=new Date(ts);return d.toLocaleDateString('fr-FR',{day
 // aucun des deux n'existe. Un déposer-et-ça-marche en deux temps, jamais un
 // trou : c'est le même repli que les portraits d'adversaires, doublé d'un
 // palier.
+// ----------------------------------------------------------------
+// GESTES SANS ATTRIBUT on*= : la politique de sécurité du site
+// ----------------------------------------------------------------
+// Le site interdit tout JavaScript écrit dans le HTML (`script-src 'self'`,
+// voir vercel.json) : c'est ce qui empêche un texte injecté de devenir du
+// code. Les `onclick=`/`onerror=` qui parsemaient les gabarits ne
+// s'exécuteraient donc plus. Ils sont remplacés par trois attributs, lus ici
+// une fois pour tout le document :
+//   data-act="nomDeFonction" data-args='[…]'   un clic appelle la fonction
+//                                               globale, avec ces arguments
+//   data-enter="nomDeFonction" data-args='[…]' la touche Entrée, pareil
+//   data-onerr="remove|seal|rank|retry"         une image qui manque
+function ecImgFallback(t){
+  const k=t.dataset.onerr;
+  if(k==='remove')t.remove();
+  else if(k==='seal'){if(t.parentNode)t.parentNode.innerHTML=t.dataset.seal||'';}
+  else if(k==='rank'){if(typeof rankMedalErr==='function')rankMedalErr(t);}
+  else if(k==='retry'){if(t.dataset.retry||!t.dataset.alt)t.remove();else{t.dataset.retry=1;t.src=t.dataset.alt;}}
+}
+function ecActCall(el,name){
+  const fn=window[name];
+  if(typeof fn!=='function')return;
+  let args=[];
+  try{args=JSON.parse(el.dataset.args||'[]');}catch(e){args=[];}
+  fn.apply(el,Array.isArray(args)?args:[args]);
+}
+document.addEventListener('error',e=>{
+  const t=e.target;
+  if(t&&t.tagName==='IMG'&&t.dataset&&t.dataset.onerr)ecImgFallback(t);
+},true);
+document.addEventListener('click',e=>{
+  const el=e.target&&e.target.closest?e.target.closest('[data-act]'):null;
+  if(el)ecActCall(el,el.dataset.act);
+});
+document.addEventListener('keydown',e=>{
+  if(e.key!=='Enter')return;
+  const el=e.target&&e.target.closest?e.target.closest('[data-enter]'):null;
+  if(el)ecActCall(el,el.dataset.enter);
+});
+// Les images du HTML ont pu échouer AVANT que ce script ne soit chargé (il
+// l'est en bas de page) : on rattrape celles qui sont déjà en erreur.
+document.querySelectorAll('img[data-onerr]').forEach(t=>{
+  if(t.complete&&t.naturalWidth===0&&t.getAttribute('src'))ecImgFallback(t);
+});
+
 function rankMedalErr(img){
   if(img.dataset.fallback){img.remove();return;}
   img.dataset.fallback='1';
@@ -337,7 +382,7 @@ function rankMedalHTML(rankId,cls){
   if(!rankId)return '';
   return '<img class="rank-medal '+(cls||'rm-sm')+'" alt="" aria-hidden="true"'+
     ' loading="lazy" decoding="async" width="96" height="96"'+
-    ' src="assets/ranks/'+rankId+'.webp" onerror="rankMedalErr(this)">';
+    ' src="assets/ranks/'+rankId+'.webp" data-onerr="rank">';
 }
 
 // ----------------------------------------------------------------

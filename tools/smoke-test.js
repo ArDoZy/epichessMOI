@@ -40,6 +40,15 @@ const MIME={'.html':'text/html','.js':'text/javascript','.css':'text/css','.svg'
   '.png':'image/png','.webp':'image/webp','.mp3':'audio/mpeg','.json':'application/json','.txt':'text/plain',
   '.webmanifest':'application/manifest+json','.xml':'application/xml'};
 
+// LES EN-TÊTES DE SÉCURITÉ DU SITE (vercel.json), servis tels quels : une
+// politique de sécurité (CSP) qui bloquerait un script, une image ou un appel
+// au serveur se lit dans la console, et le test échoue.
+const SITE_HEADERS=(()=>{
+  const v=JSON.parse(fs.readFileSync(path.join(ROOT,'vercel.json'),'utf8'));
+  const all=(v.headers||[]).find(h=>h.source==='/(.*)');
+  return Object.fromEntries(((all&&all.headers)||[]).map(h=>[h.key.toLowerCase(),h.value]));
+})();
+
 // Serveur statique minimal, qui rejoue les réécritures de vercel.json
 // (cleanUrls + /combat + /test) pour tester les mêmes adresses qu'en ligne.
 function serve(){
@@ -49,7 +58,7 @@ function serve(){
     else if(p==='/info')p='/info.html';
     const f=path.join(ROOT,p);
     if(!f.startsWith(ROOT)||!fs.existsSync(f)||fs.statSync(f).isDirectory()){res.writeHead(404);res.end('404');return;}
-    res.writeHead(200,{'content-type':MIME[path.extname(f)]||'application/octet-stream'});
+    res.writeHead(200,Object.assign({'content-type':MIME[path.extname(f)]||'application/octet-stream'},SITE_HEADERS));
     res.end(fs.readFileSync(f));
   });
 }

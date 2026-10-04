@@ -21,10 +21,13 @@
 //     sert toujours la version en ligne quand elle répond, et le cache ne
 //     sert qu'en secours. Une correction poussée ce matin arrive donc ce
 //     matin, comme sans service worker.
-//   · LES IMAGES ET LE SON : LE CACHE D'ABORD. Ce sont 8 Mo qui ne changent
-//     presque jamais, et les recharger à chaque visite est exactement ce
-//     qu'on veut éviter. Un changement d'illustration demande de monter
-//     CACHE_VERSION ci-dessous — c'est le prix, et il est assumé.
+//   · LES IMAGES ET LE SON : LE CACHE D'ABORD, MIS À JOUR EN ARRIÈRE-PLAN.
+//     Ce sont 8 Mo qui ne changent presque jamais : la copie gardée est
+//     servie tout de suite, et le fichier est redemandé derrière (une réponse
+//     304 de quelques octets s'il n'a pas changé). Une illustration retouchée
+//     sous le même nom arrive donc à la visite suivante sans qu'on ait à
+//     monter CACHE_VERSION — ce qui était, jusqu'à v8, la seule façon de la
+//     faire voir (l'historique ci-dessous).
 //
 //     ATTENTION : `isMedia` attrape aussi les .svg de assets/. Les cinq
 //     échiquiers et les onze planches d'orfèvrerie (assets/ui/) en font donc
@@ -46,6 +49,9 @@
 //     est redessiné, et les plaques vectorielles d'orfèvrerie ne sont plus
 //     posées. Monter le numéro purge ces planches orphelines des caches déjà
 //     remplis au lieu de les y laisser dormir.
+//     v9 marque l'économie tenue par le serveur, le SDK Supabase servi par
+//     le jeu (js/vendor/) et le passage des médias en mise à jour d'arrière-
+//     plan.
 //
 // -- METTRE À JOUR -------------------------------------------------------
 // Monter CACHE_VERSION suffit : l'ancien cache est effacé à l'activation, et
@@ -53,7 +59,7 @@
 // immédiatement plutôt qu'au prochain lancement.
 // ================================================================
 
-const CACHE_VERSION = 'epicchess-v8';
+const CACHE_VERSION = 'epicchess-v9';
 const CACHE_MEDIA   = CACHE_VERSION + '-media';
 const CACHE_SHELL   = CACHE_VERSION + '-shell';
 
@@ -106,14 +112,21 @@ self.addEventListener('fetch', e => {
   if (url.origin !== self.location.origin) return;
 
   if (isMedia(url)) {
-    // LE CACHE D'ABORD, le réseau ensuite — et on garde ce qu'on reçoit.
+    // LE CACHE D'ABORD, ET LA MISE À JOUR EN ARRIÈRE-PLAN. L'image ou le son
+    // gardé est servi tout de suite ; pendant ce temps on redemande le
+    // fichier, et la réponse remplace la copie. Une planche retouchée SOUS LE
+    // MÊME NOM arrive donc à la visite suivante, sans qu'il faille penser à
+    // monter CACHE_VERSION — c'était le seul cas où le cache mentait. La
+    // redemande passe par le cache HTTP du navigateur : pour un fichier qui
+    // n'a pas changé, c'est une réponse 304 de quelques octets.
     e.respondWith(
-      caches.match(req).then(hit => hit || fetch(req).then(res => {
-        if (res && res.ok) {
-          const copie = res.clone();
-          caches.open(CACHE_MEDIA).then(c => c.put(req, copie));
-        }
-        return res;
+      caches.open(CACHE_MEDIA).then(c => c.match(req).then(hit => {
+        const frais = fetch(req).then(res => {
+          if (res && res.ok) c.put(req, res.clone());
+          return res;
+        }).catch(() => hit);
+        if (hit) { e.waitUntil(frais.catch(() => {})); return hit; }
+        return frais;
       }))
     );
     return;

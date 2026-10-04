@@ -80,12 +80,12 @@ const updSlots=()=>{
     ?'<div class="comp-slot filled piece-card '+pieceRarityClass(p)+(eidx!=null?' draggable-slot':'')+
        '" data-pid="'+p.id+'"'+(eidx!=null?' draggable="true" data-eidx="'+eidx+'"':'')+'>'+
        pieceCardFaceHTML(p)+
-       '<div class="cs-rm" onclick="'+rm+'" title="Retirer">'+svgX+'</div>'+
+       '<div class="cs-rm" data-act="removePiece" data-args=\''+escH(JSON.stringify(rm))+'\' title="Retirer">'+svgX+'</div>'+
      '</div>'
     :'<div class="comp-slot'+(req?' cs-req '+cls:' cs-free')+'"><div class="cs-label">'+lbl+'</div><div class="cs-ph">'+(req?'':'+')+'</div></div>';
-  let h=mk('Monarque','Monarque',army.mon,"removePiece('mon')",null,true)
-       +mk('Général','Général',army.gen,"removePiece('gen')",null,true);
-  for(let i=0;i<3;i++)h+=mk(all[i]?.class||'','Libre',all[i],"removePiece('pc',"+i+")",all[i]?i:null,false);
+  let h=mk('Monarque','Monarque',army.mon,['mon'],null,true)
+       +mk('Général','Général',army.gen,['gen'],null,true);
+  for(let i=0;i<3;i++)h+=mk(all[i]?.class||'','Libre',all[i],['pc',i],all[i]?i:null,false);
   g.innerHTML=h;
   g.querySelectorAll('.comp-slot.filled[data-pid]').forEach(el=>{
     const open=e=>{

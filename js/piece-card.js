@@ -222,7 +222,7 @@ function pieceCardArtHTML(p){
   const base='assets/pieces/'+encodeURIComponent(p.id);
   return '<img class="piece-card-img" src="'+base+'.webp" alt="" '+
       'loading="lazy" decoding="async" width="640" height="960" '+
-      'onerror="if(this.dataset.retry){this.remove();}else{this.dataset.retry=1;this.src=\''+base+'.png\';}">'+
+      'data-onerr="retry" data-alt="'+base+'.png">'+
     '<span class="piece-card-svg">'+pieceIcon(p.id,'n')+'</span>';
 }
 
