@@ -4554,6 +4554,43 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
     if(r.length)throw new Error(r.join(' · '));
   });
 
+  // EN LIGNE : les deux camps calculent le même salon secret à partir de leurs
+  // clés ECDH, et le serveur ouvre la partie contre le compte adverse, dont il
+  // donne lui-même le nom et l'ELO.
+  await step('en ligne : salon secret partagé, et billet ouvert contre le vrai compte adverse',async()=>{
+    const r=await page.evaluate(async()=>{
+      const out=[];
+      const a=await mpEcdhNew(),b=await mpEcdhNew(),c=await mpEcdhNew();
+      const ra=await mpEcdhRoom('q-',a,b.pub),rb=await mpEcdhRoom('q-',b,a.pub),rc=await mpEcdhRoom('q-',c,a.pub);
+      if(ra!==rb)out.push('les deux camps ne calculent pas le même salon');
+      if(ra===rc)out.push('un tiers calcule le même salon');
+      if(!/^q-[0-9a-f]{32}$/.test(ra))out.push('nom de salon inattendu : '+ra);
+      if(MP.myId.length<32)out.push('identifiant de salon trop court : '+MP.myId);
+      // Un adversaire réel, dans le bac à sable.
+      const sec='y'.repeat(32);
+      const y=await ecMockRpc('ec_signup',{p_username:'Rival Omega',p_secret:sec});
+      const db=ecMockLoad();db.players[y.id].elo=640;ecMockSave(db);
+      const garde={oppPid:MP.oppPid,roomCode:MP.roomCode,gameSeq:MP.gameSeq,myArmy:MP.myArmy};
+      try{
+        MP.oppPid=y.id;MP.roomCode=ra;MP.gameSeq=0;MP.myArmy=savedArmies[0];
+        MP.oppName='Usurpateur';MP.oppElo=4000;
+        ecMockState('inventory',Object.assign({},accGet('inventory',{}),Object.fromEntries(Object.keys(armyRequirements(savedArmies[0])).map(k=>[k,20]))));
+        const t=await mpOpenTicket();
+        if(!t||!t.ticket)out.push('aucun billet ouvert pour la partie en ligne');
+        else{
+          if(MP.oppName!=='Rival Omega')out.push('le nom affiché n\'est pas celui du serveur : '+MP.oppName);
+          if(MP.oppElo!==640)out.push('l\'ELO adverse n\'est pas celui du serveur : '+MP.oppElo);
+          const m=ecMockLoad().matches[t.ticket];
+          if(!m||m.room!==ra+':0'||m.opp_player!==y.id)out.push('le billet ne porte pas le salon et le compte adverses');
+        }
+        // On referme la partie ouverte : au prochain passage, c'est un abandon.
+        await ecLogin();
+      }finally{Object.assign(MP,garde);}
+      return out;
+    });
+    if(r.length)throw new Error(r.join(' · '));
+  });
+
   // LE SCHÉMA EST AUSSI LA MIGRATION : il se rejoue sur une base en service
   // sans rien détruire (la remise à zéro vit à part, dans supabase/reset.sql).
   // Ses fonctions sont éprouvées contre un vrai Postgres par
