@@ -715,7 +715,7 @@ const UNLOCK_TABLE=[
 ];
 
 // L'ANCIENNE TABLE, gardée pour UNE seule chose : la migration des comptes
-// d'avant (accMigratePowers, js/accounts.js). Un compte qui avait franchi
+// d'avant (ec_eco_init, supabase/schema.sql). Un compte qui avait franchi
 // 1000 ELO possédait le Typhon sans l'avoir jamais écrit dans ses
 // déblocages — c'était recalculé au chargement à partir du sommet. Au passage
 // aux coffres, ces créatures sont écrites une bonne fois, avec leur pouvoir :

@@ -572,7 +572,17 @@ function closePieceSheet(){
 document.getElementById('psheet-power')?.addEventListener('click',e=>{
   const b=e.target.closest('[data-awaken]');if(!b)return;
   const id=b.dataset.awaken;
-  if(typeof powerAwaken!=='function'||!powerAwaken(id)){showNotif('Il manque encore des débris magiques.','err');return;}
+  if(typeof powerAwaken!=='function'||b.disabled)return;
+  // L'éveil se fait au serveur (ec_eco 'awaken') : la fiche s'allume quand
+  // il a répondu.
+  b.disabled=true;
+  powerAwaken(id).then(ok=>{
+    b.disabled=false;
+    if(!ok){showNotif('Il manque encore des débris magiques.','err');return;}
+    pieceAwakenShow(id);
+  }).catch(err=>{b.disabled=false;showNotif((err&&err.message)||'Éveil impossible.','err');});
+});
+function pieceAwakenShow(id){
   const p=PIECES.find(x=>x.id===id);
   document.getElementById('psheet-power').innerHTML=piecePowerHTML(p);
   const card=document.querySelector('#psheet-power .power-card');
@@ -582,7 +592,7 @@ document.getElementById('psheet-power')?.addEventListener('click',e=>{
   showNotif('Pouvoir éveillé : '+((pieceSplitAbility(p)||{}).name||p.name)+' !','ok');
   if(typeof pRenderCards==='function')pRenderCards();
   if(typeof renderReservePage==='function')try{renderReservePage();}catch(err){}
-});
+}
 document.getElementById('psheet-close')?.addEventListener('click',closePieceSheet);
 document.getElementById('psheet-scrim')?.addEventListener('click',closePieceSheet);
 document.addEventListener('keydown',e=>{

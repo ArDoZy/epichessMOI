@@ -141,7 +141,7 @@ function clanRefresh(){
     // pas une panne — on le dit tel quel plutôt qu'un « injoignable » qui
     // ferait chercher du côté du réseau.
     const missing=e&&(e.status===404||e.code==='PGRST202'||/Could not find the function/i.test(e.message||''));
-    _clan.err=missing?'La Guerre des clans n\'est pas encore ouverte sur ce serveur. Elle le sera dès l\'installation de sa mise à jour (supabase/migrations/001-guerre-des-clans.sql).'
+    _clan.err=missing?'La Guerre des clans n\'est pas encore ouverte sur ce serveur. Elle le sera dès l\'installation de sa mise à jour (supabase/schema.sql, à recoller dans Supabase).'
       :((e&&e.message)||'La guerre des clans est injoignable.');
   }).then(()=>{
     _clan.loading=false;
@@ -650,14 +650,16 @@ function clanOnAction(act,el,ev){
   }
 }
 
-// -- LE BUTIN : le serveur dit quel coffre, le jeu l'ouvre ---------------
+// -- LE BUTIN : le serveur dit quel coffre, et l'ouvre -------------------
+// Le tirage est fait par ec_clan_claim ; le jeu n'en joue que la cérémonie.
 function clanClaim(){
   clanAct(ecClanClaim(),null,r=>{
     if(!r||!r.chest)return;
+    if(r.state&&typeof ecAdoptState==='function')ecAdoptState(r.state);
     if(typeof playSound==='function')playSound('warhorn');
     if(_clan.mine)_clan.mine.claim=Object.assign({},_clan.mine.claim,{available:false,claimed:true});
     clanPaint();
-    if(typeof chestOpenNow==='function')setTimeout(()=>chestOpenNow(r.chest),260);
+    if(typeof chestShowLots==='function')setTimeout(()=>chestShowLots(r.chest,r.lots||[]),260);
   });
 }
 

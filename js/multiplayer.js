@@ -381,6 +381,9 @@ function mpBindRoomHandlers(channel){
     }
     MP.oppArmy=payload.army;
     MP.oppId=payload.senderId;
+    // Le COMPTE de l'adversaire : le serveur ouvre la partie contre lui
+    // (ec_match_begin) et y lit son vrai nom et son vrai ELO.
+    MP.oppPid=(payload.card&&typeof payload.card.pid==='string')?payload.card.pid:null;
     MP.oppName=(payload.card&&payload.card.name)||'Adversaire';
     MP.oppElo=(payload.card&&typeof payload.card.elo==='number')?payload.card.elo:null;
     mpSendArmy();
@@ -654,8 +657,38 @@ function mpStopArmyRetry(){
   if(MP.armyRetryId){clearInterval(MP.armyRetryId);MP.armyRetryId=null;}
 }
 
+// LE SERVEUR OUVRE LA PARTIE, des deux côtés, avant le premier coup : il
+// vérifie notre armée, retire les pièces engagées et lit l'adversaire en
+// base. Le salon (nom ECDH + numéro de la partie) relie les deux billets.
+function mpOpenTicket(){
+  const army=(typeof armyWithPowers==='function')?armyWithPowers(MP.myArmy):MP.myArmy;
+  return matchOpen({mode:'ligne',opp:MP.oppPid,room:MP.roomCode+':'+MP.gameSeq,army}).then(t=>{
+    if(t){
+      if(t.opp_name)MP.oppName=t.opp_name;
+      if(typeof t.opp_elo==='number')MP.oppElo=t.opp_elo;
+    }
+    return t;
+  });
+}
+function mpTicketFailed(e){
+  MP.opening=false;
+  const msg=(e&&e.message)||'Le serveur refuse d\'ouvrir la partie.';
+  mpStatus(msg,'err');
+  if(typeof showNotif==='function')showNotif(msg,'err');
+  mpLeave();
+}
+
 function mpTryStart(){
-  if(MP.started||!MP.oppArmy)return;
+  if(MP.started||!MP.oppArmy||MP.opening)return;
+  MP.opening=true;
+  mpOpenTicket().then(t=>{
+    MP.opening=false;
+    if(MP.started||MP.leaving)return;
+    _matchOpened=t;
+    mpBeginGame();
+  }).catch(mpTicketFailed);
+}
+function mpBeginGame(){
   MP.started=true;
   mpStopArmyRetry();
   mpLeaveLobby();
@@ -983,8 +1016,14 @@ function mpTryRematch(){
   aiArmyData=MP.oppArmy;
   _playerColor=MP.myColor;
   document.getElementById('result-modal')?.classList.remove('active');
-  startGame(true,true);
-  mpStartHeartbeat();
+  // Une revanche est une nouvelle partie : un nouveau billet.
+  MP.opening=true;
+  mpOpenTicket().then(t=>{
+    MP.opening=false;
+    _matchOpened=t;
+    startGame(true,true);
+    mpStartHeartbeat();
+  }).catch(mpTicketFailed);
 }
 
 // ----------------------------------------------------------------
@@ -1541,7 +1580,7 @@ function mpLeave(){
   if(typeof mpWaitStop==='function')mpWaitStop();
   mpDropChannel();
   mpLeaveLobby();
-  MP.started=false;MP.matched=false;MP.oppArmy=null;MP.roomCode=null;MP.log=[];
+  MP.started=false;MP.matched=false;MP.oppArmy=null;MP.roomCode=null;MP.log=[];MP.opening=false;MP.oppPid=null;
   MP.searchStartedAt=0;MP.waitStartedAt=0;
   MP.oppName=null;MP.oppElo=null;MP.oppId=null;
   MP.rematchMine=false;MP.rematchTheirs=false;

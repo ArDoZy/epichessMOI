@@ -152,7 +152,22 @@ function updateGamePlayerBars(){
 // et court-circuite la cinématique d'entrée : à ce stade le joueur n'a pas
 // encore d'armée, il n'y a rien à présenter.
 //   {battle, name, level, playerColor, board(), clockMin, armyIds:{mon,gen,extras}}
+// LE BILLET DE LA PARTIE. Toute partie qui compte s'ouvre d'abord au serveur
+// (ec_match_begin, voir ecMatchBegin dans js/server.js) : il y lit l'ELO et le
+// nom de l'adversaire, décide si elle est classée, vérifie que l'armée est
+// possédée et retire les pièces engagées. Les lanceurs (startAiBattle,
+// mpTryStart, mpTryRematch) attendent ce billet, le posent ici, puis appellent
+// startGame, qui le range dans GS. Le mode test n'en ouvre pas : il ne
+// compte pour rien.
+let _matchOpened=null;
+function matchOpen(payload){
+  if(typeof vvAdmin==='function'&&vvAdmin())return Promise.resolve(null);
+  return ecMatchBegin(payload);
+}
+
 function startGame(colorAlreadyChosen,multiplayer,tutoCfg){
+  const ticket=tutoCfg?null:_matchOpened;
+  _matchOpened=null;
   _endGameTriggered=false;
   stopCombatMusicImmediate();
   if(!tutoCfg&&(!currentArmyData||!aiArmyData)){showNotif('Aucune armée sélectionnée.');return;}
@@ -167,7 +182,9 @@ function startGame(colorAlreadyChosen,multiplayer,tutoCfg){
   // jamais eu entre les mains. En ligne, l'armée d'en face arrive avec sa
   // propre liste (mpSendArmy, js/multiplayer.js).
   const myPowers=(!tutoCfg&&typeof playerPowerList==='function')?playerPowerList():null;
-  const meArmy=(!tutoCfg&&myPowers)?armyWithPowers(currentArmyData,myPowers):currentArmyData;
+  // Les pouvoirs du joueur sont ceux que le serveur a vérifiés au billet.
+  const meArmy=(ticket&&ticket.army)?armyWithPowers(currentArmyData,ticket.army.powers||[])
+    :(!tutoCfg&&myPowers)?armyWithPowers(currentArmyData,myPowers):currentArmyData;
   const foeArmy=(!tutoCfg&&myPowers&&!multiplayer)?armyWithPowers(aiArmyData,myPowers):aiArmyData;
   const whiteSideArmy=playerIsWhite?meArmy:foeArmy;
   const blackSideArmy=playerIsWhite?foeArmy:meArmy;
@@ -189,15 +206,16 @@ function startGame(colorAlreadyChosen,multiplayer,tutoCfg){
   const powersOf=a=>armyPowerSet(a);
   GS={board:[],turn:'w',selected:null,legalMoves:[],history:[],enPassant:null,halfmoveClock:0,gameOver:false,playerArmy,aiArmy,playerColor:_playerColor,aiColor:_aiColor,multiplayer:!!multiplayer,tuto:tutoCfg||null,movePairs:[],capturedW:[],capturedB:[],pendingPromo:null,medusaParalyzed:new Set(),lastMove:null,anchored:new Set(),pretreProtected:new Set(),amazonePostCapture:null,grandMaitreAlive:{w:false,b:false},gardePierreUsed:{w:false,b:false},turnCount:0,historyView:null,lastMoveHistory:[],clockMs,incrementMs,timeWhite:clockMs,timeBlack:clockMs};
   GS.powers=tutoCfg?{w:null,b:null}:{w:powersOf(whiteSideArmy),b:powersOf(blackSideArmy)};
+  GS.ticket=ticket?ticket.ticket:null;
+  GS.engaged=ticket?ticket.engaged||{}:null;
+  GS.startedAt=Date.now();
   GS.board=tutoCfg?tutoCfg.board():buildGameBoard(whiteSideArmy,blackSideArmy);
   // Le journal des coups garde le contenu de la partie PRÉCÉDENTE tant qu'un
   // premier coup n'a pas été joué : on le vide ici, en même temps que GS.
   if(typeof renderMoveLog==='function')renderMoveLog(GS);
   updateMedusaParalysis(GS.board,GS);updatePretreProtection(GS.board,GS);updateGrandMaitre(GS.board,GS);updateMatriarche(GS.board,GS);
-  // Les exemplaires quittent la Guerre des clans MAINTENANT : ils sont sur le terrain
-  // et donc en jeu (voir js/economy.js, en-tête). Rien de tel en tutoriel :
-  // ces pièces sont prêtées par l'Alchimiste, les perdre ne coûte rien.
-  if(!tutoCfg&&typeof economyCommit==='function')economyCommit(currentArmyData);
+  // Les exemplaires engagés ont déjà quitté l'inventaire : le serveur les a
+  // retirés à l'ouverture du billet (ec_match_begin).
   // Une partie contre un autre joueur a sa propre adresse (voir setAppPath
   // dans js/main.js) : /combat. Elle revient à l'adresse d'origine dès qu'on
   // quitte la partie.
@@ -406,6 +424,38 @@ document.getElementById('result-revanche').addEventListener('click',()=>{
 // FIN DE PARTIE : calcule le nouvel ELO et déclenche le modal de résultat.
 // ----------------------------------------------------------------
 let _endGameTriggered=false;
+// Redemande le règlement d'une partie en ligne, le temps que l'adversaire
+// déclare la sienne : cinq essais, deux secondes d'écart.
+function matchAwait(ticket){
+  let tries=0;
+  const once=()=>new Promise(r=>setTimeout(r,2000)).then(()=>ecMatchStatus(ticket)).then(v=>{
+    if(v&&v.status==='settled')return v;
+    if(++tries>=5)return v;
+    return once();
+  }).catch(()=>null);
+  return once();
+}
+// Ce que le règlement du serveur a d'inhabituel, en une phrase.
+function matchReasonText(r){
+  if(!r)return null;
+  if(r.status==='pending')return 'En attente de la déclaration de votre adversaire : le résultat sera confirmé dans un instant.';
+  switch(r.reason){
+    case 'short':return 'Partie trop courte pour compter : elle n\'est pas classée.';
+    case 'unmatched':return 'Votre adversaire n\'a pas pu être vérifié : la partie n\'est pas classée.';
+    case 'conflict':return 'Les deux camps ne déclarent pas la même issue : chacun reçoit la moins favorable.';
+    case 'cheat':return 'L\'armée alignée n\'était pas celle que le serveur avait vérifiée : la partie est perdue.';
+    case 'void':return 'L\'armée adverse n\'était pas conforme : la partie est annulée, vos pièces vous sont rendues.';
+    case 'opp-gone':return 'Votre adversaire a quitté la partie.';
+  }
+  return null;
+}
+function matchReasonNote(txt){
+  const el=document.getElementById('result-elo-note');
+  if(!el)return;
+  el.style.display='';
+  el.textContent=(el.textContent?el.textContent+' ':'')+txt;
+}
+
 function triggerEndOfGame(result){
   // La partie est finie : un prémouvement inscrit n'a plus de tour où partir,
   // et ses deux cases violettes resteraient allumées sur le plateau final.
@@ -431,12 +481,10 @@ function triggerEndOfGame(result){
   const noEloReason=(typeof vvNoEloReason==='function')?vvNoEloReason(GS):null;
 
   // -- CE QUI EST ENVOYÉ AU SERVEUR ------------------------------------
-  // Le jeu DÉCLARE une partie, il n'annonce pas un classement : c'est le
-  // serveur qui recalcule l'ELO (ec_report_match, supabase/schema.sql) et
-  // renvoie la fiche à jour. Trafiquer le navigateur ne rapporte donc rien.
-  const armee=(currentArmyData&&Array.isArray(currentArmyData.extras))
-    ?currentArmyData.extras.slice(0,3):[];
-  const mode=GS.multiplayer?'ligne':'ia';
+  // Le jeu DÉCLARE l'issue de la partie que le serveur a ouverte (son
+  // billet, GS.ticket) : l'adversaire, son ELO, l'armée et le fait qu'elle
+  // compte sont déjà inscrits au billet, le navigateur n'en dit plus rien.
+  // En ligne, l'issue déclarée est confrontée à celle de l'adversaire.
   // LA PARTIE ELLE-MÊME, ET PAS SEULEMENT SON RÉSULTAT. Une ligne
   // d'historique ne portait qu'un verdict et un écart d'ELO : aucune partie
   // n'était relisible, ni la sienne d'hier ni celle du joueur qu'on
@@ -445,7 +493,6 @@ function triggerEndOfGame(result){
   // js/rules-engine.js). C'est le mode analyse des profils (js/replay.js).
   const rejouable=(typeof buildReplayRecord==='function')?buildReplayRecord(GS):null;
   const foeId=(!GS.multiplayer&&typeof aiCurrentOpponent==='function')?aiCurrentOpponent().id:null;
-  const foeName=GS.multiplayer?(MP&&MP.oppName)||'Adversaire':foeId;
   if(foeId&&typeof advNoteResult==='function')advNoteResult(foeId,result);
 
   // LE CALCUL LOCAL N'EST QU'UNE PRÉVISION. Il tourne quand même, avec la
@@ -459,13 +506,30 @@ function triggerEndOfGame(result){
     preview={old:oldElo,neu:eloCalc.newElo,delta:eloCalc.delta};
   }
 
-  // Le MODE TEST (/?test) n'écrit rien du tout, pas même une ligne
-  // d'historique : on y entre et on en sort sans laisser de trace.
+  // Le MODE TEST (/?test) n'ouvre pas de billet, et n'écrit donc rien du
+  // tout : on y entre et on en sort sans laisser de trace.
   let report=null;
-  const reportP=(typeof vvAdmin==='function'&&vvAdmin())?Promise.resolve(null):ecReportMatch({
-    result,ranked:!noEloReason,opp_elo:aiElo,opp_name:foeName,mode,army:armee,
+  const moves=(typeof laurelsMoveCount==='function')?laurelsMoveCount(GS):null;
+  const payload=GS.ticket?{
+    ticket:GS.ticket,result,
+    survivors:(typeof countSurvivors==='function')?countSurvivors(GS):{},
+    moves:Number.isFinite(moves)?moves:null,
+    events:GS.questEvents||{},
+    promos:GS.promos||[],
     replay:rejouable,
-  }).then(r=>{report=r;return r;}).catch(e=>{
+    // L'armée que l'adversaire a alignée sous nos yeux : le serveur la
+    // compare à celle qu'il avait fait vérifier.
+    opp_army:(GS.multiplayer&&typeof MP!=='undefined'&&MP.oppArmy)?MP.oppArmy:undefined,
+  }:null;
+  GS._reported=!!payload;
+  const reportP=!payload?Promise.resolve(null):ecReportMatch(payload).then(r=>{
+    report=r;
+    // EN LIGNE, LE SERVEUR ATTEND LA PAROLE DE L'AUTRE CAMP. On la redemande
+    // quelques secondes ; au-delà, le battement de présence (ec_touch)
+    // rapportera le règlement quand il viendra.
+    if(r&&r.status==='pending')return matchAwait(GS.ticket).then(v=>{if(v)report=v;return report;});
+    return r;
+  }).catch(e=>{
     // Le rapport est mis de côté et rejoué au prochain lancement
     // (ecPushPendingMatch, js/server.js). On ne bloque pas la fin de partie
     // pour autant : le joueur a le droit de voir son résultat.
@@ -479,9 +543,10 @@ function triggerEndOfGame(result){
   const REPORT_WAIT=3500;
   const showModal=()=>{
     const paint=()=>{
-      const oe=report?report.old_elo:preview.old;
-      const ne=report?report.new_elo:preview.neu;
-      const dl=report?report.delta:preview.delta;
+      const done=!!(report&&report.status==='settled');
+      const oe=done?report.old_elo:preview.old;
+      const ne=done?report.new_elo:preview.neu;
+      const dl=done?report.delta:preview.delta;
       // Les déblocages se lisent sur l'écart RÉELLEMENT enregistré : les
       // calculer sur la prévision offrirait — ou retirerait — une créature
       // sur la foi d'un nombre que le serveur n'a pas validé.
@@ -496,7 +561,11 @@ function triggerEndOfGame(result){
         if(typeof vvArenaNews==='function')arena=vvArenaNews(peakBefore,Math.max(ne,peakNow));
       }
       updateCab();
-      showResultModal(result,oe,ne,dl,newUnlocks,noEloReason,eloCalc,arena);
+      // Le serveur a pu ne pas classer la partie (trop courte, adversaire
+      // non vérifié, armée non conforme) : il le dit, et le modal le montre.
+      const serverReason=(!noEloReason&&report)?matchReasonText(report):null;
+      showResultModal((done&&report.result)||result,oe,ne,dl,newUnlocks,noEloReason||(done&&!report.ranked?serverReason:null),eloCalc,arena);
+      if(serverReason&&(!done||report.ranked))matchReasonNote(serverReason);
       // Les points de guerre que la partie vient de rapporter au clan
       // (ec_report_match → `clan`, js/clans.js). Rien sans clan.
       if(typeof clanResultNote==='function')clanResultNote(report);
