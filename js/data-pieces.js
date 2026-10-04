@@ -186,11 +186,11 @@ const DEFAULT_AI_LEVEL=aiOpponentIndex('instructeur');
 // Ce sont les teintes MOYENNES des cases telles que tools/gen-boards.js les
 // peint (couleur de base du matériau) : à reprendre si on y touche.
 const BOARD_SKINS=[
-  {id:'bois',   name:'Bois',   file:'assets/boards/bois.svg',   eloRequired:0,    sqLight:'#d3a565', sqDark:'#683b1b', desc:'Chêne blond et noyer, filet de laiton : le plateau de l\'atelier.'},
-  {id:'pierre', name:'Pierre', file:'assets/boards/pierre.svg', eloRequired:200,  sqLight:'#dedbd4', sqDark:'#47494e', desc:'Dalle de marbre veiné taillée au ciseau, sceau runique au cœur.'},
-  {id:'acier',  name:'Acier',  file:'assets/boards/acier.svg',  eloRequired:850,  sqLight:'#c3cad1', sqDark:'#465668', desc:'Acier damassé et bleui, incrusté d\'un fil d\'or.'},
-  {id:'argent', name:'Argent', file:'assets/boards/argent.svg', eloRequired:1800, sqLight:'#dde2e7', sqDark:'#56606b', desc:'Argent poli et niellé, gravé d\'arabesques.'},
-  {id:'or',     name:'Or',     file:'assets/boards/or.svg',     eloRequired:2400, sqLight:'#d8a640', sqDark:'#82470f', desc:'Or poli et or amati, cloutés d\'or. Il n\'y a rien au-delà.'},
+  {id:'bois',   name:'Bois',   file:'assets/boards/bois.svg',   eloRequired:0,    sqLight:'#cf9f5f', sqDark:'#734320', desc:'Chêne blond et noyer, filet de laiton : le plateau de l\'atelier.'},
+  {id:'pierre', name:'Pierre', file:'assets/boards/pierre.svg', eloRequired:200,  sqLight:'#c4bfb3', sqDark:'#4a4d54', desc:'Dalle de marbre veiné taillée au ciseau, sceau runique au cœur.'},
+  {id:'acier',  name:'Acier',  file:'assets/boards/acier.svg',  eloRequired:850,  sqLight:'#a9b2bb', sqDark:'#465668', desc:'Acier damassé et bleui, incrusté d\'un fil d\'or.'},
+  {id:'argent', name:'Argent', file:'assets/boards/argent.svg', eloRequired:1800, sqLight:'#bcc3cb', sqDark:'#56606b', desc:'Argent poli et niellé, gravé d\'arabesques.'},
+  {id:'or',     name:'Or',     file:'assets/boards/or.svg',     eloRequired:2400, sqLight:'#c99a36', sqDark:'#8a5512', desc:'Or poli et or bruni, filets d\'émail noir. Il n\'y a rien au-delà.'},
 ];
 
 // ----------------------------------------------------------------

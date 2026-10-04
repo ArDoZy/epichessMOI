@@ -104,7 +104,7 @@ const MATERIALS={
   // sceau est une rose des vents pyrogravée.
   bois:{
     light:{base:'#cf9f5f',hi:'#e3b979',lo:'#b38244'},
-    dark:{base:'#683b1b',hi:'#7f4d26',lo:'#4d2a10'},
+    dark:{base:'#734320',hi:'#8a572e',lo:'#562f13'},
     fil:[
       {k:'raies',raies:[[0,5],[11,3],[19,7],[31,4]],h:40,
         f:[.003,.022],o:2,d:46,L:['#a8723a',.32],D:['#3a1d08',.36]},
@@ -112,10 +112,10 @@ const MATERIALS={
         f:[.004,.03],o:2,d:34,L:['#7a4618',.34],D:['#2a1204',.42]},
       {k:'veines',f:[.012,.6],o:2,t:[0,0,0,.6,0,0,.5,0,0],L:['#8a5422',.2],D:['#1c0b02',.26]},
     ],
-    carreaux:.07,
+    carreaux:.055,
     biseau:{w:3.4,hi:'rgba(255,230,180,.36)',lo:'rgba(36,16,4,.5)'},
     filet:{w:2.1,bord:'#2a1505',metal:'#c99a42',eclat:'#f6d88c'},
-    sceau:{forme:'rose',fonce:'#2a1204',clair:'#ffe2b0',a:.12},
+    sceau:{forme:'rose',fonce:'#2a1204',clair:'#ffe2b0',a:.09},
     ombre:'#1e0d03',eclat:.14,
   },
   // LE MARBRE. Un marbre blanc-gris veiné de gris et d'un fil d'or pâle, une
@@ -124,18 +124,18 @@ const MATERIALS={
   // nomme ; elle reste FINE pour ne pas salir la case. Le sceau est un
   // anneau de runes taillé au ciseau.
   pierre:{
-    light:{base:'#d9d6cf',hi:'#ebe8e2',lo:'#c3bfb6'},
-    dark:{base:'#47494e',hi:'#585a60',lo:'#36373b'},
+    light:{base:'#c4bfb3',hi:'#d6d2c8',lo:'#aea89c'},
+    dark:{base:'#4a4d54',hi:'#5b5e66',lo:'#393b41'},
     fil:[
       {k:'nuage',f:[.011,.011],o:3,L:['#aaa59b',.18],D:['#25262a',.4]},
-      {k:'veines',f:[.005,.013],o:4,rot:-32,t:Z(24,[[11,.95],[17,.5]]),L:['#6f6a63',.52],D:['#e2ded6',.46]},
-      {k:'veines',f:[.014,.024],o:3,rot:-32,t:Z(18,[[9,.7]]),L:['#8a857d',.34],D:['#c3bfb8',.24]},
-      {k:'veines',f:[.004,.009],o:3,rot:-32,t:Z(30,[[14,.9]]),L:['#b48a36',.26],D:['#c9a052',.2]},
+      {k:'veines',f:[.0035,.016],o:4,rot:-32,t:Z(24,[[11,.95],[17,.5]]),L:['#6f6a63',.32],D:['#e2ded6',.26]},
+      {k:'veines',f:[.014,.024],o:3,rot:-32,t:Z(18,[[9,.7]]),L:['#8a857d',.2],D:['#c3bfb8',.13]},
+      {k:'veines',f:[.004,.009],o:3,rot:-32,t:Z(30,[[14,.9]]),L:['#b48a36',.18],D:['#c9a052',.13]},
     ],
     carreaux:.06,
     biseau:{w:3.6,hi:'rgba(255,255,255,.42)',lo:'rgba(10,10,14,.48)'},
     filet:{w:2.2,bord:'#141416',metal:'#3a3b40',eclat:'#86878c'},
-    sceau:{forme:'runes',fonce:'#1c1c20',clair:'#ffffff',a:.12},
+    sceau:{forme:'runes',fonce:'#1c1c20',clair:'#ffffff',a:.09},
     ombre:'#0c0c10',eclat:.12,
   },
   // L'ACIER DAMASSÉ. Un acier clair et un acier bleui, parcourus des
@@ -145,20 +145,20 @@ const MATERIALS={
   // dessinerait plus qu'un moiré. Le sceau est une étoile à huit branches
   // gravée à l'eau-forte.
   acier:{
-    light:{base:'#b7bfc7',hi:'#d2d8de',lo:'#97a1ab'},
+    light:{base:'#a9b2bb',hi:'#c3cad1',lo:'#8d97a2'},
     dark:{base:'#465668',hi:'#58697d',lo:'#33414f'},
     fil:[
       {k:'raies',raies:[[0,4.5],[8,2.5],[13,5.5],[22,3]],h:30,
-        f:[.0035,.005],o:2,d:130,L:['#6c7782',.26],D:['#9fb0c2',.2]},
+        f:[.0035,.005],o:2,d:130,L:['#6c7782',.15],D:['#9fb0c2',.12]},
       {k:'veines',f:[.9,.006],o:1,t:[0,.5,0,.5,0],L:['#ffffff',.14],D:['#d6e2ee',.07]},
-      {k:'lustre',L:['#ffffff',.22],D:['#cfe0f2',.12]},
+      {k:'lustre',L:['#ffffff',.14],D:['#cfe0f2',.08]},
     ],
     carreaux:.05,
     biseau:{w:3.4,hi:'rgba(255,255,255,.46)',lo:'rgba(8,12,18,.52)'},
     filet:{w:2,bord:'#1a1f26',metal:'#c9a04a',eclat:'#f6dd98'},
-    clous:{r:3.6,metal:'#aeb7c0',eclat:'#f4f7fa',bord:'#1d232a'},
-    sceau:{forme:'etoile',fonce:'#0e141a',clair:'#ffffff',a:.11},
-    ombre:'#070a10',eclat:.16,reflets:.13,
+    clous:{r:2.8,metal:'#aeb7c0',eclat:'#f4f7fa',bord:'#1d232a'},
+    sceau:{forme:'etoile',fonce:'#0e141a',clair:'#ffffff',a:.08},
+    ombre:'#070a10',eclat:.16,reflets:.13,teinte:['#f2f8ff','#08121e'],
   },
   // L'ARGENT GRAVÉ. Un argent poli et un argent niellé (assombri au soufre,
   // comme les orfèvres font ressortir une gravure), gravés d'un guilloché,
@@ -167,19 +167,19 @@ const MATERIALS={
   // La case claire reste SOUS l'ivoire des pièces : un argent blanc pur les
   // effacerait.
   argent:{
-    light:{base:'#d0d6dc',hi:'#e6eaee',lo:'#b3bbc4'},
+    light:{base:'#bcc3cb',hi:'#d4d9df',lo:'#9fa9b3'},
     dark:{base:'#56606b',hi:'#68737f',lo:'#424a54'},
     fil:[
       {k:'motif',L:['#76818c',.22],D:['#c9d3dc',.12]},
       {k:'veines',f:[1.1,.004],o:1,t:[0,.5,0,.5,0],L:['#ffffff',.18],D:['#e6edf3',.08]},
-      {k:'coins',seul:'D',D:['#e9eef2',.34]},
+      {k:'coins',seul:'D',D:['#e9eef2',.24]},
     ],
     carreaux:.05,
     biseau:{w:3.2,hi:'rgba(255,255,255,.6)',lo:'rgba(14,20,28,.5)'},
     filet:{w:2,bord:'#262c33',metal:'#e3e8ec',eclat:'#ffffff'},
-    clous:{r:3.4,metal:'#d3d9df',eclat:'#ffffff',bord:'#262c33'},
-    sceau:{forme:'rosace',fonce:'#18202a',clair:'#ffffff',a:.09},
-    ombre:'#0a0f16',eclat:.2,reflets:.27,
+    clous:{r:2.6,metal:'#d3d9df',eclat:'#ffffff',bord:'#262c33'},
+    sceau:{forme:'rosace',fonce:'#18202a',clair:'#ffffff',a:.07},
+    ombre:'#0a0f16',eclat:.2,reflets:.24,teinte:['#ffffff','#0c1520'],
   },
   // L'OR CISELÉ. Deux ors, comme sur une pièce d'orfèvrerie : un or jaune
   // POLI (les cases claires, que les grandes bandes de reflet traversent) et
@@ -189,22 +189,20 @@ const MATERIALS={
   // cloutent. Le sceau est un soleil. Le dernier plateau : il doit être le
   // plus riche ET rester aussi calme que les autres sous les pièces.
   or:{
-    light:{base:'#c9952e',hi:'#e6b94f',lo:'#a5751a'},
-    dark:{base:'#82470f',hi:'#9c5a17',lo:'#5f3207'},
+    light:{base:'#c99a36',hi:'#e2b955',lo:'#a77822'},
+    dark:{base:'#8a5512',hi:'#a56c1e',lo:'#643a08'},
     fil:[
       {k:'veines',f:[.45,.45],o:1,t:[0,0,0,0,0,0,.9,.9],L:['#7a5410',.14],D:['#3a1c02',.26]},
       {k:'veines',f:[.45,.45],o:1,t:[.9,.9,0,0,0,0,0,0],seul:'D',D:['#e2ac55',.18]},
       {k:'veines',f:[.6,.008],o:1,t:[0,.5,0,.5,0],seul:'L',L:['#fff6d0',.16]},
-      {k:'lustre',seul:'L',L:['#fffbe6',.3]},
-      {k:'lustre',seul:'D',D:['#ffd98a',.2]},
     ],
     carreaux:.05,
     biseau:{w:3.6,hi:'rgba(255,244,196,.56)',lo:'rgba(46,22,0,.52)'},
     filet:{w:2.3,bord:'#3a2006',metal:'#1c1006',eclat:'#e6bf63'},
-    clous:{r:4,metal:'#e1b85a',eclat:'#fff3c4',bord:'#4a2a05'},
-    cadre:{i:9,fonce:'rgba(70,36,0,.32)',clair:'rgba(255,240,190,.3)'},
-    sceau:{forme:'soleil',fonce:'#3a1f02',clair:'#fff4d0',a:.12},
-    ombre:'#1e0e00',eclat:.22,reflets:.26,
+    clous:{r:3,metal:'#d8ad4c',eclat:'#ffeab0',bord:'#4a2a05'},
+    cadre:{i:8,fonce:'rgba(70,36,0,.24)',clair:'rgba(255,240,190,.22)'},
+    sceau:{forme:'soleil',fonce:'#3a1f02',clair:'#fff4d0',a:.08},
+    ombre:'#1e0e00',eclat:.2,reflets:.3,teinte:['#fff0b4','#3a1a00'],
   },
 };
 
@@ -392,7 +390,7 @@ function sigil(forme){
     }
     d+='<circle cx="400" cy="400" r="70"/><circle cx="400" cy="400" r="58"/>';
   }
-  return '<g id="sg" fill="none" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">'+d+'</g>';
+  return '<g id="sg" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+d+'</g>';
 }
 
 // ----------------------------------------------------------------
@@ -488,10 +486,13 @@ function buildSVG(name,m){
   // mais à ce qu'il REFLÈTE : de grandes bandes claires et sombres, nettes,
   // en biais. Sans elles, un acier est un gris et un or est un jaune.
   if(m.reflets){
-    const a=m.reflets;
+    // Les bandes sont TEINTÉES dans la matière (`teinte` : [clair, sombre]).
+    // Un reflet blanc et une ombre noire posés sur de l'or le DÉLAVENT et le
+    // salissent : l'or reflète un or pâle et s'ombre d'un brun chaud.
+    const a=m.reflets, [cl,so]=m.teinte||['#fff','#000'];
     light+='<linearGradient id="rf" x1="0" y1="0" x2="1" y2=".7">'+
-      [[0,'#fff',0],[.16,'#fff',a],[.26,'#fff',0],[.4,'#000',a*.55],[.5,'#000',0],
-       [.6,'#fff',a*.75],[.66,'#fff',0],[.82,'#000',a*.45],[1,'#fff',0]]
+      [[0,cl,0],[.16,cl,a],[.26,cl,0],[.4,so,a*.55],[.5,so,0],
+       [.6,cl,a*.75],[.66,cl,0],[.82,so,a*.45],[1,cl,0]]
         .map(([o,c,op])=>'<stop offset="'+o+'" stop-color="'+c+'" stop-opacity="'+n(op)+'"/>').join('')+
       '</linearGradient>';
   }
