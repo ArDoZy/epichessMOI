@@ -1274,7 +1274,7 @@ body:not(.main-menu) #settings-panel{display:none}
    du premier, et un reflet de laque sur la moitié haute.
    Au repos, l'or est TERNI d'un cran : c'est ce qui laisse à la plaque du
    joueur au trait le droit de briller. */
-.gp-bar{width:100%;display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+.gp-bar{width:100%;display:flex;align-items:center;gap:8px;flex-wrap:wrap;
   padding:10px 12px;border:1.5px solid transparent;border-radius:var(--r-lg);
   background:
     linear-gradient(180deg,rgba(255,238,200,.07),rgba(255,238,200,0) 46%) padding-box,
@@ -1326,7 +1326,7 @@ body:not(.main-menu) #settings-panel{display:none}
 /* Le nom est GRAVÉ : ivoire, avec un filet d'ombre dessous qui le creuse
    dans la laque. Inter et non Cinzel : à 14 px, Cinzel ne se lit plus
    (voir [THEME]). */
-.gp-name{font-size:14.5px;font-weight:700;letter-spacing:.01em;color:#f3ead6;
+.gp-name{font-size:14px;font-weight:700;letter-spacing:.01em;color:#f3ead6;
   text-shadow:0 1px 0 rgba(0,0,0,.85);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .gp-elo{font-size:11px;font-weight:600;color:#a99a7b;letter-spacing:.05em;font-variant-numeric:tabular-nums}
 .gp-bar.gp-turn .gp-elo{color:#cdb07a}
@@ -1375,9 +1375,10 @@ body:not(.main-menu) #settings-panel{display:none}
    braise d'ambre au fond du verre, chiffres ivoire, jonc d'or poli.
    Le cartouche ne prend PAS plus de place que l'ancien cadran : six pixels
    de marge en plus suffisaient, dans une colonne de 340 px, à couper le nom
-   du joueur (« Apprenti 2… »). Le nom passe avant l'écrin. */
-.gp-clock{font-family:var(--f-ui);font-size:26px;font-weight:800;
-  letter-spacing:.02em;font-variant-numeric:tabular-nums;padding:4px 13px 4px 11px;border-radius:999px;
+   du joueur (« Alchimiste 31… »). Le nom passe avant l'écrin : chiffres à
+   24 px (ils restent les plus gros de la colonne), écarts de 8 px. */
+.gp-clock{font-family:var(--f-ui);font-size:24px;font-weight:800;
+  letter-spacing:.02em;font-variant-numeric:tabular-nums;padding:4px 11px 4px 9px;border-radius:999px;
   border:1.5px solid transparent;color:var(--faint);
   background:radial-gradient(ellipse 70% 60% at 50% 0%,rgba(255,255,255,.07),rgba(255,255,255,0) 70%) padding-box,
     linear-gradient(180deg,#04070b,#0c121a) padding-box,
