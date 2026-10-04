@@ -930,6 +930,10 @@ body.has-acc .builder-inner{padding-top:var(--page-top)}
   border:1.5px solid transparent;
   border-radius:50% 50% var(--r-md) var(--r-md) / 17% 17% var(--r-md) var(--r-md);
   background:
+    /* Le SOCLE au pied de la niche : une marche de pierre à peine plus
+       claire, ourlée d'un filet de métal. La moitié basse de l'alcôve
+       n'est plus un vide, c'est l'endroit où la pièce se tiendra. */
+    linear-gradient(180deg,color-mix(in srgb,var(--slot-c) 38%,transparent) 0 1px,rgba(255,255,255,.035) 1px,rgba(0,0,0,.25)) center bottom/100% 13% no-repeat padding-box,
     radial-gradient(ellipse 62% 34% at 50% 40%,color-mix(in srgb,var(--slot-c) 16%,transparent),transparent 72%) padding-box,
     linear-gradient(180deg,#04070b 0%,#0a1018 46%,#111925 100%) padding-box,
     linear-gradient(165deg,color-mix(in srgb,var(--slot-c) 62%,#fff) 0%,color-mix(in srgb,var(--slot-c) 58%,#000) 30%,
