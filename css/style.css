@@ -2619,8 +2619,8 @@ body.in-game .nav-page[data-page="game"]{display:block}
 }
 /* [DRILL] ======================================================
    Exercice de déplacement (js/tuto-drill.js) : une pièce seule, cinq
-   repères à ramasser. Le plateau reprend les couleurs de l'échiquier
-   d'analyse (.ta-cell) pour ne pas introduire un troisième damier dans
+   repères à ramasser. Le plateau est l'échiquier de chêne de la partie
+   (assets/boards/bois.svg), pour ne pas introduire un autre damier dans
    le jeu, mais ses cases sont CLIQUABLES, d'où le curseur et les états
    de sélection.
    ============================================================== */
@@ -2649,29 +2649,41 @@ body.in-game .nav-page[data-page="game"]{display:block}
   /* Le même chêne que l'échiquier de partie (assets/boards/bois.svg), et non
      deux aplats brun et beige : on apprivoise la créature sur le plateau où
      on la jouera. */
-  background:#7d5a3e url('../assets/boards/bois.svg') center/100% 100% no-repeat;
-  border:1px solid rgba(240,206,140,.55);border-radius:6px;overflow:hidden;
-  box-shadow:0 0 0 4px rgba(9,12,17,.9),0 0 0 5px rgba(216,178,106,.35),0 18px 50px rgba(0,0,0,.6)}
+  /* Le cadre reprend le filet de LAITON qui sépare les cases du plateau, posé
+     sur un listel de noyer sombre : la bordure est de la même famille que
+     ce qu'elle entoure, au lieu d'un liseré d'interface. */
+  background:#734320 url('../assets/boards/bois.svg') center/100% 100% no-repeat;
+  border:1px solid rgba(214,168,82,.8);border-radius:6px;overflow:hidden;
+  box-shadow:0 0 0 4px #1c0f05,0 0 0 5px rgba(201,154,66,.5),0 18px 50px rgba(0,0,0,.6)}
 .drill-cell{position:relative;display:flex;align-items:center;justify-content:center;
   cursor:pointer;aspect-ratio:1;padding:3px;font-size:0}
 .drill-cell.light{background:transparent}
 .drill-cell.dark{background:transparent}
 
-.drill-cell .pc-svg{width:100%;height:100%;filter:drop-shadow(0 1px 2px rgba(0,0,0,.5));
+/* La même ombre portée que les pièces de la partie (.gc-art) : posée sur le
+   même chêne, la créature doit avoir le même poids. */
+.drill-cell .pc-svg{width:100%;height:100%;filter:drop-shadow(0 3px 3px rgba(0,0,0,.5));
   position:relative;z-index:2}
-.drill-cell.drill-sel{outline:3px solid var(--gold);outline-offset:-3px}
-/* Case atteignable : le même point que dans le jeu, en plus discret que les
-   repères à ramasser (qui, eux, pulsent en vert-de-gris). */
+/* LES MARQUES SONT CELLES DE LA PARTIE. La case choisie se cercle d'or et
+   s'éclaire de l'intérieur (comme .gc.sel), la case atteignable porte la même
+   perle d'or que .gc.avail : ce qu'on apprend ici se reconnaît ensuite sur le
+   vrai plateau. La perle est un cran plus petite que les repères à ramasser
+   (qui, eux, pulsent en vert-de-gris), pour ne jamais leur voler la vedette. */
+.drill-cell.drill-sel{box-shadow:inset 0 0 0 3px rgba(255,226,150,.95),inset 0 0 24px rgba(240,190,90,.55)}
 .drill-cell.drill-legal::after{content:'';position:absolute;left:50%;top:50%;
-  width:22%;height:22%;margin:-11% 0 0 -11%;border-radius:50%;
-  background:rgba(255,255,255,.42);z-index:1}
+  width:24%;height:24%;margin:-12% 0 0 -12%;border-radius:50%;
+  background:radial-gradient(circle at 42% 38%,#fff7dc 0%,#f1c96a 45%,#b9862e 100%);
+  box-shadow:0 0 0 1.5px rgba(40,26,6,.55),0 0 10px rgba(255,200,100,.5);
+  opacity:.92;z-index:1}
 .drill-dot{position:absolute;left:50%;top:50%;width:34%;height:34%;margin:-17% 0 0 -17%;
   border-radius:50%;background:radial-gradient(circle at 35% 30%,#8ff0dc,var(--accent2) 60%,#0d5a4c);
   box-shadow:0 0 14px var(--potion-glow),0 0 0 2px rgba(4,8,10,.35);
   animation:drillDot 1.6s ease-in-out infinite;z-index:1}
 @keyframes drillDot{0%,100%{transform:scale(1);opacity:.95}50%{transform:scale(1.16);opacity:1}}
 .drill-board.drill-cleared{animation:drillClear .9s ease}
-@keyframes drillClear{0%,100%{box-shadow:0 18px 50px rgba(0,0,0,.55)}
+/* Les deux bornes reprennent l'ombre du cadre : sans elles, le listel de
+   noyer et le filet de laiton disparaissaient le temps de l'éclat. */
+@keyframes drillClear{0%,100%{box-shadow:0 0 0 4px #1c0f05,0 0 0 5px rgba(201,154,66,.5),0 18px 50px rgba(0,0,0,.6)}
   40%{box-shadow:0 0 0 4px var(--accent2),0 0 60px var(--potion-glow)}}
 .drill-foot{display:flex;flex-direction:column;align-items:center;gap:8px;margin-top:12px}
 .drill-count{font-family:var(--f-ui);font-size:12.5px;font-weight:700;letter-spacing:.8px;
@@ -2790,12 +2802,25 @@ body.in-game .nav-page[data-page="game"]{display:block}
 .pmv-sm{--pmv-cell:11px;gap:6px}
 .pmv-lg{--pmv-cell:clamp(13px,1.9vh,20px)}
 .pmv{display:flex;flex-direction:column;align-items:center;gap:3px}
+/* LE SCHÉMA EST UN PETIT PLATEAU DE NOYER. Il était en ardoise grise, un
+   damier de tableau de bord posé à côté d'un échiquier de chêne et de laiton
+   (assets/boards/bois.svg). Il en prend la matière : noyer, cadre de laiton,
+   et chaque case TAILLÉE — un fil de lumière en haut à gauche, un fil
+   d'ombre en bas à droite, comme le biseau des cases du vrai plateau.
+   Les deux noyers restent SOMBRES, et c'est voulu : les pictogrammes sont
+   clairs (ivoire, or pâle, rouge, bleu) et doivent se lire à 11 px. Le chêne
+   blond du plateau les effacerait ; le noyer garde le contraste de l'ancienne
+   ardoise, à la même luminosité. */
 .pmv-grid{display:grid;grid-template-columns:repeat(9,var(--pmv-cell));
-  grid-auto-rows:var(--pmv-cell);border:1px solid var(--border2);border-radius:5px;
-  overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,.25)}
+  grid-auto-rows:var(--pmv-cell);border:1px solid rgba(201,154,66,.62);border-radius:5px;
+  overflow:hidden;box-shadow:0 0 0 1px rgba(12,6,2,.7),0 2px 10px rgba(0,0,0,.35);
+  --pmv-bevel:linear-gradient(rgba(255,226,172,.15) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(255,226,172,.1) 1px,transparent 1px),
+    linear-gradient(0deg,rgba(14,6,0,.32) 1px,transparent 1px),
+    linear-gradient(270deg,rgba(14,6,0,.24) 1px,transparent 1px)}
 .pmv-c{display:flex;align-items:center;justify-content:center;position:relative}
-.pmv-light{background:#39434a}
-.pmv-dark{background:#283136}
+.pmv-light{background:var(--pmv-bevel),linear-gradient(135deg,#663f22,#53331b)}
+.pmv-dark{background:var(--pmv-bevel),linear-gradient(135deg,#3c2411,#2e1b0c)}
 
 /* La teinte de portée est posée PAR-DESSUS la case (voile en box-shadow) et
    ne la remplace pas : le damier reste lisible sous la couleur. */
