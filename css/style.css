@@ -1202,6 +1202,32 @@ body:not(.main-menu) #settings-panel{display:none}
    ils étaient autour du plateau — et l'échiquier occupe seul toute la
    hauteur, sans jamais provoquer de défilement.
    ============================================================== */
+/* --- LA TABLE DE BATAILLE (direction « Fantasy », v5) ----------------
+   L'écran de partie est celui qu'on regarde le plus longtemps : il reçoit
+   l'orfèvrerie la plus riche du jeu, mais seulement AUTOUR de ce qui se lit.
+   Les cases, les pièces, les repères et les chiffres de la pendule ne
+   portent aucun ornement ; tout ce qui brille est sur leur pourtour.
+   Six planches vectorielles en ligne, propres à cet écran (aucune requête) :
+     --gm-frame       le cadre de l'échiquier, en neuf régions (border-image) :
+                      un double jonc d'or, une gorge sombre gravée de runes,
+                      et quatre bossettes serties — RUBIS du côté adverse,
+                      SAPHIR du vôtre, les deux couleurs de bannière de
+                      l'écusson (pourpre en face, azur chez soi) ;
+     --gm-crest-ruby  le fermoir posé sur l'arête du bandeau adverse ;
+     --gm-crest-saph  le même, serti d'un saphir, sur le vôtre ;
+     --gm-gem         la gemme d'or taillée des cases jouables ;
+     --gm-sigil       le cercle runique gravé dans la table, sous les outils ;
+     --gm-loz         la terminaison des deux filets de la ligne de tour.
+   Les bandes du cadre ne portent que des motifs PARALLÈLES à leur
+   étirement, répétés en `round` : la planche reste nette de 360 à 900 px. */
+:root{
+  --gm-frame:url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 360 360' width='360' height='360'%3E%3Cdefs%3E%3ClinearGradient id='b' x1='0' y1='0' x2='0' y2='40' gradientUnits='userSpaceOnUse'%3E%3Cstop offset='0' stop-color='%230a0602'/%3E%3Cstop offset='.04' stop-color='%235e3f14'/%3E%3Cstop offset='.10' stop-color='%23fbe6a4'/%3E%3Cstop offset='.16' stop-color='%23d9ac55'/%3E%3Cstop offset='.21' stop-color='%236a4815'/%3E%3Cstop offset='.235' stop-color='%23140c04'/%3E%3Cstop offset='.27' stop-color='%23120c06'/%3E%3Cstop offset='.5' stop-color='%2321180c'/%3E%3Cstop offset='.73' stop-color='%2317100a'/%3E%3Cstop offset='.765' stop-color='%23120a03'/%3E%3Cstop offset='.79' stop-color='%237d5719'/%3E%3Cstop offset='.845' stop-color='%23f3d68e'/%3E%3Cstop offset='.9' stop-color='%23a77a30'/%3E%3Cstop offset='.93' stop-color='%232a1b08'/%3E%3Cstop offset='1' stop-color='%23050302'/%3E%3C/linearGradient%3E%3ClinearGradient id='rg' x1='0' y1='-7' x2='0' y2='7' gradientUnits='userSpaceOnUse'%3E%3Cstop offset='0' stop-color='%23fff0c0'/%3E%3Cstop offset='1' stop-color='%23c8963c'/%3E%3C/linearGradient%3E%3Cg id='d'%3E%3Cpath d='M0 -3.6 3.6 0 0 3.6 -3.6 0z' fill='%23080502'/%3E%3Cpath d='M0 -2.6 2.6 0 0 2.6 -2.6 0z' fill='url(%23rg)'/%3E%3C/g%3E%3Cg id='r1' fill='none' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M-2.5 6.5V-6.5M-2.5 -2.5 3 -6.5M-2.5 1.8 3 -2.2'/%3E%3C/g%3E%3Cg id='r2' fill='none' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M0 6.5V-6.5M0 -0.5 -4.5 -6.5M0 -0.5 4.5 -6.5'/%3E%3C/g%3E%3Cg id='r3' fill='none' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M0 -6.5 4.2 -1.6 -3.4 6.5M0 -6.5 -4.2 -1.6 3.4 6.5'/%3E%3C/g%3E%3Cg id='r4' fill='none' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M0 6.5V-6.5M-4.5 -2 0 -6.5 4.5 -2'/%3E%3C/g%3E%3Cg id='band'%3E%3Crect x='0' y='0' width='360' height='40' fill='url(%23b)'/%3E%3Cg transform='translate(0 20)'%3E%3Cuse href='%23d' x='57.5'/%3E%3Cuse href='%23d' x='127.5'/%3E%3Cuse href='%23d' x='197.5'/%3E%3Cuse href='%23d' x='267.5'/%3E%3Cg stroke='%23060301' stroke-width='2.6' transform='translate(0 .7)'%3E%3Cuse href='%23r1' x='92.5'/%3E%3Cuse href='%23r2' x='162.5'/%3E%3Cuse href='%23r3' x='232.5'/%3E%3Cuse href='%23r4' x='302.5'/%3E%3C/g%3E%3Cg stroke='url(%23rg)' stroke-width='1.5'%3E%3Cuse href='%23r1' x='92.5'/%3E%3Cuse href='%23r2' x='162.5'/%3E%3Cuse href='%23r3' x='232.5'/%3E%3Cuse href='%23r4' x='302.5'/%3E%3C/g%3E%3C/g%3E%3C/g%3E%3CradialGradient id='plate' cx='.5' cy='.5' r='.6'%3E%3Cstop offset='0' stop-color='%23f6dd98'/%3E%3Cstop offset='.55' stop-color='%23c99540'/%3E%3Cstop offset='1' stop-color='%235c3d10'/%3E%3C/radialGradient%3E%3CradialGradient id='ruby' cx='.38' cy='.32' r='.75'%3E%3Cstop offset='0' stop-color='%23ffd0c8'/%3E%3Cstop offset='.18' stop-color='%23f0505a'/%3E%3Cstop offset='.55' stop-color='%23a3121f'/%3E%3Cstop offset='1' stop-color='%233a0207'/%3E%3C/radialGradient%3E%3CradialGradient id='saph' cx='.38' cy='.32' r='.75'%3E%3Cstop offset='0' stop-color='%23d8ecff'/%3E%3Cstop offset='.18' stop-color='%235f9cf0'/%3E%3Cstop offset='.55' stop-color='%231d47a8'/%3E%3Cstop offset='1' stop-color='%23061238'/%3E%3C/radialGradient%3E%3Cg id='boss'%3E%3Crect x='0' y='0' width='40' height='40' fill='%23070401'/%3E%3Crect x='1.5' y='1.5' width='37' height='37' rx='3' fill='url(%23plate)'/%3E%3Crect x='4.5' y='4.5' width='31' height='31' rx='2' fill='none' stroke='%235a3b0f' stroke-width='1'/%3E%3Crect x='5.5' y='5.5' width='29' height='29' rx='1.5' fill='none' stroke='%23ffefc0' stroke-opacity='.55' stroke-width='.8'/%3E%3Cpath d='M20 6.5 33.5 20 20 33.5 6.5 20z' fill='%232a1a06' opacity='.55'/%3E%3Ccircle cx='20' cy='20' r='11.2' fill='%23120a02'/%3E%3Ccircle cx='20' cy='20' r='10' fill='url(%23plate)'/%3E%3Ccircle cx='20' cy='20' r='8.2' fill='%230b0602'/%3E%3C/g%3E%3Cg id='gloss'%3E%3Cellipse cx='17.2' cy='16.6' rx='3.2' ry='2.1' fill='%23fff' opacity='.75' transform='rotate(-30 17.2 16.6)'/%3E%3Ccircle cx='23.6' cy='23.4' r='1' fill='%23fff' opacity='.35'/%3E%3C/g%3E%3C/defs%3E%3Cuse href='%23band'/%3E%3Cuse href='%23band' transform='rotate(90 180 180)'/%3E%3Cuse href='%23band' transform='rotate(180 180 180)'/%3E%3Cuse href='%23band' transform='rotate(270 180 180)'/%3E%3Cuse href='%23boss'/%3E%3Ccircle cx='20' cy='20' r='7.4' fill='url(%23ruby)'/%3E%3Cuse href='%23gloss'/%3E%3Cuse href='%23boss' x='320'/%3E%3Ccircle cx='340' cy='20' r='7.4' fill='url(%23ruby)'/%3E%3Cuse href='%23gloss' x='320'/%3E%3Cuse href='%23boss' y='320'/%3E%3Ccircle cx='20' cy='340' r='7.4' fill='url(%23saph)'/%3E%3Cuse href='%23gloss' y='320'/%3E%3Cuse href='%23boss' x='320' y='320'/%3E%3Ccircle cx='340' cy='340' r='7.4' fill='url(%23saph)'/%3E%3Cuse href='%23gloss' x='320' y='320'/%3E%3C/svg%3E");
+  --gm-crest-ruby:url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 96 20' width='96' height='20'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%23fff1c4'/%3E%3Cstop offset='.5' stop-color='%23e2b45a'/%3E%3Cstop offset='1' stop-color='%238a5f1c'/%3E%3C/linearGradient%3E%3ClinearGradient id='h' x1='0' y1='0' x2='1' y2='0'%3E%3Cstop offset='0' stop-color='%23e2b45a' stop-opacity='0'/%3E%3Cstop offset='.45' stop-color='%23f3d68e'/%3E%3Cstop offset='1' stop-color='%23f3d68e'/%3E%3C/linearGradient%3E%3CradialGradient id='j' cx='.38' cy='.32' r='.75'%3E%3Cstop offset='0' stop-color='%23ffd6cc'/%3E%3Cstop offset='.2' stop-color='%23f0505a'/%3E%3Cstop offset='.6' stop-color='%23a3121f'/%3E%3Cstop offset='1' stop-color='%233a0207'/%3E%3C/radialGradient%3E%3Cg id='arm' fill='none' stroke-linecap='round'%3E%3Cpath d='M6 10H34' stroke='url(%23h)' stroke-width='1.3'/%3E%3Cpath d='M34 10q3-5.5 7.5-3.2q-2.8 1.2-1.8 3.2' stroke='url(%23g)' stroke-width='1.3'/%3E%3Cpath d='M34 10q3 5.5 7.5 3.2q-2.8-1.2-1.8-3.2' stroke='url(%23g)' stroke-width='1.3'/%3E%3C/g%3E%3C/defs%3E%3Cg stroke='%23140c03' stroke-width='3' fill='none' opacity='.7'%3E%3Cpath d='M10 10H34M34 10q3-5.5 7.5-3.2M34 10q3 5.5 7.5 3.2M62 10H86M62 10q-3-5.5-7.5-3.2M62 10q-3 5.5-7.5 3.2'/%3E%3C/g%3E%3Cuse href='%23arm'/%3E%3Cuse href='%23arm' transform='translate(96 0) scale(-1 1)'/%3E%3Cpath d='M48 .8 57.2 10 48 19.2 38.8 10z' fill='%23140c03'/%3E%3Cpath d='M48 2.4 55.6 10 48 17.6 40.4 10z' fill='url(%23g)'/%3E%3Ccircle cx='48' cy='10' r='5' fill='%23120802'/%3E%3Ccircle cx='48' cy='10' r='4.2' fill='url(%23j)'/%3E%3Cellipse cx='46.6' cy='8.4' rx='1.7' ry='1.1' fill='%23fff' opacity='.8' transform='rotate(-30 46.6 8.4)'/%3E%3C/svg%3E");
+  --gm-crest-saph:url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 96 20' width='96' height='20'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%23fff1c4'/%3E%3Cstop offset='.5' stop-color='%23e2b45a'/%3E%3Cstop offset='1' stop-color='%238a5f1c'/%3E%3C/linearGradient%3E%3ClinearGradient id='h' x1='0' y1='0' x2='1' y2='0'%3E%3Cstop offset='0' stop-color='%23e2b45a' stop-opacity='0'/%3E%3Cstop offset='.45' stop-color='%23f3d68e'/%3E%3Cstop offset='1' stop-color='%23f3d68e'/%3E%3C/linearGradient%3E%3CradialGradient id='j' cx='.38' cy='.32' r='.75'%3E%3Cstop offset='0' stop-color='%23dcefff'/%3E%3Cstop offset='.2' stop-color='%235f9cf0'/%3E%3Cstop offset='.6' stop-color='%231d47a8'/%3E%3Cstop offset='1' stop-color='%23061238'/%3E%3C/radialGradient%3E%3Cg id='arm' fill='none' stroke-linecap='round'%3E%3Cpath d='M6 10H34' stroke='url(%23h)' stroke-width='1.3'/%3E%3Cpath d='M34 10q3-5.5 7.5-3.2q-2.8 1.2-1.8 3.2' stroke='url(%23g)' stroke-width='1.3'/%3E%3Cpath d='M34 10q3 5.5 7.5 3.2q-2.8-1.2-1.8-3.2' stroke='url(%23g)' stroke-width='1.3'/%3E%3C/g%3E%3C/defs%3E%3Cg stroke='%23140c03' stroke-width='3' fill='none' opacity='.7'%3E%3Cpath d='M10 10H34M34 10q3-5.5 7.5-3.2M34 10q3 5.5 7.5 3.2M62 10H86M62 10q-3-5.5-7.5-3.2M62 10q-3 5.5-7.5 3.2'/%3E%3C/g%3E%3Cuse href='%23arm'/%3E%3Cuse href='%23arm' transform='translate(96 0) scale(-1 1)'/%3E%3Cpath d='M48 .8 57.2 10 48 19.2 38.8 10z' fill='%23140c03'/%3E%3Cpath d='M48 2.4 55.6 10 48 17.6 40.4 10z' fill='url(%23g)'/%3E%3Ccircle cx='48' cy='10' r='5' fill='%23120802'/%3E%3Ccircle cx='48' cy='10' r='4.2' fill='url(%23j)'/%3E%3Cellipse cx='46.6' cy='8.4' rx='1.7' ry='1.1' fill='%23fff' opacity='.8' transform='rotate(-30 46.6 8.4)'/%3E%3C/svg%3E");
+  --gm-gem:url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' width='24' height='24'%3E%3Cdefs%3E%3ClinearGradient id='a' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23fff6d6'/%3E%3Cstop offset='.45' stop-color='%23f1c96a'/%3E%3Cstop offset='1' stop-color='%238f6420'/%3E%3C/linearGradient%3E%3ClinearGradient id='b' x1='1' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%23ffe9a8'/%3E%3Cstop offset='1' stop-color='%23a8772a'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d='M8.2 1.5h7.6l6.7 6.7v7.6l-6.7 6.7H8.2l-6.7-6.7V8.2z' fill='%232b1a05' opacity='.85'/%3E%3Cpath d='M8.6 2.6h6.8l6 6v6.8l-6 6H8.6l-6-6V8.6z' fill='url(%23a)'/%3E%3Cpath d='M8.6 2.6 12 7.2 15.4 2.6M21.4 8.6 16.8 12 21.4 15.4M15.4 21.4 12 16.8 8.6 21.4M2.6 15.4 7.2 12 2.6 8.6' fill='none' stroke='%237a5216' stroke-width='.7' opacity='.7'/%3E%3Cpath d='M9.7 7.2h4.6l2.5 2.5v4.6l-2.5 2.5H9.7l-2.5-2.5V9.7z' fill='url(%23b)' stroke='%238a5f1c' stroke-width='.6'/%3E%3Cpath d='M9.7 7.2h4.6l-1.2 2.4h-3.2z' fill='%23fffbe8' opacity='.75'/%3E%3Ccircle cx='9.6' cy='9.3' r='1' fill='%23fff'/%3E%3C/svg%3E");
+  --gm-sigil:url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200' width='200' height='200'%3E%3Cg fill='none' stroke='%23e8c477' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='100' cy='100' r='96' stroke-width='1.2'/%3E%3Ccircle cx='100' cy='100' r='91' stroke-width='.6'/%3E%3Ccircle cx='100' cy='100' r='70' stroke-width='.9'/%3E%3Ccircle cx='100' cy='100' r='66' stroke-width='.5'/%3E%3Cpath d='M100 34 146.7 53.3 166 100 146.7 146.7 100 166 53.3 146.7 34 100 53.3 53.3z' stroke-width='.8'/%3E%3Cpath d='M100 34V166M34 100H166M53.3 53.3 146.7 146.7M146.7 53.3 53.3 146.7' stroke-width='.4' stroke-dasharray='2 4'/%3E%3Cpath d='M100 52 113.8 86.2 148 100 113.8 113.8 100 148 86.2 113.8 52 100 86.2 86.2z' stroke-width='1'/%3E%3Ccircle cx='100' cy='100' r='14' stroke-width='.9'/%3E%3Cpath d='M100 90 110 100 100 110 90 100z' stroke-width='1.1'/%3E%3Cg stroke-width='1.3'%3E%3Cpath d='M98 12.5v12M98 16l5-3.5M98 20.5l5-3.5' transform='rotate(0 100 100)'/%3E%3Cpath d='M100 12.5v12M100 18.5l-4.5-5M100 18.5l4.5-5' transform='rotate(30 100 100)'/%3E%3Cpath d='M100 12.5l4 4.5-7 7.5M100 12.5l-4 4.5 7 7.5' transform='rotate(60 100 100)'/%3E%3Cpath d='M100 24.5v-12M95.5 17l4.5-4.5 4.5 4.5' transform='rotate(90 100 100)'/%3E%3Cpath d='M96 12.5v12l8-12v12' transform='rotate(120 100 100)'/%3E%3Cpath d='M98 12.5v12M98 12.5l5 4-5 4' transform='rotate(150 100 100)'/%3E%3Cpath d='M98 16l5-3.5M98 12.5v12M98 20.5l5-3.5' transform='rotate(180 100 100)'/%3E%3Cpath d='M100 12.5v12M100 18.5l-4.5-5M100 18.5l4.5-5' transform='rotate(210 100 100)'/%3E%3Cpath d='M100 12.5l4 4.5-7 7.5M100 12.5l-4 4.5 7 7.5' transform='rotate(240 100 100)'/%3E%3Cpath d='M100 24.5v-12M95.5 17l4.5-4.5 4.5 4.5' transform='rotate(270 100 100)'/%3E%3Cpath d='M96 12.5v12l8-12v12' transform='rotate(300 100 100)'/%3E%3Cpath d='M98 12.5v12M98 12.5l5 4-5 4' transform='rotate(330 100 100)'/%3E%3C/g%3E%3C/g%3E%3Cg fill='%23e8c477'%3E%3Ccircle cx='100' cy='34' r='2'/%3E%3Ccircle cx='166' cy='100' r='2'/%3E%3Ccircle cx='100' cy='166' r='2'/%3E%3Ccircle cx='34' cy='100' r='2'/%3E%3Ccircle cx='146.7' cy='53.3' r='1.4'/%3E%3Ccircle cx='146.7' cy='146.7' r='1.4'/%3E%3Ccircle cx='53.3' cy='146.7' r='1.4'/%3E%3Ccircle cx='53.3' cy='53.3' r='1.4'/%3E%3C/g%3E%3C/svg%3E");
+  --gm-loz:url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 28 12' width='28' height='12'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23fff1c4'/%3E%3Cstop offset='1' stop-color='%23a8701f'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d='M0 6H15' stroke='%23d8b26a' stroke-width='1' stroke-opacity='.7'/%3E%3Cpath d='M15 6q2.5-4 5-2.2M15 6q2.5 4 5 2.2' fill='none' stroke='%23d8b26a' stroke-width='1' stroke-linecap='round'/%3E%3Cpath d='M22 1.5 26.5 6 22 10.5 17.5 6z' fill='url(%23g)' stroke='%233a2508' stroke-width='.8'/%3E%3C/svg%3E");
+}
 #page-game{padding:0;min-height:100dvh;background:var(--bg)}
 #page-game.active{display:block}
 .game-wrap{display:flex;height:100dvh;overflow:hidden;gap:0}
@@ -1210,8 +1236,15 @@ body:not(.main-menu) #settings-panel{display:none}
    disponible (moins la colonne latérale et les repères de rangées). Plus de
    plafond de confort : l'écran est la seule limite, c'est ce qu'on demande à
    un échiquier. */
+/* LA RÉSERVE EN LARGEUR COMPTE LE CADRE. Le plateau porte maintenant un
+   cadre d'or de 24 px (voir « LE CADRE DU PLATEAU », [ART]) qui déborde de
+   sa boîte sans prendre de place dans la mise en page. En hauteur, les 50 px
+   de marge suffisaient déjà ; en largeur — une fenêtre plus étroite que
+   haute —, il ne restait que 26 px de chaque côté, et le cadre serait venu
+   toucher le bord de l'écran et la colonne. Vingt pixels de plus : il garde
+   son air sans que la hauteur, la contrainte habituelle, y perde rien. */
 .game-main{
-  --bsz:min(calc(100vh - 100px),calc(100vw - 392px));
+  --bsz:min(calc(100vh - 100px),calc(100vw - 412px));
   flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;
   justify-content:center;gap:10px;padding:10px 12px;overflow:hidden}
 .board-frame{width:var(--bsz)}
@@ -1219,22 +1252,70 @@ body:not(.main-menu) #settings-panel{display:none}
 /* --- Bandeaux joueur : identité à gauche, pendule à droite, prises en
    dessous. Ils vivent maintenant dans la colonne latérale, donc en pleine
    largeur de celle-ci. Le bandeau du joueur au trait s'allume. --- */
+/* LA PLAQUE GRAVÉE. Le bandeau était un panneau de laque comme tous les
+   autres — la même matière qu'une carte du Magasin, alors qu'il porte le nom
+   d'un combattant. Il devient une plaque d'apparat : un jonc d'or MARTELÉ
+   (le dégradé du liseré s'assombrit au milieu, comme un métal qui ne prend la
+   lumière que sur ses arêtes), un second filet intérieur gravé à deux pixels
+   du premier, et un reflet de laque sur la moitié haute.
+   Au repos, l'or est TERNI d'un cran : c'est ce qui laisse à la plaque du
+   joueur au trait le droit de briller. */
 .gp-bar{width:100%;display:flex;align-items:center;gap:10px;flex-wrap:wrap;
-  padding:9px 12px;border:1px solid transparent;border-radius:var(--r-lg);
-  background:var(--panel-bg) padding-box,linear-gradient(180deg,rgba(240,206,140,.32),rgba(190,150,80,.1)) border-box;
+  padding:10px 14px;border:1.5px solid transparent;border-radius:var(--r-lg);
+  background:
+    linear-gradient(180deg,rgba(255,238,200,.07),rgba(255,238,200,0) 46%) padding-box,
+    linear-gradient(180deg,#172130 0%,#0e1520 58%,#0a0f17 100%) padding-box,
+    linear-gradient(180deg,rgba(236,204,134,.8) 0%,rgba(140,100,38,.55) 30%,rgba(74,50,16,.6) 55%,rgba(156,115,49,.55) 80%,rgba(226,190,114,.75) 100%) border-box;
   font-family:var(--f-ui);position:relative;
-  flex-shrink:0;box-shadow:var(--shadow-1);transition:box-shadow .25s ease}
-/* LE TRAIT EST À CE JOUEUR : son bandeau s'allume, liseré d'or plein et
-   halo. Il s'allumait en vert d'eau — une troisième couleur au bord du
-   plateau, qui ne voulait rien dire d'autre que « c'est lui ». */
-.gp-bar.gp-turn{background:var(--panel-bg) padding-box,linear-gradient(180deg,rgba(250,224,160,.9),rgba(200,160,80,.45)) border-box;
-  box-shadow:var(--shadow-1),0 0 24px -8px rgba(240,206,140,.55)}
+  flex-shrink:0;
+  box-shadow:inset 0 0 0 1px rgba(0,0,0,.72),inset 0 0 0 2px rgba(240,206,140,.12),var(--shadow-1);
+  transition:box-shadow .25s ease}
+/* LE TRAIT EST À CE JOUEUR : sa plaque s'allume. L'or passe du terni au
+   poli, une lumière chaude monte depuis l'écusson, et un halo respire autour
+   de la plaque (::after, plus bas). Il s'allumait en vert d'eau — une
+   troisième couleur au bord du plateau, qui ne voulait rien dire d'autre que
+   « c'est lui » —, puis d'un liseré à peine plus clair, qu'on ne remarquait
+   pas : le joueur cherchait la ligne de statut pour savoir à qui jouer. */
+.gp-bar.gp-turn{
+  background:
+    linear-gradient(180deg,rgba(255,238,200,.10),rgba(255,238,200,0) 46%) padding-box,
+    radial-gradient(ellipse 80% 170% at 0% 50%,rgba(240,186,92,.22),rgba(240,186,92,0) 70%) padding-box,
+    linear-gradient(180deg,#1e2531 0%,#121822 58%,#0c1018 100%) padding-box,
+    linear-gradient(180deg,#fff1c4 0%,#e6c073 28%,#a97a30 55%,#e2b45a 80%,#fff1c4 100%) border-box;
+  box-shadow:inset 0 0 0 1px rgba(0,0,0,.6),inset 0 0 0 2px rgba(255,226,160,.26),var(--shadow-1),
+    0 0 0 1px rgba(255,220,150,.10)}
+/* LE HALO QUI RESPIRE. Une ombre portée dorée sur un calque à part, dont
+   seule l'OPACITÉ bat : le halo ne repeint rien (règle de [COMBAT-FX]), et il
+   est assez lent pour se sentir sans se regarder. */
+.gp-bar::after{content:'';position:absolute;inset:-1.5px;border-radius:inherit;z-index:0;
+  pointer-events:none;box-shadow:0 0 26px -2px rgba(240,186,92,.55),0 0 6px rgba(255,220,150,.25);
+  opacity:0;transition:opacity .3s ease}
+.gp-bar.gp-turn::after{opacity:1;animation:gpTurnGlow 2.8s ease-in-out infinite}
+@keyframes gpTurnGlow{0%,100%{opacity:.5}50%{opacity:1}}
+/* LE FERMOIR. Un losange d'or serti, posé à cheval sur l'arête de la plaque
+   qui regarde l'échiquier — en bas pour l'adversaire, en haut pour soi — et
+   prolongé de deux volutes le long du liseré : les deux plaques s'agrafent
+   au plateau au lieu de flotter à côté. RUBIS en face, SAPHIR chez soi, comme
+   les bossettes du cadre. Il est rendu à l'identique pour les trois
+   variantes : leurs deux bandeaux sont aussi les deux premiers <div> de
+   leur colonne. */
+.gp-bar::before{content:'';position:absolute;left:50%;top:-10px;z-index:2;
+  width:88px;height:18px;margin-left:-44px;pointer-events:none;
+  background:var(--gm-crest-saph) center/100% 100% no-repeat;opacity:.82}
+.game-side>.gp-bar:first-of-type::before{top:auto;bottom:-10px;background-image:var(--gm-crest-ruby)}
+.gp-bar.gp-turn::before{opacity:1;filter:drop-shadow(0 0 5px rgba(255,206,130,.7))}
 .gp-av{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;
   justify-content:center;font-size:14px;font-weight:800;color:#08110f;flex-shrink:0;
   background:var(--metal-gold)}
+.gp-bar.gp-turn .gp-av{filter:drop-shadow(0 0 6px rgba(240,186,92,.55))}
 .gp-id{min-width:0;flex:1}
-.gp-name{font-size:14px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.gp-elo{font-size:11px;color:var(--muted);letter-spacing:.02em;font-variant-numeric:tabular-nums}
+/* Le nom est GRAVÉ : ivoire, avec un filet d'ombre dessous qui le creuse
+   dans la laque. Inter et non Cinzel : à 14 px, Cinzel ne se lit plus
+   (voir [THEME]). */
+.gp-name{font-size:14.5px;font-weight:700;letter-spacing:.01em;color:#f3ead6;
+  text-shadow:0 1px 0 rgba(0,0,0,.85);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gp-elo{font-size:11px;font-weight:600;color:#a99a7b;letter-spacing:.05em;font-variant-numeric:tabular-nums}
+.gp-bar.gp-turn .gp-elo{color:#cdb07a}
 /* Pièces prises par ce joueur : sur leur propre ligne (le bandeau est
    désormais étroit), petites, et bornées en hauteur pour qu'une avalanche de
    captures ne fasse pas grandir le bandeau. */
@@ -1248,31 +1329,63 @@ body:not(.main-menu) #settings-panel{display:none}
    aligner — c'était l'origine du désordre (voir drawCaptured,
    js/game-render.js). Le nombre d'exemplaires se lit dans une pastille en
    coin, qui déborde de la loge sans agrandir la rangée. */
+/* LA LOGE EST UN CHATON. Un carré à liseré pâle ressemblait à une case de
+   formulaire ; c'est maintenant une alvéole RONDE creusée dans la plaque —
+   un fond de nuit plus sombre au bord qu'au centre, une ombre portée à
+   l'intérieur — cerclée d'un jonc d'or, comme la monture d'une pierre. La
+   créature prise y est posée comme un trophée. */
 .cap-tok{position:relative;display:inline-grid;place-items:center;flex:none;
-  width:22px;height:22px;border-radius:6px;
-  background:rgba(11,18,32,.42);border:1px solid rgba(201,168,76,.42);
-  box-shadow:inset 0 0 0 1px rgba(0,0,0,.25)}
-.cap-tok .pc-icon{width:17px!important;height:17px!important}
-.cap-n{position:absolute;right:-4px;top:-4px;min-width:13px;height:13px;padding:0 3px;
-  box-sizing:border-box;border-radius:7px;background:var(--gold);color:#1a1206;
-  font:800 9px/13px var(--f-ui);text-align:center;letter-spacing:0;
-  box-shadow:0 1px 2px rgba(0,0,0,.6)}
-.gp-adv{font-size:12px;font-weight:700;color:var(--gold);margin-right:2px;white-space:nowrap;flex:none}
+  width:24px;height:24px;border-radius:50%;border:1px solid transparent;
+  background:radial-gradient(circle at 50% 40%,#283244 0%,#0a0f16 74%) padding-box,
+    linear-gradient(160deg,#f6dc98 0%,#9a6e2a 55%,#e0b968 100%) border-box;
+  box-shadow:inset 0 2px 4px rgba(0,0,0,.8),0 1px 2px rgba(0,0,0,.7)}
+.cap-tok .pc-icon{width:18px!important;height:18px!important}
+/* Le nombre d'exemplaires : une pièce d'or frappée, à cheval sur le chaton. */
+.cap-n{position:absolute;right:-5px;top:-5px;min-width:14px;height:14px;padding:0 3px;
+  box-sizing:border-box;border-radius:7px;background:var(--metal-gold);color:#241706;
+  border:1px solid #5a3d12;
+  font:800 9px/12px var(--f-ui);text-align:center;letter-spacing:0;
+  box-shadow:0 1px 2px rgba(0,0,0,.7)}
+.gp-adv{font-size:12.5px;font-weight:800;color:var(--gold2);margin-right:2px;white-space:nowrap;flex:none;
+  text-shadow:0 0 8px rgba(240,190,100,.35),0 1px 0 rgba(0,0,0,.8)}
 
 /* LA PENDULE : c'est l'information la plus consultée d'une partie chronométrée,
    elle est donc traitée comme un afficheur, pas comme une étiquette. */
 /* LA PENDULE : un cadran creusé dans la laque, chiffres éteints. Celle qui
    tourne s'éclaire — chiffres ivoire, filet d'or — et c'est la seule chose
    qui bouge dans le bandeau. */
+/* LE CARTOUCHE. La pendule est une gemme de verre fumé enchâssée dans un
+   jonc d'or : les deux bouts arrondis en font un cabochon allongé, posé dans
+   la plaque comme une pierre dans sa monture. Éteinte, le verre est noir et
+   les chiffres dorment ; celle qui tourne s'allume de l'intérieur — une
+   braise d'ambre au fond du verre, chiffres ivoire, jonc d'or poli. */
 .gp-clock{font-family:var(--f-ui);font-size:26px;font-weight:800;
-  letter-spacing:.02em;font-variant-numeric:tabular-nums;padding:4px 12px;border-radius:var(--r-md);
-  background:rgba(3,5,8,.6);border:1px solid var(--border);color:var(--faint);
-  box-shadow:inset 0 2px 6px rgba(0,0,0,.6);
-  min-width:96px;text-align:center;flex-shrink:0;transition:color .2s,border-color .2s,background .2s}
-.gp-bar.gp-turn .gp-clock{color:#fff8e6;border-color:rgba(240,206,140,.7);
-  background:linear-gradient(180deg,rgba(60,48,24,.75),rgba(20,16,10,.8));
-  box-shadow:inset 0 1px 0 rgba(255,240,200,.12),0 0 16px -4px rgba(240,206,140,.5)}
-.gp-clock.clock-low{color:#fff;background:rgba(217,85,47,.85);border-color:var(--ember);
+  letter-spacing:.02em;font-variant-numeric:tabular-nums;padding:4px 16px 4px 13px;border-radius:999px;
+  border:1.5px solid transparent;color:var(--faint);
+  background:radial-gradient(ellipse 70% 60% at 50% 0%,rgba(255,255,255,.07),rgba(255,255,255,0) 70%) padding-box,
+    linear-gradient(180deg,#04070b,#0c121a) padding-box,
+    linear-gradient(180deg,rgba(236,204,134,.6),rgba(110,80,30,.45) 50%,rgba(200,160,90,.5)) border-box;
+  box-shadow:inset 0 2px 7px rgba(0,0,0,.8),inset 0 0 0 1px rgba(0,0,0,.5);
+  min-width:96px;text-align:center;flex-shrink:0;transition:color .2s}
+.gp-bar.gp-turn .gp-clock{color:#fff8e6;text-shadow:0 0 12px rgba(255,206,130,.45);
+  background:radial-gradient(ellipse 90% 110% at 50% 115%,rgba(240,170,70,.42),rgba(240,170,70,0) 66%) padding-box,
+    radial-gradient(ellipse 70% 60% at 50% 0%,rgba(255,255,255,.08),rgba(255,255,255,0) 70%) padding-box,
+    linear-gradient(180deg,#1a1309,#0a0704) padding-box,
+    var(--metal-gold) border-box}
+/* La lueur extérieure de la pendule allumée CÈDE au feu : [CLOCK-FIRE] écrit
+   la sienne dans `box-shadow`, et une règle plus précise l'effaçait au moment
+   précis où le feu compte le plus — quand c'est à vous de jouer. */
+.gp-bar.gp-turn .gp-clock:not(.on-fire){
+  box-shadow:inset 0 1px 0 rgba(255,240,200,.16),inset 0 0 0 1px rgba(0,0,0,.5),0 0 18px -4px rgba(240,190,100,.55)}
+.gp-bar.gp-turn .gp-clock-ico{color:var(--gold2);opacity:.95}
+/* SOUS TRENTE SECONDES, LE VERRE ROUGIT — y compris quand c'est à vous.
+   La règle d'origine (`.gp-clock.clock-low`) perdait contre celle de la
+   pendule allumée, plus précise : la pendule du joueur au trait, la seule
+   qui compte vraiment, restait dorée jusqu'à zéro. */
+.gp-clock.clock-low,.gp-bar.gp-turn .gp-clock.clock-low{color:#fff;text-shadow:0 0 8px rgba(255,140,90,.6);
+  background:radial-gradient(ellipse 90% 110% at 50% 115%,rgba(255,120,60,.55),rgba(255,120,60,0) 70%) padding-box,
+    linear-gradient(180deg,#5a1708,#2a0904) padding-box,
+    linear-gradient(180deg,#ffb08a,#c2401c 55%,#ff8a5c) border-box;
   animation:clockLowPulse 1s ease-in-out infinite}
 @keyframes clockLowPulse{0%,100%{opacity:1}50%{opacity:.6}}
 
@@ -1286,19 +1399,27 @@ body:not(.main-menu) #settings-panel{display:none}
    bouton. C'est maintenant une phrase centrée entre deux filets d'or ; sa
    couleur seule dit qui doit jouer (or : vous ; gris : l'adversaire ; braise :
    échec). */
-.status-bar{font-family:var(--f-ui);font-size:13px;font-weight:600;letter-spacing:.01em;
-  padding:6px 4px;border-radius:var(--r-md);text-align:center;color:var(--text2);
-  background:none;border:1px solid transparent;line-height:1.35;min-height:32px}
+/* « À votre tour » se lit d'abord par sa LUMIÈRE : la phrase s'éclaire d'un
+   halo d'or, celle de l'adversaire reste dans l'ombre, en gris. */
+.status-bar{font-family:var(--f-ui);font-size:13.5px;font-weight:600;letter-spacing:.015em;
+  padding:6px 4px;border-radius:999px;text-align:center;color:var(--text2);
+  background:none;border:1px solid transparent;line-height:1.35;min-height:32px;
+  text-shadow:0 1px 0 rgba(0,0,0,.8)}
 .status-bar.check{color:#ffb39a;border-color:rgba(242,106,61,.55);background-color:rgba(60,16,8,.55);animation:checkShake .4s ease}
-.status-bar.ok{color:var(--gold2)}
+.status-bar.ok{color:var(--gold2);text-shadow:0 0 14px rgba(240,190,100,.45),0 1px 0 rgba(0,0,0,.8)}
 .status-bar.thinking{color:var(--muted);font-weight:500}
 .status-bar.mate{color:var(--gold2);border-color:rgba(240,206,140,.55);background-color:rgba(50,38,16,.5)}
 .move-log{flex:1;overflow-y:auto;font-size:13px;font-family:var(--f-ui);line-height:1.7;min-height:60px}
 .move-log-item{display:flex;gap:8px;align-items:center;padding:2px 4px;border-radius:5px}
-.move-log-item:nth-child(odd){background:rgba(255,255,255,.02)}
+/* Une ligne sur deux est une bande de laque à peine plus claire, bordée d'un
+   filet d'or presque éteint : les lignes d'un registre, pas des lignes de
+   tableur. */
+.move-log-item:nth-child(odd){background:linear-gradient(90deg,rgba(216,178,106,.07),rgba(216,178,106,.025) 60%,rgba(216,178,106,0))}
 /* La position qu'on relit. */
 .move-log-item.ml-here{background:rgba(216,178,106,.16);box-shadow:inset 0 0 0 1px rgba(240,206,140,.45)}
-.move-log-num{color:var(--muted);min-width:24px;font-size:10px}
+/* Le numéro du coup est l'encre de la marge : laiton, plus discret que le
+   coup lui-même. */
+.move-log-num{color:#a8925f;min-width:24px;font-size:10px;font-weight:700;font-variant-numeric:tabular-nums}
 /* Les coups NOIRS étaient grisés. Or le coup adverse n'est pas une
    information secondaire — c'est souvent celui qu'on relit. La couleur du
    camp est portée par le logo de la pièce, pas par l'opacité du texte. */
@@ -1353,14 +1474,32 @@ body:not(.main-menu) #settings-panel{display:none}
    un style en dur qui lui donnait 30 px de haut. Une cible tactile pleine,
    comme partout ailleurs. */
 .game-btns .btn{min-height:44px;font-size:12.5px;padding:11px 12px}
+/* « ABANDONNER » EST UN SCEAU DE CIRE, PAS UNE ALERTE. Il garde le rouge qui
+   dit « ce qui se perd », mais dans la matière du reste de la table : une
+   laque sang-de-bœuf, un jonc de cuivre rouge qui accroche la lumière en haut
+   et en bas, un filet gravé à l'intérieur. Il se trouve sans crier. */
+.game-btns .btn-danger{color:#ffc2b4;letter-spacing:.03em;text-shadow:0 1px 0 rgba(0,0,0,.8);
+  border-width:1.5px;
+  background:linear-gradient(180deg,rgba(255,200,180,.08),rgba(255,200,180,0) 50%) padding-box,
+    linear-gradient(180deg,#4d1714,#2a0b0b) padding-box,
+    linear-gradient(180deg,#f1a088 0%,#8e3326 40%,#5e1d16 60%,#c56a52 100%) border-box;
+  box-shadow:inset 0 0 0 1px rgba(0,0,0,.6),inset 0 0 0 2px rgba(255,170,150,.10),0 8px 18px -10px rgba(0,0,0,.95)}
+.game-btns .btn-danger:hover:not(:disabled){color:#ffe0d6;filter:brightness(1.12)}
+.game-btns .btn-danger .btn-ico{color:#f08a72}
 .history-nav{display:flex;gap:6px;justify-content:center;margin-bottom:6px}
 /* 44 × 44 : les quatre commandes faisaient 25 px de haut sur 5 px d'écart,
    très en dessous du seuil tactile confortable. */
-.history-nav button{background:linear-gradient(180deg,rgba(33,46,62,.96),rgba(17,24,34,.96));border:1px solid var(--border2);border-radius:var(--r-md);
-  color:var(--text);cursor:pointer;font-size:15px;line-height:1;
+/* Quatre boutons de laque cerclés d'un jonc d'or, comme les outils de la
+   table : ce sont les commandes d'un registre, elles en ont la matière. */
+.history-nav button{border:1px solid transparent;border-radius:var(--r-md);
+  background:linear-gradient(180deg,rgba(255,238,200,.06),rgba(255,238,200,0) 50%) padding-box,
+    linear-gradient(180deg,#1a2433,#0c121b) padding-box,
+    linear-gradient(180deg,rgba(236,204,134,.65),rgba(120,88,34,.45) 55%,rgba(200,160,90,.55)) border-box;
+  box-shadow:inset 0 0 0 1px rgba(0,0,0,.55),0 5px 12px -8px rgba(0,0,0,.9);
+  color:var(--gold2);cursor:pointer;font-size:15px;line-height:1;
   width:44px;height:40px;display:flex;align-items:center;justify-content:center;
-  transition:border-color .16s,color .16s,background .16s}
-.history-nav button:hover:not(:disabled){border-color:rgba(240,206,140,.6);color:var(--gold2)}
+  transition:color .16s,filter .16s}
+.history-nav button:hover:not(:disabled){color:#fff3cf;filter:brightness(1.18)}
 .history-nav button:disabled{opacity:.28;cursor:not-allowed}
 
 .gs-stake-q{font-family:var(--f-ui);font-size:10px;color:var(--muted);margin-left:-2px;margin-right:5px}
@@ -1376,9 +1515,11 @@ body:not(.main-menu) #settings-panel{display:none}
 .game-board{display:grid;grid-template-columns:repeat(8,1fr);width:100%;aspect-ratio:1;
   /* position:relative : la couche des pièces (.gc-layer) se cale dessus. */
   position:relative;
-  border:1px solid var(--border2);border-radius:6px;overflow:hidden;
-  background-size:100% 100%;background-repeat:no-repeat;
-  box-shadow:0 12px 32px -10px rgba(0,0,0,.55),0 0 0 1px var(--border2)}
+  /* Plus d'arrondi ni de liseré gris : le plateau est SERTI dans son cadre
+     d'or (voir [ART]), dont la lèvre intérieure est noire. Un coin arrondi y
+     laissait quatre éclats de fond entre les cases et l'or. */
+  border:1px solid #070502;border-radius:0;overflow:hidden;
+  background-size:100% 100%;background-repeat:no-repeat}
 /* LES REPÈRES SONT DANS LES CASES DE BORD. Les deux bandes extérieures
    (.game-row-labels / .game-col-labels) prenaient ~40 px à un échiquier dont
    la hauteur est justement la dimension contrainte. Le repère prend la
@@ -1420,11 +1561,18 @@ body:not(.main-menu) #settings-panel{display:none}
    La case choisie se cercle d'or, les cases jouables portent une perle d'or
    (immobile : une grille de perles qui pulsent toutes ensemble tire l'œil
    partout à la fois), le dernier coup laisse un lavis doré. */
-.gc.sel{box-shadow:inset 0 0 0 3px rgba(255,226,150,.95),inset 0 0 24px rgba(240,190,90,.55)}
-.gc.avail::before{content:'';position:absolute;width:30%;height:30%;border-radius:50%;
-  background:radial-gradient(circle at 42% 38%,#fff7dc 0%,#f1c96a 45%,#b9862e 100%);
-  z-index:1;pointer-events:none;opacity:.92;
-  box-shadow:0 0 0 1.5px rgba(40,26,6,.55),0 0 10px rgba(255,200,100,.55)}
+/* La case choisie est cerclée d'un DOUBLE jonc — un filet d'or clair, un
+   filet de bronze sombre juste dedans — qui se lit sur le bois clair comme
+   sur la pierre noire : l'un des deux contraste toujours. */
+.gc.sel{box-shadow:inset 0 0 0 2px rgba(255,234,170,.98),inset 0 0 0 3.5px rgba(84,54,10,.55),inset 0 0 24px rgba(240,190,90,.5)}
+/* LA PERLE DEVIENT UNE GEMME. Une pastille dégradée ressemblait à un bouton
+   d'interface posé sur le plateau ; c'est maintenant une pierre d'or taillée
+   (--gm-gem : une table octogonale, huit facettes, un éclat), cerclée de
+   brun sombre pour rester nette sur le chêne clair. Toujours immobile. */
+.gc.avail::before{content:'';position:absolute;width:32%;height:32%;border-radius:50%;
+  background:var(--gm-gem) center/100% 100% no-repeat;
+  z-index:1;pointer-events:none;opacity:.96;
+  box-shadow:0 0 10px 1px rgba(255,200,100,.5)}
 /* LA CASE OÙ L'ON PEUT PRENDRE. Le liseré battait en animant `box-shadow` :
    une propriété qui REPEINT la case à chaque image, sur autant de cases qu'il
    y a de prises possibles, en boucle infinie tant qu'une pièce est
@@ -1433,7 +1581,15 @@ body:not(.main-menu) #settings-panel{display:none}
    Le calque est ::before, libre ici : la pastille de déplacement ne se pose
    que sur `.avail` (une case est jouable OU prenable, jamais les deux), et
    les deux autres usages de ::before excluent explicitement `.avail-cap`. */
-.gc.avail-cap{box-shadow:inset 0 0 0 4px rgba(217,85,47,.72)}
+/* Aux quatre coins de la case prenable, quatre ÉCOINÇONS de braise : la
+   cible se lit même quand la pièce adverse couvre tout le centre de la case
+   (le liseré seul se perdait sous les grandes créatures). Ils ne battent
+   pas — seul le calque du liseré, plus bas, respire. */
+.gc.avail-cap{box-shadow:inset 0 0 0 3px rgba(217,85,47,.72);
+  background:linear-gradient(135deg,rgba(242,106,61,.92) 0 11%,transparent 11.5%),
+    linear-gradient(225deg,rgba(242,106,61,.92) 0 11%,transparent 11.5%),
+    linear-gradient(315deg,rgba(242,106,61,.92) 0 11%,transparent 11.5%),
+    linear-gradient(45deg,rgba(242,106,61,.92) 0 11%,transparent 11.5%)}
 .gc.avail-cap::before{content:'';position:absolute;inset:0;pointer-events:none;z-index:1;
   box-shadow:inset 0 0 0 4px rgba(217,85,47,1);
   animation:capPulse 1.2s ease-in-out infinite}
@@ -1600,7 +1756,7 @@ body:not(.main-menu) #settings-panel{display:none}
 
 @media(max-width:1080px){
   .game-side{width:270px}
-  .game-main{--bsz:min(calc(100vh - 100px),calc(100vw - 332px))}
+  .game-main{--bsz:min(calc(100vh - 100px),calc(100vw - 352px))}
   .gp-clock{font-size:22px;min-width:84px}
 }
 @media(max-width:820px){
@@ -4538,12 +4694,26 @@ body.desk .var-card-hdr{flex-wrap:wrap}
      borne, la taille du plateau ne change pas d'un pixel.
      Le plancher de 200 px évite qu'un écran minuscule ne réduise l'échiquier
      à un timbre : là, mieux vaut défiler. */
+  /* LE CADRE A SA PLACE. Le plateau arrivait à cinq pixels du bord de
+     l'écran : assez pour un filet de 5 px, pas pour un cadre d'or serti de
+     ses quatre gemmes. Il cède 8 px de large (2 % de sa taille) et gagne 7 px
+     d'air au-dessus et au-dessous : le cadre de 8 px se pose dans cette
+     marge sans jamais toucher le bord de l'écran ni les deux plaques, dont
+     les fermoirs viennent s'agrafer à lui. */
   .game-main{flex:0 0 auto;overflow:visible;justify-content:flex-start;min-height:0;
-    padding:0;gap:6px;
-    --bsz:max(200px,min(calc(100vw - 20px),calc(100dvh - var(--game-chrome,420px))))}
+    padding:7px 0;gap:6px;
+    --bsz:max(200px,min(calc(100vw - 28px),calc(100dvh - var(--game-chrome,420px))))}
+  /* Sur une tablette tenue droite, le cadre passe à 16 px : sa marge suit. */
+  @media(min-width:560px){
+    .game-main{padding:15px 0;
+      --bsz:max(200px,min(calc(100vw - 44px),calc(100dvh - var(--game-chrome,420px))))}
+  }
 
   /* --- Le bandeau joueur : UNE rangée de 40 px --- */
-  .gp-bar{flex-wrap:nowrap;min-height:40px;padding:0 8px;gap:7px;border-radius:12px}
+  .gp-bar{flex-wrap:nowrap;min-height:42px;padding:0 10px 0 8px;gap:7px;border-radius:12px}
+  /* Le fermoir se resserre avec la plaque. */
+  .gp-bar::before{width:76px;height:16px;margin-left:-38px;top:-9px}
+  .game-side>.gp-bar:first-of-type::before{bottom:-9px}
   .gp-av{width:24px;height:24px;font-size:11px;border-radius:7px}
   .gp-name{font-size:12px}
   .gp-elo{font-size:10px}
@@ -4553,17 +4723,23 @@ body.desk .var-card-hdr{flex-wrap:wrap}
   .gp-taken{flex:1 1 0;flex-basis:0;flex-wrap:nowrap;min-width:0;gap:5px;
     max-height:30px;padding:5px 4px 1px 0;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;gap:4px}
   .gp-taken::-webkit-scrollbar{display:none}
-  .gp-taken .cap-tok{width:20px;height:20px;border-radius:5px}
+  .gp-taken .cap-tok{width:21px;height:21px;border-radius:50%}
   .gp-taken .cap-tok .pc-icon{width:15px!important;height:15px!important}
   .gp-name{max-width:34vw}
   .gp-taken.cap-over{-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 16px),transparent);
     mask-image:linear-gradient(90deg,#000 calc(100% - 16px),transparent)}
-  .gp-clock{order:5;font-size:17px;font-weight:800;min-width:66px;padding:2px 7px;border-radius:8px}
+  /* LA PENDULE EST TOUJOURS AU BOUT DE LA PLAQUE. Sans prise, la rangée des
+     loges est vide (`display:none`) et la pendule venait se coller au nom,
+     au milieu du bandeau — puis sautait à droite à la première capture. Elle
+     se cale maintenant à droite dès le premier coup, et n'en bouge plus. */
+  .gp-clock{order:5;font-size:17px;font-weight:800;min-width:66px;padding:2px 10px 2px 8px;border-radius:999px;margin-left:auto}
   /* Le camp au trait s'annonce aussi par un trait le long de l'arête tournée
      vers le plateau : on le voit sans lire. */
-  /* Le bouton de réglages flotte en haut à droite et n'a plus de barre sous
-     lui : le bandeau adverse lui réserve sa place, sinon il se pose dessus. */
-  #ai-player-bar{padding-right:52px}
+  /* PLUS DE RÉSERVE POUR LE BOUTON DE RÉGLAGES. Le bandeau adverse gardait
+     52 px vides à sa droite pour un bouton qui ne flotte plus que sur le menu
+     principal (voir [SETTINGS]) : la pendule adverse s'arrêtait à un
+     doigt de la fin de sa plaque, celle du joueur non. Les deux plaques
+     sont de nouveau symétriques. */
 
   /* LES DEUX ÉTATS DU TOUR SE LISENT AU MÊME ENDROIT. « À votre tour » était
      masqué sur téléphone (`.status-bar.ok{display:none}`), au motif que le
@@ -4648,6 +4824,18 @@ body.desk .var-card-hdr{flex-wrap:wrap}
 .game-under>.game-tools{grid-column:1;grid-row:1}
 .game-under>.gu-undo{grid-column:2;grid-row:1}
 .game-under>:not(.game-tools):not(.gu-undo):not(.game-panel){grid-column:1 / -1}
+/* LE CERCLE GRAVÉ DANS LA TABLE. Sur un téléphone, le plateau est borné par
+   la largeur et la zone sous les outils reste vide — c'est la place où le
+   journal s'ouvre. Vide, elle montrait le sol de l'arène et rien d'autre.
+   Un cercle runique y est maintenant gravé en filets d'or à peine visibles
+   (--gm-sigil) : la table de bataille a son sceau, que le panneau recouvre
+   en s'ouvrant. Il ne reçoit aucun clic, n'est pas dans le flux (la mesure de
+   gameSyncChrome l'ignore, comme les panneaux), et il se tait sur les écrans
+   courts, où la zone est trop étroite pour qu'un cercle s'y lise. */
+.game-under::before{content:'';position:absolute;left:0;right:0;top:58px;bottom:6px;margin:auto;
+  max-width:250px;max-height:250px;pointer-events:none;
+  background:var(--gm-sigil) center/contain no-repeat;opacity:.085}
+@media(max-height:700px){.game-under::before{display:none}}
 /* « Annuler coup » a quitté la rangée des boutons de partie (il n'y reste que
    la sortie) : il reprend ici la cible tactile pleine que .game-btns .btn lui
    donnait. Annuler un coup est l'une des deux actions les plus lourdes de
@@ -4656,6 +4844,22 @@ body.desk .var-card-hdr{flex-wrap:wrap}
    largeur, c'était l'objet le plus voyant du panneau, plus que l'indication
    de tour. Centré, à la taille de son libellé, il se trouve sans s'imposer. */
 .gu-undo{min-height:42px;font-size:13px;padding:0 16px;width:auto;align-self:center}
+/* LES OUTILS DE LA TABLE : DES PLAQUES, PAS DES BOUTONS DE FORMULAIRE.
+   « Historique », « Chat », « La règle » et « Annuler coup » partagent la
+   matière des plaques de nom, un cran plus sobre : laque nocturne, jonc d'or
+   terni, filet gravé intérieur. Celui qui est ouvert s'allume comme une
+   plaque au trait. La spécificité (.game-under .gu-undo) passe devant
+   .btn-ghost, écrit dans [COMMON]. */
+.gt-btn,.game-under .gu-undo{border:1px solid transparent;color:var(--text2);
+  background:linear-gradient(180deg,rgba(255,238,200,.06),rgba(255,238,200,0) 50%) padding-box,
+    linear-gradient(180deg,#1a2433,#0c121b) padding-box,
+    linear-gradient(180deg,rgba(236,204,134,.7) 0%,rgba(120,88,34,.45) 50%,rgba(200,160,90,.55) 100%) border-box;
+  box-shadow:inset 0 0 0 1px rgba(0,0,0,.6),inset 0 0 0 2px rgba(240,206,140,.09),0 6px 14px -8px rgba(0,0,0,.9);
+  text-shadow:0 1px 0 rgba(0,0,0,.8)}
+.game-under .gu-undo:hover:not(:disabled){color:var(--gold2);filter:brightness(1.14);
+  background:linear-gradient(180deg,rgba(255,238,200,.08),rgba(255,238,200,0) 50%) padding-box,
+    linear-gradient(180deg,#1f2a3a,#0e151f) padding-box,
+    linear-gradient(180deg,#f3d995 0%,#9c7331 50%,#e0bd72 100%) border-box}
 /* IL N'Y A PLUS DE `min-height` À L'OUVERTURE. Le journal valait 38 dvh et la
    discussion 46 : deux hauteurs imposées, qui prenaient à l'échiquier ce
    qu'elles s'accordaient. La zone fait maintenant, ouverte comme fermée,
@@ -4672,17 +4876,18 @@ body.desk .var-card-hdr{flex-wrap:wrap}
 .game-tools{display:flex;justify-content:flex-start;gap:8px;min-width:0}
 .gt-btn{display:inline-flex;align-items:center;gap:7px;position:relative;
   font-family:var(--f-ui);font-size:13px;font-weight:650;letter-spacing:.01em;
-  color:var(--text2);border:1px solid transparent;border-radius:var(--r-md);
-  background:linear-gradient(180deg,rgba(33,46,62,.96),rgba(17,24,34,.96)) padding-box,
-    linear-gradient(180deg,rgba(240,206,140,.45),rgba(170,130,62,.16)) border-box;
-  box-shadow:inset 0 1px 0 rgba(255,240,210,.06),0 6px 14px -8px rgba(0,0,0,.9);
+  border-radius:var(--r-md);
   padding:0 14px;min-height:42px;cursor:pointer;
   transition:color .15s,filter .15s}
 .gt-btn svg{width:16px;height:16px;flex:none;color:var(--gold)}
-.gt-btn:hover{color:var(--gold2);filter:brightness(1.12)}
+.gt-btn:hover{color:var(--gold2);filter:brightness(1.14)}
 .gt-btn[aria-expanded="true"]{color:var(--gold2);
-  background:linear-gradient(180deg,rgba(60,48,24,.8),rgba(24,20,14,.9)) padding-box,
-    linear-gradient(180deg,rgba(250,224,160,.85),rgba(200,160,80,.4)) border-box}
+  background:linear-gradient(180deg,rgba(255,238,200,.10),rgba(255,238,200,0) 50%) padding-box,
+    radial-gradient(ellipse 90% 140% at 50% 120%,rgba(240,180,80,.30),rgba(240,180,80,0) 70%) padding-box,
+    linear-gradient(180deg,#2a2213,#120e08) padding-box,
+    var(--metal-gold) border-box;
+  box-shadow:inset 0 0 0 1px rgba(0,0,0,.55),inset 0 0 0 2px rgba(255,226,160,.18),0 0 16px -6px rgba(240,190,100,.6)}
+.gt-btn[aria-expanded="true"] svg{color:var(--gold2)}
 /* La pastille du chat : un message est arrivé pendant que le panneau était
    fermé. Elle ne compte pas les messages — un nombre inviterait à les
    compter, et il n'y a rien à compter : il y a du nouveau, ou il n'y a rien. */
@@ -4692,27 +4897,48 @@ body.desk .var-card-hdr{flex-wrap:wrap}
 @keyframes gtDot{0%,100%{opacity:1}50%{opacity:.35}}
 
 /* --- LE PANNEAU ------------------------------------------------- */
+/* LE REGISTRE. Le panneau est une fenêtre d'apparat : quatre coins de
+   filigrane (--orn-tl…, [THEME]), un liseré d'or, une laque OPAQUE. Elle
+   était à 98 % : assez pour que les libellés des boutons qu'elle recouvre
+   (« Annuler coup », « La règle ») transparaissent en fantômes sous son
+   titre. Les coins sont écrits ici en toutes lettres, à 22 px : --orn-frame
+   est calculé une fois pour toutes sur :root, redéfinir --orn-sz sur le
+   panneau ne le rapetisserait pas. */
 .game-panel{position:absolute;inset:0;z-index:40;
   display:flex;flex-direction:column;gap:6px;min-height:0;
   border:1px solid transparent;border-radius:var(--r-lg);
-  background:linear-gradient(180deg,rgba(22,31,43,.98),rgba(11,16,23,.99)) padding-box,var(--panel-edge) border-box;
-  padding:8px 10px 10px;
-  box-shadow:0 18px 40px -16px rgba(0,0,0,.9);
+  background:
+    var(--orn-tl) left 3px top 3px/22px 22px no-repeat,
+    var(--orn-tr) right 3px top 3px/22px 22px no-repeat,
+    var(--orn-bl) left 3px bottom 3px/22px 22px no-repeat,
+    var(--orn-br) right 3px bottom 3px/22px 22px no-repeat,
+    radial-gradient(ellipse 90% 40% at 50% 0%,rgba(216,178,106,.07),rgba(216,178,106,0) 70%) padding-box,
+    linear-gradient(180deg,#141d29,#0a0f16) padding-box,
+    var(--panel-edge) border-box;
+  background-color:#0a0f16;
+  padding:8px 12px 12px;
+  box-shadow:inset 0 0 0 1px rgba(0,0,0,.5),0 18px 40px -16px rgba(0,0,0,.9);
   animation:gpanelIn .18s cubic-bezier(.32,.72,.3,1) both}
 .game-panel[hidden]{display:none}
 @keyframes gpanelIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+/* L'en-tête : l'intertitre du jeu (losange d'or, capitales de laiton), sur
+   un filet d'or qui s'éteint vers la droite au lieu d'une règle grise. */
 .gpanel-head{display:flex;align-items:center;gap:8px;flex:none;
-  padding-bottom:6px;border-bottom:1px solid var(--border)}
+  padding:0 2px 6px 14px;border-bottom:1px solid transparent;
+  background:linear-gradient(90deg,rgba(216,178,106,.5),rgba(216,178,106,.12) 70%,rgba(216,178,106,0)) left bottom/100% 1px no-repeat}
 .gpanel-title{flex:1;font-family:var(--f-ui);font-size:11px;font-weight:700;
   letter-spacing:.16em;text-transform:uppercase;color:#cdab6a;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  display:flex;align-items:center;gap:9px}
+.gpanel-title::before{content:'';flex:none;width:6px;height:6px;transform:rotate(45deg);
+  background:linear-gradient(135deg,#f6e0a0,#a47a33);box-shadow:0 0 6px rgba(240,200,120,.45)}
 /* La croix, en haut à droite, ferme le panneau et redonne son bouton. 34 px
    de cible : c'est le geste qu'on fait pour revenir au plateau, il ne doit
    jamais se rater. */
-.gpanel-close,.gpanel-mute{flex:none;width:34px;height:34px;border-radius:9px;
+.gpanel-close,.gpanel-mute{flex:none;width:34px;height:34px;border-radius:50%;
   display:inline-flex;align-items:center;justify-content:center;
-  background:transparent;border:1px solid transparent;
-  color:var(--muted);font-size:16px;line-height:1;cursor:pointer;
+  background:transparent;border:1px solid rgba(216,178,106,.28);
+  color:#cdb886;font-size:15px;line-height:1;cursor:pointer;
   font-family:inherit;transition:color .15s,border-color .15s}
 .gpanel-close:hover{color:var(--danger);border-color:var(--danger)}
 /* LA CIBLE DÉBORDE LE DESSIN. 34 px (30 sur un écran court) restent sous
@@ -4751,8 +4977,10 @@ body.desk .var-card-hdr{flex-wrap:wrap}
 .game-panel .history-nav{flex:none;margin:0 0 2px}
 /* Le journal vide le dit, au lieu d'être un rectangle noir sous quatre
    flèches éteintes. */
+/* Le registre vierge parle comme un chroniqueur : Crimson Pro, la police de
+   la prose du jeu (le Lore, le tutoriel), en italique, à l'encre de laiton. */
 .move-log:empty::before{content:"Aucun coup joué pour l'instant.";display:block;margin:auto;
-  padding:28px 12px;text-align:center;font-family:var(--f-ui);font-size:13px;font-style:italic;color:var(--muted)}
+  padding:28px 12px;text-align:center;font-family:'Crimson Pro',Georgia,serif;font-size:17px;font-style:italic;color:#b7a171}
 /* ÉCRAN COURT : le panneau resserre sa propre carrosserie — titre, écarts,
    hauteur des commandes — pour rendre au journal les vingt pixels qu'elle lui
    prenait. Rien de tout cela ne touche au plateau, qui garde sa taille. */
@@ -6758,9 +6986,17 @@ body.nav-active:not(.nav-overlay) .notif-host{bottom:92px}
    pas décoratif : il passe devant `#page-fok{background:var(--bg)}` et ses
    deux sœurs, écrites plus bas ; et `.page` ne marcherait pas, pages-nav.js
    le retire à #page-game quand il la range dans la rangée. */
+/* LA NUIT AUTOUR DE LA TABLE (v5). Deux voiles de plus, au-dessus du voile
+   d'ardoise : une VIGNETTE qui éteint les quatre coins de l'écran, et un
+   dégradé vertical — un ciel bleu de nuit en haut, le sol de l'arène éteint
+   en bas. La lumière ne vient plus de partout : elle tombe sur le plateau
+   (voir la table, juste après) et meurt vers les bords, comme dans une salle
+   éclairée par ses seuls braseros. */
 html #page-game,html #page-fok,html #page-mirror,html #page-troie{
   background:
-    radial-gradient(ellipse 75% 60% at 50% 42%,rgba(9,12,17,.86) 0%,rgba(9,12,17,.7) 55%,rgba(6,8,12,.82) 100%),
+    radial-gradient(ellipse 120% 90% at 50% 40%,rgba(3,4,7,0) 42%,rgba(3,4,7,.74) 100%),
+    linear-gradient(180deg,rgba(18,32,58,.40) 0%,rgba(18,32,58,0) 36%,rgba(4,5,8,0) 60%,rgba(4,5,8,.62) 100%),
+    radial-gradient(ellipse 75% 60% at 50% 42%,rgba(9,12,17,.80) 0%,rgba(9,12,17,.66) 55%,rgba(6,8,12,.82) 100%),
     url('../assets/backgrounds/partie.webp') center/cover no-repeat,
     url('../assets/backgrounds/combat-intro.webp') center/cover no-repeat;
   /* La couleur à part : un var() dans le raccourci `background` le rend
@@ -6771,20 +7007,35 @@ html #page-game,html #page-fok,html #page-mirror,html #page-troie{
 /* Sur un grand écran, la colonne des pendules était un aplat opaque collé à
    la salle : elle devient une vitre fumée, qui laisse deviner le décor et
    ne se lit pas moins bien (l'ardoise reste à 86 %). */
+/* LA COLONNE EST UN PANNEAU DE LAQUE SERTI D'OR (v5). Sa seule arête visible,
+   celle qui regarde le plateau, porte un DOUBLE filet — un jonc d'or vif,
+   une gorge noire, un second filet terni — et une ombre qui tombe vers
+   l'intérieur : la colonne se lit comme une pièce de mobilier posée contre
+   la table, et non comme une barre latérale d'application. Une lumière
+   d'or tombe aussi sur son sommet, là où se lit le nom de l'adversaire. */
 @media(min-width:821px){
   html #page-game .game-side,html #page-fok .game-side,html #page-mirror .game-side,html #page-troie .game-side{
-    background:linear-gradient(180deg,rgba(15,21,30,.94),rgba(8,11,16,.96));
-    border-left-color:rgba(216,178,106,.28);
-    box-shadow:-18px 0 40px -24px rgba(0,0,0,.9)}
+    background:linear-gradient(90deg,rgba(0,0,0,.45),rgba(0,0,0,0) 26px),
+      radial-gradient(ellipse 120% 34% at 50% 0%,rgba(216,178,106,.08),rgba(216,178,106,0) 70%),
+      linear-gradient(180deg,rgba(17,24,34,.95),rgba(8,11,16,.97));
+    border-left:1px solid rgba(240,206,140,.62);
+    box-shadow:inset 3px 0 0 rgba(0,0,0,.7),inset 4px 0 0 rgba(240,206,140,.2),-20px 0 44px -22px rgba(0,0,0,.95)}
 }
 
 /* LA TABLE, DERRIÈRE LE PLATEAU. Le plateau est posé sur quelque chose :
    sans cette planche, c'est le fond de page ; avec, c'est un établi. */
-.board-frame{position:relative}
+/* ELLE N'ÉTAIT PAS VISIBLE. Son `z-index:-1` la renvoyait dans le contexte
+   d'empilement de la rangée de pages, c'est-à-dire SOUS le fond de #page-game
+   — qui la recouvrait entièrement. `isolation:isolate` ouvre un contexte sur
+   le cadre lui-même : la table se peint maintenant derrière l'échiquier et
+   devant la salle. Une flaque de lumière chaude s'y ajoute, la lampe
+   au-dessus de la partie, qui détache le plateau de la nuit. */
+.board-frame{position:relative;isolation:isolate}
 .board-frame::before{
-  content:'';position:absolute;inset:-6% -8%;z-index:-1;pointer-events:none;border-radius:18px;
-  background:url('../assets/backgrounds/table.webp') center/cover no-repeat;
-  opacity:.42;filter:saturate(.8) brightness(.9);
+  content:'';position:absolute;inset:-7% -9%;z-index:-1;pointer-events:none;border-radius:18px;
+  background:radial-gradient(closest-side,rgba(255,190,100,.26),rgba(255,190,100,.08) 60%,rgba(255,190,100,0)),
+    url('../assets/backgrounds/table.webp') center/cover no-repeat;
+  opacity:.5;filter:saturate(.8) brightness(.9);
   -webkit-mask-image:radial-gradient(ellipse 62% 62% at 50% 50%,#000 40%,transparent 92%);
   mask-image:radial-gradient(ellipse 62% 62% at 50% 50%,#000 40%,transparent 92%);
 }
@@ -6817,16 +7068,34 @@ html #page-game,html #page-fok,html #page-mirror,html #page-troie{
    rognage) — et donc aussi par les plateaux des trois variantes.
    5 px sur un téléphone : le plateau y arrive à cinq pixels du bord de
    l'écran, un cadre plus épais y serait coupé. */
+/* LE CADRE D'APPARAT (v5). La planche de filets (cadre-plateau.svg) faisait
+   un liseré correct et rien de plus : 5 à 11 px d'or uni, un plateau de
+   tableau de bord. Le cadre est maintenant --gm-frame (en tête de [GAME]) :
+   un jonc d'or perlé dehors, une gorge noire gravée de runes d'or, un
+   second jonc dedans, et aux quatre angles une bossette sertie — deux
+   RUBIS du côté adverse, deux SAPHIRS du vôtre. Les runes se répètent en
+   `round` : elles tombent toujours entières, quel que soit le côté du
+   plateau. Trois épaisseurs : 8 px sur un téléphone (le plateau a cédé la
+   place, voir [MOBILE-GAME]), 16 px sur une tablette, 24 px sur un bureau
+   (voir la réserve de .game-main, [GAME]).
+   Deux ombres de plus, portées par le cadre et non par le plateau : dehors,
+   une ombre longue et une lueur d'or qui le posent sur la table ; dedans,
+   une ombre courte qui fait descendre les cases d'un cran sous l'or, comme
+   un damier ENCHÂSSÉ. Elle reste légère : les repères des cases de bord se
+   lisent au travers. */
 .game-board-col{position:relative}
 .game-board-col::after{
-  content:'';position:absolute;inset:-5px;z-index:6;pointer-events:none;
-  border:5px solid transparent;
-  border-image:url('../assets/ui/cadre-plateau.svg') 46 / 5px / 0 stretch;
-  filter:drop-shadow(0 0 5px rgba(208,169,80,.18));
+  content:'';position:absolute;inset:-8px;z-index:6;pointer-events:none;
+  border:8px solid transparent;
+  border-image:var(--gm-frame) 40 / 8px / 0 round;
+  box-shadow:0 0 0 1px rgba(0,0,0,.6),0 18px 40px -14px rgba(0,0,0,.95),0 0 46px -8px rgba(240,186,92,.22),
+    inset 0 0 0 1px rgba(0,0,0,.5),inset 0 0 12px rgba(0,0,0,.34);
 }
 @media (min-width:560px){
-  .game-board-col::after{inset:-11px;border-width:11px;
-    border-image:url('../assets/ui/cadre-plateau.svg') 46 / 11px / 0 stretch}
+  .game-board-col::after{inset:-16px;border-width:16px;border-image-width:16px}
+}
+@media (min-width:821px){
+  .game-board-col::after{inset:-24px;border-width:24px;border-image-width:24px}
 }
 
 /* LES BANNIÈRES DE TITRE. Un bandeau derrière le titre de la page, qui
@@ -8073,10 +8342,15 @@ button.rp-log-w:hover,button.rp-log-b:hover{border-color:var(--border2);backgrou
    Ils s'ouvrent au milieu pour laisser passer la phrase : deux filets d'or
    qui s'éteignent vers les bords, en miroir. */
 .status-bar{position:relative;display:flex;align-items:center;gap:12px;justify-content:center}
+/* (v5) Chaque filet se termine, côté phrase, par une volute et un losange
+   d'or serti (--gm-loz, [GAME]) : la ligne de tour devient une devise
+   gravée entre deux fleurons, et non une phrase entre deux traits. */
 .status-bar::before,.status-bar::after{
-  content:'';flex:1 1 0;min-width:12px;height:1px;
-  background:linear-gradient(90deg,rgba(216,178,106,0),rgba(216,178,106,.5))}
+  content:'';flex:1 1 0;min-width:30px;height:12px;
+  background:var(--gm-loz) right center/28px 12px no-repeat,
+    linear-gradient(90deg,rgba(216,178,106,0),rgba(216,178,106,.55)) left center/calc(100% - 26px) 1px no-repeat}
 .status-bar::after{transform:scaleX(-1)}
+.status-bar.thinking::before,.status-bar.thinking::after{opacity:.55}
 
 /* --- LE SABLIER DANS LA PENDULE -----------------------------------
    La pendule affiche son temps en texte ; l'icône le QUALIFIE. Sans elle, un
@@ -8169,7 +8443,7 @@ body.has-acc #page-fok{min-height:0}
    TROIS variantes — Board Quake, Mirror Chess et le Cheval de Troie — ont
    besoin des mêmes. */
 @media(max-width:820px){
-  #fok-opp-bar,#mir-opp-bar,#tro-opp-bar{order:1;padding-right:52px}
+  #fok-opp-bar,#mir-opp-bar,#tro-opp-bar{order:1}
   #page-fok .game-main,#page-mirror .game-main,#page-troie .game-main{order:2}
   #fok-me-bar,#mir-me-bar,#tro-me-bar{order:3}
   #page-fok .status-bar,#page-mirror .status-bar,#page-troie .status-bar{order:4}
@@ -8252,13 +8526,21 @@ body.has-acc #page-troie{min-height:0}
    Troie ont le même panneau « Historique », donc la même barre. Rien ici
    n'est propre à une variante.
    ============================================================== */
+/* (v5) La barre de relecture prend la matière des commandes du registre de
+   la partie classique (.history-nav, [GAME]) : laque, jonc d'or terni, et un
+   filet d'or qui s'éteint aux deux bouts au lieu d'une règle grise. */
 .van-nav{display:flex;align-items:center;gap:6px;margin-top:8px;padding-top:8px;
-  border-top:1px solid var(--border2)}
+  border-top:1px solid transparent;
+  background:linear-gradient(90deg,rgba(216,178,106,0),rgba(216,178,106,.45) 50%,rgba(216,178,106,0)) center top/100% 1px no-repeat}
 .van-btn{flex:0 0 auto;min-width:40px;height:36px;cursor:pointer;
-  background:var(--surface);border:1px solid var(--border2);border-radius:9px;
-  color:var(--text);font-family:var(--f-ui);font-size:13px;line-height:1;
-  transition:border-color .16s,background .16s,color .16s}
-.van-btn:hover:not(:disabled){border-color:var(--line2);background:rgba(216,178,106,.1)}
+  border:1px solid transparent;border-radius:9px;
+  background:linear-gradient(180deg,rgba(255,238,200,.06),rgba(255,238,200,0) 50%) padding-box,
+    linear-gradient(180deg,#1a2433,#0c121b) padding-box,
+    linear-gradient(180deg,rgba(236,204,134,.65),rgba(120,88,34,.45) 55%,rgba(200,160,90,.55)) border-box;
+  box-shadow:inset 0 0 0 1px rgba(0,0,0,.55);
+  color:var(--gold2);font-family:var(--f-ui);font-size:13px;line-height:1;
+  transition:filter .16s,color .16s}
+.van-btn:hover:not(:disabled){color:#fff3cf;filter:brightness(1.18)}
 /* Un bout de partie qui n'existe pas ne se demande pas : les commandes de
    bord s'éteignent au lieu de ne rien faire. */
 .van-btn:disabled{opacity:.35;cursor:default}
