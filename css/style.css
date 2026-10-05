@@ -713,19 +713,23 @@ body.has-acc #page-game{min-height:0}
    Ils étaient sous les curseurs de volume : on descendait deux réglages qu'on
    ne venait pas voir avant d'atteindre son identité. */
 .sp-account-btn{
-  display:flex;align-items:center;gap:9px;width:100%;margin-bottom:10px;padding:9px 10px;
-  border:1px solid var(--border2);border-radius:9px;
-  background:transparent;color:var(--text);font-family:var(--f-ui);font-size:12px;
-  font-weight:600;cursor:pointer;transition:border-color .18s,color .18s,background .18s;
+  display:flex;align-items:center;gap:10px;width:100%;min-height:44px;margin-bottom:12px;padding:9px 12px;
+  border:1px solid transparent;border-radius:var(--r-md);
+  background:linear-gradient(180deg,rgba(30,42,58,.9),rgba(10,15,22,.95)) padding-box,
+    linear-gradient(180deg,rgba(240,206,140,.6),rgba(170,130,62,.18) 50%,rgba(240,206,140,.35)) border-box;
+  box-shadow:inset 0 1px 0 rgba(255,240,205,.06),0 4px 10px -6px rgba(0,0,0,.9);
+  color:var(--text);font-family:var(--f-ui);font-size:13px;
+  font-weight:650;cursor:pointer;transition:color .18s,filter .18s;
 }
-/* Le filet qui sépare les portes des réglages proprement dits. Il se pose sur
-   la PREMIÈRE ligne de réglage qui suit un bouton, pour que le panneau reste
-   correct quand « Installer le jeu » est masqué (le cas courant). */
-.sp-account-btn+.sp-row{border-top:1px solid var(--border);padding-top:12px}
-.sp-account-btn svg{width:16px;height:16px;flex:none;color:var(--muted);transition:color .18s}
-.sp-account-btn:hover{border-color:var(--line2);color:var(--gold2);background:rgba(216,178,106,.1)}
+/* Le filet qui sépare les portes des réglages proprement dits : un fil d'or
+   qui s'éteint aux deux bouts, comme le filet du haut de la barre d'onglets.
+   Il se pose sur la PREMIÈRE ligne de réglage qui suit un bouton, pour que
+   le panneau reste correct quand « Installer le jeu » est masqué. */
+.sp-account-btn+.sp-row{border-top:1px solid transparent;padding-top:10px;
+  border-image:linear-gradient(90deg,transparent,rgba(240,206,140,.45),transparent) 1}
+.sp-account-btn svg{width:16px;height:16px;flex:none;color:var(--gold);transition:color .18s}
+.sp-account-btn:hover{color:var(--gold2);filter:brightness(1.1)}
 .sp-account-btn:hover svg{color:var(--gold2)}
-
 /* [AI-LEVEL] ======================================================= */
 .ai-lvl-modal{position:fixed;inset:0;background:var(--scrim);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;z-index:4500;visibility:hidden}
 .ai-lvl-modal.show{visibility:visible}
@@ -1087,33 +1091,64 @@ body.has-acc .builder-inner{padding-top:var(--page-top)}
      · deux ombres INTERNES = l'arête claire en haut, le creux en bas.
    Le cerne gravé (::after) est un second anneau posé à 3,5 px du bord : c'est
    lui qui fait un jeton FRAPPÉ plutôt qu'un simple rond doré. */
+/* UN JOYAU SERTI, ET NON PLUS UN JETON PLAT. Le rouage est posé sur un
+   cabochon d'ÉMAIL SAPHIR, tenu par une LUNETTE D'OR ciselée : c'est le
+   même vocabulaire que le médaillon de l'arène et les anneaux des trois
+   voies, à la taille d'un bouton. La lunette est un dégradé CONIQUE (l'or
+   accroche la lumière à deux endroits du cercle, comme un métal tourné) posé
+   sur la bordure (`border-box`), l'émail est en `padding-box` : un seul
+   élément, aucune image. Le reflet du verre (en haut à gauche) et le creux
+   du sertissage (ombres internes) font le relief. */
 #settings-btn{display:none}
 body.main-menu #settings-btn{position:fixed;top:calc(var(--safe-t) + 10px);right:12px;z-index:8000;
-  width:42px;height:42px;border-radius:50%;padding:0;cursor:pointer;
+  width:44px;height:44px;border-radius:50%;padding:0;cursor:pointer;
+  border:3px solid transparent;color:var(--gold2);
   background:
-    radial-gradient(circle at 34% 26%,rgba(255,240,200,.20),rgba(255,240,200,0) 58%),
-    linear-gradient(160deg,#3b3121 0%,#241c13 52%,#171310 100%);
-  border:1.5px solid var(--gold);color:var(--gold2);
+    radial-gradient(circle at 34% 27%,rgba(205,228,255,.42),rgba(205,228,255,0) 34%) padding-box,
+    radial-gradient(circle at 50% 58%,#22477a 0%,#122a4a 46%,#081427 78%,#040a14 100%) padding-box,
+    conic-gradient(from 200deg,#fff1c4,#d8a84c 14%,#6b4714 28%,#c99744 42%,#fff1c4 54%,#b8862f 68%,#5c3c10 82%,#e6c073 92%,#fff1c4) border-box;
   display:flex;align-items:center;justify-content:center;
-  box-shadow:0 0 0 1px rgba(0,0,0,.55),inset 0 1px 1px rgba(255,225,170,.28),
-             inset 0 -2px 5px rgba(0,0,0,.55),0 5px 14px -4px rgba(0,0,0,.7);
-  transition:color .16s ease,border-color .16s ease,box-shadow .18s ease}
-body.main-menu #settings-btn::after{content:"";position:absolute;inset:3.5px;border-radius:50%;
-  border:1px solid rgba(193,154,69,.42);pointer-events:none}
-#settings-btn svg{width:20px;height:20px;filter:drop-shadow(0 1px 0 rgba(0,0,0,.55));
+  box-shadow:0 0 0 1px rgba(0,0,0,.7),inset 0 0 0 1px rgba(0,0,0,.6),
+             inset 0 -3px 6px rgba(0,0,0,.6),inset 0 2px 3px rgba(150,190,255,.18),
+             0 6px 16px -5px rgba(0,0,0,.85),0 0 14px -4px rgba(240,200,120,.35);
+  transition:color .16s ease,box-shadow .18s ease,transform .12s ease}
+/* Le filet gravé à l'intérieur de la lunette : un second anneau d'or pâle,
+   posé juste contre l'émail. C'est lui qui fait un objet SERTI plutôt
+   qu'un rond doré. */
+body.main-menu #settings-btn::after{content:"";position:absolute;inset:1px;border-radius:50%;
+  border:1px solid rgba(240,206,140,.38);pointer-events:none}
+#settings-btn svg{width:20px;height:20px;position:relative;
+  filter:drop-shadow(0 1px 0 rgba(0,0,0,.8)) drop-shadow(0 0 4px rgba(240,200,120,.35));
   transition:transform .45s cubic-bezier(.3,.8,.35,1)}
 /* Le rouage tourne d'un huitième de tour au survol : un mécanisme qu'on
-   remonte, et le seul mouvement que s'autorise le jeton. */
-#settings-btn:hover{border-color:var(--gold2);color:#f6e2b0;
-  box-shadow:0 0 0 1px rgba(0,0,0,.55),inset 0 1px 1px rgba(255,225,170,.36),
-             inset 0 -2px 5px rgba(0,0,0,.5),0 6px 18px -4px rgba(0,0,0,.75)}
+   remonte, et le seul mouvement que s'autorise le joyau. */
+#settings-btn:hover{color:#fff1c4;
+  box-shadow:0 0 0 1px rgba(0,0,0,.7),inset 0 0 0 1px rgba(0,0,0,.6),
+             inset 0 -3px 6px rgba(0,0,0,.55),inset 0 2px 3px rgba(150,190,255,.28),
+             0 6px 18px -5px rgba(0,0,0,.85),0 0 18px -3px rgba(240,200,120,.55)}
+#settings-btn:active{transform:scale(.95)}
 #settings-btn:hover svg{transform:rotate(45deg)}
 @media(prefers-reduced-motion:reduce){#settings-btn:hover svg{transform:none}}
 /* top : sous le bouton (haut safe-t+10, haut 40px), pas dessous — la
    Déconnexion a longtemps occupé toute la première rangée et masquait ce
    chevauchement ; sans elle la première rangée (Mode sombre) tombait
    directement sous le bouton, hors de portée du clic. */
-#settings-panel{position:fixed;top:calc(var(--chrome-h) + var(--safe-t) + 60px);right:12px;z-index:7999;border:1px solid transparent;background:var(--orn-frame),var(--modal-bg) padding-box,var(--panel-edge) border-box;box-shadow:var(--modal-shadow);border-radius:var(--r-lg);padding:14px 16px;min-width:240px;display:none;animation:settingsPanelIn .18s ease}
+/* LE PANNEAU : un écrin de laque nocturne, quatre coins de filigrane, et un
+   titre gravé — « Réglages » surmontant un fleuron. Le titre est porté par
+   le pseudo-élément (texte alternatif vide : le bouton qui ouvre le panneau
+   s'appelle déjà « Réglages » pour un lecteur d'écran). Le rembourrage a
+   grandi pour que les coins de filigrane ne mordent plus sur la dernière
+   ligne (« Musique » passait sous le coin bas-gauche). */
+#settings-panel{position:fixed;top:calc(var(--chrome-h) + var(--safe-t) + 62px);right:12px;z-index:7999;
+  --orn-sz:26px;
+  border:1px solid transparent;background:var(--orn-frame),var(--modal-bg) padding-box,var(--panel-edge) border-box;
+  box-shadow:var(--modal-shadow),0 0 0 1px rgba(0,0,0,.55);border-radius:var(--r-lg);
+  padding:14px 20px 20px;min-width:250px;display:none;animation:settingsPanelIn .18s ease}
+#settings-panel::before{content:"Réglages";content:"Réglages"/"";display:block;text-align:center;
+  font:700 18px/1 var(--f-title);letter-spacing:.1em;color:var(--gold2);
+  text-shadow:0 1px 0 rgba(0,0,0,.9),0 0 12px rgba(240,200,120,.25);
+  padding:6px 0 18px;margin:0 0 12px;
+  background:var(--orn-flourish) center bottom/150px 12px no-repeat}
 #settings-panel.open{display:block}
 /* Le panneau suit son bouton : quitter le menu principal le referme, il ne
    reste pas ouvert par-dessus une page qui n'a plus de quoi le rappeler. */
@@ -1121,29 +1156,66 @@ body:not(.main-menu) #settings-panel{display:none}
 /* Panneau ancré à droite : pas de translateX (nIn est fait pour un élément
    centré horizontalement, il décalait ce panneau vers la gauche). */
 @keyframes settingsPanelIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
-.sp-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;font-family:var(--f-ui);font-size:11px;color:var(--text)}
+@media(prefers-reduced-motion:reduce){#settings-panel{animation:none}}
+.sp-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;font-family:var(--f-ui);font-size:11px;color:var(--text)}
 .sp-row:last-child{margin-bottom:0}
-.sp-label{font-size:11px;font-family:var(--f-ui);color:var(--muted);text-transform:uppercase;letter-spacing:.6px;white-space:nowrap}
-/* LE RAIL FAIT 4 px, LA ZONE DE SAISIE EN FAIT 36. Un curseur de 4 px de
-   haut se rate au doigt une fois sur deux : on garde le rail fin (c'est ce
-   qu'on veut voir) en le dessinant dans un élément haut et transparent
-   (background-clip:content-box + rembourrage vertical). */
-/* L'INTERRUPTEUR DES EFFETS. Deux états, et ils se lisent à un mètre : le
-   bouton s'allume à la couleur de l'action quand les effets sont là, et
-   retombe à la couleur d'un élément éteint quand ils ne le sont pas. La
-   pastille glisse — c'est la seule chose qui bouge, donc c'est elle qu'on
-   regarde. 44 px de cible : on ne rate pas un interrupteur. */
-.sp-switch{position:relative;width:48px;height:28px;flex:none;padding:0;cursor:pointer;
-  border-radius:99px;border:1px solid var(--border2);background:var(--bg2);
-  transition:background .18s,border-color .18s}
-.sp-switch .sp-knob{position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;
-  background:var(--muted);transition:transform .18s cubic-bezier(.3,.8,.4,1),background .18s}
-.sp-switch[aria-checked="true"]{background:rgba(216,178,106,.22);border-color:var(--line2)}
-.sp-switch[aria-checked="true"] .sp-knob{transform:translateX(20px);background:var(--metal-gold)}
-.sp-slider{-webkit-appearance:none;appearance:none;width:100px;height:36px;
-  padding:16px 0;box-sizing:border-box;background:var(--border2);
-  background-clip:content-box;border-radius:2px;outline:none;cursor:pointer}
-.sp-slider::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--metal-gold);box-shadow:0 0 0 1px rgba(0,0,0,.5),0 2px 4px rgba(0,0,0,.6);cursor:pointer}
+.sp-label{font-size:11px;font-weight:650;font-family:var(--f-ui);color:var(--text2);text-transform:uppercase;letter-spacing:.12em;white-space:nowrap}
+/* L'INTERRUPTEUR DES EFFETS : UNE GORGE D'OR ET UNE GEMME. Deux états, et ils
+   se lisent à un mètre : éteint, la gemme est un étain terne au fond de sa
+   gorge ; allumé, elle glisse à droite et s'embrase d'ambre, sertie d'or.
+   La gemme glisse — c'est la seule chose qui bouge, donc c'est elle qu'on
+   regarde.
+   LA BOÎTE FAIT 56 × 36, LA GORGE EN FAIT 26 DE HAUT. La gorge est dessinée
+   par le ::before ; le bouton lui-même est une zone transparente plus haute,
+   assez pour que le doigt ne la rate pas (elle mesurait 28 px, sous le seuil
+   des cibles tactiles relevé par tools/ui-shots.js). */
+.sp-switch{position:relative;width:56px;height:36px;flex:none;padding:0;cursor:pointer;
+  border:none;border-radius:99px;background:transparent}
+.sp-switch::before{content:'';position:absolute;left:0;right:0;top:5px;bottom:5px;border-radius:99px;
+  border:1.5px solid transparent;
+  background:linear-gradient(180deg,#03060a,#101823) padding-box,
+    linear-gradient(180deg,#f0d48c,#8a6324 45%,#5a3d12 60%,#c99744) border-box;
+  box-shadow:inset 0 2px 5px rgba(0,0,0,.9),0 1px 0 rgba(255,240,200,.08)}
+.sp-switch .sp-knob{position:absolute;top:50%;left:5px;width:20px;height:20px;margin-top:-10px;z-index:1;
+  border-radius:50%;
+  background:radial-gradient(circle at 38% 32%,#e6e9ee 0 14%,#8a929d 46%,#3d434b 100%);
+  box-shadow:0 0 0 1.5px #6b5a3a,0 2px 4px rgba(0,0,0,.8);
+  transition:transform .2s cubic-bezier(.3,.8,.4,1)}
+.sp-switch[aria-checked="true"]::before{
+  background:linear-gradient(180deg,rgba(120,72,14,.55),rgba(46,28,8,.9)) padding-box,
+    linear-gradient(180deg,#fff1c4,#c99744 45%,#7a5418 62%,#e6c073) border-box}
+.sp-switch[aria-checked="true"] .sp-knob{transform:translateX(26px);
+  background:radial-gradient(circle at 38% 32%,#fff8e0 0 12%,#ffd27a 30%,#e08a24 60%,#7a3a06 100%);
+  box-shadow:0 0 0 1.5px #f3da9c,0 0 0 2.5px rgba(60,36,8,.9),0 0 12px 1px rgba(255,180,80,.6)}
+.sp-switch:focus-visible{outline:2px solid var(--gold2);outline-offset:2px}
+@media(prefers-reduced-motion:reduce){.sp-switch .sp-knob{transition:none}}
+/* LES CURSEURS : UNE GORGE GRAVÉE, UN FIL D'OR, UNE GEMME.
+   LE RAIL FAIT 8 px, LA ZONE DE SAISIE EN FAIT 36. Un rail fin se rate au
+   doigt une fois sur deux : il est dessiné dans la piste du curseur, et
+   l'élément lui-même reste haut et transparent.
+   La part remplie est de l'or : --v (0 à 100 %) est posé par
+   js/settings-admin.js à chaque mouvement et à chaque ouverture du panneau.
+   Sans lui, la piste reste une gorge vide — rien ne casse. */
+.sp-slider{-webkit-appearance:none;appearance:none;width:110px;height:36px;--v:0%;
+  padding:0;margin:0;box-sizing:border-box;background:none;outline:none;cursor:pointer}
+.sp-slider::-webkit-slider-runnable-track{height:8px;border-radius:99px;
+  border:1px solid rgba(216,178,106,.45);
+  background:linear-gradient(90deg,#8a6324,#e6c073 calc(var(--v) - 2%),#fff1c4 var(--v),transparent var(--v)),
+    linear-gradient(180deg,#02050a,#111a26);
+  box-shadow:inset 0 1px 3px rgba(0,0,0,.9),0 1px 0 rgba(255,240,200,.06)}
+.sp-slider::-moz-range-track{height:8px;border-radius:99px;border:1px solid rgba(216,178,106,.45);
+  background:linear-gradient(180deg,#02050a,#111a26)}
+.sp-slider::-moz-range-progress{height:8px;border-radius:99px;
+  background:linear-gradient(90deg,#8a6324,#e6c073,#fff1c4)}
+/* La gemme : un cabochon d'ambre serti dans une lunette d'or, la même pierre
+   que celle de l'interrupteur allumé. */
+.sp-slider::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;margin-top:-7px;border-radius:50%;
+  background:radial-gradient(circle at 38% 32%,#fff8e0 0 12%,#ffd27a 30%,#e08a24 60%,#7a3a06 100%);
+  box-shadow:0 0 0 1.5px #f3da9c,0 0 0 2.5px rgba(60,36,8,.95),0 2px 5px rgba(0,0,0,.8);cursor:pointer}
+.sp-slider::-moz-range-thumb{width:18px;height:18px;border-radius:50%;border:1.5px solid #f3da9c;
+  background:radial-gradient(circle at 38% 32%,#fff8e0 0 12%,#ffd27a 30%,#e08a24 60%,#7a3a06 100%);
+  box-shadow:0 0 0 1px rgba(60,36,8,.95),0 2px 5px rgba(0,0,0,.8);cursor:pointer}
+.sp-slider:focus-visible::-webkit-slider-thumb{box-shadow:0 0 0 1.5px #f3da9c,0 0 0 4px rgba(240,206,140,.45)}
 
 /* [FEEL] ========================================================== */
 /* LA SECOUSSE D'IMPACT (js/sfx.js::sfxShake).
@@ -2607,20 +2679,54 @@ body.in-game .nav-page[data-page="game"]{display:block}
    Cinq parts ÉGALES : cinq destinations de même rang. Le `backdrop-filter`
    a été retiré pour de bon (il se recalculait à chaque image où la rangée
    glisse dessous) : le fond est opaque. */
+/* --- L'ORFÈVRERIE DE LA BARRE (direction « Fantasy ») ------------
+   Trois ornements vectoriels, en ligne (aucune requête) et propres à la
+   navigation — ils vivent ici et non dans [THEME] :
+     · --nav-molding   la MOULURE du bord : un jonc d'or poli, une gorge
+                       noire, un filet pâle, et un losange serti tous les
+                       32 px — le bord d'un coffre ferré, pas un trait ;
+     · --nav-molding-v la même, couchée sur le flanc, pour le rail
+                       d'ordinateur ;
+     · --nav-crest     le CIMIER de l'onglet actif : une gemme d'ambre sertie
+                       dans un losange d'or, deux volutes de part et d'autre.
+                       Il pend à la moulure, au-dessus de l'emblème allumé ;
+     · --nav-gem-v     la même gemme, en navette verticale, pour le rail ;
+     · --nav-lattice   le treillis en losanges, à peine gravé dans la laque
+                       du fond (6 % d'opacité) : de près, une matière ; de
+                       loin, rien qui gêne la lecture des libellés. */
+:root{
+  --nav-molding:url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 8'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%23fff1c4'/%3E%3Cstop offset='.5' stop-color='%23c99744'/%3E%3Cstop offset='1' stop-color='%235c3c10'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='32' height='1' fill='%23fff1c4' opacity='.5'/%3E%3Crect y='1' width='32' height='2.2' fill='url(%23g)'/%3E%3Crect y='3.2' width='32' height='.9' fill='%23000' opacity='.75'/%3E%3Crect y='6.4' width='32' height='.7' fill='%23d8b26a' opacity='.3'/%3E%3Cpath d='M16 1.6l2.6 2.6-2.6 2.6-2.6-2.6z' fill='url(%23g)' stroke='%232e1d06' stroke-width='.5'/%3E%3Ccircle cx='15.4' cy='3.6' r='.5' fill='%23fff8de'/%3E%3C/svg%3E");
+  --nav-molding-v:url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 32'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='1' y1='0' x2='0' y2='0'%3E%3Cstop offset='0' stop-color='%23fff1c4'/%3E%3Cstop offset='.5' stop-color='%23c99744'/%3E%3Cstop offset='1' stop-color='%235c3c10'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect x='7' width='1' height='32' fill='%23fff1c4' opacity='.5'/%3E%3Crect x='4.8' width='2.2' height='32' fill='url(%23g)'/%3E%3Crect x='3.9' width='.9' height='32' fill='%23000' opacity='.75'/%3E%3Crect x='.9' width='.7' height='32' fill='%23d8b26a' opacity='.3'/%3E%3Cpath d='M3.8 16l2.6-2.6 2.6 2.6-2.6 2.6z' fill='url(%23g)' stroke='%232e1d06' stroke-width='.5'/%3E%3C/svg%3E");
+  --nav-crest:url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 20'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%23fff1c4'/%3E%3Cstop offset='.55' stop-color='%23d8a84c'/%3E%3Cstop offset='1' stop-color='%237a5418'/%3E%3C/linearGradient%3E%3CradialGradient id='r' cx='.4' cy='.35' r='.75'%3E%3Cstop offset='0' stop-color='%23fff8e0'/%3E%3Cstop offset='.28' stop-color='%23ffd27a'/%3E%3Cstop offset='.68' stop-color='%23e08a24'/%3E%3Cstop offset='1' stop-color='%236b3006'/%3E%3C/radialGradient%3E%3C/defs%3E%3Cg fill='none' stroke='url(%23g)' stroke-linecap='round'%3E%3Cpath d='M3 4.5q9-.5 13.5 5' stroke-width='1.7'/%3E%3Cpath d='M45 4.5q-9-.5-13.5 5' stroke-width='1.7'/%3E%3Cpath d='M9 4.2q2.5 2.8 1.5 5.4M39 4.2q-2.5 2.8-1.5 5.4' stroke-width='1.1' opacity='.8'/%3E%3C/g%3E%3Cpath d='M24 1.2l8.6 8.6L24 18.4l-8.6-8.6z' fill='url(%23g)' stroke='%232e1d06' stroke-width='.8'/%3E%3Cpath d='M24 4.6l5.2 5.2L24 15l-5.2-5.2z' fill='url(%23r)'/%3E%3Ccircle cx='22.4' cy='8' r='1' fill='%23fff'/%3E%3C/svg%3E");
+  --nav-lattice:url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 28 14'%3E%3Cpath d='M0 7L14 0L28 7L14 14Z' fill='none' stroke='%23d8b26a' stroke-opacity='.06' stroke-width='.8'/%3E%3Ccircle cx='14' cy='7' r='.7' fill='%23d8b26a' fill-opacity='.08'/%3E%3C/svg%3E");
+  --nav-gem-v:url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 30'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23fff1c4'/%3E%3Cstop offset='.55' stop-color='%23d8a84c'/%3E%3Cstop offset='1' stop-color='%237a5418'/%3E%3C/linearGradient%3E%3CradialGradient id='r' cx='.4' cy='.35' r='.75'%3E%3Cstop offset='0' stop-color='%23fff8e0'/%3E%3Cstop offset='.28' stop-color='%23ffd27a'/%3E%3Cstop offset='.68' stop-color='%23e08a24'/%3E%3Cstop offset='1' stop-color='%236b3006'/%3E%3C/radialGradient%3E%3C/defs%3E%3Cpath d='M7 .8l5.8 14.2L7 29.2 1.2 15z' fill='url(%23g)' stroke='%232e1d06' stroke-width='.7'/%3E%3Cpath d='M7 6l3.4 9L7 24l-3.4-9z' fill='url(%23r)'/%3E%3Ccircle cx='6' cy='12' r='.8' fill='%23fff'/%3E%3C/svg%3E");
+}
 .nav-tabbar{position:fixed;z-index:400;left:0;right:auto;
   width:100vw;bottom:0;
   transform:none;display:flex;gap:0;border-radius:0;
-  padding:7px 1vw calc(5px + var(--safe-b));
+  padding:9px 1vw calc(5px + var(--safe-b));
   border:none;
-  background:linear-gradient(180deg,rgba(15,21,30,.98),rgba(6,8,12,.995));
-  box-shadow:0 -14px 30px -12px rgba(0,0,0,.85)}
-/* Le filet d'or du haut, plus vif au centre et éteint aux deux bouts. */
-.nav-tabbar::before{content:'';position:absolute;left:0;right:0;top:0;height:1px;pointer-events:none;
-  background:linear-gradient(90deg,transparent,rgba(240,206,140,.5) 16%,rgba(240,206,140,.5) 84%,transparent)}
+  background:var(--nav-lattice) center top/28px 14px repeat,
+    radial-gradient(120% 140% at 50% 0%,rgba(216,178,106,.07),transparent 60%),
+    linear-gradient(180deg,rgba(20,28,40,.985),rgba(5,7,11,.995));
+  box-shadow:0 -14px 30px -12px rgba(0,0,0,.85),inset 0 12px 14px -12px rgba(0,0,0,.9)}
+/* LA MOULURE DU HAUT. Elle était un filet d'or de 1 px : la barre semblait
+   tracée, non construite. C'est maintenant un jonc d'or de 8 px, ses
+   losanges sertis, qui s'éteint aux deux bouts (masque) — la barre a un
+   bord, comme le couvercle d'un coffre. */
+.nav-tabbar::before{content:'';position:absolute;left:0;right:0;top:-2px;height:8px;pointer-events:none;z-index:1;
+  background:var(--nav-molding) center top/32px 8px repeat-x;
+  -webkit-mask-image:linear-gradient(90deg,transparent,#000 10%,#000 90%,transparent);
+  mask-image:linear-gradient(90deg,transparent,#000 10%,#000 90%,transparent);
+  filter:drop-shadow(0 2px 2px rgba(0,0,0,.7))}
 .nav-tab{position:relative;flex:1 1 0;min-width:0;cursor:pointer;border:none;background:transparent;
   color:var(--muted);width:auto;height:auto;min-height:56px;border-radius:12px;
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
   padding:5px 2px 3px;transition:color .2s ease}
+/* LES CLOISONS GRAVÉES : entre deux onglets, un fil d'or qui s'éteint en
+   haut et en bas. Cinq parts égales, et on voit qu'elles le sont. Sur le
+   téléphone seulement : le rail d'ordinateur empile ses onglets. */
+body:not(.desk) .nav-tab+.nav-tab:not(.is-active){background:linear-gradient(180deg,transparent 14%,rgba(216,178,106,.22) 50%,transparent 86%) left center/1px 100% no-repeat}
 .nav-tab svg{display:block;width:clamp(24px,7vw,30px);height:clamp(24px,7vw,30px);
   flex:0 0 auto;pointer-events:none;transition:transform .25s cubic-bezier(.3,1.4,.5,1),filter .2s ease}
 .nav-tab:hover{color:var(--text2)}
@@ -2629,7 +2735,7 @@ body.in-game .nav-page[data-page="game"]{display:block}
 .nav-tab-label{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;
   font-family:var(--f-ui);font-size:min(2.75vw,11px);
   font-weight:650;letter-spacing:.02em;line-height:1.1;text-align:center;
-  max-width:100%;overflow:hidden}
+  max-width:100%;overflow:hidden;text-shadow:0 1px 2px rgba(0,0,0,.9)}
 /* L'emblème peint (assets/ui/logo-*.webp) remplace le dessin vectoriel quand
    il existe ; l'`<img>` se retire d'elle-même si le fichier manque. */
 .nav-tab-art{display:block;width:clamp(26px,7.6vw,32px);height:clamp(26px,7.6vw,32px);
@@ -2643,17 +2749,31 @@ body.in-game .nav-page[data-page="game"]{display:block}
    emblèmes peints ; il s'éteint et s'allume comme eux. */
 .nav-tab svg.nav-tab-gold{width:clamp(26px,7.6vw,32px);height:clamp(26px,7.6vw,32px);filter:saturate(.45) brightness(.7)}
 .nav-tab:hover svg.nav-tab-gold{filter:saturate(.7) brightness(.88)}
-.nav-tab.is-active{color:var(--gold2)}
-.nav-tab.is-active .nav-tab-art{filter:drop-shadow(0 0 7px rgba(240,200,120,.45));transform:translateY(-2px) scale(1.08)}
-.nav-tab.is-active svg{color:var(--gold2);filter:drop-shadow(0 0 6px rgba(240,200,120,.5));transform:translateY(-2px) scale(1.06)}
-/* Le trait de lumière, posé sur le filet de la barre, et le halo qui en
-   tombe. */
-.nav-tab.is-active::before{content:'';position:absolute;top:-7px;left:50%;width:28px;height:2px;
-  transform:translateX(-50%);border-radius:2px;background:var(--gold2);
-  box-shadow:0 0 10px 1px rgba(242,216,152,.75);pointer-events:none}
-.nav-tab.is-active::after{content:'';position:absolute;inset:-7px 6% 0;pointer-events:none;
-  background:radial-gradient(60% 70% at 50% 0%,rgba(240,206,140,.17),transparent)}
-@media(prefers-reduced-motion:reduce){.nav-tab-art,.nav-tab svg{transition:none}}
+/* L'ONGLET ACTIF EST UNE NICHE ÉCLAIRÉE. Un creux de laque bordé de deux
+   fils d'or (les ombres internes de gauche et de droite), le cimier serti
+   pendu à la moulure, et l'emblème soulevé dans sa propre lumière. On sait
+   où l'on est sans lire, et à un mètre. */
+.nav-tab.is-active{color:var(--gold2);
+  background:linear-gradient(180deg,rgba(216,178,106,.16),rgba(216,178,106,.04) 55%,transparent);
+  border-radius:4px 4px 12px 12px;
+  box-shadow:inset 1px 0 0 rgba(240,206,140,.28),inset -1px 0 0 rgba(240,206,140,.28)}
+.nav-tab.is-active .nav-tab-label{text-shadow:0 1px 2px rgba(0,0,0,.9),0 0 10px rgba(240,200,120,.45)}
+.nav-tab.is-active .nav-tab-art{filter:drop-shadow(0 0 7px rgba(240,200,120,.55));transform:translateY(-2px) scale(1.1)}
+.nav-tab.is-active svg{color:var(--gold2);filter:drop-shadow(0 0 6px rgba(240,200,120,.55));transform:translateY(-2px) scale(1.06)}
+/* Le cimier, pendu à la moulure du haut (qui passe à 2 px au-dessus de la
+   barre : le cimier la chevauche, il est serti DANS le bord). */
+.nav-tab.is-active::before{content:'';position:absolute;top:-12px;left:50%;width:44px;height:18px;z-index:2;
+  transform:translateX(-50%);background:var(--nav-crest) center/contain no-repeat;
+  filter:drop-shadow(0 2px 3px rgba(0,0,0,.8)) drop-shadow(0 0 6px rgba(255,190,90,.45));pointer-events:none}
+/* L'aura de l'emblème : une nappe d'or derrière lui, qui respire. Animée en
+   opacité seulement (le compositeur s'en charge), et figée sous
+   `prefers-reduced-motion`. */
+.nav-tab.is-active::after{content:'';position:absolute;inset:-4px 4% 0;pointer-events:none;z-index:-1;
+  background:radial-gradient(42% 46% at 50% 36%,rgba(255,206,120,.30),rgba(255,206,120,.08) 60%,transparent 76%);
+  animation:navAura 3.6s ease-in-out infinite}
+@keyframes navAura{0%,100%{opacity:.7}50%{opacity:1}}
+@media(prefers-reduced-motion:reduce){.nav-tab-art,.nav-tab svg{transition:none}
+  .nav-tab.is-active::after{animation:none;opacity:.85}}
 
 /* --- Pages secondaires : overlays plein écran AU-DESSUS de la rangée ---
    (armées, voie, combat, login). Restent pilotées par
@@ -2670,7 +2790,7 @@ body.in-game .nav-page[data-page="game"]{display:block}
    déjà en continu à la taille de l'écran. Ce bloc gère surtout les changements
    STRUCTURELS nécessaires sur petit écran : grilles à moins de colonnes. */
 @media(max-width:640px){
-  body.main-menu #settings-btn{width:39px;height:39px;right:8px}
+  body.main-menu #settings-btn{width:42px;height:42px;right:8px}
   #settings-btn svg{width:18px;height:18px}
   #page-builder{padding:0 3.5vw}
   .armies-hdr{flex-wrap:wrap}
@@ -4639,50 +4759,70 @@ body.desk .var-card-hdr{flex-wrap:wrap}
 }
 
 /* Les deux destinations secondaires (Adversaires, Classement) : deux
-   pastilles de laque, et non plus deux mots gris posés sur le dallage peint,
-   où ils se perdaient dans les reflets du sol. */
-.jouer-second{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
-.jouer-second .btn-text{min-height:40px;padding:0 14px 0 16px;border-radius:999px;
-  font-size:13.5px;font-weight:650;color:var(--text);
-  background:rgba(8,12,18,.72);border:1px solid rgba(216,178,106,.3);
-  box-shadow:0 8px 18px -10px rgba(0,0,0,.9)}
-.jouer-second .btn-text:hover{color:var(--gold2);border-color:rgba(240,206,140,.6);background:rgba(14,20,28,.85)}
-.jouer-second .btn-text svg{color:var(--gold)}
+   PLAQUES DE LAQUE SERTIES, et non plus deux mots gris posés sur le dallage
+   peint, où ils se perdaient dans les reflets du sol. Le liseré est un
+   dégradé d'or (plus vif en haut, comme un métal qui accroche la lumière), un
+   second filet gravé court à l'intérieur, et un petit losange d'or ouvre le
+   libellé — le même losange que ceux de la plaque COMBAT juste au-dessus. */
+.jouer-second{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
+.jouer-second .btn-text{position:relative;min-height:44px;padding:0 16px 0 15px;gap:8px;border-radius:999px;
+  font-size:13.5px;font-weight:650;letter-spacing:.02em;color:var(--text);
+  border:1px solid transparent;
+  background:linear-gradient(180deg,rgba(24,34,48,.9),rgba(6,9,14,.94)) padding-box,
+    linear-gradient(180deg,#f3da9c,#a67c37 40%,#4f3812 62%,#c99744) border-box;
+  box-shadow:inset 0 0 0 1.5px rgba(0,0,0,.6),inset 0 0 0 2.5px rgba(216,178,106,.16),
+    0 10px 20px -10px rgba(0,0,0,.95);
+  text-shadow:0 1px 2px rgba(0,0,0,.9);transition:color .16s ease,filter .16s ease}
+.jouer-second .btn-text::before{content:'';flex:none;width:7px;height:7px;transform:rotate(45deg);
+  background:var(--metal-gold);box-shadow:0 0 0 1px rgba(46,29,6,.9),0 0 6px rgba(255,200,110,.45)}
+.jouer-second .btn-text:hover{color:var(--gold2);background:linear-gradient(180deg,rgba(34,46,62,.92),rgba(10,14,20,.94)) padding-box,
+    linear-gradient(180deg,#fff1c4,#c99744 40%,#6b4a16 62%,#e6c073) border-box}
+.jouer-second .btn-text:active{transform:scale(.97)}
+.jouer-second .btn-text svg{color:var(--gold);opacity:1}
 
-/* LA PASTILLE DU PROFIL, en haut à gauche, en face du jeton de réglages.
+/* LA PASTILLE DU PROFIL, en haut à gauche, en face du joyau de réglages.
    Positionnée en absolu et non dans la colonne centrale : le grand bouton
    COMBAT doit rester au milieu de l'écran. Le pseudo flottait au milieu du
    haut, en capitales espacées de 0,16 em, suivi de « · ADMIN » : une légende
-   sans support, posée sur le ciel peint. C'est maintenant une pastille de
-   laque cerclée d'or — l'initiale frappée dans un jeton, le pseudo à côté —,
-   qu'on touche pour ouvrir son compte. */
+   sans support, posée sur le ciel peint.
+   C'est maintenant un CIMIER : l'initiale frappée dans un sceau d'or cerclé
+   (le sceau déborde à gauche, comme un blason accroché à sa banderole), et
+   le pseudo sur une banderole de laque sertie d'un liseré d'or et d'un filet
+   gravé — le même habit que les plaques « Adversaires / Classement ». On le
+   touche pour ouvrir son compte. */
 .jouer-player{position:absolute;left:max(12px,var(--safe-l,0px));
   top:calc(var(--safe-t) + 10px);display:flex;flex-direction:column;align-items:flex-start;gap:6px;
   max-width:calc(100% - 84px);pointer-events:none;z-index:2}
 .jouer-player>*{pointer-events:auto}
-.jouer-id{display:flex;align-items:center;gap:9px;max-width:100%;cursor:pointer;
-  height:42px;padding:0 14px 0 4px;border-radius:999px;color:var(--text);font:inherit;
+.jouer-id{display:flex;align-items:center;gap:10px;max-width:100%;cursor:pointer;
+  height:44px;padding:0 16px 0 3px;border-radius:999px;color:var(--text);font:inherit;
   border:1px solid transparent;
-  background:linear-gradient(180deg,rgba(18,26,37,.86),rgba(8,12,18,.9)) padding-box,
-    linear-gradient(180deg,rgba(240,206,140,.6),rgba(170,130,62,.25)) border-box;
-  box-shadow:0 8px 20px -10px rgba(0,0,0,.9);
+  background:linear-gradient(180deg,rgba(24,34,48,.9),rgba(6,9,14,.94)) padding-box,
+    linear-gradient(180deg,#f3da9c,#a67c37 40%,#4f3812 62%,#c99744) border-box;
+  box-shadow:inset 0 0 0 1.5px rgba(0,0,0,.6),inset 0 0 0 2.5px rgba(216,178,106,.16),
+    0 10px 22px -10px rgba(0,0,0,.95);
   transition:filter .16s ease,transform .12s ease}
 .jouer-id:hover{filter:brightness(1.12)}
 .jouer-id:active{transform:scale(.97)}
-/* Le jeton : l'initiale, en or frappé sur la nuit. */
-.jouer-av{flex:none;width:34px;height:34px;border-radius:50%;
+/* Le sceau : l'initiale en relief sur l'or, dans un double anneau — une
+   gorge sombre puis un jonc d'or pâle. L'anneau tient dans la hauteur de la
+   banderole (36 + 2 × 3 px = 42 px). */
+.jouer-av{flex:none;width:36px;height:36px;border-radius:50%;
   display:flex;align-items:center;justify-content:center;
-  font-family:var(--f-title);font-weight:700;font-size:16px;color:#2a1c06;
-  background:var(--metal-gold);
-  box-shadow:inset 0 1px 0 rgba(255,250,230,.7),inset 0 -2px 3px rgba(90,60,15,.45),0 0 0 1px rgba(0,0,0,.5)}
+  font-family:var(--f-title);font-weight:800;font-size:17px;color:#2a1c06;
+  text-shadow:0 1px 0 rgba(255,246,214,.6),0 -1px 0 rgba(90,60,15,.35);
+  background:radial-gradient(circle at 36% 28%,rgba(255,250,230,.75),transparent 42%),var(--metal-gold);
+  box-shadow:inset 0 0 0 1.5px rgba(122,84,24,.55),inset 0 -3px 4px rgba(90,60,15,.45),
+    0 0 0 1.5px #120c04,0 0 0 2.5px rgba(240,206,140,.75),0 3px 6px rgba(0,0,0,.6)}
 .jouer-name{font-family:var(--f-ui);font-weight:650;
   font-size:14px;letter-spacing:.01em;line-height:1.1;color:var(--text);
+  text-shadow:0 1px 2px rgba(0,0,0,.9);
   max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 /* Le bac à sable se signale par une étiquette, et non par un nom en
    capitales : c'est la seule chose que le menu ait à en dire. */
 .jouer-admin{display:inline-block;margin-left:6px;padding:2px 6px;border-radius:4px;vertical-align:1px;
-  font-size:9.5px;font-weight:750;letter-spacing:.1em;text-transform:uppercase;
-  color:#241706;background:var(--gold)}
+  font-size:9.5px;font-weight:750;letter-spacing:.1em;text-transform:uppercase;text-shadow:none;
+  color:#241706;background:var(--metal-gold);box-shadow:0 0 0 1px rgba(46,29,6,.8)}
 /* La destination du combat, sous le bouton. */
 
 /* Promotion : le libellé sous le logo, sinon deux créatures inconnues se
@@ -7496,7 +7636,7 @@ html #page-game,html #page-fok,html #page-mirror,html #page-troie{
 @media(max-width:820px){
   /* --- Chrome global --- */
   #settings-panel{right:2.5vw;left:auto;width:min(88vw,300px);min-width:0;
-    max-height:80vh;overflow-y:auto;padding:4vw}
+    max-height:80vh;overflow-y:auto;padding:14px 18px 18px}
   .sp-row{flex-wrap:wrap}
   .sp-slider{width:min(46vw,140px)}
 
@@ -7652,21 +7792,31 @@ body.desk .nav-tabbar{
   left:0;top:0;bottom:0;width:var(--rail-w);
   transform:none;flex-direction:column;justify-content:center;
   gap:4px;padding:20px 12px;border-radius:0;border:none;
-  background:linear-gradient(180deg,#0f151e,#080b10);
-  box-shadow:6px 0 30px -12px rgba(0,0,0,.9)}
-/* Le filet d'or court le long du bord droit, et non plus en haut. */
-body.desk .nav-tabbar::before{left:auto;right:0;top:0;bottom:0;width:1px;height:auto;
-  background:linear-gradient(180deg,transparent,rgba(240,206,140,.45) 18%,rgba(240,206,140,.45) 82%,transparent)}
+  background:var(--nav-lattice) center top/28px 14px repeat,
+    radial-gradient(140% 50% at 0% 50%,rgba(216,178,106,.05),transparent 70%),
+    linear-gradient(180deg,#121a26,#06080c);
+  box-shadow:6px 0 30px -12px rgba(0,0,0,.9),inset -14px 0 16px -14px rgba(0,0,0,.9)}
+/* La moulure court le long du bord droit, couchée sur le flanc : le même
+   jonc d'or serti que le haut de la barre du téléphone. */
+body.desk .nav-tabbar::before{left:auto;right:-2px;top:0;bottom:0;width:8px;height:auto;
+  background:var(--nav-molding-v) right center/8px 32px repeat-y;
+  -webkit-mask-image:linear-gradient(180deg,transparent,#000 8%,#000 92%,transparent);
+  mask-image:linear-gradient(180deg,transparent,#000 8%,#000 92%,transparent);
+  filter:drop-shadow(-2px 0 2px rgba(0,0,0,.7))}
 body.desk .nav-tab{
   flex:0 0 auto;width:100%;height:50px;min-height:0;border-radius:var(--r-md);
   flex-direction:row;justify-content:flex-start;gap:14px;padding:0 14px;transform:none;
   transition:color .18s ease,background .18s ease}
-body.desk .nav-tab:hover{background:rgba(255,255,255,.035)}
-/* L'onglet actif, sur le rail : le trait de lumière passe sur le bord
-   gauche, et une nappe d'or part de lui. */
-body.desk .nav-tab.is-active{transform:none;
-  background:linear-gradient(90deg,rgba(216,178,106,.17),rgba(216,178,106,.03) 70%,transparent)}
-body.desk .nav-tab.is-active::before{top:50%;left:-12px;width:3px;height:26px;transform:translateY(-50%)}
+body.desk .nav-tab:hover{background:rgba(216,178,106,.05)}
+/* L'onglet actif, sur le rail : une PLAQUE gravée — laque éclairée d'or à
+   gauche, liseré d'or en dégradé — et la gemme en navette sertie sur son
+   bord gauche, à cheval sur le rebord du rail. */
+body.desk .nav-tab.is-active{transform:none;border:1px solid transparent;border-radius:var(--r-md);
+  background:linear-gradient(90deg,rgba(60,44,18,.9),rgba(22,26,32,.92) 70%,rgba(14,18,24,.9)) padding-box,
+    linear-gradient(90deg,rgba(240,206,140,.7),rgba(190,150,80,.18) 60%,rgba(240,206,140,.08)) border-box;
+  box-shadow:0 6px 14px -8px rgba(0,0,0,.9),inset 0 1px 0 rgba(255,240,205,.08)}
+body.desk .nav-tab.is-active::before{top:50%;left:-8px;width:14px;height:30px;transform:translateY(-50%);
+  background:var(--nav-gem-v) center/contain no-repeat}
 body.desk .nav-tab.is-active::after{display:none}
 body.desk .nav-tab.is-active .nav-tab-art,body.desk .nav-tab.is-active svg{transform:none}
 /* L'icône garde une taille FIXE : en pourcentage, elle enflait avec la
