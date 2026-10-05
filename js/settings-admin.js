@@ -86,6 +86,12 @@ function applyFxOn(on){
   sfx.addEventListener('input',function(){applySfxVol(parseFloat(this.value));savePrefs({sfx:_sfxVol});});
   const mus=document.getElementById('sp-music-vol');
   mus?.addEventListener('input',function(){applyMusicVol(parseFloat(this.value));savePrefs({music:_musicVol});});
+  // Le fil d'or des curseurs (--v, voir .sp-slider dans css/style.css) : posé
+  // à chaque mouvement, et à chaque ouverture du panneau — les préférences
+  // enregistrées remplissent la valeur après le démarrage, sans événement.
+  const spFill=el=>{if(el)el.style.setProperty('--v',(parseFloat(el.value)||0)*100+'%');};
+  [sfx,mus].forEach(el=>{spFill(el);el?.addEventListener('input',()=>spFill(el));});
+  btn.addEventListener('click',()=>{spFill(sfx);spFill(mus);});
   // Les effets de combat : allumés ou éteints, rien entre les deux.
   document.getElementById('sp-fx-toggle')?.addEventListener('click',function(){
     applyFxOn(!_fxOnPref);savePrefs({fx:_fxOnPref?1:0});

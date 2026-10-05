@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Pièces — planche d'essai</title>
+
+<!--
+  PLANCHE D'ESSAI DES PIÈCES
+  =================================================================
+  Cette page ne fait PAS partie du jeu : rien dans index.html ne la charge.
+
+  Elle peint chaque dessin de js/piece-art.js avec le VRAI css/style.css, là
+  où il doit tenir :
+    · à 44 px, sur une case claire et une case sombre du plateau de bois et
+      de pierre, pour les deux camps — c'est la taille d'une case sur un
+      téléphone, et la seule qui décide si un dessin est bon ;
+    · à 120 px, pour juger la matière (l'or, les gemmes, les reflets) ;
+    · en neutre, sur la laque d'une carte, comme dans le catalogue.
+
+  Paramètres d'adresse (tous facultatifs) :
+    ?only=roi,dame        ne montrer que ces pièces
+    ?extra=a.js,b.js      charger ces scripts APRÈS piece-art.js (des
+                          `Object.assign(PIECE_ART,{…})` d'essai), pour
+                          juger un dessin sans toucher au fichier du jeu
+    ?big=1                ajouter une colonne à 220 px
+
+  Ouvrir :  npm run dev   puis   /tools/pieces-preview.html
+  Capturer : node tools/piece-shots.js [sortie.png] [requête]
+-->
+
+<link rel="stylesheet" href="../css/style.css">
+<style>
+  body{padding:18px;background:#0b0e14}
+  h1{font-family:var(--f-title);color:var(--gold2);font-size:22px;margin-bottom:14px}
+  .pp-row{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+  .pp-nm{width:150px;font:600 12px/1.2 var(--f-ui);color:var(--text2)}
+  .pp-nm small{display:block;color:var(--muted);font-weight:400}
+  .pp-sq{width:44px;height:44px;display:flex;align-items:center;justify-content:center;
+    background-size:800% 800%;background-repeat:no-repeat}
+  .pp-sq.pp-lg{width:120px;height:120px}
+  .pp-sq.pp-xl{width:220px;height:220px}
+  .pp-bois{background-image:url(../assets/boards/bois.svg)}
+  .pp-pierre{background-image:url(../assets/boards/pierre.svg)}
+  .pp-or{background-image:url(../assets/boards/or.svg)}
+  .pp-L{background-position:0% 0%}
+  .pp-D{background-position:14.2857% 0%}
+  .pp-art{width:86%;height:86%;filter:drop-shadow(0 3px 3px rgba(0,0,0,.5))}
+  .pp-card{width:64px;height:64px;border-radius:10px;display:flex;align-items:center;justify-content:center;
+    background:var(--panel-bg) padding-box,var(--panel-edge) border-box;border:1px solid transparent}
+  .pp-card .pc-svg{width:80%;height:80%}
+  .pp-gap{width:14px}
+</style>
+</head>
+<body>
+<h1>Pièces d'Epic Chess</h1>
+<div id="sheet"></div>
+
+<script src="../js/data-pieces.js"></script>
+<script src="../js/piece-art.js"></script>
+<script>
+(function(){
+  const q=new URLSearchParams(location.search);
+  const extra=(q.get('extra')||'').split(',').filter(Boolean);
+  const only=(q.get('only')||'').split(',').filter(Boolean);
+  const big=q.get('big')==='1';
+
+  function load(i){
+    if(i>=extra.length)return render();
+    const s=document.createElement('script');
+    s.src=extra[i]+(extra[i].includes('?')?'&':'?')+'v='+Date.now();
+    s.onload=()=>load(i+1);
+    s.onerror=()=>{console.error('extra introuvable : '+extra[i]);load(i+1);};
+    document.body.appendChild(s);
+  }
+
+  function name(id){
+    const p=(typeof PIECES!=='undefined')&&PIECES.find(x=>x.id===id);
+    if(p)return p.name+'<small>'+id+' · '+p.class+'</small>';
+    return id+'<small>&nbsp;</small>';
+  }
+
+  function sq(mat,shade,id,color,cls){
+    return '<div class="pp-sq pp-'+mat+' pp-'+shade+(cls?' pp-'+cls:'')+'"><div class="pp-art">'+pieceSVG(id,color)+'</div></div>';
+  }
+
+  function render(){
+    let ids=Object.keys(PIECE_ART).filter(k=>k!=='__fallback');
+    if(only.length)ids=only;
+    const h=ids.map(id=>
+      '<div class="pp-row" data-id="'+id+'">'+
+        '<div class="pp-nm">'+name(id)+'</div>'+
+        sq('bois','L',id,'w')+sq('bois','D',id,'w')+sq('bois','L',id,'b')+sq('bois','D',id,'b')+
+        '<div class="pp-gap"></div>'+
+        sq('pierre','L',id,'w')+sq('pierre','D',id,'b')+sq('or','D',id,'w')+sq('or','L',id,'b')+
+        '<div class="pp-gap"></div>'+
+        sq('bois','D',id,'w','lg')+sq('pierre','L',id,'b','lg')+
+        (big?sq('bois','D',id,'w','xl')+sq('bois','L',id,'b','xl'):'')+
+        '<div class="pp-gap"></div>'+
+        '<div class="pp-card">'+pieceSVG(id,'n')+'</div>'+
+      '</div>').join('');
+    document.getElementById('sheet').innerHTML=h;
+    document.body.setAttribute('data-ready','1');
+  }
+
+  load(0);
+})();
+</script>
+</body>
+</html>

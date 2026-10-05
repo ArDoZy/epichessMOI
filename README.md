@@ -233,6 +233,14 @@ epic-chess/
 Deux choses tiennent l'apparence du jeu, et elles sont chacune à UN seul
 endroit de `css/style.css`.
 
+**L'orfèvrerie (direction « Fantasy », v5).** Par-dessus la palette, des
+ornements vectoriels communs, déclarés dans `[THEME]` : `--orn-frame` (quatre
+coins en filigrane d'or, posés en tête du `background` des panneaux et de
+toutes les fenêtres) et `--orn-flourish` (le fleuron sous les titres de
+page). Le plateau de partie a son cadre d'or serti, les plaques de joueur
+sont gravées, les cinq échiquiers (`tools/gen-boards.js`) sont taillés et
+biseautés.
+
 **La palette, dans `[THEME]` : « Nuit et Or ».** Le menu, les coffres, les
 médaillons et les cartes de créatures sont peints dans une seule lumière — de
 l'or martelé sur une nuit bleu-noir —, et toute l'interface en reprend la
@@ -1300,12 +1308,24 @@ du jeu (`TRUE_PAWN_IDS`, `PROMOTING_IDS`).
 
 ### 2. Les logos de pièces (`js/piece-art.js`)
 
-Les émojis ont été remplacés par des silhouettes SVG. `pieceSVG(id,color)`
+Les émojis ont été remplacés par des figurines SVG. `pieceSVG(id,color)`
 rend une pièce plein format (plateau), `pieceIcon(id,color,tailleEm)` une
 version en ligne (listes, journal des coups). Les deux camps partagent le
-même dessin : seules les variables CSS `--pc-fill` / `--pc-line` changent.
+même dessin : seules les variables CSS `--pc-*` changent.
 Une pièce sans entrée dans `PIECE_ART` retombe sur un jeton neutre, le jeu
 reste jouable.
+
+**Direction « Fantasy » (v5) : des MATIÈRES, plus des aplats.** Les blancs
+sont d'ivoire rehaussé d'or et serti de saphirs, les noirs d'obsidienne
+rehaussée d'or et sertie de rubis. Les dégradés sont communs à tout le
+document (`#pcg-*`, injectés une fois par `pieceArtDefs()`), et chaque forme
+d'un dessin porte une CLASSE qui dit sa matière : `.b` le corps, `.g` l'or,
+`.e` une gemme, `.s` une ombre, `.h` un reflet, `.l`/`.t` un trait, `.k` un
+aplat de contraste, `.v` un vide (creux de capuche, porte, ombre portée —
+toujours sombre, dans les deux camps). Le détail est en tête de
+`js/piece-art.js`. Un dessin se juge à 44 px sur une vraie case :
+`tools/pieces-preview.html` (planche d'essai) et `node tools/piece-shots.js`
+(sa capture) sont faits pour ça.
 
 **Piège** : plusieurs emplacements héritaient d'un `font-size` prévu pour
 des émojis. Comme `pieceIcon` dimensionne en `em`, un `font-size:46px`
@@ -2788,6 +2808,7 @@ mais dans une version que Playwright refuse, le script le retrouve tout seul
 | Ajouter une statistique au profil | `accountSummary()` / `accountSealHTML()` dans `js/account-ui.js` |
 | Changer la stratégie de cache hors ligne | `sw.js` (et monter `CACHE_VERSION` quand des scripts apparaissent ou disparaissent) |
 | Vérifier l'UI à toutes les tailles d'écran | `node tools/ui-shots.js` |
+| Juger un dessin de pièce à 44 px | `node tools/piece-shots.js sortie.png "only=roi,dame"` |
 | Changer la vitesse de montée en ELO | `VV_CLIMB_*`, `VV_K_*` et `VV_MAX_SWING` dans `js/voie.js` (relire « La courbe d'ascension », et refaire la simulation) |
 | Changer la largeur de la fenêtre d'appariement | `MP_ELO_*` dans `js/multiplayer.js` |
 | Ajouter un nouveau réglage utilisateur | `index.html` (bloc `#settings-panel`, sous les deux boutons « Compte » / « Installer ») + `js/settings-admin.js` |

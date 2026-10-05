@@ -59,7 +59,7 @@
 // immédiatement plutôt qu'au prochain lancement.
 // ================================================================
 
-const CACHE_VERSION = 'epicchess-v9';
+const CACHE_VERSION = 'epicchess-v10';
 const CACHE_MEDIA   = CACHE_VERSION + '-media';
 const CACHE_SHELL   = CACHE_VERSION + '-shell';
 
