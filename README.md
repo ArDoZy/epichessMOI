@@ -127,12 +127,19 @@ epic-chess/
     │                          # de la position après chaque demi-coup, les
     │                          # commandes ⏮ ◀ ▶ ⏭ et le journal cliquable.
     │                          # Générique : un préfixe d'identifiants suffit.
+    ├── variant-ai.js         # L'IA DES VARIANTES HORS DU FIL PRINCIPAL :
+    │                          # variantAIRun() envoie la recherche dans un
+    │                          # Worker, et retombe sur le fil principal si le
+    │                          # Worker manque (file://, panne, délai)
+    ├── variant-ai-worker.js  # Ce Worker : charge le moteur et l'IA d'une
+    │                          # variante par importScripts. Jamais en <script>
     ├── fok-rules.js          # BOARD QUAKE : le moteur de la variante.
     │                          # Échecs ordinaires + décalage des quatre rangées
     │                          # centrales d'une case vers la droite après CHAQUE
     │                          # coup. Aucune dépendance, aucun DOM.
     ├── fok-ai.js             # Son adversaire : alpha-bêta, quatre niveaux,
-    │                          # recherche bornée à 700 ms sur le fil principal
+    │                          # recherche bornée à 700 ms, dans un Worker
+    │                          # (js/variant-ai.js)
     ├── fok-game.js           # Son écran de jeu (#page-fok) et son salon. Réutilise
     │                          # les CLASSES de la partie ordinaire, aucun état
     ├── fok-mp.js             # Ses parties à deux joueurs : mêmes canaux Supabase
@@ -1816,10 +1823,14 @@ MONTRE la règle. La couche des pièces est la même que celle du jeu principal
 (`.gc-layer` / `.gc-piece` en `translate3d`), donc le décalage est une vraie
 transition CSS : huit à seize pièces qui glissent ensemble d'une case.
 
-**L'IA tourne sur le fil principal**, contrairement à celle du jeu principal
-qui vit dans un Web Worker. C'est possible parce que son budget est court (au
-plus 700 ms) et que la recherche est à approfondissement itératif : elle rend
-toujours le meilleur coup trouvé à l'instant où le budget s'épuise. Son
+**L'IA tourne dans un Web Worker** (`js/variant-ai.js` →
+`js/variant-ai-worker.js`, qui charge `fok-rules.js` et `fok-ai.js` par
+`importScripts`). Elle tournait sur le fil principal, l'écran se figeait
+jusqu'à 700 ms à chaque réponse ; son budget reste court (au plus 700 ms) et la
+recherche est à approfondissement itératif : elle rend toujours le meilleur
+coup trouvé à l'instant où le budget s'épuise. Ouvert en `file://` ou sans
+Worker, le jeu retombe sur l'ancien chemin, sur le fil principal. Le coup
+revient en copie et passe par `fokFindMove`, comme un coup reçu du réseau. Son
 évaluation n'utilise **aucune table de colonnes** — la colonne d'une pièce de
 la bande change à chaque demi-coup, un bonus de colonne serait un bonus tiré au
 sort. Ne subsistent que des termes de rangée (avancée des pions, tour sur la
@@ -2577,7 +2588,7 @@ server.js → data-pieces.js → piece-art.js → blason.js → main.js → page
 → cinematics.js
 → game-render.js
 → ai-engine.js → game-flow.js → voie.js → economy-ui.js → clans.js
-→ variant-analysis.js
+→ variant-analysis.js → variant-ai.js
 → fok-rules.js → fok-ai.js → fok-game.js
 → mirror-rules.js → mirror-ai.js → mirror-game.js
 → troie-rules.js → troie-ai.js → troie-game.js → variantes.js
@@ -2610,6 +2621,12 @@ réutilise `mpInitClient()` et la configuration Supabase. Aucun autre fichier ne
 les appelle, et ils n'écrivent dans aucun état du jeu principal : la variante
 peut être retirée en supprimant ses quatre `<script>` sans rien casser d'autre
 que sa propre carte.
+
+`variant-ai.js` n'a aucune dépendance ; il doit seulement précéder les trois
+écrans de variante, qui l'appellent. `variant-ai-worker.js` n'a pas de
+`<script>` : il n'est chargé que comme Worker, et charge lui-même les
+`*-rules.js` et `*-ai.js` — ces six fichiers ne doivent donc toucher ni au DOM
+ni à `window` au chargement (ce qu'ils font déjà, `typeof window` à l'appui).
 
 `variant-analysis.js` vient **avant les trois écrans de variante** : chacun
 crée son objet d'analyse (`vanNew`) au chargement, et lit ses photos à chaque

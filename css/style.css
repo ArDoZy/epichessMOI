@@ -2403,6 +2403,15 @@ body.nav-overlay #nav-stage{display:none}
 #nav-track:not(.is-sliding) .nav-page:not(.is-front)::after,
 #nav-track:not(.is-sliding) .nav-page:not(.is-front) *::before,
 #nav-track:not(.is-sliding) .nav-page:not(.is-front) *::after{animation-play-state:paused}
+/* …ET NE SE DESSINE PAS. Figée, une page hors cadre restait dans l'arbre de
+   rendu : à chaque image du menu (braises, médaillons), le navigateur
+   recalculait styles et calques de cinq écrans, et en partie ceux de toute
+   la rangée cachée sous le plateau. `content-visibility:hidden` saute son
+   style, sa mise en page et son dessin, en GARDANT leur état : au départ du
+   glissement (`is-sliding`), la page revient telle qu'on l'a laissée, sans
+   tout recalculer. Les dimensions de .nav-page sont fixées (100 % du cadre),
+   le confinement de taille qu'implique `hidden` ne change donc rien. */
+#nav-track:not(.is-sliding) .nav-page:not(.is-front){content-visibility:hidden}
 
 /* LA PARTIE N'EST PAS UNE PAGE DE LA RANGÉE. Une bataille n'est pas une
    destination que l'on visite entre deux autres : c'est un état. Elle se pose
@@ -4066,8 +4075,16 @@ body.desk .var-card-hdr{flex-wrap:wrap}
 @keyframes jtfSpin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
 .jtf-near{-webkit-mask-image:linear-gradient(180deg,transparent 34%,rgba(0,0,0,.47) 50%,#000 62%);
   mask-image:linear-gradient(180deg,transparent 34%,rgba(0,0,0,.47) 50%,#000 62%)}
-/* Les poussières de lumière que l'orbite laisse derrière elle. */
-.jtf-mote{transform-box:fill-box;opacity:0;animation:jtfMote 3.6s linear infinite}
+/* Les poussières de lumière que l'orbite laisse derrière elle. Ce sont des
+   <i> HTML posés en pourcentage de la boîte (l'ancien repère 0–100 du SVG) :
+   en `transform`/`opacity` sur un élément HTML, le compositeur les anime
+   seul. En <circle>, chaque image du menu demandait une mise en page et un
+   dessin complets (≈ 60 mises en page par seconde au repos). */
+.jt-fx .jtf-motes{display:block;pointer-events:none}
+.jtf-mote{position:absolute;display:block;border-radius:50%;background:#ffeec2;
+  left:calc((var(--x) - var(--r)) * 1%);top:calc((var(--y) - var(--r)) * 1%);
+  width:calc(var(--r) * 2%);aspect-ratio:1;
+  opacity:0;animation:jtfMote 3.6s linear infinite}
 @keyframes jtfMote{
   0%  {opacity:0;transform:translate(0,4px) scale(.5)}
   20% {opacity:.9}
@@ -9024,14 +9041,26 @@ body.has-acc #page-mirror{min-height:0}
    L'ombre portée passe en `drop-shadow` : elle suit la silhouette découpée
    de la planche (créneau du haut compris) là où `box-shadow` aurait dessiné
    l'ombre d'un rectangle sous un objet qui n'en est pas un. */
+/* LA PLANCHE ET SON OMBRE SONT SUR UN PSEUDO-ÉLÉMENT, PAS SUR LE BOUTON.
+   Posé sur .jouer-arena, le `filter` enveloppait aussi le médaillon qui
+   flotte (jaFloat) : chaque image de son flottement obligeait à refaire
+   l'ombre de tout le cadre, et le navigateur recomposait les calques du menu
+   à chaque image (≈ 0,8 s de fil principal sur 5 s de repos, processeur
+   bridé ×4). Sur ::before, l'ombre ne porte que ce qui ne bouge pas, et le
+   médaillon flotte sur le compositeur. `isolation` garde le pseudo-élément
+   (z-index -1) DANS le bouton, sous le halo et le contenu, comme le faisait
+   le contexte d'empilement créé par l'ancien filtre. */
 .jouer-arena{
   border:none;border-radius:0;box-shadow:none;backdrop-filter:none;
-  background:url('../assets/ui/cadre-arene.webp') center/100% 100% no-repeat;
+  background:none;isolation:isolate;
   padding:clamp(20px,5vw,28px) clamp(30px,8vw,42px) clamp(22px,5.4vw,30px);
-  filter:drop-shadow(0 .8em 1.8em rgba(0,0,0,.85));
-  transition:filter .2s ease,transform .12s ease;
+  transition:transform .12s ease;
 }
-.jouer-arena:hover{filter:drop-shadow(0 .8em 1.8em rgba(0,0,0,.85)) brightness(1.07)}
+.jouer-arena::before{content:'';position:absolute;inset:0;z-index:-1;pointer-events:none;
+  background:url('../assets/ui/cadre-arene.webp') center/100% 100% no-repeat;
+  filter:drop-shadow(0 .8em 1.8em rgba(0,0,0,.85));
+  transition:filter .2s ease}
+.jouer-arena:hover::before{filter:drop-shadow(0 .8em 1.8em rgba(0,0,0,.85)) brightness(1.07)}
 /* LE MÉDAILLON CHEVAUCHE LE BORD HAUT, comme le sceau d'un blason posé sur
    son cadre : c'est ce qui fait qu'il est DEVANT le panneau et non dedans. */
 .ja-medal{margin-top:calc(-1 * clamp(26px,6.4vw,36px))}

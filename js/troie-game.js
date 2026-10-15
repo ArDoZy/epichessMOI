@@ -667,11 +667,15 @@ function troDeclare(result,reason){
 function troAITurn(){
   const st=TRO.st;
   if(!st||st.gameOver||st.turn===TRO.myColor||TRO.mode!=='ia')return;
-  // La recherche est synchrone et bornée (voir troie-ai.js) : on la laisse
-  // partir après un rendu, pour que « L'adversaire réfléchit… » soit
-  // effectivement affiché avant que le fil ne se bloque.
-  requestAnimationFrame(()=>{
-    const mv=troAIMove(st,TRO.level);
+  // LA RECHERCHE TOURNE HORS DU FIL PRINCIPAL (js/variant-ai.js) : jusqu'à
+  // 700 ms pendant lesquelles l'écran restait figé. Le coup revient en
+  // copie : on retrouve le coup légal dans l'état réel, comme un coup reçu
+  // du réseau, et seulement si la partie n'a pas bougé entre-temps
+  // (abandon, revanche, retour au salon).
+  const ply=st.ply;
+  variantAIRun({scripts:['troie-rules.js','troie-ai.js'],fn:'troAIMove',args:[st,TRO.level]},res=>{
+    if(TRO.st!==st||st.gameOver||st.ply!==ply||st.turn===TRO.myColor||TRO.mode!=='ia')return;
+    const mv=res&&res.from?troFindMove(st,troPackMove(res)):null;
     if(!mv)return;
     troPlayMove(mv,false);
   });

@@ -52,6 +52,8 @@
 //     v9 marque l'économie tenue par le serveur, le SDK Supabase servi par
 //     le jeu (js/vendor/) et le passage des médias en mise à jour d'arrière-
 //     plan.
+//     v11 marque l'IA des variantes passée dans un Worker
+//     (js/variant-ai-worker.js) et les poussières du menu en HTML.
 //
 // -- METTRE À JOUR -------------------------------------------------------
 // Monter CACHE_VERSION suffit : l'ancien cache est effacé à l'activation, et
@@ -59,7 +61,7 @@
 // immédiatement plutôt qu'au prochain lancement.
 // ================================================================
 
-const CACHE_VERSION = 'epicchess-v10';
+const CACHE_VERSION = 'epicchess-v11';
 const CACHE_MEDIA   = CACHE_VERSION + '-media';
 const CACHE_SHELL   = CACHE_VERSION + '-shell';
 

@@ -4086,6 +4086,19 @@ const OPTIONAL_ASSET=/\/assets\/(adversaires|backgrounds|banners|ui|fx|ranks|che
     const journal=await page.evaluate(()=>MIR.st.moves.map(m=>m.text).join(' | '));
     // Premier coup des Blancs : il est LIBRE, d2 ne suit pas.
     if(!/^e2–e4($| )/.test(journal))throw new Error('journal inattendu : '+journal);
+    // L'IA RÉPOND DEPUIS UN WORKER (js/variant-ai.js). Elle cherchait sur le
+    // fil principal et figeait l'écran jusqu'à 700 ms par coup ; elle doit
+    // maintenant répondre sans que le Worker soit tombé en panne (CSP,
+    // script introuvable, état impossible à copier), auquel cas le jeu
+    // retomberait en silence sur l'ancien chemin.
+    let ia=null;
+    for(let i=0;i<30;i++){
+      await page.waitForTimeout(200);
+      ia=await page.evaluate(()=>({n:MIR.st.moves.length,worker:!!_vaiWorker,panne:_vaiBroken}));
+      if(ia.n>=2)break;
+    }
+    if(ia.n<2)throw new Error('l\'IA de Mirror Chess n\'a pas répondu');
+    if(!ia.worker||ia.panne)throw new Error('l\'IA des variantes n\'a pas tourné dans son Worker');
     await page.evaluate(()=>{MIR.st.gameOver=true;if(typeof goToMainMenu==='function')goToMainMenu();});
     await page.waitForTimeout(400);
   });

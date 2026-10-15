@@ -24,10 +24,13 @@
 // Le seul écart possible est en sa défaveur (elle croit donner un échec qui
 // n'a pas lieu), et c'est très exactement ce qu'un joueur trompé ressent.
 //
-// LA RECHERCHE TOURNE SUR LE FIL PRINCIPAL, avec un budget court (au plus
-// 700 ms), comme celle des autres variantes : l'écran ne doit pas se figer, et
-// l'approfondissement itératif rend le meilleur coup trouvé à l'instant où le
-// budget s'épuise.
+// LA RECHERCHE TOURNE DANS UN WORKER (js/variant-ai.js, qui charge ce
+// fichier et son moteur dans js/variant-ai-worker.js) : sur le fil principal,
+// ses 700 ms au plus figeaient l'écran à chaque réponse. Le budget reste
+// court, et l'approfondissement itératif rend le meilleur coup trouvé à
+// l'instant où il s'épuise. Ce fichier ne doit donc toucher ni au DOM ni à
+// `window` : il est chargé tel quel par importScripts. Sans Worker (file://),
+// l'écran l'appelle sur le fil principal, comme avant.
 //
 // Dépendances : troie-rules.js. Utilisé par : troie-game.js.
 // ================================================================

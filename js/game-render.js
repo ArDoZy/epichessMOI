@@ -866,12 +866,16 @@ function renderClocks(gs){
   const playerCol=gs.playerColor||'w';const aiCol=gs.aiColor||'b';
   const hTime=playerCol==='w'?gs.timeWhite:gs.timeBlack;
   const aTime=aiCol==='w'?gs.timeWhite:gs.timeBlack;
-  hEl.style.display='';aEl.style.display='';
+  if(hEl.style.display)hEl.style.display='';
+  if(aEl.style.display)aEl.style.display='';
   // ON ÉCRIT DANS .gp-clock-t, PAS DANS LE BADGE. Le badge porte maintenant le
   // SABLIER du sprite d'icônes (voir #ec-sablier, index.html) : un textContent
   // posé sur le badge lui-même effacerait ce <svg> au premier tic d'horloge.
   // Le repli sur le badge reste, au cas où le balisage n'aurait pas la travée.
-  const put=(el,txt)=>{const t=el.querySelector('.gp-clock-t');if(t)t.textContent=txt;else el.textContent=txt;};
+  // Le tic tombe cinq fois par seconde, le chiffre ne change qu'une : un
+  // textContent réécrit à l'identique coûtait quand même une mise en page de
+  // la colonne de jeu à chaque tic. On n'écrit que ce qui change.
+  const put=(el,txt)=>{const t=el.querySelector('.gp-clock-t')||el;if(t.textContent!==txt)t.textContent=txt;};
   put(hEl,fmt(hTime));put(aEl,fmt(aTime));
   // Sous 30 s la pendule passe en rouge et pulse : c'est le seul moment ou
   // elle doit reclamer l'attention.
@@ -924,7 +928,8 @@ function clockFire(el,ms,gs,live){
     f.innerHTML=h;
     el.appendChild(f);
   }
-  el.style.setProperty('--heat',heat.toFixed(3));
+  const hv=heat.toFixed(2);
+  if(el._heat!==hv){el._heat=hv;el.style.setProperty('--heat',hv);}
   el.classList.add('on-fire');
   el.classList.toggle('fire-hot',heat>0.66);
   el.classList.toggle('fire-live',!!live);

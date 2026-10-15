@@ -466,11 +466,15 @@ function fokPlayMove(mv,local){
 function fokAITurn(){
   const st=FOK.st;
   if(!st||st.gameOver||st.turn===FOK.myColor||FOK.mode!=='ia')return;
-  // La recherche est synchrone et bornée (voir fok-ai.js) : on la laisse
-  // partir après un rendu, pour que « L'adversaire réfléchit… » soit
-  // effectivement affiché avant que le fil ne se bloque.
-  requestAnimationFrame(()=>{
-    const mv=fokAIMove(st,FOK.level);
+  // LA RECHERCHE TOURNE HORS DU FIL PRINCIPAL (js/variant-ai.js) : jusqu'à
+  // 700 ms pendant lesquelles l'écran restait figé. Le coup revient en
+  // copie : on retrouve le coup légal dans l'état réel, comme un coup reçu
+  // du réseau, et seulement si la partie n'a pas bougé entre-temps
+  // (abandon, revanche, retour au salon).
+  const ply=st.ply;
+  variantAIRun({scripts:['fok-rules.js','fok-ai.js'],fn:'fokAIMove',args:[st,FOK.level]},res=>{
+    if(FOK.st!==st||st.gameOver||st.ply!==ply||st.turn===FOK.myColor||FOK.mode!=='ia')return;
+    const mv=res&&res.from?fokFindMove(st,fokPackMove(res)):null;
     if(!mv)return;
     fokPlayMove(mv,false);
   });

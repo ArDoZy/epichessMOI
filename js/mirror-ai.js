@@ -24,10 +24,13 @@
 //     C'est la compensation d'une perte, et elle est réelle — sans ce terme,
 //     l'adversaire refuse des échanges qui le libéreraient.
 //
-// LA RECHERCHE TOURNE SUR LE FIL PRINCIPAL, budget volontairement court : le
-// jeu principal met la sienne dans un Worker parce qu'elle a cinq secondes ;
-// ici l'écran ne doit pas se figer, et l'approfondissement itératif rend le
-// meilleur coup trouvé à l'instant où le budget s'épuise.
+// LA RECHERCHE TOURNE DANS UN WORKER (js/variant-ai.js, qui charge ce
+// fichier et son moteur dans js/variant-ai-worker.js) : sur le fil principal,
+// ses 700 ms au plus figeaient l'écran à chaque réponse. Le budget reste
+// court, et l'approfondissement itératif rend le meilleur coup trouvé à
+// l'instant où il s'épuise. Ce fichier ne doit donc toucher ni au DOM ni à
+// `window` : il est chargé tel quel par importScripts. Sans Worker (file://),
+// l'écran l'appelle sur le fil principal, comme avant.
 //
 // Dépendances : mirror-rules.js. Utilisé par : mirror-game.js.
 // ================================================================

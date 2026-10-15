@@ -90,7 +90,13 @@ function stopClockTick(gs){
 // dès que `historyView` n'était plus nul, ce qui faisait des boutons ⏮◀▶⏭ une
 // pause illimitée en pleine partie.
 function tickClock(gs){
-  if(!gs.clockMs||gs.gameOver){gs._clockLastTs=Date.now();return;}
+  // UNE PENDULE FINIE S'ARRÊTE D'ELLE-MÊME. Une partie close sans passer par
+  // triggerEndOfGame (sortie du tutoriel, nouvelle partie lancée par-dessus)
+  // laissait son minuteur battre cinq fois par seconde jusqu'à la fermeture
+  // de l'onglet — et une ancienne partie réécrivait ses chiffres dans les
+  // pendules de la nouvelle.
+  if(gs.gameOver||(typeof GS!=='undefined'&&GS&&GS!==gs)){stopClockTick(gs);return;}
+  if(!gs.clockMs){gs._clockLastTs=Date.now();return;}
   const now=Date.now();const elapsed=now-gs._clockLastTs;gs._clockLastTs=now;
   const key=gs.turn==='w'?'timeWhite':'timeBlack';
   gs[key]=Math.max(0,gs[key]-elapsed);

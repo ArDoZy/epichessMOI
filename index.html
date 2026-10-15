@@ -698,13 +698,15 @@
                 <ellipse cx="37" cy="0" rx="1.7" ry="4.2" fill="#ffe9b0"/>
               </g>
             </svg></span>
-            <svg class="jtf-motes" viewBox="0 0 100 100">
-              <g fill="#ffeec2">
-              <circle class="jtf-mote" cx="22" cy="40" r=".9" style="--mx:-3px;animation-duration:3.4s"/>
-              <circle class="jtf-mote" cx="78" cy="58" r="1"  style="--mx:4px;animation-duration:4.1s;animation-delay:-1.6s"/>
-              <circle class="jtf-mote" cx="60" cy="30" r=".8" style="--mx:2px;animation-duration:3.7s;animation-delay:-2.7s"/>
-            </g>
-            </svg>
+            <!-- Les poussières sont des <i> HTML et non des <circle> : une
+                 animation de `transform` sur un élément SVG intérieur n'est
+                 pas confiée au compositeur, elle relançait une mise en page
+                 et un dessin du menu à chaque image. -->
+            <span class="jtf-motes">
+              <i class="jtf-mote" style="--x:22;--y:40;--r:.9;--mx:-3px;animation-duration:3.4s"></i>
+              <i class="jtf-mote" style="--x:78;--y:58;--r:1;--mx:4px;animation-duration:4.1s;animation-delay:-1.6s"></i>
+              <i class="jtf-mote" style="--x:60;--y:30;--r:.8;--mx:2px;animation-duration:3.7s;animation-delay:-2.7s"></i>
+            </span>
           </span>
           <img class="jt-art" src="assets/ui/logo-journaliere.webp" alt="" aria-hidden="true" data-onerr="remove">
           <span class="jt-fx jt-fx-front jtf-near" aria-hidden="true">
@@ -2124,6 +2126,7 @@
 <script src="js/economy-ui.js"></script>
 <script src="js/clans.js"></script>
 <script src="js/variant-analysis.js"></script>
+<script src="js/variant-ai.js"></script>
 <script src="js/fok-rules.js"></script>
 <script src="js/fok-ai.js"></script>
 <script src="js/fok-game.js"></script>
