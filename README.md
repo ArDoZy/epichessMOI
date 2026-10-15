@@ -609,7 +609,7 @@ ordinaire, où le chiffre se suffit.
 
 **Toute lecture de rang ou de déblocage passe par le sommet, jamais par
 `vvLoadElo()`.** Les points concernés : `vvRank()` / `vvRankIdx()`
-(js/accounts.js), `boardSkinUnlocked()` et `menuNextMilestoneHTML()`
+(js/accounts.js), `boardSkinUnlocked()`
 (js/economy-ui.js), `loadAccountGlobals()` (js/accounts.js),
 `renderVoiePage()` (js/voie.js), `accountSummary()` (js/account-ui.js) et le
 modal de résultat (js/game-flow.js). Un nouvel écran qui afficherait un rang
@@ -1626,7 +1626,6 @@ montre.** Rien n'est inventé pour l'ordinateur, on y déplie ce que le petit
 |---|---|
 | La barre d'onglets devient un **rail vertical** à gauche, libellés à droite du blason | Sur téléphone c'est une barre d'onglets pleine largeur collée en bas ; sur 1400 px elle masquerait le contenu. Le rail ne recouvre rien : la zone utile de chaque page recule d'autant |
 | Les deux flèches de navigation disparaissent | Sur 1500 px elles se retrouvaient à 1400 px l'une de l'autre, sans lien visible avec la rangée. Le rail nomme les cinq pages ; ← et → font toujours glisser d'un cran |
-| Le menu principal passe en **deux colonnes** | La colonne de droite (`#menu-side`) déplie le cycle de la récompense journalière, le résumé des deux voies de récompenses et le prochain palier de la Diagonale |
 | Les largeurs de contenu montent à `--content-max` (1280 px) | Les plafonds (980, 1000, 860…) étaient des plafonds de lisibilité inutiles sur téléphone et un plafond de gâchis sur grand écran |
 | Le catalogue passe de 6 à ~8 colonnes, avec des cartes plus grandes | Les 19 pièces tiennent alors sur un écran, sans défilement |
 | Le **survol** d'une carte ouvre ses deux boutons | L'appui qui déplie la carte ne sert plus à rien quand un pointeur la désigne déjà : composer une armée passe de deux clics par pièce à un seul |
@@ -2777,7 +2776,6 @@ mais dans une version que Playwright refuse, le script le retrouve tout seul
 | Ajuster la mise en page téléphone d'un écran | section `[MOBILE-APP]` de `css/style.css` (en dernier dans le fichier, elle l'emporte sur les sections d'origine) |
 | Ajuster la mise en page ordinateur d'un écran | section `[DESKTOP]` de `css/style.css` (tout à la fin, après `[MOBILE-APP]`), sous `body.desk` |
 | Changer le seuil du mode bureau | `DESK_QUERY` dans `js/main.js` — **et nulle part ailleurs** : le CSS ne raisonne que sur `body.desk` |
-| Changer ce que montre la colonne de droite du menu | `renderMenuSidePanel()` / `menuNextMilestoneHTML()` dans `js/economy-ui.js` + `#menu-side` dans `index.html` |
 | Ajouter un raccourci clavier global | `wireEscape()` dans `js/main.js` (Échap) ou l'écouteur `keydown` d'`init()` dans `js/pages-nav.js` (← →) |
 | Modifier les pictogrammes du schéma de déplacement (patte, ailes, couteau…) | `PMV_ICONS` / `PMV_LABELS` dans `js/piece-moves.js` + section `[PMV]` de `css/style.css` |
 | Modifier les cinématiques de combat | `js/cinematics.js` + section `[CINEMATIC]` de `css/style.css` |

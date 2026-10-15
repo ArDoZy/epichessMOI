@@ -4755,15 +4755,6 @@ body.desk .var-card-hdr{flex-wrap:wrap}
   padding:6px 9px;margin-top:10px;line-height:1.4}
 .army-card.army-card-nostock{opacity:.78}
 .army-card.army-card-nostock::before{background:var(--danger)}
-/* Bandeau « ce que vous engagez » de la page Combat. */
-.cstake{display:inline-flex;flex-direction:column;align-items:center;gap:6px;
-  background:var(--surface);border:1px solid var(--border);border-radius:13px;
-  padding:12px 20px;margin-bottom:22px;max-width:100%}
-.cstake-lbl{font-family:var(--f-ui);font-size:9.5px;text-transform:uppercase;letter-spacing:1.4px;color:var(--muted)}
-.cstake-row{display:flex;flex-wrap:wrap;gap:5px;align-items:center;justify-content:center}
-.cstake-row .pc-icon{width:26px;height:26px}
-.cstake-row .gs-stake-q{font-family:var(--f-ui);font-size:11px;color:var(--muted)}
-.cstake-warn{font-family:var(--f-ui);font-size:11px;color:var(--danger);margin-top:4px;text-align:center}
 
 /* [MENU] : face JOUER ============================================ */
 /* LE COFFRE DE RÉAPPROVISIONNEMENT N'A PLUS DE CARTE sur le menu : il
@@ -9196,8 +9187,17 @@ body.has-acc #page-mirror{min-height:0}
 .pcard-pow-awake{color:#fff;border-color:rgba(240,209,137,.55);background:rgba(8,11,14,.7);padding:3px}
 .pcard-pow-awake .power-i{color:var(--gold2);filter:drop-shadow(0 0 3px rgba(240,209,137,.8))}
 .pcard-pow-ready{color:#1a1206;background:linear-gradient(180deg,var(--gold2),var(--gold));
-  border-color:#fff3d2;padding:3px;animation:pwReady 1.3s ease-in-out infinite}
-@keyframes pwReady{0%,100%{box-shadow:0 0 0 0 rgba(240,209,137,.7)}50%{box-shadow:0 0 0 6px rgba(240,209,137,0)}}
+  border-color:#fff3d2;padding:3px}
+/* L'ONDE QUI APPELLE, SUR LE COMPOSITEUR. Elle animait le `box-shadow` de la
+   pastille : un dessin refait à chaque image, sur chaque carte dont le
+   pouvoir attend — et la collection peut en montrer des dizaines. C'est
+   maintenant un anneau posé une fois sur ::after, qui grandit et s'efface en
+   `transform`/`opacity` : la même onde, sans rien repeindre. */
+.pcard-pow-ready::after{content:'';position:absolute;inset:-1px;border-radius:inherit;pointer-events:none;
+  box-shadow:0 0 0 2px rgba(240,209,137,.75);opacity:0;
+  animation:pwReady 1.3s ease-out infinite}
+@keyframes pwReady{0%{opacity:.9;transform:scale(1)}70%,100%{opacity:0;transform:scale(1.35,1.6)}}
+@media(prefers-reduced-motion:reduce){.pcard-pow-ready::after{animation:none}}
 
 /* LA FICHE : la carte du pouvoir s'éteint tant qu'il dort. */
 .power-card.power-sleep,.power-card.power-ready{filter:saturate(.35);opacity:.8}
