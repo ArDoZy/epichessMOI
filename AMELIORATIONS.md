@@ -418,3 +418,75 @@ avant la sortie : ce qui ne touche qu'eux est noté pour mémoire.
    aussi.
 3. Les parties envoyées par un ancien client (sans billet) sont refusées :
    le service worker (`epicchess-v9`) remplace le code au premier passage.
+
+---
+
+## 12. Nuit du 15 octobre 2026 : la fluidité
+
+Le jeu « lague beaucoup ». Mesuré dans Chromium (Playwright, téléphone
+390 × 844, **processeur bridé ×4** pour approcher un téléphone moyen), sur
+5 s de repos ou 10 s de partie, avec la trace du fil principal
+(`Performance.getMetrics` et `Tracing`). Les règles, les pièces, les pouvoirs
+et l'économie ne sont pas touchés.
+
+### 12.1 Ce qui faisait laguer
+
+| | Cause | Correction | Statut |
+|---|---|---|---|
+| 12.1.1 | **Le cadre de l'arène portait un `filter:drop-shadow` qui enveloppait le médaillon flottant** (`jaFloat`) : à chaque image du flottement, le navigateur refaisait l'ombre du cadre et recomposait tous les calques du menu (`Layerize` ≈ 600 ms sur 5 s). | La planche et son ombre passent sur `.jouer-arena::before` ; le médaillon flotte sur le compositeur. Rendu identique (comparé au pixel près, au repos). | ✅ |
+| 12.1.2 | **Les poussières du quotidien étaient trois `<circle>` SVG animés en `transform`** : une animation sur un élément SVG intérieur n'est pas confiée au compositeur, d'où **une mise en page complète par image** au menu (301 sur 5 s). | Trois `<i>` HTML, posés en pourcentage de la même boîte. | ✅ 0 mise en page au repos |
+| 12.1.3 | **Les quatre pages hors cadre restaient dans l'arbre de rendu**, figées mais stylées et composées à chaque image — et toute la rangée sous le plateau pendant une partie. | `content-visibility:hidden` hors glissement : style, mise en page et dessin sautés, état gardé (défilement compris, vérifié). | ✅ |
+| 12.1.4 | **Les braises du menu demandaient 60 images par seconde pour en dessiner 30**, relisaient `clientWidth` à chaque image (mise en page forcée) et peignaient un canvas en définition Retina pour des halos flous. | Vraies 30 images/s (minuterie de 20 ms entre deux images), taille tenue par un `ResizeObserver`, un pixel de canvas par pixel CSS. | ✅ |
+| 12.1.5 | **L'IA des trois variantes cherchait sur le fil principal** : l'écran gelait 700 à 900 ms à chaque réponse (Usurpateur). | `js/variant-ai.js` + `js/variant-ai-worker.js` : le moteur et l'IA de la variante sont chargés tels quels dans un Worker (`importScripts`) ; le coup revient en copie et passe par `*FindMove`, comme un coup reçu du réseau. Repli sur l'ancien chemin en `file://` ou si le Worker tombe. | ✅ plus grande image : 900 ms → 17 ms |
+| 12.1.6 | La pendule réécrivait ses chiffres **cinq fois par seconde** même inchangés (une mise en page de la colonne à chaque tic) ; un minuteur de partie finie ou remplacée sans `triggerEndOfGame` battait jusqu'à la fermeture de l'onglet, et pouvait écrire dans les pendules de la partie suivante. | Écriture seulement si le texte change ; `tickClock` arrête un minuteur dont la partie est finie ou n'est plus `GS`. | ✅ |
+| 12.1.7 | Le Worker de l'IA principale était créé **au premier coup de l'IA** (sérialisation du moteur au moment où le joueur attend). | Préparé pendant la cinématique d'entrée (`requestIdleCallback`). | ✅ |
+| 12.1.8 | La pastille « pouvoir prêt » repeignait son `box-shadow` à chaque image, sur chaque carte concernée de la collection. | Anneau sur `::after` en `transform`/`opacity`. | ✅ |
+| 12.1.9 | Fuites entre parties (écouteurs, nœuds, minuteurs) | Cinq parties enchaînées : 1 100 écouteurs, ~6 650 nœuds, 5,5 Mo de tas à chaque tour, aucun minuteur orphelin. | ➖ rien à corriger |
+
+### 12.2 Mesures (fil principal occupé, CPU ×4)
+
+| Scène | Avant | Après |
+|---|---|---|
+| Menu au repos (5 s) | 3,3 s · 301 mises en page · `Layerize` 610 ms | **1,3 s** · 0 · 1 ms |
+| Partie au repos, votre trait (5 s) | 0,44 s · 25 mises en page | **0,12 s** · 5 |
+| Partie en cours, coups joués (10 s) | 2,85 s | **2,3 s** |
+| Menu après une partie (4 s) | 2,4 s | **1,1 s** |
+| Réponse de l'IA d'une variante (Usurpateur) | écran gelé 700–900 ms | plus grande image 17 ms |
+
+### 12.3 Code mort
+
+| | Quoi | Statut |
+|---|---|---|
+| 12.3.1 | La colonne de droite du menu d'ordinateur (`#menu-side`) a quitté `index.html`, mais `menuNextMilestoneHTML`, `renderMenuDailyCard` et `renderMenuRewardsCard` tournaient encore à chaque retour au menu ; le bandeau de mise `renderCombatStake` (`#cstake`) n'avait plus d'élément ni d'appelant. | ✅ retirés (README à jour) |
+
+### 12.4 Vérifié, rien à faire
+
+Aucune erreur ni avertissement en console sur les cinq pages et la partie,
+téléphone et ordinateur ; aucune référence à une fonction ou un identifiant
+d'élément absents (relevé statique). Le test de fumée vérifie maintenant que
+l'IA de Mirror Chess répond depuis son Worker.
+
+### 12.5 Idées proposées (non implémentées : elles touchent au jeu)
+
+| | Idée | Pourquoi |
+|---|---|---|
+| 12.5.1 | **L'énigme du jour** : une position tirée d'une vraie partie (mat en deux, prise gagnante avec un pouvoir), la même pour tous, un ticket à la clé. | Une raison de revenir chaque jour qui apprend les pouvoirs mieux qu'une fiche ; le moteur de règles et le rejeu (`replay.js`) savent déjà poser et vérifier une position. |
+| 12.5.2 | **La revue de partie** : dans le rejeu, l'IA principale (déjà en Worker) marque les trois coups où l'évaluation a le plus basculé, avec le coup qu'elle aurait joué. | Transforme une défaite en leçon ; aucun serveur requis. |
+| 12.5.3 | **L'armée fantôme** : affronter, contre l'IA, la dernière armée vérifiée d'un joueur du classement (son blason, son nom), quand personne n'est en ligne. | Le multijoueur dépend du nombre de joueurs connectés ; le billet de partie conserve déjà les armées vérifiées. |
+| 12.5.4 | **Le tournoi de l'Arène** : quatre adversaires du laboratoire à la suite, sans soigner son armée entre deux rondes, un coffre au bout. | Un format court et lisible, qui fait jouer la composition d'armée sur la durée. |
+| 12.5.5 | **Le mode économe automatique** : si les premières secondes du menu montrent des images longues (ou `navigator.hardwareConcurrency ≤ 4`), proposer une fois de couper les effets (l'interrupteur « Effets » existe déjà). | Les téléphones modestes sont ceux qui laguent, et ce sont ceux dont les joueurs ne vont pas chercher le réglage. |
+
+### 12.6 Reste à faire, risques
+
+- Les animations infinies encore peintes à chaque image sont toutes sur des
+  pages secondaires et sur un seul élément : `vmPulse` (Diagonale),
+  `cvNodeBeat`, `rwCardBreathe` (récompenses), `clanFloat` (en `top`, à
+  dessein : voir le commentaire, une `transform` casserait le fondu `screen`).
+  À passer sur un pseudo-élément si elles gênent.
+- Le halo du bouton COMBAT (deux couches en `filter:blur`) reste le poste le
+  plus cher du menu après les braises ; le remplacer par une ombre portée
+  changerait son dessin aux pointes de la plaque : à décider à l'œil.
+- `content-visibility:hidden` : une page hors cadre ne se dessine plus. Un
+  futur code qui MESURERAIT une page avant de la faire glisser forcerait sa
+  mise en page (correct, mais plus lent) : mesurer après l'ajout de
+  `is-sliding`.
