@@ -1626,6 +1626,12 @@ function renderMoveLog(gs){
   // repartait aussitôt au dernier, emportant la ligne qu'on venait de
   // désigner. Pendant la relecture, c'est la position COURANTE qu'on amène à
   // l'écran ; le reste du temps, le dernier coup joué.
+  // UN JOURNAL FERMÉ NE DÉFILE PAS (nuit du 16 octobre). Lire scrollHeight
+  // force une mise en page complète au milieu du coup — à chaque coup, panneau
+  // fermé compris, c'est-à-dire presque toujours sur un téléphone. L'attribut
+  // `hidden` se lit sans mise en page ; à l'ouverture, gamePanelOpen
+  // (js/game-render.js) refait le journal et l'amène lui-même en bas.
+  if(log.closest('[hidden]'))return;
   const here=log.querySelector('.ml-here');
   if(here&&typeof here.scrollIntoView==='function')here.scrollIntoView({block:'nearest'});
   else log.scrollTop=log.scrollHeight;

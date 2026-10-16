@@ -236,7 +236,11 @@ function fokDrawCaptured(id,list,color){
   const order=['q','r','b','n','p'];
   const html=(list||[]).slice().sort((a,b)=>order.indexOf(a)-order.indexOf(b))
     .map(t=>pieceIcon(FOK_ART[t],color)).join('');
-  if(el.innerHTML!==html)el.innerHTML=html;
+  // La clé est le HTML PRODUIT, gardé à part, et non el.innerHTML : le
+  // navigateur ressérialise le SVG (« <path/> » redevient « <path></path> »),
+  // la comparaison échouait donc toujours — la rangée était reconstruite à
+  // chaque coup, après avoir été sérialisée pour rien (nuit du 16 octobre).
+  if(el._capH!==html){el._capH=html;el.innerHTML=html;}
 }
 
 function fokSetStatus(){

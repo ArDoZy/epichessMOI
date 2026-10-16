@@ -69,7 +69,14 @@ function menuAmbienceCanvas(){
   // UN PIXEL DE CANVAS PAR PIXEL CSS. Les braises sont des halos flous :
   // doubler la définition sur un écran Retina ne se voit pas, mais quadruple
   // la surface à effacer, dessiner et envoyer au compositeur à chaque image.
-  const w=Math.round(_mnCv._vw),h=Math.round(_mnCv._vh),dpr=1;
+  // ET MÊME UN DEMI-PIXEL (nuit du 16 octobre). Le canvas est étiré par le
+  // CSS (.menu-embers, 100 % × 100 %) : dessiné à mi-définition, il pèse
+  // quatre fois moins à chaque envoi au compositeur — un plein écran trente
+  // fois par seconde, c'était le premier poste du menu au repos. Un halo
+  // déjà flou agrandi deux fois ne se distingue pas de l'original (comparé
+  // à la loupe, téléphone ×3). Les coordonnées restent en pixels CSS : la
+  // matrice de setTransform fait la mise à l'échelle.
+  const w=Math.round(_mnCv._vw),h=Math.round(_mnCv._vh),dpr=0.5;
   if(_mnCv._w!==w||_mnCv._h!==h||_mnCv._d!==dpr){
     _mnCv._w=w;_mnCv._h=h;_mnCv._d=dpr;
     _mnCv.width=Math.max(1,Math.round(w*dpr));_mnCv.height=Math.max(1,Math.round(h*dpr));
