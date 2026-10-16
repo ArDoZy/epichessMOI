@@ -709,7 +709,10 @@ ligne et de faire tourner `npm test` sans projet Supabase. **Il ne s'allume
 jamais tout seul** : ni au premier échec réseau, ni au centième — un repli
 automatique donnerait à quelqu'un un compte fantôme et une progression qui ne
 remonterait jamais. Le drapeau est collant (`ec_mock_v1`) parce que le jeu
-réécrit son adresse et recharge la page quand on change de compte.
+réécrit son adresse et recharge la page quand on change de compte. Il ne
+rejoint pas non plus le salon de présence du vrai projet (`mpPresenceJoin`) :
+un compte du bac à sable n'a rien à faire dans la liste « en ligne » des
+joueurs.
 
 ### 1 quinquies. Le son et l'haptique (`js/sfx.js`)
 
@@ -2260,7 +2263,9 @@ interrompre quoi que ce soit, puisque tout est réessayé.
   derrière son navigateur n'est pas disponible pour un défi). « En ligne » =
   vu il y a moins de 75 s. C'est fiable, mais avec jusqu'à 30 s de retard.
 - Le salon de présence Realtime (`mpPresenceJoin`, `js/multiplayer.js`) est
-  **instantané**, mais peut manquer quelqu'un dont le canal se rétablit.
+  **instantané**, mais peut manquer quelqu'un dont le canal se rétablit. Le
+  bac à sable `?mock` n'y entre pas : ses comptes inventés s'affichaient « en
+  ligne » chez les vrais joueurs.
 
 La pastille s'allume si **l'une ou l'autre** dit oui : un faux « hors ligne »
 coûte un défi qu'on n'ose pas lancer, un faux « en ligne » coûte trente

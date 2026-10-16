@@ -1991,6 +1991,15 @@ function mpPresenceJoin(){
   // partie. Le classement, lui, continue de fonctionner : la présence ne
   // fait qu'ajouter l'instantané au « vu il y a peu » du serveur.
   if(typeof supabase==='undefined')return;
+  // LE BAC À SABLE N'ENTRE PAS DANS LE SALON (nuit du 16 octobre). `?mock`
+  // tient ses comptes en localStorage et se veut hors ligne (README, « Le bac
+  // à sable ») ; il rejoignait pourtant, à chaque entrée dans le jeu, la
+  // présence du VRAI projet avec une fiche inventée. Chaque test de fumée de
+  // la CI s'affichait « en ligne » chez les vrais joueurs, qui pouvaient
+  // défier ce fantôme. Le duel reste possible depuis le bac à sable quand on
+  // le demande explicitement (salon COMBAT) : seule l'entrée automatique est
+  // retirée.
+  if(typeof EC_MOCK!=='undefined'&&EC_MOCK)return;
   const client=mpInitClient();if(!client)return;
   const card=mpMyCard();
   if(!card.pid)return;              // pas encore de fiche serveur
