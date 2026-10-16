@@ -490,3 +490,82 @@ l'IA de Mirror Chess répond depuis son Worker.
   futur code qui MESURERAIT une page avant de la faire glisser forcerait sa
   mise en page (correct, mais plus lent) : mesurer après l'ajout de
   `is-sliding`.
+
+---
+
+## 13. Nuit du 16 octobre 2026 : la partie en cours
+
+La nuit du 15 avait allégé le menu et la partie au repos. Restait la partie
+**pendant qu'on joue** : 2,3 s de fil principal occupé pour 10 s de coups.
+Mêmes conditions de mesure (Chromium, Playwright, téléphone 390 × 844 et
+ordinateur 1440 × 900, **processeur bridé ×4**), avec en plus le registre des
+repeints par calque (`LayerTree.layerPainted`), le profil du processeur et les
+« images longues » (`long-animation-frame`). Une partie scriptée joue un coup
+toutes les 700 ms, des deux côtés. Les règles, les pièces, les pouvoirs et
+l'économie ne sont pas touchés.
+
+### 13.1 Ce qui faisait laguer
+
+| | Cause | Correction | Statut |
+|---|---|---|---|
+| 13.1.1 | **Les deux bandeaux des joueurs se repeignaient une quinzaine de fois à chaque coup.** `.gp-bar` portait un `transition:box-shadow .25s` et `.gp-clock` un `transition:color .2s` ; le trait change à chaque coup, et les deux plaques sont des calques à elles (leur halo bat sur le compositeur), donc chaque image de la transition repeignait la plaque entière. Le fond basculait déjà d'un coup : seule l'ombre fondait. | Transitions retirées ; le halo (`::after`) garde son fondu en opacité, qui ne repeint rien. | ✅ repeints par coup ÷ 2 |
+| 13.1.2 | **Les rangées de prises étaient reconstruites à chaque coup**, nœuds et icônes SVG compris, puis mesurées (`scrollWidth`, mise en page forcée). | Réécrites seulement si leur HTML change. | ✅ |
+| 13.1.3 | **La même garde, dans les trois variantes, ne servait jamais** : elle comparait le HTML produit à `el.innerHTML`, que le navigateur ressérialise (`<path/>` devient `<path></path>`). La rangée était donc sérialisée pour rien, puis reconstruite. | La clé est le HTML produit, gardé à part. | ✅ |
+| 13.1.4 | **`markMoveStyle` forçait une mise en page à chaque coup** (`void art.offsetWidth`), pour redémarrer un geste que la pièce ne portait presque jamais. | Seulement s'il y a un geste en cours à redémarrer. | ✅ |
+| 13.1.5 | **Le journal des coups défilait même fermé** : `scrollTop=scrollHeight` à chaque coup, mise en page forcée, alors que le panneau est fermé presque tout le temps sur téléphone. | Rien si le panneau est `hidden` (lu sans mise en page) ; l'ouverture le refait et l'amène en bas, comme avant. | ✅ vérifié : journal en bas à l'ouverture |
+| 13.1.6 | **`gameSyncChrome` mesurait en plein coup**, puis les écritures suivantes (effets, statut) salissaient la mise en page : deux par coup. | Une seule mesure, dans une `requestAnimationFrame` (avant le dessin) ; le premier appel, qui pose le `ResizeObserver`, reste immédiat. | ✅ |
+| 13.1.7 | **Les braises du menu** envoyaient au compositeur un canvas plein écran trente fois par seconde : le premier poste du menu au repos (≈ 35 % de son temps, mesuré en les éteignant). | Canvas à mi-définition, étiré par le CSS : quatre fois moins de pixels. Comparé à la loupe (×3) : les halos sont les mêmes. | ✅ |
+| 13.1.8 | Les animations du menu restent « running » sous la partie (`content-visibility:hidden` saute le style, donc `animation-play-state:paused` ne s'applique pas). | Mesuré en les suspendant à la main : 0,90 → 0,83 s sur 5 s. Pas assez pour un changement. | ➖ |
+| 13.1.9 | Le halo du bouton COMBAT (§ 12.6) | Mesuré : figer son animation ne change rien au fil principal. Son coût est sur le compositeur, pas sur le fil principal. | ➖ |
+
+### 13.2 Mesures (CPU ×4, moyenne de trois passes)
+
+| Scène | Avant | Après |
+|---|---|---|
+| Un coup (`executeGameMove`, synchrone, médiane sur 42 coups) | 27,5 ms | **13 ms** |
+| 10 s de coups, téléphone : temps occupé | 4,8 s | **4,2 s** |
+| … recalcul de style | 0,93 s | **0,57 s** |
+| … repeints | 902 | **489** |
+| … mises en page | 88 | **57** |
+| … images longues (> 50 ms) | 10,7 | **5,7** |
+| 10 s de coups, ordinateur : images longues | 22,7 | **13,3** |
+| Menu au repos 5 s, téléphone | 1,42 s | **1,27 s** |
+| Menu au repos 5 s, ordinateur (1440 × 900) | 1,80 s | **1,46 s** |
+
+### 13.3 Bugs
+
+| | Défaut | Statut |
+|---|---|---|
+| 13.3.1 | **Le bac à sable `?mock` entrait dans le salon de présence du vrai projet** à chaque ouverture (`mpPresenceJoin`, appelée par `enterAccount`). Chaque test de fumée de la CI apparaissait « en ligne » chez les vrais joueurs, avec une fiche inventée, et pouvait recevoir leurs défis. | ✅ le bac à sable n'y entre plus ; un duel demandé depuis le salon COMBAT reste possible |
+| 13.3.2 | Deux 404 en console : `assets/ui/logo-variantes.webp` et `assets/backgrounds/chargement.webp`. | ➖ planches facultatives, déjà prévues (`data-onerr="remove"`, repli dessiné) : voir § 8 et `assets/PROMPTS.md` |
+| 13.3.3 | Parcours des cinq pages et d'une partie contre l'IA, téléphone et ordinateur : aucune erreur ni aucun avertissement en console. | ➖ rien d'autre à corriger |
+
+### 13.4 Idées proposées (non implémentées : elles touchent au jeu)
+
+Aucune ne reprend une idée déjà listée (§ 2, 4, 11.4, 12.5).
+
+| | Idée | Pourquoi |
+|---|---|---|
+| 13.4.1 | **Le sceau de victoire** : après une partie gagnée, une image de la position finale, encadrée des deux blasons et des noms, à partager (`navigator.share`, téléchargement sinon). | Le jeu a des visuels qui donnent envie d'être montrés ; c'est le moyen le moins cher d'en faire venir d'autres. Aucune règle touchée, tout est déjà dessiné (blasons, pièces, plateau). |
+| 13.4.2 | **Le bestiaire** : un carnet qui compte, pour chaque créature, les prises faites, les prises subies et les victoires où elle a survécu ; des titres purement décoratifs aux paliers (10, 50, 200). | Une progression qui récompense la maîtrise d'une créature, pas l'accumulation, et sans toucher à l'économie. Les statistiques par créature sont déjà calculées au règlement (11.4.6). |
+| 13.4.3 | **Le bilan face-à-face** : sur le profil d'un joueur, vos parties contre lui (victoires, nulles, défaites) et la dernière armée qu'il vous a opposée, juste au-dessus du bouton « Défier ». | Donne une raison de défier quelqu'un plutôt que n'importe qui, et de préparer son armée ; les billets de partie gardent déjà les deux armées vérifiées. |
+| 13.4.4 | **La carte des menaces, pour apprendre** : en partie hors classement seulement, une option qui teinte les cases que l'adversaire attaque. | Vingt-sept créatures aux déplacements inédits : c'est la marche la plus haute pour un nouveau joueur. Le moteur sait déjà calculer les cases attaquées (`isSquareAttackedSimple`). Désactivée en classé pour ne rien changer à la compétition. |
+| 13.4.5 | **La table d'exhibition** : sur la page des Variantes ou dans le menu, deux adversaires du laboratoire jouent l'un contre l'autre, en boucle, à vitesse lente, et on peut s'asseoir pour regarder. | Montre les pouvoirs en action mieux qu'une fiche, et fait vivre le jeu quand personne n'est en ligne. L'IA tourne déjà dans un Worker ; c'est un mode de visionnage, pas une règle. |
+
+### 13.5 Reste à faire, risques
+
+- **Effets de combat** : pendant un coup, les particules (`fx-dot`, éclats,
+  traînées) restent le premier poste de style, de calques (`Layerize`) et
+  d'envoi au compositeur. Elles sont déjà en `transform`/`opacity` et sur le
+  compositeur. Les réduire changerait leur dessin, et § 3.1 rappelle que ce
+  module a été remis tel quel à la demande : à décider à l'œil.
+- **Sur ordinateur, quelques images de 400 à 800 ms** sous processeur bridé
+  ×4, avant comme après : la trace n'y montre aucune tâche longue du fil
+  principal. C'est l'attente du rendu (rastérisation d'un grand écran sous
+  émulation). À revoir sur un vrai appareil modeste.
+- Le bord estompé des rangées de prises (`.cap-over`) n'est recalculé que
+  quand la rangée change. Une fenêtre redimensionnée en pleine partie peut
+  le laisser faux jusqu'à la prochaine prise (sans effet sur le jeu).
+- `gameSyncChrome` en `requestAnimationFrame` : si `renderGame` était un jour
+  appelé depuis une autre `requestAnimationFrame`, la mesure tomberait une
+  image plus tard. Aucun appelant ne le fait aujourd'hui.
