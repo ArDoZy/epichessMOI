@@ -569,3 +569,86 @@ Aucune ne reprend une idée déjà listée (§ 2, 4, 11.4, 12.5).
 - `gameSyncChrome` en `requestAnimationFrame` : si `renderGame` était un jour
   appelé depuis une autre `requestAnimationFrame`, la mesure tomberait une
   image plus tard. Aucun appelant ne le fait aujourd'hui.
+
+---
+
+## 14. Nuit du 17 octobre 2026 : les écrans qui attendent le joueur
+
+Les nuits du 15 et du 16 avaient allégé le menu au repos et la partie. Restait
+ce que ces mesures ne voyaient pas : le menu **quand une récompense attend**
+(le cas courant : c'est ce qui fait revenir), et les pages secondaires
+(Diagonale de la Puissance, colonne des victoires, rangée de la richesse,
+classement, adversaires, variantes en partie). Mêmes conditions (Chromium,
+Playwright, téléphone 390 × 844 et ordinateur 1440 × 900, **processeur bridé
+×4**), 5 s au repos par écran, avec la liste des animations en cours
+(`document.getAnimations()`) et les propriétés qu'elles animent. Les règles,
+les pièces, les pouvoirs et l'économie ne sont pas touchés.
+
+### 14.1 Ce qui faisait laguer
+
+| | Cause | Correction | Statut |
+|---|---|---|---|
+| 14.1.1 | **Le feu de la colonne des victoires** (bouton du menu, allumé dès qu'un palier attend) : neuf langues, deux lits de braises et quatre braises étaient des éléments SVG **intérieurs** animés en `transform`, sous des filtres de turbulence. Un élément SVG intérieur n'est pas confié au compositeur : une mise en page et un dessin complets du menu à chaque image (301 mises en page sur 5 s). | Chaque langue, braise et lit de braises est son propre `<svg>` (une boîte HTML), et c'est lui que l'animation déplace. Le mouvement est le même : il est reporté du repère de la langue sur le calque, autour du pied de la langue (`rotate(--a) … rotate(-1 × --a)`, calculé dans `index.html`). Filtres sur une région fixe (`jtfFireL`, `jtfFireCoreL`) pour ne rien rogner ; les anciens filtres, devenus sans usage, sont retirés. Comparé image par image (pause à 200, 500, 900, 1 300 et 1 700 ms) : même dessin. | ✅ 0 mise en page |
+| 14.1.2 | **Les éclairs de la rangée de la richesse** : même défaut (couronne et éclat en `transform` sur des ellipses SVG), plus un jaillissement en `stroke-dashoffset` sur dix-huit tracés, recalculé soixante fois par seconde. | Un `<svg>` par arc : l'éclat est son opacité, le jaillissement une échelle qui part du pied de l'arc, posée en `transform-origin`. Couronne et éclat sont des calques. | ✅ |
+| 14.1.3 | **Le prochain jalon de la Diagonale** (`vmPulse`) et **le coffre à prendre** (`vm-due`) battaient en `box-shadow` : une ombre animée se repeint à chaque image. La Diagonale occupait le fil principal 1,3 s sur 5 s, pour une carte. | L'ombre de repos reste sur la carte ; le halo ample est peint une fois sur `::before` et bat en opacité. Comparé au pixel aux deux bornes : écart maximal de 3 sur 255. | ✅ |
+| 14.1.4 | **Le palier à prendre de la colonne** (`cvNodeBeat`) : même défaut, 3 s sur 5 s de fil principal occupé tant que la colonne est ouverte avec un palier dû. | Même principe, sur `.cv-node::before`. Identique au repos, écart maximal de 2 sur 255 au sommet du battement. | ✅ |
+| 14.1.5 | **La carte à prendre de la rangée** (`rwCardBreathe`) : même défaut. Au passage, l'animation effaçait l'ombre portée de la carte (`--shadow-2`). | Halo sur `::before`, en opacité. La carte garde maintenant son ombre portée, comme les autres. La règle qui redisait les deux animations ensemble (glissement + respiration) n'a plus lieu d'être. | ✅ |
+| 14.1.6 | **Les poussières de lumière de la colonne** (`cvMote`) montaient sur **chaque** palier (trente paliers, 90 animations et autant de calques de compositeur), simplement cachées par l'opacité nulle de leur conteneur. | Elles ne montent que sur le palier à prendre. | ✅ 90 → 3 animations |
+| 14.1.7 | Les trois variantes en partie (Board Quake, Mirror Chess, Cheval de Troie) : `*SyncChrome` mesure encore en plein coup, comme le faisait la partie principale (§ 13.1.6). | Mesuré : 0,06 s de mise en page pour 10 s de coups, un coup en 3 ms. Pas assez pour changer trois fichiers. | ➖ |
+| 14.1.8 | Minuteurs, musique et ambiance quand l'onglet est caché ; pages Magasin, Mes armées, Guerre des clans, Variantes, classement, adversaires. | Relu et mesuré : tout s'arrête déjà avec l'onglet, et ces pages n'animent que `transform`/`opacity`. | ➖ rien à faire |
+
+### 14.2 Mesures (fil principal occupé sur 5 s au repos, CPU ×4, moyenne de deux ou trois passes)
+
+| Écran | Avant | Après |
+|---|---|---|
+| Menu, téléphone, une récompense « victoires » en attente | 2,2 s · 301 mises en page | **1,0 s** · 0 |
+| Menu, téléphone, une récompense « richesse » en attente | 1,25 s | **0,77 s** |
+| Menu, téléphone, les trois récompenses en attente | 2,6 s · 301 mises en page | **1,07 s** · 0 |
+| Menu, ordinateur, les trois récompenses en attente | 1,92 s · 300 mises en page | **1,18 s** · 0 |
+| Diagonale de la Puissance, téléphone | 1,29 s | **0,05 s** |
+| Diagonale de la Puissance, ordinateur | 1,23 s | **0,05 s** |
+| Colonne des victoires avec un palier à prendre, téléphone | 3,07 s | **0,04 s** |
+| Colonne des victoires avec un palier à prendre, ordinateur | 2,32 s | **0,01 s** |
+| Menu au repos sans récompense (témoin) | 0,64 s | 0,6 s |
+
+Le reste du coût du menu (≈ 0,6 s) est celui des braises en canvas, déjà
+réduites les nuits précédentes.
+
+### 14.3 Bugs
+
+| | Défaut | Statut |
+|---|---|---|
+| 14.3.1 | La carte à prendre de la rangée perdait son ombre portée pendant toute sa respiration (14.1.5). | ✅ |
+| 14.3.2 | Deux filtres SVG (`jtfFire`, `jtfFireCore`) ne servaient plus. | ✅ retirés |
+| 14.3.3 | Console : aucune erreur ni aucun avertissement sur les écrans mesurés, téléphone et ordinateur. | ➖ |
+
+### 14.4 Idées proposées (non implémentées : elles touchent au jeu)
+
+Aucune ne reprend une idée déjà listée (§ 2, 4, 11.4, 12.5, 13.4).
+
+| | Idée | Pourquoi |
+|---|---|---|
+| 14.4.1 | **Le défi de la semaine** : une armée imposée, la même pour tous, à mener contre une série d'adversaires du laboratoire ; on compare le nombre de coups. | Fait découvrir des créatures qu'on n'a pas encore débloquées, et met tout le monde à égalité, sans toucher à l'économie. |
+| 14.4.2 | **La démonstration du pouvoir** : dans la fiche d'une créature, un plateau de 5 × 5 qui rejoue en boucle trois coups montrant son déplacement et son pouvoir. | Une fiche se lit, un mouvement se comprend ; le moteur de règles et le rejeu savent déjà jouer une position scriptée. |
+| 14.4.3 | **Les saluts en partie en ligne** : quelques phrases choisies dans un catalogue (« Bien joué », « Joli coup », « Encore une ? »), jamais de texte libre, comme les cris de guerre des clans. | Une partie en ligne est aujourd'hui muette ; le catalogue fermé évite toute modération. |
+| 14.4.4 | **La pendule suspendue hors de l'onglet, contre l'IA** : quand l'onglet est caché pendant une partie hors ligne, la pendule s'arrête et l'IA attend. | Un appel ou une notification sur téléphone fait aujourd'hui perdre au temps une partie contre l'IA. Hors classement seulement. |
+
+### 14.5 Reste à faire, risques
+
+- **Les langues du feu** sont maintenant filtrées au repos puis déplacées par
+  le compositeur : la turbulence ne « bout » plus à travers la flamme qui
+  bouge, elle bouge avec elle. À la taille du bouton (des flammes de 6 à
+  12 px), la différence ne se voit pas sur les captures ; à regarder sur un
+  vrai écran.
+- **Le jaillissement des éclairs** est une échelle et non plus un tracé qui
+  se dessine : sur 60 ms, pendant que l'arc s'allume, l'œil ne fait pas la
+  différence. Le premier éclat d'un arc est un peu moins lumineux (le flou
+  est fait arc par arc, et non sur l'ensemble).
+- Les clés d'animation du feu utilisent des variables CSS (`--a`, `--s`) :
+  mesuré, cela coûte encore ≈ 0,15 s de style sur 5 s par rapport à des
+  valeurs écrites en dur. Neuf jeux d'images-clés écrits en dur le
+  supprimeraient, au prix de la lisibilité.
+- Diagonale de la Puissance sur ordinateur : une quinzaine d'images longues
+  sur 5 s sous émulation, avant comme après, sans aucune tâche du fil
+  principal (0,05 s) : c'est l'attente du rendu d'un grand écran, comme au
+  § 13.5.
