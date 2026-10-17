@@ -90,7 +90,13 @@ function stopClockTick(gs){
 // dès que `historyView` n'était plus nul, ce qui faisait des boutons ⏮◀▶⏭ une
 // pause illimitée en pleine partie.
 function tickClock(gs){
-  if(!gs.clockMs||gs.gameOver){gs._clockLastTs=Date.now();return;}
+  // UNE PENDULE FINIE S'ARRÊTE D'ELLE-MÊME. Une partie close sans passer par
+  // triggerEndOfGame (sortie du tutoriel, nouvelle partie lancée par-dessus)
+  // laissait son minuteur battre cinq fois par seconde jusqu'à la fermeture
+  // de l'onglet — et une ancienne partie réécrivait ses chiffres dans les
+  // pendules de la nouvelle.
+  if(gs.gameOver||(typeof GS!=='undefined'&&GS&&GS!==gs)){stopClockTick(gs);return;}
+  if(!gs.clockMs){gs._clockLastTs=Date.now();return;}
   const now=Date.now();const elapsed=now-gs._clockLastTs;gs._clockLastTs=now;
   const key=gs.turn==='w'?'timeWhite':'timeBlack';
   gs[key]=Math.max(0,gs[key]-elapsed);
@@ -1620,6 +1626,12 @@ function renderMoveLog(gs){
   // repartait aussitôt au dernier, emportant la ligne qu'on venait de
   // désigner. Pendant la relecture, c'est la position COURANTE qu'on amène à
   // l'écran ; le reste du temps, le dernier coup joué.
+  // UN JOURNAL FERMÉ NE DÉFILE PAS (nuit du 16 octobre). Lire scrollHeight
+  // force une mise en page complète au milieu du coup — à chaque coup, panneau
+  // fermé compris, c'est-à-dire presque toujours sur un téléphone. L'attribut
+  // `hidden` se lit sans mise en page ; à l'ouverture, gamePanelOpen
+  // (js/game-render.js) refait le journal et l'amène lui-même en bas.
+  if(log.closest('[hidden]'))return;
   const here=log.querySelector('.ml-here');
   if(here&&typeof here.scrollIntoView==='function')here.scrollIntoView({block:'nearest'});
   else log.scrollTop=log.scrollHeight;

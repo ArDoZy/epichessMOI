@@ -279,7 +279,11 @@ function mirDrawCaptured(id,list,color){
   const order=['q','r','b','n','p'];
   const html=(list||[]).slice().sort((a,b)=>order.indexOf(a)-order.indexOf(b))
     .map(t=>pieceIcon(MIR_ART[t],color)).join('');
-  if(el.innerHTML!==html)el.innerHTML=html;
+  // La clé est le HTML PRODUIT, gardé à part, et non el.innerHTML : le
+  // navigateur ressérialise le SVG (« <path/> » redevient « <path></path> »),
+  // la comparaison échouait donc toujours — la rangée était reconstruite à
+  // chaque coup, après avoir été sérialisée pour rien (nuit du 16 octobre).
+  if(el._capH!==html){el._capH=html;el.innerHTML=html;}
 }
 
 function mirSetStatus(){
@@ -555,11 +559,15 @@ function mirPlayMove(mv,local){
 function mirAITurn(){
   const st=MIR.st;
   if(!st||st.gameOver||st.turn===MIR.myColor||MIR.mode!=='ia')return;
-  // La recherche est synchrone et bornée (voir mirror-ai.js) : on la laisse
-  // partir après un rendu, pour que « L'adversaire réfléchit… » soit
-  // effectivement affiché avant que le fil ne se bloque.
-  requestAnimationFrame(()=>{
-    const mv=mirAIMove(st,MIR.level);
+  // LA RECHERCHE TOURNE HORS DU FIL PRINCIPAL (js/variant-ai.js) : jusqu'à
+  // 700 ms pendant lesquelles l'écran restait figé. Le coup revient en
+  // copie : on retrouve le coup légal dans l'état réel, comme un coup reçu
+  // du réseau, et seulement si la partie n'a pas bougé entre-temps
+  // (abandon, revanche, retour au salon).
+  const ply=st.ply;
+  variantAIRun({scripts:['mirror-rules.js','mirror-ai.js'],fn:'mirAIMove',args:[st,MIR.level]},res=>{
+    if(MIR.st!==st||st.gameOver||st.ply!==ply||st.turn===MIR.myColor||MIR.mode!=='ia')return;
+    const mv=res&&res.from?mirFindMove(st,mirPackMove(res)):null;
     if(!mv)return;
     mirPlayMove(mv,false);
   });

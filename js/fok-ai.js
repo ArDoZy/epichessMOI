@@ -15,11 +15,13 @@
 // (l'avancée des pions, la tour sur la septième), le matériel, la mobilité et
 // l'abri du roi — tout ce qui reste vrai après le décalage.
 //
-// LA RECHERCHE TOURNE SUR LE FIL PRINCIPAL, avec un budget volontairement
-// court (au plus 700 ms). Le jeu principal met la sienne dans un Web Worker
-// parce qu'elle dispose de cinq secondes ; ici, l'écran ne doit pas se figer,
-// et l'approfondissement itératif rend de toute façon le meilleur coup trouvé
-// à l'instant où le budget s'épuise.
+// LA RECHERCHE TOURNE DANS UN WORKER (js/variant-ai.js, qui charge ce
+// fichier et son moteur dans js/variant-ai-worker.js) : sur le fil principal,
+// ses 700 ms au plus figeaient l'écran à chaque réponse. Le budget reste
+// court, et l'approfondissement itératif rend le meilleur coup trouvé à
+// l'instant où il s'épuise. Ce fichier ne doit donc toucher ni au DOM ni à
+// `window` : il est chargé tel quel par importScripts. Sans Worker (file://),
+// l'écran l'appelle sur le fil principal, comme avant.
 //
 // Dépendances : fok-rules.js. Utilisé par : fok-game.js.
 // ================================================================

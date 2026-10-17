@@ -127,12 +127,19 @@ epic-chess/
     │                          # de la position après chaque demi-coup, les
     │                          # commandes ⏮ ◀ ▶ ⏭ et le journal cliquable.
     │                          # Générique : un préfixe d'identifiants suffit.
+    ├── variant-ai.js         # L'IA DES VARIANTES HORS DU FIL PRINCIPAL :
+    │                          # variantAIRun() envoie la recherche dans un
+    │                          # Worker, et retombe sur le fil principal si le
+    │                          # Worker manque (file://, panne, délai)
+    ├── variant-ai-worker.js  # Ce Worker : charge le moteur et l'IA d'une
+    │                          # variante par importScripts. Jamais en <script>
     ├── fok-rules.js          # BOARD QUAKE : le moteur de la variante.
     │                          # Échecs ordinaires + décalage des quatre rangées
     │                          # centrales d'une case vers la droite après CHAQUE
     │                          # coup. Aucune dépendance, aucun DOM.
     ├── fok-ai.js             # Son adversaire : alpha-bêta, quatre niveaux,
-    │                          # recherche bornée à 700 ms sur le fil principal
+    │                          # recherche bornée à 700 ms, dans un Worker
+    │                          # (js/variant-ai.js)
     ├── fok-game.js           # Son écran de jeu (#page-fok) et son salon. Réutilise
     │                          # les CLASSES de la partie ordinaire, aucun état
     ├── fok-mp.js             # Ses parties à deux joueurs : mêmes canaux Supabase
@@ -602,7 +609,7 @@ ordinaire, où le chiffre se suffit.
 
 **Toute lecture de rang ou de déblocage passe par le sommet, jamais par
 `vvLoadElo()`.** Les points concernés : `vvRank()` / `vvRankIdx()`
-(js/accounts.js), `boardSkinUnlocked()` et `menuNextMilestoneHTML()`
+(js/accounts.js), `boardSkinUnlocked()`
 (js/economy-ui.js), `loadAccountGlobals()` (js/accounts.js),
 `renderVoiePage()` (js/voie.js), `accountSummary()` (js/account-ui.js) et le
 modal de résultat (js/game-flow.js). Un nouvel écran qui afficherait un rang
@@ -702,7 +709,10 @@ ligne et de faire tourner `npm test` sans projet Supabase. **Il ne s'allume
 jamais tout seul** : ni au premier échec réseau, ni au centième — un repli
 automatique donnerait à quelqu'un un compte fantôme et une progression qui ne
 remonterait jamais. Le drapeau est collant (`ec_mock_v1`) parce que le jeu
-réécrit son adresse et recharge la page quand on change de compte.
+réécrit son adresse et recharge la page quand on change de compte. Il ne
+rejoint pas non plus le salon de présence du vrai projet (`mpPresenceJoin`) :
+un compte du bac à sable n'a rien à faire dans la liste « en ligne » des
+joueurs.
 
 ### 1 quinquies. Le son et l'haptique (`js/sfx.js`)
 
@@ -1619,7 +1629,6 @@ montre.** Rien n'est inventé pour l'ordinateur, on y déplie ce que le petit
 |---|---|
 | La barre d'onglets devient un **rail vertical** à gauche, libellés à droite du blason | Sur téléphone c'est une barre d'onglets pleine largeur collée en bas ; sur 1400 px elle masquerait le contenu. Le rail ne recouvre rien : la zone utile de chaque page recule d'autant |
 | Les deux flèches de navigation disparaissent | Sur 1500 px elles se retrouvaient à 1400 px l'une de l'autre, sans lien visible avec la rangée. Le rail nomme les cinq pages ; ← et → font toujours glisser d'un cran |
-| Le menu principal passe en **deux colonnes** | La colonne de droite (`#menu-side`) déplie le cycle de la récompense journalière, le résumé des deux voies de récompenses et le prochain palier de la Diagonale |
 | Les largeurs de contenu montent à `--content-max` (1280 px) | Les plafonds (980, 1000, 860…) étaient des plafonds de lisibilité inutiles sur téléphone et un plafond de gâchis sur grand écran |
 | Le catalogue passe de 6 à ~8 colonnes, avec des cartes plus grandes | Les 19 pièces tiennent alors sur un écran, sans défilement |
 | Le **survol** d'une carte ouvre ses deux boutons | L'appui qui déplie la carte ne sert plus à rien quand un pointeur la désigne déjà : composer une armée passe de deux clics par pièce à un seul |
@@ -1816,10 +1825,14 @@ MONTRE la règle. La couche des pièces est la même que celle du jeu principal
 (`.gc-layer` / `.gc-piece` en `translate3d`), donc le décalage est une vraie
 transition CSS : huit à seize pièces qui glissent ensemble d'une case.
 
-**L'IA tourne sur le fil principal**, contrairement à celle du jeu principal
-qui vit dans un Web Worker. C'est possible parce que son budget est court (au
-plus 700 ms) et que la recherche est à approfondissement itératif : elle rend
-toujours le meilleur coup trouvé à l'instant où le budget s'épuise. Son
+**L'IA tourne dans un Web Worker** (`js/variant-ai.js` →
+`js/variant-ai-worker.js`, qui charge `fok-rules.js` et `fok-ai.js` par
+`importScripts`). Elle tournait sur le fil principal, l'écran se figeait
+jusqu'à 700 ms à chaque réponse ; son budget reste court (au plus 700 ms) et la
+recherche est à approfondissement itératif : elle rend toujours le meilleur
+coup trouvé à l'instant où le budget s'épuise. Ouvert en `file://` ou sans
+Worker, le jeu retombe sur l'ancien chemin, sur le fil principal. Le coup
+revient en copie et passe par `fokFindMove`, comme un coup reçu du réseau. Son
 évaluation n'utilise **aucune table de colonnes** — la colonne d'une pièce de
 la bande change à chaque demi-coup, un bonus de colonne serait un bonus tiré au
 sort. Ne subsistent que des termes de rangée (avancée des pions, tour sur la
@@ -2250,7 +2263,9 @@ interrompre quoi que ce soit, puisque tout est réessayé.
   derrière son navigateur n'est pas disponible pour un défi). « En ligne » =
   vu il y a moins de 75 s. C'est fiable, mais avec jusqu'à 30 s de retard.
 - Le salon de présence Realtime (`mpPresenceJoin`, `js/multiplayer.js`) est
-  **instantané**, mais peut manquer quelqu'un dont le canal se rétablit.
+  **instantané**, mais peut manquer quelqu'un dont le canal se rétablit. Le
+  bac à sable `?mock` n'y entre pas : ses comptes inventés s'affichaient « en
+  ligne » chez les vrais joueurs.
 
 La pastille s'allume si **l'une ou l'autre** dit oui : un faux « hors ligne »
 coûte un défi qu'on n'ose pas lancer, un faux « en ligne » coûte trente
@@ -2577,7 +2592,7 @@ server.js → data-pieces.js → piece-art.js → blason.js → main.js → page
 → cinematics.js
 → game-render.js
 → ai-engine.js → game-flow.js → voie.js → economy-ui.js → clans.js
-→ variant-analysis.js
+→ variant-analysis.js → variant-ai.js
 → fok-rules.js → fok-ai.js → fok-game.js
 → mirror-rules.js → mirror-ai.js → mirror-game.js
 → troie-rules.js → troie-ai.js → troie-game.js → variantes.js
@@ -2610,6 +2625,12 @@ réutilise `mpInitClient()` et la configuration Supabase. Aucun autre fichier ne
 les appelle, et ils n'écrivent dans aucun état du jeu principal : la variante
 peut être retirée en supprimant ses quatre `<script>` sans rien casser d'autre
 que sa propre carte.
+
+`variant-ai.js` n'a aucune dépendance ; il doit seulement précéder les trois
+écrans de variante, qui l'appellent. `variant-ai-worker.js` n'a pas de
+`<script>` : il n'est chargé que comme Worker, et charge lui-même les
+`*-rules.js` et `*-ai.js` — ces six fichiers ne doivent donc toucher ni au DOM
+ni à `window` au chargement (ce qu'ils font déjà, `typeof window` à l'appui).
 
 `variant-analysis.js` vient **avant les trois écrans de variante** : chacun
 crée son objet d'analyse (`vanNew`) au chargement, et lit ses photos à chaque
@@ -2760,7 +2781,6 @@ mais dans une version que Playwright refuse, le script le retrouve tout seul
 | Ajuster la mise en page téléphone d'un écran | section `[MOBILE-APP]` de `css/style.css` (en dernier dans le fichier, elle l'emporte sur les sections d'origine) |
 | Ajuster la mise en page ordinateur d'un écran | section `[DESKTOP]` de `css/style.css` (tout à la fin, après `[MOBILE-APP]`), sous `body.desk` |
 | Changer le seuil du mode bureau | `DESK_QUERY` dans `js/main.js` — **et nulle part ailleurs** : le CSS ne raisonne que sur `body.desk` |
-| Changer ce que montre la colonne de droite du menu | `renderMenuSidePanel()` / `menuNextMilestoneHTML()` dans `js/economy-ui.js` + `#menu-side` dans `index.html` |
 | Ajouter un raccourci clavier global | `wireEscape()` dans `js/main.js` (Échap) ou l'écouteur `keydown` d'`init()` dans `js/pages-nav.js` (← →) |
 | Modifier les pictogrammes du schéma de déplacement (patte, ailes, couteau…) | `PMV_ICONS` / `PMV_LABELS` dans `js/piece-moves.js` + section `[PMV]` de `css/style.css` |
 | Modifier les cinématiques de combat | `js/cinematics.js` + section `[CINEMATIC]` de `css/style.css` |

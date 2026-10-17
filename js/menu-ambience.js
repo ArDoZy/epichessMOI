@@ -23,21 +23,29 @@
 // ================================================================
 
 const MENU_EMBERS_MAX=40;
-let _mnCv=null,_mnCx=null,_mnRaf=0,_mnLast=0,_mnAcc=0,_mnFrame=0;
+let _mnCv=null,_mnCx=null,_mnRaf=0,_mnLast=0,_mnAcc=0;
 const _mnParts=[];
 
+// Requête « mouvement réduit » et page du menu : lues une fois, et non à
+// chaque image (la boucle demande menuAmbienceOn soixante fois par seconde).
+let _mnReduce=null,_mnPage=null;
 function menuAmbienceOn(){
   if(typeof document==='undefined'||document.hidden)return false;
-  try{if(window.matchMedia('(prefers-reduced-motion: reduce)').matches)return false;}catch(e){}
+  try{
+    if(!_mnReduce)_mnReduce=window.matchMedia('(prefers-reduced-motion: reduce)');
+    if(_mnReduce.matches)return false;
+  }catch(e){}
   if(typeof fxGetLevel==='function'&&fxGetLevel()<=0)return false;
   if(document.body.classList.contains('in-game'))return false;
-  const front=document.querySelector('.nav-page[data-page="jouer"]');
+  if(!_mnPage||!_mnPage.isConnected)_mnPage=document.querySelector('.nav-page[data-page="jouer"]');
+  const front=_mnPage;
   return !!(front&&front.classList.contains('is-front')&&document.body.classList.contains('nav-active')
     &&!document.body.classList.contains('nav-overlay'));
 }
 
 function menuAmbienceCanvas(){
-  const vp=document.querySelector('.nav-page[data-page="jouer"] .page-viewport');
+  const vp=(_mnCv&&_mnCv.isConnected)?_mnCv.parentNode
+    :document.querySelector('.nav-page[data-page="jouer"] .page-viewport');
   if(!vp)return null;
   if(!_mnCv||!_mnCv.isConnected){
     _mnCv=document.createElement('canvas');
@@ -48,7 +56,27 @@ function menuAmbienceCanvas(){
     vp.insertBefore(_mnCv,vp.firstChild);
     _mnCx=_mnCv.getContext('2d');
   }
-  const w=vp.clientWidth,h=vp.clientHeight,dpr=Math.min(2,window.devicePixelRatio||1);
+  // LA TAILLE EST GARDÉE, PAS RELUE. Lire clientWidth à chaque image forçait
+  // une mise en page dès qu'une animation du menu avait sali le style : une
+  // mise en page complète par image, au repos. Un ResizeObserver la tient à
+  // jour ; on ne la mesure qu'à la création.
+  if(!_mnCv._ro&&typeof ResizeObserver==='function'){
+    const cv=_mnCv;
+    cv._ro=new ResizeObserver(()=>{cv._vw=vp.clientWidth;cv._vh=vp.clientHeight;});
+    cv._ro.observe(vp);
+  }
+  if(_mnCv._vw==null){_mnCv._vw=vp.clientWidth;_mnCv._vh=vp.clientHeight;}
+  // UN PIXEL DE CANVAS PAR PIXEL CSS. Les braises sont des halos flous :
+  // doubler la définition sur un écran Retina ne se voit pas, mais quadruple
+  // la surface à effacer, dessiner et envoyer au compositeur à chaque image.
+  // ET MÊME UN DEMI-PIXEL (nuit du 16 octobre). Le canvas est étiré par le
+  // CSS (.menu-embers, 100 % × 100 %) : dessiné à mi-définition, il pèse
+  // quatre fois moins à chaque envoi au compositeur — un plein écran trente
+  // fois par seconde, c'était le premier poste du menu au repos. Un halo
+  // déjà flou agrandi deux fois ne se distingue pas de l'original (comparé
+  // à la loupe, téléphone ×3). Les coordonnées restent en pixels CSS : la
+  // matrice de setTransform fait la mise à l'échelle.
+  const w=Math.round(_mnCv._vw),h=Math.round(_mnCv._vh),dpr=0.5;
   if(_mnCv._w!==w||_mnCv._h!==h||_mnCv._d!==dpr){
     _mnCv._w=w;_mnCv._h=h;_mnCv._d=dpr;
     _mnCv.width=Math.max(1,Math.round(w*dpr));_mnCv.height=Math.max(1,Math.round(h*dpr));
@@ -86,8 +114,14 @@ function menuAmbienceFrame(now){
     _mnParts.length=0;
     return;
   }
-  _mnRaf=requestAnimationFrame(menuAmbienceFrame);
-  if((++_mnFrame)&1)return;                       // trente images par seconde
+  // TRENTE IMAGES PAR SECONDE, ET TRENTE SEULEMENT. La boucle redemandait
+  // une image à chaque rafraîchissement et n'en dessinait qu'une sur deux :
+  // l'image sautée coûtait quand même un passage complet du fil principal
+  // (styles de toutes les animations du menu, calques, envoi au
+  // compositeur). On attend maintenant ~20 ms avant de redemander une image :
+  // la suivante tombe au rafraîchissement d'après, soit un sur deux à 60 Hz.
+  _mnRaf=-1;
+  setTimeout(()=>{if(_mnRaf===-1)_mnRaf=requestAnimationFrame(menuAmbienceFrame);},20);
   const cv=menuAmbienceCanvas();if(!cv)return;
   const dt=Math.min(0.08,Math.max(0,(now-_mnLast)/1000));_mnLast=now;
   const w=cv._w,h=cv._h;

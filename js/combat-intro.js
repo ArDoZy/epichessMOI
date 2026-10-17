@@ -17,7 +17,7 @@
 // Dépendances : data-pieces.js (PIECES, INSTRUCTOR), armies.js
 // (generateAIArmy, renderArmiesPage, renderAiArmiesPage), game-flow.js
 // (startGame, _playerColor), multiplayer.js (mpOpenModal, mpShowScreen...),
-// economy-ui.js (renderCombatStake), main.js (currentArmyData, aiArmyData).
+// main.js (currentArmyData, aiArmyData).
 // ================================================================
 
 // Mode courant de la page. Lu par les boutons pour savoir quoi faire, et par

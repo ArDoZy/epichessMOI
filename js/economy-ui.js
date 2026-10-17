@@ -62,75 +62,14 @@ function applyBoardSkin(){
 }
 
 // ----------------------------------------------------------------
-// LA COLONNE DE DROITE DU MENU (ORDINATEUR)
+// LES PASTILLES DU MENU
 // ----------------------------------------------------------------
-// Sur un grand écran, le menu principal était une colonne de téléphone posée
-// au milieu de 900 px de vide. La colonne de droite (#menu-side, masquée hors
-// de body.desk) y déplie trois choses que le petit écran est OBLIGÉ d'enfermer
-// derrière un bouton : la récompense journalière, les deux voies de
-// récompenses, et le prochain palier de la Voie.
-//
-// Les deux premières cartes ne sont PAS réécrites pour l'occasion : elles sont
-// produites par js/rewards-ui.js, à partir des mêmes fonctions que les
-// fenêtres des boutons. Deux affichages, une seule source — sinon les deux
-// divergent au premier changement de règle.
-function menuNextMilestoneHTML(){
-  if(typeof UNLOCK_MILESTONES==='undefined')return '';
-  const elo=(typeof vvLoadElo==='function')?vvLoadElo():0;
-  // DEUX NOMBRES ICI, ET ILS NE JOUENT PAS LE MÊME RÔLE.
-  // Le prochain jalon se cherche au-dessus du SOMMET atteint (`peak`) : un
-  // jalon déjà franchi est encaissé pour toujours, le reproposer serait
-  // mentir. Mais la DISTANCE et la jauge se mesurent depuis le classement
-  // du moment (`elo`) : c'est de là qu'il faut réellement grimper.
-  const peak=(typeof vvLoadPeakElo==='function')?vvLoadPeakElo():elo;
-  const next=UNLOCK_MILESTONES.find(u=>u.eloRequired>peak);
-  if(!next){
-    return '<div class="ms-title">Diagonale de la Puissance</div>'+
-      '<div class="ms-sub">Tous les paliers sont franchis. Il ne reste que le classement.</div>';
-  }
-  // Le point de départ de la jauge est le jalon PRÉCÉDENT, pas zéro : sinon
-  // une barre presque pleine ne bouge plus visiblement d'un palier à l'autre
-  // en haut de l'échelle (1700 → 2000 ELO se lit comme 85 % → 100 %).
-  let from=0;
-  UNLOCK_MILESTONES.forEach(u=>{if(u.eloRequired<=peak&&u.eloRequired>from)from=u.eloRequired;});
-  const span=Math.max(1,next.eloRequired-from);
-  const pct=Math.max(0,Math.min(100,Math.round((elo-from)/span*100)));
-  // Trois natures de jalon, comme sur la Voie (voir renderVoiePage) : une
-  // créature à débloquer, un lot (perles ou exemplaires), ou un simple palier
-  // de rang.
-  let visuel='',nom='';
-  if(next.reward==='pearls'){
-    visuel=(typeof pearlAmountHTML==='function')?pearlAmountHTML(next.amount,1.5):next.amount+' perles';
-    nom='Perles';
-  }else if(next.reward==='chest'){
-    const ch=chestById(next.chest);
-    visuel=chestVisual(ch,'chest-xs');
-    nom=ch.name;
-  }else if(next.pieceId){
-    const p=PIECES.find(x=>x.id===next.pieceId);
-    visuel=(typeof pieceIcon==='function')?pieceIcon(next.pieceId,'n'):'';
-    nom=p?p.name:'';
-  }else{
-    nom=next.label||'Palier';
-  }
-  return '<div class="ms-title">Prochain palier</div>'+
-    '<div class="ms-next-row">'+
-      (visuel?'<span class="ms-next-icon">'+visuel+'</span>':'')+
-      '<div class="ms-next-txt">'+
-        '<div class="ms-next-name">'+escH(nom)+'</div>'+
-        '<div class="ms-next-elo">'+next.eloRequired+' ELO · encore '+Math.max(0,next.eloRequired-elo)+'</div>'+
-      '</div>'+
-    '</div>'+
-    '<div class="ms-gauge"><span style="width:'+pct+'%"></span></div>';
-}
+// Il y avait ici la colonne de droite du menu d'ordinateur (#menu-side :
+// prochain palier, récompense journalière, voies de récompenses). Elle a
+// quitté index.html avec la refonte du menu, mais ses fonctions de rendu
+// tournaient encore à chaque retour au menu pour des éléments absents. Reste
+// ce qui sert sur tous les écrans : les pastilles des boutons du menu.
 function renderMenuSidePanel(){
-  const next=document.getElementById('ms-next');
-  if(next)next.innerHTML=menuNextMilestoneHTML();
-  // La récompense journalière et les deux voies qui ne dépendent pas de l'ELO
-  // (js/rewards-ui.js) : leurs cartes de résumé en mode bureau, et les
-  // pastilles des boutons du menu, qui elles valent sur tous les écrans.
-  if(typeof renderMenuDailyCard==='function')renderMenuDailyCard();
-  if(typeof renderMenuRewardsCard==='function')renderMenuRewardsCard();
   if(typeof renderRewardsBadge==='function')renderRewardsBadge();
 }
 
@@ -145,27 +84,6 @@ function renderMenuChests(){
   renderDailyChest();
   if(typeof renderMenuIdentity==='function')renderMenuIdentity();
   renderMenuSidePanel();
-}
-
-// ----------------------------------------------------------------
-// RAPPEL DE LA MISE
-// ----------------------------------------------------------------
-function stakeListHTML(armyData,color){
-  const need=armyRequirements(armyData);
-  const entries=Object.entries(need);
-  if(!entries.length)return '<span style="color:var(--muted);font-size:12px">Aucune pièce possédée engagée.</span>';
-  return entries.map(([id,n])=>
-    '<span class="gs-stake-q">'+n+'×</span>'+pieceIcon(id,color||'n',1.4)).join('');
-}
-// Bandeau de la page Combat, avant de s'engager.
-function renderCombatStake(armyData){
-  const el=document.getElementById('cstake');
-  if(!el)return;
-  const stock=armyStock(armyData);
-  const warn=stock.ok?'':
-    '<div class="cstake-warn">Stock insuffisant : '+stock.missing.map(m=>m.name+' ('+m.have+'/'+m.need+')').join(', ')+'</div>';
-  el.innerHTML='<div class="cstake-lbl">Vous engagez</div><div class="cstake-row">'+
-    stakeListHTML(armyData,'n')+'</div>'+warn;
 }
 
 // ----------------------------------------------------------------

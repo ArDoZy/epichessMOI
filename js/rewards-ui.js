@@ -276,17 +276,6 @@ function dailyAfterClaim(){
   if(typeof updAll==='function')updAll();
   renderRewardsBadge();
 }
-// La carte de la colonne de droite (mode bureau) : le même rail que la
-// fenêtre, produit par la MÊME fonction. Une seule source, deux affichages.
-function renderMenuDailyCard(){
-  const card=document.getElementById('ms-daily');
-  if(!card||typeof DAILY_REWARDS==='undefined')return;
-  card.innerHTML='<div class="ms-title">Récompense journalière</div>'+
-    '<div class="ms-rows">'+dailyRowsHTML()+'</div>'+
-    '<button class="btn btn-ghost ms-open" id="ms-daily-open">'+
-      (dailyRewardAvailable()?'Récupérer':'Voir le cycle')+'</button>';
-  document.getElementById('ms-daily-open')?.addEventListener('click',openDailyModal);
-}
 
 // ----------------------------------------------------------------
 // LA VOIE COURANTE : une page par voie, et non deux onglets
@@ -833,42 +822,6 @@ function renderRewardsBadge(){
   rwSetBadge('jouer-rangee-badge',on?((richCanClaim()?1:0)+(jokerBalance()?1:0)):0);
 }
 
-// La carte de la colonne de droite (mode bureau) : elle résume les deux voies
-// en quatre lignes et ouvre la page. Même principe que le rail de la série du
-// jour — le téléphone cache, l'ordinateur montre.
-function menuRewardsCardHTML(){
-  if(typeof VICTORY_COLUMN==='undefined')return '';
-  const due=colPending();
-  const next=colNextIdx()>=0?VICTORY_COLUMN[colNextIdx()]:null;
-  const step=richNextStep();
-  return '<div class="ms-title">Récompenses</div>'+
-    '<div class="ms-next-row">'+
-      '<span class="ms-next-icon">'+(next
-        ?(next.chest?chestVisual(chestById(next.chest),''):jokerIcon(2))
-        :'<span class="streak-mark streak-mark-ok">✓</span>')+'</span>'+
-      '<div class="ms-next-txt">'+
-        '<div class="ms-next-name">'+(next?escH(rwStepName(next)):'Colonne terminée')+'</div>'+
-        '<div class="ms-next-elo">Colonne · '+colClaimed()+'/'+colTotal()+
-          ' · '+colLaurels()+' laurier'+(colLaurels()>1?'s':'')+
-          (due?' · '+due+' à prendre':'')+'</div>'+
-      '</div>'+
-    '</div>'+
-    '<div class="ms-next-row" style="margin-top:12px">'+
-      '<span class="ms-next-icon">'+ticketIcon(1.9)+'</span>'+
-      '<div class="ms-next-txt">'+
-        '<div class="ms-next-name">'+ticketBalance()+' ticket'+(ticketBalance()>1?'s':'')+'</div>'+
-        '<div class="ms-next-elo">Rangée · '+richClaimed()+'/'+richTotal()+
-          (step?' · prochain à '+step.cost:'')+'</div>'+
-      '</div>'+
-    '</div>'+
-    '<button class="btn btn-ghost ms-open" id="ms-rewards-open">Ouvrir</button>';
-}
-function renderMenuRewardsCard(){
-  const card=document.getElementById('ms-rewards');
-  if(!card)return;
-  card.innerHTML=menuRewardsCardHTML();
-  document.getElementById('ms-rewards-open')?.addEventListener('click',()=>openRewardsPage());
-}
 
 // ----------------------------------------------------------------
 // CÂBLAGE

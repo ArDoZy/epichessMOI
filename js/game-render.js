@@ -798,8 +798,16 @@ function markMoveStyle(node,fromR,fromC,toR,toC,pieceId,flipped){
   const span=Math.max(dr,dc);
   art.style.setProperty('--gspan',Math.min(1,span/7).toFixed(2));
 
-  art.classList.remove.apply(art.classList,GESTURE_CLASSES);
-  void art.offsetWidth;                     // redémarre sur deux coups d'affilée
+  // REDÉMARRER COÛTE UNE MISE EN PAGE : on ne la paie que s'il y a quelque
+  // chose à redémarrer. `void art.offsetWidth` forçait style et mise en page
+  // en plein coup, à chaque coup ; il ne sert que si la pièce porte encore le
+  // geste de son coup précédent (deux coups d'affilée en moins de
+  // BOARD_MOVE_MS+320 ms : prémouvement, réponse éclair). Sans geste en
+  // cours, l'ajout de la classe suffit à lancer l'animation (nuit du 16 octobre).
+  if(GESTURE_CLASSES.some(k=>art.classList.contains(k))){
+    art.classList.remove.apply(art.classList,GESTURE_CLASSES);
+    void art.offsetWidth;                   // redémarre sur deux coups d'affilée
+  }
   art.classList.add(cls);
   clearTimeout(art._gestTid);
   art._gestTid=setTimeout(()=>{
@@ -831,8 +839,16 @@ function renderGame(gs){
   // tard, parce qu'au premier rendu rien n'a sa taille définitive (les
   // polices se posent, le journal se remplit) — et --game-chrome borne la
   // taille du plateau, une valeur trop basse le laisserait déborder.
-  gameWatchChrome();
-  requestAnimationFrame(gameSyncChrome);
+  //
+  // UNE MESURE PAR IMAGE, ET AVANT LE DESSIN (nuit du 16 octobre). La mesure
+  // était faite ici même, en plein coup : elle forçait une mise en page que
+  // les écritures suivantes (effets, statut, sons) salissaient aussitôt — deux
+  // mises en page par coup au lieu d'une. Une requestAnimationFrame passe
+  // AVANT le dessin de l'image : la valeur est juste au premier pixel montré.
+  // Seul le tout premier appel, qui pose le ResizeObserver, mesure tout de
+  // suite.
+  if(!_chromeRO)gameWatchChrome();
+  if(!_chromeRaf)_chromeRaf=requestAnimationFrame(()=>{_chromeRaf=0;gameSyncChrome();});
   clearTimeout(_chromeSettleTid);
   _chromeSettleTid=setTimeout(gameSyncChrome,260);
 }
@@ -866,12 +882,16 @@ function renderClocks(gs){
   const playerCol=gs.playerColor||'w';const aiCol=gs.aiColor||'b';
   const hTime=playerCol==='w'?gs.timeWhite:gs.timeBlack;
   const aTime=aiCol==='w'?gs.timeWhite:gs.timeBlack;
-  hEl.style.display='';aEl.style.display='';
+  if(hEl.style.display)hEl.style.display='';
+  if(aEl.style.display)aEl.style.display='';
   // ON ÉCRIT DANS .gp-clock-t, PAS DANS LE BADGE. Le badge porte maintenant le
   // SABLIER du sprite d'icônes (voir #ec-sablier, index.html) : un textContent
   // posé sur le badge lui-même effacerait ce <svg> au premier tic d'horloge.
   // Le repli sur le badge reste, au cas où le balisage n'aurait pas la travée.
-  const put=(el,txt)=>{const t=el.querySelector('.gp-clock-t');if(t)t.textContent=txt;else el.textContent=txt;};
+  // Le tic tombe cinq fois par seconde, le chiffre ne change qu'une : un
+  // textContent réécrit à l'identique coûtait quand même une mise en page de
+  // la colonne de jeu à chaque tic. On n'écrit que ce qui change.
+  const put=(el,txt)=>{const t=el.querySelector('.gp-clock-t')||el;if(t.textContent!==txt)t.textContent=txt;};
   put(hEl,fmt(hTime));put(aEl,fmt(aTime));
   // Sous 30 s la pendule passe en rouge et pulse : c'est le seul moment ou
   // elle doit reclamer l'attention.
@@ -924,7 +944,8 @@ function clockFire(el,ms,gs,live){
     f.innerHTML=h;
     el.appendChild(f);
   }
-  el.style.setProperty('--heat',heat.toFixed(3));
+  const hv=heat.toFixed(2);
+  if(el._heat!==hv){el._heat=hv;el.style.setProperty('--heat',hv);}
   el.classList.add('on-fire');
   el.classList.toggle('fire-hot',heat>0.66);
   el.classList.toggle('fire-live',!!live);
@@ -1037,7 +1058,7 @@ function gameSyncChrome(){
   if(chrome>0&&chrome<3000)
     document.documentElement.style.setProperty('--game-chrome',chrome+'px');
 }
-let _chromeRO=null,_chromeSettleTid=null;
+let _chromeRO=null,_chromeSettleTid=null,_chromeRaf=0;
 function gameWatchChrome(){
   const under=document.getElementById('game-under');
   if(!under)return;
@@ -1074,11 +1095,20 @@ function updateCaptured(gs){
   // L'AVANTAGE D'ABORD : sur un téléphone la rangée défile, et le « +N »
   // posé au bout finissait hors de vue — c'est pourtant le seul chiffre de la
   // rangée qui résume toutes les autres.
-  meEl.innerHTML=(adv>0?'<span class="gp-adv">+'+adv+'</span>':'')+drawCaptured(takenByMe);
-  oppEl.innerHTML=(adv<0?'<span class="gp-adv">+'+(-adv)+'</span>':'')+drawCaptured(takenByOpp);
-  // Une rangée trop longue pour son bandeau défile : son bord droit s'estompe
-  // alors, pour dire qu'il y a une suite (voir .cap-over).
-  [meEl,oppEl].forEach(el=>el.classList.toggle('cap-over',el.scrollWidth>el.clientWidth+1));
+  // RIEN N'EST RÉÉCRIT SI RIEN N'A CHANGÉ (nuit du 16 octobre). renderGame
+  // passe ici à chaque coup, et neuf coups sur dix ne prennent rien : les deux
+  // rangées étaient pourtant reconstruites (nœuds, icônes SVG), et la mesure
+  // de scrollWidth qui suit forçait une mise en page en plein coup. Le HTML
+  // produit sert de clé.
+  const meH=(adv>0?'<span class="gp-adv">+'+adv+'</span>':'')+drawCaptured(takenByMe);
+  const oppH=(adv<0?'<span class="gp-adv">+'+(-adv)+'</span>':'')+drawCaptured(takenByOpp);
+  [[meEl,meH],[oppEl,oppH]].forEach(([el,h])=>{
+    if(el._capH===h)return;
+    el._capH=h;el.innerHTML=h;
+    // Une rangée trop longue pour son bandeau défile : son bord droit
+    // s'estompe alors, pour dire qu'il y a une suite (voir .cap-over).
+    el.classList.toggle('cap-over',el.scrollWidth>el.clientWidth+1);
+  });
 }
 // LES PRISES SE LISENT EN UN COUP D'ŒIL, ET TIENNENT DANS LEUR PLACE.
 //

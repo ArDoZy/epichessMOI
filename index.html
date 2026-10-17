@@ -513,12 +513,20 @@
     <stop offset=".5" stop-color="#f2711f" stop-opacity=".35"/>
     <stop offset="1" stop-color="#c0300a" stop-opacity="0"/>
   </radialGradient>
-  <filter id="jtfFire" x="-30%" y="-30%" width="160%" height="160%" color-interpolation-filters="sRGB">
+  <!-- La langue de feu, dessinée une fois : les dix-huit calques du feu
+       (index.html, colonne des victoires) la reprennent par <use>. -->
+  <path id="jtfTongueP" d="M0 0c-3.2-1.1-4.9-3.4-4.6-6.4.3-3.2 3.1-5.6 3.4-9.4.1-1.5-.2-2.9-.9-4.3 2.9 2 4.6 4.3 5.1 6.9.4 2.1-.1 3.6-.3 5.2-.2 1.7.5 2.9 1.6 4.1 1.4 1.5 1.8 3.1 1.2 4.7-.6 1.6-2.4 2.7-5.5 3.2z"/>
+  <!-- Les mêmes filtres que jtfFire et jtfFireCore, sur une région FIXE, dans
+       le repère 0–100 du calque : posés sur une seule langue, les marges de
+       30 % de sa propre boîte rognaient le déplacement et le flou des plus
+       petites. La turbulence est calculée dans ce même repère : le grain du
+       feu ne change pas. -->
+  <filter id="jtfFireL" filterUnits="userSpaceOnUse" x="-10" y="-10" width="120" height="120" color-interpolation-filters="sRGB">
     <feTurbulence type="fractalNoise" baseFrequency="0.105 0.19" numOctaves="2" seed="9" result="n"/>
     <feDisplacementMap in="SourceGraphic" in2="n" scale="3.4" xChannelSelector="R" yChannelSelector="G" result="d"/>
     <feGaussianBlur in="d" stdDeviation=".72"/>
   </filter>
-  <filter id="jtfFireCore" x="-30%" y="-30%" width="160%" height="160%" color-interpolation-filters="sRGB">
+  <filter id="jtfFireCoreL" filterUnits="userSpaceOnUse" x="-10" y="-10" width="120" height="120" color-interpolation-filters="sRGB">
     <feTurbulence type="fractalNoise" baseFrequency="0.105 0.19" numOctaves="2" seed="4" result="n"/>
     <feDisplacementMap in="SourceGraphic" in2="n" scale="2.2" xChannelSelector="R" yChannelSelector="G" result="d"/>
     <feGaussianBlur in="d" stdDeviation=".45"/>
@@ -698,13 +706,15 @@
                 <ellipse cx="37" cy="0" rx="1.7" ry="4.2" fill="#ffe9b0"/>
               </g>
             </svg></span>
-            <svg class="jtf-motes" viewBox="0 0 100 100">
-              <g fill="#ffeec2">
-              <circle class="jtf-mote" cx="22" cy="40" r=".9" style="--mx:-3px;animation-duration:3.4s"/>
-              <circle class="jtf-mote" cx="78" cy="58" r="1"  style="--mx:4px;animation-duration:4.1s;animation-delay:-1.6s"/>
-              <circle class="jtf-mote" cx="60" cy="30" r=".8" style="--mx:2px;animation-duration:3.7s;animation-delay:-2.7s"/>
-            </g>
-            </svg>
+            <!-- Les poussières sont des <i> HTML et non des <circle> : une
+                 animation de `transform` sur un élément SVG intérieur n'est
+                 pas confiée au compositeur, elle relançait une mise en page
+                 et un dessin du menu à chaque image. -->
+            <span class="jtf-motes">
+              <i class="jtf-mote" style="--x:22;--y:40;--r:.9;--mx:-3px;animation-duration:3.4s"></i>
+              <i class="jtf-mote" style="--x:78;--y:58;--r:1;--mx:4px;animation-duration:4.1s;animation-delay:-1.6s"></i>
+              <i class="jtf-mote" style="--x:60;--y:30;--r:.8;--mx:2px;animation-duration:3.7s;animation-delay:-2.7s"></i>
+            </span>
           </span>
           <img class="jt-art" src="assets/ui/logo-journaliere.webp" alt="" aria-hidden="true" data-onerr="remove">
           <span class="jt-fx jt-fx-front jtf-near" aria-hidden="true">
@@ -743,38 +753,44 @@
             <use href="#jt-laurier-branche" transform="translate(24 0) scale(-1 1)"/>
           </svg>
           <img class="jt-art" src="assets/ui/logo-victoires.webp" alt="" aria-hidden="true" data-onerr="remove">
-          <svg class="jt-fx jt-fx-front" viewBox="0 0 100 100" aria-hidden="true">
-            <ellipse class="jtf-bed" cx="50" cy="49" rx="32" ry="31" fill="url(#jtfRimG)"/>
-            <ellipse class="jtf-bed" cx="50" cy="61" rx="11" ry="5" fill="url(#jtfBedG)" opacity=".42" style="animation-duration:1.6s;animation-delay:-.7s"/>
-            <g filter="url(#jtfFire)" fill="url(#jtfFlameG)" class="jtf-fire">
-              <g transform="translate(50 27.5) rotate(0) scale(1.0)"><path class="jtf-tongue" style="animation-duration:1.35s" d="M0 0c-3.2-1.1-4.9-3.4-4.6-6.4.3-3.2 3.1-5.6 3.4-9.4.1-1.5-.2-2.9-.9-4.3 2.9 2 4.6 4.3 5.1 6.9.4 2.1-.1 3.6-.3 5.2-.2 1.7.5 2.9 1.6 4.1 1.4 1.5 1.8 3.1 1.2 4.7-.6 1.6-2.4 2.7-5.5 3.2z"/></g>
-              <g transform="translate(40 29.5) rotate(-13) scale(0.86)"><path class="jtf-tongue" style="animation-duration:1.7s;animation-delay:-0.5s" d="M0 0c-3.2-1.1-4.9-3.4-4.6-6.4.3-3.2 3.1-5.6 3.4-9.4.1-1.5-.2-2.9-.9-4.3 2.9 2 4.6 4.3 5.1 6.9.4 2.1-.1 3.6-.3 5.2-.2 1.7.5 2.9 1.6 4.1 1.4 1.5 1.8 3.1 1.2 4.7-.6 1.6-2.4 2.7-5.5 3.2z"/></g>
-              <g transform="translate(60 29.5) rotate(13) scale(0.88)"><path class="jtf-tongue" style="animation-duration:1.5s;animation-delay:-1.05s" d="M0 0c-3.2-1.1-4.9-3.4-4.6-6.4.3-3.2 3.1-5.6 3.4-9.4.1-1.5-.2-2.9-.9-4.3 2.9 2 4.6 4.3 5.1 6.9.4 2.1-.1 3.6-.3 5.2-.2 1.7.5 2.9 1.6 4.1 1.4 1.5 1.8 3.1 1.2 4.7-.6 1.6-2.4 2.7-5.5 3.2z"/></g>
-              <g transform="translate(32 35.5) rotate(-30) scale(0.74)"><path class="jtf-tongue" style="animation-duration:1.95s;animation-delay:-0.25s" d="M0 0c-3.2-1.1-4.9-3.4-4.6-6.4.3-3.2 3.1-5.6 3.4-9.4.1-1.5-.2-2.9-.9-4.3 2.9 2 4.6 4.3 5.1 6.9.4 2.1-.1 3.6-.3 5.2-.2 1.7.5 2.9 1.6 4.1 1.4 1.5 1.8 3.1 1.2 4.7-.6 1.6-2.4 2.7-5.5 3.2z"/></g>
-              <g transform="translate(68 35.5) rotate(30) scale(0.76)"><path class="jtf-tongue" style="animation-duration:1.6s;animation-delay:-1.35s" d="M0 0c-3.2-1.1-4.9-3.4-4.6-6.4.3-3.2 3.1-5.6 3.4-9.4.1-1.5-.2-2.9-.9-4.3 2.9 2 4.6 4.3 5.1 6.9.4 2.1-.1 3.6-.3 5.2-.2 1.7.5 2.9 1.6 4.1 1.4 1.5 1.8 3.1 1.2 4.7-.6 1.6-2.4 2.7-5.5 3.2z"/></g>
-              <g transform="translate(27 45.5) rotate(-52) scale(0.6)"><path class="jtf-tongue" style="animation-duration:1.15s;animation-delay:-0.7s" d="M0 0c-3.2-1.1-4.9-3.4-4.6-6.4.3-3.2 3.1-5.6 3.4-9.4.1-1.5-.2-2.9-.9-4.3 2.9 2 4.6 4.3 5.1 6.9.4 2.1-.1 3.6-.3 5.2-.2 1.7.5 2.9 1.6 4.1 1.4 1.5 1.8 3.1 1.2 4.7-.6 1.6-2.4 2.7-5.5 3.2z"/></g>
-              <g transform="translate(73 45.5) rotate(52) scale(0.62)"><path class="jtf-tongue" style="animation-duration:1.45s;animation-delay:-0.9s" d="M0 0c-3.2-1.1-4.9-3.4-4.6-6.4.3-3.2 3.1-5.6 3.4-9.4.1-1.5-.2-2.9-.9-4.3 2.9 2 4.6 4.3 5.1 6.9.4 2.1-.1 3.6-.3 5.2-.2 1.7.5 2.9 1.6 4.1 1.4 1.5 1.8 3.1 1.2 4.7-.6 1.6-2.4 2.7-5.5 3.2z"/></g>
-              <g transform="translate(45 26.0) rotate(-6) scale(0.5)"><path class="jtf-tongue" style="animation-duration:1.25s;animation-delay:-1.5s" d="M0 0c-3.2-1.1-4.9-3.4-4.6-6.4.3-3.2 3.1-5.6 3.4-9.4.1-1.5-.2-2.9-.9-4.3 2.9 2 4.6 4.3 5.1 6.9.4 2.1-.1 3.6-.3 5.2-.2 1.7.5 2.9 1.6 4.1 1.4 1.5 1.8 3.1 1.2 4.7-.6 1.6-2.4 2.7-5.5 3.2z"/></g>
-              <g transform="translate(55 26.0) rotate(6) scale(0.52)"><path class="jtf-tongue" style="animation-duration:1.8s;animation-delay:-0.4s" d="M0 0c-3.2-1.1-4.9-3.4-4.6-6.4.3-3.2 3.1-5.6 3.4-9.4.1-1.5-.2-2.9-.9-4.3 2.9 2 4.6 4.3 5.1 6.9.4 2.1-.1 3.6-.3 5.2-.2 1.7.5 2.9 1.6 4.1 1.4 1.5 1.8 3.1 1.2 4.7-.6 1.6-2.4 2.7-5.5 3.2z"/></g>
-            </g>
-            <g filter="url(#jtfFireCore)" fill="url(#jtfCoreG)" class="jtf-fire jtf-fire-core">
-              <g transform="translate(50 27.5) rotate(0) scale(1.0)"><path class="jtf-tongue" style="animation-duration:1.35s" d="M0 0c-3.2-1.1-4.9-3.4-4.6-6.4.3-3.2 3.1-5.6 3.4-9.4.1-1.5-.2-2.9-.9-4.3 2.9 2 4.6 4.3 5.1 6.9.4 2.1-.1 3.6-.3 5.2-.2 1.7.5 2.9 1.6 4.1 1.4 1.5 1.8 3.1 1.2 4.7-.6 1.6-2.4 2.7-5.5 3.2z"/></g>
-              <g transform="translate(40 29.5) rotate(-13) scale(0.86)"><path class="jtf-tongue" style="animation-duration:1.7s;animation-delay:-0.5s" d="M0 0c-3.2-1.1-4.9-3.4-4.6-6.4.3-3.2 3.1-5.6 3.4-9.4.1-1.5-.2-2.9-.9-4.3 2.9 2 4.6 4.3 5.1 6.9.4 2.1-.1 3.6-.3 5.2-.2 1.7.5 2.9 1.6 4.1 1.4 1.5 1.8 3.1 1.2 4.7-.6 1.6-2.4 2.7-5.5 3.2z"/></g>
-              <g transform="translate(60 29.5) rotate(13) scale(0.88)"><path class="jtf-tongue" style="animation-duration:1.5s;animation-delay:-1.05s" d="M0 0c-3.2-1.1-4.9-3.4-4.6-6.4.3-3.2 3.1-5.6 3.4-9.4.1-1.5-.2-2.9-.9-4.3 2.9 2 4.6 4.3 5.1 6.9.4 2.1-.1 3.6-.3 5.2-.2 1.7.5 2.9 1.6 4.1 1.4 1.5 1.8 3.1 1.2 4.7-.6 1.6-2.4 2.7-5.5 3.2z"/></g>
-              <g transform="translate(32 35.5) rotate(-30) scale(0.74)"><path class="jtf-tongue" style="animation-duration:1.95s;animation-delay:-0.25s" d="M0 0c-3.2-1.1-4.9-3.4-4.6-6.4.3-3.2 3.1-5.6 3.4-9.4.1-1.5-.2-2.9-.9-4.3 2.9 2 4.6 4.3 5.1 6.9.4 2.1-.1 3.6-.3 5.2-.2 1.7.5 2.9 1.6 4.1 1.4 1.5 1.8 3.1 1.2 4.7-.6 1.6-2.4 2.7-5.5 3.2z"/></g>
-              <g transform="translate(68 35.5) rotate(30) scale(0.76)"><path class="jtf-tongue" style="animation-duration:1.6s;animation-delay:-1.35s" d="M0 0c-3.2-1.1-4.9-3.4-4.6-6.4.3-3.2 3.1-5.6 3.4-9.4.1-1.5-.2-2.9-.9-4.3 2.9 2 4.6 4.3 5.1 6.9.4 2.1-.1 3.6-.3 5.2-.2 1.7.5 2.9 1.6 4.1 1.4 1.5 1.8 3.1 1.2 4.7-.6 1.6-2.4 2.7-5.5 3.2z"/></g>
-              <g transform="translate(27 45.5) rotate(-52) scale(0.6)"><path class="jtf-tongue" style="animation-duration:1.15s;animation-delay:-0.7s" d="M0 0c-3.2-1.1-4.9-3.4-4.6-6.4.3-3.2 3.1-5.6 3.4-9.4.1-1.5-.2-2.9-.9-4.3 2.9 2 4.6 4.3 5.1 6.9.4 2.1-.1 3.6-.3 5.2-.2 1.7.5 2.9 1.6 4.1 1.4 1.5 1.8 3.1 1.2 4.7-.6 1.6-2.4 2.7-5.5 3.2z"/></g>
-              <g transform="translate(73 45.5) rotate(52) scale(0.62)"><path class="jtf-tongue" style="animation-duration:1.45s;animation-delay:-0.9s" d="M0 0c-3.2-1.1-4.9-3.4-4.6-6.4.3-3.2 3.1-5.6 3.4-9.4.1-1.5-.2-2.9-.9-4.3 2.9 2 4.6 4.3 5.1 6.9.4 2.1-.1 3.6-.3 5.2-.2 1.7.5 2.9 1.6 4.1 1.4 1.5 1.8 3.1 1.2 4.7-.6 1.6-2.4 2.7-5.5 3.2z"/></g>
-              <g transform="translate(45 26.0) rotate(-6) scale(0.5)"><path class="jtf-tongue" style="animation-duration:1.25s;animation-delay:-1.5s" d="M0 0c-3.2-1.1-4.9-3.4-4.6-6.4.3-3.2 3.1-5.6 3.4-9.4.1-1.5-.2-2.9-.9-4.3 2.9 2 4.6 4.3 5.1 6.9.4 2.1-.1 3.6-.3 5.2-.2 1.7.5 2.9 1.6 4.1 1.4 1.5 1.8 3.1 1.2 4.7-.6 1.6-2.4 2.7-5.5 3.2z"/></g>
-              <g transform="translate(55 26.0) rotate(6) scale(0.52)"><path class="jtf-tongue" style="animation-duration:1.8s;animation-delay:-0.4s" d="M0 0c-3.2-1.1-4.9-3.4-4.6-6.4.3-3.2 3.1-5.6 3.4-9.4.1-1.5-.2-2.9-.9-4.3 2.9 2 4.6 4.3 5.1 6.9.4 2.1-.1 3.6-.3 5.2-.2 1.7.5 2.9 1.6 4.1 1.4 1.5 1.8 3.1 1.2 4.7-.6 1.6-2.4 2.7-5.5 3.2z"/></g>
-            </g>
-            <g fill="#ffd98a">
-              <circle class="jtf-ember" cx="38" cy="46" r="1.1" style="--dx:-3px;animation-duration:2.2s"/>
-              <circle class="jtf-ember" cx="56" cy="42" r="1.3" style="--dx:4px;animation-duration:2.8s;animation-delay:-1.1s"/>
-              <circle class="jtf-ember" cx="47" cy="50" r=".9"  style="--dx:2px;animation-duration:2.5s;animation-delay:-1.9s"/>
-              <circle class="jtf-ember" cx="65" cy="50" r="1"   style="--dx:5px;animation-duration:3.1s;animation-delay:-.6s"/>
-            </g>
-          </svg>
+          <!-- LE FEU, CALQUE PAR CALQUE (nuit du 17 octobre). Chaque langue, chaque
+               braise et chaque lit de braises est son propre <svg> : l'animation
+               porte sur ce <svg>, une boîte HTML, que le compositeur anime seul.
+               Elles étaient des éléments SVG intérieurs, animés en `transform` :
+               une mise en page et un dessin complet du menu à chaque image, filtres
+               de turbulence compris, tant que la colonne avait un palier à donner.
+               Positions, durées et retards sont ceux de l'ancien tracé ; la
+               géométrie de l'animation est la même (voir .jtf-tongue). -->
+          <span class="jt-fx jt-fx-front" aria-hidden="true">
+            <svg class="jtf-l jtf-bed" viewBox="0 0 100 100" style="transform-origin:50% 49%"><ellipse cx="50" cy="49" rx="32" ry="31" fill="url(#jtfRimG)"/></svg>
+            <svg class="jtf-l jtf-bed" viewBox="0 0 100 100" style="transform-origin:50% 61%;animation-duration:1.6s;animation-delay:-.7s"><ellipse cx="50" cy="61" rx="11" ry="5" fill="url(#jtfBedG)"/></svg>
+            <span class="jtf-fire">
+              <svg class="jtf-l jtf-tongue" viewBox="0 0 100 100" style="--a:0deg;--s:1.0;transform-origin:50.57% 31.50%;animation-duration:1.35s"><g filter="url(#jtfFireL)" fill="url(#jtfFlameG)"><use href="#jtfTongueP" transform="translate(50 27.5) rotate(0) scale(1.0)"/></g></svg>
+              <svg class="jtf-l jtf-tongue" viewBox="0 0 100 100" style="--a:-13deg;--s:0.86;transform-origin:41.25% 32.74%;animation-duration:1.7s;animation-delay:-0.5s"><g filter="url(#jtfFireL)" fill="url(#jtfFlameG)"><use href="#jtfTongueP" transform="translate(40 29.5) rotate(-13) scale(0.86)"/></g></svg>
+              <svg class="jtf-l jtf-tongue" viewBox="0 0 100 100" style="--a:13deg;--s:0.88;transform-origin:59.70% 33.04%;animation-duration:1.5s;animation-delay:-1.05s"><g filter="url(#jtfFireL)" fill="url(#jtfFlameG)"><use href="#jtfTongueP" transform="translate(60 29.5) rotate(13) scale(0.88)"/></g></svg>
+              <svg class="jtf-l jtf-tongue" viewBox="0 0 100 100" style="--a:-30deg;--s:0.74;transform-origin:33.84% 37.85%;animation-duration:1.95s;animation-delay:-0.25s"><g filter="url(#jtfFireL)" fill="url(#jtfFlameG)"><use href="#jtfTongueP" transform="translate(32 35.5) rotate(-30) scale(0.74)"/></g></svg>
+              <svg class="jtf-l jtf-tongue" viewBox="0 0 100 100" style="--a:30deg;--s:0.76;transform-origin:66.85% 38.35%;animation-duration:1.6s;animation-delay:-1.35s"><g filter="url(#jtfFireL)" fill="url(#jtfFlameG)"><use href="#jtfTongueP" transform="translate(68 35.5) rotate(30) scale(0.76)"/></g></svg>
+              <svg class="jtf-l jtf-tongue" viewBox="0 0 100 100" style="--a:-52deg;--s:0.6;transform-origin:29.10% 46.71%;animation-duration:1.15s;animation-delay:-0.7s"><g filter="url(#jtfFireL)" fill="url(#jtfFlameG)"><use href="#jtfTongueP" transform="translate(27 45.5) rotate(-52) scale(0.6)"/></g></svg>
+              <svg class="jtf-l jtf-tongue" viewBox="0 0 100 100" style="--a:52deg;--s:0.62;transform-origin:71.26% 47.30%;animation-duration:1.45s;animation-delay:-0.9s"><g filter="url(#jtfFireL)" fill="url(#jtfFlameG)"><use href="#jtfTongueP" transform="translate(73 45.5) rotate(52) scale(0.62)"/></g></svg>
+              <svg class="jtf-l jtf-tongue" viewBox="0 0 100 100" style="--a:-6deg;--s:0.5;transform-origin:45.49% 27.96%;animation-duration:1.25s;animation-delay:-1.5s"><g filter="url(#jtfFireL)" fill="url(#jtfFlameG)"><use href="#jtfTongueP" transform="translate(45 26.0) rotate(-6) scale(0.5)"/></g></svg>
+              <svg class="jtf-l jtf-tongue" viewBox="0 0 100 100" style="--a:6deg;--s:0.52;transform-origin:55.08% 28.10%;animation-duration:1.8s;animation-delay:-0.4s"><g filter="url(#jtfFireL)" fill="url(#jtfFlameG)"><use href="#jtfTongueP" transform="translate(55 26.0) rotate(6) scale(0.52)"/></g></svg>
+            </span>
+            <span class="jtf-fire jtf-fire-core">
+              <svg class="jtf-l jtf-tongue" viewBox="0 0 100 100" style="--a:0deg;--s:1.0;transform-origin:50.57% 31.50%;animation-duration:1.35s"><g filter="url(#jtfFireCoreL)" fill="url(#jtfCoreG)"><use href="#jtfTongueP" transform="translate(50 27.5) rotate(0) scale(1.0)"/></g></svg>
+              <svg class="jtf-l jtf-tongue" viewBox="0 0 100 100" style="--a:-13deg;--s:0.86;transform-origin:41.25% 32.74%;animation-duration:1.7s;animation-delay:-0.5s"><g filter="url(#jtfFireCoreL)" fill="url(#jtfCoreG)"><use href="#jtfTongueP" transform="translate(40 29.5) rotate(-13) scale(0.86)"/></g></svg>
+              <svg class="jtf-l jtf-tongue" viewBox="0 0 100 100" style="--a:13deg;--s:0.88;transform-origin:59.70% 33.04%;animation-duration:1.5s;animation-delay:-1.05s"><g filter="url(#jtfFireCoreL)" fill="url(#jtfCoreG)"><use href="#jtfTongueP" transform="translate(60 29.5) rotate(13) scale(0.88)"/></g></svg>
+              <svg class="jtf-l jtf-tongue" viewBox="0 0 100 100" style="--a:-30deg;--s:0.74;transform-origin:33.84% 37.85%;animation-duration:1.95s;animation-delay:-0.25s"><g filter="url(#jtfFireCoreL)" fill="url(#jtfCoreG)"><use href="#jtfTongueP" transform="translate(32 35.5) rotate(-30) scale(0.74)"/></g></svg>
+              <svg class="jtf-l jtf-tongue" viewBox="0 0 100 100" style="--a:30deg;--s:0.76;transform-origin:66.85% 38.35%;animation-duration:1.6s;animation-delay:-1.35s"><g filter="url(#jtfFireCoreL)" fill="url(#jtfCoreG)"><use href="#jtfTongueP" transform="translate(68 35.5) rotate(30) scale(0.76)"/></g></svg>
+              <svg class="jtf-l jtf-tongue" viewBox="0 0 100 100" style="--a:-52deg;--s:0.6;transform-origin:29.10% 46.71%;animation-duration:1.15s;animation-delay:-0.7s"><g filter="url(#jtfFireCoreL)" fill="url(#jtfCoreG)"><use href="#jtfTongueP" transform="translate(27 45.5) rotate(-52) scale(0.6)"/></g></svg>
+              <svg class="jtf-l jtf-tongue" viewBox="0 0 100 100" style="--a:52deg;--s:0.62;transform-origin:71.26% 47.30%;animation-duration:1.45s;animation-delay:-0.9s"><g filter="url(#jtfFireCoreL)" fill="url(#jtfCoreG)"><use href="#jtfTongueP" transform="translate(73 45.5) rotate(52) scale(0.62)"/></g></svg>
+              <svg class="jtf-l jtf-tongue" viewBox="0 0 100 100" style="--a:-6deg;--s:0.5;transform-origin:45.49% 27.96%;animation-duration:1.25s;animation-delay:-1.5s"><g filter="url(#jtfFireCoreL)" fill="url(#jtfCoreG)"><use href="#jtfTongueP" transform="translate(45 26.0) rotate(-6) scale(0.5)"/></g></svg>
+              <svg class="jtf-l jtf-tongue" viewBox="0 0 100 100" style="--a:6deg;--s:0.52;transform-origin:55.08% 28.10%;animation-duration:1.8s;animation-delay:-0.4s"><g filter="url(#jtfFireCoreL)" fill="url(#jtfCoreG)"><use href="#jtfTongueP" transform="translate(55 26.0) rotate(6) scale(0.52)"/></g></svg>
+            </span>
+            <svg class="jtf-l jtf-ember" viewBox="0 0 100 100" style="--dx:-3%;transform-origin:36.9% 44.9%;animation-duration:2.2s"><circle cx="38" cy="46" r="1.1" fill="#ffd98a"/></svg>
+            <svg class="jtf-l jtf-ember" viewBox="0 0 100 100" style="--dx:4%;transform-origin:54.7% 40.7%;animation-duration:2.8s;animation-delay:-1.1s"><circle cx="56" cy="42" r="1.3" fill="#ffd98a"/></svg>
+            <svg class="jtf-l jtf-ember" viewBox="0 0 100 100" style="--dx:2%;transform-origin:46.1% 49.1%;animation-duration:2.5s;animation-delay:-1.9s"><circle cx="47" cy="50" r=".9" fill="#ffd98a"/></svg>
+            <svg class="jtf-l jtf-ember" viewBox="0 0 100 100" style="--dx:5%;transform-origin:64.0% 49.0%;animation-duration:3.1s;animation-delay:-.6s"><circle cx="65" cy="50" r="1" fill="#ffd98a"/></svg>
+          </span>
         </span>
                 <span class="jt-label">Victoires</span>
                 <span class="jouer-badge" id="jouer-colonne-badge" style="display:none">0</span>
@@ -786,42 +802,45 @@
             <path d="M13.6 1.5 5.2 13.2h5.1L9.4 22.5l9.2-12.6H13z"/>
           </svg>
           <img class="jt-art" src="assets/ui/logo-richesse.webp" alt="" aria-hidden="true" data-onerr="remove">
-          <svg class="jt-fx jt-fx-front" viewBox="0 0 100 100" aria-hidden="true">
-            <ellipse class="jtf-corona" cx="50" cy="50" rx="30" ry="30" fill="url(#jtfSparkG)"/>
-            <ellipse class="jtf-flash" cx="50" cy="50" rx="21" ry="21" fill="url(#jtfSparkG)" style="animation-duration:1.15s"/>
-            <g fill="none" stroke-linecap="round" stroke-linejoin="round" filter="url(#jtfBolt)">
-              <g class="jtf-arc" style="animation-duration:1.15s">
-                <path pathLength="100" d="M60 37 66 30 62 27 69 21 66 18 74 10" stroke="#ffb62e" stroke-width="1.5" style="animation-duration:1.15s"/>
-                <path pathLength="100" d="M60 37 66 30 62 27 69 21 66 18 74 10" stroke="#fffdf5" stroke-width=".55" style="animation-duration:1.15s"/>
-                <path pathLength="100" d="M62 27 57.5 25.5" stroke="#ffd873" stroke-width=".6" opacity=".9" style="animation-duration:1.15s"/>
-              </g>
-              <g class="jtf-arc" style="animation-duration:1.45s;animation-delay:-0.35s">
-                <path pathLength="100" d="M40 42 33 37 37 33 30 28 33 24 25 17" stroke="#ffb62e" stroke-width="1.5" style="animation-duration:1.45s;animation-delay:-0.35s"/>
-                <path pathLength="100" d="M40 42 33 37 37 33 30 28 33 24 25 17" stroke="#fffdf5" stroke-width=".55" style="animation-duration:1.45s;animation-delay:-0.35s"/>
-                <path pathLength="100" d="M37 33 41.5 34.5" stroke="#ffd873" stroke-width=".6" opacity=".9" style="animation-duration:1.45s;animation-delay:-0.35s"/>
-              </g>
-              <g class="jtf-arc" style="animation-duration:1.75s;animation-delay:-0.8s">
-                <path pathLength="100" d="M63 60 70 64 66 68 74 73 71 77 79 84" stroke="#ffb62e" stroke-width="1.5" style="animation-duration:1.75s;animation-delay:-0.8s"/>
-                <path pathLength="100" d="M63 60 70 64 66 68 74 73 71 77 79 84" stroke="#fffdf5" stroke-width=".55" style="animation-duration:1.75s;animation-delay:-0.8s"/>
-                <path pathLength="100" d="M66 68 61 69" stroke="#ffd873" stroke-width=".6" opacity=".9" style="animation-duration:1.75s;animation-delay:-0.8s"/>
-              </g>
-              <g class="jtf-arc" style="animation-duration:2.05s;animation-delay:-1.4s">
-                <path pathLength="100" d="M37 63 30 67 34 71 27 76 30 80 22 87" stroke="#ffb62e" stroke-width="1.5" style="animation-duration:2.05s;animation-delay:-1.4s"/>
-                <path pathLength="100" d="M37 63 30 67 34 71 27 76 30 80 22 87" stroke="#fffdf5" stroke-width=".55" style="animation-duration:2.05s;animation-delay:-1.4s"/>
-                <path pathLength="100" d="M34 71 39 72" stroke="#ffd873" stroke-width=".6" opacity=".9" style="animation-duration:2.05s;animation-delay:-1.4s"/>
-              </g>
-              <g class="jtf-arc" style="animation-duration:1.3s;animation-delay:-0.95s">
-                <path pathLength="100" d="M50 30 46 23 53 20 49 12 52 8" stroke="#ffb62e" stroke-width="1.5" style="animation-duration:1.3s;animation-delay:-0.95s"/>
-                <path pathLength="100" d="M50 30 46 23 53 20 49 12 52 8" stroke="#fffdf5" stroke-width=".55" style="animation-duration:1.3s;animation-delay:-0.95s"/>
-                <path pathLength="100" d="M53 20 57 21" stroke="#ffd873" stroke-width=".6" opacity=".9" style="animation-duration:1.3s;animation-delay:-0.95s"/>
-              </g>
-              <g class="jtf-arc" style="animation-duration:1.9s;animation-delay:-0.15s">
-                <path pathLength="100" d="M50 70 54 77 47 80 51 88 48 92" stroke="#ffb62e" stroke-width="1.5" style="animation-duration:1.9s;animation-delay:-0.15s"/>
-                <path pathLength="100" d="M50 70 54 77 47 80 51 88 48 92" stroke="#fffdf5" stroke-width=".55" style="animation-duration:1.9s;animation-delay:-0.15s"/>
-                <path pathLength="100" d="M47 80 43 81" stroke="#ffd873" stroke-width=".6" opacity=".9" style="animation-duration:1.9s;animation-delay:-0.15s"/>
-              </g>
-            </g>
-          </svg>
+          <!-- LES ÉCLAIRS, UN <svg> PAR ARC (nuit du 17 octobre). L'éclat (opacité)
+               et le jaillissement (une échelle qui part du pied de l'arc, posé en
+               transform-origin) portent sur le <svg> de l'arc : le compositeur les
+               anime seuls. Le jaillissement était un `stroke-dashoffset` sur les
+               tracés, que le fil principal repeignait à chaque image. -->
+          <span class="jt-fx jt-fx-front" aria-hidden="true">
+            <svg class="jtf-l jtf-corona" viewBox="0 0 100 100" style="transform-origin:50% 50%"><ellipse cx="50" cy="50" rx="30" ry="30" fill="url(#jtfSparkG)"/></svg>
+            <svg class="jtf-l jtf-flash" viewBox="0 0 100 100" style="transform-origin:50% 50%;animation-duration:1.15s"><ellipse cx="50" cy="50" rx="21" ry="21" fill="url(#jtfSparkG)"/></svg>
+            <svg class="jtf-l jtf-arc" viewBox="0 0 100 100" style="transform-origin:60% 37%;animation-duration:1.15s"><g fill="none" stroke-linecap="round" stroke-linejoin="round" filter="url(#jtfBolt)">
+              <path d="M60 37 66 30 62 27 69 21 66 18 74 10" stroke="#ffb62e" stroke-width="1.5"/>
+              <path d="M60 37 66 30 62 27 69 21 66 18 74 10" stroke="#fffdf5" stroke-width=".55"/>
+              <path d="M62 27 57.5 25.5" stroke="#ffd873" stroke-width=".6" opacity=".9"/>
+            </g></svg>
+            <svg class="jtf-l jtf-arc" viewBox="0 0 100 100" style="transform-origin:40% 42%;animation-duration:1.45s;animation-delay:-0.35s"><g fill="none" stroke-linecap="round" stroke-linejoin="round" filter="url(#jtfBolt)">
+              <path d="M40 42 33 37 37 33 30 28 33 24 25 17" stroke="#ffb62e" stroke-width="1.5"/>
+              <path d="M40 42 33 37 37 33 30 28 33 24 25 17" stroke="#fffdf5" stroke-width=".55"/>
+              <path d="M37 33 41.5 34.5" stroke="#ffd873" stroke-width=".6" opacity=".9"/>
+            </g></svg>
+            <svg class="jtf-l jtf-arc" viewBox="0 0 100 100" style="transform-origin:63% 60%;animation-duration:1.75s;animation-delay:-0.8s"><g fill="none" stroke-linecap="round" stroke-linejoin="round" filter="url(#jtfBolt)">
+              <path d="M63 60 70 64 66 68 74 73 71 77 79 84" stroke="#ffb62e" stroke-width="1.5"/>
+              <path d="M63 60 70 64 66 68 74 73 71 77 79 84" stroke="#fffdf5" stroke-width=".55"/>
+              <path d="M66 68 61 69" stroke="#ffd873" stroke-width=".6" opacity=".9"/>
+            </g></svg>
+            <svg class="jtf-l jtf-arc" viewBox="0 0 100 100" style="transform-origin:37% 63%;animation-duration:2.05s;animation-delay:-1.4s"><g fill="none" stroke-linecap="round" stroke-linejoin="round" filter="url(#jtfBolt)">
+              <path d="M37 63 30 67 34 71 27 76 30 80 22 87" stroke="#ffb62e" stroke-width="1.5"/>
+              <path d="M37 63 30 67 34 71 27 76 30 80 22 87" stroke="#fffdf5" stroke-width=".55"/>
+              <path d="M34 71 39 72" stroke="#ffd873" stroke-width=".6" opacity=".9"/>
+            </g></svg>
+            <svg class="jtf-l jtf-arc" viewBox="0 0 100 100" style="transform-origin:50% 30%;animation-duration:1.3s;animation-delay:-0.95s"><g fill="none" stroke-linecap="round" stroke-linejoin="round" filter="url(#jtfBolt)">
+              <path d="M50 30 46 23 53 20 49 12 52 8" stroke="#ffb62e" stroke-width="1.5"/>
+              <path d="M50 30 46 23 53 20 49 12 52 8" stroke="#fffdf5" stroke-width=".55"/>
+              <path d="M53 20 57 21" stroke="#ffd873" stroke-width=".6" opacity=".9"/>
+            </g></svg>
+            <svg class="jtf-l jtf-arc" viewBox="0 0 100 100" style="transform-origin:50% 70%;animation-duration:1.9s;animation-delay:-0.15s"><g fill="none" stroke-linecap="round" stroke-linejoin="round" filter="url(#jtfBolt)">
+              <path d="M50 70 54 77 47 80 51 88 48 92" stroke="#ffb62e" stroke-width="1.5"/>
+              <path d="M50 70 54 77 47 80 51 88 48 92" stroke="#fffdf5" stroke-width=".55"/>
+              <path d="M47 80 43 81" stroke="#ffd873" stroke-width=".6" opacity=".9"/>
+            </g></svg>
+          </span>
         </span>
                 <span class="jt-label">Richesse</span>
                 <span class="jouer-badge" id="jouer-rangee-badge" style="display:none">0</span>
@@ -2124,6 +2143,7 @@
 <script src="js/economy-ui.js"></script>
 <script src="js/clans.js"></script>
 <script src="js/variant-analysis.js"></script>
+<script src="js/variant-ai.js"></script>
 <script src="js/fok-rules.js"></script>
 <script src="js/fok-ai.js"></script>
 <script src="js/fok-game.js"></script>

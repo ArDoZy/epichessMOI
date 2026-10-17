@@ -272,6 +272,12 @@ function showArmyIntro(playerArmy,aiArmy){
     ?((typeof MP!=='undefined'&&MP.oppName)?MP.oppName:'Votre adversaire')
     :((typeof aiCurrentOpponent==='function')?aiCurrentOpponent().name:INSTRUCTOR.name);
   const start=startGameClockAndAI;
+  // LE WORKER DE L'IA SE PRÉPARE PENDANT LA CINÉMATIQUE. Il était créé au
+  // premier coup de l'IA : sérialiser le moteur (getWorkerCode) et lancer le
+  // Worker tombaient sur l'instant même où le joueur attend une réponse.
+  // Pendant l'entrée en combat, le fil principal n'a rien d'autre à faire.
+  if(!(GS&&GS.multiplayer)&&typeof ensureWorker==='function')
+    (window.requestIdleCallback?window.requestIdleCallback.bind(window):(f=>setTimeout(f,60)))(()=>{try{ensureWorker();}catch(e){}},{timeout:1500});
   if(typeof playCombatCinematic==='function')
     playCombatCinematic(playerArmy,aiArmy,oppName,(GS&&GS.playerColor)||_playerColor||'w',start);
   else start();

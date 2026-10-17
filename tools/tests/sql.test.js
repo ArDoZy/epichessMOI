@@ -36,8 +36,15 @@ function rpc(fn,args){
 }
 const SECRET='0123456789abcdef0123456789abcdef';
 let n=0;
+// LE SUFFIXE N'EMPLOIE QUE 2, 6, 8 ET 9. Le serveur lit les pseudos en
+// « leet » (ec_name_fold : 0→o, 1→i, 3→e, 4→a, 5→s, 7→t) avant de chercher
+// les mots refusés : un suffixe tiré au hasard fabriquait parfois un mot
+// interdit avec la fin du préfixe (« Axb 1…73… » → « axbite… », refusé), et le
+// test échouait une fois de temps en temps. Écrit en base 4 sur ces quatre
+// chiffres, le suffixe reste unique et ne forme plus aucune lettre.
+const safeDigits=k=>k.toString(4).replace(/[0-3]/g,d=>'2689'[d]);
 function newPlayer(prefix){
-  const name=(prefix||'Joueur')+' '+(++n)+Math.floor(Math.random()*1e6);
+  const name=(prefix||'Joueur')+' '+safeDigits(++n)+safeDigits(Math.floor(Math.random()*16384));
   const secret=SECRET+n;
   const p=rpc('ec_signup',[name,secret]);
   return {id:p.id,secret,name,p};

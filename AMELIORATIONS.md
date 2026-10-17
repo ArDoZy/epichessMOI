@@ -418,3 +418,237 @@ avant la sortie : ce qui ne touche qu'eux est noté pour mémoire.
    aussi.
 3. Les parties envoyées par un ancien client (sans billet) sont refusées :
    le service worker (`epicchess-v9`) remplace le code au premier passage.
+
+---
+
+## 12. Nuit du 15 octobre 2026 : la fluidité
+
+Le jeu « lague beaucoup ». Mesuré dans Chromium (Playwright, téléphone
+390 × 844, **processeur bridé ×4** pour approcher un téléphone moyen), sur
+5 s de repos ou 10 s de partie, avec la trace du fil principal
+(`Performance.getMetrics` et `Tracing`). Les règles, les pièces, les pouvoirs
+et l'économie ne sont pas touchés.
+
+### 12.1 Ce qui faisait laguer
+
+| | Cause | Correction | Statut |
+|---|---|---|---|
+| 12.1.1 | **Le cadre de l'arène portait un `filter:drop-shadow` qui enveloppait le médaillon flottant** (`jaFloat`) : à chaque image du flottement, le navigateur refaisait l'ombre du cadre et recomposait tous les calques du menu (`Layerize` ≈ 600 ms sur 5 s). | La planche et son ombre passent sur `.jouer-arena::before` ; le médaillon flotte sur le compositeur. Rendu identique (comparé au pixel près, au repos). | ✅ |
+| 12.1.2 | **Les poussières du quotidien étaient trois `<circle>` SVG animés en `transform`** : une animation sur un élément SVG intérieur n'est pas confiée au compositeur, d'où **une mise en page complète par image** au menu (301 sur 5 s). | Trois `<i>` HTML, posés en pourcentage de la même boîte. | ✅ 0 mise en page au repos |
+| 12.1.3 | **Les quatre pages hors cadre restaient dans l'arbre de rendu**, figées mais stylées et composées à chaque image — et toute la rangée sous le plateau pendant une partie. | `content-visibility:hidden` hors glissement : style, mise en page et dessin sautés, état gardé (défilement compris, vérifié). | ✅ |
+| 12.1.4 | **Les braises du menu demandaient 60 images par seconde pour en dessiner 30**, relisaient `clientWidth` à chaque image (mise en page forcée) et peignaient un canvas en définition Retina pour des halos flous. | Vraies 30 images/s (minuterie de 20 ms entre deux images), taille tenue par un `ResizeObserver`, un pixel de canvas par pixel CSS. | ✅ |
+| 12.1.5 | **L'IA des trois variantes cherchait sur le fil principal** : l'écran gelait 700 à 900 ms à chaque réponse (Usurpateur). | `js/variant-ai.js` + `js/variant-ai-worker.js` : le moteur et l'IA de la variante sont chargés tels quels dans un Worker (`importScripts`) ; le coup revient en copie et passe par `*FindMove`, comme un coup reçu du réseau. Repli sur l'ancien chemin en `file://` ou si le Worker tombe. | ✅ plus grande image : 900 ms → 17 ms |
+| 12.1.6 | La pendule réécrivait ses chiffres **cinq fois par seconde** même inchangés (une mise en page de la colonne à chaque tic) ; un minuteur de partie finie ou remplacée sans `triggerEndOfGame` battait jusqu'à la fermeture de l'onglet, et pouvait écrire dans les pendules de la partie suivante. | Écriture seulement si le texte change ; `tickClock` arrête un minuteur dont la partie est finie ou n'est plus `GS`. | ✅ |
+| 12.1.7 | Le Worker de l'IA principale était créé **au premier coup de l'IA** (sérialisation du moteur au moment où le joueur attend). | Préparé pendant la cinématique d'entrée (`requestIdleCallback`). | ✅ |
+| 12.1.8 | La pastille « pouvoir prêt » repeignait son `box-shadow` à chaque image, sur chaque carte concernée de la collection. | Anneau sur `::after` en `transform`/`opacity`. | ✅ |
+| 12.1.9 | Fuites entre parties (écouteurs, nœuds, minuteurs) | Cinq parties enchaînées : 1 100 écouteurs, ~6 650 nœuds, 5,5 Mo de tas à chaque tour, aucun minuteur orphelin. | ➖ rien à corriger |
+
+### 12.2 Mesures (fil principal occupé, CPU ×4)
+
+| Scène | Avant | Après |
+|---|---|---|
+| Menu au repos (5 s) | 3,3 s · 301 mises en page · `Layerize` 610 ms | **1,3 s** · 0 · 1 ms |
+| Partie au repos, votre trait (5 s) | 0,44 s · 25 mises en page | **0,12 s** · 5 |
+| Partie en cours, coups joués (10 s) | 2,85 s | **2,3 s** |
+| Menu après une partie (4 s) | 2,4 s | **1,1 s** |
+| Réponse de l'IA d'une variante (Usurpateur) | écran gelé 700–900 ms | plus grande image 17 ms |
+
+### 12.3 Code mort
+
+| | Quoi | Statut |
+|---|---|---|
+| 12.3.1 | La colonne de droite du menu d'ordinateur (`#menu-side`) a quitté `index.html`, mais `menuNextMilestoneHTML`, `renderMenuDailyCard` et `renderMenuRewardsCard` tournaient encore à chaque retour au menu ; le bandeau de mise `renderCombatStake` (`#cstake`) n'avait plus d'élément ni d'appelant. | ✅ retirés (README à jour) |
+
+### 12.4 Vérifié, rien à faire
+
+Aucune erreur ni avertissement en console sur les cinq pages et la partie,
+téléphone et ordinateur ; aucune référence à une fonction ou un identifiant
+d'élément absents (relevé statique). Le test de fumée vérifie maintenant que
+l'IA de Mirror Chess répond depuis son Worker.
+
+### 12.5 Idées proposées (non implémentées : elles touchent au jeu)
+
+| | Idée | Pourquoi |
+|---|---|---|
+| 12.5.1 | **L'énigme du jour** : une position tirée d'une vraie partie (mat en deux, prise gagnante avec un pouvoir), la même pour tous, un ticket à la clé. | Une raison de revenir chaque jour qui apprend les pouvoirs mieux qu'une fiche ; le moteur de règles et le rejeu (`replay.js`) savent déjà poser et vérifier une position. |
+| 12.5.2 | **La revue de partie** : dans le rejeu, l'IA principale (déjà en Worker) marque les trois coups où l'évaluation a le plus basculé, avec le coup qu'elle aurait joué. | Transforme une défaite en leçon ; aucun serveur requis. |
+| 12.5.3 | **L'armée fantôme** : affronter, contre l'IA, la dernière armée vérifiée d'un joueur du classement (son blason, son nom), quand personne n'est en ligne. | Le multijoueur dépend du nombre de joueurs connectés ; le billet de partie conserve déjà les armées vérifiées. |
+| 12.5.4 | **Le tournoi de l'Arène** : quatre adversaires du laboratoire à la suite, sans soigner son armée entre deux rondes, un coffre au bout. | Un format court et lisible, qui fait jouer la composition d'armée sur la durée. |
+| 12.5.5 | **Le mode économe automatique** : si les premières secondes du menu montrent des images longues (ou `navigator.hardwareConcurrency ≤ 4`), proposer une fois de couper les effets (l'interrupteur « Effets » existe déjà). | Les téléphones modestes sont ceux qui laguent, et ce sont ceux dont les joueurs ne vont pas chercher le réglage. |
+
+### 12.6 Reste à faire, risques
+
+- Les animations infinies encore peintes à chaque image sont toutes sur des
+  pages secondaires et sur un seul élément : `vmPulse` (Diagonale),
+  `cvNodeBeat`, `rwCardBreathe` (récompenses), `clanFloat` (en `top`, à
+  dessein : voir le commentaire, une `transform` casserait le fondu `screen`).
+  À passer sur un pseudo-élément si elles gênent.
+- Le halo du bouton COMBAT (deux couches en `filter:blur`) reste le poste le
+  plus cher du menu après les braises ; le remplacer par une ombre portée
+  changerait son dessin aux pointes de la plaque : à décider à l'œil.
+- `content-visibility:hidden` : une page hors cadre ne se dessine plus. Un
+  futur code qui MESURERAIT une page avant de la faire glisser forcerait sa
+  mise en page (correct, mais plus lent) : mesurer après l'ajout de
+  `is-sliding`.
+
+---
+
+## 13. Nuit du 16 octobre 2026 : la partie en cours
+
+La nuit du 15 avait allégé le menu et la partie au repos. Restait la partie
+**pendant qu'on joue** : 2,3 s de fil principal occupé pour 10 s de coups.
+Mêmes conditions de mesure (Chromium, Playwright, téléphone 390 × 844 et
+ordinateur 1440 × 900, **processeur bridé ×4**), avec en plus le registre des
+repeints par calque (`LayerTree.layerPainted`), le profil du processeur et les
+« images longues » (`long-animation-frame`). Une partie scriptée joue un coup
+toutes les 700 ms, des deux côtés. Les règles, les pièces, les pouvoirs et
+l'économie ne sont pas touchés.
+
+### 13.1 Ce qui faisait laguer
+
+| | Cause | Correction | Statut |
+|---|---|---|---|
+| 13.1.1 | **Les deux bandeaux des joueurs se repeignaient une quinzaine de fois à chaque coup.** `.gp-bar` portait un `transition:box-shadow .25s` et `.gp-clock` un `transition:color .2s` ; le trait change à chaque coup, et les deux plaques sont des calques à elles (leur halo bat sur le compositeur), donc chaque image de la transition repeignait la plaque entière. Le fond basculait déjà d'un coup : seule l'ombre fondait. | Transitions retirées ; le halo (`::after`) garde son fondu en opacité, qui ne repeint rien. | ✅ repeints par coup ÷ 2 |
+| 13.1.2 | **Les rangées de prises étaient reconstruites à chaque coup**, nœuds et icônes SVG compris, puis mesurées (`scrollWidth`, mise en page forcée). | Réécrites seulement si leur HTML change. | ✅ |
+| 13.1.3 | **La même garde, dans les trois variantes, ne servait jamais** : elle comparait le HTML produit à `el.innerHTML`, que le navigateur ressérialise (`<path/>` devient `<path></path>`). La rangée était donc sérialisée pour rien, puis reconstruite. | La clé est le HTML produit, gardé à part. | ✅ |
+| 13.1.4 | **`markMoveStyle` forçait une mise en page à chaque coup** (`void art.offsetWidth`), pour redémarrer un geste que la pièce ne portait presque jamais. | Seulement s'il y a un geste en cours à redémarrer. | ✅ |
+| 13.1.5 | **Le journal des coups défilait même fermé** : `scrollTop=scrollHeight` à chaque coup, mise en page forcée, alors que le panneau est fermé presque tout le temps sur téléphone. | Rien si le panneau est `hidden` (lu sans mise en page) ; l'ouverture le refait et l'amène en bas, comme avant. | ✅ vérifié : journal en bas à l'ouverture |
+| 13.1.6 | **`gameSyncChrome` mesurait en plein coup**, puis les écritures suivantes (effets, statut) salissaient la mise en page : deux par coup. | Une seule mesure, dans une `requestAnimationFrame` (avant le dessin) ; le premier appel, qui pose le `ResizeObserver`, reste immédiat. | ✅ |
+| 13.1.7 | **Les braises du menu** envoyaient au compositeur un canvas plein écran trente fois par seconde : le premier poste du menu au repos (≈ 35 % de son temps, mesuré en les éteignant). | Canvas à mi-définition, étiré par le CSS : quatre fois moins de pixels. Comparé à la loupe (×3) : les halos sont les mêmes. | ✅ |
+| 13.1.8 | Les animations du menu restent « running » sous la partie (`content-visibility:hidden` saute le style, donc `animation-play-state:paused` ne s'applique pas). | Mesuré en les suspendant à la main : 0,90 → 0,83 s sur 5 s. Pas assez pour un changement. | ➖ |
+| 13.1.9 | Le halo du bouton COMBAT (§ 12.6) | Mesuré : figer son animation ne change rien au fil principal. Son coût est sur le compositeur, pas sur le fil principal. | ➖ |
+
+### 13.2 Mesures (CPU ×4, moyenne de trois passes)
+
+| Scène | Avant | Après |
+|---|---|---|
+| Un coup (`executeGameMove`, synchrone, médiane sur 42 coups) | 27,5 ms | **13 ms** |
+| 10 s de coups, téléphone : temps occupé | 4,8 s | **4,2 s** |
+| … recalcul de style | 0,93 s | **0,57 s** |
+| … repeints | 902 | **489** |
+| … mises en page | 88 | **57** |
+| … images longues (> 50 ms) | 10,7 | **5,7** |
+| 10 s de coups, ordinateur : images longues | 22,7 | **13,3** |
+| Menu au repos 5 s, téléphone | 1,42 s | **1,27 s** |
+| Menu au repos 5 s, ordinateur (1440 × 900) | 1,80 s | **1,46 s** |
+
+### 13.3 Bugs
+
+| | Défaut | Statut |
+|---|---|---|
+| 13.3.1 | **Le bac à sable `?mock` entrait dans le salon de présence du vrai projet** à chaque ouverture (`mpPresenceJoin`, appelée par `enterAccount`). Chaque test de fumée de la CI apparaissait « en ligne » chez les vrais joueurs, avec une fiche inventée, et pouvait recevoir leurs défis. | ✅ le bac à sable n'y entre plus ; un duel demandé depuis le salon COMBAT reste possible |
+| 13.3.2 | Deux 404 en console : `assets/ui/logo-variantes.webp` et `assets/backgrounds/chargement.webp`. | ➖ planches facultatives, déjà prévues (`data-onerr="remove"`, repli dessiné) : voir § 8 et `assets/PROMPTS.md` |
+| 13.3.3 | Parcours des cinq pages et d'une partie contre l'IA, téléphone et ordinateur : aucune erreur ni aucun avertissement en console. | ➖ rien d'autre à corriger |
+
+### 13.4 Idées proposées (non implémentées : elles touchent au jeu)
+
+Aucune ne reprend une idée déjà listée (§ 2, 4, 11.4, 12.5).
+
+| | Idée | Pourquoi |
+|---|---|---|
+| 13.4.1 | **Le sceau de victoire** : après une partie gagnée, une image de la position finale, encadrée des deux blasons et des noms, à partager (`navigator.share`, téléchargement sinon). | Le jeu a des visuels qui donnent envie d'être montrés ; c'est le moyen le moins cher d'en faire venir d'autres. Aucune règle touchée, tout est déjà dessiné (blasons, pièces, plateau). |
+| 13.4.2 | **Le bestiaire** : un carnet qui compte, pour chaque créature, les prises faites, les prises subies et les victoires où elle a survécu ; des titres purement décoratifs aux paliers (10, 50, 200). | Une progression qui récompense la maîtrise d'une créature, pas l'accumulation, et sans toucher à l'économie. Les statistiques par créature sont déjà calculées au règlement (11.4.6). |
+| 13.4.3 | **Le bilan face-à-face** : sur le profil d'un joueur, vos parties contre lui (victoires, nulles, défaites) et la dernière armée qu'il vous a opposée, juste au-dessus du bouton « Défier ». | Donne une raison de défier quelqu'un plutôt que n'importe qui, et de préparer son armée ; les billets de partie gardent déjà les deux armées vérifiées. |
+| 13.4.4 | **La carte des menaces, pour apprendre** : en partie hors classement seulement, une option qui teinte les cases que l'adversaire attaque. | Vingt-sept créatures aux déplacements inédits : c'est la marche la plus haute pour un nouveau joueur. Le moteur sait déjà calculer les cases attaquées (`isSquareAttackedSimple`). Désactivée en classé pour ne rien changer à la compétition. |
+| 13.4.5 | **La table d'exhibition** : sur la page des Variantes ou dans le menu, deux adversaires du laboratoire jouent l'un contre l'autre, en boucle, à vitesse lente, et on peut s'asseoir pour regarder. | Montre les pouvoirs en action mieux qu'une fiche, et fait vivre le jeu quand personne n'est en ligne. L'IA tourne déjà dans un Worker ; c'est un mode de visionnage, pas une règle. |
+
+### 13.5 Reste à faire, risques
+
+- **Effets de combat** : pendant un coup, les particules (`fx-dot`, éclats,
+  traînées) restent le premier poste de style, de calques (`Layerize`) et
+  d'envoi au compositeur. Elles sont déjà en `transform`/`opacity` et sur le
+  compositeur. Les réduire changerait leur dessin, et § 3.1 rappelle que ce
+  module a été remis tel quel à la demande : à décider à l'œil.
+- **Sur ordinateur, quelques images de 400 à 800 ms** sous processeur bridé
+  ×4, avant comme après : la trace n'y montre aucune tâche longue du fil
+  principal. C'est l'attente du rendu (rastérisation d'un grand écran sous
+  émulation). À revoir sur un vrai appareil modeste.
+- Le bord estompé des rangées de prises (`.cap-over`) n'est recalculé que
+  quand la rangée change. Une fenêtre redimensionnée en pleine partie peut
+  le laisser faux jusqu'à la prochaine prise (sans effet sur le jeu).
+- `gameSyncChrome` en `requestAnimationFrame` : si `renderGame` était un jour
+  appelé depuis une autre `requestAnimationFrame`, la mesure tomberait une
+  image plus tard. Aucun appelant ne le fait aujourd'hui.
+
+---
+
+## 14. Nuit du 17 octobre 2026 : les écrans qui attendent le joueur
+
+Les nuits du 15 et du 16 avaient allégé le menu au repos et la partie. Restait
+ce que ces mesures ne voyaient pas : le menu **quand une récompense attend**
+(le cas courant : c'est ce qui fait revenir), et les pages secondaires
+(Diagonale de la Puissance, colonne des victoires, rangée de la richesse,
+classement, adversaires, variantes en partie). Mêmes conditions (Chromium,
+Playwright, téléphone 390 × 844 et ordinateur 1440 × 900, **processeur bridé
+×4**), 5 s au repos par écran, avec la liste des animations en cours
+(`document.getAnimations()`) et les propriétés qu'elles animent. Les règles,
+les pièces, les pouvoirs et l'économie ne sont pas touchés.
+
+### 14.1 Ce qui faisait laguer
+
+| | Cause | Correction | Statut |
+|---|---|---|---|
+| 14.1.1 | **Le feu de la colonne des victoires** (bouton du menu, allumé dès qu'un palier attend) : neuf langues, deux lits de braises et quatre braises étaient des éléments SVG **intérieurs** animés en `transform`, sous des filtres de turbulence. Un élément SVG intérieur n'est pas confié au compositeur : une mise en page et un dessin complets du menu à chaque image (301 mises en page sur 5 s). | Chaque langue, braise et lit de braises est son propre `<svg>` (une boîte HTML), et c'est lui que l'animation déplace. Le mouvement est le même : il est reporté du repère de la langue sur le calque, autour du pied de la langue (`rotate(--a) … rotate(-1 × --a)`, calculé dans `index.html`). Filtres sur une région fixe (`jtfFireL`, `jtfFireCoreL`) pour ne rien rogner ; les anciens filtres, devenus sans usage, sont retirés. Comparé image par image (pause à 200, 500, 900, 1 300 et 1 700 ms) : même dessin. | ✅ 0 mise en page |
+| 14.1.2 | **Les éclairs de la rangée de la richesse** : même défaut (couronne et éclat en `transform` sur des ellipses SVG), plus un jaillissement en `stroke-dashoffset` sur dix-huit tracés, recalculé soixante fois par seconde. | Un `<svg>` par arc : l'éclat est son opacité, le jaillissement une échelle qui part du pied de l'arc, posée en `transform-origin`. Couronne et éclat sont des calques. | ✅ |
+| 14.1.3 | **Le prochain jalon de la Diagonale** (`vmPulse`) et **le coffre à prendre** (`vm-due`) battaient en `box-shadow` : une ombre animée se repeint à chaque image. La Diagonale occupait le fil principal 1,3 s sur 5 s, pour une carte. | L'ombre de repos reste sur la carte ; le halo ample est peint une fois sur `::before` et bat en opacité. Comparé au pixel aux deux bornes : écart maximal de 3 sur 255. | ✅ |
+| 14.1.4 | **Le palier à prendre de la colonne** (`cvNodeBeat`) : même défaut, 3 s sur 5 s de fil principal occupé tant que la colonne est ouverte avec un palier dû. | Même principe, sur `.cv-node::before`. Identique au repos, écart maximal de 2 sur 255 au sommet du battement. | ✅ |
+| 14.1.5 | **La carte à prendre de la rangée** (`rwCardBreathe`) : même défaut. Au passage, l'animation effaçait l'ombre portée de la carte (`--shadow-2`). | Halo sur `::before`, en opacité. La carte garde maintenant son ombre portée, comme les autres. La règle qui redisait les deux animations ensemble (glissement + respiration) n'a plus lieu d'être. | ✅ |
+| 14.1.6 | **Les poussières de lumière de la colonne** (`cvMote`) montaient sur **chaque** palier (trente paliers, 90 animations et autant de calques de compositeur), simplement cachées par l'opacité nulle de leur conteneur. | Elles ne montent que sur le palier à prendre. | ✅ 90 → 3 animations |
+| 14.1.7 | Les trois variantes en partie (Board Quake, Mirror Chess, Cheval de Troie) : `*SyncChrome` mesure encore en plein coup, comme le faisait la partie principale (§ 13.1.6). | Mesuré : 0,06 s de mise en page pour 10 s de coups, un coup en 3 ms. Pas assez pour changer trois fichiers. | ➖ |
+| 14.1.8 | Minuteurs, musique et ambiance quand l'onglet est caché ; pages Magasin, Mes armées, Guerre des clans, Variantes, classement, adversaires. | Relu et mesuré : tout s'arrête déjà avec l'onglet, et ces pages n'animent que `transform`/`opacity`. | ➖ rien à faire |
+
+### 14.2 Mesures (fil principal occupé sur 5 s au repos, CPU ×4, moyenne de deux ou trois passes)
+
+| Écran | Avant | Après |
+|---|---|---|
+| Menu, téléphone, une récompense « victoires » en attente | 2,2 s · 301 mises en page | **1,0 s** · 0 |
+| Menu, téléphone, une récompense « richesse » en attente | 1,25 s | **0,77 s** |
+| Menu, téléphone, les trois récompenses en attente | 2,6 s · 301 mises en page | **1,07 s** · 0 |
+| Menu, ordinateur, les trois récompenses en attente | 1,92 s · 300 mises en page | **1,18 s** · 0 |
+| Diagonale de la Puissance, téléphone | 1,29 s | **0,05 s** |
+| Diagonale de la Puissance, ordinateur | 1,23 s | **0,05 s** |
+| Colonne des victoires avec un palier à prendre, téléphone | 3,07 s | **0,04 s** |
+| Colonne des victoires avec un palier à prendre, ordinateur | 2,32 s | **0,01 s** |
+| Menu au repos sans récompense (témoin) | 0,64 s | 0,6 s |
+
+Le reste du coût du menu (≈ 0,6 s) est celui des braises en canvas, déjà
+réduites les nuits précédentes.
+
+### 14.3 Bugs
+
+| | Défaut | Statut |
+|---|---|---|
+| 14.3.1 | La carte à prendre de la rangée perdait son ombre portée pendant toute sa respiration (14.1.5). | ✅ |
+| 14.3.2 | Deux filtres SVG (`jtfFire`, `jtfFireCore`) ne servaient plus. | ✅ retirés |
+| 14.3.3 | Console : aucune erreur ni aucun avertissement sur les écrans mesurés, téléphone et ordinateur. | ➖ |
+
+### 14.4 Idées proposées (non implémentées : elles touchent au jeu)
+
+Aucune ne reprend une idée déjà listée (§ 2, 4, 11.4, 12.5, 13.4).
+
+| | Idée | Pourquoi |
+|---|---|---|
+| 14.4.1 | **Le défi de la semaine** : une armée imposée, la même pour tous, à mener contre une série d'adversaires du laboratoire ; on compare le nombre de coups. | Fait découvrir des créatures qu'on n'a pas encore débloquées, et met tout le monde à égalité, sans toucher à l'économie. |
+| 14.4.2 | **La démonstration du pouvoir** : dans la fiche d'une créature, un plateau de 5 × 5 qui rejoue en boucle trois coups montrant son déplacement et son pouvoir. | Une fiche se lit, un mouvement se comprend ; le moteur de règles et le rejeu savent déjà jouer une position scriptée. |
+| 14.4.3 | **Les saluts en partie en ligne** : quelques phrases choisies dans un catalogue (« Bien joué », « Joli coup », « Encore une ? »), jamais de texte libre, comme les cris de guerre des clans. | Une partie en ligne est aujourd'hui muette ; le catalogue fermé évite toute modération. |
+| 14.4.4 | **La pendule suspendue hors de l'onglet, contre l'IA** : quand l'onglet est caché pendant une partie hors ligne, la pendule s'arrête et l'IA attend. | Un appel ou une notification sur téléphone fait aujourd'hui perdre au temps une partie contre l'IA. Hors classement seulement. |
+
+### 14.5 Reste à faire, risques
+
+- **Les langues du feu** sont maintenant filtrées au repos puis déplacées par
+  le compositeur : la turbulence ne « bout » plus à travers la flamme qui
+  bouge, elle bouge avec elle. À la taille du bouton (des flammes de 6 à
+  12 px), la différence ne se voit pas sur les captures ; à regarder sur un
+  vrai écran.
+- **Le jaillissement des éclairs** est une échelle et non plus un tracé qui
+  se dessine : sur 60 ms, pendant que l'arc s'allume, l'œil ne fait pas la
+  différence. Le premier éclat d'un arc est un peu moins lumineux (le flou
+  est fait arc par arc, et non sur l'ensemble).
+- Les clés d'animation du feu utilisent des variables CSS (`--a`, `--s`) :
+  mesuré, cela coûte encore ≈ 0,15 s de style sur 5 s par rapport à des
+  valeurs écrites en dur. Neuf jeux d'images-clés écrits en dur le
+  supprimeraient, au prix de la lisibilité.
+- Diagonale de la Puissance sur ordinateur : une quinzaine d'images longues
+  sur 5 s sous émulation, avant comme après, sans aucune tâche du fil
+  principal (0,05 s) : c'est l'attente du rendu d'un grand écran, comme au
+  § 13.5.
