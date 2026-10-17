@@ -2183,11 +2183,20 @@ body:not(.main-menu) #settings-panel{display:none}
   background:var(--metal-gold);color:#241706;font-size:min(2.8vw,11px);font-weight:900;
   box-shadow:0 .2em .5em rgba(0,0,0,.8)}
 /* LE PROCHAIN JALON : le seul qui bouge de toute la Voie. */
-.vm-card.current-milestone{border-color:var(--gold);
-  animation:vmPulse 2.4s ease-in-out infinite}
-@keyframes vmPulse{
-  0%,100%{box-shadow:0 .5em 1.2em -.5em rgba(0,0,0,.95),0 0 .9em -.3em rgba(201,168,76,.5)}
-  50%{box-shadow:0 .5em 1.2em -.5em rgba(0,0,0,.95),0 0 1.9em 0 rgba(201,168,76,.9)}}
+.vm-card.current-milestone{border-color:var(--gold);--vm-beat:2.4s}
+/* LE HALO BAT EN OPACITÉ, SUR UN CALQUE À LUI. Il battait en `box-shadow` :
+   une ombre animée se repeint à chaque image, et la Voie, au repos, occupait
+   le fil principal un quart du temps (1,3 s sur 5 s, processeur bridé ×4)
+   pour cette seule carte. L'ombre de repos reste sur la carte ; le halo
+   ample est dessiné une fois sur ::before, et seule son opacité varie, ce que
+   le compositeur fait seul. Même dessin aux deux bornes. */
+.vm-card.current-milestone,.vm-card.vm-due{
+  box-shadow:0 .5em 1.2em -.5em rgba(0,0,0,.95),0 0 .9em -.3em rgba(201,168,76,.5)}
+.vm-card.current-milestone::before,.vm-card.vm-due::before{content:'';position:absolute;inset:-1px;
+  border-radius:inherit;pointer-events:none;z-index:-1;
+  box-shadow:0 0 1.9em 0 rgba(201,168,76,.9);opacity:0;
+  animation:vmPulse var(--vm-beat,2.4s) ease-in-out infinite}
+@keyframes vmPulse{0%,100%{opacity:0}50%{opacity:1}}
 .vm-card.locked-milestone{opacity:.62;filter:grayscale(.35)}
 
 /* LE JETON DU SENTIER : une pastille posée SUR le chemin, à hauteur de la
@@ -2234,7 +2243,7 @@ body:not(.main-menu) #settings-panel{display:none}
   box-shadow:0 0 1.1em rgba(240,206,140,.55)}
 
 @media (prefers-reduced-motion:reduce){
-  .vm-card.current-milestone,.vm-dot.current-milestone{animation:none}
+  .vm-card.current-milestone::before,.vm-card.vm-due::before,.vm-dot.current-milestone{animation:none}
 }
 
 /* Bouton de sortie de la Voie : UNE PASTILLE POSÉE SUR LA VOIE, pas une
@@ -3989,32 +3998,55 @@ body.desk .var-card-hdr{flex-wrap:wrap}
    ENTIER, et « 50% 100% » désignerait le bas de la boîte de 100 unités au lieu
    du pied de la langue — les flammes partiraient en tournoyant à l'autre bout
    de l'écran. */
-.jtf-tongue{transform-box:fill-box;transform-origin:50% 100%;
-  animation:jtfLick 1.5s ease-in-out infinite}
+/* CHAQUE LANGUE EST UN CALQUE (nuit du 17 octobre). Le feu animait des
+   <path> à l'intérieur d'un seul <svg> : un élément SVG intérieur n'est pas
+   confié au compositeur, et tant que la colonne avait un palier à donner, le
+   menu refaisait une mise en page et un dessin complets à chaque image,
+   turbulence et flou compris (le fil principal occupé 2,2 s sur 5 s au lieu
+   de 0,7, processeur bridé ×4). Chaque langue est maintenant son propre
+   <svg> (.jtf-l), posé sur toute la couche, et c'est lui qui bouge.
+
+   LA MÊME GÉOMÉTRIE. L'ancien mouvement s'écrivait dans le repère de la
+   langue (incliné de --a, réduit de --s). On le reporte sur le calque en
+   l'encadrant de cette inclinaison : rotate(--a) … rotate(-1 × --a), autour
+   du pied de la langue (transform-origin, calculé dans index.html). Le
+   décalage vertical, en unités de la langue, devient un pourcentage du
+   calque (100 % = les 100 unités de l'ancien repère) multiplié par --s. Les
+   fonctions sont les mêmes d'une image-clé à l'autre : l'interpolation suit
+   exactement l'ancienne. */
+.jtf-tongue{animation:jtfLick 1.5s ease-in-out infinite}
 @keyframes jtfLick{
-  0%  {transform:translateY(2px)  rotate(0deg)  scale(.78,.46);opacity:0}
+  0%  {transform:rotate(var(--a)) translateY(calc(var(--s) * 2%))  rotate(0deg)  scale(.78,.46) rotate(calc(var(--a) * -1));opacity:0}
   13% {opacity:1}
-  33% {transform:translateY(-1px) rotate(-8deg) scale(1.04,1.22)}
-  55% {transform:translateY(-2px) rotate(6deg)  scale(.97,1.06);opacity:.95}
-  76% {transform:translateY(-4px) rotate(-5deg) scale(.86,.86);opacity:.8}
-  100%{transform:translateY(-9px) rotate(2deg)  scale(.56,.44);opacity:0}
+  33% {transform:rotate(var(--a)) translateY(calc(var(--s) * -1%)) rotate(-8deg) scale(1.04,1.22) rotate(calc(var(--a) * -1))}
+  55% {transform:rotate(var(--a)) translateY(calc(var(--s) * -2%)) rotate(6deg)  scale(.97,1.06) rotate(calc(var(--a) * -1));opacity:.95}
+  76% {transform:rotate(var(--a)) translateY(calc(var(--s) * -4%)) rotate(-5deg) scale(.86,.86) rotate(calc(var(--a) * -1));opacity:.8}
+  100%{transform:rotate(var(--a)) translateY(calc(var(--s) * -9%)) rotate(2deg)  scale(.56,.44) rotate(calc(var(--a) * -1));opacity:0}
 }
+/* Les calques des effets couvrent toute la couche, dans l'ancien repère
+   0–100 du SVG unique. */
+.jt-fx .jtf-l{position:absolute;inset:0;display:block;width:100%;height:100%;overflow:visible}
+.jt-fx .jtf-fire{position:absolute;inset:0;display:block}
 /* Le cœur blanc : le MÊME jeu de langues, réduit et repeint en blanc chaud.
    Une flamme est plus claire au milieu qu'au bord ; sans ce deuxième calque,
    les langues restent des pétales jaunes uniformes. */
-.jtf-fire-core{transform-box:fill-box;transform-origin:50% 100%;
+/* L'origine est le milieu du bas de l'ancien groupe (sa boîte, mesurée au
+   repos) : 50,4 % × 49,85 % de la couche. */
+.jtf-fire-core{transform-origin:50.4% 49.85%;
   transform:scale(.5,.62);opacity:.72}
 /* Le halo de couronne et le lit de braises, qui respirent tous les deux. */
-.jtf-bed{transform-box:fill-box;transform-origin:50% 50%;
-  animation:jtfBed 2.1s ease-in-out infinite}
+.jtf-bed{animation:jtfBed 2.1s ease-in-out infinite}
 @keyframes jtfBed{0%,100%{opacity:.4;transform:scale(.9)}50%{opacity:.85;transform:scale(1.06)}}
 /* Les escarbilles : elles montent, dérivent et s'éteignent. */
-.jtf-ember{transform-box:fill-box;opacity:0;animation:jtfEmber 2.4s linear infinite}
+/* Calques, eux aussi : le décalage, en unités de l'ancien repère, devient un
+   pourcentage de la couche ; l'origine est le coin haut-gauche de la braise,
+   comme pour un élément SVG intérieur (index.html). */
+.jtf-ember{opacity:0;animation:jtfEmber 2.4s linear infinite}
 @keyframes jtfEmber{
   0%  {opacity:0;transform:translate(0,0) scale(.6)}
   12% {opacity:1}
   70% {opacity:.7}
-  100%{opacity:0;transform:translate(var(--dx,2px),-26px) scale(.3)}
+  100%{opacity:0;transform:translate(var(--dx,2%),-26%) scale(.3)}
 }
 
 /* --- LES ÉCLAIRS (rangée de la richesse) --------------------------
@@ -4025,23 +4057,27 @@ body.desk .var-card-hdr{flex-wrap:wrap}
 
    Un éclair CLAQUE, il n'a pas de trajectoire : toute l'animation est dans
    l'opacité, avec une double frappe (la décharge, puis le rebond), et l'arc
-   est éteint les trois quarts du temps. Le `stroke-dashoffset` le fait JAILLIR
-   depuis l'emblème vers l'extérieur en une image — `pathLength="100"` normalise
-   chaque tracé à cent unités, si bien que la même animation convient à des
-   arcs de longueurs différentes. */
+   est éteint les trois quarts du temps. Il JAILLIT depuis l'emblème vers
+   l'extérieur en trois images : une échelle qui part du pied de l'arc
+   (transform-origin, posé sur chaque arc dans index.html), pendant que
+   l'opacité monte.
+
+   Le jaillissement était un `stroke-dashoffset` sur les dix-huit tracés : une
+   propriété de dessin, que le fil principal recalculait soixante fois par
+   seconde tant que la rangée avait un palier à donner (0,5 s sur 5 s,
+   processeur bridé ×4). Opacité et échelle sont sur le <svg> de l'arc, et le
+   compositeur les anime seul (nuit du 17 octobre). */
 .jtf-arc{opacity:0;animation:jtfStrike 1.15s linear infinite}
 @keyframes jtfStrike{
-  0%{opacity:0} 3%{opacity:1} 8%{opacity:.15} 13%{opacity:.95} 22%{opacity:0} 100%{opacity:0}
+  0%{opacity:0;transform:scale(.2)} 3%{opacity:1} 5%{transform:scale(1)} 8%{opacity:.15}
+  13%{opacity:.95} 22%{opacity:0} 100%{opacity:0;transform:scale(1)}
 }
-.jtf-arc path{stroke-dasharray:100;stroke-dashoffset:100;
-  animation:jtfShoot 1.15s linear infinite}
-@keyframes jtfShoot{0%{stroke-dashoffset:100}5%{stroke-dashoffset:0}100%{stroke-dashoffset:0}}
 /* La couronne électrique reste allumée en permanence, très bas : sans elle,
    l'emblème est éteint pendant les silences entre deux décharges. */
-.jtf-corona{transform-box:fill-box;transform-origin:50% 50%;opacity:.3;
+.jtf-corona{opacity:.3;
   animation:jtfCorona 2.3s ease-in-out infinite}
 @keyframes jtfCorona{0%,100%{opacity:.18;transform:scale(.88)}50%{opacity:.42;transform:scale(1.04)}}
-.jtf-flash{opacity:0;transform-box:fill-box;transform-origin:50% 50%;
+.jtf-flash{opacity:0;
   animation:jtfFlash 1.15s linear infinite}
 @keyframes jtfFlash{0%{opacity:0;transform:scale(.7)}3%{opacity:.85;transform:scale(1)}
   18%{opacity:0;transform:scale(1.25)}100%{opacity:0}}
@@ -4101,10 +4137,9 @@ body.desk .var-card-hdr{flex-wrap:wrap}
 /* Mouvement réduit : l'information reste — l'emblème est doré, la pastille est
    allumée, le feu et la lumière sont là — c'est le mouvement qui part. */
 @media(prefers-reduced-motion:reduce){
-  .jtf-tongue,.jtf-bed,.jtf-ember,.jtf-arc,.jtf-arc path,.jtf-corona,.jtf-flash,
+  .jtf-tongue,.jtf-bed,.jtf-ember,.jtf-arc,.jtf-corona,.jtf-flash,
   .jtf-spin,.jtf-mote{animation:none}
   .jtf-arc,.jtf-ember,.jtf-mote{opacity:.85}
-  .jtf-arc path{stroke-dashoffset:0}
 }
 
 /* La fenêtre. « Assez large » et VERTICALE : c'est une colonne de trente
@@ -4438,7 +4473,12 @@ body.desk .var-card-hdr{flex-wrap:wrap}
 .cv-due{--cv-wire:linear-gradient(180deg,rgba(201,168,76,.55),rgba(255,255,255,.09))}
 .cv-due .cv-node{border-color:var(--gold);
   background:linear-gradient(160deg,var(--gold),#8a6a26);
-  box-shadow:inset 0 1px 0 rgba(255,244,214,.6),0 0 1.1em -.15em rgba(201,168,76,.75);
+  box-shadow:inset 0 1px 0 rgba(255,244,214,.6),0 0 .8em -.2em rgba(201,168,76,.6)}
+/* Même principe que le jalon de la Voie : le halo ample est peint une fois
+   sur ::before et bat en opacité, au lieu d'une `box-shadow` repeinte à
+   chaque image. */
+.cv-due .cv-node::before{content:'';position:absolute;inset:-1px;border-radius:inherit;
+  pointer-events:none;box-shadow:0 0 1.5em 0 rgba(201,168,76,.95);opacity:0;
   animation:cvNodeBeat 2.2s ease-in-out infinite}
 .cv-due .cv-node span{color:#1a1206}
 .cv-due{cursor:pointer}
@@ -4502,8 +4542,7 @@ body.desk .var-card-hdr{flex-wrap:wrap}
 .cv-grab svg{width:1em;height:1em;display:block;fill:currentColor}
 
 @keyframes cvGrab{0%,100%{transform:translateY(0)}50%{transform:translateY(-.32em)}}
-@keyframes cvNodeBeat{0%,100%{box-shadow:inset 0 1px 0 rgba(255,244,214,.6),0 0 .8em -.2em rgba(201,168,76,.6)}
-  50%{box-shadow:inset 0 1px 0 rgba(255,244,214,.6),0 0 1.5em 0 rgba(201,168,76,.95)}}
+@keyframes cvNodeBeat{0%,100%{opacity:0}50%{opacity:1}}
 @keyframes cvBreathe{0%,100%{opacity:.5}50%{opacity:.9}}
 @keyframes cvSheen{0%{transform:translateX(-118%)}55%,100%{transform:translateX(303%)}}
 
@@ -4514,9 +4553,14 @@ body.desk .var-card-hdr{flex-wrap:wrap}
 .cv-motes{position:absolute;inset:0;pointer-events:none;overflow:hidden;opacity:0;
   z-index:1;transition:opacity .4s}
 .cv-due .cv-motes{opacity:1}
+/* Les poussières ne montent QUE sur le palier à prendre. Elles montaient sur
+   chaque palier de la colonne (une trentaine, soit 90 animations et autant de
+   calques de compositeur), simplement cachées par l'opacité nulle du
+   conteneur. Hors du palier dû, elles sont posées, invisibles, immobiles. */
 .cv-motes i{position:absolute;bottom:-.4em;width:.3em;height:.3em;border-radius:50%;
-  background:var(--gold2);box-shadow:0 0 .5em rgba(240,209,137,.9);
-  animation:cvMote 3.6s linear infinite}
+  background:var(--gold2);box-shadow:0 0 .5em rgba(240,209,137,.9);opacity:0;
+  animation:none 3.6s linear infinite}
+.cv-due .cv-motes i{animation-name:cvMote}
 .cv-motes i:nth-child(1){left:14%;animation-duration:3.4s}
 .cv-motes i:nth-child(2){left:29%;animation-duration:4.2s;animation-delay:-1.5s}
 .cv-motes i:nth-child(3){left:63%;animation-duration:3.9s;animation-delay:-2.6s}
@@ -4555,7 +4599,7 @@ body.desk .var-card-hdr{flex-wrap:wrap}
   .cv-tile .cv-mark{flex:1 0 100%;order:9;margin-top:.5em}
 }
 @media (prefers-reduced-motion:reduce){
-  .cv-grab,.cv-due .cv-node,.cv-due .cv-glow,.cv-motes i,
+  .cv-grab,.cv-due .cv-node::before,.cv-due .cv-glow,.cv-motes i,
   .cv-due .cv-tile::after{animation:none}
   .cv-motes{display:none}
 }
@@ -4621,13 +4665,16 @@ body.desk .var-card-hdr{flex-wrap:wrap}
    fait varier l'OPACITÉ, ce qui sur un coffre de 60 px se lit comme une lueur
    et sur une carte pleine hauteur comme un écran qui s'éteint. */
 .rw-row-card.rw-got{border-color:rgba(255,255,255,.16)}
-.rw-row-card.rw-due{border-color:var(--gold);
-  background:linear-gradient(180deg,rgba(193,154,69,.17),var(--surface));
+.rw-row-card.rw-due{border-color:var(--gold);position:relative;
+  background:linear-gradient(180deg,rgba(193,154,69,.17),var(--surface))}
+/* Le halo respire sur ::before, en opacité : une `box-shadow` animée sur la
+   carte entière se repeignait à chaque image tant que la page était ouverte.
+   L'animation effaçait au passage l'ombre portée de la carte (--shadow-2) ;
+   elle la garde maintenant, comme les autres cartes de la rangée. */
+.rw-row-card.rw-due::before{content:'';position:absolute;inset:-1px;border-radius:inherit;
+  pointer-events:none;box-shadow:0 0 1.6em -.2em rgba(193,154,69,.45);opacity:0;
   animation:rwCardBreathe 2.6s ease-in-out infinite}
-@keyframes rwCardBreathe{
-  0%,100%{box-shadow:0 0 0 0 rgba(193,154,69,0)}
-  50%{box-shadow:0 0 1.6em -.2em rgba(193,154,69,.45)}
-}
+@keyframes rwCardBreathe{0%,100%{opacity:0}50%{opacity:1}}
 /* Un palier à venir reste LISIBLE. L'opacité de 42 % des états communs
    convenait à une case d'un quart d'écran perdue dans une bande ; sur la
    seule carte affichée, elle rendait illisible ce qu'on est précisément venu
@@ -4646,13 +4693,9 @@ body.desk .var-card-hdr{flex-wrap:wrap}
 .rw-row-card.rw-slide-prev{--rw-slide:-34%}
 .rw-row-card.rw-slide-next,.rw-row-card.rw-slide-prev{
   animation:rwRowSlide .3s cubic-bezier(.22,.9,.3,1)}
-/* La carte À PRENDRE respire déjà (rwCardBreathe). `animation` est un
-   raccourci : la poser à nouveau EFFACERAIT la respiration, et le palier dû
-   perdrait son halo dès qu'on l'atteint en glissant. Les deux sont donc
-   redites ensemble, glissement d'abord. */
-.rw-row-card.rw-due.rw-slide-next,.rw-row-card.rw-due.rw-slide-prev{
-  animation:rwRowSlide .3s cubic-bezier(.22,.9,.3,1),
-            rwCardBreathe 2.6s ease-in-out infinite}
+/* La carte À PRENDRE respire sur son ::before (rwCardBreathe) : le
+   glissement, posé sur la carte elle-même, ne peut plus effacer ce halo, et
+   il n'y a plus besoin de redire les deux animations ensemble. */
 @keyframes rwRowSlide{
   from{opacity:0;transform:translate3d(var(--rw-slide,34%),0,0)}
   to  {opacity:1;transform:translate3d(0,0,0)}
@@ -9245,8 +9288,7 @@ body.has-acc #page-mirror{min-height:0}
 .vm-chest .chest{margin:0 auto}
 /* La couche des récompenses laisse passer les clics (.vm-over) : le coffre
    à prendre, lui, doit les recevoir. */
-.vm-card.vm-due{border-color:var(--gold2);cursor:pointer;pointer-events:auto;
-  animation:vmPulse 1.3s ease-in-out infinite}
+.vm-card.vm-due{border-color:var(--gold2);cursor:pointer;pointer-events:auto;--vm-beat:1.3s}
 .vm-card.vm-due:hover,.vm-card.vm-due:focus-visible{transform:translateY(-50%) scale(1.05)}
 .vm-due-tag{font:800 min(2.6vw,10px) var(--f-ui);color:var(--gold2);text-transform:uppercase;letter-spacing:.06em}
 .vm-arena-pieces{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:4px;
